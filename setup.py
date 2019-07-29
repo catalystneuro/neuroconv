@@ -19,4 +19,4 @@ setup(
     author_email='ben.dichter@gmail.com',
     keywords='nwb',
     packages=find_packages(),
-    install_requires=['pynwb', 'tqdm'])
+    install_requires=['pynwb', 'tqdm', 'natsort', 'scipy', 'bs4'])
