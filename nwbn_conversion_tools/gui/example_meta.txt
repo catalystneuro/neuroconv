@@ -1,0 +1,4 @@
+This is an example meta-data file to use for NWB files.
+
+FIELD_1 : 87
+FIELD_2 : 'name'

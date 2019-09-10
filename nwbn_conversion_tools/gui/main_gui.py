@@ -1,6 +1,7 @@
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
-    QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout)
+    QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
+    QGridLayout, QLabel, QFileDialog)
 import numpy as np
 import os
 import sys
@@ -55,25 +56,43 @@ class Application(QMainWindow):
         self.tab1.layout = QHBoxLayout()
 
         # Left-side panel: forms
-        vbox1 = QVBoxLayout()
-        push1 = QPushButton('Do something')
+        grid1 = QGridLayout()
+        btn_load_meta = QPushButton('Load from file')
+        btn_load_meta.clicked.connect(lambda: self.open_meta_file())
+        btn_save_meta = QPushButton('Save to file')
+        btn_save_meta.clicked.connect(lambda: self.save_meta_file())
+        label1 = QLabel('Something:')
         line1 = QLineEdit('User enter here')
-        vbox1.addWidget(push1)
-        vbox1.addWidget(line1)
+        grid1.addWidget(btn_load_meta, 0, 0, 1, 3)
+        grid1.addWidget(btn_save_meta, 0, 3, 1, 3)
+        grid1.addWidget(label1, 1, 0, 1, 3)
+        grid1.addWidget(line1, 1, 3, 1, 3)
 
         # Right-side panel: meta-data text
         vbox2 = QVBoxLayout()
-        text1 = QTextEdit()
-        vbox2.addWidget(text1)
+        r_label1 = QLabel('Resulting meta-data file:')
+        self.text1 = QTextEdit()
+        vbox2.addWidget(r_label1)
+        vbox2.addWidget(self.text1)
 
         # Main Layout
-        self.tab1.layout.addLayout(vbox1)
+        self.tab1.layout.addLayout(grid1)
         self.tab1.layout.addLayout(vbox2)
         self.tab1.setLayout(self.tab1.layout)
 
 
-    def open_meta_file(self, filename):
+    def open_meta_file(self):
         ''' Opens .txt file containing metadata for NWB.'''
+        filename, ftype = QFileDialog.getOpenFileName(None, 'Open file', '', "(*.txt)")
+        if ftype=='(*.txt)':
+            f = open(filename, "r")
+            txt = f.read()
+            f.close()
+            self.text1.setText(txt)
+
+
+    def save_meta_file(self):
+        ''' Saves metadata to .txt file.'''
         pass
 
 
