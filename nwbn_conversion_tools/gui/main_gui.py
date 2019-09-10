@@ -1,7 +1,8 @@
 from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
     QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
-    QGridLayout, QLabel, QFileDialog)
+    QGridLayout, QSplitter, QLabel, QFileDialog)
 import numpy as np
 import os
 import sys
@@ -53,20 +54,30 @@ class Application(QMainWindow):
         """Opens new tab for Meta-data file editing."""
         self.tab1 = QWidget()
         self.tabs.addTab(self.tab1, "Meta-data")
-        self.tab1.layout = QHBoxLayout()
+        self.tab1.layout = QSplitter(Qt.Horizontal)
 
         # Left-side panel: forms
-        grid1 = QGridLayout()
         btn_load_meta = QPushButton('Load from file')
         btn_load_meta.clicked.connect(lambda: self.open_meta_file())
         btn_save_meta = QPushButton('Save to file')
         btn_save_meta.clicked.connect(lambda: self.save_meta_file())
         label1 = QLabel('Something:')
         line1 = QLineEdit('User enter here')
+        label2 = QLabel('Something else:')
+        line2 = QLineEdit('User enter here')
+
+        grid1 = QGridLayout()
         grid1.addWidget(btn_load_meta, 0, 0, 1, 3)
         grid1.addWidget(btn_save_meta, 0, 3, 1, 3)
-        grid1.addWidget(label1, 1, 0, 1, 3)
-        grid1.addWidget(line1, 1, 3, 1, 3)
+        grid1.addWidget(QLabel(), 1, 0, 1, 6)
+        grid1.addWidget(label1, 2, 0, 1, 3)
+        grid1.addWidget(line1, 2, 3, 1, 3)
+        grid1.addWidget(label2, 3, 0, 1, 3)
+        grid1.addWidget(line2, 3, 3, 1, 3)
+
+        vbox1 = QVBoxLayout()
+        vbox1.addLayout(grid1)
+        vbox1.addStretch()
 
         # Right-side panel: meta-data text
         vbox2 = QVBoxLayout()
@@ -76,9 +87,15 @@ class Application(QMainWindow):
         vbox2.addWidget(self.text1)
 
         # Main Layout
-        self.tab1.layout.addLayout(grid1)
-        self.tab1.layout.addLayout(vbox2)
-        self.tab1.setLayout(self.tab1.layout)
+        left_w = QWidget()
+        left_w.setLayout(vbox1)
+        right_w = QWidget()
+        right_w.setLayout(vbox2)
+        self.tab1.layout.addWidget(left_w)
+        self.tab1.layout.addWidget(right_w)
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self.tab1.layout)
+        self.tab1.setLayout(main_layout)
 
 
     def open_meta_file(self):
