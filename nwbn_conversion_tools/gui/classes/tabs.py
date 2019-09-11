@@ -18,8 +18,10 @@ class TabMetafile(QWidget):
         btn_save_meta.clicked.connect(lambda: self.save_meta_file())
 
         l_grid1 = QGridLayout()
-        l_grid1.addWidget(btn_load_meta, 0, 0, 1, 3)
-        l_grid1.addWidget(btn_save_meta, 0, 3, 1, 3)
+        l_grid1.setColumnStretch(5, 1)
+        l_grid1.addWidget(btn_load_meta, 0, 0, 1, 2)
+        l_grid1.addWidget(btn_save_meta, 0, 2, 1, 2)
+        l_grid1.addWidget(QLabel(), 0, 4, 1, 2)
 
         self.box_general = GroupGeneral(self)
         self.box_nwbfile = GroupNwbfile(self)
