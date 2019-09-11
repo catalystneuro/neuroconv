@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QAction, QGroupBox,
     QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
     QGridLayout, QSplitter, QLabel, QFileDialog, QComboBox, QScrollArea)
 from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile, GroupGeneral,
-    GroupOphys)
+    GroupOphys, GroupEphys)
 import yaml
 import numpy as np
 
@@ -26,6 +26,7 @@ class TabMetafile(QWidget):
         self.l_combo1 = QComboBox()
         self.l_combo1.addItem('-- Add group --')
         self.l_combo1.addItem('Ophys')
+        self.l_combo1.addItem('Ephys')
         self.l_combo1.activated.connect(self.add_group)
         self.l_combo2 = QComboBox()
         self.l_combo2.addItem('-- Del group --')
@@ -47,11 +48,19 @@ class TabMetafile(QWidget):
         self.groups_list.append(self.box_nwbfile)
 
         self.l_vbox1 = QVBoxLayout()
-        self.l_vbox1.addLayout(l_grid1)
-        self.l_vbox1.addWidget(QLabel())
         self.l_vbox1.addWidget(self.box_general)
         self.l_vbox1.addWidget(self.box_nwbfile)
         self.l_vbox1.addStretch()
+        scroll_aux = QWidget()
+        scroll_aux.setLayout(self.l_vbox1)
+        l_scroll = QScrollArea()
+        l_scroll.setWidget(scroll_aux)
+        l_scroll.setWidgetResizable(True)
+
+        self.l_vbox2 = QVBoxLayout()
+        self.l_vbox2.addLayout(l_grid1)
+        self.l_vbox2.addWidget(QLabel())
+        self.l_vbox2.addWidget(l_scroll)
 
         # Right-side panel: meta-data text
         btn_editor_form = QPushButton('Form <- Editor')
@@ -68,14 +77,11 @@ class TabMetafile(QWidget):
 
         # Main Layout
         left_w = QWidget()
-        left_w.setLayout(self.l_vbox1)
-        l_scroll = QScrollArea()
-        l_scroll.setWidget(left_w)
-        l_scroll.setWidgetResizable(True)
+        left_w.setLayout(self.l_vbox2)
         right_w = QWidget()
         right_w.setLayout(r_vbox1)
         self.splitter = QSplitter(Qt.Horizontal)
-        self.splitter.addWidget(l_scroll)
+        self.splitter.addWidget(left_w)
         self.splitter.addWidget(right_w)
 
         main_layout = QVBoxLayout()
@@ -104,6 +110,14 @@ class TabMetafile(QWidget):
             # insert new widget before the stretch
             nWidgetsVbox = self.l_vbox1.count()
             self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ophys)
+        if group_name == 'Ephys':
+            self.box_ephys = GroupEphys(self)
+            self.groups_list.append(self.box_ephys)
+            self.l_combo2.addItem('Ephys')
+            self.l_combo1.setCurrentIndex(0)
+            # insert new widget before the stretch
+            nWidgetsVbox = self.l_vbox1.count()
+            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ephys)
 
 
 
@@ -117,6 +131,13 @@ class TabMetafile(QWidget):
             self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
             self.groups_list.remove(self.box_ophys)           #deletes list item
             del self.box_ophys                                #deletes attribute
+        if group_name == 'Ephys':
+            nWidgetsVbox = self.l_vbox1.count()
+            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupEphys)
+                            for i in range(nWidgetsVbox)])[0][0]
+            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
+            self.groups_list.remove(self.box_ephys)           #deletes list item
+            del self.box_ephys                                #deletes attribute
         self.l_combo2.removeItem(self.l_combo2.findText(group_name))
         self.l_combo2.setCurrentIndex(0)
 

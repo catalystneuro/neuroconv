@@ -39,10 +39,45 @@ class GroupGeneral(QGroupBox):
 
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
-        """Groupbox for General fields filling form."""
+        """Groupbox for Ophys fields filling form."""
         super().__init__()
         self.setTitle('Ophys')
         self.group_name = 'Ophys'
+
+        self.lbl_f1 = QLabel('field1:')
+        self.lin_f1 = QLineEdit('')
+        self.lin_f1.setPlaceholderText("field_name")
+        self.lin_f1.setToolTip("tooltip")
+
+        self.lbl_f2 = QLabel('field2:')
+        self.lin_f2 = QLineEdit('')
+        self.lin_f2.setPlaceholderText("field_name")
+        self.lin_f2.setToolTip("tooltip")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['f1'] = self.lin_f1.text()
+        data['f2'] = self.lin_f2.text()
+        return data
+
+
+
+class GroupEphys(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for Ephys fields filling form."""
+        super().__init__()
+        self.setTitle('Ephys')
+        self.group_name = 'Ephys'
 
         self.lbl_f1 = QLabel('field1:')
         self.lin_f1 = QLineEdit('')
