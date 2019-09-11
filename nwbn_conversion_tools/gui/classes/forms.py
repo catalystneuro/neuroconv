@@ -13,7 +13,8 @@ class GroupNwbfile(QGroupBox):
 
         self.lbl_session_description = QLabel('session_description:')
         self.lin_session_description = QLineEdit("session_description")
-        self.lin_session_description.setToolTip("a description of the session where this data was generated")
+        self.lin_session_description.setToolTip("a description of the session where "
+            "this data was generated")
 
         self.lbl_identifier = QLabel('identifier:')
         self.lin_identifier = QLineEdit("ABC123")
@@ -28,11 +29,13 @@ class GroupNwbfile(QGroupBox):
         self.lbl_experimenter = QLabel('experimenter:')
         self.lin_experimenter = QLineEdit('')
         self.lin_experimenter.setPlaceholderText("Alan Lloyd Hodgkin, Andrew Fielding Huxley")
-        self.lin_experimenter.setToolTip("comma-separated list of names of persons who performed experiment")
+        self.lin_experimenter.setToolTip("comma-separated list of names of persons "
+            "who performed experiment")
 
         self.lbl_experiment_description = QLabel('experiment_description:')
         self.lin_experiment_description = QLineEdit('')
-        self.lin_experiment_description.setPlaceholderText("propagation of action potentials in the squid giant axon")
+        self.lin_experiment_description.setPlaceholderText("propagation of action "
+            "potentials in the squid giant axon")
         self.lin_experiment_description.setToolTip("general description of the experiment")
 
         self.lbl_session_id = QLabel('session_id:')
@@ -45,6 +48,11 @@ class GroupNwbfile(QGroupBox):
         self.lin_institution.setPlaceholderText("institution")
         self.lin_institution.setToolTip("institution(s) where experiment is performed")
 
+        self.lbl_lab = QLabel("lab:")
+        self.lin_lab = QLineEdit('')
+        self.lin_lab.setPlaceholderText("lab name")
+        self.lin_lab.setToolTip("lab where experiment was performed")
+
         self.lbl_keywords = QLabel('keywords:')
         self.lin_keywords = QLineEdit('')
         self.lin_keywords.setPlaceholderText("action potential, ion channels, mathematical model")
@@ -55,19 +63,55 @@ class GroupNwbfile(QGroupBox):
         self.lin_notes.setPlaceholderText("Smells like a Nobel prize")
         self.lin_notes.setToolTip("Notes about the experiment")
 
-        self.lbl_ = QLabel("")
-        self.lin_ = QLineEdit('')
-        self.lin_.setPlaceholderText("")
-        self.lin_.setToolTip("")
+        self.lbl_pharmacology = QLabel("pharmacology:")
+        self.lin_pharmacology = QLineEdit('')
+        self.lin_pharmacology.setPlaceholderText("pharmacology")
+        self.lin_pharmacology.setToolTip("Description of drugs used, including how "
+            "and when they were administered.\nAnesthesia(s), painkiller(s), etc., "
+            "plus dosage, concentration, etc.")
 
-        self.lbl_ = QLabel("")
-        self.lin_ = QLineEdit('')
-        self.lin_.setPlaceholderText("")
-        self.lin_.setToolTip("")
+        self.lbl_protocol = QLabel("protocol:")
+        self.lin_protocol = QLineEdit('')
+        self.lin_protocol.setPlaceholderText("protocol")
+        self.lin_protocol.setToolTip("Experimental protocol, if applicable. E.g."
+            " include IACUC protocol")
+
+        self.lbl_related_pubications = QLabel("related pubications:")
+        self.lin_related_pubications = QLineEdit('')
+        self.lin_related_pubications.setPlaceholderText("related_pubications")
+        self.lin_related_pubications.setToolTip("Publication information. PMID,"
+            " DOI, URL, etc. If multiple, concatenate together \nand describe"
+            " which is which")
+
+        self.lbl_slices = QLabel("slices:")
+        self.lin_slices = QLineEdit('')
+        self.lin_slices.setPlaceholderText("slices")
+        self.lin_slices.setToolTip("Description of slices, including information "
+            "about preparation thickness, \norientation, temperature and bath solution")
+
+        self.lbl_data_collection = QLabel("data_collection:")
+        self.lin_data_collection = QLineEdit('')
+        self.lin_data_collection.setPlaceholderText("data collection")
+        self.lin_data_collection.setToolTip("Notes about data collection and analysis")
+
+        self.lbl_surgery = QLabel("surgery:")
+        self.lin_surgery = QLineEdit('')
+        self.lin_surgery.setPlaceholderText("surgery")
+        self.lin_surgery.setToolTip("Narrative description about surgery/surgeries, "
+            "including date(s) and who performed surgery.")
+
+        self.lbl_virus = QLabel("virus:")
+        self.lin_virus = QLineEdit('')
+        self.lin_virus.setPlaceholderText("virus")
+        self.lin_virus.setToolTip("Information about virus(es) used in experiments, "
+            "including virus ID, source, date made, injection location, volume, etc.")
+
+        self.lbl_stimulus_notes = QLabel("stimulus_notes:")
+        self.lin_stimulus_notes = QLineEdit('')
+        self.lin_stimulus_notes.setPlaceholderText("stimulus notes")
+        self.lin_stimulus_notes.setToolTip("Notes about stimuli, such as how and where presented.")
 
         grid = QGridLayout()
-        grid.setColumnStretch(0, 0)
-        grid.setColumnStretch(1, 0)
         grid.setColumnStretch(2, 1)
         grid.setColumnStretch(4, 1)
         grid.addWidget(self.lbl_session_description, 0, 0, 1, 2)
@@ -85,10 +129,28 @@ class GroupNwbfile(QGroupBox):
         grid.addWidget(self.lin_session_id, 5, 2, 1, 4)
         grid.addWidget(self.lbl_institution, 6, 0, 1, 2)
         grid.addWidget(self.lin_institution, 6, 2, 1, 4)
-        grid.addWidget(self.lbl_keywords, 7, 0, 1, 2)
-        grid.addWidget(self.lin_keywords, 7, 2, 1, 4)
-        grid.addWidget(self.lbl_notes, 8, 0, 1, 2)
-        grid.addWidget(self.lin_notes, 8, 2, 1, 4)
+        grid.addWidget(self.lbl_lab, 7, 0, 1, 2)
+        grid.addWidget(self.lin_lab, 7, 2, 1, 4)
+        grid.addWidget(self.lbl_keywords, 8, 0, 1, 2)
+        grid.addWidget(self.lin_keywords, 8, 2, 1, 4)
+        grid.addWidget(self.lbl_notes, 9, 0, 1, 2)
+        grid.addWidget(self.lin_notes, 9, 2, 1, 4)
+        grid.addWidget(self.lbl_pharmacology, 10, 0, 1, 2)
+        grid.addWidget(self.lin_pharmacology, 10, 2, 1, 4)
+        grid.addWidget(self.lbl_protocol, 11, 0, 1, 2)
+        grid.addWidget(self.lin_protocol, 11, 2, 1, 4)
+        grid.addWidget(self.lbl_related_pubications, 12, 0, 1, 2)
+        grid.addWidget(self.lin_related_pubications, 12, 2, 1, 4)
+        grid.addWidget(self.lbl_slices, 13, 0, 1, 2)
+        grid.addWidget(self.lin_slices, 13, 2, 1, 4)
+        grid.addWidget(self.lbl_data_collection, 14, 0, 1, 2)
+        grid.addWidget(self.lin_data_collection, 14, 2, 1, 4)
+        grid.addWidget(self.lbl_surgery, 15, 0, 1, 2)
+        grid.addWidget(self.lin_surgery, 15, 2, 1, 4)
+        grid.addWidget(self.lbl_virus, 16, 0, 1, 2)
+        grid.addWidget(self.lin_virus, 16, 2, 1, 4)
+        grid.addWidget(self.lbl_stimulus_notes, 17, 0, 1, 2)
+        grid.addWidget(self.lin_stimulus_notes, 17, 2, 1, 4)
 
         self.setLayout(grid)
 
@@ -104,9 +166,18 @@ class GroupNwbfile(QGroupBox):
         data['experiment_description'] = self.lin_experiment_description.text()
         data['session_id'] = self.lin_session_id.text()
         data['institution'] = self.lin_institution.text()
+        data['lab'] = self.lin_lab.text()
         keywords = self.lin_keywords.text()
         data['keywords'] = [kw.strip() for kw in keywords.split(',')]
         data['notes'] = self.lin_notes.text()
+        data['pharmacology'] = self.lin_pharmacology.text()
+        data['protocol'] = self.lin_protocol.text()
+        data['related_pubications'] = self.lin_related_pubications.text()
+        data['slices'] = self.lin_slices.text()
+        data['data_collection'] = self.lin_data_collection.text()
+        data['surgery'] = self.lin_surgery.text()
+        data['virus'] = self.lin_virus.text()
+        data['stimulus_notes'] = self.lin_stimulus_notes.text()
         return data
 
 
