@@ -50,6 +50,21 @@ class GroupNwbfile(QGroupBox):
         self.lin_keywords.setPlaceholderText("action potential, ion channels, mathematical model")
         self.lin_keywords.setToolTip("comma-separated list of terms to search over")
 
+        self.lbl_notes = QLabel("notes:")
+        self.lin_notes = QLineEdit('')
+        self.lin_notes.setPlaceholderText("Smells like a Nobel prize")
+        self.lin_notes.setToolTip("Notes about the experiment")
+
+        self.lbl_ = QLabel("")
+        self.lin_ = QLineEdit('')
+        self.lin_.setPlaceholderText("")
+        self.lin_.setToolTip("")
+
+        self.lbl_ = QLabel("")
+        self.lin_ = QLineEdit('')
+        self.lin_.setPlaceholderText("")
+        self.lin_.setToolTip("")
+
         grid = QGridLayout()
         grid.setColumnStretch(0, 0)
         grid.setColumnStretch(1, 0)
@@ -72,6 +87,8 @@ class GroupNwbfile(QGroupBox):
         grid.addWidget(self.lin_institution, 6, 2, 1, 4)
         grid.addWidget(self.lbl_keywords, 7, 0, 1, 2)
         grid.addWidget(self.lin_keywords, 7, 2, 1, 4)
+        grid.addWidget(self.lbl_notes, 8, 0, 1, 2)
+        grid.addWidget(self.lin_notes, 8, 2, 1, 4)
 
         self.setLayout(grid)
 
@@ -82,10 +99,14 @@ class GroupNwbfile(QGroupBox):
         data['identifier'] = self.lin_identifier.text()
         str_datetime = self.lin_session_start_time1.text()+", "+self.lin_session_start_time2.text()
         data['session_start_time'] = datetime.strptime(str_datetime,'%d/%m/%Y, %H:%M')
-        data['experimenter'] = self.lin_experimenter.text()
+        experimenter = self.lin_experimenter.text()
+        data['experimenter'] = [ex.strip() for ex in experimenter.split(',')]
         data['experiment_description'] = self.lin_experiment_description.text()
         data['session_id'] = self.lin_session_id.text()
         data['institution'] = self.lin_institution.text()
+        keywords = self.lin_keywords.text()
+        data['keywords'] = [kw.strip() for kw in keywords.split(',')]
+        data['notes'] = self.lin_notes.text()
         return data
 
 
