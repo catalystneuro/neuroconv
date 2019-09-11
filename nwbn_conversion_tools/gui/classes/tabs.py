@@ -67,7 +67,7 @@ class TabMetafile(QWidget):
             f = open(filename, "r")
             txt = f.read()
             f.close()
-            self.text1.setText(txt)
+            self.editor.setText(txt)
 
 
     def save_meta_file(self):
@@ -77,7 +77,18 @@ class TabMetafile(QWidget):
 
     def form_to_editor(self):
         """Loads data from form to editor."""
-        pass
+        data1 = self.box_general.read_fields()
+        data2 = self.box_nwbfile.read_fields()
+        box_list = [data1, data2]
+        new_text = "# Meta-data\n"
+        for data in box_list:
+            new_text = new_text+"\n"
+            for kw in data.keys():
+                if kw=='GROUP':
+                    new_text = new_text+"# "+data[kw]+":\n"
+                else:
+                    new_text = new_text+kw+":"+data[kw]+"\n"
+        self.editor.setText(new_text)
 
 
     def editor_to_form(self):
