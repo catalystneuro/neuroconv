@@ -1,0 +1,24 @@
+General:
+  file_name: ''
+  file_path: ''
+NWBFile:
+  data_collection: ''
+  experiment_description: ''
+  experimenter:
+  - ''
+  identifier: ABC123
+  institution: ''
+  keywords:
+  - ''
+  lab: ''
+  notes: ''
+  pharmacology: ''
+  protocol: ''
+  related_pubications: ''
+  session_description: session_description
+  session_id: ''
+  session_start_time: 2019-09-11 16:06:00
+  slices: ''
+  stimulus_notes: ''
+  surgery: ''
+  virus: ''

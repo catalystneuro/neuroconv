@@ -65,7 +65,7 @@ class TabMetafile(QWidget):
 
     def open_meta_file(self):
         ''' Opens .yml file containing metadata for NWB.'''
-        filename, ftype = QFileDialog.getOpenFileName(None, 'Open file', '', "(*.yml)")
+        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file', '', "(*.yml)")
         if ftype=='(*.yml)':
             with open(filename) as f:
                 data = yaml.safe_load(f)
@@ -75,7 +75,13 @@ class TabMetafile(QWidget):
 
     def save_meta_file(self):
         ''' Saves metadata to .yml file.'''
-        pass
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save file', '', "(*.yml)")
+        if filename:
+            data = {}
+            data['General'] = self.box_general.read_fields()
+            data['NWBFile'] = self.box_nwbfile.read_fields()
+            with open(filename, 'w') as f:
+                yaml.dump(data, f, default_flow_style=False)
 
 
     def form_to_editor(self):
@@ -83,7 +89,6 @@ class TabMetafile(QWidget):
         data = {}
         data['General'] = self.box_general.read_fields()
         data['NWBFile'] = self.box_nwbfile.read_fields()
-
         txt = yaml.dump(data, default_flow_style=False)
         self.editor.setText(txt)
 
