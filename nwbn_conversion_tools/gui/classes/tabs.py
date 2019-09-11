@@ -20,14 +20,14 @@ class TabMetafile(QWidget):
         l_grid1.addWidget(btn_load_meta, 0, 0, 1, 3)
         l_grid1.addWidget(btn_save_meta, 0, 3, 1, 3)
 
-        box_general = GroupGeneral(self)
-        box_nwbfile = GroupNwbfile(self)
+        self.box_general = GroupGeneral(self)
+        self.box_nwbfile = GroupNwbfile(self)
 
         l_vbox1 = QVBoxLayout()
         l_vbox1.addLayout(l_grid1)
         l_vbox1.addWidget(QLabel())
-        l_vbox1.addWidget(box_general)
-        l_vbox1.addWidget(box_nwbfile)
+        l_vbox1.addWidget(self.box_general)
+        l_vbox1.addWidget(self.box_nwbfile)
         l_vbox1.addStretch()
 
         # Right-side panel: meta-data text
@@ -41,10 +41,10 @@ class TabMetafile(QWidget):
         r_grid1.addWidget(btn_editor_form, 0, 4, 1, 1)
         r_grid1.addWidget(btn_form_editor, 0, 5, 1, 1)
 
-        self.text1 = QTextEdit()
+        self.editor = QTextEdit()
         r_vbox1 = QVBoxLayout()
         r_vbox1.addLayout(r_grid1)
-        r_vbox1.addWidget(self.text1)
+        r_vbox1.addWidget(self.editor)
 
         # Main Layout
         left_w = QWidget()
@@ -59,6 +59,7 @@ class TabMetafile(QWidget):
         main_layout.addWidget(self.splitter)
         self.setLayout(main_layout)
 
+
     def open_meta_file(self):
         ''' Opens .txt file containing metadata for NWB.'''
         filename, ftype = QFileDialog.getOpenFileName(None, 'Open file', '', "(*.txt)")
@@ -68,13 +69,16 @@ class TabMetafile(QWidget):
             f.close()
             self.text1.setText(txt)
 
+
     def save_meta_file(self):
         ''' Saves metadata to .txt file.'''
         pass
 
+
     def form_to_editor(self):
         """Loads data from form to editor."""
         pass
+
 
     def editor_to_form(self):
         """Loads data from editor to form."""
