@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
     QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
-    QGridLayout, QSplitter, QLabel, QFileDialog, QGroupBox)
+    QGridLayout, QSplitter, QLabel, QFileDialog, QGroupBox, QMessageBox)
 from nwbn_conversion_tools.gui.classes.tabs import TabMetafile
 import numpy as np
 import os
@@ -44,7 +44,7 @@ class Application(QMainWindow):
         helpMenu = mainMenu.addMenu('Help')
         action_about = QAction('About', self)
         helpMenu.addAction(action_about)
-        #action_about.triggered.connect(self.about)
+        action_about.triggered.connect(self.about)
 
         # Center panels -------------------------------------------------------
         self.tabs = QTabWidget()
@@ -60,6 +60,18 @@ class Application(QMainWindow):
     def new_tab(self, tab_object, title):
         """Opens new tab."""
         self.tabs.addTab(tab_object, title)
+
+
+    def about(self):
+        """About dialog."""
+        msg = QMessageBox()
+        msg.setWindowTitle("About NWB conversion")
+        msg.setIcon(QMessageBox.Information)
+        msg.setText("Version: 1.0.0 \n"+
+                    "Shared tools for converting data from various formats to NWB:N 2.0.\n ")
+        msg.setInformativeText("<a href='https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools'>NWB conversion tools Github page</a>")
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
 
 
     def closeEvent(self, event):
