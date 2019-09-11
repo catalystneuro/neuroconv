@@ -5,11 +5,79 @@ from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
 from datetime import datetime
 
 
+class GroupGeneral(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for General fields filling form."""
+        super().__init__()
+        self.setTitle('General')
+        self.group_name = 'general'
+
+        self.lbl_file_path = QLabel('file_path:')
+        self.lin_file_path = QLineEdit('')
+        self.lbl_file_name = QLabel('file_name:')
+        self.lin_file_name = QLineEdit('')
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(0, 0)
+        self.grid.setColumnStretch(1, 0)
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_file_path, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_file_path, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_file_name, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_file_name, 1, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['file_path'] = self.lin_file_path.text()
+        data['file_name'] = self.lin_file_name.text()
+        return data
+
+
+
+class GroupOphys(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for General fields filling form."""
+        super().__init__()
+        self.setTitle('Ophys')
+        self.group_name = 'ophys'
+
+        self.lbl_f1 = QLabel('field1:')
+        self.lin_f1 = QLineEdit('')
+        self.lin_f1.setPlaceholderText("field_name")
+        self.lin_f1.setToolTip("tooltip")
+
+        self.lbl_f2 = QLabel('field2:')
+        self.lin_f2 = QLineEdit('')
+        self.lin_f2.setPlaceholderText("field_name")
+        self.lin_f2.setToolTip("tooltip")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['f1'] = self.lin_f1.text()
+        data['f2'] = self.lin_f2.text()
+        return data
+
+
+
 class GroupNwbfile(QGroupBox):
     def __init__(self, parent):
         """Groupbox for NWBFile fields filling form."""
         super().__init__()
         self.setTitle('NWBFile')
+        self.group_name = 'nwbfile'
 
         self.lbl_session_description = QLabel('session_description:')
         self.lin_session_description = QLineEdit("session_description")
@@ -178,33 +246,4 @@ class GroupNwbfile(QGroupBox):
         data['surgery'] = self.lin_surgery.text()
         data['virus'] = self.lin_virus.text()
         data['stimulus_notes'] = self.lin_stimulus_notes.text()
-        return data
-
-
-class GroupGeneral(QGroupBox):
-    def __init__(self, parent):
-        """Groupbox for General fields filling form."""
-        super().__init__()
-        self.setTitle('General')
-        self.lbl_file_path = QLabel('file_path:')
-        self.lin_file_path = QLineEdit('')
-        self.lbl_file_name = QLabel('file_name:')
-        self.lin_file_name = QLineEdit('')
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(0, 0)
-        self.grid.setColumnStretch(1, 0)
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_file_path, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_file_path, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_file_name, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_file_name, 1, 2, 1, 4)
-
-        self.setLayout(self.grid)
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['file_path'] = self.lin_file_path.text()
-        data['file_name'] = self.lin_file_name.text()
         return data
