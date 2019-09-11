@@ -10,7 +10,7 @@ class GroupGeneral(QGroupBox):
         """Groupbox for General fields filling form."""
         super().__init__()
         self.setTitle('General')
-        self.group_name = 'general'
+        self.group_name = 'General'
 
         self.lbl_file_path = QLabel('file_path:')
         self.lin_file_path = QLineEdit('')
@@ -42,7 +42,7 @@ class GroupOphys(QGroupBox):
         """Groupbox for General fields filling form."""
         super().__init__()
         self.setTitle('Ophys')
-        self.group_name = 'ophys'
+        self.group_name = 'Ophys'
 
         self.lbl_f1 = QLabel('field1:')
         self.lin_f1 = QLineEdit('')
@@ -77,7 +77,7 @@ class GroupNwbfile(QGroupBox):
         """Groupbox for NWBFile fields filling form."""
         super().__init__()
         self.setTitle('NWBFile')
-        self.group_name = 'nwbfile'
+        self.group_name = 'NWBFile'
 
         self.lbl_session_description = QLabel('session_description:')
         self.lin_session_description = QLineEdit("session_description")

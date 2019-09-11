@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QAction, QGroupBox,
 from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile, GroupGeneral,
     GroupOphys)
 import yaml
+import numpy as np
 
 class TabMetafile(QWidget):
     def __init__(self, parent):
@@ -99,13 +100,25 @@ class TabMetafile(QWidget):
             self.box_ophys = GroupOphys(self)
             self.groups_list.append(self.box_ophys)
             self.l_combo2.addItem('Ophys')
-            self.l_vbox1.addWidget(self.box_ophys)
             self.l_combo1.setCurrentIndex(0)
+            # insert new widget before the stretch
+            nWidgetsVbox = self.l_vbox1.count()
+            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ophys)
+
 
 
     def del_group(self):
         """Deletes group form."""
-        pass
+        group_name = str(self.l_combo2.currentText())
+        if group_name == 'Ophys':
+            nWidgetsVbox = self.l_vbox1.count()
+            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupOphys)
+                            for i in range(nWidgetsVbox)])[0][0]
+            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
+            self.groups_list.remove(self.box_ophys)           #deletes list item
+            del self.box_ophys                                #deletes attribute
+        self.l_combo2.removeItem(self.l_combo2.findText(group_name))
+        self.l_combo2.setCurrentIndex(0)
 
 
     def open_meta_file(self):
