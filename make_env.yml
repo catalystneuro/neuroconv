@@ -1,0 +1,20 @@
+name: nwbn_conversion
+channels:
+- defaults
+- anaconda
+- conda-forge
+dependencies:
+- python=3.7
+- ipython
+- pip
+- numpy
+- scipy
+- pandas
+- jupyter
+- matplotlib
+- h5py
+- pyqt
+- pynwb
+- hdmf
+- pip:
+  - -e .
