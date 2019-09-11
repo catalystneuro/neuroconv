@@ -12,21 +12,17 @@ class GroupNwbfile(QGroupBox):
         self.setTitle('NWBFile')
 
         self.lbl_session_description = QLabel('session_description:')
-        self.lin_session_description = QLineEdit('')
-        self.lin_session_description.setPlaceholderText("session_description")
+        self.lin_session_description = QLineEdit("session_description")
         self.lin_session_description.setToolTip("a description of the session where this data was generated")
 
         self.lbl_identifier = QLabel('identifier:')
-        self.lin_identifier = QLineEdit('')
-        self.lin_identifier.setPlaceholderText("ABC123")
+        self.lin_identifier = QLineEdit("ABC123")
         self.lin_identifier.setToolTip("a unique text identifier for the file")
 
         self.lbl_session_start_time = QLabel('session_start_time:')
-        self.lin_session_start_time1 = QLineEdit('')
-        self.lin_session_start_time1.setPlaceholderText(datetime.now().strftime("%d/%m/%Y"))
+        self.lin_session_start_time1 = QLineEdit(datetime.now().strftime("%d/%m/%Y"))
         self.lin_session_start_time1.setToolTip("the start date and time of the recording session")
-        self.lin_session_start_time2 = QLineEdit('')
-        self.lin_session_start_time2.setPlaceholderText(datetime.now().strftime("%H:%M"))
+        self.lin_session_start_time2 = QLineEdit(datetime.now().strftime("%H:%M"))
         self.lin_session_start_time2.setToolTip("the start date and time of the recording session")
 
         self.lbl_experimenter = QLabel('experimenter:')
