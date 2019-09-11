@@ -50,7 +50,6 @@ class GroupNwbfile(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['GROUP'] = 'NWBFILE'
         data['session_description'] = self.lin_session_description.text()
         data['identifier'] = self.lin_identifier.text()
         return data
@@ -77,7 +76,6 @@ class GroupGeneral(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['GROUP'] = 'GENERAL'
         data['file_path'] = self.lin_file_path.text()
         data['file_name'] = self.lin_file_name.text()
         return data

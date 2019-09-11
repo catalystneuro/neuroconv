@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QAction, QGroupBox,
     QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
     QGridLayout, QSplitter, QLabel, QFileDialog)
 from nwbn_conversion_tools.gui.classes.forms import GroupNwbfile, GroupGeneral
+import yaml
 
 class TabMetafile(QWidget):
     def __init__(self, parent):
@@ -61,34 +62,28 @@ class TabMetafile(QWidget):
 
 
     def open_meta_file(self):
-        ''' Opens .txt file containing metadata for NWB.'''
-        filename, ftype = QFileDialog.getOpenFileName(None, 'Open file', '', "(*.txt)")
-        if ftype=='(*.txt)':
-            f = open(filename, "r")
-            txt = f.read()
-            f.close()
+        ''' Opens .yml file containing metadata for NWB.'''
+        filename, ftype = QFileDialog.getOpenFileName(None, 'Open file', '', "(*.yml)")
+        if ftype=='(*.yml)':
+            with open(filename) as f:
+                data = yaml.safe_load(f)
+            txt = yaml.dump(data, default_flow_style=False)
             self.editor.setText(txt)
 
 
     def save_meta_file(self):
-        ''' Saves metadata to .txt file.'''
+        ''' Saves metadata to .yml file.'''
         pass
 
 
     def form_to_editor(self):
         """Loads data from form to editor."""
-        data1 = self.box_general.read_fields()
-        data2 = self.box_nwbfile.read_fields()
-        box_list = [data1, data2]
-        new_text = "# Meta-data\n"
-        for data in box_list:
-            new_text = new_text+"\n"
-            for kw in data.keys():
-                if kw=='GROUP':
-                    new_text = new_text+"# "+data[kw]+":\n"
-                else:
-                    new_text = new_text+kw+":"+data[kw]+"\n"
-        self.editor.setText(new_text)
+        data = {}
+        data['General'] = self.box_general.read_fields()
+        data['NWBFile'] = self.box_nwbfile.read_fields()
+
+        txt = yaml.dump(data, default_flow_style=False)
+        self.editor.setText(txt)
 
 
     def editor_to_form(self):

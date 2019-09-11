@@ -16,5 +16,6 @@ dependencies:
 - pyqt
 - pynwb
 - hdmf
+- pyyaml
 - pip:
   - -e .
