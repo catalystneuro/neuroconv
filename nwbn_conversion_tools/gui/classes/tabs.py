@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QAction, QGroupBox,
     QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
     QGridLayout, QSplitter, QLabel, QFileDialog, QComboBox, QScrollArea)
 from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile, GroupGeneral,
-    GroupOphys, GroupEphys, GroupSubject)
+    GroupOphys, GroupEphys, GroupSubject, GroupDevice)
 import yaml
 import numpy as np
 
@@ -26,6 +26,7 @@ class TabMetafile(QWidget):
         self.l_combo1 = QComboBox()
         self.l_combo1.addItem('-- Add group --')
         self.l_combo1.addItem('Subject')
+        self.l_combo1.addItem('Device')
         self.l_combo1.addItem('Ophys')
         self.l_combo1.addItem('Ephys')
         self.l_combo1.activated.connect(self.add_group)
@@ -103,52 +104,51 @@ class TabMetafile(QWidget):
     def add_group(self):
         """Adds group form."""
         group_name = str(self.l_combo1.currentText())
+        nWidgetsVbox = self.l_vbox1.count()
         if group_name == 'Subject':
             self.box_subject = GroupSubject(self)
             self.groups_list.append(self.box_subject)
-            self.l_combo2.addItem('Subject')
-            self.l_combo1.setCurrentIndex(0)
-            # insert new widget before the stretch
-            nWidgetsVbox = self.l_vbox1.count()
-            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_subject)
+            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_subject) #insert before the stretch
+        if group_name == 'Device':
+            self.box_device = GroupDevice(self)
+            self.groups_list.append(self.box_device)
+            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_device) #insert before the stretch
         if group_name == 'Ophys':
             self.box_ophys = GroupOphys(self)
             self.groups_list.append(self.box_ophys)
-            self.l_combo2.addItem('Ophys')
-            self.l_combo1.setCurrentIndex(0)
-            # insert new widget before the stretch
-            nWidgetsVbox = self.l_vbox1.count()
-            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ophys)
+            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ophys) #insert before the stretch
         if group_name == 'Ephys':
             self.box_ephys = GroupEphys(self)
             self.groups_list.append(self.box_ephys)
-            self.l_combo2.addItem('Ephys')
-            self.l_combo1.setCurrentIndex(0)
-            # insert new widget before the stretch
-            nWidgetsVbox = self.l_vbox1.count()
-            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ephys)
-
+            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ephys) #insert before the stretch
+        self.l_combo1.removeItem(self.l_combo1.findText(group_name))
+        self.l_combo1.setCurrentIndex(0)
+        self.l_combo2.addItem(group_name)
 
 
     def del_group(self):
         """Deletes group form."""
         group_name = str(self.l_combo2.currentText())
+        nWidgetsVbox = self.l_vbox1.count()
         if group_name == 'Subject':
-            nWidgetsVbox = self.l_vbox1.count()
             ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupSubject)
                             for i in range(nWidgetsVbox)])[0][0]
             self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
             self.groups_list.remove(self.box_subject)           #deletes list item
             del self.box_subject                                #deletes attribute
+        if group_name == 'Device':
+            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupDevice)
+                            for i in range(nWidgetsVbox)])[0][0]
+            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
+            self.groups_list.remove(self.box_device)           #deletes list item
+            del self.box_device                                #deletes attribute
         if group_name == 'Ophys':
-            nWidgetsVbox = self.l_vbox1.count()
             ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupOphys)
                             for i in range(nWidgetsVbox)])[0][0]
             self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
             self.groups_list.remove(self.box_ophys)           #deletes list item
             del self.box_ophys                                #deletes attribute
         if group_name == 'Ephys':
-            nWidgetsVbox = self.l_vbox1.count()
             ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupEphys)
                             for i in range(nWidgetsVbox)])[0][0]
             self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
@@ -156,6 +156,7 @@ class TabMetafile(QWidget):
             del self.box_ephys                                #deletes attribute
         self.l_combo2.removeItem(self.l_combo2.findText(group_name))
         self.l_combo2.setCurrentIndex(0)
+        self.l_combo1.addItem(group_name)
 
 
     def open_meta_file(self):

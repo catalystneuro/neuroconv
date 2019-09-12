@@ -37,76 +37,6 @@ class GroupGeneral(QGroupBox):
 
 
 
-class GroupOphys(QGroupBox):
-    def __init__(self, parent):
-        """Groupbox for Ophys fields filling form."""
-        super().__init__()
-        self.setTitle('Ophys')
-        self.group_name = 'Ophys'
-
-        self.lbl_f1 = QLabel('field1:')
-        self.lin_f1 = QLineEdit('')
-        self.lin_f1.setPlaceholderText("field_name")
-        self.lin_f1.setToolTip("tooltip")
-
-        self.lbl_f2 = QLabel('field2:')
-        self.lin_f2 = QLineEdit('')
-        self.lin_f2.setPlaceholderText("field_name")
-        self.lin_f2.setToolTip("tooltip")
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
-
-        self.setLayout(self.grid)
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['f1'] = self.lin_f1.text()
-        data['f2'] = self.lin_f2.text()
-        return data
-
-
-
-class GroupEphys(QGroupBox):
-    def __init__(self, parent):
-        """Groupbox for Ephys fields filling form."""
-        super().__init__()
-        self.setTitle('Ephys')
-        self.group_name = 'Ephys'
-
-        self.lbl_f1 = QLabel('field1:')
-        self.lin_f1 = QLineEdit('')
-        self.lin_f1.setPlaceholderText("field_name")
-        self.lin_f1.setToolTip("tooltip")
-
-        self.lbl_f2 = QLabel('field2:')
-        self.lin_f2 = QLineEdit('')
-        self.lin_f2.setPlaceholderText("field_name")
-        self.lin_f2.setToolTip("tooltip")
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
-
-        self.setLayout(self.grid)
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['f1'] = self.lin_f1.text()
-        data['f2'] = self.lin_f2.text()
-        return data
-
-
-
 class GroupNwbfile(QGroupBox):
     def __init__(self, parent):
         """Groupbox for NWBFile fields filling form."""
@@ -285,6 +215,76 @@ class GroupNwbfile(QGroupBox):
 
 
 
+class GroupOphys(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for Ophys fields filling form."""
+        super().__init__()
+        self.setTitle('Ophys')
+        self.group_name = 'Ophys'
+
+        self.lbl_f1 = QLabel('field1:')
+        self.lin_f1 = QLineEdit('')
+        self.lin_f1.setPlaceholderText("field_name")
+        self.lin_f1.setToolTip("tooltip")
+
+        self.lbl_f2 = QLabel('field2:')
+        self.lin_f2 = QLineEdit('')
+        self.lin_f2.setPlaceholderText("field_name")
+        self.lin_f2.setToolTip("tooltip")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['f1'] = self.lin_f1.text()
+        data['f2'] = self.lin_f2.text()
+        return data
+
+
+
+class GroupEphys(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for Ephys fields filling form."""
+        super().__init__()
+        self.setTitle('Ephys')
+        self.group_name = 'Ephys'
+
+        self.lbl_f1 = QLabel('field1:')
+        self.lin_f1 = QLineEdit('')
+        self.lin_f1.setPlaceholderText("field_name")
+        self.lin_f1.setToolTip("tooltip")
+
+        self.lbl_f2 = QLabel('field2:')
+        self.lin_f2 = QLineEdit('')
+        self.lin_f2.setPlaceholderText("field_name")
+        self.lin_f2.setToolTip("tooltip")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['f1'] = self.lin_f1.text()
+        data['f2'] = self.lin_f2.text()
+        return data
+
+
+
 class GroupSubject(QGroupBox):
     def __init__(self, parent):
         """Groupbox for 'pynwb.file.Subject' fields filling form."""
@@ -365,5 +365,35 @@ class GroupSubject(QGroupBox):
         data['subject_id'] = self.lin_subject_id.text()
         data['weight'] = self.lin_weight.text()
         str_datetime = self.lin_date_of_birth.text()
-        data['date_of_birth'] = datetime.strptime(str_datetime,'%d/%m/%Y')
+        if len(str_datetime)>0:
+            data['date_of_birth'] = datetime.strptime(str_datetime,'%d/%m/%Y')
+        else:
+            data['date_of_birth'] = ''
+        return data
+
+
+
+class GroupDevice(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.device.Device fields filling form."""
+        super().__init__()
+        self.setTitle('Device')
+        self.group_name = 'Device'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('')
+        self.lin_name.setPlaceholderText("name")
+        self.lin_name.setToolTip("the name pof this device")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
         return data
