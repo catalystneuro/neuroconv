@@ -589,6 +589,7 @@ class GroupOphys(QGroupBox):
         elif group_type == 'ImagingPlane':
             item = GroupImagingPlane(self)
         if group_type != '-- Add group --':
+            item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
             self.vbox1.insertWidget(nWidgetsVbox-1, item) #insert before the stretch
@@ -620,8 +621,9 @@ class GroupOphys(QGroupBox):
     def refresh_del_combo(self):
         """Refreshes del combobox with existing objects in child groups."""
         self.combo2.clear()
+        self.combo2.addItem('-- Del group --')
         for child in self.groups_list:
-            child.lin_name.text()
+            self.combo2.addItem(child.lin_name.text())
 
 
 
