@@ -215,76 +215,6 @@ class GroupNwbfile(QGroupBox):
 
 
 
-class GroupOphys(QGroupBox):
-    def __init__(self, parent):
-        """Groupbox for Ophys fields filling form."""
-        super().__init__()
-        self.setTitle('Ophys')
-        self.group_name = 'Ophys'
-
-        self.lbl_f1 = QLabel('field1:')
-        self.lin_f1 = QLineEdit('')
-        self.lin_f1.setPlaceholderText("field_name")
-        self.lin_f1.setToolTip("tooltip")
-
-        self.lbl_f2 = QLabel('field2:')
-        self.lin_f2 = QLineEdit('')
-        self.lin_f2.setPlaceholderText("field_name")
-        self.lin_f2.setToolTip("tooltip")
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
-
-        self.setLayout(self.grid)
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['f1'] = self.lin_f1.text()
-        data['f2'] = self.lin_f2.text()
-        return data
-
-
-
-class GroupEphys(QGroupBox):
-    def __init__(self, parent):
-        """Groupbox for Ephys fields filling form."""
-        super().__init__()
-        self.setTitle('Ephys')
-        self.group_name = 'Ephys'
-
-        self.lbl_f1 = QLabel('field1:')
-        self.lin_f1 = QLineEdit('')
-        self.lin_f1.setPlaceholderText("field_name")
-        self.lin_f1.setToolTip("tooltip")
-
-        self.lbl_f2 = QLabel('field2:')
-        self.lin_f2 = QLineEdit('')
-        self.lin_f2.setPlaceholderText("field_name")
-        self.lin_f2.setToolTip("tooltip")
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
-
-        self.setLayout(self.grid)
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['f1'] = self.lin_f1.text()
-        data['f2'] = self.lin_f2.text()
-        return data
-
-
-
 class GroupSubject(QGroupBox):
     def __init__(self, parent):
         """Groupbox for 'pynwb.file.Subject' fields filling form."""
@@ -381,8 +311,7 @@ class GroupDevice(QGroupBox):
         self.group_name = 'Device'
 
         self.lbl_name = QLabel('name:')
-        self.lin_name = QLineEdit('')
-        self.lin_name.setPlaceholderText("name")
+        self.lin_name = QLineEdit('Device')
         self.lin_name.setToolTip("the name pof this device")
 
         self.grid = QGridLayout()
@@ -396,4 +325,204 @@ class GroupDevice(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
+        return data
+
+
+
+class GroupOpticalChannel(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.OpticalChannel fields filling form."""
+        super().__init__()
+        self.setTitle('OpticalChannel')
+        self.group_name = 'OpticalChannel'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('OpticalChannel')
+        self.lin_name.setToolTip("the name of this optical channel")
+
+        self.lbl_description = QLabel('description:')
+        self.lin_description = QLineEdit('description')
+        self.lin_description.setToolTip("Any notes or comments about the channel")
+
+        self.lbl_emission_lambda = QLabel('emission_lambda:')
+        self.lin_emission_lambda = QLineEdit('0.0')
+        self.lin_emission_lambda.setToolTip("Emission lambda for channel")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_emission_lambda, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_emission_lambda, 2, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['description'] = self.lin_description.text()
+        try:
+            data['emission_lambda'] = float(self.lin_emission_lambda.text())
+        except:
+            data['emission_lambda'] = 0.0
+            print("'emission_lambda' must be a float")
+        return data
+
+
+
+class GroupImagingPlane(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.ImagingPlane fields filling form."""
+        super().__init__()
+        self.setTitle('ImagingPlane')
+        self.group_name = 'ImagingPlane'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('ImagingPlane')
+        self.lin_name.setToolTip("The name of this ImagingPlane")
+
+        self.lbl_description = QLabel('description:')
+        self.lin_description = QLineEdit('description')
+        self.lin_description.setToolTip("Description of this ImagingPlane")
+
+        self.lbl_excitation_lambda = QLabel('excitation_lambda:')
+        self.lin_excitation_lambda = QLineEdit('0.0')
+        self.lin_excitation_lambda.setToolTip("Excitation wavelength in nm")
+
+        self.lbl_imaging_rate = QLabel('imaging_rate:')
+        self.lin_imaging_rate = QLineEdit('0.0')
+        self.lin_imaging_rate.setToolTip("Rate images are acquired, in Hz")
+
+        self.lbl_indicator = QLabel('indicator:')
+        self.lin_indicator = QLineEdit('indicator')
+        self.lin_indicator.setToolTip("Calcium indicator")
+
+        self.lbl_location = QLabel('location:')
+        self.lin_location = QLineEdit('location')
+        self.lin_location.setToolTip("Location of image plane")
+
+        self.lbl_conversion = QLabel('conversion:')
+        self.lin_conversion = QLineEdit('')
+        self.lin_conversion.setPlaceholderText("1")
+        self.lin_conversion.setToolTip("Multiplier to get from stored values to "
+            "specified unit (e.g., 1e-3 for millimeters)")
+
+        self.lbl_unit = QLabel('unit:')
+        self.lin_unit = QLineEdit('')
+        self.lin_unit.setPlaceholderText("meters")
+        self.lin_unit.setToolTip("Base unit that coordinates are stored in (e.g., Meters)")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_excitation_lambda, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_excitation_lambda, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_imaging_rate, 3, 0, 1, 2)
+        self.grid.addWidget(self.lin_imaging_rate, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_indicator, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_indicator, 4, 2, 1, 4)
+        self.grid.addWidget(self.lbl_location, 5, 0, 1, 2)
+        self.grid.addWidget(self.lin_location, 5, 2, 1, 4)
+        self.grid.addWidget(self.lbl_conversion, 6, 0, 1, 2)
+        self.grid.addWidget(self.lin_conversion, 6, 2, 1, 4)
+        self.grid.addWidget(self.lbl_unit, 7, 0, 1, 2)
+        self.grid.addWidget(self.lin_unit, 7, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['description'] = self.lin_description.text()
+        try:
+            data['excitation_lambda'] = float(self.lin_excitation_lambda.text())
+        except:
+            data['excitation_lambda'] = 0.0
+        try:
+            data['imaging_rate'] = float(self.lin_imaging_rate.text())
+        except:
+            data['imaging_rate'] = 0.0
+        data['indicator'] = self.lin_indicator.text()
+        data['location'] = self.lin_location.text()
+        try:
+            data['conversion'] = float(self.lin_conversion.text())
+        except:
+            data['conversion'] = 0.0
+        data['unit'] = self.lin_unit.text()
+        return data
+
+
+
+class GroupOphys(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for Ophys module fields filling form."""
+        super().__init__()
+        self.setTitle('Ophys')
+        self.group_name = 'Ophys'
+
+        self.group_device = GroupDevice(self)
+        self.group_opticalchannel = GroupOpticalChannel(self)
+        self.group_imagingplane = GroupImagingPlane(self)
+
+        self.lbl_f1 = QLabel('field1:')
+        self.lin_f1 = QLineEdit('')
+        self.lin_f1.setPlaceholderText("field_name")
+        self.lin_f1.setToolTip("tooltip")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.group_device, 0, 0, 1, 6)
+        self.grid.addWidget(self.group_opticalchannel, 1, 0, 1, 6)
+        self.grid.addWidget(self.group_imagingplane, 2, 0, 1, 6)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['f1'] = self.lin_f1.text()
+        return data
+
+
+
+
+
+class GroupEphys(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for Ephys fields filling form."""
+        super().__init__()
+        self.setTitle('Ephys')
+        self.group_name = 'Ephys'
+
+        self.lbl_f1 = QLabel('field1:')
+        self.lin_f1 = QLineEdit('')
+        self.lin_f1.setPlaceholderText("field_name")
+        self.lin_f1.setToolTip("tooltip")
+
+        self.lbl_f2 = QLabel('field2:')
+        self.lin_f2 = QLineEdit('')
+        self.lin_f2.setPlaceholderText("field_name")
+        self.lin_f2.setToolTip("tooltip")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_f1, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_f1, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_f2, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_f2, 1, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['f1'] = self.lin_f1.text()
+        data['f2'] = self.lin_f2.text()
         return data
