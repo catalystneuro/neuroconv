@@ -1,7 +1,8 @@
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox)
+    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
+    QCheckBox)
 from datetime import datetime
 import numpy as np
 
@@ -308,11 +309,18 @@ class GroupDevice(QGroupBox):
         """Groupbox for pynwb.device.Device fields filling form."""
         super().__init__()
         self.setTitle('Device')
+        self.parent = parent
         self.group_name = 'Device'
 
         self.lbl_name = QLabel('name:')
         self.lin_name = QLineEdit('Device')
         self.lin_name.setToolTip("the name pof this device")
+        nDevices = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupDevice):
+                nDevices += 1
+        if nDevices > 0:
+            self.lin_name.setText('Device'+str(nDevices))
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
@@ -320,6 +328,10 @@ class GroupDevice(QGroupBox):
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
 
         self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        pass
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -334,11 +346,18 @@ class GroupOpticalChannel(QGroupBox):
         """Groupbox for pynwb.ophys.OpticalChannel fields filling form."""
         super().__init__()
         self.setTitle('OpticalChannel')
+        self.parent = parent
         self.group_name = 'OpticalChannel'
 
         self.lbl_name = QLabel('name:')
         self.lin_name = QLineEdit('OpticalChannel')
         self.lin_name.setToolTip("the name of this optical channel")
+        nOptCh = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupOpticalChannel):
+                nOptCh += 1
+        if nOptCh > 0:
+            self.lin_name.setText('OpticalChannel'+str(nOptCh))
 
         self.lbl_description = QLabel('description:')
         self.lin_description = QLineEdit('description')
@@ -359,6 +378,10 @@ class GroupOpticalChannel(QGroupBox):
 
         self.setLayout(self.grid)
 
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        pass
+
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
@@ -378,15 +401,31 @@ class GroupImagingPlane(QGroupBox):
         """Groupbox for pynwb.ophys.ImagingPlane fields filling form."""
         super().__init__()
         self.setTitle('ImagingPlane')
+        self.parent = parent
         self.group_name = 'ImagingPlane'
 
         self.lbl_name = QLabel('name:')
         self.lin_name = QLineEdit('ImagingPlane')
         self.lin_name.setToolTip("The name of this ImagingPlane")
+        nImPl = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupImagingPlane):
+                nImPl += 1
+        if nImPl > 0:
+            self.lin_name.setText('ImagingPlane'+str(nImPl))
+
+        self.lbl_optical_channel = QLabel('optical_channel:')
+        self.combo_optical_channel = QComboBox()
+        self.combo_optical_channel.setToolTip("One of possibly many groups storing "
+            "channelspecific data")
 
         self.lbl_description = QLabel('description:')
         self.lin_description = QLineEdit('description')
         self.lin_description.setToolTip("Description of this ImagingPlane")
+
+        self.lbl_device = QLabel('device:')
+        self.combo_device = QComboBox()
+        self.combo_device.setToolTip("The device that was used to record")
 
         self.lbl_excitation_lambda = QLabel('excitation_lambda:')
         self.lin_excitation_lambda = QLineEdit('0.0')
@@ -404,6 +443,13 @@ class GroupImagingPlane(QGroupBox):
         self.lin_location = QLineEdit('location')
         self.lin_location.setToolTip("Location of image plane")
 
+        self.lbl_manifold = QLabel('manifold:')
+        self.chk_manifold = QCheckBox("Get from source file")
+        self.chk_manifold.setChecked(False)
+        self.chk_manifold.setToolTip("Physical position of each pixel. size=(height, "
+            "width, xyz).\n Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1")
@@ -415,26 +461,50 @@ class GroupImagingPlane(QGroupBox):
         self.lin_unit.setPlaceholderText("meters")
         self.lin_unit.setToolTip("Base unit that coordinates are stored in (e.g., Meters)")
 
+        self.lbl_reference_frame = QLabel('reference_frame:')
+        self.lin_reference_frame = QLineEdit('')
+        self.lin_reference_frame.setPlaceholderText("reference_frame")
+        self.lin_reference_frame.setToolTip("Describes position and reference frame "
+            "of manifold based on position of first element in manifold.")
+
         self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
+        self.grid.setColumnStretch(5, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_excitation_lambda, 2, 0, 1, 2)
-        self.grid.addWidget(self.lin_excitation_lambda, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_imaging_rate, 3, 0, 1, 2)
-        self.grid.addWidget(self.lin_imaging_rate, 3, 2, 1, 4)
-        self.grid.addWidget(self.lbl_indicator, 4, 0, 1, 2)
-        self.grid.addWidget(self.lin_indicator, 4, 2, 1, 4)
-        self.grid.addWidget(self.lbl_location, 5, 0, 1, 2)
-        self.grid.addWidget(self.lin_location, 5, 2, 1, 4)
-        self.grid.addWidget(self.lbl_conversion, 6, 0, 1, 2)
-        self.grid.addWidget(self.lin_conversion, 6, 2, 1, 4)
-        self.grid.addWidget(self.lbl_unit, 7, 0, 1, 2)
-        self.grid.addWidget(self.lin_unit, 7, 2, 1, 4)
+        self.grid.addWidget(self.lbl_optical_channel, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_optical_channel, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_device, 3, 0, 1, 2)
+        self.grid.addWidget(self.combo_device, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_excitation_lambda, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_excitation_lambda, 4, 2, 1, 4)
+        self.grid.addWidget(self.lbl_imaging_rate, 5, 0, 1, 2)
+        self.grid.addWidget(self.lin_imaging_rate, 5, 2, 1, 4)
+        self.grid.addWidget(self.lbl_indicator, 6, 0, 1, 2)
+        self.grid.addWidget(self.lin_indicator, 6, 2, 1, 4)
+        self.grid.addWidget(self.lbl_location, 7, 0, 1, 2)
+        self.grid.addWidget(self.lin_location, 7, 2, 1, 4)
+        self.grid.addWidget(self.lbl_manifold, 8, 0, 1, 2)
+        self.grid.addWidget(self.chk_manifold, 8, 2, 1, 2)
+        self.grid.addWidget(self.lbl_conversion, 9, 0, 1, 2)
+        self.grid.addWidget(self.lin_conversion, 9, 2, 1, 4)
+        self.grid.addWidget(self.lbl_unit, 10, 0, 1, 2)
+        self.grid.addWidget(self.lin_unit, 10, 2, 1, 4)
+        self.grid.addWidget(self.lbl_reference_frame, 11, 0, 1, 2)
+        self.grid.addWidget(self.lin_reference_frame, 11, 2, 1, 4)
 
         self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_optical_channel.clear()
+        self.combo_device.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupOpticalChannel):
+                self.combo_optical_channel.addItem(grp.lin_name.text())
+            if isinstance(grp, GroupDevice):
+                self.combo_device.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -468,34 +538,24 @@ class GroupOphys(QGroupBox):
         self.group_name = 'Ophys'
         self.groups_list = []
 
-        self.combo1 = QComboBox()
+        self.combo1 = CustomComboBox()
         self.combo1.addItem('-- Add group --')
+        self.combo1.addItem('Device')
+        self.combo1.addItem('OpticalChannel')
+        self.combo1.addItem('ImagingPlane')
         self.combo1.setCurrentIndex(0)
-        self.combo1.activated.connect(self.add_group)
-        self.combo2 = QComboBox()
+        self.combo1.activated.connect(lambda: self.add_group('combo'))
+        self.combo2 = CustomComboBox()
         self.combo2.addItem('-- Del group --')
-        self.combo2.addItem('Device')
-        self.combo2.addItem('OpticalChannel')
-        self.combo2.addItem('ImagingPlane')
         self.combo2.setCurrentIndex(0)
-        self.combo2.activated.connect(self.del_group)
+        self.combo2.activated.connect(lambda: self.del_group('combo'))
 
         self.lbl_f1 = QLabel('field1:')
         self.lin_f1 = QLineEdit('')
         self.lin_f1.setPlaceholderText("field_name")
         self.lin_f1.setToolTip("tooltip")
 
-        self.group_Device = GroupDevice(self)
-        self.groups_list.append(self.group_Device)
-        self.group_OpticalChannel = GroupOpticalChannel(self)
-        self.groups_list.append(self.group_OpticalChannel)
-        self.group_ImagingPlane = GroupImagingPlane(self)
-        self.groups_list.append(self.group_ImagingPlane)
-
         self.vbox1 = QVBoxLayout()
-        self.vbox1.addWidget(self.group_Device)
-        self.vbox1.addWidget(self.group_OpticalChannel)
-        self.vbox1.addWidget(self.group_ImagingPlane)
         self.vbox1.addStretch()
 
         self.grid = QGridLayout()
@@ -505,8 +565,12 @@ class GroupOphys(QGroupBox):
         self.grid.addWidget(self.lbl_f1, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_f1, 2, 2, 1, 4)
         self.grid.addLayout(self.vbox1, 3, 0, 1, 6)
-
         self.setLayout(self.grid)
+
+        # Initiate with some sub-groups
+        self.add_group(group_type='Device')
+        self.add_group(group_type='OpticalChannel')
+        self.add_group(group_type='ImagingPlane')
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -514,55 +578,50 @@ class GroupOphys(QGroupBox):
         data['f1'] = self.lin_f1.text()
         return data
 
-    def add_group(self):
+    def add_group(self, group_type):
         """Adds group form."""
-        group_name = str(self.combo1.currentText())
-        nWidgetsVbox = self.vbox1.count()
-        if group_name == 'Device':
-            self.group_Device = GroupDevice(self)
-            self.groups_list.append(self.group_Device)
-            self.vbox1.insertWidget(nWidgetsVbox-1, self.group_Device) #insert before the stretch
-        if group_name == 'OpticalChannel':
-            self.group_OpticalChannel = GroupOpticalChannel(self)
-            self.groups_list.append(self.group_OpticalChannel)
-            self.vbox1.insertWidget(nWidgetsVbox-1, self.group_OpticalChannel) #insert before the stretch
-        if group_name == 'ImagingPlane':
-            self.group_ImagingPlane = GroupImagingPlane(self)
-            self.groups_list.append(self.group_ImagingPlane)
-            self.vbox1.insertWidget(nWidgetsVbox-1, self.group_ImagingPlane) #insert before the stretch
-        if group_name != '-- Add group --':
-            self.combo1.removeItem(self.combo1.findText(group_name))
+        if group_type=='combo':
+            group_type = str(self.combo1.currentText())
+        if group_type == 'Device':
+            item = GroupDevice(self)
+        elif group_type == 'OpticalChannel':
+            item = GroupOpticalChannel(self)
+        elif group_type == 'ImagingPlane':
+            item = GroupImagingPlane(self)
+        if group_type != '-- Add group --':
+            self.groups_list.append(item)
+            nWidgetsVbox = self.vbox1.count()
+            self.vbox1.insertWidget(nWidgetsVbox-1, item) #insert before the stretch
             self.combo1.setCurrentIndex(0)
-            self.combo2.addItem(group_name)
+            self.combo2.addItem(item.lin_name.text())
+            self.refresh_children()
 
-
-    def del_group(self):
-        """Deletes group form."""
-        group_name = str(self.combo2.currentText())
-        nWidgetsVbox = self.vbox1.count()
-        if group_name == 'Device':
-            ind = np.where([isinstance(self.vbox1.itemAt(i).widget(), GroupDevice)
-                            for i in range(nWidgetsVbox)])[0][0]
-            self.vbox1.itemAt(ind).widget().setParent(None)      #deletes widget
-            self.groups_list.remove(self.group_Device)           #deletes list item
-            del self.group_Device                                #deletes attribute
-        if group_name == 'OpticalChannel':
-            ind = np.where([isinstance(self.vbox1.itemAt(i).widget(), GroupOpticalChannel)
-                            for i in range(nWidgetsVbox)])[0][0]
-            self.vbox1.itemAt(ind).widget().setParent(None)        #deletes widget
-            self.groups_list.remove(self.group_OpticalChannel)     #deletes list item
-            del self.group_OpticalChannel                          #deletes attribute
-        if group_name == 'ImagingPlane':
-            ind = np.where([isinstance(self.vbox1.itemAt(i).widget(), GroupImagingPlane)
-                            for i in range(nWidgetsVbox)])[0][0]
-            self.vbox1.itemAt(ind).widget().setParent(None)    #deletes widget
-            self.groups_list.remove(self.group_ImagingPlane)   #deletes list item
-            del self.group_ImagingPlane                        #deletes attribute
+    def del_group(self, group_name):
+        """Deletes group form by name."""
+        if group_name=='combo':
+            group_name = str(self.combo2.currentText())
         if group_name != '-- Del group --':
-            self.combo2.removeItem(self.combo2.findText(group_name))
-            self.combo2.setCurrentIndex(0)
-            self.combo1.addItem(group_name)
+            nWidgetsVbox = self.vbox1.count()
+            for i in range(nWidgetsVbox):
+                if self.vbox1.itemAt(i) is not None:
+                    if (hasattr(self.vbox1.itemAt(i).widget(), 'lin_name')) and \
+                        (self.vbox1.itemAt(i).widget().lin_name.text()==group_name):
+                        self.groups_list.remove(self.vbox1.itemAt(i).widget())   #deletes list item
+                        self.vbox1.itemAt(i).widget().setParent(None)            #deletes widget
+                        self.combo2.removeItem(self.combo2.findText(group_name))
+                        self.combo2.setCurrentIndex(0)
+                        self.refresh_children()
 
+    def refresh_children(self):
+        """Refreshes references with existing objects in child groups."""
+        for child in self.groups_list:
+            child.refresh_objects_references()
+
+    def refresh_del_combo(self):
+        """Refreshes del combobox with existing objects in child groups."""
+        self.combo2.clear()
+        for child in self.groups_list:
+            child.lin_name.text()
 
 
 
@@ -599,3 +658,13 @@ class GroupEphys(QGroupBox):
         data['f1'] = self.lin_f1.text()
         data['f2'] = self.lin_f2.text()
         return data
+
+
+
+class CustomComboBox(QComboBox):
+    def __init__(self):
+        """Class created to ignore mouse wheel events on combobox."""
+        super().__init__()
+
+    def wheelEvent(self, event):
+        event.ignore()

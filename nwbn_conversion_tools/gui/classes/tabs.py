@@ -23,14 +23,14 @@ class TabMetafile(QWidget):
         btn_save_meta.clicked.connect(lambda: self.save_meta_file())
         btn_form_editor = QPushButton('Form -> Editor')
         btn_form_editor.clicked.connect(lambda: self.form_to_editor())
-        self.l_combo1 = QComboBox()
+        self.l_combo1 = CustomComboBox()
         self.l_combo1.addItem('-- Add group --')
         self.l_combo1.addItem('Subject')
         self.l_combo1.addItem('Device')
         self.l_combo1.addItem('Ophys')
         self.l_combo1.addItem('Ephys')
         self.l_combo1.activated.connect(self.add_group)
-        self.l_combo2 = QComboBox()
+        self.l_combo2 = CustomComboBox()
         self.l_combo2.addItem('-- Del group --')
         self.l_combo2.activated.connect(self.del_group)
 
@@ -121,9 +121,10 @@ class TabMetafile(QWidget):
             self.box_ephys = GroupEphys(self)
             self.groups_list.append(self.box_ephys)
             self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ephys) #insert before the stretch
-        self.l_combo1.removeItem(self.l_combo1.findText(group_name))
-        self.l_combo1.setCurrentIndex(0)
-        self.l_combo2.addItem(group_name)
+        if group_name != '-- Add group --':
+            self.l_combo1.removeItem(self.l_combo1.findText(group_name))
+            self.l_combo1.setCurrentIndex(0)
+            self.l_combo2.addItem(group_name)
 
 
     def del_group(self):
@@ -154,9 +155,10 @@ class TabMetafile(QWidget):
             self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
             self.groups_list.remove(self.box_ephys)           #deletes list item
             del self.box_ephys                                #deletes attribute
-        self.l_combo2.removeItem(self.l_combo2.findText(group_name))
-        self.l_combo2.setCurrentIndex(0)
-        self.l_combo1.addItem(group_name)
+        if group_name != '-- Del group --':
+            self.l_combo2.removeItem(self.l_combo2.findText(group_name))
+            self.l_combo2.setCurrentIndex(0)
+            self.l_combo1.addItem(group_name)
 
 
     def open_meta_file(self):
@@ -192,3 +194,14 @@ class TabMetafile(QWidget):
     def editor_to_form(self):
         """Loads data from editor to form."""
         pass
+
+
+
+
+class CustomComboBox(QComboBox):
+    def __init__(self):
+        """Class created to ignore mouse wheel events on combobox."""
+        super().__init__()
+
+    def wheelEvent(self, event):
+        event.ignore()
