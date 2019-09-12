@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QApplication, QAction, QGroupBox,
     QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
     QGridLayout, QSplitter, QLabel, QFileDialog, QComboBox, QScrollArea)
 from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile, GroupGeneral,
-    GroupOphys, GroupEphys)
+    GroupOphys, GroupEphys, GroupSubject)
 import yaml
 import numpy as np
 
@@ -25,6 +25,7 @@ class TabMetafile(QWidget):
         btn_form_editor.clicked.connect(lambda: self.form_to_editor())
         self.l_combo1 = QComboBox()
         self.l_combo1.addItem('-- Add group --')
+        self.l_combo1.addItem('Subject')
         self.l_combo1.addItem('Ophys')
         self.l_combo1.addItem('Ephys')
         self.l_combo1.activated.connect(self.add_group)
@@ -102,6 +103,14 @@ class TabMetafile(QWidget):
     def add_group(self):
         """Adds group form."""
         group_name = str(self.l_combo1.currentText())
+        if group_name == 'Subject':
+            self.box_subject = GroupSubject(self)
+            self.groups_list.append(self.box_subject)
+            self.l_combo2.addItem('Subject')
+            self.l_combo1.setCurrentIndex(0)
+            # insert new widget before the stretch
+            nWidgetsVbox = self.l_vbox1.count()
+            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_subject)
         if group_name == 'Ophys':
             self.box_ophys = GroupOphys(self)
             self.groups_list.append(self.box_ophys)
@@ -124,6 +133,13 @@ class TabMetafile(QWidget):
     def del_group(self):
         """Deletes group form."""
         group_name = str(self.l_combo2.currentText())
+        if group_name == 'Subject':
+            nWidgetsVbox = self.l_vbox1.count()
+            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupSubject)
+                            for i in range(nWidgetsVbox)])[0][0]
+            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
+            self.groups_list.remove(self.box_subject)           #deletes list item
+            del self.box_subject                                #deletes attribute
         if group_name == 'Ophys':
             nWidgetsVbox = self.l_vbox1.count()
             ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupOphys)

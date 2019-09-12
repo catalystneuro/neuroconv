@@ -282,3 +282,88 @@ class GroupNwbfile(QGroupBox):
         data['virus'] = self.lin_virus.text()
         data['stimulus_notes'] = self.lin_stimulus_notes.text()
         return data
+
+
+
+class GroupSubject(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for 'pynwb.file.Subject' fields filling form."""
+        super().__init__()
+        self.setTitle('Subject')
+        self.group_name = 'Subject'
+
+        self.lbl_age = QLabel('age:')
+        self.lin_age = QLineEdit('')
+        self.lin_age.setPlaceholderText("age")
+        self.lin_age.setToolTip("the age of the subject")
+
+        self.lbl_description = QLabel('description:')
+        self.lin_description = QLineEdit('')
+        self.lin_description.setPlaceholderText("description")
+        self.lin_description.setToolTip("a description of the subject")
+
+        self.lbl_genotype = QLabel('genotype:')
+        self.lin_genotype = QLineEdit('')
+        self.lin_genotype.setPlaceholderText("genotype")
+        self.lin_genotype.setToolTip("the genotype of the subject")
+
+        self.lbl_sex = QLabel('sex:')
+        self.lin_sex = QLineEdit('')
+        self.lin_sex.setPlaceholderText("sex")
+        self.lin_sex.setToolTip("the sex of the subject")
+
+        self.lbl_species = QLabel('species:')
+        self.lin_species = QLineEdit('')
+        self.lin_species.setPlaceholderText("species")
+        self.lin_species.setToolTip("the species of the subject")
+
+        self.lbl_subject_id = QLabel('subject_id:')
+        self.lin_subject_id = QLineEdit('')
+        self.lin_subject_id.setPlaceholderText("subject_id")
+        self.lin_subject_id.setToolTip("a unique identifier for the subject")
+
+        self.lbl_weight = QLabel('weight:')
+        self.lin_weight = QLineEdit('')
+        self.lin_weight.setPlaceholderText("weight")
+        self.lin_weight.setToolTip("the weight of the subject")
+
+        self.lbl_date_of_birth = QLabel('date_of_birth:')
+        self.lin_date_of_birth = QLineEdit('')
+        self.lin_date_of_birth.setPlaceholderText(datetime.now().strftime("%d/%m/%Y"))
+        self.lin_date_of_birth.setToolTip("datetime of date of birth. May be "
+            "supplied instead of age.")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_age, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_age, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_genotype, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_genotype, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_sex, 3, 0, 1, 2)
+        self.grid.addWidget(self.lin_sex, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_species, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_species, 4, 2, 1, 4)
+        self.grid.addWidget(self.lbl_subject_id, 5, 0, 1, 2)
+        self.grid.addWidget(self.lin_subject_id, 5, 2, 1, 4)
+        self.grid.addWidget(self.lbl_weight, 6, 0, 1, 2)
+        self.grid.addWidget(self.lin_weight, 6, 2, 1, 4)
+        self.grid.addWidget(self.lbl_date_of_birth, 7, 0, 1, 2)
+        self.grid.addWidget(self.lin_date_of_birth, 7, 2, 1, 4)
+
+        self.setLayout(self.grid)
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['age'] = self.lin_age.text()
+        data['description'] = self.lin_description.text()
+        data['genotype'] = self.lin_genotype.text()
+        data['sex'] = self.lin_sex.text()
+        data['species'] = self.lin_species.text()
+        data['subject_id'] = self.lin_subject_id.text()
+        data['weight'] = self.lin_weight.text()
+        str_datetime = self.lin_date_of_birth.text()
+        data['date_of_birth'] = datetime.strptime(str_datetime,'%d/%m/%Y')
+        return data
