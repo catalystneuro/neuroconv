@@ -1064,6 +1064,7 @@ class GroupOphys(QGroupBox):
         self.combo2.addItem('-- Del group --')
         for child in self.groups_list:
             self.combo2.addItem(child.lin_name.text())
+        self.refresh_children()
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
