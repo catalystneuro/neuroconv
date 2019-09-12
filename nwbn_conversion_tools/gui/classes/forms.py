@@ -897,6 +897,73 @@ class GroupMotionCorrection(QGroupBox):
 
 
 
+class GroupPlaneSegmentation(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.PlaneSegmentation fields filling form."""
+        super().__init__()
+        self.setTitle('PlaneSegmentation')
+        self.parent = parent
+        self.group_name = 'PlaneSegmentation'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('PlaneSegmentation')
+        self.lin_name.setToolTip("The name of this PlaneSegmentation.")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupPlaneSegmentation):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('PlaneSegmentation'+str(nInstances))
+
+        self.lbl_description = QLabel('description:')
+        self.lin_description = QLineEdit('description')
+        self.lin_description.setToolTip(" Description of image plane, recording "
+            "wavelength, depth, etc.")
+
+        self.lbl_imaging_plane = QLabel('imaging_plane:')
+        self.combo_imaging_plane = QComboBox()
+        self.combo_imaging_plane.setToolTip("The ImagingPlane this ROI applies to.")
+
+        self.lbl_reference_images = QLabel('reference_images:')
+        self.chk_reference_images = QCheckBox("Get from source file")
+        self.chk_reference_images.setChecked(False)
+        self.chk_reference_images.setToolTip("One or more image stacks that the "
+            "masks apply to (can be oneelement stack).\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_imaging_plane, 2, 0, 1, 2)
+        self.grid.addWidget(self.combo_imaging_plane, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_reference_images, 4, 0, 1, 2)
+        self.grid.addWidget(self.chk_reference_images, 4, 2, 1, 2)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_imaging_plane.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupImagingPlane):
+                self.combo_imaging_plane.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['description'] = self.lin_description.text()
+        data['imaging_plane'] = self.combo_imaging_plane.currentText()
+        if self.chk_reference_images.isChecked():
+            data['reference_images'] = True
+        return data
+
+
+
+
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ophys module fields filling form."""
@@ -913,6 +980,7 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('TwoPhotonSeries')
         self.combo1.addItem('CorrectedImageStack')
         self.combo1.addItem('MotionCorrection')
+        self.combo1.addItem('PlaneSegmentation')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -958,6 +1026,8 @@ class GroupOphys(QGroupBox):
             item = GroupCorrectedImageStack(self)
         elif group_type == 'MotionCorrection':
             item = GroupMotionCorrection(self)
+        elif group_type == 'PlaneSegmentation':
+            item = GroupPlaneSegmentation(self)
         if group_type != '-- Add group --':
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
