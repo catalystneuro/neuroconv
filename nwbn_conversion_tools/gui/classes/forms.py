@@ -782,6 +782,42 @@ class GroupTwoPhotonSeries(QGroupBox):
 
 
 
+class GroupCorrectedImageStack(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.CorrectedImageStack fields filling form."""
+        super().__init__()
+        self.setTitle('CorrectedImageStack')
+        self.parent = parent
+        self.group_name = 'CorrectedImageStack'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('CorrectedImageStack')
+        self.lin_name.setToolTip("the name of this device")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupCorrectedImageStack):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('Device'+str(nInstances))
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        pass
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        return data
+
+
+
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ophys module fields filling form."""
@@ -917,6 +953,89 @@ class GroupEphys(QGroupBox):
         data['f2'] = self.lin_f2.text()
         return data
 
+
+
+
+class GroupCustomExample(QGroupBox):
+    def __init__(self, parent):
+        """
+        Groupbox for to serve as example for creation of custom groups.
+        Don't forget to add this class to the relevant handling functions at the
+        parent, e.g. add_group()
+        """
+        super().__init__()
+        self.setTitle('CustomName')
+        self.parent = parent
+        self.group_name = 'CustomName'
+
+        # Name: it has a special treatment, since it need to be unique we test
+        # if the parent contain other objects of the same type
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('CustomName')
+        self.lin_name.setToolTip("The unique name of this group.")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupCustomExample):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('CustomName'+str(nInstances))
+
+        # Mandatory field: we fill it with default values
+        self.lbl_mandatory = QLabel('mandatory:')
+        self.lin_mandatory = QLineEdit('ABC123')
+        self.lin_mandatory.setToolTip("This is a mandatory field.")
+
+        # Optional field: we leave a placeholder text as example
+        self.lbl_optional = QLabel('optional:')
+        self.lin_optional = QLineEdit('')
+        self.lin_optional.setPlaceholderText("example")
+        self.lin_optional.setToolTip("This is an optional field.")
+
+        # Field with link to other objects. This type of field needs to be
+        # updated with self.refresh_objects_references()
+        self.lbl_link = QLabel('link:')
+        self.combo_link = QComboBox()
+        self.combo_link.setToolTip("This field links to existing objects.")
+
+        # Field that should be handled by conversion script
+        self.lbl_script = QLabel('script:')
+        self.chk_script = QCheckBox("Get from source file")
+        self.chk_script.setChecked(False)
+        self.chk_script.setToolTip("This field will be handled by conversion script.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_mandatory, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_mandatory, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_optional, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_optional, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_link, 3, 0, 1, 2)
+        self.grid.addWidget(self.combo_link, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_script, 4, 0, 1, 2)
+        self.grid.addWidget(self.chk_script, 4, 2, 1, 2)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_link.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupCustomExample):
+                self.combo_link.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['mandatory'] = self.lin_mandatory.text()
+        data['optional'] = self.lin_optional.text()
+        data['link'] = self.combo_link.currentText()
+        if self.chk_script.isChecked():
+            data['script'] = True
+        return data
 
 
 class CustomComboBox(QComboBox):
