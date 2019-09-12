@@ -512,7 +512,7 @@ class GroupImagingPlane(QGroupBox):
         data['name'] = self.lin_name.text()
         data['optical_channel'] = str(self.combo_optical_channel.currentText())
         data['description'] = self.lin_description.text()
-        data['device'] = str(self.device.currentText())
+        data['device'] = str(self.combo_device.currentText())
         try:
             data['excitation_lambda'] = float(self.lin_excitation_lambda.text())
         except:
@@ -535,6 +535,147 @@ class GroupImagingPlane(QGroupBox):
 
 
 
+class GroupTwoPhotonSeries(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.TwoPhotonSeries fields filling form."""
+        super().__init__()
+        self.setTitle('TwoPhotonSeries')
+        self.parent = parent
+        self.group_name = 'TwoPhotonSeries'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('TwoPhotonSeries')
+        self.lin_name.setToolTip("The name of this TimeSeries dataset")
+        nTPS = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupTwoPhotonSeries):
+                nTPS += 1
+        if nTPS > 0:
+            self.lin_name.setText('TwoPhotonSeries'+str(nTPS))
+
+        self.lbl_imaging_plane = QLabel('imaging_plane:')
+        self.combo_imaging_plane = QComboBox()
+        self.combo_imaging_plane.setToolTip("Imaging plane class/pointer")
+
+        self.lbl_data = QLabel('data:')
+        self.chk_data = QCheckBox("Get from source file")
+        self.chk_data.setChecked(False)
+        self.chk_data.setToolTip("The data this TimeSeries dataset stores.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.lbl_unit = QLabel('unit:')
+        self.lin_unit = QLineEdit('')
+        self.lin_unit.setPlaceholderText("unit")
+        self.lin_unit.setToolTip("The base unit of measurement (should be SI unit)")
+
+        self.lbl_format = QLabel("format:")
+        self.lin_format = QLineEdit("")
+        self.lin_format.setPlaceholderText("format")
+        self.lin_format.setToolTip("Format of image. Three types: 1) Image format: "
+            "tiff, png, jpg, etc. 2) external 3) raw")
+
+        self.lbl_field_of_view = QLabel("field_of_view:")
+        self.chk_field_of_view = QCheckBox("Get from source file")
+        self.chk_field_of_view.setChecked(False)
+        self.chk_field_of_view.setToolTip("Width, height and depth of image, or imaged"
+            " area (meters).\nCheck box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_pmt_gain = QLabel("pmt_gain:")
+        self.lin_pmt_gain = QLineEdit("")
+        self.lin_pmt_gain.setPlaceholderText("1.0")
+        self.lin_pmt_gain.setToolTip("Photomultiplier gain")
+
+        self.lbl_scan_line_rate = QLabel("scan_line_rate:")
+        self.lin_scan_line_rate = QLineEdit("")
+        self.lin_scan_line_rate.setPlaceholderText("0.0")
+        self.lin_scan_line_rate.setToolTip("Lines imaged per second")
+
+        self.lbl_external_file = QLabel("external_file:")
+        self.lin_external_file = QLineEdit("")
+        self.lin_external_file.setPlaceholderText("path/to/external_file")
+        self.lin_external_file.setToolTip("Path or URL to one or more external file(s). "
+        "Field only present if format=external. Either external_file or data must "
+        "be specified, but not both.")
+
+        self.lbl_starting_frame = QLabel("starting_frame:")
+        self.chk_starting_frame = QCheckBox("Get from source file")
+        self.chk_starting_frame.setChecked(False)
+        self.chk_starting_frame.setToolTip("Each entry is the frame number in the "
+            "corresponding external_file variable. This serves as an index to what frames "
+            "each file contains.\nCheck box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_ = QLabel("")
+        self.lin_ = QLineEdit("")
+        self.lin_.setPlaceholderText("")
+        self.lin_.setToolTip("")
+
+        self.lbl_ = QLabel("")
+        self.lin_ = QLineEdit("")
+        self.lin_.setPlaceholderText("")
+        self.lin_.setToolTip("")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(5, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_imaging_plane, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_imaging_plane, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_data, 2, 0, 1, 2)
+        self.grid.addWidget(self.chk_data, 2, 2, 1, 2)
+        self.grid.addWidget(self.lbl_unit, 3, 0, 1, 2)
+        self.grid.addWidget(self.lin_unit, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_format, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_format, 4, 2, 1, 4)
+        self.grid.addWidget(self.lbl_field_of_view, 5, 0, 1, 2)
+        self.grid.addWidget(self.chk_field_of_view, 5, 2, 1, 2)
+        self.grid.addWidget(self.lbl_pmt_gain, 6, 0, 1, 2)
+        self.grid.addWidget(self.lin_pmt_gain, 6, 2, 1, 4)
+        self.grid.addWidget(self.lbl_scan_line_rate, 7, 0, 1, 2)
+        self.grid.addWidget(self.lin_scan_line_rate, 7, 2, 1, 4)
+        self.grid.addWidget(self.lbl_external_file, 8, 0, 1, 2)
+        self.grid.addWidget(self.lin_external_file, 8, 2, 1, 4)
+        self.grid.addWidget(self.lbl_starting_frame, 9, 0, 1, 2)
+        self.grid.addWidget(self.chk_starting_frame, 9, 2, 1, 2)
+
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_imaging_plane.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupImagingPlane):
+                self.combo_imaging_plane.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['imaging_plane'] = self.combo_imaging_plane.currentText()
+        if self.chk_data.isChecked():
+            data['data'] = True
+        data['unit'] = self.lin_unit.text()
+        data['format'] = self.lin_format.text()
+        if self.chk_field_of_view.isChecked():
+            data['field_of_view'] = True
+        try:
+            data['pmt_gain'] = float(self.lin_pmt_gain.text())
+        except:
+            pass
+        try:
+            data['scan_line_rate'] = float(self.lin_scan_line_rate.text())
+        except:
+            pass
+        if self.lin_format.text()=='external':
+            data['external_file'] = self.lin_external_file.text()
+            if self.chk_starting_frame.isChecked():
+                data['starting_frame'] = True
+        return data
+
+
+
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ophys module fields filling form."""
@@ -548,6 +689,7 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('Device')
         self.combo1.addItem('OpticalChannel')
         self.combo1.addItem('ImagingPlane')
+        self.combo1.addItem('TwoPhotonSeries')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -587,6 +729,8 @@ class GroupOphys(QGroupBox):
             item = GroupOpticalChannel(self)
         elif group_type == 'ImagingPlane':
             item = GroupImagingPlane(self)
+        elif group_type == 'TwoPhotonSeries':
+            item = GroupTwoPhotonSeries(self)
         if group_type != '-- Add group --':
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
