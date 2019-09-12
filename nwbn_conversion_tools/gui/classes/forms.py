@@ -572,12 +572,6 @@ class GroupOphys(QGroupBox):
         self.add_group(group_type='OpticalChannel')
         self.add_group(group_type='ImagingPlane')
 
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['f1'] = self.lin_f1.text()
-        return data
-
     def add_group(self, group_type):
         """Adds group form."""
         if group_type=='combo':
@@ -619,11 +613,18 @@ class GroupOphys(QGroupBox):
             child.refresh_objects_references()
 
     def refresh_del_combo(self):
-        """Refreshes del combobox with existing objects in child groups."""
+        """Refreshes del combobox with existing objects names in child groups."""
         self.combo2.clear()
         self.combo2.addItem('-- Del group --')
         for child in self.groups_list:
             self.combo2.addItem(child.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        for grp in self.groups_list:
+            data[grp.group_name] = grp.read_fields()
+        return data
 
 
 
