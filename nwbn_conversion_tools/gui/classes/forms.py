@@ -607,15 +607,72 @@ class GroupTwoPhotonSeries(QGroupBox):
             "each file contains.\nCheck box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
-        self.lbl_ = QLabel("")
-        self.lin_ = QLineEdit("")
-        self.lin_.setPlaceholderText("")
-        self.lin_.setToolTip("")
+        self.lbl_bits_per_pixel = QLabel("bits_per_pixel:")
+        self.lin_bits_per_pixel = QLineEdit("")
+        self.lin_bits_per_pixel.setPlaceholderText("1")
+        self.lin_bits_per_pixel.setToolTip("Number of bit per image pixel")
 
-        self.lbl_ = QLabel("")
-        self.lin_ = QLineEdit("")
-        self.lin_.setPlaceholderText("")
-        self.lin_.setToolTip("")
+        self.lbl_dimension = QLabel("dimension:")
+        self.lin_dimension = QLineEdit("")
+        self.lin_dimension.setPlaceholderText("1,1,1")
+        self.lin_dimension.setToolTip("Number of pixels on x, y, (and z) axes")
+
+        self.lbl_resolution = QLabel("resolution:")
+        self.lin_resolution = QLineEdit("")
+        self.lin_resolution.setPlaceholderText("0.0")
+        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
+            "specified unit) between values in data")
+
+        self.lbl_conversion = QLabel("conversion:")
+        self.lin_conversion = QLineEdit("")
+        self.lin_conversion.setPlaceholderText("0.0")
+        self.lin_conversion.setToolTip("Scalar to multiply each element by to "
+            "convert to volts")
+
+        self.lbl_timestamps = QLabel("timestamps:")
+        self.chk_timestamps = QCheckBox("Get from source file")
+        self.chk_timestamps.setChecked(False)
+        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_starting_time = QLabel("starting_time:")
+        self.chk_starting_time = QCheckBox("Get from source file")
+        self.chk_starting_time.setChecked(False)
+        self.chk_starting_time.setToolTip("The timestamp of the first sample.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_rate = QLabel("rate:")
+        self.chk_rate = QCheckBox("Get from source file")
+        self.chk_rate.setChecked(False)
+        self.chk_rate.setToolTip("Sampling rate in Hz.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_comments = QLabel("comments:")
+        self.lin_comments = QLineEdit("")
+        self.lin_comments.setPlaceholderText("comments")
+        self.lin_comments.setToolTip("Human-readable comments about this TimeSeries dataset")
+
+        self.lbl_description = QLabel("description:")
+        self.lin_description = QLineEdit("")
+        self.lin_description.setPlaceholderText("description")
+        self.lin_description.setToolTip("Description of this TimeSeries dataset")
+
+        self.lbl_control = QLabel("control:")
+        self.chk_control = QCheckBox("Get from source file")
+        self.chk_control.setChecked(False)
+        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_control_description = QLabel("control_description:")
+        self.chk_control_description = QCheckBox("Get from source file")
+        self.chk_control_description.setChecked(False)
+        self.chk_control_description.setToolTip("Description of each control value.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(5, 1)
@@ -639,7 +696,28 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.grid.addWidget(self.lin_external_file, 8, 2, 1, 4)
         self.grid.addWidget(self.lbl_starting_frame, 9, 0, 1, 2)
         self.grid.addWidget(self.chk_starting_frame, 9, 2, 1, 2)
-
+        self.grid.addWidget(self.lbl_bits_per_pixel, 10, 0, 1, 2)
+        self.grid.addWidget(self.lin_bits_per_pixel, 10, 2, 1, 4)
+        self.grid.addWidget(self.lbl_dimension, 11, 0, 1, 2)
+        self.grid.addWidget(self.lin_dimension, 11, 2, 1, 4)
+        self.grid.addWidget(self.lbl_resolution, 12, 0, 1, 2)
+        self.grid.addWidget(self.lin_resolution, 12, 2, 1, 4)
+        self.grid.addWidget(self.lbl_conversion, 13, 0, 1, 2)
+        self.grid.addWidget(self.lin_conversion, 13, 2, 1, 4)
+        self.grid.addWidget(self.lbl_timestamps, 14, 0, 1, 2)
+        self.grid.addWidget(self.chk_timestamps, 14, 2, 1, 2)
+        self.grid.addWidget(self.lbl_starting_time, 15, 0, 1, 2)
+        self.grid.addWidget(self.chk_starting_time, 15, 2, 1, 2)
+        self.grid.addWidget(self.lbl_rate, 16, 0, 1, 2)
+        self.grid.addWidget(self.chk_rate, 16, 2, 1, 2)
+        self.grid.addWidget(self.lbl_comments, 17, 0, 1, 2)
+        self.grid.addWidget(self.lin_comments, 17, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 18, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 18, 2, 1, 4)
+        self.grid.addWidget(self.lbl_control, 19, 0, 1, 2)
+        self.grid.addWidget(self.chk_control, 19, 2, 1, 2)
+        self.grid.addWidget(self.lbl_control_description, 20, 0, 1, 2)
+        self.grid.addWidget(self.chk_control_description, 20, 2, 1, 2)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
@@ -672,6 +750,34 @@ class GroupTwoPhotonSeries(QGroupBox):
             data['external_file'] = self.lin_external_file.text()
             if self.chk_starting_frame.isChecked():
                 data['starting_frame'] = True
+        try:
+            data['bits_per_pixel'] = int(self.lin_bits_per_pixel.text())
+        except:
+            pass
+        try:
+            data['dimension'] = [int(it) for it in self.lin_dimension.text().split(',')]
+        except:
+            pass
+        try:
+            data['resolution'] = float(self.lin_resolution.text())
+        except:
+            pass
+        try:
+            data['conversion'] = float(self.lin_conversion.text())
+        except:
+            pass
+        if self.chk_timestamps.isChecked():
+            data['timestamps'] = True
+        if self.chk_starting_time.isChecked():
+            data['starting_time'] = True
+        if self.chk_rate.isChecked():
+            data['rate'] = True
+        data['comments'] = self.lin_comments.text()
+        data['description'] = self.lin_description.text()
+        if self.chk_control.isChecked():
+            data['control'] = True
+        if self.chk_control_description.isChecked():
+            data['control_description'] = True
         return data
 
 
