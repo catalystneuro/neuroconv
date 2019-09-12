@@ -792,28 +792,63 @@ class GroupCorrectedImageStack(QGroupBox):
 
         self.lbl_name = QLabel('name:')
         self.lin_name = QLineEdit('CorrectedImageStack')
-        self.lin_name.setToolTip("the name of this device")
+        self.lin_name.setToolTip("The name of this CorrectedImageStack container")
         nInstances = 0
         for grp in self.parent.groups_list:
             if isinstance(grp, GroupCorrectedImageStack):
                 nInstances += 1
         if nInstances > 0:
-            self.lin_name.setText('Device'+str(nInstances))
+            self.lin_name.setText('CorrectedImageStack'+str(nInstances))
+
+        self.lbl_corrected = QLabel('corrected:')
+        self.chk_corrected = QCheckBox("Get from source file")
+        self.chk_corrected.setChecked(True)
+        self.chk_corrected.setToolTip("Image stack with frames shifted to the common "
+            "coordinates.\nCheck box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_original = QLabel('original:')
+        self.combo_original = QComboBox()
+        self.combo_original.setToolTip("Link to image series that is being registered.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.lbl_xy_translation = QLabel('xy_translation:')
+        self.chk_xy_translation = QCheckBox("Get from source file")
+        self.chk_xy_translation.setChecked(True)
+        self.chk_xy_translation.setToolTip("Stores the x,y delta necessary to align "
+            "each frame to the common coordinates, for example, to align each frame "
+            "to a reference image.\nCheck box if this data will be retrieved from "
+            "source file.\nUncheck box to ignore it.")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_corrected, 1, 0, 1, 2)
+        self.grid.addWidget(self.chk_corrected, 1, 2, 1, 2)
+        self.grid.addWidget(self.lbl_original, 2, 0, 1, 2)
+        self.grid.addWidget(self.combo_original, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_xy_translation, 3, 0, 1, 2)
+        self.grid.addWidget(self.chk_xy_translation, 3, 2, 1, 2)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        pass
+        self.combo_original.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupTwoPhotonSeries):
+                self.combo_original.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
+        if self.chk_corrected.isChecked():
+            data['corrected'] = True
+        data['original'] = str(self.combo_original.currentText())
+        if self.chk_xy_translation.isChecked():
+            data['xy_translation'] = True
         return data
 
 
@@ -832,6 +867,7 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('OpticalChannel')
         self.combo1.addItem('ImagingPlane')
         self.combo1.addItem('TwoPhotonSeries')
+        self.combo1.addItem('CorrectedImageStack')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -873,6 +909,8 @@ class GroupOphys(QGroupBox):
             item = GroupImagingPlane(self)
         elif group_type == 'TwoPhotonSeries':
             item = GroupTwoPhotonSeries(self)
+        elif group_type == 'CorrectedImageStack':
+            item = GroupCorrectedImageStack(self)
         if group_type != '-- Add group --':
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
