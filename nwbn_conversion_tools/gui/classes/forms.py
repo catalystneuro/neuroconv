@@ -1,9 +1,9 @@
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox)
+    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox)
 from datetime import datetime
-
+import numpy as np
 
 class GroupGeneral(QGroupBox):
     def __init__(self, parent):
@@ -466,21 +466,45 @@ class GroupOphys(QGroupBox):
         super().__init__()
         self.setTitle('Ophys')
         self.group_name = 'Ophys'
+        self.groups_list = []
 
-        self.group_device = GroupDevice(self)
-        self.group_opticalchannel = GroupOpticalChannel(self)
-        self.group_imagingplane = GroupImagingPlane(self)
+        self.combo1 = QComboBox()
+        self.combo1.addItem('-- Add group --')
+        self.combo1.setCurrentIndex(0)
+        self.combo1.activated.connect(self.add_group)
+        self.combo2 = QComboBox()
+        self.combo2.addItem('-- Del group --')
+        self.combo2.addItem('Device')
+        self.combo2.addItem('OpticalChannel')
+        self.combo2.addItem('ImagingPlane')
+        self.combo2.setCurrentIndex(0)
+        self.combo2.activated.connect(self.del_group)
 
         self.lbl_f1 = QLabel('field1:')
         self.lin_f1 = QLineEdit('')
         self.lin_f1.setPlaceholderText("field_name")
         self.lin_f1.setToolTip("tooltip")
 
+        self.group_Device = GroupDevice(self)
+        self.groups_list.append(self.group_Device)
+        self.group_OpticalChannel = GroupOpticalChannel(self)
+        self.groups_list.append(self.group_OpticalChannel)
+        self.group_ImagingPlane = GroupImagingPlane(self)
+        self.groups_list.append(self.group_ImagingPlane)
+
+        self.vbox1 = QVBoxLayout()
+        self.vbox1.addWidget(self.group_Device)
+        self.vbox1.addWidget(self.group_OpticalChannel)
+        self.vbox1.addWidget(self.group_ImagingPlane)
+        self.vbox1.addStretch()
+
         self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.group_device, 0, 0, 1, 6)
-        self.grid.addWidget(self.group_opticalchannel, 1, 0, 1, 6)
-        self.grid.addWidget(self.group_imagingplane, 2, 0, 1, 6)
+        self.grid.setColumnStretch(5, 1)
+        self.grid.addWidget(self.combo1, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo2, 1, 2, 1, 2)
+        self.grid.addWidget(self.lbl_f1, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_f1, 2, 2, 1, 4)
+        self.grid.addLayout(self.vbox1, 3, 0, 1, 6)
 
         self.setLayout(self.grid)
 
@@ -489,6 +513,55 @@ class GroupOphys(QGroupBox):
         data = {}
         data['f1'] = self.lin_f1.text()
         return data
+
+    def add_group(self):
+        """Adds group form."""
+        group_name = str(self.combo1.currentText())
+        nWidgetsVbox = self.vbox1.count()
+        if group_name == 'Device':
+            self.group_Device = GroupDevice(self)
+            self.groups_list.append(self.group_Device)
+            self.vbox1.insertWidget(nWidgetsVbox-1, self.group_Device) #insert before the stretch
+        if group_name == 'OpticalChannel':
+            self.group_OpticalChannel = GroupOpticalChannel(self)
+            self.groups_list.append(self.group_OpticalChannel)
+            self.vbox1.insertWidget(nWidgetsVbox-1, self.group_OpticalChannel) #insert before the stretch
+        if group_name == 'ImagingPlane':
+            self.group_ImagingPlane = GroupImagingPlane(self)
+            self.groups_list.append(self.group_ImagingPlane)
+            self.vbox1.insertWidget(nWidgetsVbox-1, self.group_ImagingPlane) #insert before the stretch
+        if group_name != '-- Add group --':
+            self.combo1.removeItem(self.combo1.findText(group_name))
+            self.combo1.setCurrentIndex(0)
+            self.combo2.addItem(group_name)
+
+
+    def del_group(self):
+        """Deletes group form."""
+        group_name = str(self.combo2.currentText())
+        nWidgetsVbox = self.vbox1.count()
+        if group_name == 'Device':
+            ind = np.where([isinstance(self.vbox1.itemAt(i).widget(), GroupDevice)
+                            for i in range(nWidgetsVbox)])[0][0]
+            self.vbox1.itemAt(ind).widget().setParent(None)      #deletes widget
+            self.groups_list.remove(self.group_Device)           #deletes list item
+            del self.group_Device                                #deletes attribute
+        if group_name == 'OpticalChannel':
+            ind = np.where([isinstance(self.vbox1.itemAt(i).widget(), GroupOpticalChannel)
+                            for i in range(nWidgetsVbox)])[0][0]
+            self.vbox1.itemAt(ind).widget().setParent(None)        #deletes widget
+            self.groups_list.remove(self.group_OpticalChannel)     #deletes list item
+            del self.group_OpticalChannel                          #deletes attribute
+        if group_name == 'ImagingPlane':
+            ind = np.where([isinstance(self.vbox1.itemAt(i).widget(), GroupImagingPlane)
+                            for i in range(nWidgetsVbox)])[0][0]
+            self.vbox1.itemAt(ind).widget().setParent(None)    #deletes widget
+            self.groups_list.remove(self.group_ImagingPlane)   #deletes list item
+            del self.group_ImagingPlane                        #deletes attribute
+        if group_name != '-- Del group --':
+            self.combo2.removeItem(self.combo2.findText(group_name))
+            self.combo2.setCurrentIndex(0)
+            self.combo1.addItem(group_name)
 
 
 
