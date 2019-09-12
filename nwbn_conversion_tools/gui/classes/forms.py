@@ -510,7 +510,9 @@ class GroupImagingPlane(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
+        data['optical_channel'] = str(self.combo_optical_channel.currentText())
         data['description'] = self.lin_description.text()
+        data['device'] = str(self.device.currentText())
         try:
             data['excitation_lambda'] = float(self.lin_excitation_lambda.text())
         except:
@@ -521,11 +523,14 @@ class GroupImagingPlane(QGroupBox):
             data['imaging_rate'] = 0.0
         data['indicator'] = self.lin_indicator.text()
         data['location'] = self.lin_location.text()
+        if self.chk_manifold.isChecked():
+            data['manifold'] = True
         try:
             data['conversion'] = float(self.lin_conversion.text())
         except:
             data['conversion'] = 0.0
         data['unit'] = self.lin_unit.text()
+        data['reference_frame'] = self.lin_reference_frame.text()
         return data
 
 
