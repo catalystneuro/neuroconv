@@ -809,9 +809,7 @@ class GroupCorrectedImageStack(QGroupBox):
 
         self.lbl_original = QLabel('original:')
         self.combo_original = QComboBox()
-        self.combo_original.setToolTip("Link to image series that is being registered.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
+        self.combo_original.setToolTip("Link to image series that is being registered.")
 
         self.lbl_xy_translation = QLabel('xy_translation:')
         self.chk_xy_translation = QCheckBox("Get from source file")
@@ -853,6 +851,52 @@ class GroupCorrectedImageStack(QGroupBox):
 
 
 
+class GroupMotionCorrection(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.MotionCorrection fields filling form."""
+        super().__init__()
+        self.setTitle('MotionCorrection')
+        self.parent = parent
+        self.group_name = 'MotionCorrection'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('MotionCorrection')
+        self.lin_name.setToolTip("The name of this MotionCorrection container")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupMotionCorrection):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('MotionCorrection'+str(nInstances))
+
+        self.lbl_corrected_images_stacks = QLabel('corrected_images:')
+        self.combo_corrected_images_stacks = QComboBox()
+        self.combo_corrected_images_stacks.setToolTip("CorrectedImageStack to store in this interface.")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_corrected_images_stacks, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_corrected_images_stacks, 1, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_corrected_images_stacks.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupCorrectedImageStack):
+                self.combo_corrected_images_stacks.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['corrected_images_stacks'] = str(self.combo_corrected_images_stacks.currentText())
+        return data
+
+
+
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ophys module fields filling form."""
@@ -868,6 +912,7 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('ImagingPlane')
         self.combo1.addItem('TwoPhotonSeries')
         self.combo1.addItem('CorrectedImageStack')
+        self.combo1.addItem('MotionCorrection')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -911,6 +956,8 @@ class GroupOphys(QGroupBox):
             item = GroupTwoPhotonSeries(self)
         elif group_type == 'CorrectedImageStack':
             item = GroupCorrectedImageStack(self)
+        elif group_type == 'MotionCorrection':
+            item = GroupMotionCorrection(self)
         if group_type != '-- Add group --':
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
