@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
 from nwbn_conversion_tools.gui.classes.forms import (GroupFiles, GroupNwbfile,
     GroupOphys, GroupEphys, GroupSubject, GroupDevice)
 import numpy as np
+import importlib
 import yaml
 import os
 import sys
@@ -15,6 +16,8 @@ import sys
 class Application(QMainWindow):
     def __init__(self, modules=[]):
         super().__init__()
+        self.source_files_path = os.getcwd()
+        self.f_source = ''
 
         self.centralwidget = QWidget()
         self.setCentralWidget(self.centralwidget)
@@ -46,21 +49,21 @@ class Application(QMainWindow):
         btn_form_editor = QPushButton('Form -> Editor')
         btn_form_editor.clicked.connect(lambda: self.form_to_editor())
 
-        self.lbl_source_file = QLabel('source file:')
+        self.lbl_source_file = QLabel('source files:')
         self.lin_source_file = QLineEdit('')
         self.btn_source_file = QPushButton()
         self.btn_source_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_source_file.clicked.connect(lambda: self.load_source_file())
+        self.btn_source_file.clicked.connect(lambda: self.load_source_files())
         self.lbl_meta_file = QLabel('meta file:')
         self.lin_meta_file = QLineEdit('')
         self.btn_meta_file = QPushButton()
         self.btn_meta_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
         self.btn_meta_file.clicked.connect(lambda: self.load_meta_file())
-        self.lbl_conversion_script = QLabel('conversion script:')
-        self.lin_conversion_script = QLineEdit('')
-        self.btn_conversion_script = QPushButton()
-        self.btn_conversion_script.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_conversion_script.clicked.connect(lambda: self.load_conversion_script())
+        self.lbl_conversion_module = QLabel('conversion module:')
+        self.lin_conversion_module = QLineEdit('')
+        self.btn_conversion_module = QPushButton()
+        self.btn_conversion_module.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_conversion_module.clicked.connect(lambda: self.load_conversion_module())
         self.lbl_nwb_file = QLabel('nwb file:')
         self.lin_nwb_file = QLineEdit('')
         self.btn_nwb_file = QPushButton()
@@ -79,9 +82,9 @@ class Application(QMainWindow):
         l_grid1.addWidget(self.lbl_meta_file, 2, 0, 1, 2)
         l_grid1.addWidget(self.lin_meta_file, 2, 2, 1, 3)
         l_grid1.addWidget(self.btn_meta_file, 2, 5, 1, 1)
-        l_grid1.addWidget(self.lbl_conversion_script, 3, 0, 1, 2)
-        l_grid1.addWidget(self.lin_conversion_script, 3, 2, 1, 3)
-        l_grid1.addWidget(self.btn_conversion_script, 3, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_conversion_module, 3, 0, 1, 2)
+        l_grid1.addWidget(self.lin_conversion_module, 3, 2, 1, 3)
+        l_grid1.addWidget(self.btn_conversion_module, 3, 5, 1, 1)
         l_grid1.addWidget(self.lbl_nwb_file, 4, 0, 1, 2)
         l_grid1.addWidget(self.lin_nwb_file, 4, 2, 1, 3)
         l_grid1.addWidget(self.btn_nwb_file, 4, 5, 1, 1)
@@ -155,8 +158,17 @@ class Application(QMainWindow):
 
 
     def run_conversion(self):
-        """Runs conversion script."""
-        pass
+        """Runs conversion function."""
+        try:
+            mod_file = self.lin_conversion_module.text()
+            spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
+            conv_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(conv_module)
+            conv_module.conversion_function(f_source=self.f_source,
+                                            f_nwb=self.lin_nwb_file.text(),
+                                            meta=self.lin_meta_file.text())
+        except Exception as error:
+            print(error)
 
 
     def form_to_editor(self):
@@ -168,12 +180,16 @@ class Application(QMainWindow):
         self.editor.setText(txt)
 
 
-    def load_source_file(self):
-        """Browser to source file location."""
-        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file', '', "(*)")
-        if filename is not None:
-            self.lin_source_file.setText(filename)
-            self.source_files_path = os.path.split(filename)[0]
+    def load_source_files(self):
+        """Browser to source files location."""
+        filenames, ftype = QFileDialog.getOpenFileNames(self, 'Open file', '', "(*)")
+        if filenames is not None:
+            all_names = ''
+            for fname in filenames:
+                all_names += os.path.split(fname)[1]+', '
+            self.lin_source_file.setText(all_names[:-3])
+            self.source_files_path = os.path.split(fname)[0]
+            self.f_source = filenames
 
 
     def load_meta_file(self):
@@ -188,12 +204,12 @@ class Application(QMainWindow):
             self.editor.setText(txt)
 
 
-    def load_conversion_script(self):
+    def load_conversion_module(self):
         """Browser to conversion script file location."""
         filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
             self.source_files_path, "(*py)")
         if filename is not None:
-            self.lin_conversion_script.setText(filename)
+            self.lin_conversion_module.setText(filename)
 
 
     def load_nwb_file(self):
