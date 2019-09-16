@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
     QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout, QGridLayout,
     QSplitter, QLabel, QFileDialog, QGroupBox, QMessageBox, QComboBox,
     QScrollArea, QStyle)
-from nwbn_conversion_tools.gui.classes.forms import (GroupFiles, GroupNwbfile,
+from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile,
     GroupOphys, GroupEphys, GroupSubject, GroupDevice)
 import numpy as np
 import importlib
@@ -166,7 +166,7 @@ class Application(QMainWindow):
             spec.loader.exec_module(conv_module)
             conv_module.conversion_function(f_source=self.f_source,
                                             f_nwb=self.lin_nwb_file.text(),
-                                            meta=self.lin_meta_file.text())
+                                            metafile=self.lin_meta_file.text())
         except Exception as error:
             print(error)
 
