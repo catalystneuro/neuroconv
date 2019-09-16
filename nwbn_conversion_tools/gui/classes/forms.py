@@ -1366,9 +1366,9 @@ class GroupOphys(QGroupBox):
         self.setLayout(self.grid)
 
         # Initiate with some sub-groups
-        self.add_group(group_type='Device')
-        self.add_group(group_type='OpticalChannel')
-        self.add_group(group_type='ImagingPlane')
+        #self.add_group(group_type='Device')
+        #self.add_group(group_type='OpticalChannel')
+        #self.add_group(group_type='ImagingPlane')
 
     def add_group(self, group_type):
         """Adds group form."""

@@ -12,7 +12,7 @@ import sys
 
 
 class Application(QMainWindow):
-    def __init__(self, modules=['files','nwbfile']):
+    def __init__(self, modules=[]):
         super().__init__()
 
         self.centralwidget = QWidget()
@@ -63,6 +63,8 @@ class Application(QMainWindow):
             self.box_ophys = GroupOphys(self)
             self.groups_list.append(self.box_ophys)
             self.l_vbox1.addWidget(self.box_ophys)
+            for subgroup in modules['ophys']:
+                self.box_ophys.add_group(group_type=subgroup)
         if 'ephys' in modules:
             self.box_ephys = GroupEphys(self)
             self.groups_list.append(self.box_ephys)
@@ -168,14 +170,14 @@ if __name__ == '__main__':
     #    fname = None
     #else:
     #    fname = sys.argv[1]
-    ex = Application(modules=['files','nwbfile', 'ophys'])
+    ex = Application()
     sys.exit(app.exec_())
 
 
-def main(modules=['files','nwbfile']):  # If it was imported as a module
+def main(modules=[]):  # If it was imported as a module
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  #instantiate a QtGui (holder for the app)
-    ex = Application(modules=['files','nwbfile'])
+    ex = Application(modules=modules)
     sys.exit(app.exec_())
