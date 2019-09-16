@@ -1073,6 +1073,167 @@ class GroupImageSegmentation(QGroupBox):
 
 
 
+class GroupRoiResponseSeries(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.RoiResponseSeries fields filling form."""
+        super().__init__()
+        self.setTitle('RoiResponseSeries')
+        self.parent = parent
+        self.group_name = 'RoiResponseSeries'
+
+        # Name: it has a special treatment, since it need to be unique we test
+        # if the parent contain other objects of the same type
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('RoiResponseSeries')
+        self.lin_name.setToolTip("The name of this RoiResponseSeries dataset.")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupRoiResponseSeries):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('RoiResponseSeries'+str(nInstances))
+
+        self.lbl_data = QLabel('data:')
+        self.chk_data = QCheckBox("Get from source file")
+        self.chk_data.setChecked(True)
+        self.chk_data.setToolTip("The data this TimeSeries dataset stores.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.lbl_unit = QLabel('unit:')
+        self.lin_unit = QLineEdit('NA')
+        self.lin_unit.setToolTip("The base unit of measurement (should be SI unit)")
+
+        self.lbl_rois = QLabel('rois:')
+        self.chk_rois = QCheckBox("Get from source file")
+        self.chk_rois.setChecked(True)
+        self.chk_rois.setToolTip("A table region corresponding to the ROIs that "
+            "were used to generate this data.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.lbl_resolution = QLabel('resolution:')
+        self.lin_resolution = QLineEdit('')
+        self.lin_resolution.setPlaceholderText("1.0")
+        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
+            "specified unit) between values in data")
+
+        self.lbl_conversion = QLabel('conversion:')
+        self.lin_conversion = QLineEdit('')
+        self.lin_conversion.setPlaceholderText("1.0")
+        self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to volts")
+
+        self.lbl_timestamps = QLabel("timestamps:")
+        self.chk_timestamps = QCheckBox("Get from source file")
+        self.chk_timestamps.setChecked(False)
+        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_starting_time = QLabel("starting_time:")
+        self.chk_starting_time = QCheckBox("Get from source file")
+        self.chk_starting_time.setChecked(False)
+        self.chk_starting_time.setToolTip("The timestamp of the first sample.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_rate = QLabel("rate:")
+        self.chk_rate = QCheckBox("Get from source file")
+        self.chk_rate.setChecked(False)
+        self.chk_rate.setToolTip("Sampling rate in Hz.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_comments = QLabel("comments:")
+        self.lin_comments = QLineEdit("")
+        self.lin_comments.setPlaceholderText("comments")
+        self.lin_comments.setToolTip("Human-readable comments about this TimeSeries dataset")
+
+        self.lbl_description = QLabel("description:")
+        self.lin_description = QLineEdit("")
+        self.lin_description.setPlaceholderText("description")
+        self.lin_description.setToolTip("Description of this TimeSeries dataset")
+
+        self.lbl_control = QLabel("control:")
+        self.chk_control = QCheckBox("Get from source file")
+        self.chk_control.setChecked(False)
+        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.lbl_control_description = QLabel("control_description:")
+        self.chk_control_description = QCheckBox("Get from source file")
+        self.chk_control_description.setChecked(False)
+        self.chk_control_description.setToolTip("Description of each control value.\n"
+            "Check box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
+        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
+        self.grid.addWidget(self.lbl_unit, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_unit, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_rois, 3, 0, 1, 2)
+        self.grid.addWidget(self.chk_rois, 3, 2, 1, 2)
+        self.grid.addWidget(self.lbl_resolution, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_resolution, 4, 2, 1, 4)
+        self.grid.addWidget(self.lbl_conversion, 5, 0, 1, 2)
+        self.grid.addWidget(self.lin_conversion, 5, 2, 1, 4)
+        self.grid.addWidget(self.lbl_timestamps, 6, 0, 1, 2)
+        self.grid.addWidget(self.chk_timestamps, 6, 2, 1, 2)
+        self.grid.addWidget(self.lbl_starting_time, 7, 0, 1, 2)
+        self.grid.addWidget(self.chk_starting_time, 7, 2, 1, 2)
+        self.grid.addWidget(self.lbl_rate, 8, 0, 1, 2)
+        self.grid.addWidget(self.chk_rate, 8, 2, 1, 2)
+        self.grid.addWidget(self.lbl_comments, 9, 0, 1, 2)
+        self.grid.addWidget(self.lin_comments, 9, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 10, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 10, 2, 1, 4)
+        self.grid.addWidget(self.lbl_control, 11, 0, 1, 2)
+        self.grid.addWidget(self.chk_control, 11, 2, 1, 2)
+        self.grid.addWidget(self.lbl_control_description, 12, 0, 1, 2)
+        self.grid.addWidget(self.chk_control_description, 12, 2, 1, 2)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        pass
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        if self.chk_data.isChecked():
+            data['data'] = True
+        data['unit'] = self.lin_unit.text()
+        if self.chk_rois.isChecked():
+            data['rois'] = True
+        try:
+            data['resolution'] = float(self.lin_resolution.text())
+        except:
+            pass
+        try:
+            data['conversion'] = float(self.lin_conversion.text())
+        except:
+            pass
+        if self.chk_timestamps.isChecked():
+            data['timestamps'] = True
+        if self.chk_starting_time.isChecked():
+            data['starting_time'] = True
+        if self.chk_rate.isChecked():
+            data['rate'] = True
+        data['comments'] = self.lin_comments.text()
+        data['description'] = self.lin_description.text()
+        if self.chk_control.isChecked():
+            data['control'] = True
+        if self.chk_control_description.isChecked():
+            data['control_description'] = True
+        return data
+
+
 
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
@@ -1091,7 +1252,8 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('CorrectedImageStack')
         self.combo1.addItem('MotionCorrection')
         self.combo1.addItem('PlaneSegmentation')
-        self.combo1.addItem('GroupImageSegmentation')
+        self.combo1.addItem('ImageSegmentation')
+        self.combo1.addItem('RoiResponseSeries')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -1134,6 +1296,8 @@ class GroupOphys(QGroupBox):
             item = GroupPlaneSegmentation(self)
         elif group_type == 'ImageSegmentation':
             item = GroupImageSegmentation(self)
+        elif group_type == 'RoiResponseSeries':
+            item = GroupRoiResponseSeries(self)
         if group_type != '-- Add group --':
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
