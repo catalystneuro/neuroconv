@@ -1281,6 +1281,52 @@ class GroupDfOverF(QGroupBox):
 
 
 
+class GroupFluorescence(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.Fluorescence fields filling form."""
+        super().__init__()
+        self.setTitle('Fluorescence')
+        self.parent = parent
+        self.group_name = 'Fluorescence'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('Fluorescence')
+        self.lin_name.setToolTip("The name of this Fluorescence.")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupFluorescence):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('Fluorescence'+str(nInstances))
+
+        self.lbl_roi_response_series = QLabel('roi_response_series:')
+        self.combo_roi_response_series = QComboBox()
+        self.combo_roi_response_series.setToolTip("RoiResponseSeries to store in this interface")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_roi_response_series, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_roi_response_series, 1, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_roi_response_series.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupRoiResponseSeries):
+                self.combo_roi_response_series.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['roi_response_series'] = str(self.combo_roi_response_series.currentText())
+        return data
+
+
+
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ophys module fields filling form."""
@@ -1301,6 +1347,7 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('ImageSegmentation')
         self.combo1.addItem('RoiResponseSeries')
         self.combo1.addItem('DfOverF')
+        self.combo1.addItem('Fluorescence')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -1347,6 +1394,8 @@ class GroupOphys(QGroupBox):
             item = GroupRoiResponseSeries(self)
         elif group_type == 'DfOverF':
             item = GroupDfOverF(self)
+        elif group_type == 'Fluorescence':
+            item = GroupFluorescence(self)
         if group_type != '-- Add group --':
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
