@@ -2,7 +2,8 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
     QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QSplitter, QLabel, QFileDialog, QGroupBox, QMessageBox, QComboBox, QScrollArea)
+    QSplitter, QLabel, QFileDialog, QGroupBox, QMessageBox, QComboBox,
+    QScrollArea, QStyle)
 from nwbn_conversion_tools.gui.classes.forms import (GroupFiles, GroupNwbfile,
     GroupOphys, GroupEphys, GroupSubject, GroupDevice)
 import numpy as np
@@ -45,17 +46,47 @@ class Application(QMainWindow):
         btn_form_editor = QPushButton('Form -> Editor')
         btn_form_editor.clicked.connect(lambda: self.form_to_editor())
 
+        self.lbl_source_file = QLabel('source file:')
+        self.lin_source_file = QLineEdit('')
+        self.btn_source_file = QPushButton()
+        self.btn_source_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_source_file.clicked.connect(lambda: self.load_source_file())
+        self.lbl_meta_file = QLabel('meta file:')
+        self.lin_meta_file = QLineEdit('')
+        self.btn_meta_file = QPushButton()
+        self.btn_meta_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_meta_file.clicked.connect(lambda: self.load_meta_file())
+        self.lbl_conversion_script = QLabel('conversion script:')
+        self.lin_conversion_script = QLineEdit('')
+        self.btn_conversion_script = QPushButton()
+        self.btn_conversion_script.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_conversion_script.clicked.connect(lambda: self.load_conversion_script())
+        self.lbl_nwb_file = QLabel('nwb file:')
+        self.lin_nwb_file = QLineEdit('')
+        self.btn_nwb_file = QPushButton()
+        self.btn_nwb_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_nwb_file.clicked.connect(lambda: self.load_nwb_file())
+
         l_grid1 = QGridLayout()
-        l_grid1.setColumnStretch(2, 1)
+        l_grid1.setColumnStretch(3, 1)
         l_grid1.addWidget(btn_save_meta, 0, 0, 1, 1)
         l_grid1.addWidget(btn_run_conversion, 0, 1, 1, 1)
-        l_grid1.addWidget(QLabel(), 0, 2, 1, 1)
-        l_grid1.addWidget(btn_form_editor, 0, 3, 1, 1)
+        l_grid1.addWidget(QLabel(), 0, 2, 1, 2)
+        l_grid1.addWidget(btn_form_editor, 0, 4, 1, 2)
+        l_grid1.addWidget(self.lbl_source_file, 1, 0, 1, 2)
+        l_grid1.addWidget(self.lin_source_file, 1, 2, 1, 3)
+        l_grid1.addWidget(self.btn_source_file, 1, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_meta_file, 2, 0, 1, 2)
+        l_grid1.addWidget(self.lin_meta_file, 2, 2, 1, 3)
+        l_grid1.addWidget(self.btn_meta_file, 2, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_conversion_script, 3, 0, 1, 2)
+        l_grid1.addWidget(self.lin_conversion_script, 3, 2, 1, 3)
+        l_grid1.addWidget(self.btn_conversion_script, 3, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_nwb_file, 4, 0, 1, 2)
+        l_grid1.addWidget(self.lin_nwb_file, 4, 2, 1, 3)
+        l_grid1.addWidget(self.btn_nwb_file, 4, 5, 1, 1)
 
         self.l_vbox1 = QVBoxLayout()
-        self.box_files = GroupFiles(self)
-        self.groups_list.append(self.box_files)
-        self.l_vbox1.addWidget(self.box_files)
         self.box_nwbfile = GroupNwbfile(self)
         self.groups_list.append(self.box_nwbfile)
         self.l_vbox1.addWidget(self.box_nwbfile)
@@ -78,7 +109,7 @@ class Application(QMainWindow):
 
         self.l_vbox2 = QVBoxLayout()
         self.l_vbox2.addLayout(l_grid1)
-        self.l_vbox2.addWidget(QLabel())
+        #self.l_vbox2.addWidget(QLabel())
         self.l_vbox2.addWidget(l_scroll)
 
         # Right-side panel: meta-data text
@@ -135,6 +166,42 @@ class Application(QMainWindow):
             data[grp.group_name] = grp.read_fields()
         txt = yaml.dump(data, default_flow_style=False)
         self.editor.setText(txt)
+
+
+    def load_source_file(self):
+        """Browser to source file location."""
+        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file', '', "(*)")
+        if filename is not None:
+            self.lin_source_file.setText(filename)
+            self.source_files_path = os.path.split(filename)[0]
+
+
+    def load_meta_file(self):
+        '''Browser to .yml file containing metadata for NWB.'''
+        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
+            self.source_files_path, "(*.yml)")
+        if ftype=='(*.yml)':
+            self.lin_meta_file.setText(filename)
+            with open(filename) as f:
+                data = yaml.safe_load(f)
+            txt = yaml.dump(data, default_flow_style=False)
+            self.editor.setText(txt)
+
+
+    def load_conversion_script(self):
+        """Browser to conversion script file location."""
+        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
+            self.source_files_path, "(*py)")
+        if filename is not None:
+            self.lin_conversion_script.setText(filename)
+
+
+    def load_nwb_file(self):
+        """Browser to source file location."""
+        filename, ftype = QFileDialog.getSaveFileName(self, 'Save file',
+            self.source_files_path, "(*nwb)")
+        if filename is not None:
+            self.lin_nwb_file.setText(filename)
 
 
     def about(self):

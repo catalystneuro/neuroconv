@@ -93,10 +93,7 @@ class GroupFiles(QGroupBox):
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        #data['file_path'] = self.lin_file_path.text()
-        #data['file_name'] = self.lin_file_name.text()
-        return data
+        pass
 
 
 
