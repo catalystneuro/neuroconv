@@ -1025,6 +1025,54 @@ class GroupPlaneSegmentation(QGroupBox):
 
 
 
+class GroupImageSegmentation(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.ophys.ImageSegmentation fields filling form."""
+        super().__init__()
+        self.setTitle('ImageSegmentation')
+        self.parent = parent
+        self.group_name = 'ImageSegmentation'
+
+        # Name: it has a special treatment, since it need to be unique we test
+        # if the parent contain other objects of the same type
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('ImageSegmentation')
+        self.lin_name.setToolTip("The name of this ImageSegmentation.")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupImageSegmentation):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('ImageSegmentation'+str(nInstances))
+
+        self.lbl_plane_segmentations = QLabel('plane_segmentations:')
+        self.combo_plane_segmentations = QComboBox()
+        self.combo_plane_segmentations.setToolTip("PlaneSegmentation to store in this interface.")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_plane_segmentations, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_plane_segmentations, 1, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_plane_segmentations.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupPlaneSegmentation):
+                self.combo_plane_segmentations.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['plane_segmentations'] = str(self.combo_plane_segmentations.currentText())
+        return data
+
+
+
 
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
@@ -1043,6 +1091,7 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('CorrectedImageStack')
         self.combo1.addItem('MotionCorrection')
         self.combo1.addItem('PlaneSegmentation')
+        self.combo1.addItem('GroupImageSegmentation')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -1083,6 +1132,8 @@ class GroupOphys(QGroupBox):
             item = GroupMotionCorrection(self)
         elif group_type == 'PlaneSegmentation':
             item = GroupPlaneSegmentation(self)
+        elif group_type == 'ImageSegmentation':
+            item = GroupImageSegmentation(self)
         if group_type != '-- Add group --':
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
