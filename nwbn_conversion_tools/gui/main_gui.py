@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
     QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout, QGridLayout,
     QSplitter, QLabel, QFileDialog, QGroupBox, QMessageBox, QComboBox, QScrollArea)
-from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile, GroupGeneral,
+from nwbn_conversion_tools.gui.classes.forms import (GroupFiles, GroupNwbfile,
     GroupOphys, GroupEphys, GroupSubject, GroupDevice)
 import numpy as np
 import yaml
@@ -28,12 +28,6 @@ class Application(QMainWindow):
     def init_gui(self):
         """Initiates GUI elements."""
         mainMenu = self.menuBar()
-        # File menu
-        fileMenu = mainMenu.addMenu('File')
-        # Adding actions to file menu
-        action_open_file = QAction('Open File', self)
-        fileMenu.addAction(action_open_file)
-        #action_open_file.triggered.connect(lambda: self.open_file(None))
 
         helpMenu = mainMenu.addMenu('Help')
         action_about = QAction('About', self)
@@ -44,42 +38,37 @@ class Application(QMainWindow):
         self.groups_list = []
 
         # Left-side panel: forms
-        btn_close_tab = QPushButton('Close tab')
-        btn_close_tab.clicked.connect(lambda: self.close_tab())
-        btn_load_meta = QPushButton('Load from file')
-        btn_load_meta.clicked.connect(lambda: self.open_meta_file())
-        btn_save_meta = QPushButton('Save to file')
-        btn_save_meta.clicked.connect(lambda: self.save_meta_file())
-        btn_form_editor = QPushButton('Form -> Editor')
-        btn_form_editor.clicked.connect(lambda: self.form_to_editor())
         self.l_combo1 = CustomComboBox()
         self.l_combo1.addItem('-- Add group --')
-        self.l_combo1.addItem('Subject')
-        self.l_combo1.addItem('Device')
         self.l_combo1.addItem('Ophys')
         self.l_combo1.addItem('Ephys')
         self.l_combo1.activated.connect(self.add_group)
         self.l_combo2 = CustomComboBox()
         self.l_combo2.addItem('-- Del group --')
         self.l_combo2.activated.connect(self.del_group)
+        btn_save_meta = QPushButton('Save metafile')
+        btn_save_meta.clicked.connect(lambda: self.save_meta_file())
+        btn_run_conversion = QPushButton('Run conversion')
+        #btn_run_conversion.clicked.connect(lambda: self.run_conversion())
+        btn_form_editor = QPushButton('Form -> Editor')
+        btn_form_editor.clicked.connect(lambda: self.form_to_editor())
 
         l_grid1 = QGridLayout()
         l_grid1.setColumnStretch(6, 1)
-        l_grid1.addWidget(btn_close_tab, 0, 0, 1, 2)
-        l_grid1.addWidget(btn_load_meta, 0, 2, 1, 2)
-        l_grid1.addWidget(btn_save_meta, 0, 4, 1, 2)
+        l_grid1.addWidget(self.l_combo1, 0, 0, 1, 2)
+        l_grid1.addWidget(self.l_combo2, 0, 2, 1, 2)
+        l_grid1.addWidget(btn_save_meta, 0, 4, 1, 1)
+        l_grid1.addWidget(btn_run_conversion, 0, 5, 1, 1)
         l_grid1.addWidget(QLabel(), 0, 6, 1, 4)
-        l_grid1.addWidget(btn_form_editor, 0, 10, 1, 2)
-        l_grid1.addWidget(self.l_combo1, 1, 0, 1, 3)
-        l_grid1.addWidget(self.l_combo2, 1, 3, 1, 3)
+        l_grid1.addWidget(btn_form_editor, 0, 7, 1, 1)
 
-        self.box_general = GroupGeneral(self)
-        self.groups_list.append(self.box_general)
+        self.box_files = GroupFiles(self)
+        self.groups_list.append(self.box_files)
         self.box_nwbfile = GroupNwbfile(self)
         self.groups_list.append(self.box_nwbfile)
 
         self.l_vbox1 = QVBoxLayout()
-        self.l_vbox1.addWidget(self.box_general)
+        self.l_vbox1.addWidget(self.box_files)
         self.l_vbox1.addWidget(self.box_nwbfile)
         self.l_vbox1.addStretch()
         scroll_aux = QWidget()
@@ -94,10 +83,10 @@ class Application(QMainWindow):
         self.l_vbox2.addWidget(l_scroll)
 
         # Right-side panel: meta-data text
-        btn_editor_form = QPushButton('Form <- Editor')
+        editor_label = QLabel('Metafile preview:')
         r_grid1 = QGridLayout()
         r_grid1.setColumnStretch(1, 1)
-        r_grid1.addWidget(btn_editor_form, 0, 0, 1, 1)
+        r_grid1.addWidget(editor_label, 0, 0, 1, 1)
         r_grid1.addWidget(QLabel(), 0, 1, 1, 1)
 
         self.editor = QTextEdit()
@@ -182,16 +171,6 @@ class Application(QMainWindow):
             self.l_combo2.removeItem(self.l_combo2.findText(group_name))
             self.l_combo2.setCurrentIndex(0)
             self.l_combo1.addItem(group_name)
-
-
-    def open_meta_file(self):
-        ''' Opens .yml file containing metadata for NWB.'''
-        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file', '', "(*.yml)")
-        if ftype=='(*.yml)':
-            with open(filename) as f:
-                data = yaml.safe_load(f)
-            txt = yaml.dump(data, default_flow_style=False)
-            self.editor.setText(txt)
 
 
     def save_meta_file(self):

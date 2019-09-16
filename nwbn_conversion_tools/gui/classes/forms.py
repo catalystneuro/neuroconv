@@ -2,38 +2,100 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox)
+    QCheckBox, QFileDialog, QStyle)
 from datetime import datetime
 import numpy as np
+import yaml
+import os
 
-class GroupGeneral(QGroupBox):
+class GroupFiles(QGroupBox):
     def __init__(self, parent):
-        """Groupbox for General fields filling form."""
+        """Groupbox for Files fields filling form."""
         super().__init__()
-        self.setTitle('General')
-        self.group_name = 'General'
+        self.setTitle('Files')
+        self.group_name = 'Files'
+        self.parent = parent
 
-        self.lbl_file_path = QLabel('file_path:')
-        self.lin_file_path = QLineEdit('')
-        self.lbl_file_name = QLabel('file_name:')
-        self.lin_file_name = QLineEdit('')
+        self.lbl_source_file = QLabel('source file:')
+        self.lin_source_file = QLineEdit('')
+        self.btn_source_file = QPushButton()
+        self.btn_source_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_source_file.clicked.connect(lambda: self.load_source_file())
+        self.lbl_meta_file = QLabel('meta file:')
+        self.lin_meta_file = QLineEdit('')
+        self.btn_meta_file = QPushButton()
+        self.btn_meta_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_meta_file.clicked.connect(lambda: self.load_meta_file())
+        self.lbl_conversion_script = QLabel('conversion script:')
+        self.lin_conversion_script = QLineEdit('')
+        self.btn_conversion_script = QPushButton()
+        self.btn_conversion_script.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_conversion_script.clicked.connect(lambda: self.load_conversion_script())
+        self.lbl_nwb_file = QLabel('nwb file:')
+        self.lin_nwb_file = QLineEdit('')
+        self.btn_nwb_file = QPushButton()
+        self.btn_nwb_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_nwb_file.clicked.connect(lambda: self.load_nwb_file())
 
         self.grid = QGridLayout()
-        self.grid.setColumnStretch(0, 0)
-        self.grid.setColumnStretch(1, 0)
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_file_path, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_file_path, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_file_name, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_file_name, 1, 2, 1, 4)
-
+        self.grid.setColumnStretch(4, 1)
+        self.grid.addWidget(self.lbl_source_file, 0, 0, 1, 2)
+        self.grid.addWidget(self.btn_source_file, 0, 2, 1, 1)
+        self.grid.addWidget(self.lin_source_file, 0, 3, 1, 3)
+        self.grid.addWidget(self.lbl_meta_file, 1, 0, 1, 2)
+        self.grid.addWidget(self.btn_meta_file, 1, 2, 1, 1)
+        self.grid.addWidget(self.lin_meta_file, 1, 3, 1, 3)
+        self.grid.addWidget(self.lbl_conversion_script, 2, 0, 1, 2)
+        self.grid.addWidget(self.btn_conversion_script, 2, 2, 1, 1)
+        self.grid.addWidget(self.lin_conversion_script, 2, 3, 1, 3)
+        self.grid.addWidget(self.lbl_nwb_file, 3, 0, 1, 2)
+        self.grid.addWidget(self.btn_nwb_file, 3, 2, 1, 1)
+        self.grid.addWidget(self.lin_nwb_file, 3, 3, 1, 3)
         self.setLayout(self.grid)
+
+
+    def load_source_file(self):
+        """Browser to source file location."""
+        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file', '', "(*)")
+        if filename is not None:
+            self.lin_source_file.setText(filename)
+            self.parent.source_files_path = os.path.split(filename)[0]
+
+
+    def load_meta_file(self):
+        '''Browser to .yml file containing metadata for NWB.'''
+        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
+            self.parent.source_files_path, "(*.yml)")
+        if ftype=='(*.yml)':
+            self.lin_meta_file.setText(filename)
+            with open(filename) as f:
+                data = yaml.safe_load(f)
+            txt = yaml.dump(data, default_flow_style=False)
+            self.parent.editor.setText(txt)
+
+
+    def load_conversion_script(self):
+        """Browser to conversion script file location."""
+        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
+            self.parent.source_files_path, "(*py)")
+        if filename is not None:
+            self.lin_conversion_script.setText(filename)
+            self.parent.conversion_script = os.path.split(filename)[1]
+
+
+    def load_nwb_file(self):
+        """Browser to source file location."""
+        filename, ftype = QFileDialog.getSaveFileName(self, 'Save file',
+            self.parent.source_files_path, "(*nwb)")
+        if filename is not None:
+            self.lin_nwb_file.setText(filename)
+
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['file_path'] = self.lin_file_path.text()
-        data['file_name'] = self.lin_file_name.text()
+        #data['file_path'] = self.lin_file_path.text()
+        #data['file_name'] = self.lin_file_name.text()
         return data
 
 
