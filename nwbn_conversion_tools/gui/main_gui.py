@@ -12,7 +12,7 @@ import sys
 
 
 class Application(QMainWindow):
-    def __init__(self):
+    def __init__(self, modules=['files','nwbfile']):
         super().__init__()
 
         self.centralwidget = QWidget()
@@ -21,11 +21,11 @@ class Application(QMainWindow):
         self.setWindowTitle('NWB conversion tool')
 
         #Initialize GUI elements
-        self.init_gui()
+        self.init_gui(modules=modules)
         self.show()
 
 
-    def init_gui(self):
+    def init_gui(self, modules):
         """Initiates GUI elements."""
         mainMenu = self.menuBar()
 
@@ -38,38 +38,35 @@ class Application(QMainWindow):
         self.groups_list = []
 
         # Left-side panel: forms
-        self.l_combo1 = CustomComboBox()
-        self.l_combo1.addItem('-- Add group --')
-        self.l_combo1.addItem('Ophys')
-        self.l_combo1.addItem('Ephys')
-        self.l_combo1.activated.connect(self.add_group)
-        self.l_combo2 = CustomComboBox()
-        self.l_combo2.addItem('-- Del group --')
-        self.l_combo2.activated.connect(self.del_group)
         btn_save_meta = QPushButton('Save metafile')
         btn_save_meta.clicked.connect(lambda: self.save_meta_file())
         btn_run_conversion = QPushButton('Run conversion')
-        #btn_run_conversion.clicked.connect(lambda: self.run_conversion())
+        btn_run_conversion.clicked.connect(lambda: self.run_conversion())
         btn_form_editor = QPushButton('Form -> Editor')
         btn_form_editor.clicked.connect(lambda: self.form_to_editor())
 
         l_grid1 = QGridLayout()
-        l_grid1.setColumnStretch(6, 1)
-        l_grid1.addWidget(self.l_combo1, 0, 0, 1, 2)
-        l_grid1.addWidget(self.l_combo2, 0, 2, 1, 2)
-        l_grid1.addWidget(btn_save_meta, 0, 4, 1, 1)
-        l_grid1.addWidget(btn_run_conversion, 0, 5, 1, 1)
-        l_grid1.addWidget(QLabel(), 0, 6, 1, 4)
-        l_grid1.addWidget(btn_form_editor, 0, 7, 1, 1)
-
-        self.box_files = GroupFiles(self)
-        self.groups_list.append(self.box_files)
-        self.box_nwbfile = GroupNwbfile(self)
-        self.groups_list.append(self.box_nwbfile)
+        l_grid1.setColumnStretch(2, 1)
+        l_grid1.addWidget(btn_save_meta, 0, 0, 1, 1)
+        l_grid1.addWidget(btn_run_conversion, 0, 1, 1, 1)
+        l_grid1.addWidget(QLabel(), 0, 2, 1, 1)
+        l_grid1.addWidget(btn_form_editor, 0, 3, 1, 1)
 
         self.l_vbox1 = QVBoxLayout()
+        self.box_files = GroupFiles(self)
+        self.groups_list.append(self.box_files)
         self.l_vbox1.addWidget(self.box_files)
+        self.box_nwbfile = GroupNwbfile(self)
+        self.groups_list.append(self.box_nwbfile)
         self.l_vbox1.addWidget(self.box_nwbfile)
+        if 'ophys' in modules:
+            self.box_ophys = GroupOphys(self)
+            self.groups_list.append(self.box_ophys)
+            self.l_vbox1.addWidget(self.box_ophys)
+        if 'ephys' in modules:
+            self.box_ephys = GroupEphys(self)
+            self.groups_list.append(self.box_ephys)
+            self.l_vbox1.addWidget(self.box_ephys)
         self.l_vbox1.addStretch()
         scroll_aux = QWidget()
         scroll_aux.setLayout(self.l_vbox1)
@@ -113,68 +110,8 @@ class Application(QMainWindow):
         self.setPalette(p)
 
 
-    def add_group(self):
-        """Adds group form."""
-        group_name = str(self.l_combo1.currentText())
-        nWidgetsVbox = self.l_vbox1.count()
-        if group_name == 'Subject':
-            self.box_subject = GroupSubject(self)
-            self.groups_list.append(self.box_subject)
-            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_subject) #insert before the stretch
-        if group_name == 'Device':
-            self.box_device = GroupDevice(self)
-            self.groups_list.append(self.box_device)
-            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_device) #insert before the stretch
-        if group_name == 'Ophys':
-            self.box_ophys = GroupOphys(self)
-            self.groups_list.append(self.box_ophys)
-            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ophys) #insert before the stretch
-        if group_name == 'Ephys':
-            self.box_ephys = GroupEphys(self)
-            self.groups_list.append(self.box_ephys)
-            self.l_vbox1.insertWidget(nWidgetsVbox-1, self.box_ephys) #insert before the stretch
-        if group_name != '-- Add group --':
-            self.l_combo1.removeItem(self.l_combo1.findText(group_name))
-            self.l_combo1.setCurrentIndex(0)
-            self.l_combo2.addItem(group_name)
-
-
-    def del_group(self):
-        """Deletes group form."""
-        group_name = str(self.l_combo2.currentText())
-        nWidgetsVbox = self.l_vbox1.count()
-        if group_name == 'Subject':
-            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupSubject)
-                            for i in range(nWidgetsVbox)])[0][0]
-            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
-            self.groups_list.remove(self.box_subject)           #deletes list item
-            del self.box_subject                                #deletes attribute
-        if group_name == 'Device':
-            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupDevice)
-                            for i in range(nWidgetsVbox)])[0][0]
-            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
-            self.groups_list.remove(self.box_device)           #deletes list item
-            del self.box_device                                #deletes attribute
-        if group_name == 'Ophys':
-            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupOphys)
-                            for i in range(nWidgetsVbox)])[0][0]
-            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
-            self.groups_list.remove(self.box_ophys)           #deletes list item
-            del self.box_ophys                                #deletes attribute
-        if group_name == 'Ephys':
-            ind = np.where([isinstance(self.l_vbox1.itemAt(i).widget(), GroupEphys)
-                            for i in range(nWidgetsVbox)])[0][0]
-            self.l_vbox1.itemAt(ind).widget().setParent(None) #deletes widget
-            self.groups_list.remove(self.box_ephys)           #deletes list item
-            del self.box_ephys                                #deletes attribute
-        if group_name != '-- Del group --':
-            self.l_combo2.removeItem(self.l_combo2.findText(group_name))
-            self.l_combo2.setCurrentIndex(0)
-            self.l_combo1.addItem(group_name)
-
-
     def save_meta_file(self):
-        ''' Saves metadata to .yml file.'''
+        """Saves metadata to .yml file."""
         filename, _ = QFileDialog.getSaveFileName(self, 'Save file', '', "(*.yml)")
         if filename:
             data = {}
@@ -182,6 +119,11 @@ class Application(QMainWindow):
                 data[grp.group_name] = grp.read_fields()
             with open(filename, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False)
+
+
+    def run_conversion(self):
+        """Runs conversion script."""
+        pass
 
 
     def form_to_editor(self):
@@ -226,14 +168,14 @@ if __name__ == '__main__':
     #    fname = None
     #else:
     #    fname = sys.argv[1]
-    ex = Application()
+    ex = Application(modules=['files','nwbfile', 'ophys'])
     sys.exit(app.exec_())
 
 
-def main(filename=None):  # If it was imported as a module
+def main(modules=['files','nwbfile']):  # If it was imported as a module
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  #instantiate a QtGui (holder for the app)
-    ex = Application()
+    ex = Application(modules=['files','nwbfile'])
     sys.exit(app.exec_())

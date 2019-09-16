@@ -1050,11 +1050,6 @@ class GroupOphys(QGroupBox):
         self.combo2.setCurrentIndex(0)
         self.combo2.activated.connect(lambda: self.del_group('combo'))
 
-        self.lbl_f1 = QLabel('field1:')
-        self.lin_f1 = QLineEdit('')
-        self.lin_f1.setPlaceholderText("field_name")
-        self.lin_f1.setToolTip("tooltip")
-
         self.vbox1 = QVBoxLayout()
         self.vbox1.addStretch()
 
@@ -1062,9 +1057,7 @@ class GroupOphys(QGroupBox):
         self.grid.setColumnStretch(5, 1)
         self.grid.addWidget(self.combo1, 1, 0, 1, 2)
         self.grid.addWidget(self.combo2, 1, 2, 1, 2)
-        self.grid.addWidget(self.lbl_f1, 2, 0, 1, 2)
-        self.grid.addWidget(self.lin_f1, 2, 2, 1, 4)
-        self.grid.addLayout(self.vbox1, 3, 0, 1, 6)
+        self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
         # Initiate with some sub-groups
