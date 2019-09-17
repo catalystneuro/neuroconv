@@ -259,73 +259,37 @@ class GroupBehavioralEvents(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('BehavioralEvents'+str(nInstances))
 
-        # Mandatory field: we fill it with default values
-        self.lbl_mandatory = QLabel('mandatory:')
-        self.lin_mandatory = QLineEdit('ABC123')
-        self.lin_mandatory.setToolTip("This is a mandatory field.")
-
-        # Optional field: we leave a placeholder text as example
-        self.lbl_optional = QLabel('optional:')
-        self.lin_optional = QLineEdit('')
-        self.lin_optional.setPlaceholderText("example")
-        self.lin_optional.setToolTip("This is an optional field.")
-
-        # Field with link to other objects. This type of field needs to be
-        # updated with self.refresh_objects_references()
-        self.lbl_link = QLabel('link:')
-        self.combo_link = CustomComboBox()
-        self.combo_link.setToolTip("This field links to existing objects.")
-
-        # Field that should be handled by conversion script
-        self.lbl_script = QLabel('script:')
-        self.chk_script = QCheckBox("Get from source file")
-        self.chk_script.setChecked(False)
-        self.chk_script.setToolTip("This field will be handled by conversion script.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
+        self.lbl_time_series = QLabel('time_series:')
+        self.combo_time_series = CustomComboBox()
+        self.combo_time_series.setToolTip("TimeSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_mandatory, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_mandatory, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_optional, 2, 0, 1, 2)
-        self.grid.addWidget(self.lin_optional, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_link, 3, 0, 1, 2)
-        self.grid.addWidget(self.combo_link, 3, 2, 1, 4)
-        self.grid.addWidget(self.lbl_script, 4, 0, 1, 2)
-        self.grid.addWidget(self.chk_script, 4, 2, 1, 2)
+        self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_link.clear()
+        self.combo_time_series.clear()
         for grp in self.parent.groups_list:
-            if isinstance(grp, GroupCustomExample):
-                self.combo_link.addItem(grp.lin_name.text())
+            if isinstance(grp, GroupTimeSeries):
+                self.combo_time_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['mandatory'] = self.lin_mandatory.text()
-        data['optional'] = self.lin_optional.text()
-        data['link'] = self.combo_link.currentText()
-        if self.chk_script.isChecked():
-            data['script'] = True
+        data['time_series'] = self.combo_time_series.currentText()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.lin_mandatory.setText(data['mandatory'])
-        if 'optional' in data:
-            self.lin_optional.setText(data['optional'])
-        self.combo_link.clear()
-        self.combo_link.addItem(data['link'])
-        if 'script' in data:
-            self.chk_script.setChecked(True)
+        self.combo_time_series.clear()
+        self.combo_time_series.addItem(data['time_series'])
 
 
 
@@ -438,8 +402,10 @@ class GroupBehavior(QGroupBox):
         self.combo1.addItem('-- Add group --')
         self.combo1.addItem('Device')
         self.combo1.addItem('IntervalSeries')
+        self.combo1.addItem('TimeSeries')
         self.combo1.addItem('SpatialSeries')
         self.combo1.addItem('BehavioralEpochs')
+        self.combo1.addItem('BehavioralEvents')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -465,10 +431,14 @@ class GroupBehavior(QGroupBox):
             item = GroupDevice(self)
         elif group_type == 'IntervalSeries':
             item = GroupIntervalSeries(self)
+        elif group_type == 'TimeSeries':
+            item = GroupTimeSeries(self)
         elif group_type == 'SpatialSeries':
             item = GroupSpatialSeries(self)
         elif group_type == 'BehavioralEpochs':
             item = GroupBehavioralEpochs(self)
+        elif group_type =='BehavioralEvents':
+            item = GroupBehavioralEvents(self)
         if group_type != '-- Add group --':
             if write_data is not None:
                 item.write_fields(data=write_data)
