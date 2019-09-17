@@ -209,35 +209,47 @@ class Application(QMainWindow):
             self.lin_nwb_file.setText(filename)
 
 
+    def clean_groups(self):
+        """Removes all groups widgets."""
+        for grp in self.groups_list:
+            nWidgetsVbox = self.l_vbox1.count()
+            for i in range(nWidgetsVbox):
+                if self.l_vbox1.itemAt(i) is not None:
+                    if grp == self.l_vbox1.itemAt(i).widget():
+                        self.l_vbox1.itemAt(i).widget().setParent(None)            #deletes widget
+        self.groups_list = []                        #deletes all list items
+
+
     def update_forms(self):
         """Updates forms fields with values in metadata."""
+        self.clean_groups()
         for grp in self.metadata:
             if grp == 'NWBFile':
-                self.box_nwbfile = GroupNwbfile(self)
-                self.box_nwbfile.write_fields(data=self.metadata['NWBFile'])
-                self.groups_list.append(self.box_nwbfile)
-                self.l_vbox1.addWidget(self.box_nwbfile)
+                item = GroupNwbfile(self)
+                item.write_fields(data=self.metadata['NWBFile'])
+                self.groups_list.append(item)
+                self.l_vbox1.addWidget(item)
             if grp == 'Ophys':
-                self.box_ophys = GroupOphys(self)
-                self.groups_list.append(self.box_ophys)
-                self.l_vbox1.addWidget(self.box_ophys)
-                for subgroup in self.metadata['Ophys']:
-                    self.box_ophys.add_group(group_type=subgroup,
-                                             write_data=self.metadata['Ophys'][subgroup])
+                item = GroupOphys(self)
+                for subgroup in self.metadata[grp]:
+                    item.add_group(group_type=subgroup,
+                                   write_data=self.metadata[grp][subgroup])
+                self.groups_list.append(item)
+                self.l_vbox1.addWidget(item)
             if grp == 'Ephys':
-                self.box_ephys = GroupEphys(self)
-                self.groups_list.append(self.box_ephys)
-                self.l_vbox1.addWidget(self.box_ephys)
-                for subgroup in self.metadata['Ephys']:
-                    self.box_ephys.add_group(group_type=subgroup,
-                                             write_data=self.metadata['Ephys'][subgroup])
+                item = GroupEphys(self)
+                for subgroup in self.metadata[grp]:
+                    item.add_group(group_type=subgroup,
+                                   write_data=self.metadata[grp][subgroup])
+                self.groups_list.append(item)
+                self.l_vbox1.addWidget(item)
             if grp == 'Behavior':
-                self.box_behavior = GroupBehavior(self)
-                self.groups_list.append(self.box_behavior)
-                self.l_vbox1.addWidget(self.box_behavior)
-                for subgroup in self.metadata['Behavior']:
-                    self.box_behavior.add_group(group_type=subgroup,
-                                                write_data=self.metadata['Behavior'][subgroup])
+                item = GroupBehavior(self)
+                for subgroup in self.metadata[grp]:
+                    item.add_group(group_type=subgroup,
+                                   write_data=self.metadata[grp][subgroup])
+                self.groups_list.append(item)
+                self.l_vbox1.addWidget(item)
 
 
     def about(self):
