@@ -1444,6 +1444,72 @@ class GroupFluorescence(QGroupBox):
 
 
 
+class GroupGrayscaleVolume(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for GrayscaleVolume fields filling form."""
+        super().__init__()
+        self.setTitle('GrayscaleVolume')
+        self.parent = parent
+        self.group_name = 'GrayscaleVolume'
+
+        self.lbl_name = QLabel('name:')
+        self.lin_name = QLineEdit('GrayscaleVolume')
+        self.lin_name.setToolTip("The unique name of this group.")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupGrayscaleVolume):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('GrayscaleVolume'+str(nInstances))
+
+        self.lbl_data = QLabel('data:')
+        self.chk_data = QCheckBox("Get from source file")
+        self.chk_data.setChecked(True)
+        self.chk_data.setToolTip("Dataset for this volumetric image.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.lbl_spatial_scale = QLabel('spatial_scale:')
+        self.chk_spatial_scale = QCheckBox("Get from source file")
+        self.chk_spatial_scale.setChecked(False)
+        self.chk_spatial_scale.setToolTip("Spatial scale for this volumetric image.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
+        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
+        self.grid.addWidget(self.lbl_spatial_scale, 2, 0, 1, 2)
+        self.grid.addWidget(self.chk_spatial_scale, 2, 2, 1, 2)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        pass
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        if self.chk_data.isChecked():
+            data['data'] = True
+        if self.chk_spatial_scale.isChecked():
+            data['spatial_scale'] = True
+        return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        if 'data' in data:
+            self.chk_data.setChecked(True)
+        if 'spatial_scale' in data:
+            self.chk_spatial_scale.setChecked(True)
+
+
+
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ophys module fields filling form."""
@@ -1465,6 +1531,7 @@ class GroupOphys(QGroupBox):
         self.combo1.addItem('RoiResponseSeries')
         self.combo1.addItem('DfOverF')
         self.combo1.addItem('Fluorescence')
+        self.combo1.addItem('GrayscaleVolume')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -1509,6 +1576,8 @@ class GroupOphys(QGroupBox):
             item = GroupDfOverF(self)
         elif group_type == 'Fluorescence':
             item = GroupFluorescence(self)
+        elif group_type = 'GrayscaleVolume':
+            item = GroupGrayscaleVolume(self)
         if group_type != '-- Add group --':
             if write_data is not None:
                 item.write_fields(data=write_data)
