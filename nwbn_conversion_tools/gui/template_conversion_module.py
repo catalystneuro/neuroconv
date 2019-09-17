@@ -1,7 +1,7 @@
 from pynwb import NWBFile, NWBHDF5IO, ProcessingModule
 
 
-def conversion_function(f_source, f_nwb, meta):
+def conversion_function(f_source, f_nwb, metafile):
     """
     A template conversion function that can be executed from GUI.
 
@@ -14,6 +14,7 @@ def conversion_function(f_source, f_nwb, meta):
     meta : str
         Path to .yml meta data file
     """
+    
     print('Source files:')
     for f in f_source:
         print(f)

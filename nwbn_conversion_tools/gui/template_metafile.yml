@@ -1,0 +1,22 @@
+NWBFile:
+  data_collection: ''
+  experiment_description: propagation of action potentials in the squid giant axon
+  experimenter: Alan Lloyd Hodgkin, Andrew Fielding Huxley
+  identifier: ABC123
+  institution: My University
+  keywords:
+  - action potential
+  - ion channels
+  - mathematical model
+  lab: My lab
+  notes: ''
+  pharmacology: ''
+  protocol: ''
+  related_pubications: ''
+  session_description: session_description
+  session_id: ID01234
+  session_start_time: 2019-09-16 17:10:00
+  slices: ''
+  stimulus_notes: ''
+  surgery: ''
+  virus: ''
