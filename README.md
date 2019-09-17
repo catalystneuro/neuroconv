@@ -19,9 +19,12 @@ After activating the correct environment, nwbn_conversion_tools GUI can be impor
 ```python
 from nwbn_conversion_tools.gui.main_gui import main
 
-main()
-```
+metafile = 'metafile.yml'
+conversion_module = 'conversion_module.py'
 
+main(metafile=metafile, conversion_module=conversion_module)
+```
+[Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/nwbn_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
 
 
 ## optical physiology
