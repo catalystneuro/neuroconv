@@ -14,10 +14,11 @@ import sys
 
 
 class Application(QMainWindow):
-    def __init__(self, modules=[]):
+    def __init__(self, metafile=None, conversion_module=''):
         super().__init__()
         self.source_files_path = os.getcwd()
         self.f_source = ''
+        self.conversion_module_path = conversion_module
 
         self.centralwidget = QWidget()
         self.setCentralWidget(self.centralwidget)
@@ -25,13 +26,19 @@ class Application(QMainWindow):
         self.setWindowTitle('NWB conversion tool')
 
         #Initialize GUI elements
-        self.init_gui(modules=modules)
+        self.init_gui()
+        self.load_meta_file(filename=metafile)
         self.show()
 
 
-    def init_gui(self, modules):
+    def init_gui(self):
         """Initiates GUI elements."""
         mainMenu = self.menuBar()
+
+        fileMenu = mainMenu.addMenu('File')
+        action_choose_conversion = QAction('Choose conversion module', self)
+        fileMenu.addAction(action_choose_conversion)
+        action_choose_conversion.triggered.connect(lambda: self.load_conversion_module())
 
         helpMenu = mainMenu.addMenu('Help')
         action_about = QAction('About', self)
@@ -49,21 +56,16 @@ class Application(QMainWindow):
         btn_form_editor = QPushButton('Form -> Editor')
         btn_form_editor.clicked.connect(lambda: self.form_to_editor())
 
-        self.lbl_source_file = QLabel('source files:')
-        self.lin_source_file = QLineEdit('')
-        self.btn_source_file = QPushButton()
-        self.btn_source_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_source_file.clicked.connect(lambda: self.load_source_files())
         self.lbl_meta_file = QLabel('meta file:')
         self.lin_meta_file = QLineEdit('')
         self.btn_meta_file = QPushButton()
         self.btn_meta_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
         self.btn_meta_file.clicked.connect(lambda: self.load_meta_file())
-        self.lbl_conversion_module = QLabel('conversion module:')
-        self.lin_conversion_module = QLineEdit('')
-        self.btn_conversion_module = QPushButton()
-        self.btn_conversion_module.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_conversion_module.clicked.connect(lambda: self.load_conversion_module())
+        self.lbl_source_file = QLabel('source files:')
+        self.lin_source_file = QLineEdit('')
+        self.btn_source_file = QPushButton()
+        self.btn_source_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_source_file.clicked.connect(lambda: self.load_source_files())
         self.lbl_nwb_file = QLabel('nwb file:')
         self.lin_nwb_file = QLineEdit('')
         self.btn_nwb_file = QPushButton()
@@ -76,33 +78,17 @@ class Application(QMainWindow):
         l_grid1.addWidget(btn_run_conversion, 0, 1, 1, 1)
         l_grid1.addWidget(QLabel(), 0, 2, 1, 2)
         l_grid1.addWidget(btn_form_editor, 0, 4, 1, 2)
-        l_grid1.addWidget(self.lbl_source_file, 1, 0, 1, 2)
-        l_grid1.addWidget(self.lin_source_file, 1, 2, 1, 3)
-        l_grid1.addWidget(self.btn_source_file, 1, 5, 1, 1)
-        l_grid1.addWidget(self.lbl_meta_file, 2, 0, 1, 2)
-        l_grid1.addWidget(self.lin_meta_file, 2, 2, 1, 3)
-        l_grid1.addWidget(self.btn_meta_file, 2, 5, 1, 1)
-        l_grid1.addWidget(self.lbl_conversion_module, 3, 0, 1, 2)
-        l_grid1.addWidget(self.lin_conversion_module, 3, 2, 1, 3)
-        l_grid1.addWidget(self.btn_conversion_module, 3, 5, 1, 1)
-        l_grid1.addWidget(self.lbl_nwb_file, 4, 0, 1, 2)
-        l_grid1.addWidget(self.lin_nwb_file, 4, 2, 1, 3)
-        l_grid1.addWidget(self.btn_nwb_file, 4, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_meta_file, 1, 0, 1, 2)
+        l_grid1.addWidget(self.lin_meta_file, 1, 2, 1, 3)
+        l_grid1.addWidget(self.btn_meta_file, 1, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_source_file, 2, 0, 1, 2)
+        l_grid1.addWidget(self.lin_source_file, 2, 2, 1, 3)
+        l_grid1.addWidget(self.btn_source_file, 2, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_nwb_file, 3, 0, 1, 2)
+        l_grid1.addWidget(self.lin_nwb_file, 3, 2, 1, 3)
+        l_grid1.addWidget(self.btn_nwb_file, 3, 5, 1, 1)
 
         self.l_vbox1 = QVBoxLayout()
-        self.box_nwbfile = GroupNwbfile(self)
-        self.groups_list.append(self.box_nwbfile)
-        self.l_vbox1.addWidget(self.box_nwbfile)
-        if 'ophys' in modules:
-            self.box_ophys = GroupOphys(self)
-            self.groups_list.append(self.box_ophys)
-            self.l_vbox1.addWidget(self.box_ophys)
-            for subgroup in modules['ophys']:
-                self.box_ophys.add_group(group_type=subgroup)
-        if 'ephys' in modules:
-            self.box_ephys = GroupEphys(self)
-            self.groups_list.append(self.box_ephys)
-            self.l_vbox1.addWidget(self.box_ephys)
         self.l_vbox1.addStretch()
         scroll_aux = QWidget()
         scroll_aux.setLayout(self.l_vbox1)
@@ -160,7 +146,7 @@ class Application(QMainWindow):
     def run_conversion(self):
         """Runs conversion function."""
         try:
-            mod_file = self.lin_conversion_module.text()
+            mod_file = self.conversion_module_path
             spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
             conv_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(conv_module)
@@ -192,16 +178,19 @@ class Application(QMainWindow):
             self.f_source = filenames
 
 
-    def load_meta_file(self):
+    def load_meta_file(self, filename=None):
         '''Browser to .yml file containing metadata for NWB.'''
-        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
-            self.source_files_path, "(*.yml)")
-        if ftype=='(*.yml)':
-            self.lin_meta_file.setText(filename)
-            with open(filename) as f:
-                data = yaml.safe_load(f)
-            txt = yaml.dump(data, default_flow_style=False)
-            self.editor.setText(txt)
+        if filename is None:
+            filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
+                self.source_files_path, "(*.yml)")
+            if ftype!='(*.yml)':
+                return
+        self.lin_meta_file.setText(filename)
+        with open(filename) as f:
+            self.metadata = yaml.safe_load(f)
+        txt = yaml.dump(self.metadata, default_flow_style=False)
+        self.editor.setText(txt)
+        self.update_forms()
 
 
     def load_conversion_module(self):
@@ -209,7 +198,7 @@ class Application(QMainWindow):
         filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
             self.source_files_path, "(*py)")
         if filename is not None:
-            self.lin_conversion_module.setText(filename)
+            self.conversion_module_path = filename
 
 
     def load_nwb_file(self):
@@ -218,6 +207,37 @@ class Application(QMainWindow):
             self.source_files_path, "(*nwb)")
         if filename is not None:
             self.lin_nwb_file.setText(filename)
+
+
+    def update_forms(self):
+        """Updates forms fields with values in metadata."""
+        for grp in self.metadata:
+            if grp == 'NWBFile':
+                self.box_nwbfile = GroupNwbfile(self)
+                self.box_nwbfile.write_fields(data=self.metadata['NWBFile'])
+                self.groups_list.append(self.box_nwbfile)
+                self.l_vbox1.addWidget(self.box_nwbfile)
+            if grp == 'Ophys':
+                self.box_ophys = GroupOphys(self)
+                self.groups_list.append(self.box_ophys)
+                self.l_vbox1.addWidget(self.box_ophys)
+                for subgroup in self.metadata['Ophys']:
+                    self.box_ophys.add_group(group_type=subgroup,
+                                             write_data=self.metadata['Ophys'][subgroup])
+            if grp == 'Ephys':
+                self.box_ephys = GroupEphys(self)
+                self.groups_list.append(self.box_ephys)
+                self.l_vbox1.addWidget(self.box_ephys)
+                for subgroup in self.metadata['Ephys']:
+                    self.box_ephys.add_group(group_type=subgroup,
+                                             write_data=self.metadata['Ephys'][subgroup])
+            if grp == 'Behavior':
+                self.box_behavior = GroupBehavior(self)
+                self.groups_list.append(self.box_behavior)
+                self.l_vbox1.addWidget(self.box_behavior)
+                for subgroup in self.metadata['Behavior']:
+                    self.box_behavior.add_group(group_type=subgroup,
+                                                write_data=self.metadata['Behavior'][subgroup])
 
 
     def about(self):
@@ -257,10 +277,10 @@ if __name__ == '__main__':
     sys.exit(app.exec_())
 
 
-def main(modules=[]):  # If it was imported as a module
+def main(metafile=None, conversion_module=''):  # If it was imported as a module
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  #instantiate a QtGui (holder for the app)
-    ex = Application(modules=modules)
+    ex = Application(metafile=metafile, conversion_module=conversion_module)
     sys.exit(app.exec_())

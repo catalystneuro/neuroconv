@@ -184,6 +184,44 @@ class GroupNwbfile(QGroupBox):
         data['stimulus_notes'] = self.lin_stimulus_notes.text()
         return data
 
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_session_description.setText(data['session_description'])
+        self.lin_identifier.setText(data['identifier'])
+        str_datetime = data['session_start_time'].strftime('%d/%m/%Y, %H:%M')
+        self.lin_session_start_time1.setText(str_datetime.split(',')[0])
+        self.lin_session_start_time2.setText(str_datetime.split(',')[1].strip())
+        if 'experimenter' in data:
+            self.lin_experimenter.setText(data['experimenter'])
+        if 'experiment_description' in data:
+            self.lin_experiment_description.setText(data['experiment_description'])
+        if 'session_id' in data:
+            self.lin_session_id.setText(data['session_id'])
+        if 'institution' in data:
+            self.lin_institution.setText(data['institution'])
+        if 'lab' in data:
+            self.lin_lab.setText(data['lab'])
+        if 'keywords' in data:
+            self.lin_keywords.setText(','.join(str(x) for x in data['keywords']))
+        if 'notes' in data:
+            self.lin_notes.setText(data['notes'])
+        if 'pharmacology' in data:
+            self.lin_pharmacology.setText(data['pharmacology'])
+        if 'protocol' in data:
+            self.lin_protocol.setText(data['protocol'])
+        if 'related_pubications' in data:
+            self.lin_related_pubications.setText(data['related_pubications'])
+        if 'slices' in data:
+            self.lin_slices.setText(data['slices'])
+        if 'data_collection' in data:
+            self.lin_data_collection.setText(data['data_collection'])
+        if 'surgery' in data:
+            self.lin_surgery.setText(data['surgery'])
+        if 'virus' in data:
+            self.lin_virus.setText(data['virus'])
+        if 'stimulus_notes' in data:
+            self.lin_stimulus_notes.setText(data['stimulus_notes'])
+
 
 
 class GroupSubject(QGroupBox):
@@ -272,6 +310,25 @@ class GroupSubject(QGroupBox):
             data['date_of_birth'] = ''
         return data
 
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        if 'age' in data:
+            self.lin_age.setText(data['age'])
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
+        if 'genotype' in data:
+            self.lin_genotype.setText(data['genotype'])
+        if 'sex' in data:
+            self.lin_sex.aetText(data['sex'])
+        if 'species' in data:
+            self.lin_species.setText(data['species'])
+        if 'subject_id' in data:
+            self.lin_subject_id.setText(data['subject_id'])
+        if 'weight' in data:
+            self.lin_weight.setText(data['weight'])
+        if 'date_of_birth' in data:
+            self.lin_date_of_birth.setText(data['date_of_birth'].strftime("%d/%m/%Y"))
+
 
 
 class GroupDevice(QGroupBox):
@@ -308,6 +365,10 @@ class GroupDevice(QGroupBox):
         data = {}
         data['name'] = self.lin_name.text()
         return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
 
 
 
@@ -363,6 +424,12 @@ class GroupOpticalChannel(QGroupBox):
             data['emission_lambda'] = 0.0
             print("'emission_lambda' must be a float")
         return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.lin_description.setText(data['description'])
+        self.lin_emission_lambda.setText(str(data['emission_lambda']))
 
 
 
@@ -502,6 +569,28 @@ class GroupImagingPlane(QGroupBox):
         data['unit'] = self.lin_unit.text()
         data['reference_frame'] = self.lin_reference_frame.text()
         return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.combo_optical_channel.clear()
+        self.combo_optical_channel.addItem(data['optical_channel'])
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
+        self.combo_device.clear()
+        self.combo_device.addItem(data['device'])
+        self.lin_excitation_lambda.setText(str(data['excitation_lambda']))
+        self.lin_imaging_rate.setText(str(data['imaging_rate']))
+        self.lin_indicator.setText(str(data['indicator']))
+        self.lin_location.setText(str(data['location']))
+        if 'manifold' in data:
+            self.chk_manifold.setChecked(True)
+        if 'conversion' in data:
+            self.lin_conversion.setText(str(data['conversion']))
+        if 'unit' in data:
+            self.lin_unit.setText(data['unit'])
+        if 'reference_frame' in data:
+            self.lin_reference_frame.setText(data['reference_frame'])
 
 
 
@@ -750,6 +839,54 @@ class GroupTwoPhotonSeries(QGroupBox):
             data['control_description'] = True
         return data
 
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.combo_imaging_plane.clear()
+        self.combo_imaging_plane.addItem(data['imaging_plane'])
+        if 'data' in data:
+            self.chk_data.setChecked(True)
+        if 'unit' in data:
+            self.lin_unit.setText(data['unit'])
+        if 'format' in data:
+            self.lin_format.setText(data['format'])
+        if 'field_of_view' in data:
+            self.chk_field_of_view.setChecked(True)
+        if 'pmt_gain' in data:
+            self.lin_pmt_gain.setText(str(data['pmt_gain']))
+        if 'scan_line_rate' in data:
+            self.lin_scan_line_rate.setText(str(data['scan_line_rate']))
+        if 'external_file' in data:
+            self.lin_format.setText('external')
+            self.lin_external_file.setText(data['external_file'])
+            self.chk_starting_frame.setChecked(False)
+        else:
+            self.lin_format.setText('')
+            self.lin_external_file.setText('')
+            self.chk_starting_frame.setChecked(True)
+        if 'bits_per_pixel' in data:
+            self.lin_bits_per_pixel.setText(str(data['bits_per_pixel']))
+        if 'dimension' in data:
+            self.lin_dimension.setText(",".join(str(x) for x in data['dimension']))
+        if 'resolution'in data:
+            self.lin_resolution.setText(str(data['resolution']))
+        if 'conversion' in data:
+            self.lin_conversion.setText(str(data['conversion']))
+        if 'timestamps' in data:
+            self.chk_timestamps.setChecked(True)
+        if 'starting_time' in data:
+            self.chk_starting_time.setChecked(True)
+        if 'rate' in data:
+            self.chk_rate.setChecked(True)
+        if 'comments' in data:
+            self.lin_comments.setText(data['comments'])
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
+        if 'control' in data:
+            self.chk_control.setChecked(True)
+        if 'control_description' in data:
+            self.chk_control_description.setChecked(True)
+
 
 
 class GroupCorrectedImageStack(QGroupBox):
@@ -819,6 +956,16 @@ class GroupCorrectedImageStack(QGroupBox):
             data['xy_translation'] = True
         return data
 
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        if 'corrected' in data:
+            self.chk_corrected.setChecked(True)
+        self.combo_original.clear()
+        self.combo_original.addItem(data['original'])
+        if 'xy_translation' in data:
+            self.chk_xy_translation.setChecked(True)
+
 
 
 class GroupMotionCorrection(QGroupBox):
@@ -864,6 +1011,12 @@ class GroupMotionCorrection(QGroupBox):
         data['name'] = self.lin_name.text()
         data['corrected_images_stacks'] = str(self.combo_corrected_images_stacks.currentText())
         return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.combo_corrected_images_stacks.clear()
+        self.combo_corrected_images_stacks.addItem(data['corrected_images_stacks'])
 
 
 
@@ -931,6 +1084,16 @@ class GroupPlaneSegmentation(QGroupBox):
             data['reference_images'] = True
         return data
 
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
+        self.combo_imaging_plane.clear()
+        self.combo_imaging_plane.addItem(data['imaging_plane'])
+        if 'reference_images' in data:
+            self.chk_reference_images.setChecked(True)
+
 
 
 class GroupImageSegmentation(QGroupBox):
@@ -978,6 +1141,12 @@ class GroupImageSegmentation(QGroupBox):
         data['name'] = self.lin_name.text()
         data['plane_segmentations'] = str(self.combo_plane_segmentations.currentText())
         return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.combo_plane_segmentations.clear()
+        self.combo_plane_segmentations.addItem(data['plane_segmentations'])
 
 
 
@@ -1141,6 +1310,34 @@ class GroupRoiResponseSeries(QGroupBox):
             data['control_description'] = True
         return data
 
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        if 'data' in data:
+            self.chk_data.setChecked(True)
+        if 'unit' in data:
+            self.lin_unit.setText(data['unit'])
+        if 'rois' in data:
+            self.chk_rois.setChecked(True)
+        if 'resolution' in data:
+            self.lin_resolution.setText(str(data['resolution']))
+        if 'conversion' in data:
+            self.lin_conversion.setText(str(data['conversion']))
+        if 'timestamps' in data:
+            self.chk_timestamps.setChecked(True)
+        if 'starting_time' in data:
+            self.chk_starting_time.setChecked(True)
+        if 'rate' in data:
+            self.chk_rate.setChecked(True)
+        if 'comments' in data:
+            self.lin_comments.setText(data['comments'])
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
+        if 'control' in data:
+            self.chk_control.setChecked(True)
+        if 'control_description' in data:
+            self.chk_control_description.setChecked(True)
+
 
 
 class GroupDfOverF(QGroupBox):
@@ -1186,6 +1383,12 @@ class GroupDfOverF(QGroupBox):
         data['name'] = self.lin_name.text()
         data['roi_response_series'] = str(self.combo_roi_response_series.currentText())
         return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.combo_roi_response_series.clear()
+        self.combo_roi_response_series.addItem(data['roi_response_series'])
 
 
 
@@ -1233,6 +1436,12 @@ class GroupFluorescence(QGroupBox):
         data['roi_response_series'] = str(self.combo_roi_response_series.currentText())
         return data
 
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.combo_roi_response_series.clear()
+        self.combo_roi_response_series.addItem(data['roi_response_series'])
+
 
 
 class GroupOphys(QGroupBox):
@@ -1273,12 +1482,8 @@ class GroupOphys(QGroupBox):
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-        # Initiate with some sub-groups
-        #self.add_group(group_type='Device')
-        #self.add_group(group_type='OpticalChannel')
-        #self.add_group(group_type='ImagingPlane')
 
-    def add_group(self, group_type):
+    def add_group(self, group_type, write_data=None):
         """Adds group form."""
         if group_type=='combo':
             group_type = str(self.combo1.currentText())
@@ -1305,6 +1510,8 @@ class GroupOphys(QGroupBox):
         elif group_type == 'Fluorescence':
             item = GroupFluorescence(self)
         if group_type != '-- Add group --':
+            if write_data is not None:
+                item.write_fields(data=write_data)
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
@@ -1467,6 +1674,18 @@ class GroupCustomExample(QGroupBox):
         if self.chk_script.isChecked():
             data['script'] = True
         return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.lin_mandatory.setText(data['mandatory'])
+        if 'optional' in data:
+            self.lin_optional.setText(data['optional'])
+        self.combo_link.clear()
+        self.combo_link.addItem(data['link'])
+        if 'script' in data:
+            self.chk_script.setChecked(True)
+
 
 
 class CustomComboBox(QComboBox):
