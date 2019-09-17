@@ -411,7 +411,7 @@ class GroupCustomExample(QGroupBox):
         # Field with link to other objects. This type of field needs to be
         # updated with self.refresh_objects_references()
         self.lbl_link = QLabel('link:')
-        self.combo_link = QComboBox()
+        self.combo_link = CustomComboBox()
         self.combo_link.setToolTip("This field links to existing objects.")
 
         # Field that should be handled by conversion script

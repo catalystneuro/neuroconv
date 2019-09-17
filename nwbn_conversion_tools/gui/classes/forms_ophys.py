@@ -91,7 +91,7 @@ class GroupImagingPlane(QGroupBox):
             self.lin_name.setText('ImagingPlane'+str(nImPl))
 
         self.lbl_optical_channel = QLabel('optical_channel:')
-        self.combo_optical_channel = QComboBox()
+        self.combo_optical_channel = CustomComboBox()
         self.combo_optical_channel.setToolTip("One of possibly many groups storing "
             "channelspecific data")
 
@@ -100,7 +100,7 @@ class GroupImagingPlane(QGroupBox):
         self.lin_description.setToolTip("Description of this ImagingPlane")
 
         self.lbl_device = QLabel('device:')
-        self.combo_device = QComboBox()
+        self.combo_device = CustomComboBox()
         self.combo_device.setToolTip("The device that was used to record")
 
         self.lbl_excitation_lambda = QLabel('excitation_lambda:')
@@ -252,7 +252,7 @@ class GroupTwoPhotonSeries(QGroupBox):
             self.lin_name.setText('TwoPhotonSeries'+str(nTPS))
 
         self.lbl_imaging_plane = QLabel('imaging_plane:')
-        self.combo_imaging_plane = QComboBox()
+        self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("Imaging plane class/pointer")
 
         self.lbl_data = QLabel('data:')
@@ -554,7 +554,7 @@ class GroupCorrectedImageStack(QGroupBox):
             "\nUncheck box to ignore it.")
 
         self.lbl_original = QLabel('original:')
-        self.combo_original = QComboBox()
+        self.combo_original = CustomComboBox()
         self.combo_original.setToolTip("Link to image series that is being registered.")
 
         self.lbl_xy_translation = QLabel('xy_translation:')
@@ -626,7 +626,7 @@ class GroupMotionCorrection(QGroupBox):
             self.lin_name.setText('MotionCorrection'+str(nInstances))
 
         self.lbl_corrected_images_stacks = QLabel('corrected_images:')
-        self.combo_corrected_images_stacks = QComboBox()
+        self.combo_corrected_images_stacks = CustomComboBox()
         self.combo_corrected_images_stacks.setToolTip("CorrectedImageStack to store in this interface.")
 
         self.grid = QGridLayout()
@@ -683,7 +683,7 @@ class GroupPlaneSegmentation(QGroupBox):
             "wavelength, depth, etc.")
 
         self.lbl_imaging_plane = QLabel('imaging_plane:')
-        self.combo_imaging_plane = QComboBox()
+        self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("The ImagingPlane this ROI applies to.")
 
         self.lbl_reference_images = QLabel('reference_images:')
@@ -756,7 +756,7 @@ class GroupImageSegmentation(QGroupBox):
             self.lin_name.setText('ImageSegmentation'+str(nInstances))
 
         self.lbl_plane_segmentations = QLabel('plane_segmentations:')
-        self.combo_plane_segmentations = QComboBox()
+        self.combo_plane_segmentations = CustomComboBox()
         self.combo_plane_segmentations.setToolTip("PlaneSegmentation to store in this interface.")
 
         self.grid = QGridLayout()
@@ -998,7 +998,7 @@ class GroupDfOverF(QGroupBox):
             self.lin_name.setText('DfOverF'+str(nInstances))
 
         self.lbl_roi_response_series = QLabel('roi_response_series:')
-        self.combo_roi_response_series = QComboBox()
+        self.combo_roi_response_series = CustomComboBox()
         self.combo_roi_response_series.setToolTip("RoiResponseSeries to store in this interface")
 
         self.grid = QGridLayout()
@@ -1050,7 +1050,7 @@ class GroupFluorescence(QGroupBox):
             self.lin_name.setText('Fluorescence'+str(nInstances))
 
         self.lbl_roi_response_series = QLabel('roi_response_series:')
-        self.combo_roi_response_series = QComboBox()
+        self.combo_roi_response_series = CustomComboBox()
         self.combo_roi_response_series.setToolTip("RoiResponseSeries to store in this interface")
 
         self.grid = QGridLayout()
