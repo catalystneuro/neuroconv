@@ -4,8 +4,10 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
     QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout, QGridLayout,
     QSplitter, QLabel, QFileDialog, QGroupBox, QMessageBox, QComboBox,
     QScrollArea, QStyle)
-from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile,
-    GroupOphys, GroupEphys, GroupSubject, GroupDevice)
+from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
+from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
+from nwbn_conversion_tools.gui.classes.forms_ephys import GroupEphys
+from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
 import numpy as np
 import importlib
 import yaml
