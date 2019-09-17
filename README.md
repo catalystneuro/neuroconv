@@ -24,7 +24,7 @@ conversion_module = 'conversion_module.py'
 
 main(metafile=metafile, conversion_module=conversion_module)
 ```
-[Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/nwbn_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
+[Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/master/nwbn_conversion_tools) you can find templates for `metafile.yml` and `conversion_module.py`.
 
 
 ## optical physiology
