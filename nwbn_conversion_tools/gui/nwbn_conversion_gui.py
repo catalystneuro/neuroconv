@@ -25,7 +25,7 @@ class Application(QMainWindow):
         self.centralwidget = QWidget()
         self.setCentralWidget(self.centralwidget)
         self.resize(1200, 900)
-        self.setWindowTitle('NWB conversion tool')
+        self.setWindowTitle('NWB:N conversion tools')
 
         #Initialize GUI elements
         self.init_gui()
@@ -292,7 +292,8 @@ if __name__ == '__main__':
     sys.exit(app.exec_())
 
 
-def main(metafile=None, conversion_module=''):  # If it was imported as a module
+# If it is imported as a module
+def nwbn_conversion_gui(metafile=None, conversion_module=''):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
