@@ -17,12 +17,12 @@ $ pip install git+https://github.com/NeurodataWithoutBorders/nwbn-conversion-too
 ## GUI
 After activating the correct environment, nwbn_conversion_tools GUI can be imported and run from the python interpreter.
 ```python
-from nwbn_conversion_tools.gui.main_gui import main
+from nwbn_conversion_tools.gui.nwbn_conversion_gui import nwbn_conversion_gui
 
 metafile = 'metafile.yml'
 conversion_module = 'conversion_module.py'
 
-main(metafile=metafile, conversion_module=conversion_module)
+nwbn_conversion_gui(metafile=metafile, conversion_module=conversion_module)
 ```
 [Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/master/nwbn_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
 
