@@ -124,6 +124,69 @@ class GroupIntervalSeries(QGroupBox):
 
 
 
+class GroupUnits(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.misc.Units fields filling form."""
+        super().__init__()
+        self.setTitle('Units')
+        self.parent = parent
+        self.group_name = 'Units'
+
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lin_name = QLineEdit('Units')
+        self.lin_name.setToolTip("The unique name of this Units interface")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupUnits):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('Units'+str(nInstances))
+
+        self.lbl_id = QLabel('id:')
+        self.chk_id = QCheckBox("Get from source file")
+        self.chk_id.setChecked(False)
+        self.chk_id.setToolTip("The identifiers for the units stored in this interface.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.lbl_description = QLabel('description:')
+        self.lin_description = QLineEdit('')
+        self.lin_description.setPlaceholderText("description")
+        self.lin_description.setToolTip("A description of what is in this table")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_id, 1, 0, 1, 2)
+        self.grid.addWidget(self.chk_id, 1, 2, 1, 2)
+        self.grid.addWidget(self.lbl_description, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 2, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        pass
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['description'] = self.lin_description.text()
+        if self.chk_id.isChecked():
+            data['id'] = True
+        return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
+        if 'id' in data:
+            self.chk_id.setChecked(True)
+
+
+
 class GroupDecompositionSeries(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.misc.DecompositionSeries fields filling form."""
