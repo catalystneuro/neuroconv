@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox, QFileDialog, QStyle)
+    QCheckBox, QFileDialog, QStyle, QMessageBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from datetime import datetime
 import numpy as np
@@ -50,7 +50,6 @@ class GroupEphys(QGroupBox):
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-
     def add_group(self, group_type, write_data=None):
         """Adds group form."""
         if group_type=='combo':
@@ -95,16 +94,37 @@ class GroupEphys(QGroupBox):
         if group_name=='combo':
             group_name = str(self.combo2.currentText())
         if group_name != '-- Del group --':
-            nWidgetsVbox = self.vbox1.count()
-            for i in range(nWidgetsVbox):
-                if self.vbox1.itemAt(i) is not None:
-                    if (hasattr(self.vbox1.itemAt(i).widget(), 'lin_name')) and \
-                        (self.vbox1.itemAt(i).widget().lin_name.text()==group_name):
-                        self.groups_list.remove(self.vbox1.itemAt(i).widget())   #deletes list item
-                        self.vbox1.itemAt(i).widget().setParent(None)            #deletes widget
-                        self.combo2.removeItem(self.combo2.findText(group_name))
-                        self.combo2.setCurrentIndex(0)
-                        self.refresh_children()
+            # Tests if any other group references this one
+            if self.is_referenced(grp_unique_name=group_name):
+                QMessageBox.warning(self, "Cannot delete subgroup",
+                                    group_name+" is being referenced by another subgroup(s).\n"
+                                    "You should remove any references of "+group_name+" before "
+                                    "deleting it!")
+                self.combo2.setCurrentIndex(0)
+            else:
+                nWidgetsVbox = self.vbox1.count()
+                for i in range(nWidgetsVbox):
+                    if self.vbox1.itemAt(i) is not None:
+                        if hasattr(self.vbox1.itemAt(i).widget(), 'lin_name'):
+                            if self.vbox1.itemAt(i).widget().lin_name.text()==group_name:
+                                self.groups_list.remove(self.vbox1.itemAt(i).widget())   #deletes list item
+                                self.vbox1.itemAt(i).widget().setParent(None)            #deletes widget
+                                self.combo2.removeItem(self.combo2.findText(group_name))
+                                self.combo2.setCurrentIndex(0)
+                                self.refresh_children()
+
+    def is_referenced(self, grp_unique_name):
+        """Tests if a group is being referenced any other groups. Returns boolean."""
+        nWidgetsVbox = self.vbox1.count()
+        for i in range(nWidgetsVbox):
+            if self.vbox1.itemAt(i).widget() is not None:
+                other_grp = self.vbox1.itemAt(i).widget()
+                # check if this subgroup has any ComboBox referencing grp_unique_name
+                for ch in other_grp.children():
+                    if isinstance(ch,(CustomComboBox,QComboBox)):
+                        if ch.currentText() == grp_unique_name:
+                            return True
+        return False
 
     def refresh_children(self):
         """Refreshes references with existing objects in child groups."""

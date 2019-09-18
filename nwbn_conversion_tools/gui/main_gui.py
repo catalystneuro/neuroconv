@@ -152,7 +152,8 @@ class Application(QMainWindow):
             spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
             conv_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(conv_module)
-            conv_module.conversion_function(f_source=self.f_source,
+            f_sources = tuple(self.f_source)    # multiple source files
+            conv_module.conversion_function(*f_sources,
                                             f_nwb=self.lin_nwb_file.text(),
                                             metafile=self.lin_meta_file.text())
         except Exception as error:
