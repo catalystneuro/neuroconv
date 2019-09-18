@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
     QCheckBox, QFileDialog, QStyle, QMessageBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
+from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
 from nwbn_conversion_tools.gui.utils.configs import *
 from datetime import datetime
 import numpy as np
@@ -768,6 +769,7 @@ class GroupEphys(QGroupBox):
         self.combo1.addItem('LFP')
         self.combo1.addItem('FilteredEphys')
         self.combo1.addItem('FeatureExtraction')
+        self.combo1.addItem('DecompositionSeries')
         self.combo1.setCurrentIndex(0)
         self.combo1.activated.connect(lambda: self.add_group('combo'))
         self.combo2 = CustomComboBox()
@@ -807,6 +809,8 @@ class GroupEphys(QGroupBox):
             item = GroupFilteredEphys(self)
         elif group_type == 'FeatureExtraction':
             item = GroupFeatureExtraction(self)
+        elif group_type == 'DecompositionSeries':
+            item = GroupDecompositionSeries(self)
         if group_type != '-- Add group --':
             if write_data is not None:
                 item.write_fields(data=write_data)
