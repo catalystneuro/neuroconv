@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
     QCheckBox, QFileDialog, QStyle, QMessageBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
+from nwbn_conversion_tools.gui.utils.configs import *
 from datetime import datetime
 import numpy as np
 import yaml

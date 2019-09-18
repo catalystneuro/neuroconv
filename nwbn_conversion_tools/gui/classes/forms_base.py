@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
     QCheckBox)
+from nwbn_conversion_tools.gui.utils.configs import *
 from datetime import datetime
 import numpy as np
 import yaml
@@ -18,7 +19,7 @@ class GroupTimeSeries(QGroupBox):
         self.parent = parent
         self.group_name = 'TimeSeries'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TimeSeries')
         self.lin_name.setToolTip("The unique name of this TimeSeries dataset")
         nInstances = 0

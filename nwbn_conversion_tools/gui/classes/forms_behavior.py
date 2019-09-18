@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
     QCheckBox, QFileDialog, QStyle, QMessageBox)
+from nwbn_conversion_tools.gui.utils.configs import *
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupIntervalSeries
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
@@ -20,7 +21,7 @@ class GroupSpatialSeries(QGroupBox):
         self.parent = parent
         self.group_name = 'SpatialSeries'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('SpatialSeries')
         self.lin_name.setToolTip("The name of this SpatialSeries dataset.")
         nInstances = 0
@@ -30,14 +31,14 @@ class GroupSpatialSeries(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('SpatialSeries'+str(nInstances))
 
-        self.lbl_data = QLabel('data:')
+        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
         self.chk_data.setToolTip("The data this SpatialSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
-        self.lbl_reference_frame = QLabel('reference_frame:')
+        self.lbl_reference_frame = QLabel('reference_frame<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_reference_frame = QLineEdit('reference frame')
         self.lin_reference_frame.setToolTip("Description defining what the zero-position is")
 
@@ -194,7 +195,7 @@ class GroupBehavioralEpochs(QGroupBox):
         self.parent = parent
         self.group_name = 'BehavioralEpochs'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('BehavioralEpochs')
         self.lin_name.setToolTip("The unique name of this BehavioralEpochs")
         nInstances = 0
@@ -246,7 +247,7 @@ class GroupBehavioralEvents(QGroupBox):
         self.parent = parent
         self.group_name = 'BehavioralEvents'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('BehavioralEvents')
         self.lin_name.setToolTip("The unique name of this BehavioralEvents")
         nInstances = 0
@@ -298,7 +299,7 @@ class GroupBehavioralTimeSeries(QGroupBox):
         self.parent = parent
         self.group_name = 'BehavioralTimeSeries'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('BehavioralTimeSeries')
         self.lin_name.setToolTip("The unique name of this BehavioralTimeSeries")
         nInstances = 0
@@ -350,7 +351,7 @@ class GroupPupilTracking(QGroupBox):
         self.parent = parent
         self.group_name = 'PupilTracking'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('PupilTracking')
         self.lin_name.setToolTip("The unique name of this PupilTracking")
         nInstances = 0
@@ -402,7 +403,7 @@ class GroupEyeTracking(QGroupBox):
         self.parent = parent
         self.group_name = 'EyeTracking'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('EyeTracking')
         self.lin_name.setToolTip("The unique name of this EyeTracking")
         nInstances = 0
@@ -454,7 +455,7 @@ class GroupCompassDirection(QGroupBox):
         self.parent = parent
         self.group_name = 'CompassDirection'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('CompassDirection')
         self.lin_name.setToolTip("The unique name of this CompassDirection")
         nInstances = 0
@@ -506,7 +507,7 @@ class GroupPosition(QGroupBox):
         self.parent = parent
         self.group_name = 'Position'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Position')
         self.lin_name.setToolTip("The unique name of this Position")
         nInstances = 0

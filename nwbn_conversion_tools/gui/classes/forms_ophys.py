@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
     QCheckBox, QFileDialog, QStyle, QMessageBox)
+from nwbn_conversion_tools.gui.utils.configs import *
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from datetime import datetime
 import numpy as np
@@ -19,7 +20,7 @@ class GroupOpticalChannel(QGroupBox):
         self.parent = parent
         self.group_name = 'OpticalChannel'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('OpticalChannel')
         self.lin_name.setToolTip("the name of this optical channel")
         nOptCh = 0
@@ -29,11 +30,11 @@ class GroupOpticalChannel(QGroupBox):
         if nOptCh > 0:
             self.lin_name.setText('OpticalChannel'+str(nOptCh))
 
-        self.lbl_description = QLabel('description:')
+        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
         self.lin_description.setToolTip("Any notes or comments about the channel")
 
-        self.lbl_emission_lambda = QLabel('emission_lambda:')
+        self.lbl_emission_lambda = QLabel('emission_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_emission_lambda = QLineEdit('0.0')
         self.lin_emission_lambda.setToolTip("Emission lambda for channel")
 
@@ -80,7 +81,7 @@ class GroupImagingPlane(QGroupBox):
         self.parent = parent
         self.group_name = 'ImagingPlane'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImagingPlane')
         self.lin_name.setToolTip("The name of this ImagingPlane")
         nImPl = 0
@@ -90,32 +91,32 @@ class GroupImagingPlane(QGroupBox):
         if nImPl > 0:
             self.lin_name.setText('ImagingPlane'+str(nImPl))
 
-        self.lbl_optical_channel = QLabel('optical_channel:')
+        self.lbl_optical_channel = QLabel('optical_channel<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_optical_channel = CustomComboBox()
         self.combo_optical_channel.setToolTip("One of possibly many groups storing "
             "channelspecific data")
 
-        self.lbl_description = QLabel('description:')
+        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
         self.lin_description.setToolTip("Description of this ImagingPlane")
 
-        self.lbl_device = QLabel('device:')
+        self.lbl_device = QLabel('device<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_device = CustomComboBox()
         self.combo_device.setToolTip("The device that was used to record")
 
-        self.lbl_excitation_lambda = QLabel('excitation_lambda:')
+        self.lbl_excitation_lambda = QLabel('excitation_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_excitation_lambda = QLineEdit('0.0')
         self.lin_excitation_lambda.setToolTip("Excitation wavelength in nm")
 
-        self.lbl_imaging_rate = QLabel('imaging_rate:')
+        self.lbl_imaging_rate = QLabel('imaging_rate<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_imaging_rate = QLineEdit('0.0')
         self.lin_imaging_rate.setToolTip("Rate images are acquired, in Hz")
 
-        self.lbl_indicator = QLabel('indicator:')
+        self.lbl_indicator = QLabel('indicator<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_indicator = QLineEdit('indicator')
         self.lin_indicator.setToolTip("Calcium indicator")
 
-        self.lbl_location = QLabel('location:')
+        self.lbl_location = QLabel('location<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_location = QLineEdit('location')
         self.lin_location.setToolTip("Location of image plane")
 
@@ -241,7 +242,7 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.parent = parent
         self.group_name = 'TwoPhotonSeries'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TwoPhotonSeries')
         self.lin_name.setToolTip("The name of this TimeSeries dataset")
         nTPS = 0
@@ -251,7 +252,7 @@ class GroupTwoPhotonSeries(QGroupBox):
         if nTPS > 0:
             self.lin_name.setText('TwoPhotonSeries'+str(nTPS))
 
-        self.lbl_imaging_plane = QLabel('imaging_plane:')
+        self.lbl_imaging_plane = QLabel('imaging_plane<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("Imaging plane class/pointer")
 
@@ -536,7 +537,7 @@ class GroupCorrectedImageStack(QGroupBox):
         self.parent = parent
         self.group_name = 'CorrectedImageStack'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('CorrectedImageStack')
         self.lin_name.setToolTip("The name of this CorrectedImageStack container")
         nInstances = 0
@@ -546,18 +547,18 @@ class GroupCorrectedImageStack(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('CorrectedImageStack'+str(nInstances))
 
-        self.lbl_corrected = QLabel('corrected:')
+        self.lbl_corrected = QLabel('corrected<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_corrected = QCheckBox("Get from source file")
         self.chk_corrected.setChecked(True)
         self.chk_corrected.setToolTip("Image stack with frames shifted to the common "
             "coordinates.\nCheck box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
-        self.lbl_original = QLabel('original:')
+        self.lbl_original = QLabel('original<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_original = CustomComboBox()
         self.combo_original.setToolTip("Link to image series that is being registered.")
 
-        self.lbl_xy_translation = QLabel('xy_translation:')
+        self.lbl_xy_translation = QLabel('xy_translation<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_xy_translation = QCheckBox("Get from source file")
         self.chk_xy_translation.setChecked(True)
         self.chk_xy_translation.setToolTip("Stores the x,y delta necessary to align "
@@ -615,7 +616,7 @@ class GroupMotionCorrection(QGroupBox):
         self.parent = parent
         self.group_name = 'MotionCorrection'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('MotionCorrection')
         self.lin_name.setToolTip("The name of this MotionCorrection container")
         nInstances = 0
@@ -667,7 +668,7 @@ class GroupPlaneSegmentation(QGroupBox):
         self.parent = parent
         self.group_name = 'PlaneSegmentation'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('PlaneSegmentation')
         self.lin_name.setToolTip("The name of this PlaneSegmentation.")
         nInstances = 0
@@ -677,12 +678,12 @@ class GroupPlaneSegmentation(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('PlaneSegmentation'+str(nInstances))
 
-        self.lbl_description = QLabel('description:')
+        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
         self.lin_description.setToolTip(" Description of image plane, recording "
             "wavelength, depth, etc.")
 
-        self.lbl_imaging_plane = QLabel('imaging_plane:')
+        self.lbl_imaging_plane = QLabel('imaging_plane<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("The ImagingPlane this ROI applies to.")
 
@@ -743,9 +744,7 @@ class GroupImageSegmentation(QGroupBox):
         self.parent = parent
         self.group_name = 'ImageSegmentation'
 
-        # Name: it has a special treatment, since it need to be unique we test
-        # if the parent contain other objects of the same type
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImageSegmentation')
         self.lin_name.setToolTip("The name of this ImageSegmentation.")
         nInstances = 0
@@ -797,9 +796,7 @@ class GroupRoiResponseSeries(QGroupBox):
         self.parent = parent
         self.group_name = 'RoiResponseSeries'
 
-        # Name: it has a special treatment, since it need to be unique we test
-        # if the parent contain other objects of the same type
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('RoiResponseSeries')
         self.lin_name.setToolTip("The name of this RoiResponseSeries dataset.")
         nInstances = 0
@@ -809,18 +806,18 @@ class GroupRoiResponseSeries(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('RoiResponseSeries'+str(nInstances))
 
-        self.lbl_data = QLabel('data:')
+        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
         self.chk_data.setToolTip("The data this TimeSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
-        self.lbl_unit = QLabel('unit:')
+        self.lbl_unit = QLabel('unit<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_unit = QLineEdit('NA')
         self.lin_unit.setToolTip("The base unit of measurement (should be SI unit)")
 
-        self.lbl_rois = QLabel('rois:')
+        self.lbl_rois = QLabel('rois<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_rois = QCheckBox("Get from source file")
         self.chk_rois.setChecked(True)
         self.chk_rois.setToolTip("A table region corresponding to the ROIs that "
@@ -987,7 +984,7 @@ class GroupDfOverF(QGroupBox):
         self.parent = parent
         self.group_name = 'DfOverF'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DfOverF')
         self.lin_name.setToolTip("The name of this DfOverF.")
         nInstances = 0
@@ -1039,7 +1036,7 @@ class GroupFluorescence(QGroupBox):
         self.parent = parent
         self.group_name = 'Fluorescence'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Fluorescence')
         self.lin_name.setToolTip("The name of this Fluorescence.")
         nInstances = 0
@@ -1091,7 +1088,7 @@ class GroupGrayscaleVolume(QGroupBox):
         self.parent = parent
         self.group_name = 'GrayscaleVolume'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('GrayscaleVolume')
         self.lin_name.setToolTip("The unique name of this group.")
         nInstances = 0
@@ -1101,7 +1098,7 @@ class GroupGrayscaleVolume(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('GrayscaleVolume'+str(nInstances))
 
-        self.lbl_data = QLabel('data:')
+        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
         self.chk_data.setToolTip("Dataset for this volumetric image.\n"

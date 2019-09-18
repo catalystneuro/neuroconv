@@ -3,6 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
     QCheckBox, QFileDialog, QStyle)
+from nwbn_conversion_tools.gui.utils.configs import *
 from datetime import datetime
 import numpy as np
 import yaml
@@ -16,16 +17,16 @@ class GroupNwbfile(QGroupBox):
         self.setTitle('NWBFile')
         self.group_name = 'NWBFile'
 
-        self.lbl_session_description = QLabel('session_description:')
+        self.lbl_session_description = QLabel('session_description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_session_description = QLineEdit("session_description")
         self.lin_session_description.setToolTip("a description of the session where "
             "this data was generated")
 
-        self.lbl_identifier = QLabel('identifier:')
+        self.lbl_identifier = QLabel('identifier<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_identifier = QLineEdit("ABC123")
         self.lin_identifier.setToolTip("a unique text identifier for the file")
 
-        self.lbl_session_start_time = QLabel('session_start_time:')
+        self.lbl_session_start_time = QLabel('session_start_time<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_session_start_time1 = QLineEdit(datetime.now().strftime("%d/%m/%Y"))
         self.lin_session_start_time1.setToolTip("the start date and time of the recording session")
         self.lin_session_start_time2 = QLineEdit(datetime.now().strftime("%H:%M"))
@@ -339,7 +340,7 @@ class GroupDevice(QGroupBox):
         self.parent = parent
         self.group_name = 'Device'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Device')
         self.lin_name.setToolTip("the name pof this device")
         nDevices = 0
@@ -387,7 +388,7 @@ class GroupCustomExample(QGroupBox):
 
         # Name: it has a special treatment, since it need to be unique we test
         # if the parent contain other objects of the same type
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('CustomName')
         self.lin_name.setToolTip("The unique name of this group.")
         nInstances = 0
@@ -398,7 +399,7 @@ class GroupCustomExample(QGroupBox):
             self.lin_name.setText('CustomName'+str(nInstances))
 
         # Mandatory field: we fill it with default values
-        self.lbl_mandatory = QLabel('mandatory:')
+        self.lbl_mandatory = QLabel('mandatory<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_mandatory = QLineEdit('ABC123')
         self.lin_mandatory.setToolTip("This is a mandatory field.")
 
