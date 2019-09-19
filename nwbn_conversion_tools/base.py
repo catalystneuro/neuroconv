@@ -15,14 +15,17 @@ nwbfile = NWBFile('my first synthetic recording', 'EXAMPLE_ID', datetime.now(tzl
 
 class Convert2NWB:
 
-    def __init__(self, nwbfile):
+    def __init__(self, nwbfile=None, metadata={}):
         """
 
         Parameters
         ----------
         nwbfile: pynwb.NWBFile
         """
-        self.nwbfile = nwbfile
+        if nwbfile is None:
+            self.nwbfile = NWBFile(**metadata['NWBFile'])
+        else:
+            self.nwbfile = nwbfile
 
     def save(self, to_path):
         """

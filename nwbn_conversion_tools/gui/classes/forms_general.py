@@ -83,10 +83,10 @@ class GroupNwbfile(QGroupBox):
         self.lin_protocol.setToolTip("Experimental protocol, if applicable. E.g."
             " include IACUC protocol")
 
-        self.lbl_related_pubications = QLabel("related pubications:")
-        self.lin_related_pubications = QLineEdit('')
-        self.lin_related_pubications.setPlaceholderText("related_pubications")
-        self.lin_related_pubications.setToolTip("Publication information. PMID,"
+        self.lbl_related_publications = QLabel("related publications:")
+        self.lin_related_publications = QLineEdit('')
+        self.lin_related_publications.setPlaceholderText("related_publications")
+        self.lin_related_publications.setToolTip("Publication information. PMID,"
             " DOI, URL, etc. If multiple, concatenate together \nand describe"
             " which is which")
 
@@ -146,8 +146,8 @@ class GroupNwbfile(QGroupBox):
         grid.addWidget(self.lin_pharmacology, 10, 2, 1, 4)
         grid.addWidget(self.lbl_protocol, 11, 0, 1, 2)
         grid.addWidget(self.lin_protocol, 11, 2, 1, 4)
-        grid.addWidget(self.lbl_related_pubications, 12, 0, 1, 2)
-        grid.addWidget(self.lin_related_pubications, 12, 2, 1, 4)
+        grid.addWidget(self.lbl_related_publications, 12, 0, 1, 2)
+        grid.addWidget(self.lin_related_publications, 12, 2, 1, 4)
         grid.addWidget(self.lbl_slices, 13, 0, 1, 2)
         grid.addWidget(self.lin_slices, 13, 2, 1, 4)
         grid.addWidget(self.lbl_data_collection, 14, 0, 1, 2)
@@ -178,7 +178,7 @@ class GroupNwbfile(QGroupBox):
         data['notes'] = self.lin_notes.text()
         data['pharmacology'] = self.lin_pharmacology.text()
         data['protocol'] = self.lin_protocol.text()
-        data['related_pubications'] = self.lin_related_pubications.text()
+        data['related_publications'] = self.lin_related_publications.text()
         data['slices'] = self.lin_slices.text()
         data['data_collection'] = self.lin_data_collection.text()
         data['surgery'] = self.lin_surgery.text()
@@ -211,8 +211,8 @@ class GroupNwbfile(QGroupBox):
             self.lin_pharmacology.setText(data['pharmacology'])
         if 'protocol' in data:
             self.lin_protocol.setText(data['protocol'])
-        if 'related_pubications' in data:
-            self.lin_related_pubications.setText(data['related_pubications'])
+        if 'related_publications' in data:
+            self.lin_related_publications.setText(data['related_publications'])
         if 'slices' in data:
             self.lin_slices.setText(data['slices'])
         if 'data_collection' in data:
