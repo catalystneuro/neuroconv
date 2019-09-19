@@ -32,8 +32,10 @@ class EphysAcquisition2NWB(Convert2NWB):
             print(es_name+' already exists in current NWBFile.')
             return es
         else:  # ElectricalSeries can be created in acquisition
-            electrode_group = self.add_electrode_group(eg_name=metadata['ElectrodeGroup']['name'],
-                                                       metadata=metadata)
+            electrode_group = self.add_electrode_group(
+                eg_name=metadata['ElectrodeGroup']['name'],
+                metadata=metadata
+            )
 
             nChannels = self.RX.get_num_channels()
             electrode_table_region = self.nwbfile.create_electrode_table_region(
