@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QCheckBox, QFileDialog, QStyle)
 from nwbn_conversion_tools.gui.utils.configs import *
 from datetime import datetime
+from itertools import groupby
 import numpy as np
 import yaml
 import os
@@ -15,7 +16,7 @@ class GroupNwbfile(QGroupBox):
         """Groupbox for NWBFile fields filling form."""
         super().__init__()
         self.setTitle('NWBFile')
-        self.group_name = 'NWBFile'
+        self.group_type = 'NWBFile'
 
         self.lbl_session_description = QLabel('session_description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_session_description = QLineEdit("session_description")
@@ -230,7 +231,7 @@ class GroupSubject(QGroupBox):
         """Groupbox for 'pynwb.file.Subject' fields filling form."""
         super().__init__()
         self.setTitle('Subject')
-        self.group_name = 'Subject'
+        self.group_type = 'Subject'
 
         self.lbl_age = QLabel('age:')
         self.lin_age = QLineEdit('')
@@ -338,7 +339,7 @@ class GroupDevice(QGroupBox):
         super().__init__()
         self.setTitle('Device')
         self.parent = parent
-        self.group_name = 'Device'
+        self.group_type = 'Device'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Device')
@@ -384,7 +385,7 @@ class GroupCustomExample(QGroupBox):
         super().__init__()
         self.setTitle('CustomName')
         self.parent = parent
-        self.group_name = 'CustomName'
+        self.group_type = 'CustomName'
 
         # Name: it has a special treatment, since it need to be unique we test
         # if the parent contain other objects of the same type

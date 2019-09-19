@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
     QCheckBox)
 from nwbn_conversion_tools.gui.utils.configs import *
 from datetime import datetime
+from itertools import groupby
 import numpy as np
 import yaml
 import os
@@ -17,7 +18,7 @@ class GroupTimeSeries(QGroupBox):
         super().__init__()
         self.setTitle('TimeSeries')
         self.parent = parent
-        self.group_name = 'TimeSeries'
+        self.group_type = 'TimeSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TimeSeries')

@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
 from nwbn_conversion_tools.gui.utils.configs import *
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
 from datetime import datetime
+from itertools import groupby
 import numpy as np
 import yaml
 import os
@@ -18,7 +19,7 @@ class GroupIntervalSeries(QGroupBox):
         super().__init__()
         self.setTitle('IntervalSeries')
         self.parent = parent
-        self.group_name = 'IntervalSeries'
+        self.group_type = 'IntervalSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('IntervalSeries')
@@ -130,7 +131,7 @@ class GroupUnits(QGroupBox):
         super().__init__()
         self.setTitle('Units')
         self.parent = parent
-        self.group_name = 'Units'
+        self.group_type = 'Units'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Units')
@@ -193,7 +194,7 @@ class GroupDecompositionSeries(QGroupBox):
         super().__init__()
         self.setTitle('DecompositionSeries')
         self.parent = parent
-        self.group_name = 'DecompositionSeries'
+        self.group_type = 'DecompositionSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DecompositionSeries')

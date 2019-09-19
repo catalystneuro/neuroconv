@@ -18,4 +18,8 @@ dependencies:
 - hdmf
 - pyyaml
 - pip:
+  - spikeextractors
+  - spikesorters
+  - spiketoolkit
+  - herdingspikes
   - -e .

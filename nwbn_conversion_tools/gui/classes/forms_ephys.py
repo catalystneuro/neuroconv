@@ -7,6 +7,7 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
 from nwbn_conversion_tools.gui.utils.configs import *
 from datetime import datetime
+from itertools import groupby
 import numpy as np
 import yaml
 import os
@@ -18,7 +19,7 @@ class GroupElectrodeGroup(QGroupBox):
         super().__init__()
         self.setTitle('ElectrodeGroup')
         self.parent = parent
-        self.group_name = 'ElectrodeGroup'
+        self.group_type = 'ElectrodeGroup'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ElectrodeGroup')
@@ -86,7 +87,7 @@ class GroupElectricalSeries(QGroupBox):
         super().__init__()
         self.setTitle('ElectricalSeries')
         self.parent = parent
-        self.group_name = 'ElectricalSeries'
+        self.group_type = 'ElectricalSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ElectricalSeries')
@@ -264,7 +265,7 @@ class GroupSpikeEventSeries(QGroupBox):
         super().__init__()
         self.setTitle('SpikeEventSeries')
         self.parent = parent
-        self.group_name = 'SpikeEventSeries'
+        self.group_type = 'SpikeEventSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('SpikeEventSeries')
@@ -415,7 +416,7 @@ class GroupEventDetection(QGroupBox):
         super().__init__()
         self.setTitle('EventDetection')
         self.parent = parent
-        self.group_name = 'EventDetection'
+        self.group_type = 'EventDetection'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('EventDetection')
@@ -503,7 +504,7 @@ class GroupEventWaveform(QGroupBox):
         super().__init__()
         self.setTitle('EventWaveform')
         self.parent = parent
-        self.group_name = 'EventWaveform'
+        self.group_type = 'EventWaveform'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('EventWaveform')
@@ -555,7 +556,7 @@ class GroupLFP(QGroupBox):
         super().__init__()
         self.setTitle('LFP')
         self.parent = parent
-        self.group_name = 'LFP'
+        self.group_type = 'LFP'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('LFP')
@@ -619,7 +620,7 @@ class GroupFilteredEphys(QGroupBox):
         super().__init__()
         self.setTitle('FilteredEphys')
         self.parent = parent
-        self.group_name = 'FilteredEphys'
+        self.group_type = 'FilteredEphys'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('FilteredEphys')
@@ -671,7 +672,7 @@ class GroupFeatureExtraction(QGroupBox):
         super().__init__()
         self.setTitle('FeatureExtraction')
         self.parent = parent
-        self.group_name = 'FeatureExtraction'
+        self.group_type = 'FeatureExtraction'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('FeatureExtraction')
@@ -752,10 +753,10 @@ class GroupFeatureExtraction(QGroupBox):
 
 class GroupEphys(QGroupBox):
     def __init__(self, parent):
-        """Groupbox for Ophys module fields filling form."""
+        """Groupbox for Ephys module fields filling form."""
         super().__init__()
-        self.setTitle('Ophys')
-        self.group_name = 'Ophys'
+        self.setTitle('Ephys')
+        self.group_type = 'Ephys'
         self.groups_list = []
 
         self.combo1 = CustomComboBox()
@@ -875,8 +876,19 @@ class GroupEphys(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
+        # group_type counts, if there are multiple groups of same type, they are saved in a list
+        grp_types = [grp.group_type for grp in self.groups_list]
+        grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
+        # initiate lists as values for groups keys with count > 1
+        for k, v in grp_type_count.items():
+            if v > 1:
+                data[k] = []
+        # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            data[grp.group_name] = grp.read_fields()
+            if grp_type_count[grp.group_type] > 1:
+                data[grp.group_type].append(grp.read_fields())
+            else:
+                data[grp.group_type] = grp.read_fields()
         return data
 
 

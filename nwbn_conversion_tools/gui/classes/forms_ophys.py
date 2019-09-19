@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
 from nwbn_conversion_tools.gui.utils.configs import *
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from datetime import datetime
+from itertools import groupby
 import numpy as np
 import yaml
 import os
@@ -18,7 +19,7 @@ class GroupOpticalChannel(QGroupBox):
         super().__init__()
         self.setTitle('OpticalChannel')
         self.parent = parent
-        self.group_name = 'OpticalChannel'
+        self.group_type = 'OpticalChannel'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('OpticalChannel')
@@ -79,7 +80,7 @@ class GroupImagingPlane(QGroupBox):
         super().__init__()
         self.setTitle('ImagingPlane')
         self.parent = parent
-        self.group_name = 'ImagingPlane'
+        self.group_type = 'ImagingPlane'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImagingPlane')
@@ -240,7 +241,7 @@ class GroupTwoPhotonSeries(QGroupBox):
         super().__init__()
         self.setTitle('TwoPhotonSeries')
         self.parent = parent
-        self.group_name = 'TwoPhotonSeries'
+        self.group_type = 'TwoPhotonSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TwoPhotonSeries')
@@ -535,7 +536,7 @@ class GroupCorrectedImageStack(QGroupBox):
         super().__init__()
         self.setTitle('CorrectedImageStack')
         self.parent = parent
-        self.group_name = 'CorrectedImageStack'
+        self.group_type = 'CorrectedImageStack'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('CorrectedImageStack')
@@ -614,7 +615,7 @@ class GroupMotionCorrection(QGroupBox):
         super().__init__()
         self.setTitle('MotionCorrection')
         self.parent = parent
-        self.group_name = 'MotionCorrection'
+        self.group_type = 'MotionCorrection'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('MotionCorrection')
@@ -666,7 +667,7 @@ class GroupPlaneSegmentation(QGroupBox):
         super().__init__()
         self.setTitle('PlaneSegmentation')
         self.parent = parent
-        self.group_name = 'PlaneSegmentation'
+        self.group_type = 'PlaneSegmentation'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('PlaneSegmentation')
@@ -742,7 +743,7 @@ class GroupImageSegmentation(QGroupBox):
         super().__init__()
         self.setTitle('ImageSegmentation')
         self.parent = parent
-        self.group_name = 'ImageSegmentation'
+        self.group_type = 'ImageSegmentation'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImageSegmentation')
@@ -794,7 +795,7 @@ class GroupRoiResponseSeries(QGroupBox):
         super().__init__()
         self.setTitle('RoiResponseSeries')
         self.parent = parent
-        self.group_name = 'RoiResponseSeries'
+        self.group_type = 'RoiResponseSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('RoiResponseSeries')
@@ -982,7 +983,7 @@ class GroupDfOverF(QGroupBox):
         super().__init__()
         self.setTitle('DfOverF')
         self.parent = parent
-        self.group_name = 'DfOverF'
+        self.group_type = 'DfOverF'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DfOverF')
@@ -1034,7 +1035,7 @@ class GroupFluorescence(QGroupBox):
         super().__init__()
         self.setTitle('Fluorescence')
         self.parent = parent
-        self.group_name = 'Fluorescence'
+        self.group_type = 'Fluorescence'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Fluorescence')
@@ -1086,7 +1087,7 @@ class GroupGrayscaleVolume(QGroupBox):
         super().__init__()
         self.setTitle('GrayscaleVolume')
         self.parent = parent
-        self.group_name = 'GrayscaleVolume'
+        self.group_type = 'GrayscaleVolume'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('GrayscaleVolume')
@@ -1152,7 +1153,7 @@ class GroupOphys(QGroupBox):
         """Groupbox for Ophys module fields filling form."""
         super().__init__()
         self.setTitle('Ophys')
-        self.group_name = 'Ophys'
+        self.group_type = 'Ophys'
         self.groups_list = []
 
         self.combo1 = CustomComboBox()
@@ -1279,8 +1280,19 @@ class GroupOphys(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
+        # group_type counts, if there are multiple groups of same type, they are saved in a list
+        grp_types = [grp.group_type for grp in self.groups_list]
+        grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
+        # initiate lists as values for groups keys with count > 1
+        for k, v in grp_type_count.items():
+            if v > 1:
+                data[k] = []
+        # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            data[grp.group_name] = grp.read_fields()
+            if grp_type_count[grp.group_type] > 1:
+                data[grp.group_type].append(grp.read_fields())
+            else:
+                data[grp.group_type] = grp.read_fields()
         return data
 
 

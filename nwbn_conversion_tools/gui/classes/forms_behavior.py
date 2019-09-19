@@ -8,6 +8,7 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupIntervalSeries
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
 from datetime import datetime
+from itertools import groupby
 import numpy as np
 import yaml
 import os
@@ -19,7 +20,7 @@ class GroupSpatialSeries(QGroupBox):
         super().__init__()
         self.setTitle('SpatialSeries')
         self.parent = parent
-        self.group_name = 'SpatialSeries'
+        self.group_type = 'SpatialSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('SpatialSeries')
@@ -193,7 +194,7 @@ class GroupBehavioralEpochs(QGroupBox):
         super().__init__()
         self.setTitle('BehavioralEpochs')
         self.parent = parent
-        self.group_name = 'BehavioralEpochs'
+        self.group_type = 'BehavioralEpochs'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('BehavioralEpochs')
@@ -245,7 +246,7 @@ class GroupBehavioralEvents(QGroupBox):
         super().__init__()
         self.setTitle('BehavioralEvents')
         self.parent = parent
-        self.group_name = 'BehavioralEvents'
+        self.group_type = 'BehavioralEvents'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('BehavioralEvents')
@@ -297,7 +298,7 @@ class GroupBehavioralTimeSeries(QGroupBox):
         super().__init__()
         self.setTitle('BehavioralTimeSeries')
         self.parent = parent
-        self.group_name = 'BehavioralTimeSeries'
+        self.group_type = 'BehavioralTimeSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('BehavioralTimeSeries')
@@ -349,7 +350,7 @@ class GroupPupilTracking(QGroupBox):
         super().__init__()
         self.setTitle('PupilTracking')
         self.parent = parent
-        self.group_name = 'PupilTracking'
+        self.group_type = 'PupilTracking'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('PupilTracking')
@@ -401,7 +402,7 @@ class GroupEyeTracking(QGroupBox):
         super().__init__()
         self.setTitle('EyeTracking')
         self.parent = parent
-        self.group_name = 'EyeTracking'
+        self.group_type = 'EyeTracking'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('EyeTracking')
@@ -453,7 +454,7 @@ class GroupCompassDirection(QGroupBox):
         super().__init__()
         self.setTitle('CompassDirection')
         self.parent = parent
-        self.group_name = 'CompassDirection'
+        self.group_type = 'CompassDirection'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('CompassDirection')
@@ -505,7 +506,7 @@ class GroupPosition(QGroupBox):
         super().__init__()
         self.setTitle('Position')
         self.parent = parent
-        self.group_name = 'Position'
+        self.group_type = 'Position'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Position')
@@ -557,7 +558,7 @@ class GroupBehavior(QGroupBox):
         """Groupbox for Behavior modules fields filling forms."""
         super().__init__()
         self.setTitle('Behavior')
-        self.group_name = 'Behavior'
+        self.group_type = 'Behavior'
         self.groups_list = []
 
         self.combo1 = CustomComboBox()
@@ -680,8 +681,19 @@ class GroupBehavior(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
+        # group_type counts, if there are multiple groups of same type, they are saved in a list
+        grp_types = [grp.group_type for grp in self.groups_list]
+        grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
+        # initiate lists as values for groups keys with count > 1
+        for k, v in grp_type_count.items():
+            if v > 1:
+                data[k] = []
+        # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            data[grp.group_name] = grp.read_fields()
+            if grp_type_count[grp.group_type] > 1:
+                data[grp.group_type].append(grp.read_fields())
+            else:
+                data[grp.group_type] = grp.read_fields()
         return data
 
 

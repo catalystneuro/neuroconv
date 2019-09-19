@@ -140,7 +140,7 @@ class Application(QMainWindow):
         if filename:
             data = {}
             for grp in self.groups_list:
-                data[grp.group_name] = grp.read_fields()
+                data[grp.group_type] = grp.read_fields()
             with open(filename, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False)
 
@@ -164,7 +164,7 @@ class Application(QMainWindow):
         """Loads data from form to editor."""
         data = {}
         for grp in self.groups_list:
-            data[grp.group_name] = grp.read_fields()
+            data[grp.group_type] = grp.read_fields()
         txt = yaml.dump(data, default_flow_style=False)
         self.editor.setText(txt)
 
