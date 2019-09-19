@@ -4,5 +4,5 @@ import numpy as np
 
 class EphysProcessing2NWB(Convert2NWB):
 
-    def __init__(self, nwbfile):
-        super(EphysProcessing2NWB, self).__init__(nwbfile)
+    def __init__(self, nwbfile, metadata={}):
+        super(EphysProcessing2NWB, self).__init__(nwbfile=nwbfile, metadata=metadata)
