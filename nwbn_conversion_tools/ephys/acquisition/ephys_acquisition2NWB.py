@@ -1,5 +1,6 @@
 from nwbn_conversion_tools.base import Convert2NWB
 import pynwb
+import spikesorters as ss
 from datetime import datetime
 import numpy as np
 import os
@@ -10,6 +11,7 @@ class EphysAcquisition2NWB(Convert2NWB):
     def __init__(self, nwbfile, metadata={}):
         super(EphysAcquisition2NWB, self).__init__(nwbfile=nwbfile, metadata=metadata)
         self.RX = None
+
 
     def add_acquisition(self, es_name, metadata):
         """
@@ -140,3 +142,20 @@ class EphysAcquisition2NWB(Convert2NWB):
                 )
 
         return electrode_group
+
+
+    def run_spike_sorting(self, sorter_name='herdingspikes', output_folder='my_sorter_output'):
+        """
+        Performs spike sorting, using SpikeSorters:
+        https://github.com/SpikeInterface/spikesorters
+
+        Parameters
+        ----------
+        sorter_name : str
+        output_folder : str
+        """
+        self.SX = ss.run_sorter(
+            sorter_name_or_class=sorter_name,
+            recording=self.RX,
+            output_folder=output_folder
+        )
