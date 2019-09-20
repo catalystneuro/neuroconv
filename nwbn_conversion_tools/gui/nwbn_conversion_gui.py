@@ -165,7 +165,7 @@ class Application(QMainWindow):
     def load_source_files(self):
         """Browser to source files location."""
         filenames, ftype = QFileDialog.getOpenFileNames(self, 'Open file', '', "(*)")
-        if filenames is not None:
+        if len(filenames):
             all_names = ''
             for fname in filenames:
                 all_names += os.path.split(fname)[1]+', '
