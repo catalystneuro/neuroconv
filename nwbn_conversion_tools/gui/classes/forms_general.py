@@ -21,9 +21,11 @@ class GroupNwbfile(QGroupBox):
         self.lin_identifier.setToolTip("a unique text identifier for the file")
 
         self.lbl_session_start_time = QLabel('session_start_time<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_session_start_time1 = QLineEdit(datetime.now().strftime("%d/%m/%Y"))
+        self.lin_session_start_time1 = QLineEdit("")
+        self.lin_session_start_time1.setPlaceholderText("dd/mm/yyyy")
         self.lin_session_start_time1.setToolTip("the start date and time of the recording session")
-        self.lin_session_start_time2 = QLineEdit(datetime.now().strftime("%H:%M"))
+        self.lin_session_start_time2 = QLineEdit("")
+        self.lin_session_start_time2.setPlaceholderText("hh:mm")
         self.lin_session_start_time2.setToolTip("the start date and time of the recording session")
 
         self.lbl_experimenter = QLabel('experimenter:')
@@ -184,9 +186,10 @@ class GroupNwbfile(QGroupBox):
         """Reads structured dictionary and write in form fields."""
         self.lin_session_description.setText(data['session_description'])
         self.lin_identifier.setText(data['identifier'])
-        str_datetime = data['session_start_time'].strftime('%d/%m/%Y, %H:%M')
-        self.lin_session_start_time1.setText(str_datetime.split(',')[0])
-        self.lin_session_start_time2.setText(str_datetime.split(',')[1].strip())
+        if 'session_start_time' in data and data['session_start_time']:
+            str_datetime = data['session_start_time'].strftime('%d/%m/%Y, %H:%M')
+            self.lin_session_start_time1.setText(str_datetime.split(',')[0])
+            self.lin_session_start_time2.setText(str_datetime.split(',')[1].strip())
         if 'experimenter' in data:
             self.lin_experimenter.setText(data['experimenter'])
         if 'experiment_description' in data:
