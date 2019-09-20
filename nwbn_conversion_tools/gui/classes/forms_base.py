@@ -133,22 +133,22 @@ class GroupTimeSeries(QGroupBox):
         data['unit'] = self.lin_unit.text()
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
+        except ValueError:
             pass
         try:
             data['resolution'] = float(self.lin_resolution.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         try:
             data['starting_time'] = float(self.lin_starting_time.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['rate'] = float(self.lin_rate.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         data['comments'] = self.lin_comments.text()
         data['description'] = self.lin_description.text()
         if self.chk_control.isChecked():
@@ -251,8 +251,8 @@ class GroupImage(QGroupBox):
             data['data'] = True
         try:
             data['resolution'] = float(self.lin_resolution.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         data['description'] = self.lin_description.text()
         data['help'] = self.lin_help.text()
         return data

@@ -53,9 +53,9 @@ class GroupOpticalChannel(QGroupBox):
         data['description'] = self.lin_description.text()
         try:
             data['emission_lambda'] = float(self.lin_emission_lambda.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['emission_lambda'] = 0.0
-            print("'emission_lambda' must be a float")
         return data
 
     def write_fields(self, data={}):
@@ -185,11 +185,13 @@ class GroupImagingPlane(QGroupBox):
         data['device'] = str(self.combo_device.currentText())
         try:
             data['excitation_lambda'] = float(self.lin_excitation_lambda.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['excitation_lambda'] = 0.0
         try:
             data['imaging_rate'] = float(self.lin_imaging_rate.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['imaging_rate'] = 0.0
         data['indicator'] = self.lin_indicator.text()
         data['location'] = self.lin_location.text()
@@ -197,7 +199,8 @@ class GroupImagingPlane(QGroupBox):
             data['manifold'] = True
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['conversion'] = 0.0
         data['unit'] = self.lin_unit.text()
         data['reference_frame'] = self.lin_reference_frame.text()
@@ -438,32 +441,32 @@ class GroupTwoPhotonSeries(QGroupBox):
             data['field_of_view'] = True
         try:
             data['pmt_gain'] = float(self.lin_pmt_gain.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['scan_line_rate'] = float(self.lin_scan_line_rate.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         if self.lin_format.text() == 'external':
             data['external_file'] = self.lin_external_file.text()
             if self.chk_starting_frame.isChecked():
                 data['starting_frame'] = True
         try:
             data['bits_per_pixel'] = int(self.lin_bits_per_pixel.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['dimension'] = [int(it) for it in self.lin_dimension.text().split(',')]
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['resolution'] = float(self.lin_resolution.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         if self.chk_starting_time.isChecked():
@@ -928,12 +931,12 @@ class GroupRoiResponseSeries(QGroupBox):
             data['rois'] = True
         try:
             data['resolution'] = float(self.lin_resolution.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         if self.chk_starting_time.isChecked():

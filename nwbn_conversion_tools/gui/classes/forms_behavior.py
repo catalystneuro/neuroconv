@@ -136,22 +136,22 @@ class GroupSpatialSeries(QGroupBox):
         data['reference_frame'] = self.lin_reference_frame.text()
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['resolution'] = float(self.lin_resolution.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         try:
             data['starting_time'] = float(self.lin_starting_time.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['rate'] = float(self.lin_rate.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         data['comments'] = self.lin_comments.text()
         data['description'] = self.lin_description.text()
         if self.chk_control.isChecked():
