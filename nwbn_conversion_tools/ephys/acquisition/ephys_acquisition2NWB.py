@@ -1,6 +1,7 @@
 from nwbn_conversion_tools.base import Convert2NWB
 import pynwb
 import spikesorters as ss
+import spiketoolkit as st
 from datetime import datetime
 import numpy as np
 import os
@@ -11,6 +12,7 @@ class EphysAcquisition2NWB(Convert2NWB):
     def __init__(self, nwbfile, metadata={}):
         super(EphysAcquisition2NWB, self).__init__(nwbfile=nwbfile, metadata=metadata)
         self.RX = None
+        self.SX = None
 
 
     def add_acquisition(self, es_name, metadata):
@@ -144,7 +146,46 @@ class EphysAcquisition2NWB(Convert2NWB):
         return electrode_group
 
 
-    def run_spike_sorting(self, sorter_name='herdingspikes', output_folder='my_sorter_output'):
+    def add_units(self):
+        """
+        Adds Units group to current NWBFile.
+        """
+        if self.SX is None:
+            print("There are no sorted units to be added. Please run "
+                  "'run_spike_sorting' to get sorted units.")
+            return None
+        # Tests if Units already exists
+        aux = [i.name=='Units' for i in self.nwbfile.children]
+        if any(aux):
+            device = self.nwbfile.children[np.where(aux)[0][0]]
+            print('Units already exists in current NWBFile.')
+        else:
+            ids = self.SX.get_unit_ids()
+            fs = self.SX.get_sampling_frequency()
+            # Stores spike times for each detected cell (unit)
+            for id in ids:
+                spkt = self.SX.get_unit_spike_train(unit_id=id) / fs
+                if 'waveforms' in self.SX.get_unit_spike_feature_names(unit_id=id):
+                    # Stores average and std of spike traces
+                    wf = self.SX.get_unit_spike_features(unit_id=id,
+                                                         feature_name='waveforms')
+                    relevant_ch = most_relevant_ch(wf)
+                    # Spike traces on the most relevant channel
+                    traces = wf[:, relevant_ch, :]
+                    traces_avg = np.mean(traces, axis=0)
+                    traces_std = np.std(traces, axis=0)
+                    self.nwbfile.add_unit(
+                        id=id,
+                        spike_times=spkt,
+                        waveform_mean=traces_avg,
+                        waveform_sd=traces_std
+                    )
+                else:
+                    nwbfile.add_unit(id=id, spike_times=spkt)
+
+
+    def run_spike_sorting(self, sorter_name='herdingspikes', add_to_nwb=True,
+        output_folder='my_sorter_output', delete_output_folder=True):
         """
         Performs spike sorting, using SpikeSorters:
         https://github.com/SpikeInterface/spikesorters
@@ -152,10 +193,53 @@ class EphysAcquisition2NWB(Convert2NWB):
         Parameters
         ----------
         sorter_name : str
-        output_folder : str
+        add_to_nwb : boolean
+            Whether to add the sorted units results to the NWB file or not. The
+            results will still be available through the extractor attribute SX.
+        output_folder : str or path
+            Folder that is created to store the results from the spike sorting.
+        delete_output_folder : boolean
+            Whether to delete or not the content created in output_folder.
         """
         self.SX = ss.run_sorter(
             sorter_name_or_class=sorter_name,
             recording=self.RX,
-            output_folder=output_folder
+            output_folder=output_folder,
+            delete_output_folder=delete_output_folder
         )
+
+        st.postprocessing.get_unit_waveforms(
+            recording=self.RX,
+            sorting=self.SX,
+            ms_before=1,
+            ms_after=2,
+            save_as_features=True,
+            verbose=False
+        )
+
+        if add_to_nwb:
+            self.add_units()
+
+
+def most_relevant_ch(traces):
+    """
+    Calculates the most relevant channel for an Unit.
+    Estimates the channel where the max-min difference of the average traces is greatest.
+
+    traces : ndarray
+        ndarray of shape (nSpikes, nChannels, nSamples)
+    """
+    nSpikes = traces.shape[0]
+    nChannels = traces.shape[1]
+    nSamples = traces.shape[2]
+
+    #average and std of spike traces per channel
+    avg = np.mean(traces, axis=0)
+    std = np.std(traces, axis=0)
+
+    max_min = np.zeros(nChannels)
+    for ch in range(nChannels):
+        max_min[ch] = avg[ch,:].max() - avg[ch,:].min()
+
+    relevant_ch = np.argmax(max_min)
+    return relevant_ch

@@ -14,5 +14,8 @@ print(extractor.nwbfile)
 # To add Acquisition:
 extractor.add_acquisition(es_name='ElectricalSeries', metadata=metadata['Ephys'])
 
+# Run spike sorting and store results on NWB:
+extractor.run_spike_sorting()
+
 # To save content to NWB file:
 extractor.save(to_path='output.nwb')
