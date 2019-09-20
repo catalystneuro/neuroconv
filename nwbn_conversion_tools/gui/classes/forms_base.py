@@ -1,15 +1,6 @@
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox)
+from PyQt5.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
+                             QComboBox, QCheckBox)
 from nwbn_conversion_tools.gui.utils.configs import *
-from datetime import datetime
-from itertools import groupby
-import numpy as np
-import yaml
-import os
-
 
 
 class GroupTimeSeries(QGroupBox):
@@ -185,6 +176,155 @@ class GroupTimeSeries(QGroupBox):
             self.chk_control.setChecked(True)
         if 'control_description' in data:
             self.chk_control_description.setChecked(True)
+
+
+
+
+class GroupImage(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.base.Image fields filling form."""
+        super().__init__()
+        self.setTitle('Image')
+        self.parent = parent
+        self.group_type = 'Image'
+
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lin_name = QLineEdit('Image')
+        self.lin_name.setToolTip("The unique name of this Image dataset")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupImage):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('Image'+str(nInstances))
+
+        self.lbl_data = QLabel('data:')
+        self.chk_data = QCheckBox("Get from source file")
+        self.chk_data.setChecked(True)
+        self.chk_data.setToolTip("The data of this Image.\n"
+            "Check box if this data will be retrieved from source file.\n"
+            "Uncheck box to ignore it.")
+
+        self.lbl_resolution = QLabel('resolution:')
+        self.lin_resolution = QLineEdit('')
+        self.lin_resolution.setPlaceholderText("1.0")
+        self.lin_resolution.setToolTip("Pixels / cm")
+
+        self.lbl_description = QLabel('description:')
+        self.lin_description = QLineEdit('')
+        self.lin_description.setPlaceholderText("description")
+        self.lin_description.setToolTip(" Description of this Image dataset")
+
+        self.lbl_help = QLabel('help:')
+        self.lin_help = QLineEdit('')
+        self.lin_help.setPlaceholderText("help")
+        self.lin_help.setToolTip("Helpful hint for user")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
+        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
+        self.grid.addWidget(self.lbl_resolution, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_resolution, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 3, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_help, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_help, 4, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        pass
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        if self.chk_data.isChecked():
+            data['data'] = True
+        try:
+            data['resolution'] = float(self.lin_resolution.text())
+        except:
+            pass
+        data['description'] = self.lin_description.text()
+        data['help'] = self.lin_help.text()
+        return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.chk_data.setChecked(True)
+        if 'resolution' in data:
+            self.lin_resolution.setText(str(data['resolution']))
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
+        if 'help' in data:
+            self.lin_help.setText(data['help'])
+
+
+
+
+class GroupImages(QGroupBox):
+    def __init__(self, parent):
+        """Groupbox for pynwb.base.Images fields filling form."""
+        super().__init__()
+        self.setTitle('Images')
+        self.parent = parent
+        self.group_type = 'Images'
+
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lin_name = QLineEdit('Images')
+        self.lin_name.setToolTip("The name of this set of images")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  GroupImages):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText('Images'+str(nInstances))
+
+        self.lbl_images = QLabel('images:')
+        self.combo_images = CustomComboBox()
+        self.combo_images.setToolTip("Image objects")
+
+        self.lbl_description = QLabel('description:')
+        self.lin_description = QLineEdit('')
+        self.lin_description.setPlaceholderText("description")
+        self.lin_description.setToolTip("Description of images")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(2, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_images, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_images, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 2, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_images.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupImage):
+                self.combo_images.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['images'] = self.combo_images.currentText()
+        data['description'] = self.lin_description.text()
+        return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.combo_images.clear()
+        self.combo_images.addItem(data['images'])
+        if 'description' in data:
+            self.lin_description.setText(data['description'])
 
 
 
