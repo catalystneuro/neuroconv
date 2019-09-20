@@ -316,13 +316,12 @@ class GroupTwoPhotonSeries(QGroupBox):
 
         self.lbl_resolution = QLabel("resolution:")
         self.lin_resolution = QLineEdit("")
-        self.lin_resolution.setPlaceholderText("0.0")
         self.lin_resolution.setToolTip(
             "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_conversion = QLabel("conversion:")
         self.lin_conversion = QLineEdit("")
-        self.lin_conversion.setPlaceholderText("0.0")
+        self.lin_conversion.setPlaceholderText("1.0")
         self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to volts")
 
         self.lbl_timestamps = QLabel("timestamps:")

@@ -115,7 +115,6 @@ class GroupElectricalSeries(QGroupBox):
 
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
-        self.lin_resolution.setPlaceholderText("1.0")
         self.lin_resolution.setToolTip(
             "The smallest meaningful difference (in specified unit) between values in data")
 
