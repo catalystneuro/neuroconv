@@ -1,17 +1,10 @@
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox, QFileDialog, QStyle, QMessageBox)
-from nwbn_conversion_tools.gui.utils.configs import *
+from PyQt5.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
+                             QGroupBox, QComboBox, QCheckBox, QMessageBox)
+from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupIntervalSeries
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
-from datetime import datetime
 from itertools import groupby
-import numpy as np
-import yaml
-import os
 
 
 class GroupSpatialSeries(QGroupBox):
@@ -35,7 +28,8 @@ class GroupSpatialSeries(QGroupBox):
         self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
-        self.chk_data.setToolTip("The data this SpatialSeries dataset stores.\n"
+        self.chk_data.setToolTip(
+            "The data this SpatialSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -46,19 +40,22 @@ class GroupSpatialSeries(QGroupBox):
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1.0")
-        self.lin_conversion.setToolTip("Scalar to multiply each element by to "
+        self.lin_conversion.setToolTip(
+            "Scalar to multiply each element by to "
             "convert to meters")
 
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
-        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
+        self.lin_resolution.setToolTip(
+            "The smallest meaningful difference (in "
             "specified unit) between values in data")
 
         self.lbl_timestamps = QLabel('timestamps:')
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -85,14 +82,16 @@ class GroupSpatialSeries(QGroupBox):
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_control_description = QLabel('control_description:')
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -187,7 +186,6 @@ class GroupSpatialSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-
 class GroupBehavioralEpochs(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.behavior.BehavioralEpochs fields filling form."""
@@ -237,7 +235,6 @@ class GroupBehavioralEpochs(QGroupBox):
         self.lin_name.setText(data['name'])
         self.combo_interval_series.clear()
         self.combo_interval_series.addItem(data['interval_series'])
-
 
 
 class GroupBehavioralEvents(QGroupBox):
@@ -291,7 +288,6 @@ class GroupBehavioralEvents(QGroupBox):
         self.combo_time_series.addItem(data['time_series'])
 
 
-
 class GroupBehavioralTimeSeries(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.behavior.BehavioralTimeSeries fields filling form."""
@@ -341,7 +337,6 @@ class GroupBehavioralTimeSeries(QGroupBox):
         self.lin_name.setText(data['name'])
         self.combo_time_series.clear()
         self.combo_time_series.addItem(data['time_series'])
-
 
 
 class GroupPupilTracking(QGroupBox):
@@ -395,7 +390,6 @@ class GroupPupilTracking(QGroupBox):
         self.combo_time_series.addItem(data['time_series'])
 
 
-
 class GroupEyeTracking(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.behavior.EyeTracking fields filling form."""
@@ -445,7 +439,6 @@ class GroupEyeTracking(QGroupBox):
         self.lin_name.setText(data['name'])
         self.combo_spatial_series.clear()
         self.combo_spatial_series.addItem(data['spatial_series'])
-
 
 
 class GroupCompassDirection(QGroupBox):
@@ -499,7 +492,6 @@ class GroupCompassDirection(QGroupBox):
         self.combo_spatial_series.addItem(data['spatial_series'])
 
 
-
 class GroupPosition(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.behavior.Position fields filling form."""
@@ -551,8 +543,6 @@ class GroupPosition(QGroupBox):
         self.combo_spatial_series.addItem(data['spatial_series'])
 
 
-
-
 class GroupBehavior(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Behavior modules fields filling forms."""
@@ -593,7 +583,7 @@ class GroupBehavior(QGroupBox):
 
     def add_group(self, group_type, write_data=None):
         """Adds group form."""
-        if group_type=='combo':
+        if group_type == 'combo':
             group_type = str(self.combo1.currentText())
         if group_type == 'Device':
             item = GroupDevice(self)
@@ -623,14 +613,14 @@ class GroupBehavior(QGroupBox):
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
-            self.vbox1.insertWidget(nWidgetsVbox-1, item) #insert before the stretch
+            self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
             self.combo1.setCurrentIndex(0)
             self.combo2.addItem(item.lin_name.text())
             self.refresh_children()
 
     def del_group(self, group_name):
         """Deletes group form by name."""
-        if group_name=='combo':
+        if group_name == 'combo':
             group_name = str(self.combo2.currentText())
         if group_name != '-- Del group --':
             # Tests if any other group references this one
@@ -645,9 +635,9 @@ class GroupBehavior(QGroupBox):
                 for i in range(nWidgetsVbox):
                     if self.vbox1.itemAt(i) is not None:
                         if hasattr(self.vbox1.itemAt(i).widget(), 'lin_name'):
-                            if self.vbox1.itemAt(i).widget().lin_name.text()==group_name:
-                                self.groups_list.remove(self.vbox1.itemAt(i).widget())   #deletes list item
-                                self.vbox1.itemAt(i).widget().setParent(None)            #deletes widget
+                            if self.vbox1.itemAt(i).widget().lin_name.text() == group_name:
+                                self.groups_list.remove(self.vbox1.itemAt(i).widget())   # deletes list item
+                                self.vbox1.itemAt(i).widget().setParent(None)            # deletes widget
                                 self.combo2.removeItem(self.combo2.findText(group_name))
                                 self.combo2.setCurrentIndex(0)
                                 self.refresh_children()
@@ -660,7 +650,7 @@ class GroupBehavior(QGroupBox):
                 other_grp = self.vbox1.itemAt(i).widget()
                 # check if this subgroup has any ComboBox referencing grp_unique_name
                 for ch in other_grp.children():
-                    if isinstance(ch,(CustomComboBox,QComboBox)):
+                    if isinstance(ch, (CustomComboBox, QComboBox)):
                         if ch.currentText() == grp_unique_name:
                             return True
         return False
@@ -695,8 +685,6 @@ class GroupBehavior(QGroupBox):
             else:
                 data[grp.group_type] = grp.read_fields()
         return data
-
-
 
 
 class CustomComboBox(QComboBox):

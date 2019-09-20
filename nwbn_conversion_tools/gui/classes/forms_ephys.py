@@ -1,16 +1,9 @@
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox, QFileDialog, QStyle, QMessageBox)
+from PyQt5.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
+                             QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
-from nwbn_conversion_tools.gui.utils.configs import *
-from datetime import datetime
+from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from itertools import groupby
-import numpy as np
-import yaml
-import os
 
 
 class GroupElectrodeGroup(QGroupBox):
@@ -80,7 +73,6 @@ class GroupElectrodeGroup(QGroupBox):
         self.combo_device.addItem(data['device'])
 
 
-
 class GroupElectricalSeries(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.ElectricalSeries fields filling form."""
@@ -102,14 +94,16 @@ class GroupElectricalSeries(QGroupBox):
         self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
-        self.chk_data.setToolTip("The data this ElectricalSeries dataset stores.\n"
+        self.chk_data.setToolTip(
+            "The data this ElectricalSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_electrodes = QLabel('electrodes<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_electrodes = QCheckBox("Get from source file")
         self.chk_electrodes.setChecked(True)
-        self.chk_electrodes.setToolTip("The table region corresponding to the electrodes "
+        self.chk_electrodes.setToolTip(
+            "The table region corresponding to the electrodes "
             "from which this series was recorded.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
@@ -117,19 +111,19 @@ class GroupElectricalSeries(QGroupBox):
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1.0")
-        self.lin_conversion.setToolTip("Scalar to multiply each element by to "
-            "convert to volts")
+        self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to volts")
 
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
-        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
-            "specified unit) between values in data")
+        self.lin_resolution.setToolTip(
+            "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_timestamps = QLabel('timestamps:')
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -156,14 +150,16 @@ class GroupElectricalSeries(QGroupBox):
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_control_description = QLabel('control_description:')
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -258,7 +254,6 @@ class GroupElectricalSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-
 class GroupSpikeEventSeries(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.SpikeEventSeries fields filling form."""
@@ -280,36 +275,37 @@ class GroupSpikeEventSeries(QGroupBox):
         self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
-        self.chk_data.setToolTip("The data this SpikeEventSeries dataset stores.\n"
+        self.chk_data.setToolTip(
+            "The data this SpikeEventSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_timestamps = QLabel('timestamps<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(True)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_electrodes = QLabel('electrodes<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_electrodes = QCheckBox("Get from source file")
         self.chk_electrodes.setChecked(True)
-        self.chk_electrodes.setToolTip("The table region corresponding to the electrodes "
-            "from which this series was recorded.\n"
+        self.chk_electrodes.setToolTip(
+            "The table region corresponding to the electrodes from which this series was recorded.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1.0")
-        self.lin_conversion.setToolTip("Scalar to multiply each element by to "
-            "convert to volts")
+        self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to volts")
 
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
-        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
-            "specified unit) between values in data")
+        self.lin_resolution.setToolTip(
+            "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_comments = QLabel('comments:')
         self.lin_comments = QLineEdit('')
@@ -324,14 +320,16 @@ class GroupSpikeEventSeries(QGroupBox):
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_control_description = QLabel('control_description:')
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -409,7 +407,6 @@ class GroupSpikeEventSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-
 class GroupEventDetection(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.EventDetection fields filling form."""
@@ -430,8 +427,9 @@ class GroupEventDetection(QGroupBox):
 
         self.lbl_detection_method = QLabel('detection_method<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_detection_method = QLineEdit('detection_method')
-        self.lin_detection_method.setToolTip("Description of how events were detected, "
-            "such as voltage threshold, or dV/dT threshold, as well as relevant values")
+        self.lin_detection_method.setToolTip(
+            "Description of how events were detected, such as voltage threshold, "
+            "or dV/dT threshold, as well as relevant values")
 
         self.lbl_source_electricalseries = QLabel('source_electricalseries<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_source_electricalseries = CustomComboBox()
@@ -440,7 +438,8 @@ class GroupEventDetection(QGroupBox):
         self.lbl_source_idx = QLabel('source_idx<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_source_idx = QCheckBox("Get from source file")
         self.chk_source_idx.setChecked(True)
-        self.chk_source_idx.setToolTip("Indices (zero-based) into source ElectricalSeries "
+        self.chk_source_idx.setToolTip(
+            "Indices (zero-based) into source ElectricalSeries "
             "data array corresponding to time of event. \nModule description should define "
             "what is meant by time of event (e.g., .25msec before action potential peak, \n"
             "zero-crossing time, etc). The index points to each event from the raw data.\n"
@@ -450,7 +449,8 @@ class GroupEventDetection(QGroupBox):
         self.lbl_times = QLabel('times<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_times = QCheckBox("Get from source file")
         self.chk_times.setChecked(True)
-        self.chk_times.setToolTip("Timestamps of events, in Seconds.\n"
+        self.chk_times.setToolTip(
+            "Timestamps of events, in Seconds.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -495,7 +495,6 @@ class GroupEventDetection(QGroupBox):
         self.combo_source_electricalseries.addItem(data['source_electricalseries'])
         self.chk_source_idx.setChecked(True)
         self.chk_times.setChecked(True)
-
 
 
 class GroupEventWaveform(QGroupBox):
@@ -547,7 +546,6 @@ class GroupEventWaveform(QGroupBox):
         self.lin_name.setText(data['name'])
         self.combo_spike_event_series.clear()
         self.combo_spike_event_series.addItem(data['spike_event_series'])
-
 
 
 class GroupLFP(QGroupBox):
@@ -613,7 +611,6 @@ class GroupLFP(QGroupBox):
         self.combo_decomposition_series.addItem(data['decomposition_series'])
 
 
-
 class GroupFilteredEphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.FilteredEphys fields filling form."""
@@ -665,7 +662,6 @@ class GroupFilteredEphys(QGroupBox):
         self.combo_electrical_series.addItem(data['electrical_series'])
 
 
-
 class GroupFeatureExtraction(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.FeatureExtraction fields filling form."""
@@ -687,8 +683,8 @@ class GroupFeatureExtraction(QGroupBox):
         self.lbl_electrodes = QLabel('electrodes<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_electrodes = QCheckBox("Get from source file")
         self.chk_electrodes.setChecked(True)
-        self.chk_electrodes.setToolTip("The table region corresponding to the electrodes "
-            "from which this series was recorded.\n"
+        self.chk_electrodes.setToolTip(
+            "The table region corresponding to the electrodes from which this series was recorded.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -699,14 +695,16 @@ class GroupFeatureExtraction(QGroupBox):
         self.lbl_times = QLabel('times<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_times = QCheckBox("Get from source file")
         self.chk_times.setChecked(True)
-        self.chk_times.setToolTip("The times of events that features correspond to.\n"
+        self.chk_times.setToolTip(
+            "The times of events that features correspond to.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_features = QLabel('features<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_features = QCheckBox("Get from source file")
         self.chk_features.setChecked(True)
-        self.chk_features.setToolTip("Features for each channel.\n"
+        self.chk_features.setToolTip(
+            "Features for each channel.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -750,7 +748,6 @@ class GroupFeatureExtraction(QGroupBox):
         self.chk_features.setChecked(True)
 
 
-
 class GroupEphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ephys module fields filling form."""
@@ -790,7 +787,7 @@ class GroupEphys(QGroupBox):
 
     def add_group(self, group_type, write_data=None):
         """Adds group form."""
-        if group_type=='combo':
+        if group_type == 'combo':
             group_type = str(self.combo1.currentText())
         if group_type == 'Device':
             item = GroupDevice(self)
@@ -818,14 +815,14 @@ class GroupEphys(QGroupBox):
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
-            self.vbox1.insertWidget(nWidgetsVbox-1, item) #insert before the stretch
+            self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
             self.combo1.setCurrentIndex(0)
             self.combo2.addItem(item.lin_name.text())
             self.refresh_children()
 
     def del_group(self, group_name):
         """Deletes group form by name."""
-        if group_name=='combo':
+        if group_name == 'combo':
             group_name = str(self.combo2.currentText())
         if group_name != '-- Del group --':
             # Tests if any other group references this one
@@ -840,9 +837,9 @@ class GroupEphys(QGroupBox):
                 for i in range(nWidgetsVbox):
                     if self.vbox1.itemAt(i) is not None:
                         if hasattr(self.vbox1.itemAt(i).widget(), 'lin_name'):
-                            if self.vbox1.itemAt(i).widget().lin_name.text()==group_name:
-                                self.groups_list.remove(self.vbox1.itemAt(i).widget())   #deletes list item
-                                self.vbox1.itemAt(i).widget().setParent(None)            #deletes widget
+                            if self.vbox1.itemAt(i).widget().lin_name.text() == group_name:
+                                self.groups_list.remove(self.vbox1.itemAt(i).widget())   # deletes list item
+                                self.vbox1.itemAt(i).widget().setParent(None)            # deletes widget
                                 self.combo2.removeItem(self.combo2.findText(group_name))
                                 self.combo2.setCurrentIndex(0)
                                 self.refresh_children()
@@ -855,7 +852,7 @@ class GroupEphys(QGroupBox):
                 other_grp = self.vbox1.itemAt(i).widget()
                 # check if this subgroup has any ComboBox referencing grp_unique_name
                 for ch in other_grp.children():
-                    if isinstance(ch,(CustomComboBox,QComboBox)):
+                    if isinstance(ch, (CustomComboBox, QComboBox)):
                         if ch.currentText() == grp_unique_name:
                             return True
         return False
@@ -890,8 +887,6 @@ class GroupEphys(QGroupBox):
             else:
                 data[grp.group_type] = grp.read_fields()
         return data
-
-
 
 
 class CustomComboBox(QComboBox):

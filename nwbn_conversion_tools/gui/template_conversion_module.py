@@ -1,4 +1,3 @@
-from pynwb import NWBFile, NWBHDF5IO, ProcessingModule
 
 
 def conversion_function(f_source, f_nwb, metafile):
@@ -14,7 +13,6 @@ def conversion_function(f_source, f_nwb, metafile):
     meta : str
         Path to .yml meta data file
     """
-    
     print('Source files:')
     for f in f_source:
         print(f)
@@ -23,4 +21,4 @@ def conversion_function(f_source, f_nwb, metafile):
     print(f_nwb)
     print(' ')
     print('Metadata file:')
-    print(meta)
+    print(metafile)

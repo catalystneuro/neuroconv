@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
                              QComboBox, QCheckBox)
-from nwbn_conversion_tools.gui.utils.configs import *
+from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 
 
 class GroupTimeSeries(QGroupBox):
@@ -24,7 +24,8 @@ class GroupTimeSeries(QGroupBox):
         self.lbl_data = QLabel('data:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(False)
-        self.chk_data.setToolTip("The data this TimeSeries dataset stores.\n"
+        self.chk_data.setToolTip(
+            "The data this TimeSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -36,19 +37,22 @@ class GroupTimeSeries(QGroupBox):
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1.0")
-        self.lin_conversion.setToolTip(" Scalar to multiply each element in data "
+        self.lin_conversion.setToolTip(
+            "Scalar to multiply each element in data "
             "to convert it to the specified unit")
 
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
-        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
+        self.lin_resolution.setToolTip(
+            "The smallest meaningful difference (in "
             "specified unit) between values in data")
 
         self.lbl_timestamps = QLabel('timestamps:')
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -75,14 +79,16 @@ class GroupTimeSeries(QGroupBox):
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_control_description = QLabel('control_description:')
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -178,8 +184,6 @@ class GroupTimeSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-
-
 class GroupImage(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.base.Image fields filling form."""
@@ -201,7 +205,8 @@ class GroupImage(QGroupBox):
         self.lbl_data = QLabel('data:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
-        self.chk_data.setToolTip("The data of this Image.\n"
+        self.chk_data.setToolTip(
+            "The data of this Image.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -264,8 +269,6 @@ class GroupImage(QGroupBox):
             self.lin_help.setText(data['help'])
 
 
-
-
 class GroupImages(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.base.Images fields filling form."""
@@ -325,8 +328,6 @@ class GroupImages(QGroupBox):
         self.combo_images.addItem(data['images'])
         if 'description' in data:
             self.lin_description.setText(data['description'])
-
-
 
 
 class CustomComboBox(QComboBox):

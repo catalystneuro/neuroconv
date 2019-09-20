@@ -2,18 +2,14 @@ from nwbn_conversion_tools.base import Convert2NWB
 import pynwb
 import spikesorters as ss
 import spiketoolkit as st
-from datetime import datetime
 import numpy as np
-import os
 
 
 class EphysAcquisition2NWB(Convert2NWB):
-
     def __init__(self, nwbfile, metadata={}):
         super(EphysAcquisition2NWB, self).__init__(nwbfile=nwbfile, metadata=metadata)
         self.RX = None
         self.SX = None
-
 
     def add_acquisition(self, es_name, metadata):
         """
@@ -30,13 +26,13 @@ class EphysAcquisition2NWB(Convert2NWB):
             such as 'Device', 'ElectrodeGroup', etc.
         """
         # Tests if ElectricalSeries already exists
-        aux = [i.name==es_name for i in self.nwbfile.children]
+        aux = [i.name == es_name for i in self.nwbfile.children]
         if any(aux):
             es = self.nwbfile.children[np.where(aux)[0][0]]
             print(es_name+' already exists in current NWBFile.')
             return es
         else:  # ElectricalSeries can be created in acquisition
-            electrode_group = self.add_electrode_group(
+            self.add_electrode_group(
                 eg_name=metadata['ElectrodeGroup']['name'],
                 metadata=metadata
             )
@@ -66,7 +62,6 @@ class EphysAcquisition2NWB(Convert2NWB):
             )
             self.nwbfile.add_acquisition(es)
 
-
     def add_device(self, dev_name):
         """
         Adds a Device group to current NWBFile.
@@ -77,14 +72,13 @@ class EphysAcquisition2NWB(Convert2NWB):
             Name of Device to be created.
         """
         # Tests if Device already exists
-        aux = [i.name==dev_name for i in self.nwbfile.children]
+        aux = [i.name == dev_name for i in self.nwbfile.children]
         if any(aux):
             device = self.nwbfile.children[np.where(aux)[0][0]]
             print(dev_name+' already exists in current NWBFile.')
         else:
             device = self.nwbfile.create_device(name=dev_name)
         return device
-
 
     def add_electrode_group(self, eg_name, metadata):
         """
@@ -100,7 +94,7 @@ class EphysAcquisition2NWB(Convert2NWB):
             such as 'Device', 'ElectrodeGroup', etc.
         """
         # Tests if ElectrodeGroup already exists
-        aux = [i.name==eg_name for i in self.nwbfile.children]
+        aux = [i.name == eg_name for i in self.nwbfile.children]
         if any(aux):
             electrode_group = self.nwbfile.children[np.where(aux)[0][0]]
             print(eg_name+' already exists in current NWBFile.')
@@ -145,7 +139,6 @@ class EphysAcquisition2NWB(Convert2NWB):
 
         return electrode_group
 
-
     def add_units(self):
         """
         Adds Units group to current NWBFile.
@@ -155,10 +148,10 @@ class EphysAcquisition2NWB(Convert2NWB):
                   "'run_spike_sorting' to get sorted units.")
             return None
         # Tests if Units already exists
-        aux = [i.name=='Units' for i in self.nwbfile.children]
+        aux = [i.name == 'Units' for i in self.nwbfile.children]
         if any(aux):
-            device = self.nwbfile.children[np.where(aux)[0][0]]
             print('Units already exists in current NWBFile.')
+            return
         else:
             ids = self.SX.get_unit_ids()
             fs = self.SX.get_sampling_frequency()
@@ -181,11 +174,10 @@ class EphysAcquisition2NWB(Convert2NWB):
                         waveform_sd=traces_std
                     )
                 else:
-                    nwbfile.add_unit(id=id, spike_times=spkt)
-
+                    self.nwbfile.add_unit(id=id, spike_times=spkt)
 
     def run_spike_sorting(self, sorter_name='herdingspikes', add_to_nwb=True,
-        output_folder='my_sorter_output', delete_output_folder=True):
+                          output_folder='my_sorter_output', delete_output_folder=True):
         """
         Performs spike sorting, using SpikeSorters:
         https://github.com/SpikeInterface/spikesorters
@@ -229,17 +221,12 @@ def most_relevant_ch(traces):
     traces : ndarray
         ndarray of shape (nSpikes, nChannels, nSamples)
     """
-    nSpikes = traces.shape[0]
     nChannels = traces.shape[1]
-    nSamples = traces.shape[2]
-
-    #average and std of spike traces per channel
     avg = np.mean(traces, axis=0)
-    std = np.std(traces, axis=0)
 
     max_min = np.zeros(nChannels)
     for ch in range(nChannels):
-        max_min[ch] = avg[ch,:].max() - avg[ch,:].min()
+        max_min[ch] = avg[ch, :].max() - avg[ch, :].min()
 
     relevant_ch = np.argmax(max_min)
     return relevant_ch

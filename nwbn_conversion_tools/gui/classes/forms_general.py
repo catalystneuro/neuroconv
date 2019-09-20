@@ -1,14 +1,7 @@
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox, QFileDialog, QStyle)
-from nwbn_conversion_tools.gui.utils.configs import *
+from PyQt5.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
+                             QComboBox, QCheckBox)
+from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from datetime import datetime
-from itertools import groupby
-import numpy as np
-import yaml
-import os
 
 
 class GroupNwbfile(QGroupBox):
@@ -20,8 +13,8 @@ class GroupNwbfile(QGroupBox):
 
         self.lbl_session_description = QLabel('session_description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_session_description = QLineEdit("session_description")
-        self.lin_session_description.setToolTip("a description of the session where "
-            "this data was generated")
+        self.lin_session_description.setToolTip(
+            "A description of the session where this data was generated")
 
         self.lbl_identifier = QLabel('identifier<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_identifier = QLineEdit("ABC123")
@@ -36,13 +29,12 @@ class GroupNwbfile(QGroupBox):
         self.lbl_experimenter = QLabel('experimenter:')
         self.lin_experimenter = QLineEdit('')
         self.lin_experimenter.setPlaceholderText("Alan Lloyd Hodgkin, Andrew Fielding Huxley")
-        self.lin_experimenter.setToolTip("comma-separated list of names of persons "
-            "who performed experiment")
+        self.lin_experimenter.setToolTip(
+            "Comma-separated list of names of persons who performed experiment")
 
         self.lbl_experiment_description = QLabel('experiment_description:')
         self.lin_experiment_description = QLineEdit('')
-        self.lin_experiment_description.setPlaceholderText("propagation of action "
-            "potentials in the squid giant axon")
+        self.lin_experiment_description.setPlaceholderText("propagation of action potentials in the squid giant axon")
         self.lin_experiment_description.setToolTip("general description of the experiment")
 
         self.lbl_session_id = QLabel('session_id:')
@@ -73,28 +65,29 @@ class GroupNwbfile(QGroupBox):
         self.lbl_pharmacology = QLabel("pharmacology:")
         self.lin_pharmacology = QLineEdit('')
         self.lin_pharmacology.setPlaceholderText("pharmacology")
-        self.lin_pharmacology.setToolTip("Description of drugs used, including how "
-            "and when they were administered.\nAnesthesia(s), painkiller(s), etc., "
-            "plus dosage, concentration, etc.")
+        self.lin_pharmacology.setToolTip(
+            "Description of drugs used, including how and when they were administered.\n"
+            "Anesthesia(s), painkiller(s), etc., plus dosage, concentration, etc.")
 
         self.lbl_protocol = QLabel("protocol:")
         self.lin_protocol = QLineEdit('')
         self.lin_protocol.setPlaceholderText("protocol")
-        self.lin_protocol.setToolTip("Experimental protocol, if applicable. E.g."
-            " include IACUC protocol")
+        self.lin_protocol.setToolTip(
+            "Experimental protocol, if applicable. E.g. include IACUC protocol")
 
         self.lbl_related_publications = QLabel("related publications:")
         self.lin_related_publications = QLineEdit('')
         self.lin_related_publications.setPlaceholderText("related_publications")
-        self.lin_related_publications.setToolTip("Publication information. PMID,"
-            " DOI, URL, etc. If multiple, concatenate together \nand describe"
-            " which is which")
+        self.lin_related_publications.setToolTip(
+            "Publication information. PMID, DOI, URL, etc. If multiple, concatenate "
+            "together \nand describe which is which")
 
         self.lbl_slices = QLabel("slices:")
         self.lin_slices = QLineEdit('')
         self.lin_slices.setPlaceholderText("slices")
-        self.lin_slices.setToolTip("Description of slices, including information "
-            "about preparation thickness, \norientation, temperature and bath solution")
+        self.lin_slices.setToolTip(
+            "Description of slices, including information about preparation thickness,"
+            "\norientation, temperature and bath solution")
 
         self.lbl_data_collection = QLabel("data_collection:")
         self.lin_data_collection = QLineEdit('')
@@ -104,14 +97,15 @@ class GroupNwbfile(QGroupBox):
         self.lbl_surgery = QLabel("surgery:")
         self.lin_surgery = QLineEdit('')
         self.lin_surgery.setPlaceholderText("surgery")
-        self.lin_surgery.setToolTip("Narrative description about surgery/surgeries, "
-            "including date(s) and who performed surgery.")
+        self.lin_surgery.setToolTip(
+            "Narrative description about surgery/surgeries, including date(s) and who performed surgery.")
 
         self.lbl_virus = QLabel("virus:")
         self.lin_virus = QLineEdit('')
         self.lin_virus.setPlaceholderText("virus")
-        self.lin_virus.setToolTip("Information about virus(es) used in experiments, "
-            "including virus ID, source, date made, injection location, volume, etc.")
+        self.lin_virus.setToolTip(
+            "Information about virus(es) used in experiments, including virus ID, source, "
+            "date made, injection location, volume, etc.")
 
         self.lbl_stimulus_notes = QLabel("stimulus_notes:")
         self.lin_stimulus_notes = QLineEdit('')
@@ -167,7 +161,7 @@ class GroupNwbfile(QGroupBox):
         data['session_description'] = self.lin_session_description.text()
         data['identifier'] = self.lin_identifier.text()
         str_datetime = self.lin_session_start_time1.text()+", "+self.lin_session_start_time2.text()
-        data['session_start_time'] = datetime.strptime(str_datetime,'%d/%m/%Y, %H:%M')
+        data['session_start_time'] = datetime.strptime(str_datetime, '%d/%m/%Y, %H:%M')
         data['experimenter'] = self.lin_experimenter.text()
         data['experiment_description'] = self.lin_experiment_description.text()
         data['session_id'] = self.lin_session_id.text()
@@ -225,7 +219,6 @@ class GroupNwbfile(QGroupBox):
             self.lin_stimulus_notes.setText(data['stimulus_notes'])
 
 
-
 class GroupSubject(QGroupBox):
     def __init__(self, parent):
         """Groupbox for 'pynwb.file.Subject' fields filling form."""
@@ -271,8 +264,8 @@ class GroupSubject(QGroupBox):
         self.lbl_date_of_birth = QLabel('date_of_birth:')
         self.lin_date_of_birth = QLineEdit('')
         self.lin_date_of_birth.setPlaceholderText(datetime.now().strftime("%d/%m/%Y"))
-        self.lin_date_of_birth.setToolTip("datetime of date of birth. May be "
-            "supplied instead of age.")
+        self.lin_date_of_birth.setToolTip(
+            "datetime of date of birth. May be supplied instead of age.")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
@@ -306,8 +299,8 @@ class GroupSubject(QGroupBox):
         data['subject_id'] = self.lin_subject_id.text()
         data['weight'] = self.lin_weight.text()
         str_datetime = self.lin_date_of_birth.text()
-        if len(str_datetime)>0:
-            data['date_of_birth'] = datetime.strptime(str_datetime,'%d/%m/%Y')
+        if len(str_datetime) > 0:
+            data['date_of_birth'] = datetime.strptime(str_datetime, '%d/%m/%Y')
         else:
             data['date_of_birth'] = ''
         return data
@@ -330,7 +323,6 @@ class GroupSubject(QGroupBox):
             self.lin_weight.setText(data['weight'])
         if 'date_of_birth' in data:
             self.lin_date_of_birth.setText(data['date_of_birth'].strftime("%d/%m/%Y"))
-
 
 
 class GroupDevice(QGroupBox):
@@ -371,8 +363,6 @@ class GroupDevice(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-
-
 
 
 class GroupCustomExample(QGroupBox):
@@ -420,7 +410,8 @@ class GroupCustomExample(QGroupBox):
         self.lbl_script = QLabel('script:')
         self.chk_script = QCheckBox("Get from source file")
         self.chk_script.setChecked(False)
-        self.chk_script.setToolTip("This field will be handled by conversion script.\n"
+        self.chk_script.setToolTip(
+            "This field will be handled by conversion script.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -466,7 +457,6 @@ class GroupCustomExample(QGroupBox):
         self.combo_link.addItem(data['link'])
         if 'script' in data:
             self.chk_script.setChecked(True)
-
 
 
 class CustomComboBox(QComboBox):

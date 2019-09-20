@@ -1,16 +1,7 @@
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox)
-from nwbn_conversion_tools.gui.utils.configs import *
+from PyQt5.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
+                             QComboBox, QCheckBox)
+from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
-from datetime import datetime
-from itertools import groupby
-import numpy as np
-import yaml
-import os
-
 
 
 class GroupIntervalSeries(QGroupBox):
@@ -34,14 +25,16 @@ class GroupIntervalSeries(QGroupBox):
         self.lbl_data = QLabel('data:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(False)
-        self.chk_data.setToolTip(">0 if interval started, <0 if interval ended.\n"
+        self.chk_data.setToolTip(
+            ">0 if interval started, <0 if interval ended.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_timestamps = QLabel('timestamps:')
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -58,14 +51,16 @@ class GroupIntervalSeries(QGroupBox):
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_control_description = QLabel('control_description:')
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -124,7 +119,6 @@ class GroupIntervalSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-
 class GroupUnits(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.misc.Units fields filling form."""
@@ -146,7 +140,8 @@ class GroupUnits(QGroupBox):
         self.lbl_id = QLabel('id:')
         self.chk_id = QCheckBox("Get from source file")
         self.chk_id.setChecked(False)
-        self.chk_id.setToolTip("The identifiers for the units stored in this interface.\n"
+        self.chk_id.setToolTip(
+            "The identifiers for the units stored in this interface.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -187,7 +182,6 @@ class GroupUnits(QGroupBox):
             self.chk_id.setChecked(True)
 
 
-
 class GroupDecompositionSeries(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.misc.DecompositionSeries fields filling form."""
@@ -209,7 +203,8 @@ class GroupDecompositionSeries(QGroupBox):
         self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
-        self.chk_data.setToolTip("The data this DecompositionSeries dataset stores.\n"
+        self.chk_data.setToolTip(
+            "The data this DecompositionSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -229,8 +224,8 @@ class GroupDecompositionSeries(QGroupBox):
         self.lbl_bands = QLabel('bands:')
         self.chk_bands = QCheckBox("Get from source file")
         self.chk_bands.setChecked(False)
-        self.chk_bands.setToolTip("A table for describing the frequency bands that "
-            "the signal was decomposed into.\n"
+        self.chk_bands.setToolTip(
+            "A table for describing the frequency bands that the signal was decomposed into.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -241,19 +236,19 @@ class GroupDecompositionSeries(QGroupBox):
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1.0")
-        self.lin_conversion.setToolTip("Scalar to multiply each element by to "
-            "convert to unit")
+        self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to unit")
 
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
-        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
-            "specified unit) between values in data")
+        self.lin_resolution.setToolTip(
+            "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_timestamps = QLabel('timestamps:')
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -275,14 +270,16 @@ class GroupDecompositionSeries(QGroupBox):
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_control_description = QLabel('control_description:')
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -392,8 +389,6 @@ class GroupDecompositionSeries(QGroupBox):
             self.chk_control.setChecked(True)
         if 'control_description' in data:
             self.chk_control_description.setChecked(True)
-
-
 
 
 class CustomComboBox(QComboBox):

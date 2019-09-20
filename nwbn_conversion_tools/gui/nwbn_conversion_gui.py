@@ -1,14 +1,13 @@
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
-    QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QSplitter, QLabel, QFileDialog, QGroupBox, QMessageBox, QComboBox,
-    QScrollArea, QStyle)
-from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
+                             QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
+                             QGridLayout, QSplitter, QLabel, QFileDialog,
+                             QMessageBox, QComboBox, QScrollArea, QStyle)
+from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ephys import GroupEphys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
-import numpy as np
 import importlib
 import yaml
 import os
@@ -27,11 +26,10 @@ class Application(QMainWindow):
         self.resize(1200, 900)
         self.setWindowTitle('NWB:N conversion tools')
 
-        #Initialize GUI elements
+        # Initialize GUI elements
         self.init_gui()
         self.load_meta_file(filename=metafile)
         self.show()
-
 
     def init_gui(self):
         """Initiates GUI elements."""
@@ -100,7 +98,6 @@ class Application(QMainWindow):
 
         self.l_vbox2 = QVBoxLayout()
         self.l_vbox2.addLayout(l_grid1)
-        #self.l_vbox2.addWidget(QLabel())
         self.l_vbox2.addWidget(l_scroll)
 
         # Right-side panel: meta-data text
@@ -133,7 +130,6 @@ class Application(QMainWindow):
         p.setColor(self.backgroundRole(), QtCore.Qt.white)
         self.setPalette(p)
 
-
     def save_meta_file(self):
         """Saves metadata to .yml file."""
         filename, _ = QFileDialog.getSaveFileName(self, 'Save file', '', "(*.yml)")
@@ -143,7 +139,6 @@ class Application(QMainWindow):
                 data[grp.group_type] = grp.read_fields()
             with open(filename, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False)
-
 
     def run_conversion(self):
         """Runs conversion function."""
@@ -159,7 +154,6 @@ class Application(QMainWindow):
         except Exception as error:
             print(error)
 
-
     def form_to_editor(self):
         """Loads data from form to editor."""
         data = {}
@@ -167,7 +161,6 @@ class Application(QMainWindow):
             data[grp.group_type] = grp.read_fields()
         txt = yaml.dump(data, default_flow_style=False)
         self.editor.setText(txt)
-
 
     def load_source_files(self):
         """Browser to source files location."""
@@ -180,13 +173,12 @@ class Application(QMainWindow):
             self.source_files_path = os.path.split(fname)[0]
             self.f_source = filenames
 
-
     def load_meta_file(self, filename=None):
         '''Browser to .yml file containing metadata for NWB.'''
         if filename is None:
             filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
-                self.source_files_path, "(*.yml)")
-            if ftype!='(*.yml)':
+                                                          self.source_files_path, "(*.yml)")
+            if ftype != '(*.yml)':
                 return
         self.lin_meta_file.setText(filename)
         with open(filename) as f:
@@ -195,22 +187,19 @@ class Application(QMainWindow):
         self.editor.setText(txt)
         self.update_forms()
 
-
     def load_conversion_module(self):
         """Browser to conversion script file location."""
         filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
-            self.source_files_path, "(*py)")
+                                                      self.source_files_path, "(*py)")
         if filename is not None:
             self.conversion_module_path = filename
-
 
     def load_nwb_file(self):
         """Browser to source file location."""
         filename, ftype = QFileDialog.getSaveFileName(self, 'Save file',
-            self.source_files_path, "(*nwb)")
+                                                      self.source_files_path, "(*nwb)")
         if filename is not None:
             self.lin_nwb_file.setText(filename)
-
 
     def clean_groups(self):
         """Removes all groups widgets."""
@@ -219,9 +208,8 @@ class Application(QMainWindow):
             for i in range(nWidgetsVbox):
                 if self.l_vbox1.itemAt(i) is not None:
                     if grp == self.l_vbox1.itemAt(i).widget():
-                        self.l_vbox1.itemAt(i).widget().setParent(None)            #deletes widget
-        self.groups_list = []                        #deletes all list items
-
+                        self.l_vbox1.itemAt(i).widget().setParent(None)  # deletes widget
+        self.groups_list = []                        # deletes all list items
 
     def update_forms(self):
         """Updates forms fields with values in metadata."""
@@ -254,23 +242,20 @@ class Application(QMainWindow):
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
 
-
     def about(self):
         """About dialog."""
         msg = QMessageBox()
         msg.setWindowTitle("About NWB conversion")
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Version: 1.0.0 \n"+
+        msg.setText("Version: 1.0.0 \n"
                     "Shared tools for converting data from various formats to NWB:N 2.0.\n ")
         msg.setInformativeText("<a href='https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools'>NWB conversion tools Github page</a>")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
 
-
     def closeEvent(self, event):
         """Before exiting, executes these actions."""
         event.accept()
-
 
 
 class CustomComboBox(QComboBox):
@@ -283,7 +268,7 @@ class CustomComboBox(QComboBox):
 
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)  #instantiate a QtGui (holder for the app)
+    app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
     #if len(sys.argv)==1:
     #    fname = None
     #else:
@@ -297,6 +282,6 @@ def nwbn_conversion_gui(metafile=None, conversion_module=''):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
-        app = QApplication(sys.argv)  #instantiate a QtGui (holder for the app)
+        app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
     ex = Application(metafile=metafile, conversion_module=conversion_module)
     sys.exit(app.exec_())
