@@ -780,8 +780,9 @@ class GroupEphys(QGroupBox):
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(5, 1)
-        self.grid.addWidget(self.combo1, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo2, 1, 2, 1, 2)
+        if parent.show_add_del:
+            self.grid.addWidget(self.combo1, 1, 0, 1, 2)
+            self.grid.addWidget(self.combo2, 1, 2, 1, 2)
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 

@@ -15,11 +15,12 @@ import sys
 
 
 class Application(QMainWindow):
-    def __init__(self, metafile=None, conversion_module=''):
+    def __init__(self, metafile=None, conversion_module='', show_add_del=False):
         super().__init__()
         self.source_files_path = os.getcwd()
         self.f_source = ''
         self.conversion_module_path = conversion_module
+        self.show_add_del = show_add_del
 
         self.centralwidget = QWidget()
         self.setCentralWidget(self.centralwidget)
@@ -278,10 +279,12 @@ if __name__ == '__main__':
 
 
 # If it is imported as a module
-def nwbn_conversion_gui(metafile=None, conversion_module=''):
+def nwbn_conversion_gui(metafile=None, conversion_module='', show_add_del=False):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
-    ex = Application(metafile=metafile, conversion_module=conversion_module)
+    ex = Application(metafile=metafile,
+                     conversion_module=conversion_module,
+                     show_add_del=show_add_del)
     sys.exit(app.exec_())
