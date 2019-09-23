@@ -322,10 +322,6 @@ class CustomComboBox(QComboBox):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
-    #if len(sys.argv)==1:
-    #    fname = None
-    #else:
-    #    fname = sys.argv[1]
     ex = Application()
     sys.exit(app.exec_())
 
