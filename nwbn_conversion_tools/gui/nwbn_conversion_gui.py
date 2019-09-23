@@ -8,6 +8,7 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ephys import GroupEphys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
+import datetime
 import importlib
 import yaml
 import os
@@ -61,7 +62,7 @@ class Application(QMainWindow):
         self.lin_meta_file = QLineEdit('')
         self.btn_meta_file = QPushButton()
         self.btn_meta_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_meta_file.clicked.connect(self.load_meta_file)
+        self.btn_meta_file.clicked.connect(lambda: self.load_meta_file(filename=None))
         self.lbl_source_file = QLabel('source files:')
         self.lin_source_file = QLineEdit('')
         self.btn_source_file = QPushButton()
@@ -101,35 +102,58 @@ class Application(QMainWindow):
         self.l_vbox2.addLayout(l_grid1)
         self.l_vbox2.addWidget(l_scroll)
 
-        # Right-side panel: meta-data text
+        # Right-side panel
+        # Metadata text
         editor_label = QLabel('Metafile preview:')
         r_grid1 = QGridLayout()
         r_grid1.setColumnStretch(1, 1)
         r_grid1.addWidget(editor_label, 0, 0, 1, 1)
         r_grid1.addWidget(QLabel(), 0, 1, 1, 1)
-
         self.editor = QTextEdit()
         r_vbox1 = QVBoxLayout()
         r_vbox1.addLayout(r_grid1)
         r_vbox1.addWidget(self.editor)
 
-        # Main Layout
-        left_w = QWidget()
-        left_w.setLayout(self.l_vbox2)
-        right_w = QWidget()
-        right_w.setLayout(r_vbox1)
-        self.splitter = QSplitter(Qt.Horizontal)
-        self.splitter.addWidget(left_w)
-        self.splitter.addWidget(right_w)
+        # Logger
+        log_label = QLabel('Log:')
+        r_grid2 = QGridLayout()
+        r_grid2.setColumnStretch(1, 1)
+        r_grid2.addWidget(log_label, 0, 0, 1, 1)
+        r_grid2.addWidget(QLabel(), 0, 1, 1, 1)
+        self.logger = QTextEdit()
+        self.logger.setReadOnly(True)
+        r_vbox2 = QVBoxLayout()
+        r_vbox2.addLayout(r_grid2)
+        r_vbox2.addWidget(self.logger)
 
-        main_layout = QVBoxLayout()
-        main_layout.addWidget(self.splitter)
-        self.centralwidget.setLayout(main_layout)
+        r_vsplitter = QSplitter(Qt.Vertical)
+        ru_w = QWidget()
+        ru_w.setLayout(r_vbox1)
+        rb_w = QWidget()
+        rb_w.setLayout(r_vbox2)
+        r_vsplitter.addWidget(ru_w)
+        r_vsplitter.addWidget(rb_w)
+
+        # Main Layout
+        self.left_w = QWidget()
+        self.left_w.setLayout(self.l_vbox2)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.addWidget(self.left_w)
+        self.splitter.addWidget(r_vsplitter)
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addWidget(self.splitter)
+        self.centralwidget.setLayout(self.main_layout)
 
         # Background color
         p = self.palette()
         p.setColor(self.backgroundRole(), QtCore.Qt.white)
         self.setPalette(p)
+
+    def write_to_logger(self, txt):
+        time = datetime.datetime.now().time().strftime("%H:%M:%S")
+        full_txt = "[" + time + "]    " + txt
+        self.logger.append(full_txt)
 
     def save_meta_file(self):
         """Saves metadata to .yml file."""
@@ -143,17 +167,23 @@ class Application(QMainWindow):
 
     def run_conversion(self):
         """Runs conversion function."""
-        try:
-            mod_file = self.conversion_module_path
-            spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
-            conv_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(conv_module)
-            f_sources = tuple(self.f_source)    # multiple source files
-            conv_module.conversion_function(*f_sources,
-                                            f_nwb=self.lin_nwb_file.text(),
-                                            metafile=self.lin_meta_file.text())
-        except Exception as error:
-            print(error)
+        self.write_to_logger('Converting data to NWB... please wait.')
+        self.toggle_enable_gui(enable=False)
+        self.thread = ConversionFunctionThread(self)
+        self.thread.finished.connect(lambda: self.finish_conversion(error=self.thread.error))
+        self.thread.start()
+
+    def finish_conversion(self, error):
+        if error:
+            self.write_to_logger('ERROR:')
+            self.write_to_logger(str(error))
+        else:
+            self.write_to_logger('Data successfully converted to NWB.')
+        self.toggle_enable_gui(enable=True)
+
+    def toggle_enable_gui(self, enable):
+        self.editor.setEnabled(enable)
+        self.left_w.setEnabled(enable)
 
     def form_to_editor(self):
         """Loads data from form to editor."""
@@ -257,6 +287,28 @@ class Application(QMainWindow):
     def closeEvent(self, event):
         """Before exiting, executes these actions."""
         event.accept()
+
+
+# Runs conversion function, useful to wait for thread
+class ConversionFunctionThread(QtCore.QThread):
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        self.error = None
+
+    def run(self):
+        try:
+            mod_file = self.parent.conversion_module_path
+            spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
+            conv_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(conv_module)
+            f_sources = tuple(self.parent.f_source)    # multiple source files
+            conv_module.conversion_function(*f_sources,
+                                            f_nwb=self.parent.lin_nwb_file.text(),
+                                            metafile=self.parent.lin_meta_file.text())
+            self.error = None
+        except Exception as error:
+            self.error = error
 
 
 class CustomComboBox(QComboBox):
