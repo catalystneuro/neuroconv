@@ -671,6 +671,7 @@ class GroupBehavior(QGroupBox):
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
+        error = None
         data = {}
         # group_type counts, if there are multiple groups of same type, they are saved in a list
         grp_types = [grp.group_type for grp in self.groups_list]
@@ -685,7 +686,7 @@ class GroupBehavior(QGroupBox):
                 data[grp.group_type].append(grp.read_fields())
             else:
                 data[grp.group_type] = grp.read_fields()
-        return data
+        return data, error
 
 
 class CustomComboBox(QComboBox):

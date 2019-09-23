@@ -155,16 +155,6 @@ class Application(QMainWindow):
         full_txt = "[" + time + "]    " + txt
         self.logger.append(full_txt)
 
-    def save_meta_file(self):
-        """Saves metadata to .yml file."""
-        filename, _ = QFileDialog.getSaveFileName(self, 'Save file', '', "(*.yml)")
-        if filename:
-            data = {}
-            for grp in self.groups_list:
-                data[grp.group_type] = grp.read_fields()
-            with open(filename, 'w') as f:
-                yaml.dump(data, f, default_flow_style=False)
-
     def run_conversion(self):
         """Runs conversion function."""
         self.write_to_logger('Converting data to NWB... please wait.')
@@ -185,11 +175,30 @@ class Application(QMainWindow):
         self.editor.setEnabled(enable)
         self.left_w.setEnabled(enable)
 
+    def save_meta_file(self):
+        """Saves metadata to .yml file."""
+        filename, _ = QFileDialog.getSaveFileName(self, 'Save file', '', "(*.yml)")
+        if filename:
+            data = {}
+            for grp in self.groups_list:
+                info, error = grp.read_fields()
+                if error is not None:
+                    data[grp.group_type] = info
+                else:
+                    return
+            with open(filename, 'w') as f:
+                yaml.dump(data, f, default_flow_style=False)
+
     def form_to_editor(self):
         """Loads data from form to editor."""
         data = {}
         for grp in self.groups_list:
-            data[grp.group_type] = grp.read_fields()
+            info, error = grp.read_fields()
+            print(grp, error)
+            if error is None:
+                data[grp.group_type] = info
+            else:
+                return
         txt = yaml.dump(data, default_flow_style=False)
         self.editor.setText(txt)
 

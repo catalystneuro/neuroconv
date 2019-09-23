@@ -160,6 +160,7 @@ class GroupNwbfile(QGroupBox):
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
+        error = None
         data = {}
         data['session_description'] = self.lin_session_description.text()
         data['identifier'] = self.lin_identifier.text()
@@ -167,10 +168,10 @@ class GroupNwbfile(QGroupBox):
         try:
             data['session_start_time'] = datetime.strptime(str_datetime, '%d/%m/%Y, %H:%M')
         except Exception as error:
-            data['session_start_time'] = datetime.now()
             self.parent.write_to_logger(str(error))
-            self.parent.write_to_logger("WARNING: Invalid 'session_start_time' format. "
-                                        "Default to current datetime.")
+            self.parent.write_to_logger("ERROR: Invalid 'session_start_time' format. "
+                                        "Please fill in correct format.")
+            return None, error
         data['experimenter'] = self.lin_experimenter.text()
         data['experiment_description'] = self.lin_experiment_description.text()
         data['session_id'] = self.lin_session_id.text()
@@ -187,7 +188,7 @@ class GroupNwbfile(QGroupBox):
         data['surgery'] = self.lin_surgery.text()
         data['virus'] = self.lin_virus.text()
         data['stimulus_notes'] = self.lin_stimulus_notes.text()
-        return data
+        return data, error
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
