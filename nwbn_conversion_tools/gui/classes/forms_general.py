@@ -8,6 +8,7 @@ class GroupNwbfile(QGroupBox):
     def __init__(self, parent):
         """Groupbox for NWBFile fields filling form."""
         super().__init__()
+        self.parent = parent
         self.setTitle('NWBFile')
         self.group_type = 'NWBFile'
 
@@ -163,7 +164,13 @@ class GroupNwbfile(QGroupBox):
         data['session_description'] = self.lin_session_description.text()
         data['identifier'] = self.lin_identifier.text()
         str_datetime = self.lin_session_start_time1.text()+", "+self.lin_session_start_time2.text()
-        data['session_start_time'] = datetime.strptime(str_datetime, '%d/%m/%Y, %H:%M')
+        try:
+            data['session_start_time'] = datetime.strptime(str_datetime, '%d/%m/%Y, %H:%M')
+        except Exception as error:
+            data['session_start_time'] = datetime.now()
+            self.parent.write_to_logger(str(error))
+            self.parent.write_to_logger("WARNING: Invalid 'session_start_time' format. "
+                                        "Default to current datetime.")
         data['experimenter'] = self.lin_experimenter.text()
         data['experiment_description'] = self.lin_experiment_description.text()
         data['session_id'] = self.lin_session_id.text()
