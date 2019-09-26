@@ -182,7 +182,7 @@ class Application(QMainWindow):
             data = {}
             for grp in self.groups_list:
                 info, error = grp.read_fields()
-                if error is not None:
+                if error is None:
                     data[grp.group_type] = info
                 else:
                     return
@@ -263,22 +263,40 @@ class Application(QMainWindow):
             if grp == 'Ophys':
                 item = GroupOphys(self)
                 for subgroup in self.metadata[grp]:
-                    item.add_group(group_type=subgroup,
-                                   write_data=self.metadata[grp][subgroup])
+                    # if many items of same class, in list
+                    if isinstance(self.metadata[grp][subgroup], list):
+                        for subsub in self.metadata[grp][subgroup]:
+                            item.add_group(group_type=subgroup,
+                                           write_data=subsub)
+                    else:  # if it's just one item of this class
+                        item.add_group(group_type=subgroup,
+                                       write_data=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Ephys':
                 item = GroupEphys(self)
                 for subgroup in self.metadata[grp]:
-                    item.add_group(group_type=subgroup,
-                                   write_data=self.metadata[grp][subgroup])
+                    # if many items of same class, in list
+                    if isinstance(self.metadata[grp][subgroup], list):
+                        for subsub in self.metadata[grp][subgroup]:
+                            item.add_group(group_type=subgroup,
+                                           write_data=subsub)
+                    else:  # if it's just one item of this class
+                        item.add_group(group_type=subgroup,
+                                       write_data=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Behavior':
                 item = GroupBehavior(self)
                 for subgroup in self.metadata[grp]:
-                    item.add_group(group_type=subgroup,
-                                   write_data=self.metadata[grp][subgroup])
+                    # if many items of same class, in list
+                    if isinstance(self.metadata[grp][subgroup], list):
+                        for subsub in self.metadata[grp][subgroup]:
+                            item.add_group(group_type=subgroup,
+                                           write_data=subsub)
+                    else:  # if it's just one item of this class
+                        item.add_group(group_type=subgroup,
+                                       write_data=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
 
