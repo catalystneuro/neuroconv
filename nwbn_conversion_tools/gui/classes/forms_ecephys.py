@@ -747,12 +747,12 @@ class GroupFeatureExtraction(QGroupBox):
         self.chk_features.setChecked(True)
 
 
-class GroupEphys(QGroupBox):
+class GroupEcephys(QGroupBox):
     def __init__(self, parent):
-        """Groupbox for Ephys module fields filling form."""
+        """Groupbox for Ecephys module fields filling form."""
         super().__init__()
-        self.setTitle('Ephys')
-        self.group_type = 'Ephys'
+        self.setTitle('Ecephys')
+        self.group_type = 'Ecephys'
         self.groups_list = []
 
         self.combo1 = CustomComboBox()

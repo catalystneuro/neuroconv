@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QMessageBox, QComboBox, QScrollArea, QStyle)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
-from nwbn_conversion_tools.gui.classes.forms_ephys import GroupEphys
+from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
 import datetime
 import importlib
@@ -273,8 +273,8 @@ class Application(QMainWindow):
                                        write_data=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
-            if grp == 'Ephys':
-                item = GroupEphys(self)
+            if grp == 'Ecephys':
+                item = GroupEcephys(self)
                 for subgroup in self.metadata[grp]:
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
