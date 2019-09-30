@@ -105,7 +105,7 @@ class Application(QMainWindow):
             ii = -1
             for k, v in self.source_paths.items():
                 ii += 1
-                lbl_src = QLabel(k)
+                lbl_src = QLabel(k+':')
                 setattr(self, 'lbl_src_'+str(ii), lbl_src)
                 lin_src = QLineEdit('')
                 setattr(self, 'lin_src_'+str(ii), lin_src)
