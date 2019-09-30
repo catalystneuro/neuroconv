@@ -245,7 +245,8 @@ class Application(QMainWindow):
         if len(filenames):
             all_names = ''
             for fname in filenames:
-                all_names += os.path.split(fname)[1]+', '
+                #all_names += os.path.split(fname)[1]+', '
+                all_names += fname + ', '
 
             lin_src = getattr(self, 'lin_src_'+str(ind))
             lin_src.setText(all_names[:-2])
