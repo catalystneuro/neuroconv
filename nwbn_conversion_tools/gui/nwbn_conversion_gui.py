@@ -3,7 +3,8 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
                              QGridLayout, QSplitter, QLabel, QFileDialog,
-                             QMessageBox, QComboBox, QScrollArea, QStyle)
+                             QMessageBox, QComboBox, QScrollArea, QStyle,
+                             QGroupBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
@@ -16,10 +17,10 @@ import sys
 
 
 class Application(QMainWindow):
-    def __init__(self, metafile=None, conversion_module='', show_add_del=False):
+    def __init__(self, metafile=None, conversion_module='', source_paths={},
+                 show_add_del=False):
         super().__init__()
-        self.source_files_path = os.getcwd()
-        self.f_source = ''
+        self.source_paths = source_paths
         self.conversion_module_path = conversion_module
         self.show_add_del = show_add_del
 
@@ -52,23 +53,23 @@ class Application(QMainWindow):
 
         # Left-side panel: forms
         btn_save_meta = QPushButton('Save metafile')
+        btn_save_meta.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
         btn_save_meta.clicked.connect(self.save_meta_file)
         btn_run_conversion = QPushButton('Run conversion')
+        btn_run_conversion.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         btn_run_conversion.clicked.connect(self.run_conversion)
         btn_form_editor = QPushButton('Form -> Editor')
         btn_form_editor.clicked.connect(self.form_to_editor)
 
         self.lbl_meta_file = QLabel('meta file:')
+        self.lbl_meta_file.setToolTip("The YAML file with metadata for this conversion.\n"
+                                      "You can customize the metadata in the forms below.")
         self.lin_meta_file = QLineEdit('')
         self.btn_meta_file = QPushButton()
         self.btn_meta_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
         self.btn_meta_file.clicked.connect(lambda: self.load_meta_file(filename=None))
-        self.lbl_source_file = QLabel('source files:')
-        self.lin_source_file = QLineEdit('')
-        self.btn_source_file = QPushButton()
-        self.btn_source_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_source_file.clicked.connect(self.load_source_files)
         self.lbl_nwb_file = QLabel('nwb file:')
+        self.lbl_nwb_file.setToolTip("Path to the NWB file that will be created.")
         self.lin_nwb_file = QLineEdit('')
         self.btn_nwb_file = QPushButton()
         self.btn_nwb_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
@@ -80,15 +81,46 @@ class Application(QMainWindow):
         l_grid1.addWidget(btn_run_conversion, 0, 1, 1, 1)
         l_grid1.addWidget(QLabel(), 0, 2, 1, 2)
         l_grid1.addWidget(btn_form_editor, 0, 4, 1, 2)
-        l_grid1.addWidget(self.lbl_meta_file, 1, 0, 1, 2)
-        l_grid1.addWidget(self.lin_meta_file, 1, 2, 1, 3)
-        l_grid1.addWidget(self.btn_meta_file, 1, 5, 1, 1)
-        l_grid1.addWidget(self.lbl_source_file, 2, 0, 1, 2)
-        l_grid1.addWidget(self.lin_source_file, 2, 2, 1, 3)
-        l_grid1.addWidget(self.btn_source_file, 2, 5, 1, 1)
-        l_grid1.addWidget(self.lbl_nwb_file, 3, 0, 1, 2)
-        l_grid1.addWidget(self.lin_nwb_file, 3, 2, 1, 3)
-        l_grid1.addWidget(self.btn_nwb_file, 3, 5, 1, 1)
+        l_grid1.addWidget(self.lbl_meta_file, 1, 0, 1, 1)
+        l_grid1.addWidget(self.lin_meta_file, 1, 1, 1, 3)
+        l_grid1.addWidget(self.btn_meta_file, 1, 4, 1, 1)
+        l_grid1.addWidget(self.lbl_nwb_file, 2, 0, 1, 1)
+        l_grid1.addWidget(self.lin_nwb_file, 2, 1, 1, 3)
+        l_grid1.addWidget(self.btn_nwb_file, 2, 4, 1, 1)
+
+        # Adds custom files/dir paths fields
+        if len(self.source_paths.keys()) == 0:
+            self.lbl_source_file = QLabel('source files:')
+            self.lin_source_file = QLineEdit('')
+            self.btn_source_file = QPushButton()
+            self.btn_source_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+            self.btn_source_file.clicked.connect(self.load_source_files)
+            l_grid1.addWidget(self.lbl_source_file, 3, 0, 1, 1)
+            l_grid1.addWidget(self.lin_source_file, 3, 1, 1, 3)
+            l_grid1.addWidget(self.btn_source_file, 3, 4, 1, 1)
+        else:
+            self.group_source_paths = QGroupBox('Source paths')
+            self.grid_source = QGridLayout()
+            self.grid_source.setColumnStretch(3, 1)
+            ii = -1
+            for k, v in self.source_paths.items():
+                ii += 1
+                lbl_src = QLabel(k)
+                setattr(self, 'lbl_src_'+str(ii), lbl_src)
+                lin_src = QLineEdit('')
+                setattr(self, 'lin_src_'+str(ii), lin_src)
+                btn_src = QPushButton()
+                btn_src.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+                setattr(self, 'btn_src_'+str(ii), btn_src)
+                if v['type'] == 'file':
+                    btn_src.clicked.connect((lambda x: lambda: self.load_source_files(x[0], x[1]))([ii, k]))
+                else:
+                    btn_src.clicked.connect((lambda x: lambda: self.load_source_dir(x[0], x[1]))([ii, k]))
+                self.grid_source.addWidget(lbl_src, ii, 0, 1, 1)
+                self.grid_source.addWidget(lin_src, ii, 1, 1, 3)
+                self.grid_source.addWidget(btn_src, ii, 4, 1, 1)
+            self.group_source_paths.setLayout(self.grid_source)
+            l_grid1.addWidget(self.group_source_paths, 3, 0, 1, 6)
 
         self.l_vbox1 = QVBoxLayout()
         self.l_vbox1.addStretch()
@@ -202,22 +234,44 @@ class Application(QMainWindow):
         txt = yaml.dump(data, default_flow_style=False)
         self.editor.setText(txt)
 
-    def load_source_files(self):
-        """Browser to source files location."""
-        filenames, ftype = QFileDialog.getOpenFileNames(self, 'Open file', '', "(*)")
+    def load_source_files(self, ind, key):
+        """Browser to source file location."""
+        filenames, ftype = QFileDialog.getOpenFileNames(
+            parent=self,
+            caption='Open file',
+            directory='',
+            filter="(*)"
+        )
         if len(filenames):
             all_names = ''
             for fname in filenames:
                 all_names += os.path.split(fname)[1]+', '
-            self.lin_source_file.setText(all_names[:-3])
-            self.source_files_path = os.path.split(fname)[0]
-            self.f_source = filenames
+
+            lin_src = getattr(self, 'lin_src_'+str(ind))
+            lin_src.setText(all_names[:-2])
+            self.source_paths[key]['path'] = all_names[:-2]
+
+    def load_source_dir(self, ind, key):
+        """Browser to source directory location."""
+        dirname = QFileDialog.getExistingDirectory(
+            parent=self,
+            caption='Source directory',
+            directory=''
+        )
+        if len(dirname):
+            lin_src = getattr(self, 'lin_src_'+str(ind))
+            lin_src.setText(dirname)
+            self.source_paths[key]['path'] = dirname
 
     def load_meta_file(self, filename=None):
         '''Browser to .yml file containing metadata for NWB.'''
         if filename is None:
-            filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
-                                                          self.source_files_path, "(*.yml)")
+            filename, ftype = QFileDialog.getOpenFileName(
+                parent=self,
+                caption='Open file',
+                directory='',
+                filter="(*.yml)"
+            )
             if ftype != '(*.yml)':
                 return
         self.lin_meta_file.setText(filename)
@@ -229,15 +283,23 @@ class Application(QMainWindow):
 
     def load_conversion_module(self):
         """Browser to conversion script file location."""
-        filename, ftype = QFileDialog.getOpenFileName(self, 'Open file',
-                                                      self.source_files_path, "(*py)")
+        filename, ftype = QFileDialog.getOpenFileName(
+            parent=self,
+            caption='Open file',
+            directory='',
+            filter="(*py)"
+        )
         if filename is not None:
             self.conversion_module_path = filename
 
     def load_nwb_file(self):
         """Browser to source file location."""
-        filename, ftype = QFileDialog.getSaveFileName(self, 'Save file',
-                                                      self.source_files_path, "(*nwb)")
+        filename, ftype = QFileDialog.getSaveFileName(
+            parent=self,
+            caption='Save file',
+            directory='',
+            filter="(*nwb)"
+        )
         if filename is not None:
             self.lin_nwb_file.setText(filename)
 
@@ -329,8 +391,7 @@ class ConversionFunctionThread(QtCore.QThread):
             spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
             conv_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(conv_module)
-            f_sources = tuple(self.parent.f_source)    # multiple source files
-            conv_module.conversion_function(*f_sources,
+            conv_module.conversion_function(source_paths=self.parent.source_paths,
                                             f_nwb=self.parent.lin_nwb_file.text(),
                                             metafile=self.parent.lin_meta_file.text())
             self.error = None
@@ -354,12 +415,14 @@ if __name__ == '__main__':
 
 
 # If it is imported as a module
-def nwbn_conversion_gui(metafile=None, conversion_module='', show_add_del=False):
+def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
+                        show_add_del=False):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
     ex = Application(metafile=metafile,
                      conversion_module=conversion_module,
+                     source_paths=source_paths,
                      show_add_del=show_add_del)
     sys.exit(app.exec_())
