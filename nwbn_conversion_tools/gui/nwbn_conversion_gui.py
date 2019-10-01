@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
                              QGridLayout, QSplitter, QLabel, QFileDialog,
                              QMessageBox, QComboBox, QScrollArea, QStyle,
-                             QGroupBox)
+                             QGroupBox, QCheckBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
@@ -18,10 +18,11 @@ import sys
 
 class Application(QMainWindow):
     def __init__(self, metafile=None, conversion_module='', source_paths={},
-                 show_add_del=False):
+                 kwargs_fields={}, show_add_del=False):
         super().__init__()
         self.source_paths = source_paths
         self.conversion_module_path = conversion_module
+        self.kwargs_fields = kwargs_fields
         self.show_add_del = show_add_del
 
         self.centralwidget = QWidget()
@@ -121,6 +122,23 @@ class Application(QMainWindow):
                 self.grid_source.addWidget(btn_src, ii, 4, 1, 1)
             self.group_source_paths.setLayout(self.grid_source)
             l_grid1.addWidget(self.group_source_paths, 3, 0, 1, 6)
+
+        # Adds custom kwargs checkboxes
+        if len(self.kwargs_fields.keys()) > 0:
+            self.group_kwargs = QGroupBox('KWARGS')
+            self.grid_kwargs = QGridLayout()
+            self.grid_kwargs.setColumnStretch(4, 1)
+            ii = -1
+            for k, v in self.kwargs_fields.items():
+                ii += 1
+                chk_kwargs = QCheckBox(k)
+                chk_kwargs.setChecked(v)
+                chk_kwargs.clicked.connect((lambda x: lambda: self.update_kwargs(x[0], x[1]))([ii, k]))
+                setattr(self, 'chk_kwargs_'+str(ii), chk_kwargs)
+                self.grid_kwargs.addWidget(chk_kwargs, ii//4, ii%4, 1, 1)
+            self.group_kwargs.setLayout(self.grid_kwargs)
+            l_grid1.addWidget(self.group_kwargs, 4, 0, 1, 6)
+
 
         self.l_vbox1 = QVBoxLayout()
         self.l_vbox1.addStretch()
@@ -233,6 +251,11 @@ class Application(QMainWindow):
                 return
         txt = yaml.dump(data, default_flow_style=False)
         self.editor.setText(txt)
+
+    def update_kwargs(self, ind, key):
+        """Updates the boolean values for keyword arguments."""
+        chk_kw = getattr(self, 'chk_kwargs_'+str(ind))
+        self.kwargs_fields[key] = chk_kw.isChecked()
 
     def load_source_files(self, ind, key):
         """Browser to source file location."""
@@ -387,17 +410,18 @@ class ConversionFunctionThread(QtCore.QThread):
         self.error = None
 
     def run(self):
-        try:
-            mod_file = self.parent.conversion_module_path
-            spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
-            conv_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(conv_module)
-            conv_module.conversion_function(source_paths=self.parent.source_paths,
-                                            f_nwb=self.parent.lin_nwb_file.text(),
-                                            metafile=self.parent.lin_meta_file.text())
-            self.error = None
-        except Exception as error:
-            self.error = error
+        #try:
+        mod_file = self.parent.conversion_module_path
+        spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
+        conv_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(conv_module)
+        conv_module.conversion_function(source_paths=self.parent.source_paths,
+                                        f_nwb=self.parent.lin_nwb_file.text(),
+                                        metafile=self.parent.lin_meta_file.text(),
+                                        **self.parent.kwargs_fields)
+        #    self.error = None
+        #except Exception as error:
+        #    self.error = error
 
 
 class CustomComboBox(QComboBox):
@@ -417,7 +441,7 @@ if __name__ == '__main__':
 
 # If it is imported as a module
 def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
-                        show_add_del=False):
+                        kwargs_fields={}, show_add_del=False):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
@@ -425,5 +449,6 @@ def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
     ex = Application(metafile=metafile,
                      conversion_module=conversion_module,
                      source_paths=source_paths,
+                     kwargs_fields=kwargs_fields,
                      show_add_del=show_add_del)
     sys.exit(app.exec_())
