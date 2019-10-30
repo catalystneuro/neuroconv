@@ -4,10 +4,10 @@ from pynwb.image import ImageSeries
 from natsort import natsorted
 from glob import glob
 
-from nwbn_conversion_tools.ophys.acquisition.acquisition2NWB import Acquisition2NWB
+from nwbn_conversion_tools.ophys.acquisition.ophys_acquisition2NWB import OphysAcquisition2NWB
 
 
-class Miniscope2NWB(Acquisition2NWB):
+class Miniscope2NWB(OphysAcquisition2NWB):
 
     def __init__(self, nwbfile, from_path=None):
         super(Miniscope2NWB).__init__(nwbfile)

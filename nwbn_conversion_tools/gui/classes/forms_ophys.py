@@ -1,14 +1,8 @@
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QAction, QPushButton, QLineEdit,
-    QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QGroupBox, QComboBox,
-    QCheckBox, QFileDialog, QStyle)
+from PyQt5.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
+                             QGroupBox, QComboBox, QCheckBox, QMessageBox)
+from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
-from datetime import datetime
-import numpy as np
-import yaml
-import os
-
+from itertools import groupby
 
 
 class GroupOpticalChannel(QGroupBox):
@@ -17,9 +11,9 @@ class GroupOpticalChannel(QGroupBox):
         super().__init__()
         self.setTitle('OpticalChannel')
         self.parent = parent
-        self.group_name = 'OpticalChannel'
+        self.group_type = 'OpticalChannel'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('OpticalChannel')
         self.lin_name.setToolTip("the name of this optical channel")
         nOptCh = 0
@@ -29,11 +23,11 @@ class GroupOpticalChannel(QGroupBox):
         if nOptCh > 0:
             self.lin_name.setText('OpticalChannel'+str(nOptCh))
 
-        self.lbl_description = QLabel('description:')
+        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
         self.lin_description.setToolTip("Any notes or comments about the channel")
 
-        self.lbl_emission_lambda = QLabel('emission_lambda:')
+        self.lbl_emission_lambda = QLabel('emission_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_emission_lambda = QLineEdit('0.0')
         self.lin_emission_lambda.setToolTip("Emission lambda for channel")
 
@@ -59,9 +53,9 @@ class GroupOpticalChannel(QGroupBox):
         data['description'] = self.lin_description.text()
         try:
             data['emission_lambda'] = float(self.lin_emission_lambda.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['emission_lambda'] = 0.0
-            print("'emission_lambda' must be a float")
         return data
 
     def write_fields(self, data={}):
@@ -71,16 +65,15 @@ class GroupOpticalChannel(QGroupBox):
         self.lin_emission_lambda.setText(str(data['emission_lambda']))
 
 
-
 class GroupImagingPlane(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.ImagingPlane fields filling form."""
         super().__init__()
         self.setTitle('ImagingPlane')
         self.parent = parent
-        self.group_name = 'ImagingPlane'
+        self.group_type = 'ImagingPlane'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImagingPlane')
         self.lin_name.setToolTip("The name of this ImagingPlane")
         nImPl = 0
@@ -90,47 +83,48 @@ class GroupImagingPlane(QGroupBox):
         if nImPl > 0:
             self.lin_name.setText('ImagingPlane'+str(nImPl))
 
-        self.lbl_optical_channel = QLabel('optical_channel:')
+        self.lbl_optical_channel = QLabel('optical_channel<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_optical_channel = CustomComboBox()
-        self.combo_optical_channel.setToolTip("One of possibly many groups storing "
-            "channelspecific data")
+        self.combo_optical_channel.setToolTip(
+            "One of possibly many groups storing channels pecific data")
 
-        self.lbl_description = QLabel('description:')
+        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
         self.lin_description.setToolTip("Description of this ImagingPlane")
 
-        self.lbl_device = QLabel('device:')
+        self.lbl_device = QLabel('device<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_device = CustomComboBox()
         self.combo_device.setToolTip("The device that was used to record")
 
-        self.lbl_excitation_lambda = QLabel('excitation_lambda:')
+        self.lbl_excitation_lambda = QLabel('excitation_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_excitation_lambda = QLineEdit('0.0')
         self.lin_excitation_lambda.setToolTip("Excitation wavelength in nm")
 
-        self.lbl_imaging_rate = QLabel('imaging_rate:')
+        self.lbl_imaging_rate = QLabel('imaging_rate<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_imaging_rate = QLineEdit('0.0')
         self.lin_imaging_rate.setToolTip("Rate images are acquired, in Hz")
 
-        self.lbl_indicator = QLabel('indicator:')
+        self.lbl_indicator = QLabel('indicator<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_indicator = QLineEdit('indicator')
         self.lin_indicator.setToolTip("Calcium indicator")
 
-        self.lbl_location = QLabel('location:')
+        self.lbl_location = QLabel('location<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_location = QLineEdit('location')
         self.lin_location.setToolTip("Location of image plane")
 
         self.lbl_manifold = QLabel('manifold:')
         self.chk_manifold = QCheckBox("Get from source file")
         self.chk_manifold.setChecked(False)
-        self.chk_manifold.setToolTip("Physical position of each pixel. size=(height, "
-            "width, xyz).\n Check box if this data will be retrieved from source file.\n"
+        self.chk_manifold.setToolTip(
+            "Physical position of each pixel. size=(height, width, xyz).\n "
+            "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1")
-        self.lin_conversion.setToolTip("Multiplier to get from stored values to "
-            "specified unit (e.g., 1e-3 for millimeters)")
+        self.lin_conversion.setToolTip(
+            "Multiplier to get from stored values to specified unit (e.g., 1e-3 for millimeters)")
 
         self.lbl_unit = QLabel('unit:')
         self.lin_unit = QLineEdit('')
@@ -140,8 +134,9 @@ class GroupImagingPlane(QGroupBox):
         self.lbl_reference_frame = QLabel('reference_frame:')
         self.lin_reference_frame = QLineEdit('')
         self.lin_reference_frame.setPlaceholderText("reference_frame")
-        self.lin_reference_frame.setToolTip("Describes position and reference frame "
-            "of manifold based on position of first element in manifold.")
+        self.lin_reference_frame.setToolTip(
+            "Describes position and reference frame of manifold based on position "
+            "of first element in manifold.")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(5, 1)
@@ -169,7 +164,6 @@ class GroupImagingPlane(QGroupBox):
         self.grid.addWidget(self.lin_unit, 10, 2, 1, 4)
         self.grid.addWidget(self.lbl_reference_frame, 11, 0, 1, 2)
         self.grid.addWidget(self.lin_reference_frame, 11, 2, 1, 4)
-
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
@@ -191,11 +185,13 @@ class GroupImagingPlane(QGroupBox):
         data['device'] = str(self.combo_device.currentText())
         try:
             data['excitation_lambda'] = float(self.lin_excitation_lambda.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['excitation_lambda'] = 0.0
         try:
             data['imaging_rate'] = float(self.lin_imaging_rate.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['imaging_rate'] = 0.0
         data['indicator'] = self.lin_indicator.text()
         data['location'] = self.lin_location.text()
@@ -203,7 +199,8 @@ class GroupImagingPlane(QGroupBox):
             data['manifold'] = True
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
+        except ValueError as error:
+            print(error)
             data['conversion'] = 0.0
         data['unit'] = self.lin_unit.text()
         data['reference_frame'] = self.lin_reference_frame.text()
@@ -232,16 +229,15 @@ class GroupImagingPlane(QGroupBox):
             self.lin_reference_frame.setText(data['reference_frame'])
 
 
-
 class GroupTwoPhotonSeries(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.TwoPhotonSeries fields filling form."""
         super().__init__()
         self.setTitle('TwoPhotonSeries')
         self.parent = parent
-        self.group_name = 'TwoPhotonSeries'
+        self.group_type = 'TwoPhotonSeries'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TwoPhotonSeries')
         self.lin_name.setToolTip("The name of this TimeSeries dataset")
         nTPS = 0
@@ -251,14 +247,15 @@ class GroupTwoPhotonSeries(QGroupBox):
         if nTPS > 0:
             self.lin_name.setText('TwoPhotonSeries'+str(nTPS))
 
-        self.lbl_imaging_plane = QLabel('imaging_plane:')
+        self.lbl_imaging_plane = QLabel('imaging_plane<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("Imaging plane class/pointer")
 
         self.lbl_data = QLabel('data:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(False)
-        self.chk_data.setToolTip("The data this TimeSeries dataset stores.\n"
+        self.chk_data.setToolTip(
+            "The data this TimeSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -270,14 +267,15 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.lbl_format = QLabel("format:")
         self.lin_format = QLineEdit("")
         self.lin_format.setPlaceholderText("format")
-        self.lin_format.setToolTip("Format of image. Three types: 1) Image format: "
-            "tiff, png, jpg, etc. 2) external 3) raw")
+        self.lin_format.setToolTip(
+            "Format of image. Three types: 1) Image format: tiff, png, jpg, etc. 2) external 3) raw")
 
         self.lbl_field_of_view = QLabel("field_of_view:")
         self.chk_field_of_view = QCheckBox("Get from source file")
         self.chk_field_of_view.setChecked(False)
-        self.chk_field_of_view.setToolTip("Width, height and depth of image, or imaged"
-            " area (meters).\nCheck box if this data will be retrieved from source file."
+        self.chk_field_of_view.setToolTip(
+            "Width, height and depth of image, or imaged area (meters)."
+            "\nCheck box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_pmt_gain = QLabel("pmt_gain:")
@@ -293,16 +291,17 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.lbl_external_file = QLabel("external_file:")
         self.lin_external_file = QLineEdit("")
         self.lin_external_file.setPlaceholderText("path/to/external_file")
-        self.lin_external_file.setToolTip("Path or URL to one or more external file(s). "
-        "Field only present if format=external. Either external_file or data must "
-        "be specified, but not both.")
+        self.lin_external_file.setToolTip(
+            "Path or URL to one or more external file(s). Field only present if format=external."
+            "\nEither external_file or data must be specified, but not both.")
 
         self.lbl_starting_frame = QLabel("starting_frame:")
         self.chk_starting_frame = QCheckBox("Get from source file")
         self.chk_starting_frame.setChecked(False)
-        self.chk_starting_frame.setToolTip("Each entry is the frame number in the "
-            "corresponding external_file variable. This serves as an index to what frames "
-            "each file contains.\nCheck box if this data will be retrieved from source file."
+        self.chk_starting_frame.setToolTip(
+            "Each entry is the frame number in the corresponding external_file variable."
+            "\nThis serves as an index to what frames each file contains."
+            "\nCheck box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_bits_per_pixel = QLabel("bits_per_pixel:")
@@ -317,34 +316,35 @@ class GroupTwoPhotonSeries(QGroupBox):
 
         self.lbl_resolution = QLabel("resolution:")
         self.lin_resolution = QLineEdit("")
-        self.lin_resolution.setPlaceholderText("0.0")
-        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
-            "specified unit) between values in data")
+        self.lin_resolution.setToolTip(
+            "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_conversion = QLabel("conversion:")
         self.lin_conversion = QLineEdit("")
-        self.lin_conversion.setPlaceholderText("0.0")
-        self.lin_conversion.setToolTip("Scalar to multiply each element by to "
-            "convert to volts")
+        self.lin_conversion.setPlaceholderText("1.0")
+        self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to volts")
 
         self.lbl_timestamps = QLabel("timestamps:")
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_starting_time = QLabel("starting_time:")
         self.chk_starting_time = QCheckBox("Get from source file")
         self.chk_starting_time.setChecked(False)
-        self.chk_starting_time.setToolTip("The timestamp of the first sample.\n"
+        self.chk_starting_time.setToolTip(
+            "The timestamp of the first sample.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_rate = QLabel("rate:")
         self.chk_rate = QCheckBox("Get from source file")
         self.chk_rate.setChecked(False)
-        self.chk_rate.setToolTip("Sampling rate in Hz.\n"
+        self.chk_rate.setToolTip(
+            "Sampling rate in Hz.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
@@ -361,14 +361,16 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.lbl_control = QLabel("control:")
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_control_description = QLabel("control_description:")
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
@@ -438,32 +440,32 @@ class GroupTwoPhotonSeries(QGroupBox):
             data['field_of_view'] = True
         try:
             data['pmt_gain'] = float(self.lin_pmt_gain.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['scan_line_rate'] = float(self.lin_scan_line_rate.text())
-        except:
-            pass
-        if self.lin_format.text()=='external':
+        except ValueError as error:
+            print(error)
+        if self.lin_format.text() == 'external':
             data['external_file'] = self.lin_external_file.text()
             if self.chk_starting_frame.isChecked():
                 data['starting_frame'] = True
         try:
             data['bits_per_pixel'] = int(self.lin_bits_per_pixel.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['dimension'] = [int(it) for it in self.lin_dimension.text().split(',')]
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['resolution'] = float(self.lin_resolution.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         if self.chk_starting_time.isChecked():
@@ -527,16 +529,15 @@ class GroupTwoPhotonSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-
 class GroupCorrectedImageStack(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.CorrectedImageStack fields filling form."""
         super().__init__()
         self.setTitle('CorrectedImageStack')
         self.parent = parent
-        self.group_name = 'CorrectedImageStack'
+        self.group_type = 'CorrectedImageStack'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('CorrectedImageStack')
         self.lin_name.setToolTip("The name of this CorrectedImageStack container")
         nInstances = 0
@@ -546,24 +547,26 @@ class GroupCorrectedImageStack(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('CorrectedImageStack'+str(nInstances))
 
-        self.lbl_corrected = QLabel('corrected:')
+        self.lbl_corrected = QLabel('corrected<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_corrected = QCheckBox("Get from source file")
         self.chk_corrected.setChecked(True)
-        self.chk_corrected.setToolTip("Image stack with frames shifted to the common "
-            "coordinates.\nCheck box if this data will be retrieved from source file."
+        self.chk_corrected.setToolTip(
+            "Image stack with frames shifted to the common coordinates."
+            "\nCheck box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
-        self.lbl_original = QLabel('original:')
+        self.lbl_original = QLabel('original<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_original = CustomComboBox()
         self.combo_original.setToolTip("Link to image series that is being registered.")
 
-        self.lbl_xy_translation = QLabel('xy_translation:')
+        self.lbl_xy_translation = QLabel('xy_translation<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_xy_translation = QCheckBox("Get from source file")
         self.chk_xy_translation.setChecked(True)
-        self.chk_xy_translation.setToolTip("Stores the x,y delta necessary to align "
-            "each frame to the common coordinates, for example, to align each frame "
-            "to a reference image.\nCheck box if this data will be retrieved from "
-            "source file.\nUncheck box to ignore it.")
+        self.chk_xy_translation.setToolTip(
+            "Stores the x,y delta necessary to align each frame to the common coordinates,\n"
+            "for example, to align each frame to a reference image."
+            "\nCheck box if this data will be retrieved from source file."
+            "\nUncheck box to ignore it.")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
@@ -606,16 +609,15 @@ class GroupCorrectedImageStack(QGroupBox):
             self.chk_xy_translation.setChecked(True)
 
 
-
 class GroupMotionCorrection(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.MotionCorrection fields filling form."""
         super().__init__()
         self.setTitle('MotionCorrection')
         self.parent = parent
-        self.group_name = 'MotionCorrection'
+        self.group_type = 'MotionCorrection'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('MotionCorrection')
         self.lin_name.setToolTip("The name of this MotionCorrection container")
         nInstances = 0
@@ -658,16 +660,15 @@ class GroupMotionCorrection(QGroupBox):
         self.combo_corrected_images_stacks.addItem(data['corrected_images_stacks'])
 
 
-
 class GroupPlaneSegmentation(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.PlaneSegmentation fields filling form."""
         super().__init__()
         self.setTitle('PlaneSegmentation')
         self.parent = parent
-        self.group_name = 'PlaneSegmentation'
+        self.group_type = 'PlaneSegmentation'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('PlaneSegmentation')
         self.lin_name.setToolTip("The name of this PlaneSegmentation.")
         nInstances = 0
@@ -677,20 +678,20 @@ class GroupPlaneSegmentation(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('PlaneSegmentation'+str(nInstances))
 
-        self.lbl_description = QLabel('description:')
+        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
-        self.lin_description.setToolTip(" Description of image plane, recording "
-            "wavelength, depth, etc.")
+        self.lin_description.setToolTip(
+            "Description of image plane, recording wavelength, depth, etc.")
 
-        self.lbl_imaging_plane = QLabel('imaging_plane:')
+        self.lbl_imaging_plane = QLabel('imaging_plane<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("The ImagingPlane this ROI applies to.")
 
         self.lbl_reference_images = QLabel('reference_images:')
         self.chk_reference_images = QCheckBox("Get from source file")
         self.chk_reference_images.setChecked(False)
-        self.chk_reference_images.setToolTip("One or more image stacks that the "
-            "masks apply to (can be oneelement stack).\n"
+        self.chk_reference_images.setToolTip(
+            "One or more image stacks that the masks apply to (can be oneelement stack).\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -734,18 +735,15 @@ class GroupPlaneSegmentation(QGroupBox):
             self.chk_reference_images.setChecked(True)
 
 
-
 class GroupImageSegmentation(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.ImageSegmentation fields filling form."""
         super().__init__()
         self.setTitle('ImageSegmentation')
         self.parent = parent
-        self.group_name = 'ImageSegmentation'
+        self.group_type = 'ImageSegmentation'
 
-        # Name: it has a special treatment, since it need to be unique we test
-        # if the parent contain other objects of the same type
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImageSegmentation')
         self.lin_name.setToolTip("The name of this ImageSegmentation.")
         nInstances = 0
@@ -788,18 +786,15 @@ class GroupImageSegmentation(QGroupBox):
         self.combo_plane_segmentations.addItem(data['plane_segmentations'])
 
 
-
 class GroupRoiResponseSeries(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.RoiResponseSeries fields filling form."""
         super().__init__()
         self.setTitle('RoiResponseSeries')
         self.parent = parent
-        self.group_name = 'RoiResponseSeries'
+        self.group_type = 'RoiResponseSeries'
 
-        # Name: it has a special treatment, since it need to be unique we test
-        # if the parent contain other objects of the same type
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('RoiResponseSeries')
         self.lin_name.setToolTip("The name of this RoiResponseSeries dataset.")
         nInstances = 0
@@ -809,30 +804,31 @@ class GroupRoiResponseSeries(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('RoiResponseSeries'+str(nInstances))
 
-        self.lbl_data = QLabel('data:')
+        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
-        self.chk_data.setToolTip("The data this TimeSeries dataset stores.\n"
+        self.chk_data.setToolTip(
+            "The data this TimeSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
-        self.lbl_unit = QLabel('unit:')
+        self.lbl_unit = QLabel('unit<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_unit = QLineEdit('NA')
         self.lin_unit.setToolTip("The base unit of measurement (should be SI unit)")
 
-        self.lbl_rois = QLabel('rois:')
+        self.lbl_rois = QLabel('rois<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_rois = QCheckBox("Get from source file")
         self.chk_rois.setChecked(True)
-        self.chk_rois.setToolTip("A table region corresponding to the ROIs that "
-            "were used to generate this data.\n"
+        self.chk_rois.setToolTip(
+            "A table region corresponding to the ROIs that were used to generate this data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
-        self.lin_resolution.setToolTip("The smallest meaningful difference (in "
-            "specified unit) between values in data")
+        self.lin_resolution.setToolTip(
+            "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_conversion = QLabel('conversion:')
         self.lin_conversion = QLineEdit('')
@@ -842,21 +838,24 @@ class GroupRoiResponseSeries(QGroupBox):
         self.lbl_timestamps = QLabel("timestamps:")
         self.chk_timestamps = QCheckBox("Get from source file")
         self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip("Timestamps for samples stored in data.\n"
+        self.chk_timestamps.setToolTip(
+            "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_starting_time = QLabel("starting_time:")
         self.chk_starting_time = QCheckBox("Get from source file")
         self.chk_starting_time.setChecked(False)
-        self.chk_starting_time.setToolTip("The timestamp of the first sample.\n"
+        self.chk_starting_time.setToolTip(
+            "The timestamp of the first sample.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_rate = QLabel("rate:")
         self.chk_rate = QCheckBox("Get from source file")
         self.chk_rate.setChecked(False)
-        self.chk_rate.setToolTip("Sampling rate in Hz.\n"
+        self.chk_rate.setToolTip(
+            "Sampling rate in Hz.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
@@ -873,14 +872,16 @@ class GroupRoiResponseSeries(QGroupBox):
         self.lbl_control = QLabel("control:")
         self.chk_control = QCheckBox("Get from source file")
         self.chk_control.setChecked(False)
-        self.chk_control.setToolTip("Numerical labels that apply to each element in data.\n"
+        self.chk_control.setToolTip(
+            "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_control_description = QLabel("control_description:")
         self.chk_control_description = QCheckBox("Get from source file")
         self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip("Description of each control value.\n"
+        self.chk_control_description.setToolTip(
+            "Description of each control value.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
@@ -929,12 +930,12 @@ class GroupRoiResponseSeries(QGroupBox):
             data['rois'] = True
         try:
             data['resolution'] = float(self.lin_resolution.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         try:
             data['conversion'] = float(self.lin_conversion.text())
-        except:
-            pass
+        except ValueError as error:
+            print(error)
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         if self.chk_starting_time.isChecked():
@@ -978,16 +979,15 @@ class GroupRoiResponseSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-
 class GroupDfOverF(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.DfOverF fields filling form."""
         super().__init__()
         self.setTitle('DfOverF')
         self.parent = parent
-        self.group_name = 'DfOverF'
+        self.group_type = 'DfOverF'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DfOverF')
         self.lin_name.setToolTip("The name of this DfOverF.")
         nInstances = 0
@@ -1030,16 +1030,15 @@ class GroupDfOverF(QGroupBox):
         self.combo_roi_response_series.addItem(data['roi_response_series'])
 
 
-
 class GroupFluorescence(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.Fluorescence fields filling form."""
         super().__init__()
         self.setTitle('Fluorescence')
         self.parent = parent
-        self.group_name = 'Fluorescence'
+        self.group_type = 'Fluorescence'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Fluorescence')
         self.lin_name.setToolTip("The name of this Fluorescence.")
         nInstances = 0
@@ -1082,16 +1081,15 @@ class GroupFluorescence(QGroupBox):
         self.combo_roi_response_series.addItem(data['roi_response_series'])
 
 
-
 class GroupGrayscaleVolume(QGroupBox):
     def __init__(self, parent):
         """Groupbox for GrayscaleVolume fields filling form."""
         super().__init__()
         self.setTitle('GrayscaleVolume')
         self.parent = parent
-        self.group_name = 'GrayscaleVolume'
+        self.group_type = 'GrayscaleVolume'
 
-        self.lbl_name = QLabel('name:')
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('GrayscaleVolume')
         self.lin_name.setToolTip("The unique name of this group.")
         nInstances = 0
@@ -1101,17 +1099,19 @@ class GroupGrayscaleVolume(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('GrayscaleVolume'+str(nInstances))
 
-        self.lbl_data = QLabel('data:')
+        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
         self.chk_data.setChecked(True)
-        self.chk_data.setToolTip("Dataset for this volumetric image.\n"
+        self.chk_data.setToolTip(
+            "Dataset for this volumetric image.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_spatial_scale = QLabel('spatial_scale:')
         self.chk_spatial_scale = QCheckBox("Get from source file")
         self.chk_spatial_scale.setChecked(False)
-        self.chk_spatial_scale.setToolTip("Spatial scale for this volumetric image.\n"
+        self.chk_spatial_scale.setToolTip(
+            "Spatial scale for this volumetric image.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
@@ -1148,14 +1148,12 @@ class GroupGrayscaleVolume(QGroupBox):
             self.chk_spatial_scale.setChecked(True)
 
 
-
-
 class GroupOphys(QGroupBox):
     def __init__(self, parent):
         """Groupbox for Ophys module fields filling form."""
         super().__init__()
         self.setTitle('Ophys')
-        self.group_name = 'Ophys'
+        self.group_type = 'Ophys'
         self.groups_list = []
 
         self.combo1 = CustomComboBox()
@@ -1184,15 +1182,15 @@ class GroupOphys(QGroupBox):
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(5, 1)
-        self.grid.addWidget(self.combo1, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo2, 1, 2, 1, 2)
+        if parent.show_add_del:
+            self.grid.addWidget(self.combo1, 1, 0, 1, 2)
+            self.grid.addWidget(self.combo2, 1, 2, 1, 2)
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-
     def add_group(self, group_type, write_data=None):
         """Adds group form."""
-        if group_type=='combo':
+        if group_type == 'combo':
             group_type = str(self.combo1.currentText())
         if group_type == 'Device':
             item = GroupDevice(self)
@@ -1224,26 +1222,47 @@ class GroupOphys(QGroupBox):
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
-            self.vbox1.insertWidget(nWidgetsVbox-1, item) #insert before the stretch
+            self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
             self.combo1.setCurrentIndex(0)
             self.combo2.addItem(item.lin_name.text())
             self.refresh_children()
 
     def del_group(self, group_name):
         """Deletes group form by name."""
-        if group_name=='combo':
+        if group_name == 'combo':
             group_name = str(self.combo2.currentText())
         if group_name != '-- Del group --':
-            nWidgetsVbox = self.vbox1.count()
-            for i in range(nWidgetsVbox):
-                if self.vbox1.itemAt(i) is not None:
-                    if (hasattr(self.vbox1.itemAt(i).widget(), 'lin_name')) and \
-                        (self.vbox1.itemAt(i).widget().lin_name.text()==group_name):
-                        self.groups_list.remove(self.vbox1.itemAt(i).widget())   #deletes list item
-                        self.vbox1.itemAt(i).widget().setParent(None)            #deletes widget
-                        self.combo2.removeItem(self.combo2.findText(group_name))
-                        self.combo2.setCurrentIndex(0)
-                        self.refresh_children()
+            # Tests if any other group references this one
+            if self.is_referenced(grp_unique_name=group_name):
+                QMessageBox.warning(self, "Cannot delete subgroup",
+                                    group_name+" is being referenced by another subgroup(s).\n"
+                                    "You should remove any references of "+group_name+" before "
+                                    "deleting it!")
+                self.combo2.setCurrentIndex(0)
+            else:
+                nWidgetsVbox = self.vbox1.count()
+                for i in range(nWidgetsVbox):
+                    if self.vbox1.itemAt(i) is not None:
+                        if hasattr(self.vbox1.itemAt(i).widget(), 'lin_name'):
+                            if self.vbox1.itemAt(i).widget().lin_name.text() == group_name:
+                                self.groups_list.remove(self.vbox1.itemAt(i).widget())   # deletes list item
+                                self.vbox1.itemAt(i).widget().setParent(None)            # deletes widget
+                                self.combo2.removeItem(self.combo2.findText(group_name))
+                                self.combo2.setCurrentIndex(0)
+                                self.refresh_children()
+
+    def is_referenced(self, grp_unique_name):
+        """Tests if a group is being referenced any other groups. Returns boolean."""
+        nWidgetsVbox = self.vbox1.count()
+        for i in range(nWidgetsVbox):
+            if self.vbox1.itemAt(i).widget() is not None:
+                other_grp = self.vbox1.itemAt(i).widget()
+                # check if this subgroup has any ComboBox referencing grp_unique_name
+                for ch in other_grp.children():
+                    if isinstance(ch, (CustomComboBox, QComboBox)):
+                        if ch.currentText() == grp_unique_name:
+                            return True
+        return False
 
     def refresh_children(self):
         """Refreshes references with existing objects in child groups."""
@@ -1260,12 +1279,22 @@ class GroupOphys(QGroupBox):
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
+        error = None
         data = {}
+        # group_type counts, if there are multiple groups of same type, they are saved in a list
+        grp_types = [grp.group_type for grp in self.groups_list]
+        grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
+        # initiate lists as values for groups keys with count > 1
+        for k, v in grp_type_count.items():
+            if v > 1:
+                data[k] = []
+        # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            data[grp.group_name] = grp.read_fields()
-        return data
-
-
+            if grp_type_count[grp.group_type] > 1:
+                data[grp.group_type].append(grp.read_fields())
+            else:
+                data[grp.group_type] = grp.read_fields()
+        return data, error
 
 
 class CustomComboBox(QComboBox):
