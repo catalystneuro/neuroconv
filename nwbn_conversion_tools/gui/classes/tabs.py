@@ -1,6 +1,6 @@
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QWidget, QApplication, QAction, QGroupBox,
+from PySide2 import QtCore, QtGui
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import (QWidget, QApplication, QAction, QGroupBox,
     QTabWidget, QPushButton, QLineEdit, QTextEdit, QVBoxLayout, QHBoxLayout,
     QGridLayout, QSplitter, QLabel, QFileDialog, QComboBox, QScrollArea)
 from nwbn_conversion_tools.gui.classes.forms import (GroupNwbfile, GroupGeneral,

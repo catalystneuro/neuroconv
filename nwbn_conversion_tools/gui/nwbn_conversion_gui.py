@@ -1,6 +1,6 @@
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
+from PySide2 import QtCore
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
                              QGridLayout, QSplitter, QLabel, QFileDialog,
                              QMessageBox, QComboBox, QScrollArea, QStyle,
@@ -176,7 +176,7 @@ class Application(QMainWindow):
         r_vbox2.addLayout(r_grid2)
         r_vbox2.addWidget(self.logger)
 
-        r_vsplitter = QSplitter(Qt.Vertical)
+        r_vsplitter = QSplitter(QtCore.Qt.Vertical)
         ru_w = QWidget()
         ru_w.setLayout(r_vbox1)
         rb_w = QWidget()
@@ -187,7 +187,7 @@ class Application(QMainWindow):
         # Main Layout
         self.left_w = QWidget()
         self.left_w.setLayout(self.l_vbox2)
-        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter = QSplitter(QtCore.Qt.Horizontal)
         self.splitter.addWidget(self.left_w)
         self.splitter.addWidget(r_vsplitter)
 
@@ -443,6 +443,7 @@ if __name__ == '__main__':
 def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
                         kwargs_fields={}, show_add_del=False):
     """Sets up QT application."""
+    print('here')
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)

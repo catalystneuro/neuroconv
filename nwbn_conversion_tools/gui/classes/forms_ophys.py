@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
+from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                              QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice

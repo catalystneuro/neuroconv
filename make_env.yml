@@ -13,7 +13,8 @@ dependencies:
 - jupyter
 - matplotlib
 - h5py
-- pyqt
+#- pyqt
+- pyside2
 - pynwb
 - hdmf
 - pyyaml
