@@ -443,7 +443,6 @@ if __name__ == '__main__':
 def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
                         kwargs_fields={}, show_add_del=False):
     """Sets up QT application."""
-    print('here')
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
