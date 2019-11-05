@@ -1,3 +1,4 @@
+from PySide2.QtGui import QIntValidator, QDoubleValidator
 from PySide2.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
                              QComboBox, QCheckBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
@@ -374,6 +375,95 @@ class GroupDevice(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
+
+
+class GroupCustomExtension(QGroupBox):
+    def __init__(self, parent, metadata):
+        """Groupbox for custom extension fields filling form."""
+        super().__init__()
+        self.setTitle('CustomExtension')
+        self.parent = parent
+        self.metadata = metadata
+        self.group_type = 'CustomExtension'
+
+        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lin_name = QLineEdit(metadata['name'])
+        self.lin_name.setToolTip("The unique name of this group.")
+        nInstances = 0
+        for grp in self.parent.groups_list:
+            if isinstance(grp,  metadata['neurodata_type']):
+                nInstances += 1
+        if nInstances > 0:
+            self.lin_name.setText(metadata['name']+str(nInstances))
+
+        # TODO : implement dynamically created custom fields
+        self.intValidator = QIntValidator(self)
+        self.floatValidator = QDoubleValidator(self)
+
+        keys_list = list(metadata.keys())
+        keys_list.remove('name')
+        keys_list.remove('neurodata_type')
+        for key in keys_list:
+            val = metadata[key]
+            if isinstance(val, (int, np.int)):
+                self.LineEdit.setValidator(self.intValidator)
+                pass
+            elif isinstance(val, (float, np.float)):
+                self.LineEdit.setValidator(self.floatValidator)
+                pass
+            elif isinstance(val, str):
+                pass
+            elif isinstance(val, datetime):
+                pass
+
+
+        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lin_description = QLineEdit('description')
+        self.lin_description.setToolTip("Description of this electrode group")
+
+        self.lbl_location = QLabel('location<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lin_location = QLineEdit('location')
+        self.lin_location.setToolTip("Location of this electrode group")
+
+        self.lbl_device = QLabel('device<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.combo_device = CustomComboBox()
+        self.combo_device.setToolTip("The device that was used to record from this electrode group")
+
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(4, 1)
+        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_location, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_location, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_device, 3, 0, 1, 2)
+        self.grid.addWidget(self.combo_device, 3, 2, 1, 4)
+        self.setLayout(self.grid)
+
+    def refresh_objects_references(self):
+        """Refreshes references with existing objects in parent group."""
+        self.combo_device.clear()
+        for grp in self.parent.groups_list:
+            if isinstance(grp, GroupDevice):
+                self.combo_device.addItem(grp.lin_name.text())
+
+    def read_fields(self):
+        """Reads fields and returns them structured in a dictionary."""
+        data = {}
+        data['name'] = self.lin_name.text()
+        data['description'] = self.lin_description.text()
+        data['location'] = self.lin_location.text()
+        data['device'] = self.combo_device.currentText()
+        return data
+
+    def write_fields(self, data={}):
+        """Reads structured dictionary and write in form fields."""
+        self.lin_name.setText(data['name'])
+        self.lin_description.setText(data['description'])
+        self.lin_location.setText(data['location'])
+        self.combo_device.clear()
+        self.combo_device.addItem(data['device'])
 
 
 class GroupCustomExample(QGroupBox):
