@@ -204,6 +204,8 @@ class GroupNwbfile(QGroupBox):
         data['session_id'] = self.lin_session_id.text()
         data['institution'] = self.lin_institution.text()
         data['lab'] = self.lin_lab.text()
+        if 'lab_meta_data' in self.metadata.keys():
+            data['lab_meta_data'], error = self.lab_meta_data.read_fields()
         keywords = self.lin_keywords.text()
         data['keywords'] = [kw.strip() for kw in keywords.split(',')]
         data['notes'] = self.lin_notes.text()
@@ -437,41 +439,42 @@ class GroupCustomExtension(QGroupBox):
         for ii, key in enumerate(keys_list):
             val = metadata[key]
             lbl_key = QLabel(key+':')
-            setattr(self, 'lbl_key_'+str(ii), lbl_key)
+            setattr(self, 'lbl_'+key, lbl_key)
             if isinstance(val, bool):
                 chk_val = QLineEdit(str(val))
                 chk_val = QCheckBox("True")
                 chk_val.setChecked(val)
-                setattr(self, 'chk_val_'+str(ii), chk_val)
+                setattr(self, 'lin_'+key, chk_val)
                 self.grid.addWidget(lbl_key, ii+1, 0, 1, 2)
                 self.grid.addWidget(chk_val, ii+1, 2, 1, 2)
             elif isinstance(val, (int, np.int)):
                 lin_val = QLineEdit(str(val))
                 lin_val.setValidator(self.intValidator)
-                setattr(self, 'lin_val_'+str(ii), lin_val)
+                setattr(self, 'lin_'+key, lin_val)
                 self.grid.addWidget(lbl_key, ii+1, 0, 1, 2)
                 self.grid.addWidget(lin_val, ii+1, 2, 1, 4)
             elif isinstance(val, (float, np.float)):
                 lin_val = QLineEdit(str(val))
                 lin_val.setValidator(self.floatValidator)
-                setattr(self, 'lin_val_'+str(ii), lin_val)
+                setattr(self, 'lin_'+key, lin_val)
                 self.grid.addWidget(lbl_key, ii+1, 0, 1, 2)
                 self.grid.addWidget(lin_val, ii+1, 2, 1, 4)
             elif isinstance(val, str):
                 lin_val = QLineEdit(str(val))
-                setattr(self, 'lin_val_'+str(ii), lin_val)
+                setattr(self, 'lin_'+key, lin_val)
                 self.grid.addWidget(lbl_key, ii+1, 0, 1, 2)
                 self.grid.addWidget(lin_val, ii+1, 2, 1, 4)
             elif isinstance(val, datetime):
-                lin_date = QLineEdit(val.strftime("%d/%m/%Y"))
-                lin_date.setToolTip("dd/mm/yyyy")
-                setattr(self, 'lin_date_'+str(ii), lin_date)
-                lin_time = QLineEdit(val.strftime("%H:%M"))
-                lin_time.setToolTip("dd/mm/yyyy")
-                setattr(self, 'lin_time_'+str(ii), lin_time)
-                self.grid.addWidget(lbl_key, ii+1, 0, 1, 2)
-                self.grid.addWidget(lin_date, ii+1, 2, 1, 2)
-                self.grid.addWidget(lin_time, ii+1, 4, 1, 2)
+                pass
+                # lin_date = QLineEdit(val.strftime("%d/%m/%Y"))
+                # lin_date.setToolTip("dd/mm/yyyy")
+                # setattr(self, 'lin_date_'+str(ii), lin_date)
+                # lin_time = QLineEdit(val.strftime("%H:%M"))
+                # lin_time.setToolTip("dd/mm/yyyy")
+                # setattr(self, 'lin_time_'+str(ii), lin_time)
+                # self.grid.addWidget(lbl_key, ii+1, 0, 1, 2)
+                # self.grid.addWidget(lin_date, ii+1, 2, 1, 2)
+                # self.grid.addWidget(lin_time, ii+1, 4, 1, 2)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
@@ -480,21 +483,23 @@ class GroupCustomExtension(QGroupBox):
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
-        # data = {}
-        # data['name'] = self.lin_name.text()
-        # data['description'] = self.lin_description.text()
-        # data['location'] = self.lin_location.text()
-        # data['device'] = self.combo_device.currentText()
-        # return data
-        pass
+        error = None
+        keys_list = list(self.metadata.keys())
+        keys_list.remove('neurodata_type')
+        for ii, key in enumerate(keys_list):
+            attr = getattr(self, 'lin_'+key)
+            if isinstance(self.metadata[key], bool):
+                self.metadata[key] = attr.text() == True
+            elif isinstance(self.metadata[key], (int, np.int)):
+                self.metadata[key] = int(attr.text())
+            elif isinstance(self.metadata[key], (float, np.float)):
+                self.metadata[key] = float(attr.text())
+            elif isinstance(self.metadata[key], str):
+                self.metadata[key] = attr.text()
+        return self.metadata, error
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        # self.lin_name.setText(data['name'])
-        # self.lin_description.setText(data['description'])
-        # self.lin_location.setText(data['location'])
-        # self.combo_device.clear()
-        # self.combo_device.addItem(data['device'])
         pass
 
 
