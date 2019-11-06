@@ -1,6 +1,6 @@
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
+from PySide2 import QtCore
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
                              QGridLayout, QSplitter, QLabel, QFileDialog,
                              QMessageBox, QComboBox, QScrollArea, QStyle,
@@ -53,23 +53,21 @@ class Application(QMainWindow):
         self.groups_list = []
 
         # Left-side panel: forms
-        btn_save_meta = QPushButton('Save metafile')
-        btn_save_meta.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
-        btn_save_meta.clicked.connect(self.save_meta_file)
-        btn_run_conversion = QPushButton('Run conversion')
-        btn_run_conversion.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        btn_run_conversion.clicked.connect(self.run_conversion)
-        btn_form_editor = QPushButton('Form -> Editor')
-        btn_form_editor.clicked.connect(self.form_to_editor)
-
-        self.lbl_meta_file = QLabel('meta file:')
-        self.lbl_meta_file.setToolTip("The YAML file with metadata for this conversion.\n"
+        self.btn_load_meta = QPushButton('Load metafile')
+        self.btn_load_meta.setIcon(self.style().standardIcon(QStyle.SP_ArrowDown))
+        self.btn_load_meta.clicked.connect(lambda: self.load_meta_file(filename=None))
+        self.btn_load_meta.setToolTip("The YAML file with metadata for this conversion.\n"
                                       "You can customize the metadata in the forms below.")
-        self.lin_meta_file = QLineEdit('')
-        self.btn_meta_file = QPushButton()
-        self.btn_meta_file.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-        self.btn_meta_file.clicked.connect(lambda: self.load_meta_file(filename=None))
-        self.lbl_nwb_file = QLabel('nwb file:')
+        self.btn_save_meta = QPushButton('Save metafile')
+        self.btn_save_meta.setIcon(self.style().standardIcon(QStyle.SP_DriveFDIcon))
+        self.btn_save_meta.clicked.connect(self.save_meta_file)
+        self.btn_run_conversion = QPushButton('Run conversion')
+        self.btn_run_conversion.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.btn_run_conversion.clicked.connect(self.run_conversion)
+        self.btn_form_editor = QPushButton('Form -> Editor')
+        self.btn_form_editor.clicked.connect(self.form_to_editor)
+
+        self.lbl_nwb_file = QLabel('Output nwb file:')
         self.lbl_nwb_file.setToolTip("Path to the NWB file that will be created.")
         self.lin_nwb_file = QLineEdit('')
         self.btn_nwb_file = QPushButton()
@@ -78,16 +76,14 @@ class Application(QMainWindow):
 
         l_grid1 = QGridLayout()
         l_grid1.setColumnStretch(3, 1)
-        l_grid1.addWidget(btn_save_meta, 0, 0, 1, 1)
-        l_grid1.addWidget(btn_run_conversion, 0, 1, 1, 1)
-        l_grid1.addWidget(QLabel(), 0, 2, 1, 2)
-        l_grid1.addWidget(btn_form_editor, 0, 4, 1, 2)
-        l_grid1.addWidget(self.lbl_meta_file, 1, 0, 1, 1)
-        l_grid1.addWidget(self.lin_meta_file, 1, 1, 1, 3)
-        l_grid1.addWidget(self.btn_meta_file, 1, 4, 1, 1)
-        l_grid1.addWidget(self.lbl_nwb_file, 2, 0, 1, 1)
-        l_grid1.addWidget(self.lin_nwb_file, 2, 1, 1, 3)
-        l_grid1.addWidget(self.btn_nwb_file, 2, 4, 1, 1)
+        l_grid1.addWidget(self.btn_load_meta, 0, 0, 1, 1)
+        l_grid1.addWidget(self.btn_save_meta, 0, 1, 1, 1)
+        l_grid1.addWidget(self.btn_run_conversion, 0, 2, 1, 1)
+        l_grid1.addWidget(QLabel(), 0, 3, 1, 1)
+        l_grid1.addWidget(self.btn_form_editor, 0, 4, 1, 2)
+        l_grid1.addWidget(self.lbl_nwb_file, 1, 0, 1, 1)
+        l_grid1.addWidget(self.lin_nwb_file, 1, 1, 1, 3)
+        l_grid1.addWidget(self.btn_nwb_file, 1, 4, 1, 1)
 
         # Adds custom files/dir paths fields
         if len(self.source_paths.keys()) == 0:
@@ -176,7 +172,7 @@ class Application(QMainWindow):
         r_vbox2.addLayout(r_grid2)
         r_vbox2.addWidget(self.logger)
 
-        r_vsplitter = QSplitter(Qt.Vertical)
+        r_vsplitter = QSplitter(QtCore.Qt.Vertical)
         ru_w = QWidget()
         ru_w.setLayout(r_vbox1)
         rb_w = QWidget()
@@ -187,7 +183,7 @@ class Application(QMainWindow):
         # Main Layout
         self.left_w = QWidget()
         self.left_w.setLayout(self.l_vbox2)
-        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter = QSplitter(QtCore.Qt.Horizontal)
         self.splitter.addWidget(self.left_w)
         self.splitter.addWidget(r_vsplitter)
 
@@ -298,7 +294,6 @@ class Application(QMainWindow):
             )
             if ftype != '(*.yml)':
                 return
-        self.lin_meta_file.setText(filename)
         with open(filename) as f:
             self.metadata = yaml.safe_load(f)
         txt = yaml.dump(self.metadata, default_flow_style=False)
@@ -417,7 +412,7 @@ class ConversionFunctionThread(QtCore.QThread):
         spec.loader.exec_module(conv_module)
         conv_module.conversion_function(source_paths=self.parent.source_paths,
                                         f_nwb=self.parent.lin_nwb_file.text(),
-                                        metafile=self.parent.lin_meta_file.text(),
+                                        metadata=self.parent.metadata,
                                         **self.parent.kwargs_fields)
         #    self.error = None
         #except Exception as error:

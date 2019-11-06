@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
+from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                              QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
@@ -566,48 +566,51 @@ class GroupLFP(QGroupBox):
             self.lin_name.setText('LFP'+str(nInstances))
 
         self.lbl_electrical_series = QLabel('electrical_series<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.combo_electrical_series = CustomComboBox()
-        self.combo_electrical_series.setToolTip("ElectricalSeries to store in this interface")
+        self.electrical_series = GroupElectricalSeries(self)
+        #self.combo_electrical_series = CustomComboBox()
+        #self.combo_electrical_series.setToolTip("ElectricalSeries to store in this interface")
 
         self.lbl_decomposition_series = QLabel('decomposition_series<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.combo_decomposition_series = CustomComboBox()
-        self.combo_decomposition_series.setToolTip("DecompositionSeries to store in this interface")
+        self.decomposition_series = GroupDecompositionSeries(self)
+        #self.combo_decomposition_series = CustomComboBox()
+        #self.combo_decomposition_series.setToolTip("DecompositionSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_electrical_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_electrical_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.electrical_series, 1, 2, 1, 4)
         self.grid.addWidget(self.lbl_decomposition_series, 2, 0, 1, 2)
-        self.grid.addWidget(self.combo_decomposition_series, 2, 2, 1, 4)
+        self.grid.addWidget(self.decomposition_series, 2, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_electrical_series.clear()
-        self.combo_decomposition_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupElectricalSeries):
-                self.combo_electrical_series.addItem(grp.lin_name.text())
-            if isinstance(grp, GroupDecompositionSeries):
-                self.combo_decomposition_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_electrical_series.clear()
+        # self.combo_decomposition_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupElectricalSeries):
+        #         self.combo_electrical_series.addItem(grp.lin_name.text())
+        #     if isinstance(grp, GroupDecompositionSeries):
+        #         self.combo_decomposition_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['electrical_series'] = self.combo_electrical_series.currentText()
-        data['decomposition_series'] = self.combo_decomposition_series.currentText()
+        data['electrical_series'] = self.electrical_series.read_fields()
+        data['decomposition_series'] = self.decomposition_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_electrical_series.clear()
-        self.combo_electrical_series.addItem(data['electrical_series'])
-        self.combo_decomposition_series.clear()
-        self.combo_decomposition_series.addItem(data['decomposition_series'])
+        # self.combo_electrical_series.clear()
+        # self.combo_electrical_series.addItem(data['electrical_series'])
+        # self.combo_decomposition_series.clear()
+        # self.combo_decomposition_series.addItem(data['decomposition_series'])
 
 
 class GroupFilteredEphys(QGroupBox):
@@ -629,36 +632,38 @@ class GroupFilteredEphys(QGroupBox):
             self.lin_name.setText('FilteredEphys'+str(nInstances))
 
         self.lbl_electrical_series = QLabel('electrical_series<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.combo_electrical_series = CustomComboBox()
-        self.combo_electrical_series.setToolTip("ElectricalSeries to store in this interface")
+        self.electrical_series = GroupElectricalSeries(self)
+        # self.combo_electrical_series = CustomComboBox()
+        # self.combo_electrical_series.setToolTip("ElectricalSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_electrical_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_electrical_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.electrical_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_electrical_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupElectricalSeries):
-                self.combo_electrical_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_electrical_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupElectricalSeries):
+        #         self.combo_electrical_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['electrical_series'] = self.combo_electrical_series.currentText()
+        data['electrical_series'] = self.electrical_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_electrical_series.clear()
-        self.combo_electrical_series.addItem(data['electrical_series'])
+        # self.combo_electrical_series.clear()
+        # self.combo_electrical_series.addItem(data['electrical_series'])
 
 
 class GroupFeatureExtraction(QGroupBox):

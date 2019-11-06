@@ -13,7 +13,7 @@ dependencies:
 - jupyter
 - matplotlib
 - h5py
-- pyqt
+- pyside2
 - pynwb
 - hdmf
 - pyyaml
@@ -22,4 +22,5 @@ dependencies:
   - spikesorters
   - spiketoolkit
   - herdingspikes
+  - nwbwidgets
   - -e .

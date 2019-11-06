@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
+from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                              QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
@@ -205,36 +205,38 @@ class GroupBehavioralEpochs(QGroupBox):
             self.lin_name.setText('BehavioralEpochs'+str(nInstances))
 
         self.lbl_interval_series = QLabel('interval_series:')
-        self.combo_interval_series = CustomComboBox()
-        self.combo_interval_series.setToolTip("IntervalSeries to store in this interface")
+        self.interval_series = GroupIntervalSeries(self)
+        # self.combo_interval_series = CustomComboBox()
+        # self.combo_interval_series.setToolTip("IntervalSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_interval_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_interval_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.interval_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_interval_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupIntervalSeries):
-                self.combo_interval_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_interval_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupIntervalSeries):
+        #         self.combo_interval_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['interval_series'] = self.combo_interval_series.currentText()
+        data['interval_series'] = self.interval_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_interval_series.clear()
-        self.combo_interval_series.addItem(data['interval_series'])
+        # self.combo_interval_series.clear()
+        # self.combo_interval_series.addItem(data['interval_series'])
 
 
 class GroupBehavioralEvents(QGroupBox):
@@ -256,36 +258,38 @@ class GroupBehavioralEvents(QGroupBox):
             self.lin_name.setText('BehavioralEvents'+str(nInstances))
 
         self.lbl_time_series = QLabel('time_series:')
-        self.combo_time_series = CustomComboBox()
-        self.combo_time_series.setToolTip("TimeSeries to store in this interface")
+        self.time_series = GroupTimeSeries(self)
+        #self.combo_time_series = CustomComboBox()
+        #self.combo_time_series.setToolTip("TimeSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_time_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_time_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupTimeSeries):
-                self.combo_time_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_time_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupTimeSeries):
+        #         self.combo_time_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['time_series'] = self.combo_time_series.currentText()
+        data['time_series'] = self.time_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_time_series.clear()
-        self.combo_time_series.addItem(data['time_series'])
+        # self.combo_time_series.clear()
+        # self.combo_time_series.addItem(data['time_series'])
 
 
 class GroupBehavioralTimeSeries(QGroupBox):
@@ -307,36 +311,37 @@ class GroupBehavioralTimeSeries(QGroupBox):
             self.lin_name.setText('BehavioralTimeSeries'+str(nInstances))
 
         self.lbl_time_series = QLabel('time_series:')
-        self.combo_time_series = CustomComboBox()
-        self.combo_time_series.setToolTip("TimeSeries to store in this interface")
+        self.time_series = GroupTimeSeries(self)
+        # self.combo_time_series = CustomComboBox()
+        # self.combo_time_series.setToolTip("TimeSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_time_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_time_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupTimeSeries):
-                self.combo_time_series.addItem(grp.lin_name.text())
+        # self.combo_time_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupTimeSeries):
+        #         self.combo_time_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['time_series'] = self.combo_time_series.currentText()
+        data['time_series'] = self.time_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_time_series.clear()
-        self.combo_time_series.addItem(data['time_series'])
+        # self.combo_time_series.clear()
+        # self.combo_time_series.addItem(data['time_series'])
 
 
 class GroupPupilTracking(QGroupBox):
@@ -358,36 +363,38 @@ class GroupPupilTracking(QGroupBox):
             self.lin_name.setText('PupilTracking'+str(nInstances))
 
         self.lbl_time_series = QLabel('time_series:')
-        self.combo_time_series = CustomComboBox()
-        self.combo_time_series.setToolTip("TimeSeries to store in this interface")
+        self.time_series = GroupTimeSeries(self)
+        # self.combo_time_series = CustomComboBox()
+        # self.combo_time_series.setToolTip("TimeSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_time_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_time_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupTimeSeries):
-                self.combo_time_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_time_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupTimeSeries):
+        #         self.combo_time_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['time_series'] = self.combo_time_series.currentText()
+        data['time_series'] = self.time_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_time_series.clear()
-        self.combo_time_series.addItem(data['time_series'])
+        # self.combo_time_series.clear()
+        # self.combo_time_series.addItem(data['time_series'])
 
 
 class GroupEyeTracking(QGroupBox):
@@ -397,6 +404,7 @@ class GroupEyeTracking(QGroupBox):
         self.setTitle('EyeTracking')
         self.parent = parent
         self.group_type = 'EyeTracking'
+        self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('EyeTracking')
@@ -409,36 +417,38 @@ class GroupEyeTracking(QGroupBox):
             self.lin_name.setText('EyeTracking'+str(nInstances))
 
         self.lbl_spatial_series = QLabel('spatial_series:')
-        self.combo_spatial_series = CustomComboBox()
-        self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
+        self.spatial_series = GroupSpatialSeries(self)
+        # self.combo_spatial_series = CustomComboBox()
+        # self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_spatial_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_spatial_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupSpatialSeries):
-                self.combo_spatial_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_spatial_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupSpatialSeries):
+        #         self.combo_spatial_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['spatial_series'] = self.combo_spatial_series.currentText()
+        data['spatial_series'] = self.spatial_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_spatial_series.clear()
-        self.combo_spatial_series.addItem(data['spatial_series'])
+        # self.combo_spatial_series.clear()
+        # self.combo_spatial_series.addItem(data['spatial_series'])
 
 
 class GroupCompassDirection(QGroupBox):
@@ -460,36 +470,38 @@ class GroupCompassDirection(QGroupBox):
             self.lin_name.setText('CompassDirection'+str(nInstances))
 
         self.lbl_spatial_series = QLabel('spatial_series:')
-        self.combo_spatial_series = CustomComboBox()
-        self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
+        self.spatial_series = GroupSpatialSeries(self)
+        #self.combo_spatial_series = CustomComboBox()
+        #self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_spatial_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_spatial_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupSpatialSeries):
-                self.combo_spatial_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_spatial_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupSpatialSeries):
+        #         self.combo_spatial_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['spatial_series'] = self.combo_spatial_series.currentText()
+        data['spatial_series'] = self.spatial_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_spatial_series.clear()
-        self.combo_spatial_series.addItem(data['spatial_series'])
+        # self.combo_spatial_series.clear()
+        # self.combo_spatial_series.addItem(data['spatial_series'])
 
 
 class GroupPosition(QGroupBox):
@@ -499,6 +511,7 @@ class GroupPosition(QGroupBox):
         self.setTitle('Position')
         self.parent = parent
         self.group_type = 'Position'
+        self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Position')
@@ -511,36 +524,38 @@ class GroupPosition(QGroupBox):
             self.lin_name.setText('Position'+str(nInstances))
 
         self.lbl_spatial_series = QLabel('spatial_series:')
-        self.combo_spatial_series = CustomComboBox()
-        self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
+        self.spatial_series = GroupSpatialSeries(self)
+        #self.combo_spatial_series = CustomComboBox()
+        #self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_spatial_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_spatial_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupSpatialSeries):
-                self.combo_spatial_series.addItem(grp.lin_name.text())
+        pass
+        # self.combo_spatial_series.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupSpatialSeries):
+        #         self.combo_spatial_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['spatial_series'] = self.combo_spatial_series.currentText()
+        data['spatial_series'] = self.spatial_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_spatial_series.clear()
-        self.combo_spatial_series.addItem(data['spatial_series'])
+        # self.combo_spatial_series.clear()
+        # self.combo_spatial_series.addItem(data['spatial_series'])
 
 
 class GroupBehavior(QGroupBox):

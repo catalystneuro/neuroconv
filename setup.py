@@ -20,5 +20,6 @@ setup(
     keywords='nwb',
     packages=find_packages(),
     install_requires=['pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
-        'pandas', 'jupyter', 'matplotlib', 'h5py', 'PyQt5', 'pyyaml',
-        'spikeextractors', 'spikesorters', 'spiketoolkit', 'herdingspikes'])
+        'pandas', 'jupyter', 'matplotlib', 'h5py', 'pyyaml',
+        'spikeextractors', 'spikesorters', 'spiketoolkit', 'herdingspikes',
+        'PySide2', 'nwbwidgets'])
