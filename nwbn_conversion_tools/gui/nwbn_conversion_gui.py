@@ -337,7 +337,7 @@ class Application(QMainWindow):
         self.clean_groups()
         for grp in self.metadata:
             if grp == 'NWBFile':
-                item = GroupNwbfile(self)
+                item = GroupNwbfile(parent=self, metadata=self.metadata['NWBFile'])
                 item.write_fields(data=self.metadata['NWBFile'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
