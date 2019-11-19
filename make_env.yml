@@ -17,6 +17,8 @@ dependencies:
 - pynwb
 - hdmf
 - pyyaml
+- psutil
+- voila
 - pip:
   - spikeextractors
   - spikesorters

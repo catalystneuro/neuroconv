@@ -22,4 +22,4 @@ setup(
     install_requires=['pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
         'pandas', 'jupyter', 'matplotlib', 'h5py', 'pyyaml',
         'spikeextractors', 'spikesorters', 'spiketoolkit', 'herdingspikes',
-        'PySide2', 'nwbwidgets'])
+        'PySide2', 'nwbwidgets', 'psutil', 'voila'])
