@@ -1,3 +1,8 @@
+import PySide2
+import os
+dirname = os.path.dirname(PySide2.__file__)
+plugin_path = os.path.join(dirname, 'plugins', 'platforms')
+os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 from PySide2 import QtCore
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
@@ -5,14 +10,15 @@ from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QGridLayout, QSplitter, QLabel, QFileDialog,
                              QMessageBox, QComboBox, QScrollArea, QStyle,
                              QGroupBox, QCheckBox)
+
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
+
 import datetime
 import importlib
 import yaml
-import os
 import sys
 
 
@@ -337,7 +343,7 @@ class Application(QMainWindow):
         self.clean_groups()
         for grp in self.metadata:
             if grp == 'NWBFile':
-                item = GroupNwbfile(self)
+                item = GroupNwbfile(parent=self, metadata=self.metadata['NWBFile'])
                 item.write_fields(data=self.metadata['NWBFile'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
