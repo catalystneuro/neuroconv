@@ -330,6 +330,7 @@ class GroupSubject(QGroupBox):
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
+        error = None
         data = {}
         data['age'] = self.lin_age.text()
         data['description'] = self.lin_description.text()
@@ -343,7 +344,7 @@ class GroupSubject(QGroupBox):
             data['date_of_birth'] = datetime.strptime(str_datetime, '%d/%m/%Y')
         else:
             data['date_of_birth'] = ''
-        return data
+        return data, error
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
@@ -354,7 +355,7 @@ class GroupSubject(QGroupBox):
         if 'genotype' in data:
             self.lin_genotype.setText(data['genotype'])
         if 'sex' in data:
-            self.lin_sex.aetText(data['sex'])
+            self.lin_sex.setText(data['sex'])
         if 'species' in data:
             self.lin_species.setText(data['species'])
         if 'subject_id' in data:

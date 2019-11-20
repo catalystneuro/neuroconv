@@ -8,80 +8,102 @@ from itertools import groupby
 
 
 class GroupSpatialSeries(QGroupBox):
-    def __init__(self, parent):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.behavior.SpatialSeries fields filling form."""
         super().__init__()
         self.setTitle('SpatialSeries')
         self.parent = parent
         self.group_type = 'SpatialSeries'
+        if metadata is None:
+            metadata = dict()
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('SpatialSeries')
+        if 'name' in metadata:
+            self.lin_name = QLineEdit(metadata['name'])
+        else:
+            self.lin_name = QLineEdit('SpatialSeries')
         self.lin_name.setToolTip("The name of this SpatialSeries dataset.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupSpatialSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('SpatialSeries'+str(nInstances))
 
         self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
+        if 'data' in metadata:
+            self.chk_data.setChecked(metadata['data'])
+        else:
+            self.chk_data.setChecked(True)
         self.chk_data.setToolTip(
             "The data this SpatialSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_reference_frame = QLabel('reference_frame<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_reference_frame = QLineEdit('reference frame')
+        if 'reference_frame' in metadata:
+            self.lin_reference_frame = QLineEdit(metadata['reference_frame'])
+        else:
+            self.lin_reference_frame = QLineEdit('reference frame')
         self.lin_reference_frame.setToolTip("Description defining what the zero-position is")
 
         self.lbl_conversion = QLabel('conversion:')
-        self.lin_conversion = QLineEdit('')
-        self.lin_conversion.setPlaceholderText("1.0")
-        self.lin_conversion.setToolTip(
-            "Scalar to multiply each element by to "
-            "convert to meters")
+        if 'conversion' in metadata:
+            self.lin_conversion = QLineEdit(str(metadata['conversion']))
+        else:
+            self.lin_conversion = QLineEdit('')
+        self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to meters")
 
         self.lbl_resolution = QLabel('resolution:')
-        self.lin_resolution = QLineEdit('')
-        self.lin_resolution.setPlaceholderText("1.0")
+        if 'resolution' in metadata:
+            self.lin_resolution = QLineEdit(str(metadata['resolution']))
+        else:
+            self.lin_resolution = QLineEdit('')
         self.lin_resolution.setToolTip(
-            "The smallest meaningful difference (in "
-            "specified unit) between values in data")
+            "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_timestamps = QLabel('timestamps:')
         self.chk_timestamps = QCheckBox("Get from source file")
-        self.chk_timestamps.setChecked(False)
+        if 'timestamps' in metadata:
+            self.chk_timestamps.setChecked(metadata['timestamps'])
+        else:
+            self.chk_timestamps.setChecked(False)
         self.chk_timestamps.setToolTip(
             "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_starting_time = QLabel('starting_time:')
-        self.lin_starting_time = QLineEdit('')
-        self.lin_starting_time.setPlaceholderText("0.0")
+        if 'starting_time' in metadata:
+            self.lin_starting_time = QLineEdit(str(metadata['starting_time']))
+        else:
+            self.lin_starting_time = QLineEdit('')
         self.lin_starting_time.setToolTip("The timestamp of the first sample")
 
         self.lbl_rate = QLabel('rate:')
-        self.lin_rate = QLineEdit('')
-        self.lin_rate.setPlaceholderText("0.0")
+        if 'rate' in metadata:
+            self.lin_rate = QLineEdit(str(metadata['rate']))
+        else:
+            self.lin_rate = QLineEdit('')
         self.lin_rate.setToolTip("Sampling rate in Hz")
 
         self.lbl_comments = QLabel('comments:')
-        self.lin_comments = QLineEdit('')
+        if 'comments' in metadata:
+            self.lin_comments = QLineEdit(metadata['comments'])
+        else:
+            self.lin_comments = QLineEdit('')
         self.lin_comments.setPlaceholderText("comments")
         self.lin_comments.setToolTip("Human-readable comments about this SpatialSeries dataset")
 
         self.lbl_description = QLabel('description:')
-        self.lin_description = QLineEdit('')
+        if 'description' in metadata:
+            self.lin_description = QLineEdit(metadata['description'])
+        else:
+            self.lin_description = QLineEdit('')
         self.lin_description.setPlaceholderText("description")
         self.lin_description.setToolTip(" Description of this SpatialSeries dataset")
 
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
-        self.chk_control.setChecked(False)
+        if 'control' in metadata:
+            self.chk_control.setChecked(metadata['control'])
+        else:
+            self.chk_control.setChecked(False)
         self.chk_control.setToolTip(
             "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file.\n"
@@ -89,7 +111,10 @@ class GroupSpatialSeries(QGroupBox):
 
         self.lbl_control_description = QLabel('control_description:')
         self.chk_control_description = QCheckBox("Get from source file")
-        self.chk_control_description.setChecked(False)
+        if 'control_description' in metadata:
+            self.chk_control_description.setChecked(metadata['control_description'])
+        else:
+            self.chk_control_description.setChecked(False)
         self.chk_control_description.setToolTip(
             "Description of each control value.\n"
             "Check box if this data will be retrieved from source file.\n"
@@ -516,15 +541,17 @@ class GroupPosition(QGroupBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Position')
         self.lin_name.setToolTip("The unique name of this Position")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupPosition):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('Position'+str(nInstances))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp,  GroupPosition):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('Position'+str(nInstances))
 
         self.lbl_spatial_series = QLabel('spatial_series:')
-        self.spatial_series = GroupSpatialSeries(self)
+        self.spatial_series_layout = QVBoxLayout() #GroupSpatialSeries(self)
+        self.spatial_series = QGroupBox()
+        self.spatial_series.setLayout(self.spatial_series_layout)
         #self.combo_spatial_series = CustomComboBox()
         #self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
 
@@ -548,14 +575,21 @@ class GroupPosition(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['spatial_series'] = self.spatial_series.read_fields()
+        data['spatial_series'] = []
+        nItems = self.spatial_series_layout.count()
+        for i in range(nItems):
+            item = self.spatial_series_layout.itemAt(i).widget()
+            data['spatial_series'].append(item.read_fields())
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        # self.combo_spatial_series.clear()
-        # self.combo_spatial_series.addItem(data['spatial_series'])
+        nItems = self.spatial_series_layout.count()
+        for ind, sps in enumerate(data['spatial_series']):
+            if ind >= nItems:
+                item = GroupSpatialSeries(self, metadata=data['spatial_series'][ind])
+                self.spatial_series_layout.addWidget(item)
 
 
 class GroupBehavior(QGroupBox):
