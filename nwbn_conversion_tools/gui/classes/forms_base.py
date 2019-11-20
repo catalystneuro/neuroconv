@@ -14,12 +14,12 @@ class GroupTimeSeries(QGroupBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TimeSeries')
         self.lin_name.setToolTip("The unique name of this TimeSeries dataset")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupTimeSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('TimeSeries'+str(nInstances))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp,  GroupTimeSeries):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('TimeSeries'+str(nInstances))
 
         self.lbl_data = QLabel('data:')
         self.chk_data = QCheckBox("Get from source file")

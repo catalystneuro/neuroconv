@@ -33,7 +33,7 @@ class EphysAcquisition2NWB(Convert2NWB):
             return es
         else:  # ElectricalSeries can be created in acquisition
             self.add_electrode_group(
-                eg_name=metadata['ElectrodeGroup']['name'],
+                eg_name=metadata['ElectrodeGroup'][0]['name'],
                 metadata=metadata
             )
 
@@ -99,10 +99,10 @@ class EphysAcquisition2NWB(Convert2NWB):
             electrode_group = self.nwbfile.children[np.where(aux)[0][0]]
             print(eg_name+' already exists in current NWBFile.')
         else:
-            device = self.add_device(dev_name=metadata[eg_name]['device'])
+            device = self.add_device(dev_name=metadata['ElectrodeGroup'][0]['device'])
 
-            eg_description = metadata[eg_name]['description']
-            eg_location = metadata[eg_name]['location']
+            eg_description = metadata['ElectrodeGroup'][0]['description']
+            eg_location = metadata['ElectrodeGroup'][0]['location']
             electrode_group = self.nwbfile.create_electrode_group(
                 name=eg_name,
                 location=eg_location,

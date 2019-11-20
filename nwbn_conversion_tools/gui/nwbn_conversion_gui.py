@@ -7,7 +7,7 @@ from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QMessageBox, QComboBox, QScrollArea, QStyle,
                              QGroupBox, QCheckBox, QTabWidget)
 
-from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile
+from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
@@ -272,17 +272,21 @@ class Application(QMainWindow):
             with open(filename, 'w') as f:
                 yaml.dump(data, f, default_flow_style=False)
 
-    def form_to_editor(self):
-        """Loads data from form to editor."""
-        data = {}
+    def read_metadata_from_form(self):
+        """Loads metadata from form."""
+        metadata = {}
         for grp in self.groups_list:
             info, error = grp.read_fields()
-            print(grp, error)
             if error is None:
-                data[grp.group_type] = info
+                metadata[grp.group_type] = info
             else:
                 return
-        txt = yaml.dump(data, default_flow_style=False)
+        return metadata
+
+    def form_to_editor(self):
+        """Loads data from form to editor."""
+        metadata = self.read_metadata_from_form()
+        txt = yaml.dump(metadata, default_flow_style=False)
         self.editor.setText(txt)
 
     def update_kwargs(self, ind, key):
@@ -421,6 +425,11 @@ class Application(QMainWindow):
                 item.write_fields(data=self.metadata['NWBFile'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
+            if grp == 'Subject':
+                item = GroupSubject(parent=self)
+                item.write_fields(data=self.metadata['Subject'])
+                self.groups_list.append(item)
+                self.l_vbox1.addWidget(item)
             if grp == 'Ophys':
                 item = GroupOphys(self)
                 for subgroup in self.metadata[grp]:
@@ -538,9 +547,10 @@ class ConversionFunctionThread(QtCore.QThread):
         spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
         conv_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(conv_module)
+        metadata = self.parent.read_metadata_from_form()
         conv_module.conversion_function(source_paths=self.parent.source_paths,
                                         f_nwb=self.parent.lin_nwb_file.text(),
-                                        metadata=self.parent.metadata,
+                                        metadata=metadata,
                                         **self.parent.kwargs_fields)
         #    self.error = None
         #except Exception as error:
