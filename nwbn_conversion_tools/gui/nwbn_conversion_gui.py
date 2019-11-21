@@ -15,8 +15,10 @@ from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
 import numpy as np
 import nbformat as nbf
 from pathlib import Path
+import tempfile
 import socket
 import psutil
+import shutil
 import datetime
 import importlib
 import yaml
@@ -28,13 +30,17 @@ class Application(QMainWindow):
     def __init__(self, metafile=None, conversion_module='', source_paths={},
                  kwargs_fields={}, show_add_del=False):
         super().__init__()
+        # Dictionary storing source files paths
         self.source_paths = source_paths
+        # Path to conversion module .py file
         self.conversion_module_path = conversion_module
+        # Dictionary storing custom boolean options (to form checkboxes)
         self.kwargs_fields = kwargs_fields
+        # Boolean control to either show/hide the option for add/del Groups
         self.show_add_del = show_add_del
+        # Temporary folder path
+        self.temp_dir = tempfile.mkdtemp()
 
-        #self.centralwidget = QWidget()
-        #self.setCentralWidget(self.centralwidget)
         self.resize(1200, 900)
         self.setWindowTitle('NWB:N conversion tools')
 
@@ -212,26 +218,31 @@ class Application(QMainWindow):
         self.setPalette(p)
 
     def init_nwb_explorer(self):
+        """Initializes NWB file explorer tab"""
         self.tab_nwbexplorer = QWidget()
-
         self.btn_load_nwbexp = QPushButton('Load NWB')
         self.btn_load_nwbexp.setIcon(self.style().standardIcon(QStyle.SP_ArrowDown))
         self.btn_load_nwbexp.clicked.connect(self.load_nwb_explorer)
         self.btn_load_nwbexp.setToolTip("Choose NWB file to explore!")
+        self.btn_close_nwbexp = QPushButton('Close')
+        self.btn_close_nwbexp.setIcon(self.style().standardIcon(QStyle.SP_DialogCloseButton))
+        self.btn_close_nwbexp.clicked.connect(self.close_nwb_explorer)
+        self.btn_close_nwbexp.setToolTip("Close current file view.")
         self.html = QWebEngineView()
 
+        # Layout
         self.grid_explorer = QGridLayout()
-        self.grid_explorer.setColumnStretch(0, 2)
+        self.grid_explorer.setColumnStretch(2, 1)
         self.grid_explorer.addWidget(self.btn_load_nwbexp, 0, 0, 1, 1)
-        self.grid_explorer.addWidget(QWidget(), 0, 1, 1, 3)
-
+        self.grid_explorer.addWidget(self.btn_close_nwbexp, 0, 1, 1, 1)
+        self.grid_explorer.addWidget(QLabel(), 0, 2, 1, 1)
         self.vbox_explorer = QVBoxLayout()
         self.vbox_explorer.addLayout(self.grid_explorer)
         self.vbox_explorer.addWidget(self.html)
-
         self.tab_nwbexplorer.setLayout(self.vbox_explorer)
-        self.tabs.addTab(self.tab_nwbexplorer, 'NWB explorer')
 
+        # Add tab to GUI
+        self.tabs.addTab(self.tab_nwbexplorer, 'NWB explorer')
 
     def write_to_logger(self, txt):
         time = datetime.datetime.now().time().strftime("%H:%M:%S")
@@ -305,9 +316,7 @@ class Application(QMainWindow):
         if len(filenames):
             all_names = ''
             for fname in filenames:
-                #all_names += os.path.split(fname)[1]+', '
                 all_names += fname + ', '
-
             lin_src = getattr(self, 'lin_src_'+str(ind))
             lin_src.setText(all_names[:-2])
             self.source_paths[key]['path'] = all_names[:-2]
@@ -349,7 +358,7 @@ class Application(QMainWindow):
             directory='',
             filter="(*py)"
         )
-        if filename is not None:
+        if filename is not '':
             self.conversion_module_path = filename
 
     def load_nwb_file(self):
@@ -371,13 +380,18 @@ class Application(QMainWindow):
             directory='',
             filter="(*nwb)"
         )
-        if filename is not None:
-            p = Path(filename)
-            self.fname_nwb_explore = p.name
-            self.dir_nwb_explore = p.parent
+        if filename is not '':
             self.run_voila(fname=filename)
 
+    def close_nwb_explorer(self):
+        """Close current NWB file view on explorer"""
+        if hasattr(self, 'voilathread'):
+            self.voilathread.stop()
+
     def run_voila(self, fname):
+        """Set up notebook and run it with a dedicated Voila thread."""
+        # Stop any current Voila thread
+        self.close_nwb_explorer()
         # Write Figure + ipywidgets to a .ipynb file
         nb = nbf.v4.new_notebook()
         code = """
@@ -385,17 +399,18 @@ class Application(QMainWindow):
             import pynwb
             import os
 
-            fpath = os.path.join(r'""" + str(self.dir_nwb_explore) + """', '""" + str(self.fname_nwb_explore) + """')
+            fpath = os.path.join(r'""" + str(fname) + """')
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
             nwb = io.read()
             nwb2widget(nwb)
             #io.close()
             """
         nb['cells'] = [nbf.v4.new_code_cell(code)]
-        nbf.write(nb, 'temp_notebook.ipynb')
+        nbpath = os.path.join(self.temp_dir, Path(fname).stem+'.ipynb')
+        nbf.write(nb, nbpath)
         # Run instance of Voila with the just saved .ipynb file
         port = get_free_port()
-        self.voilathread = voilaThread(parent=self, port=port)
+        self.voilathread = voilaThread(parent=self, port=port, nbpath=nbpath)
         self.voilathread.start()
         # Load Voila instance on GUI
         self.update_html(url='http://localhost:'+str(port))
@@ -483,6 +498,10 @@ class Application(QMainWindow):
 
     def closeEvent(self, event):
         """Before exiting, executes these actions."""
+        # Stop any current Voila thread
+        self.close_nwb_explorer()
+        # Remove any remaining temporary directory/files
+        shutil.rmtree(self.temp_dir, ignore_errors=False, onerror=None)
         event.accept()
 
 
@@ -513,13 +532,14 @@ def is_listening_to_port(process, port):
 
 
 class voilaThread(QtCore.QThread):
-    def __init__(self, parent, port):
+    def __init__(self, parent, port, nbpath):
         super().__init__()
         self.parent = parent
         self.port = port
+        self.nbpath = nbpath
 
     def run(self):
-        os.system("voila temp_notebook.ipynb --no-browser --port "+str(self.port))
+        os.system("voila " + self.nbpath + " --no-browser --port "+str(self.port))
 
     def stop(self):
         pid = os.getpid()
