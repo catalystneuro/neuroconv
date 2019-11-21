@@ -19,10 +19,26 @@ After activating the correct environment, nwbn_conversion_tools GUI can be impor
 ```python
 from nwbn_conversion_tools.gui.nwbn_conversion_gui import nwbn_conversion_gui
 
+# YAML metafile
 metafile = 'metafile.yml'
+
+# Conversion module
 conversion_module = 'conversion_module.py'
 
-nwbn_conversion_gui(metafile=metafile, conversion_module=conversion_module)
+# Source files path
+source_paths = {}
+source_paths['source_file_1'] = {'type': 'file', 'path': ''}
+source_paths['source_file_2'] = {'type': 'file', 'path': ''}
+
+# Other options
+kwargs = {'option_1': True, 'option_2': False}
+
+nwbn_conversion_gui(
+    metafile=metafile,
+    conversion_module=conversion_module,
+    source_paths=source_paths,
+    kwargs_fields=kwargs,
+)
 ```
 [Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/master/nwbn_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
 
