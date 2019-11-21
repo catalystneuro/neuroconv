@@ -484,6 +484,8 @@ class Application(QMainWindow):
                                        write_data=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
+        nItems = self.l_vbox1.count()
+        self.l_vbox1.addStretch(nItems)
 
     def about(self):
         """About dialog."""

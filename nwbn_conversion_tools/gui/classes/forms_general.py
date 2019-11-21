@@ -2,17 +2,20 @@ from PySide2.QtGui import QIntValidator, QDoubleValidator
 from PySide2.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
                              QComboBox, QCheckBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+
 from datetime import datetime
 import numpy as np
 
 
-class GroupNwbfile(QGroupBox):
+#class GroupNwbfile(QGroupBox):
+class GroupNwbfile(CollapsibleBox):
     def __init__(self, parent, metadata):
         """Groupbox for NWBFile fields filling form."""
-        super().__init__()
+        super().__init__(title="NWBFile", parent=parent)
         self.parent = parent
         self.metadata = metadata
-        self.setTitle('NWBFile')
+        #self.setTitle('NWBFile')
         self.group_type = 'NWBFile'
         self.groups_list = []
 
@@ -183,7 +186,8 @@ class GroupNwbfile(QGroupBox):
         self.grid.addWidget(self.lbl_stimulus_notes, nWidgetsGrid, 0, 1, 2)
         self.grid.addWidget(self.lin_stimulus_notes, nWidgetsGrid, 2, 1, 4)
 
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
+        self.setContentLayout(self.grid)
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -259,11 +263,12 @@ class GroupNwbfile(QGroupBox):
             self.lin_stimulus_notes.setText(data['stimulus_notes'])
 
 
-class GroupSubject(QGroupBox):
+#class GroupSubject(QGroupBox):
+class GroupSubject(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for 'pynwb.file.Subject' fields filling form."""
-        super().__init__()
-        self.setTitle('Subject')
+        super().__init__(title="Subject", parent=parent)
+        #self.setTitle('Subject')
         self.group_type = 'Subject'
 
         self.lbl_age = QLabel('age:')
@@ -326,7 +331,8 @@ class GroupSubject(QGroupBox):
         self.grid.addWidget(self.lbl_date_of_birth, 7, 0, 1, 2)
         self.grid.addWidget(self.lin_date_of_birth, 7, 2, 1, 4)
 
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
+        self.setContentLayout(self.grid)
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""

@@ -3,6 +3,7 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 from itertools import groupby
 
 
@@ -73,11 +74,12 @@ class GroupElectrodeGroup(QGroupBox):
         self.combo_device.addItem(data['device'])
 
 
-class GroupElectricalSeries(QGroupBox):
+#class GroupElectricalSeries(QGroupBox):
+class GroupElectricalSeries(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.ElectricalSeries fields filling form."""
-        super().__init__()
-        self.setTitle('ElectricalSeries')
+        super().__init__(title="ElectricalSeries", parent=parent)
+        #self.setTitle('ElectricalSeries')
         self.parent = parent
         self.group_type = 'ElectricalSeries'
 
@@ -188,7 +190,9 @@ class GroupElectricalSeries(QGroupBox):
         self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
         self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
-        self.setLayout(self.grid)
+
+        #self.setLayout(self.grid)
+        self.setContentLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
