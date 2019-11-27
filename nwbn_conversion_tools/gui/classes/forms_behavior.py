@@ -449,16 +449,16 @@ class GroupEyeTracking(CollapsibleBox):
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
         pass
-        # self.combo_spatial_series.clear()
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp, GroupSpatialSeries):
-        #         self.combo_spatial_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['spatial_series'] = self.spatial_series.read_fields()
+        data['spatial_series'] = []
+        nItems = self.spatial_series_layout.count()
+        for i in range(nItems):
+            item = self.spatial_series_layout.itemAt(i).widget()
+            data['spatial_series'].append(item.read_fields())
         return data
 
     def write_fields(self, data={}):
