@@ -410,11 +410,12 @@ class GroupPupilTracking(QGroupBox):
         # self.combo_time_series.addItem(data['time_series'])
 
 
-class GroupEyeTracking(QGroupBox):
+#class GroupEyeTracking(QGroupBox):
+class GroupEyeTracking(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.behavior.EyeTracking fields filling form."""
-        super().__init__()
-        self.setTitle('EyeTracking')
+        super().__init__(title="GroupEyeTracking", parent=parent)
+        #self.setTitle('EyeTracking')
         self.parent = parent
         self.group_type = 'EyeTracking'
         self.groups_list = []
@@ -431,8 +432,9 @@ class GroupEyeTracking(QGroupBox):
 
         self.lbl_spatial_series = QLabel('spatial_series:')
         self.spatial_series = GroupSpatialSeries(self)
-        # self.combo_spatial_series = CustomComboBox()
-        # self.combo_spatial_series.setToolTip("SpatialSeries to store in this interface")
+        self.spatial_series_layout = QVBoxLayout() #GroupSpatialSeries(self)
+        self.spatial_series = QGroupBox() #CollapsibleBox()
+        self.spatial_series.setLayout(self.spatial_series_layout)
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
@@ -440,7 +442,9 @@ class GroupEyeTracking(QGroupBox):
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
-        self.setLayout(self.grid)
+
+        #self.setLayout(self.grid)
+        #self.setContentLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -460,8 +464,12 @@ class GroupEyeTracking(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        # self.combo_spatial_series.clear()
-        # self.combo_spatial_series.addItem(data['spatial_series'])
+        nItems = self.spatial_series_layout.count()
+        for ind, sps in enumerate(data['spatial_series']):
+            if ind >= nItems:
+                item = GroupSpatialSeries(self, metadata=data['spatial_series'][ind])
+                self.spatial_series_layout.addWidget(item)
+        self.setContentLayout(self.grid)
 
 
 class GroupCompassDirection(QGroupBox):
