@@ -1286,11 +1286,11 @@ class GroupOphys(QGroupBox):
         grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
         # initiate lists as values for groups keys with count > 1
         for k, v in grp_type_count.items():
-            if v > 1:
+            if v > 1 or k in ['Device', 'OpticalChannel', 'ImagingPlane']:
                 data[k] = []
         # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            if grp_type_count[grp.group_type] > 1:
+            if grp_type_count[grp.group_type] > 1 or grp.group_type in ['Device', 'OpticalChannel', 'ImagingPlane']:
                 data[grp.group_type].append(grp.read_fields())
             else:
                 data[grp.group_type] = grp.read_fields()

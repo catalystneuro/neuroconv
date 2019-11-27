@@ -409,7 +409,7 @@ class GroupDevice(QGroupBox):
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.lin_name.setText(str(data['name']))
 
 
 class GroupCustomExtension(QGroupBox):
