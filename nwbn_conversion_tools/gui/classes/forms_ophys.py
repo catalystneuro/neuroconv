@@ -2,6 +2,7 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                              QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
+from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 from itertools import groupby
 
 
@@ -661,25 +662,27 @@ class GroupMotionCorrection(QGroupBox):
 
 
 class GroupPlaneSegmentation(QGroupBox):
-    def __init__(self, parent):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.PlaneSegmentation fields filling form."""
         super().__init__()
         self.setTitle('PlaneSegmentation')
         self.parent = parent
         self.group_type = 'PlaneSegmentation'
+        if metadata is None:
+            metadata = dict()
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('PlaneSegmentation')
+        if 'name' in metadata:
+            self.lin_name = QLineEdit(metadata['name'])
+        else:
+            self.lin_name = QLineEdit('PlaneSegmentation')
         self.lin_name.setToolTip("The name of this PlaneSegmentation.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupPlaneSegmentation):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('PlaneSegmentation'+str(nInstances))
 
         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_description = QLineEdit('description')
+        if 'description' in metadata:
+            self.lin_description = QLineEdit(metadata['description'])
+        else:
+            self.lin_description = QLineEdit('ADDME')
         self.lin_description.setToolTip(
             "Description of image plane, recording wavelength, depth, etc.")
 
@@ -689,7 +692,10 @@ class GroupPlaneSegmentation(QGroupBox):
 
         self.lbl_reference_images = QLabel('reference_images:')
         self.chk_reference_images = QCheckBox("Get from source file")
-        self.chk_reference_images.setChecked(False)
+        if 'reference_images' in metadata:
+            self.chk_reference_images.setChecked(metadata['reference_images'])
+        else:
+            self.chk_reference_images.setChecked(False)
         self.chk_reference_images.setToolTip(
             "One or more image stacks that the masks apply to (can be oneelement stack).\n"
             "Check box if this data will be retrieved from source file.\n"
@@ -710,7 +716,7 @@ class GroupPlaneSegmentation(QGroupBox):
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
         self.combo_imaging_plane.clear()
-        for grp in self.parent.groups_list:
+        for grp in self.parent.parent.groups_list:
             if isinstance(grp, GroupImagingPlane):
                 self.combo_imaging_plane.addItem(grp.lin_name.text())
 
@@ -735,55 +741,65 @@ class GroupPlaneSegmentation(QGroupBox):
             self.chk_reference_images.setChecked(True)
 
 
-class GroupImageSegmentation(QGroupBox):
+#class GroupImageSegmentation(QGroupBox):
+class GroupImageSegmentation(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.ImageSegmentation fields filling form."""
-        super().__init__()
-        self.setTitle('ImageSegmentation')
+        super().__init__(title='ImageSegmentation', parent=parent)
+        #self.setTitle('ImageSegmentation')
         self.parent = parent
         self.group_type = 'ImageSegmentation'
+        self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImageSegmentation')
         self.lin_name.setToolTip("The name of this ImageSegmentation.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupImageSegmentation):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('ImageSegmentation'+str(nInstances))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp,  GroupImageSegmentation):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('ImageSegmentation'+str(nInstances))
 
         self.lbl_plane_segmentations = QLabel('plane_segmentations:')
-        self.combo_plane_segmentations = CustomComboBox()
-        self.combo_plane_segmentations.setToolTip("PlaneSegmentation to store in this interface.")
+        self.plane_segmentations_layout = QVBoxLayout()
+        self.plane_segmentations = QGroupBox()
+        self.plane_segmentations.setLayout(self.plane_segmentations_layout)
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_plane_segmentations, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_plane_segmentations, 1, 2, 1, 4)
-        self.setLayout(self.grid)
+        self.grid.addWidget(self.plane_segmentations, 1, 2, 1, 4)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_plane_segmentations.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupPlaneSegmentation):
-                self.combo_plane_segmentations.addItem(grp.lin_name.text())
+        for child in self.groups_list:
+            child.refresh_objects_references()
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['plane_segmentations'] = str(self.combo_plane_segmentations.currentText())
+        data['plane_segmentations'] = []
+        nItems = self.plane_segmentations_layout.count()
+        for i in range(nItems):
+            item = self.plane_segmentations_layout.itemAt(i).widget()
+            data['plane_segmentations'].append(item.read_fields())
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_plane_segmentations.clear()
-        self.combo_plane_segmentations.addItem(data['plane_segmentations'])
+        nItems = self.plane_segmentations_layout.count()
+        for ind, sps in enumerate(data['plane_segmentations']):
+            if ind >= nItems:
+                item = GroupPlaneSegmentation(self, metadata=sps)
+                self.groups_list.append(item)
+                self.plane_segmentations_layout.addWidget(item)
+        self.setContentLayout(self.grid)
 
 
 class GroupRoiResponseSeries(QGroupBox):

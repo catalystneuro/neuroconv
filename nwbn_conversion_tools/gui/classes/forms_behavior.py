@@ -557,7 +557,6 @@ class GroupPosition(CollapsibleBox):
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
-
         #self.setLayout(self.grid)
         #self.setContentLayout(self.grid)
 
