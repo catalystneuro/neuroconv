@@ -6,23 +6,24 @@ from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 from itertools import groupby
 
 
-class GroupOpticalChannel(QGroupBox):
+#class GroupOpticalChannel(QGroupBox):
+class GroupOpticalChannel(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.OpticalChannel fields filling form."""
-        super().__init__()
-        self.setTitle('OpticalChannel')
+        super().__init__(title='OpticalChannel', parent=parent)
+        #self.setTitle('OpticalChannel')
         self.parent = parent
         self.group_type = 'OpticalChannel'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('OpticalChannel')
         self.lin_name.setToolTip("the name of this optical channel")
-        nOptCh = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupOpticalChannel):
-                nOptCh += 1
-        if nOptCh > 0:
-            self.lin_name.setText('OpticalChannel'+str(nOptCh))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupOpticalChannel):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('OpticalChannel'+str(nInstances))
 
         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
@@ -40,8 +41,7 @@ class GroupOpticalChannel(QGroupBox):
         self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
         self.grid.addWidget(self.lbl_emission_lambda, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_emission_lambda, 2, 2, 1, 4)
-
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -64,25 +64,27 @@ class GroupOpticalChannel(QGroupBox):
         self.lin_name.setText(data['name'])
         self.lin_description.setText(data['description'])
         self.lin_emission_lambda.setText(str(data['emission_lambda']))
+        self.setContentLayout(self.grid)
 
 
-class GroupImagingPlane(QGroupBox):
+#class GroupImagingPlane(QGroupBox):
+class GroupImagingPlane(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.ImagingPlane fields filling form."""
-        super().__init__()
-        self.setTitle('ImagingPlane')
+        super().__init__(title='ImagingPlane', parent=parent)
+        #self.setTitle('ImagingPlane')
         self.parent = parent
         self.group_type = 'ImagingPlane'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImagingPlane')
         self.lin_name.setToolTip("The name of this ImagingPlane")
-        nImPl = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupImagingPlane):
-                nImPl += 1
-        if nImPl > 0:
-            self.lin_name.setText('ImagingPlane'+str(nImPl))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupImagingPlane):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('ImagingPlane'+str(nInstances))
 
         self.lbl_optical_channel = QLabel('optical_channel<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_optical_channel = CustomComboBox()
@@ -165,7 +167,7 @@ class GroupImagingPlane(QGroupBox):
         self.grid.addWidget(self.lin_unit, 10, 2, 1, 4)
         self.grid.addWidget(self.lbl_reference_frame, 11, 0, 1, 2)
         self.grid.addWidget(self.lin_reference_frame, 11, 2, 1, 4)
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -228,6 +230,7 @@ class GroupImagingPlane(QGroupBox):
             self.lin_unit.setText(data['unit'])
         if 'reference_frame' in data:
             self.lin_reference_frame.setText(data['reference_frame'])
+        self.setContentLayout(self.grid)
 
 
 class GroupTwoPhotonSeries(QGroupBox):
@@ -1089,6 +1092,7 @@ class GroupDfOverF(CollapsibleBox):
                 self.roi_response_series_layout.addWidget(item)
         self.setContentLayout(self.grid)
 
+
 class GroupFluorescence(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.Fluorescence fields filling form."""
@@ -1140,23 +1144,18 @@ class GroupFluorescence(QGroupBox):
         self.combo_roi_response_series.addItem(data['roi_response_series'])
 
 
-class GroupGrayscaleVolume(QGroupBox):
+#class GroupGrayscaleVolume(QGroupBox):
+class GroupGrayscaleVolume(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for GrayscaleVolume fields filling form."""
-        super().__init__()
-        self.setTitle('GrayscaleVolume')
+        super().__init__(title='GrayscaleVolume', parent=parent)
+        #self.setTitle('GrayscaleVolume')
         self.parent = parent
         self.group_type = 'GrayscaleVolume'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('GrayscaleVolume')
         self.lin_name.setToolTip("The unique name of this group.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupGrayscaleVolume):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('GrayscaleVolume'+str(nInstances))
 
         self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
@@ -1182,7 +1181,7 @@ class GroupGrayscaleVolume(QGroupBox):
         self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_spatial_scale, 2, 0, 1, 2)
         self.grid.addWidget(self.chk_spatial_scale, 2, 2, 1, 2)
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -1205,6 +1204,7 @@ class GroupGrayscaleVolume(QGroupBox):
             self.chk_data.setChecked(True)
         if 'spatial_scale' in data:
             self.chk_spatial_scale.setChecked(True)
+        self.setContentLayout(self.grid)
 
 
 class GroupOphys(QGroupBox):

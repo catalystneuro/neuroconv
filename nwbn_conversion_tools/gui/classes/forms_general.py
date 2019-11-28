@@ -372,30 +372,24 @@ class GroupSubject(CollapsibleBox):
             self.lin_date_of_birth.setText(data['date_of_birth'].strftime("%d/%m/%Y"))
 
 
-class GroupDevice(QGroupBox):
+#class GroupDevice(QGroupBox):
+class GroupDevice(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.device.Device fields filling form."""
-        super().__init__()
-        self.setTitle('Device')
+        super().__init__(title='Device', parent=parent)
+        #self.setTitle('Device')
         self.parent = parent
         self.group_type = 'Device'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('Device')
         self.lin_name.setToolTip("the name pof this device")
-        nDevices = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupDevice):
-                nDevices += 1
-        if nDevices > 0:
-            self.lin_name.setText('Device'+str(nDevices))
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -410,6 +404,7 @@ class GroupDevice(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(str(data['name']))
+        self.setContentLayout(self.grid)
 
 
 class GroupCustomExtension(QGroupBox):
