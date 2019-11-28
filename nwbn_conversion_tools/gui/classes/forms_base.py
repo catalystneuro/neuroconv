@@ -1,25 +1,21 @@
 from PySide2.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
                              QComboBox, QCheckBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 
-class GroupTimeSeries(QGroupBox):
+#class GroupTimeSeries(QGroupBox):
+class GroupTimeSeries(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.base.TimeSeries fields filling form."""
-        super().__init__()
-        self.setTitle('TimeSeries')
+        super().__init__(title='TimeSeries', parent=parent)
+        #self.setTitle('TimeSeries')
         self.parent = parent
         self.group_type = 'TimeSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TimeSeries')
         self.lin_name.setToolTip("The unique name of this TimeSeries dataset")
-        # nInstances = 0
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp,  GroupTimeSeries):
-        #         nInstances += 1
-        # if nInstances > 0:
-        #     self.lin_name.setText('TimeSeries'+str(nInstances))
 
         self.lbl_data = QLabel('data:')
         self.chk_data = QCheckBox("Get from source file")
@@ -118,7 +114,7 @@ class GroupTimeSeries(QGroupBox):
         self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
         self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -182,6 +178,7 @@ class GroupTimeSeries(QGroupBox):
             self.chk_control.setChecked(True)
         if 'control_description' in data:
             self.chk_control_description.setChecked(True)
+        self.setContentLayout(self.grid)
 
 
 class GroupImage(QGroupBox):
