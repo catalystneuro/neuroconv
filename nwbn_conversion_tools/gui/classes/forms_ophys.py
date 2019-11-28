@@ -803,57 +803,74 @@ class GroupImageSegmentation(CollapsibleBox):
 
 
 class GroupRoiResponseSeries(QGroupBox):
-    def __init__(self, parent):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.RoiResponseSeries fields filling form."""
         super().__init__()
         self.setTitle('RoiResponseSeries')
         self.parent = parent
         self.group_type = 'RoiResponseSeries'
+        if metadata is None:
+            metadata = dict()
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('RoiResponseSeries')
+        if 'name' in metadata:
+            self.lin_name = QLineEdit(metadata['name'])
+        else:
+            self.lin_name = QLineEdit('RoiResponseSeries')
         self.lin_name.setToolTip("The name of this RoiResponseSeries dataset.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupRoiResponseSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('RoiResponseSeries'+str(nInstances))
 
         self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
+        if 'data' in metadata:
+            self.chk_data.setChecked(metadata['data'])
+        else:
+            self.chk_data.setChecked(True)
         self.chk_data.setToolTip(
             "The data this TimeSeries dataset stores.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_unit = QLabel('unit<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_unit = QLineEdit('NA')
+        if 'unit' in metadata:
+            self.lin_unit = QLineEdit(metadata['unit'])
+        else:
+            self.lin_unit = QLineEdit('NA')
         self.lin_unit.setToolTip("The base unit of measurement (should be SI unit)")
 
         self.lbl_rois = QLabel('rois<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_rois = QCheckBox("Get from source file")
-        self.chk_rois.setChecked(True)
+        if 'rois' in metadata:
+            self.chk_rois.setChecked(metadata['rois'])
+        else:
+            self.chk_rois.setChecked(True)
         self.chk_rois.setToolTip(
             "A table region corresponding to the ROIs that were used to generate this data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_resolution = QLabel('resolution:')
-        self.lin_resolution = QLineEdit('')
+        if 'resolution' in metadata:
+            self.lin_resolution = QLineEdit(metadata['resolution'])
+        else:
+            self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
         self.lin_resolution.setToolTip(
             "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_conversion = QLabel('conversion:')
-        self.lin_conversion = QLineEdit('')
+        if 'conversion' in metadata:
+            self.lin_conversion = QLineEdit(metadata['conversion'])
+        else:
+            self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1.0")
         self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to volts")
 
         self.lbl_timestamps = QLabel("timestamps:")
         self.chk_timestamps = QCheckBox("Get from source file")
-        self.chk_timestamps.setChecked(False)
+        if 'timestamps' in metadata:
+            self.chk_timestamps.setChecked(metadata['timestamps'])
+        else:
+            self.chk_timestamps.setChecked(False)
         self.chk_timestamps.setToolTip(
             "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file."
@@ -861,7 +878,10 @@ class GroupRoiResponseSeries(QGroupBox):
 
         self.lbl_starting_time = QLabel("starting_time:")
         self.chk_starting_time = QCheckBox("Get from source file")
-        self.chk_starting_time.setChecked(False)
+        if 'starting_time' in metadata:
+            self.chk_starting_time.setChecked(metadata['starting_time'])
+        else:
+            self.chk_starting_time.setChecked(False)
         self.chk_starting_time.setToolTip(
             "The timestamp of the first sample.\n"
             "Check box if this data will be retrieved from source file."
@@ -869,25 +889,37 @@ class GroupRoiResponseSeries(QGroupBox):
 
         self.lbl_rate = QLabel("rate:")
         self.chk_rate = QCheckBox("Get from source file")
-        self.chk_rate.setChecked(False)
+        if 'rate' in metadata:
+            self.chk_rate.setChecked(metadata['rate'])
+        else:
+            self.chk_rate.setChecked(False)
         self.chk_rate.setToolTip(
             "Sampling rate in Hz.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_comments = QLabel("comments:")
-        self.lin_comments = QLineEdit("")
+        if 'comments' in metadata:
+            self.lin_comments = QLineEdit(metadata['comments'])
+        else:
+            self.lin_comments = QLineEdit("")
         self.lin_comments.setPlaceholderText("comments")
         self.lin_comments.setToolTip("Human-readable comments about this TimeSeries dataset")
 
         self.lbl_description = QLabel("description:")
-        self.lin_description = QLineEdit("")
+        if 'description' in metadata:
+            self.lin_description = QLineEdit(metadata['description'])
+        else:
+            self.lin_description = QLineEdit("")
         self.lin_description.setPlaceholderText("description")
         self.lin_description.setToolTip("Description of this TimeSeries dataset")
 
         self.lbl_control = QLabel("control:")
         self.chk_control = QCheckBox("Get from source file")
-        self.chk_control.setChecked(False)
+        if 'control' in metadata:
+            self.chk_control.setChecked(metadata['control'])
+        else:
+            self.chk_control.setChecked(False)
         self.chk_control.setToolTip(
             "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file."
@@ -895,7 +927,10 @@ class GroupRoiResponseSeries(QGroupBox):
 
         self.lbl_control_description = QLabel("control_description:")
         self.chk_control_description = QCheckBox("Get from source file")
-        self.chk_control_description.setChecked(False)
+        if 'control_description' in metadata:
+            self.chk_control_description.setChecked(metadata['control_description'])
+        else:
+            self.chk_control_description.setChecked(False)
         self.chk_control_description.setToolTip(
             "Description of each control value.\n"
             "Check box if this data will be retrieved from source file."
@@ -995,56 +1030,64 @@ class GroupRoiResponseSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-class GroupDfOverF(QGroupBox):
+#class GroupDfOverF(QGroupBox):
+class GroupDfOverF(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.DfOverF fields filling form."""
-        super().__init__()
-        self.setTitle('DfOverF')
+        super().__init__(title='DfOverF', parent=parent)
+        #self.setTitle('DfOverF')
         self.parent = parent
         self.group_type = 'DfOverF'
+        self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DfOverF')
         self.lin_name.setToolTip("The name of this DfOverF.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupDfOverF):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('DfOverF'+str(nInstances))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp,  GroupDfOverF):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('DfOverF'+str(nInstances))
 
         self.lbl_roi_response_series = QLabel('roi_response_series:')
-        self.combo_roi_response_series = CustomComboBox()
-        self.combo_roi_response_series.setToolTip("RoiResponseSeries to store in this interface")
+        self.roi_response_series_layout = QVBoxLayout()
+        self.roi_response_series = QGroupBox()
+        self.roi_response_series.setLayout(self.roi_response_series_layout)
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_roi_response_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_roi_response_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.roi_response_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_roi_response_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupRoiResponseSeries):
-                self.combo_roi_response_series.addItem(grp.lin_name.text())
+        pass
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['roi_response_series'] = str(self.combo_roi_response_series.currentText())
+        data['roi_response_series'] = []
+        nItems = self.roi_response_series_layout.count()
+        for i in range(nItems):
+            item = self.roi_response_series_layout.itemAt(i).widget()
+            data['roi_response_series'].append(item.read_fields())
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_roi_response_series.clear()
-        self.combo_roi_response_series.addItem(data['roi_response_series'])
-
+        nItems = self.roi_response_series_layout.count()
+        for ind, rrs in enumerate(data['roi_response_series']):
+            if ind >= nItems:
+                item = GroupRoiResponseSeries(self, metadata=rrs)
+                self.groups_list.append(item)
+                self.roi_response_series_layout.addWidget(item)
+        self.setContentLayout(self.grid)
 
 class GroupFluorescence(QGroupBox):
     def __init__(self, parent):
