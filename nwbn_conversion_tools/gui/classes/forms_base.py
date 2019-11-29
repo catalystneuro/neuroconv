@@ -4,12 +4,12 @@ from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 
-#class GroupTimeSeries(QGroupBox):
-class GroupTimeSeries(CollapsibleBox):
+class GroupTimeSeries(QGroupBox):
+#class GroupTimeSeries(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.base.TimeSeries fields filling form."""
-        super().__init__(title='TimeSeries', parent=parent)
-        #self.setTitle('TimeSeries')
+        super().__init__()#title='TimeSeries', parent=parent)
+        self.setTitle('TimeSeries')
         self.parent = parent
         self.group_type = 'TimeSeries'
 
@@ -114,7 +114,7 @@ class GroupTimeSeries(CollapsibleBox):
         self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
         self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
-        #self.setLayout(self.grid)
+        self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -178,7 +178,7 @@ class GroupTimeSeries(CollapsibleBox):
             self.chk_control.setChecked(True)
         if 'control_description' in data:
             self.chk_control_description.setChecked(True)
-        self.setContentLayout(self.grid)
+        #self.setContentLayout(self.grid)
 
 
 class GroupImage(QGroupBox):
