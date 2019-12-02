@@ -17,14 +17,6 @@ class GroupTimeSeries(QGroupBox):
         self.lin_name = QLineEdit('TimeSeries')
         self.lin_name.setToolTip("The unique name of this TimeSeries dataset")
 
-        self.lbl_data = QLabel('data:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(False)
-        self.chk_data.setToolTip(
-            "The data this TimeSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.lbl_unit = QLabel('unit:')
         self.lin_unit = QLineEdit('')
         self.lin_unit.setPlaceholderText("unit")
@@ -92,8 +84,6 @@ class GroupTimeSeries(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_unit, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_unit, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_conversion, 3, 0, 1, 2)
@@ -124,9 +114,6 @@ class GroupTimeSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
-        data['unit'] = self.lin_unit.text()
         try:
             data['conversion'] = float(self.lin_conversion.text())
         except ValueError:
@@ -156,8 +143,6 @@ class GroupTimeSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'unit' in data:
             self.lin_unit.setText(data['unit'])
         if 'conversion' in data:
@@ -199,14 +184,6 @@ class GroupImage(QGroupBox):
         if nInstances > 0:
             self.lin_name.setText('Image'+str(nInstances))
 
-        self.lbl_data = QLabel('data:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "The data of this Image.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.lbl_resolution = QLabel('resolution:')
         self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
@@ -226,8 +203,6 @@ class GroupImage(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_resolution, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_resolution, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_description, 3, 0, 1, 2)
@@ -244,8 +219,6 @@ class GroupImage(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         try:
             data['resolution'] = float(self.lin_resolution.text())
         except ValueError as error:
@@ -257,7 +230,6 @@ class GroupImage(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.chk_data.setChecked(True)
         if 'resolution' in data:
             self.lin_resolution.setText(str(data['resolution']))
         if 'description' in data:

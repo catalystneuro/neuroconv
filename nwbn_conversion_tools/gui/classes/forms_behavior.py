@@ -25,17 +25,6 @@ class GroupSpatialSeries(QGroupBox):
             self.lin_name = QLineEdit('SpatialSeries')
         self.lin_name.setToolTip("The name of this SpatialSeries dataset.")
 
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        if 'data' in metadata:
-            self.chk_data.setChecked(metadata['data'])
-        else:
-            self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "The data this SpatialSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.lbl_reference_frame = QLabel('reference_frame<span style="color:'+required_asterisk_color+';">*</span>:')
         if 'reference_frame' in metadata:
             self.lin_reference_frame = QLineEdit(metadata['reference_frame'])
@@ -125,8 +114,6 @@ class GroupSpatialSeries(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_reference_frame, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_reference_frame, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_conversion, 3, 0, 1, 2)
@@ -156,9 +143,6 @@ class GroupSpatialSeries(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         data['reference_frame'] = self.lin_reference_frame.text()
         try:
             data['conversion'] = float(self.lin_conversion.text())
@@ -189,8 +173,6 @@ class GroupSpatialSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         self.lin_reference_frame.setText(data['reference_frame'])
         if 'conversion' in data:
             self.lin_conversion.setText(str(data['conversion']))

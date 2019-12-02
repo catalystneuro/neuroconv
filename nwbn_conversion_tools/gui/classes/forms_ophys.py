@@ -255,14 +255,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("Imaging plane class/pointer")
 
-        self.lbl_data = QLabel('data:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(False)
-        self.chk_data.setToolTip(
-            "The data this TimeSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.lbl_unit = QLabel('unit:')
         self.lin_unit = QLineEdit('')
         self.lin_unit.setPlaceholderText("unit")
@@ -384,8 +376,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_imaging_plane, 1, 0, 1, 2)
         self.grid.addWidget(self.combo_imaging_plane, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 2, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 2, 2, 1, 2)
         self.grid.addWidget(self.lbl_unit, 3, 0, 1, 2)
         self.grid.addWidget(self.lin_unit, 3, 2, 1, 4)
         self.grid.addWidget(self.lbl_format, 4, 0, 1, 2)
@@ -436,8 +426,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         data = {}
         data['name'] = self.lin_name.text()
         data['imaging_plane'] = self.combo_imaging_plane.currentText()
-        if self.chk_data.isChecked():
-            data['data'] = True
         data['unit'] = self.lin_unit.text()
         data['format'] = self.lin_format.text()
         if self.chk_field_of_view.isChecked():
@@ -489,8 +477,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.lin_name.setText(data['name'])
         self.combo_imaging_plane.clear()
         self.combo_imaging_plane.addItem(data['imaging_plane'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'unit' in data:
             self.lin_unit.setText(data['unit'])
         if 'format' in data:
@@ -822,17 +808,6 @@ class GroupRoiResponseSeries(QGroupBox):
             self.lin_name = QLineEdit('RoiResponseSeries')
         self.lin_name.setToolTip("The name of this RoiResponseSeries dataset.")
 
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        if 'data' in metadata:
-            self.chk_data.setChecked(metadata['data'])
-        else:
-            self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "The data this TimeSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.lbl_unit = QLabel('unit<span style="color:'+required_asterisk_color+';">*</span>:')
         if 'unit' in metadata:
             self.lin_unit = QLineEdit(metadata['unit'])
@@ -943,8 +918,6 @@ class GroupRoiResponseSeries(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_unit, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_unit, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_rois, 3, 0, 1, 2)
@@ -977,8 +950,6 @@ class GroupRoiResponseSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         data['unit'] = self.lin_unit.text()
         if self.chk_rois.isChecked():
             data['rois'] = True
@@ -1007,8 +978,6 @@ class GroupRoiResponseSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'unit' in data:
             self.lin_unit.setText(data['unit'])
         if 'rois' in data:
@@ -1157,14 +1126,6 @@ class GroupGrayscaleVolume(CollapsibleBox):
         self.lin_name = QLineEdit('GrayscaleVolume')
         self.lin_name.setToolTip("The unique name of this group.")
 
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "Dataset for this volumetric image.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.lbl_spatial_scale = QLabel('spatial_scale:')
         self.chk_spatial_scale = QCheckBox("Get from source file")
         self.chk_spatial_scale.setChecked(False)
@@ -1177,8 +1138,6 @@ class GroupGrayscaleVolume(CollapsibleBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_spatial_scale, 2, 0, 1, 2)
         self.grid.addWidget(self.chk_spatial_scale, 2, 2, 1, 2)
         #self.setLayout(self.grid)
@@ -1191,8 +1150,6 @@ class GroupGrayscaleVolume(CollapsibleBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         if self.chk_spatial_scale.isChecked():
             data['spatial_scale'] = True
         return data
@@ -1200,8 +1157,6 @@ class GroupGrayscaleVolume(CollapsibleBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'spatial_scale' in data:
             self.chk_spatial_scale.setChecked(True)
         self.setContentLayout(self.grid)

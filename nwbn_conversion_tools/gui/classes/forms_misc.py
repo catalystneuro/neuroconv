@@ -15,20 +15,6 @@ class GroupIntervalSeries(QGroupBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('IntervalSeries')
         self.lin_name.setToolTip("The unique name of this IntervalSeries dataset")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupIntervalSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('IntervalSeries'+str(nInstances))
-
-        self.lbl_data = QLabel('data:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(False)
-        self.chk_data.setToolTip(
-            ">0 if interval started, <0 if interval ended.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
 
         self.lbl_timestamps = QLabel('timestamps:')
         self.chk_timestamps = QCheckBox("Get from source file")
@@ -68,8 +54,6 @@ class GroupIntervalSeries(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_timestamps, 2, 0, 1, 2)
         self.grid.addWidget(self.chk_timestamps, 2, 2, 1, 2)
         self.grid.addWidget(self.lbl_comments, 3, 0, 1, 2)
@@ -90,8 +74,6 @@ class GroupIntervalSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         data['comments'] = self.lin_comments.text()
@@ -105,8 +87,6 @@ class GroupIntervalSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'timestamps' in data:
             self.chk_timestamps.setChecked(True)
         if 'comments' in data:
@@ -193,20 +173,6 @@ class GroupDecompositionSeries(QGroupBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DecompositionSeries')
         self.lin_name.setToolTip("The unique name of this DecompositionSeries dataset")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupDecompositionSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('DecompositionSeries'+str(nInstances))
-
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "The data this DecompositionSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
 
         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
@@ -287,8 +253,6 @@ class GroupDecompositionSeries(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_description, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_description, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_metric, 3, 0, 1, 2)
@@ -328,8 +292,6 @@ class GroupDecompositionSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         data['description'] = self.lin_description.text()
         data['metric'] = self.lin_metric.text()
         data['unit'] = self.lin_unit.text()
@@ -364,7 +326,6 @@ class GroupDecompositionSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.chk_data.setChecked(True)
         self.lin_description.setText(data['description'])
         self.lin_metric.setText(data['metric'])
         if 'unit' in data:
