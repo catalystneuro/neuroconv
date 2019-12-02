@@ -2,26 +2,28 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                              QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
+from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 from itertools import groupby
 
 
-class GroupOpticalChannel(QGroupBox):
+#class GroupOpticalChannel(QGroupBox):
+class GroupOpticalChannel(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.OpticalChannel fields filling form."""
-        super().__init__()
-        self.setTitle('OpticalChannel')
+        super().__init__(title='OpticalChannel', parent=parent)
+        #self.setTitle('OpticalChannel')
         self.parent = parent
         self.group_type = 'OpticalChannel'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('OpticalChannel')
         self.lin_name.setToolTip("the name of this optical channel")
-        nOptCh = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupOpticalChannel):
-                nOptCh += 1
-        if nOptCh > 0:
-            self.lin_name.setText('OpticalChannel'+str(nOptCh))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupOpticalChannel):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('OpticalChannel'+str(nInstances))
 
         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_description = QLineEdit('description')
@@ -39,8 +41,7 @@ class GroupOpticalChannel(QGroupBox):
         self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
         self.grid.addWidget(self.lbl_emission_lambda, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_emission_lambda, 2, 2, 1, 4)
-
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -63,25 +64,27 @@ class GroupOpticalChannel(QGroupBox):
         self.lin_name.setText(data['name'])
         self.lin_description.setText(data['description'])
         self.lin_emission_lambda.setText(str(data['emission_lambda']))
+        self.setContentLayout(self.grid)
 
 
-class GroupImagingPlane(QGroupBox):
+#class GroupImagingPlane(QGroupBox):
+class GroupImagingPlane(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.ImagingPlane fields filling form."""
-        super().__init__()
-        self.setTitle('ImagingPlane')
+        super().__init__(title='ImagingPlane', parent=parent)
+        #self.setTitle('ImagingPlane')
         self.parent = parent
         self.group_type = 'ImagingPlane'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImagingPlane')
         self.lin_name.setToolTip("The name of this ImagingPlane")
-        nImPl = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupImagingPlane):
-                nImPl += 1
-        if nImPl > 0:
-            self.lin_name.setText('ImagingPlane'+str(nImPl))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupImagingPlane):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('ImagingPlane'+str(nInstances))
 
         self.lbl_optical_channel = QLabel('optical_channel<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_optical_channel = CustomComboBox()
@@ -164,7 +167,7 @@ class GroupImagingPlane(QGroupBox):
         self.grid.addWidget(self.lin_unit, 10, 2, 1, 4)
         self.grid.addWidget(self.lbl_reference_frame, 11, 0, 1, 2)
         self.grid.addWidget(self.lin_reference_frame, 11, 2, 1, 4)
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -227,6 +230,7 @@ class GroupImagingPlane(QGroupBox):
             self.lin_unit.setText(data['unit'])
         if 'reference_frame' in data:
             self.lin_reference_frame.setText(data['reference_frame'])
+        self.setContentLayout(self.grid)
 
 
 class GroupTwoPhotonSeries(QGroupBox):
@@ -250,14 +254,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.lbl_imaging_plane = QLabel('imaging_plane<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_imaging_plane = CustomComboBox()
         self.combo_imaging_plane.setToolTip("Imaging plane class/pointer")
-
-        self.lbl_data = QLabel('data:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(False)
-        self.chk_data.setToolTip(
-            "The data this TimeSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
 
         self.lbl_unit = QLabel('unit:')
         self.lin_unit = QLineEdit('')
@@ -380,8 +376,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_imaging_plane, 1, 0, 1, 2)
         self.grid.addWidget(self.combo_imaging_plane, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 2, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 2, 2, 1, 2)
         self.grid.addWidget(self.lbl_unit, 3, 0, 1, 2)
         self.grid.addWidget(self.lin_unit, 3, 2, 1, 4)
         self.grid.addWidget(self.lbl_format, 4, 0, 1, 2)
@@ -432,8 +426,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         data = {}
         data['name'] = self.lin_name.text()
         data['imaging_plane'] = self.combo_imaging_plane.currentText()
-        if self.chk_data.isChecked():
-            data['data'] = True
         data['unit'] = self.lin_unit.text()
         data['format'] = self.lin_format.text()
         if self.chk_field_of_view.isChecked():
@@ -485,8 +477,6 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.lin_name.setText(data['name'])
         self.combo_imaging_plane.clear()
         self.combo_imaging_plane.addItem(data['imaging_plane'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'unit' in data:
             self.lin_unit.setText(data['unit'])
         if 'format' in data:
@@ -661,25 +651,27 @@ class GroupMotionCorrection(QGroupBox):
 
 
 class GroupPlaneSegmentation(QGroupBox):
-    def __init__(self, parent):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.PlaneSegmentation fields filling form."""
         super().__init__()
         self.setTitle('PlaneSegmentation')
         self.parent = parent
         self.group_type = 'PlaneSegmentation'
+        if metadata is None:
+            metadata = dict()
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('PlaneSegmentation')
+        if 'name' in metadata:
+            self.lin_name = QLineEdit(metadata['name'])
+        else:
+            self.lin_name = QLineEdit('PlaneSegmentation')
         self.lin_name.setToolTip("The name of this PlaneSegmentation.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupPlaneSegmentation):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('PlaneSegmentation'+str(nInstances))
 
         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_description = QLineEdit('description')
+        if 'description' in metadata:
+            self.lin_description = QLineEdit(metadata['description'])
+        else:
+            self.lin_description = QLineEdit('ADDME')
         self.lin_description.setToolTip(
             "Description of image plane, recording wavelength, depth, etc.")
 
@@ -689,7 +681,10 @@ class GroupPlaneSegmentation(QGroupBox):
 
         self.lbl_reference_images = QLabel('reference_images:')
         self.chk_reference_images = QCheckBox("Get from source file")
-        self.chk_reference_images.setChecked(False)
+        if 'reference_images' in metadata:
+            self.chk_reference_images.setChecked(metadata['reference_images'])
+        else:
+            self.chk_reference_images.setChecked(False)
         self.chk_reference_images.setToolTip(
             "One or more image stacks that the masks apply to (can be oneelement stack).\n"
             "Check box if this data will be retrieved from source file.\n"
@@ -710,7 +705,7 @@ class GroupPlaneSegmentation(QGroupBox):
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
         self.combo_imaging_plane.clear()
-        for grp in self.parent.groups_list:
+        for grp in self.parent.parent.groups_list:
             if isinstance(grp, GroupImagingPlane):
                 self.combo_imaging_plane.addItem(grp.lin_name.text())
 
@@ -735,109 +730,125 @@ class GroupPlaneSegmentation(QGroupBox):
             self.chk_reference_images.setChecked(True)
 
 
-class GroupImageSegmentation(QGroupBox):
+#class GroupImageSegmentation(QGroupBox):
+class GroupImageSegmentation(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.ImageSegmentation fields filling form."""
-        super().__init__()
-        self.setTitle('ImageSegmentation')
+        super().__init__(title='ImageSegmentation', parent=parent)
+        #self.setTitle('ImageSegmentation')
         self.parent = parent
         self.group_type = 'ImageSegmentation'
+        self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImageSegmentation')
         self.lin_name.setToolTip("The name of this ImageSegmentation.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupImageSegmentation):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('ImageSegmentation'+str(nInstances))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp,  GroupImageSegmentation):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('ImageSegmentation'+str(nInstances))
 
         self.lbl_plane_segmentations = QLabel('plane_segmentations:')
-        self.combo_plane_segmentations = CustomComboBox()
-        self.combo_plane_segmentations.setToolTip("PlaneSegmentation to store in this interface.")
+        self.plane_segmentations_layout = QVBoxLayout()
+        self.plane_segmentations = QGroupBox()
+        self.plane_segmentations.setLayout(self.plane_segmentations_layout)
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_plane_segmentations, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_plane_segmentations, 1, 2, 1, 4)
-        self.setLayout(self.grid)
+        self.grid.addWidget(self.plane_segmentations, 1, 2, 1, 4)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_plane_segmentations.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupPlaneSegmentation):
-                self.combo_plane_segmentations.addItem(grp.lin_name.text())
+        for child in self.groups_list:
+            child.refresh_objects_references()
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['plane_segmentations'] = str(self.combo_plane_segmentations.currentText())
+        data['plane_segmentations'] = []
+        nItems = self.plane_segmentations_layout.count()
+        for i in range(nItems):
+            item = self.plane_segmentations_layout.itemAt(i).widget()
+            data['plane_segmentations'].append(item.read_fields())
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_plane_segmentations.clear()
-        self.combo_plane_segmentations.addItem(data['plane_segmentations'])
+        nItems = self.plane_segmentations_layout.count()
+        for ind, sps in enumerate(data['plane_segmentations']):
+            if ind >= nItems:
+                item = GroupPlaneSegmentation(self, metadata=sps)
+                self.groups_list.append(item)
+                self.plane_segmentations_layout.addWidget(item)
+        self.setContentLayout(self.grid)
 
 
 class GroupRoiResponseSeries(QGroupBox):
-    def __init__(self, parent):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.RoiResponseSeries fields filling form."""
         super().__init__()
         self.setTitle('RoiResponseSeries')
         self.parent = parent
         self.group_type = 'RoiResponseSeries'
+        if metadata is None:
+            metadata = dict()
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('RoiResponseSeries')
+        if 'name' in metadata:
+            self.lin_name = QLineEdit(metadata['name'])
+        else:
+            self.lin_name = QLineEdit('RoiResponseSeries')
         self.lin_name.setToolTip("The name of this RoiResponseSeries dataset.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupRoiResponseSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('RoiResponseSeries'+str(nInstances))
-
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "The data this TimeSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
 
         self.lbl_unit = QLabel('unit<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_unit = QLineEdit('NA')
+        if 'unit' in metadata:
+            self.lin_unit = QLineEdit(metadata['unit'])
+        else:
+            self.lin_unit = QLineEdit('NA')
         self.lin_unit.setToolTip("The base unit of measurement (should be SI unit)")
 
         self.lbl_rois = QLabel('rois<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_rois = QCheckBox("Get from source file")
-        self.chk_rois.setChecked(True)
+        if 'rois' in metadata:
+            self.chk_rois.setChecked(metadata['rois'])
+        else:
+            self.chk_rois.setChecked(True)
         self.chk_rois.setToolTip(
             "A table region corresponding to the ROIs that were used to generate this data.\n"
             "Check box if this data will be retrieved from source file.\n"
             "Uncheck box to ignore it.")
 
         self.lbl_resolution = QLabel('resolution:')
-        self.lin_resolution = QLineEdit('')
+        if 'resolution' in metadata:
+            self.lin_resolution = QLineEdit(metadata['resolution'])
+        else:
+            self.lin_resolution = QLineEdit('')
         self.lin_resolution.setPlaceholderText("1.0")
         self.lin_resolution.setToolTip(
             "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_conversion = QLabel('conversion:')
-        self.lin_conversion = QLineEdit('')
+        if 'conversion' in metadata:
+            self.lin_conversion = QLineEdit(metadata['conversion'])
+        else:
+            self.lin_conversion = QLineEdit('')
         self.lin_conversion.setPlaceholderText("1.0")
         self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to volts")
 
         self.lbl_timestamps = QLabel("timestamps:")
         self.chk_timestamps = QCheckBox("Get from source file")
-        self.chk_timestamps.setChecked(False)
+        if 'timestamps' in metadata:
+            self.chk_timestamps.setChecked(metadata['timestamps'])
+        else:
+            self.chk_timestamps.setChecked(False)
         self.chk_timestamps.setToolTip(
             "Timestamps for samples stored in data.\n"
             "Check box if this data will be retrieved from source file."
@@ -845,7 +856,10 @@ class GroupRoiResponseSeries(QGroupBox):
 
         self.lbl_starting_time = QLabel("starting_time:")
         self.chk_starting_time = QCheckBox("Get from source file")
-        self.chk_starting_time.setChecked(False)
+        if 'starting_time' in metadata:
+            self.chk_starting_time.setChecked(metadata['starting_time'])
+        else:
+            self.chk_starting_time.setChecked(False)
         self.chk_starting_time.setToolTip(
             "The timestamp of the first sample.\n"
             "Check box if this data will be retrieved from source file."
@@ -853,25 +867,37 @@ class GroupRoiResponseSeries(QGroupBox):
 
         self.lbl_rate = QLabel("rate:")
         self.chk_rate = QCheckBox("Get from source file")
-        self.chk_rate.setChecked(False)
+        if 'rate' in metadata:
+            self.chk_rate.setChecked(metadata['rate'])
+        else:
+            self.chk_rate.setChecked(False)
         self.chk_rate.setToolTip(
             "Sampling rate in Hz.\n"
             "Check box if this data will be retrieved from source file."
             "\nUncheck box to ignore it.")
 
         self.lbl_comments = QLabel("comments:")
-        self.lin_comments = QLineEdit("")
+        if 'comments' in metadata:
+            self.lin_comments = QLineEdit(metadata['comments'])
+        else:
+            self.lin_comments = QLineEdit("")
         self.lin_comments.setPlaceholderText("comments")
         self.lin_comments.setToolTip("Human-readable comments about this TimeSeries dataset")
 
         self.lbl_description = QLabel("description:")
-        self.lin_description = QLineEdit("")
+        if 'description' in metadata:
+            self.lin_description = QLineEdit(metadata['description'])
+        else:
+            self.lin_description = QLineEdit("")
         self.lin_description.setPlaceholderText("description")
         self.lin_description.setToolTip("Description of this TimeSeries dataset")
 
         self.lbl_control = QLabel("control:")
         self.chk_control = QCheckBox("Get from source file")
-        self.chk_control.setChecked(False)
+        if 'control' in metadata:
+            self.chk_control.setChecked(metadata['control'])
+        else:
+            self.chk_control.setChecked(False)
         self.chk_control.setToolTip(
             "Numerical labels that apply to each element in data.\n"
             "Check box if this data will be retrieved from source file."
@@ -879,7 +905,10 @@ class GroupRoiResponseSeries(QGroupBox):
 
         self.lbl_control_description = QLabel("control_description:")
         self.chk_control_description = QCheckBox("Get from source file")
-        self.chk_control_description.setChecked(False)
+        if 'control_description' in metadata:
+            self.chk_control_description.setChecked(metadata['control_description'])
+        else:
+            self.chk_control_description.setChecked(False)
         self.chk_control_description.setToolTip(
             "Description of each control value.\n"
             "Check box if this data will be retrieved from source file."
@@ -889,8 +918,6 @@ class GroupRoiResponseSeries(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_unit, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_unit, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_rois, 3, 0, 1, 2)
@@ -923,8 +950,6 @@ class GroupRoiResponseSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         data['unit'] = self.lin_unit.text()
         if self.chk_rois.isChecked():
             data['rois'] = True
@@ -953,8 +978,6 @@ class GroupRoiResponseSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'unit' in data:
             self.lin_unit.setText(data['unit'])
         if 'rois' in data:
@@ -979,55 +1002,64 @@ class GroupRoiResponseSeries(QGroupBox):
             self.chk_control_description.setChecked(True)
 
 
-class GroupDfOverF(QGroupBox):
+#class GroupDfOverF(QGroupBox):
+class GroupDfOverF(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.DfOverF fields filling form."""
-        super().__init__()
-        self.setTitle('DfOverF')
+        super().__init__(title='DfOverF', parent=parent)
+        #self.setTitle('DfOverF')
         self.parent = parent
         self.group_type = 'DfOverF'
+        self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DfOverF')
         self.lin_name.setToolTip("The name of this DfOverF.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupDfOverF):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('DfOverF'+str(nInstances))
+        # nInstances = 0
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp,  GroupDfOverF):
+        #         nInstances += 1
+        # if nInstances > 0:
+        #     self.lin_name.setText('DfOverF'+str(nInstances))
 
         self.lbl_roi_response_series = QLabel('roi_response_series:')
-        self.combo_roi_response_series = CustomComboBox()
-        self.combo_roi_response_series.setToolTip("RoiResponseSeries to store in this interface")
+        self.roi_response_series_layout = QVBoxLayout()
+        self.roi_response_series = QGroupBox()
+        self.roi_response_series.setLayout(self.roi_response_series_layout)
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_roi_response_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_roi_response_series, 1, 2, 1, 4)
+        self.grid.addWidget(self.roi_response_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
-        self.combo_roi_response_series.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupRoiResponseSeries):
-                self.combo_roi_response_series.addItem(grp.lin_name.text())
+        pass
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['roi_response_series'] = str(self.combo_roi_response_series.currentText())
+        data['roi_response_series'] = []
+        nItems = self.roi_response_series_layout.count()
+        for i in range(nItems):
+            item = self.roi_response_series_layout.itemAt(i).widget()
+            data['roi_response_series'].append(item.read_fields())
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_roi_response_series.clear()
-        self.combo_roi_response_series.addItem(data['roi_response_series'])
+        nItems = self.roi_response_series_layout.count()
+        for ind, rrs in enumerate(data['roi_response_series']):
+            if ind >= nItems:
+                item = GroupRoiResponseSeries(self, metadata=rrs)
+                self.groups_list.append(item)
+                self.roi_response_series_layout.addWidget(item)
+        self.setContentLayout(self.grid)
 
 
 class GroupFluorescence(QGroupBox):
@@ -1081,31 +1113,18 @@ class GroupFluorescence(QGroupBox):
         self.combo_roi_response_series.addItem(data['roi_response_series'])
 
 
-class GroupGrayscaleVolume(QGroupBox):
+#class GroupGrayscaleVolume(QGroupBox):
+class GroupGrayscaleVolume(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for GrayscaleVolume fields filling form."""
-        super().__init__()
-        self.setTitle('GrayscaleVolume')
+        super().__init__(title='GrayscaleVolume', parent=parent)
+        #self.setTitle('GrayscaleVolume')
         self.parent = parent
         self.group_type = 'GrayscaleVolume'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('GrayscaleVolume')
         self.lin_name.setToolTip("The unique name of this group.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupGrayscaleVolume):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('GrayscaleVolume'+str(nInstances))
-
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "Dataset for this volumetric image.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
 
         self.lbl_spatial_scale = QLabel('spatial_scale:')
         self.chk_spatial_scale = QCheckBox("Get from source file")
@@ -1119,11 +1138,9 @@ class GroupGrayscaleVolume(QGroupBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_spatial_scale, 2, 0, 1, 2)
         self.grid.addWidget(self.chk_spatial_scale, 2, 2, 1, 2)
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -1133,8 +1150,6 @@ class GroupGrayscaleVolume(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         if self.chk_spatial_scale.isChecked():
             data['spatial_scale'] = True
         return data
@@ -1142,10 +1157,9 @@ class GroupGrayscaleVolume(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        if 'data' in data:
-            self.chk_data.setChecked(True)
         if 'spatial_scale' in data:
             self.chk_spatial_scale.setChecked(True)
+        self.setContentLayout(self.grid)
 
 
 class GroupOphys(QGroupBox):
@@ -1286,11 +1300,11 @@ class GroupOphys(QGroupBox):
         grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
         # initiate lists as values for groups keys with count > 1
         for k, v in grp_type_count.items():
-            if v > 1:
+            if v > 1 or k in ['Device', 'OpticalChannel', 'ImagingPlane']:
                 data[k] = []
         # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            if grp_type_count[grp.group_type] > 1:
+            if grp_type_count[grp.group_type] > 1 or grp.group_type in ['Device', 'OpticalChannel', 'ImagingPlane']:
                 data[grp.group_type].append(grp.read_fields())
             else:
                 data[grp.group_type] = grp.read_fields()

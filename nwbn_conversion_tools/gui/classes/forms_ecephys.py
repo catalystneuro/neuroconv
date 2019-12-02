@@ -3,6 +3,7 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 from itertools import groupby
 
 
@@ -73,31 +74,18 @@ class GroupElectrodeGroup(QGroupBox):
         self.combo_device.addItem(data['device'])
 
 
-class GroupElectricalSeries(QGroupBox):
+#class GroupElectricalSeries(QGroupBox):
+class GroupElectricalSeries(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.ElectricalSeries fields filling form."""
-        super().__init__()
-        self.setTitle('ElectricalSeries')
+        super().__init__(title="ElectricalSeries", parent=parent)
+        #self.setTitle('ElectricalSeries')
         self.parent = parent
         self.group_type = 'ElectricalSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ElectricalSeries')
         self.lin_name.setToolTip("The unique name of this ElectricalSeries dataset.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupElectricalSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('ElectricalSeries'+str(nInstances))
-
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "The data this ElectricalSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
 
         self.lbl_electrodes = QLabel('electrodes<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_electrodes = QCheckBox("Get from source file")
@@ -166,8 +154,6 @@ class GroupElectricalSeries(QGroupBox):
         self.grid.setColumnStretch(4, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_electrodes, 2, 0, 1, 2)
         self.grid.addWidget(self.chk_electrodes, 2, 2, 1, 2)
         self.grid.addWidget(self.lbl_conversion, 3, 0, 1, 2)
@@ -188,7 +174,9 @@ class GroupElectricalSeries(QGroupBox):
         self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
         self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
-        self.setLayout(self.grid)
+
+        #self.setLayout(self.grid)
+        self.setContentLayout(self.grid)
 
     def refresh_objects_references(self):
         """Refreshes references with existing objects in parent group."""
@@ -198,8 +186,6 @@ class GroupElectricalSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         if self.chk_electrodes.isChecked():
             data['electrodes'] = True
         try:
@@ -231,7 +217,6 @@ class GroupElectricalSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.chk_data.setChecked(True)
         self.chk_electrodes.setChecked(True)
         if 'conversion' in data:
             self.lin_conversion.setText(str(data['conversion']))
@@ -264,20 +249,6 @@ class GroupSpikeEventSeries(QGroupBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('SpikeEventSeries')
         self.lin_name.setToolTip("The unique name of this SpikeEventSeries.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupSpikeEventSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.lin_name.setText('SpikeEventSeries'+str(nInstances))
-
-        self.lbl_data = QLabel('data<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.chk_data = QCheckBox("Get from source file")
-        self.chk_data.setChecked(True)
-        self.chk_data.setToolTip(
-            "The data this SpikeEventSeries dataset stores.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
 
         self.lbl_timestamps = QLabel('timestamps<span style="color:'+required_asterisk_color+';">*</span>:')
         self.chk_timestamps = QCheckBox("Get from source file")
@@ -336,8 +307,6 @@ class GroupSpikeEventSeries(QGroupBox):
         self.grid.setColumnStretch(4, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_data, 1, 0, 1, 2)
-        self.grid.addWidget(self.chk_data, 1, 2, 1, 2)
         self.grid.addWidget(self.lbl_timestamps, 2, 0, 1, 2)
         self.grid.addWidget(self.chk_timestamps, 2, 2, 1, 2)
         self.grid.addWidget(self.lbl_electrodes, 3, 0, 1, 2)
@@ -364,8 +333,6 @@ class GroupSpikeEventSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        if self.chk_data.isChecked():
-            data['data'] = True
         if self.chk_electrodes.isChecked():
             data['electrodes'] = True
         try:
@@ -389,7 +356,6 @@ class GroupSpikeEventSeries(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.chk_data.setChecked(True)
         self.chk_timestamps.setChecked(True)
         self.chk_electrodes.setChecked(True)
         if 'conversion' in data:

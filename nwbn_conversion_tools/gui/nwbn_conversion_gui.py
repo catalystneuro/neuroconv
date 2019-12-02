@@ -1,44 +1,54 @@
-import PySide2
-import os
-dirname = os.path.dirname(PySide2.__file__)
-plugin_path = os.path.join(dirname, 'plugins', 'platforms')
-os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 from PySide2 import QtCore
 from PySide2.QtCore import Qt
+from PySide2.QtWebEngineWidgets import QWebEngineView
 from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
                              QGridLayout, QSplitter, QLabel, QFileDialog,
                              QMessageBox, QComboBox, QScrollArea, QStyle,
-                             QGroupBox, QCheckBox)
+                             QGroupBox, QCheckBox, QTabWidget)
 
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
 
+import numpy as np
+import nbformat as nbf
+from pathlib import Path
+import tempfile
+import socket
+import psutil
+import shutil
 import datetime
 import importlib
 import yaml
 import sys
+import os
 
 
 class Application(QMainWindow):
     def __init__(self, metafile=None, conversion_module='', source_paths={},
                  kwargs_fields={}, show_add_del=False):
         super().__init__()
+        # Dictionary storing source files paths
         self.source_paths = source_paths
+        # Path to conversion module .py file
         self.conversion_module_path = conversion_module
+        # Dictionary storing custom boolean options (to form checkboxes)
         self.kwargs_fields = kwargs_fields
+        # Boolean control to either show/hide the option for add/del Groups
         self.show_add_del = show_add_del
+        # Temporary folder path
+        self.temp_dir = tempfile.mkdtemp()
 
-        self.centralwidget = QWidget()
-        self.setCentralWidget(self.centralwidget)
         self.resize(1200, 900)
         self.setWindowTitle('NWB:N conversion tools')
 
         # Initialize GUI elements
         self.init_gui()
+        self.init_meta_tab()
         self.load_meta_file(filename=metafile)
+        self.init_nwb_explorer()
         self.show()
 
     def init_gui(self):
@@ -55,6 +65,10 @@ class Application(QMainWindow):
         helpMenu.addAction(action_about)
         action_about.triggered.connect(self.about)
 
+        self.tabs = QTabWidget()
+        self.setCentralWidget(self.tabs)
+
+    def init_meta_tab(self):
         # Center panels -------------------------------------------------------
         self.groups_list = []
 
@@ -141,7 +155,6 @@ class Application(QMainWindow):
             self.group_kwargs.setLayout(self.grid_kwargs)
             l_grid1.addWidget(self.group_kwargs, 4, 0, 1, 6)
 
-
         self.l_vbox1 = QVBoxLayout()
         self.l_vbox1.addStretch()
         scroll_aux = QWidget()
@@ -186,21 +199,50 @@ class Application(QMainWindow):
         r_vsplitter.addWidget(ru_w)
         r_vsplitter.addWidget(rb_w)
 
-        # Main Layout
+        # Metadata/conversion tab Layout
         self.left_w = QWidget()
         self.left_w.setLayout(self.l_vbox2)
         self.splitter = QSplitter(QtCore.Qt.Horizontal)
         self.splitter.addWidget(self.left_w)
         self.splitter.addWidget(r_vsplitter)
 
-        self.main_layout = QVBoxLayout()
-        self.main_layout.addWidget(self.splitter)
-        self.centralwidget.setLayout(self.main_layout)
+        self.metadata_layout = QVBoxLayout()
+        self.metadata_layout.addWidget(self.splitter)
+        self.tab_metadata = QWidget()
+        self.tab_metadata.setLayout(self.metadata_layout)
+        self.tabs.addTab(self.tab_metadata, 'Metadata/Conversion')
 
         # Background color
         p = self.palette()
         p.setColor(self.backgroundRole(), QtCore.Qt.white)
         self.setPalette(p)
+
+    def init_nwb_explorer(self):
+        """Initializes NWB file explorer tab"""
+        self.tab_nwbexplorer = QWidget()
+        self.btn_load_nwbexp = QPushButton('Load NWB')
+        self.btn_load_nwbexp.setIcon(self.style().standardIcon(QStyle.SP_ArrowDown))
+        self.btn_load_nwbexp.clicked.connect(self.load_nwb_explorer)
+        self.btn_load_nwbexp.setToolTip("Choose NWB file to explore!")
+        self.btn_close_nwbexp = QPushButton('Close')
+        self.btn_close_nwbexp.setIcon(self.style().standardIcon(QStyle.SP_DialogCloseButton))
+        self.btn_close_nwbexp.clicked.connect(self.close_nwb_explorer)
+        self.btn_close_nwbexp.setToolTip("Close current file view.")
+        self.html = QWebEngineView()
+
+        # Layout
+        self.grid_explorer = QGridLayout()
+        self.grid_explorer.setColumnStretch(2, 1)
+        self.grid_explorer.addWidget(self.btn_load_nwbexp, 0, 0, 1, 1)
+        self.grid_explorer.addWidget(self.btn_close_nwbexp, 0, 1, 1, 1)
+        self.grid_explorer.addWidget(QLabel(), 0, 2, 1, 1)
+        self.vbox_explorer = QVBoxLayout()
+        self.vbox_explorer.addLayout(self.grid_explorer)
+        self.vbox_explorer.addWidget(self.html)
+        self.tab_nwbexplorer.setLayout(self.vbox_explorer)
+
+        # Add tab to GUI
+        self.tabs.addTab(self.tab_nwbexplorer, 'NWB explorer')
 
     def write_to_logger(self, txt):
         time = datetime.datetime.now().time().strftime("%H:%M:%S")
@@ -274,9 +316,7 @@ class Application(QMainWindow):
         if len(filenames):
             all_names = ''
             for fname in filenames:
-                #all_names += os.path.split(fname)[1]+', '
                 all_names += fname + ', '
-
             lin_src = getattr(self, 'lin_src_'+str(ind))
             lin_src.setText(all_names[:-2])
             self.source_paths[key]['path'] = all_names[:-2]
@@ -318,11 +358,11 @@ class Application(QMainWindow):
             directory='',
             filter="(*py)"
         )
-        if filename is not None:
+        if filename is not '':
             self.conversion_module_path = filename
 
     def load_nwb_file(self):
-        """Browser to source file location."""
+        """Browser to nwb file location."""
         filename, ftype = QFileDialog.getSaveFileName(
             parent=self,
             caption='Save file',
@@ -331,6 +371,55 @@ class Application(QMainWindow):
         )
         if filename is not None:
             self.lin_nwb_file.setText(filename)
+
+    def load_nwb_explorer(self):
+        """Browser to nwb file location."""
+        filename, ftype = QFileDialog.getOpenFileName(
+            parent=self,
+            caption='Load file',
+            directory='',
+            filter="(*nwb)"
+        )
+        if filename is not '':
+            self.run_voila(fname=filename)
+
+    def close_nwb_explorer(self):
+        """Close current NWB file view on explorer"""
+        if hasattr(self, 'voilathread'):
+            self.voilathread.stop()
+
+    def run_voila(self, fname):
+        """Set up notebook and run it with a dedicated Voila thread."""
+        # Stop any current Voila thread
+        self.close_nwb_explorer()
+        # Write Figure + ipywidgets to a .ipynb file
+        nb = nbf.v4.new_notebook()
+        code = """
+            from nwbwidgets import nwb2widget
+            import pynwb
+            import os
+
+            fpath = os.path.join(r'""" + str(fname) + """')
+            io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
+            nwb = io.read()
+            nwb2widget(nwb)
+            #io.close()
+            """
+        nb['cells'] = [nbf.v4.new_code_cell(code)]
+        nbpath = os.path.join(self.temp_dir, Path(fname).stem+'.ipynb')
+        nbf.write(nb, nbpath)
+        # Run instance of Voila with the just saved .ipynb file
+        port = get_free_port()
+        self.voilathread = voilaThread(parent=self, port=port, nbpath=nbpath)
+        self.voilathread.start()
+        # Load Voila instance on GUI
+        self.update_html(url='http://localhost:'+str(port))
+        #self.parent.write_to_logger(txt=self.name + " ready!")
+
+    def update_html(self, url):
+        """Loads temporary HTML file and render it."""
+        self.html.load(QtCore.QUrl(url))
+        self.html.show()
 
     def clean_groups(self):
         """Removes all groups widgets."""
@@ -395,6 +484,8 @@ class Application(QMainWindow):
                                        write_data=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
+        nItems = self.l_vbox1.count()
+        self.l_vbox1.addStretch(nItems)
 
     def about(self):
         """About dialog."""
@@ -409,7 +500,60 @@ class Application(QMainWindow):
 
     def closeEvent(self, event):
         """Before exiting, executes these actions."""
+        # Stop any current Voila thread
+        self.close_nwb_explorer()
+        # Remove any remaining temporary directory/files
+        shutil.rmtree(self.temp_dir, ignore_errors=False, onerror=None)
         event.accept()
+
+
+def get_free_port():
+    not_free = True
+    while not_free:
+        port = np.random.randint(7000, 7999)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            res = sock.connect_ex(('localhost', port))
+            if res != 0:
+                not_free = False
+    return port
+
+
+def is_listening_to_port(process, port):
+    is_listening = False
+    # iterate over processe's children
+    for child in process.children(recursive=True):
+        # iterate over child connections
+        for con in child.connections():
+            if con.status=='LISTEN':
+                if isinstance(con.laddr.port, int):
+                    is_listening = con.laddr.port == port
+                elif isinstance(con.laddr.port, list):
+                    is_listening = port in con.laddr.port
+                return is_listening
+    return is_listening
+
+
+class voilaThread(QtCore.QThread):
+    def __init__(self, parent, port, nbpath):
+        super().__init__()
+        self.parent = parent
+        self.port = port
+        self.nbpath = nbpath
+
+    def run(self):
+        os.system("voila " + self.nbpath + " --no-browser --port "+str(self.port))
+
+    def stop(self):
+        pid = os.getpid()
+        process = psutil.Process(pid)
+        proc_list = []
+        for child in process.children(recursive=True):
+            is_listening = is_listening_to_port(child, self.port)
+            if is_listening:
+                proc_list.append(child)
+        for proc in proc_list:
+            for child in process.children(recursive=True):
+                child.kill()
 
 
 # Runs conversion function, useful to wait for thread
