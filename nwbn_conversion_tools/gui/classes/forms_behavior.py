@@ -143,6 +143,7 @@ class GroupSpatialSeries(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
+        data['name'] = self.lin_name.text()
         data['reference_frame'] = self.lin_reference_frame.text()
         try:
             data['conversion'] = float(self.lin_conversion.text())
