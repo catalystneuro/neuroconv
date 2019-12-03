@@ -418,11 +418,11 @@ class Application(QMainWindow):
 
             fpath = os.path.join(r'""" + str(fname) + """')
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
-            nwb = io.read()
+            nwbfile = io.read()
             """
         self.explorer_console._execute(code, True)
         self.explorer_console.clear()
-        self.explorer_console.print_text('nwb --> Loaded NWB file\n')
+        self.explorer_console.print_text('nwbfile --> Loaded NWB file\n')
 
     def run_voila(self, fname):
         """Set up notebook and run it with a dedicated Voila thread."""
