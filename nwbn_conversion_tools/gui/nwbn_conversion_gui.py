@@ -6,7 +6,7 @@ from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                              QGridLayout, QSplitter, QLabel, QFileDialog,
                              QMessageBox, QComboBox, QScrollArea, QStyle,
                              QGroupBox, QCheckBox, QTabWidget)
-
+from nwbn_conversion_tools.gui.classes.console_widget import ConsoleWidget
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
@@ -219,7 +219,7 @@ class Application(QMainWindow):
 
     def init_nwb_explorer(self):
         """Initializes NWB file explorer tab"""
-        self.tab_nwbexplorer = QWidget()
+        # Layout Widgets
         self.btn_load_nwbexp = QPushButton('Load NWB')
         self.btn_load_nwbexp.setIcon(self.style().standardIcon(QStyle.SP_ArrowDown))
         self.btn_load_nwbexp.clicked.connect(self.load_nwb_explorer)
@@ -230,19 +230,34 @@ class Application(QMainWindow):
         self.btn_close_nwbexp.setToolTip("Close current file view.")
         self.html = QWebEngineView()
 
-        # Layout
-        self.grid_explorer = QGridLayout()
-        self.grid_explorer.setColumnStretch(2, 1)
-        self.grid_explorer.addWidget(self.btn_load_nwbexp, 0, 0, 1, 1)
-        self.grid_explorer.addWidget(self.btn_close_nwbexp, 0, 1, 1, 1)
-        self.grid_explorer.addWidget(QLabel(), 0, 2, 1, 1)
-        self.vbox_explorer = QVBoxLayout()
-        self.vbox_explorer.addLayout(self.grid_explorer)
-        self.vbox_explorer.addWidget(self.html)
-        self.tab_nwbexplorer.setLayout(self.vbox_explorer)
+        self.grid_widgets = QGridLayout()
+        self.grid_widgets.setColumnStretch(2, 1)
+        self.grid_widgets.addWidget(self.btn_load_nwbexp, 0, 0, 1, 1)
+        self.grid_widgets.addWidget(self.btn_close_nwbexp, 0, 1, 1, 1)
+        self.grid_widgets.addWidget(QLabel(), 0, 2, 1, 1)
+        self.vbox_widgets = QVBoxLayout()
+        self.vbox_widgets.addLayout(self.grid_widgets)
+        self.vbox_widgets.addWidget(self.html)
+
+        #Layout Console
+        console_label = QLabel('Ipython console:')
+        self.explorer_console = ConsoleWidget(par=self)
+        self.explorer_console.setToolTip("nwbfile --> NWB file data")
+
+        self.grid_console = QGridLayout()
+        self.grid_console.addWidget(console_label, 0, 0, 1, 1)
+        self.grid_console.addWidget(self.explorer_console, 1, 0, 1, 1)
+
+        hsplitter = QSplitter(QtCore.Qt.Horizontal)
+        left_w = QWidget()
+        left_w.setLayout(self.vbox_widgets)
+        right_w = QWidget()
+        right_w.setLayout(self.grid_console)
+        hsplitter.addWidget(left_w)
+        hsplitter.addWidget(right_w)
 
         # Add tab to GUI
-        self.tabs.addTab(self.tab_nwbexplorer, 'NWB explorer')
+        self.tabs.addTab(hsplitter, 'NWB explorer')
 
     def write_to_logger(self, txt):
         time = datetime.datetime.now().time().strftime("%H:%M:%S")
@@ -381,12 +396,33 @@ class Application(QMainWindow):
             filter="(*nwb)"
         )
         if filename is not '':
+            #Opens file on Ipython console
+            self.run_console(fname=filename)
+            #Opens file on NWBWidgets
             self.run_voila(fname=filename)
 
     def close_nwb_explorer(self):
         """Close current NWB file view on explorer"""
         if hasattr(self, 'voilathread'):
+            # Stop Voila thread
             self.voilathread.stop()
+            # Closes nwb file on console
+            self.explorer_console._execute('io.close()', True)
+            self.explorer_console.clear()
+
+    def run_console(self, fname):
+        """Loads NWB file on Ipython console"""
+        code = """
+            import pynwb
+            import os
+
+            fpath = os.path.join(r'""" + str(fname) + """')
+            io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
+            nwbfile = io.read()
+            """
+        self.explorer_console._execute(code, True)
+        self.explorer_console.clear()
+        self.explorer_console.print_text('nwbfile --> Loaded NWB file\n')
 
     def run_voila(self, fname):
         """Set up notebook and run it with a dedicated Voila thread."""
@@ -403,7 +439,6 @@ class Application(QMainWindow):
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
             nwb = io.read()
             nwb2widget(nwb)
-            #io.close()
             """
         nb['cells'] = [nbf.v4.new_code_cell(code)]
         nbpath = os.path.join(self.temp_dir, Path(fname).stem+'.ipynb')
