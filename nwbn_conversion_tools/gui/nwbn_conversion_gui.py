@@ -259,7 +259,6 @@ class Application(QMainWindow):
         # Add tab to GUI
         self.tabs.addTab(hsplitter, 'NWB explorer')
 
-
     def write_to_logger(self, txt):
         time = datetime.datetime.now().time().strftime("%H:%M:%S")
         full_txt = "[" + time + "]    " + txt
@@ -397,12 +396,33 @@ class Application(QMainWindow):
             filter="(*nwb)"
         )
         if filename is not '':
+            #Opens file on Ipython console
+            self.run_console(fname=filename)
+            #Opens file on NWBWidgets
             self.run_voila(fname=filename)
 
     def close_nwb_explorer(self):
         """Close current NWB file view on explorer"""
         if hasattr(self, 'voilathread'):
+            # Stop Voila thread
             self.voilathread.stop()
+            # Closes nwb file on console
+            self.explorer_console._execute('io.close()', True)
+            self.explorer_console.clear()
+
+    def run_console(self, fname):
+        """Loads NWB file on Ipython console"""
+        code = """
+            import pynwb
+            import os
+
+            fpath = os.path.join(r'""" + str(fname) + """')
+            io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
+            nwb = io.read()
+            """
+        self.explorer_console._execute(code, True)
+        self.explorer_console.clear()
+        self.explorer_console.print_text('nwb --> Loaded NWB file\n')
 
     def run_voila(self, fname):
         """Set up notebook and run it with a dedicated Voila thread."""
@@ -419,7 +439,6 @@ class Application(QMainWindow):
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
             nwb = io.read()
             nwb2widget(nwb)
-            #io.close()
             """
         nb['cells'] = [nbf.v4.new_code_cell(code)]
         nbpath = os.path.join(self.temp_dir, Path(fname).stem+'.ipynb')
