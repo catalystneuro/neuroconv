@@ -185,7 +185,6 @@ class GroupNwbfile(CollapsibleBox):
         nWidgetsGrid = self.grid.rowCount()
         self.grid.addWidget(self.lbl_stimulus_notes, nWidgetsGrid, 0, 1, 2)
         self.grid.addWidget(self.lin_stimulus_notes, nWidgetsGrid, 2, 1, 4)
-
         #self.setLayout(self.grid)
         self.setContentLayout(self.grid)
 
@@ -203,24 +202,69 @@ class GroupNwbfile(CollapsibleBox):
             self.parent.write_to_logger("ERROR: Invalid 'session_start_time' format. "
                                         "Please fill in correct format.")
             return None, error
-        data['experimenter'] = self.lin_experimenter.text()
-        data['experiment_description'] = self.lin_experiment_description.text()
-        data['session_id'] = self.lin_session_id.text()
-        data['institution'] = self.lin_institution.text()
-        data['lab'] = self.lin_lab.text()
+        if self.lin_experimenter.text() != '':
+            data['experimenter'] = self.lin_experimenter.text()
+        else:
+            data['experimenter'] = None
+        if self.lin_experiment_description.text() != '':
+            data['experiment_description'] = self.lin_experiment_description.text()
+        else:
+            data['experiment_description'] = None
+        if self.lin_session_id.text() != '':
+            data['session_id'] = self.lin_session_id.text()
+        else:
+            data['session_id'] = None
+        if self.lin_institution.text() != '':
+            data['institution'] = self.lin_institution.text()
+        else:
+            data['institution'] = None
+        if self.lin_lab.text() != '':
+            data['lab'] = self.lin_lab.text()
+        else:
+            data['lab'] = None
         if 'lab_meta_data' in self.metadata.keys():
             data['lab_meta_data'], error = self.lab_meta_data.read_fields()
-        keywords = self.lin_keywords.text()
-        data['keywords'] = [kw.strip() for kw in keywords.split(',')]
-        data['notes'] = self.lin_notes.text()
-        data['pharmacology'] = self.lin_pharmacology.text()
-        data['protocol'] = self.lin_protocol.text()
-        data['related_publications'] = self.lin_related_publications.text()
-        data['slices'] = self.lin_slices.text()
-        data['data_collection'] = self.lin_data_collection.text()
-        data['surgery'] = self.lin_surgery.text()
-        data['virus'] = self.lin_virus.text()
-        data['stimulus_notes'] = self.lin_stimulus_notes.text()
+        if len(self.lin_keywords.text()) > 0:
+            keywords = self.lin_keywords.text()
+            data['keywords'] = [kw.strip() for kw in keywords.split(',')]
+        else:
+            data['keywords'] = None
+        if self.lin_notes.text() != '':
+            data['notes'] = self.lin_notes.text()
+        else:
+            data['notes'] = None
+        if self.lin_pharmacology.text() != '':
+            data['pharmacology'] = self.lin_pharmacology.text()
+        else:
+            data['pharmacology'] = None
+        if self.lin_protocol.text() != '':
+            data['protocol'] = self.lin_protocol.text()
+        else:
+            data['protocol'] = None
+        if self.lin_related_publications.text() != '':
+            data['related_publications'] = self.lin_related_publications.text()
+        else:
+            data['related_publications'] = None
+        if self.lin_slices.text() != '':
+            data['slices'] = self.lin_slices.text()
+        else:
+            data['slices'] = None
+        if self.lin_data_collection.text() != '':
+            data['data_collection'] = self.lin_data_collection.text()
+        else:
+            data['data_collection'] = None
+        if self.lin_surgery.text() != '':
+            data['surgery'] = self.lin_surgery.text()
+        else:
+            data['surgery'] = None
+        if self.lin_virus.text() != '':
+            data['virus'] = self.lin_virus.text()
+        else:
+            data['virus'] = None
+        if self.lin_stimulus_notes.text() != '':
+            data['stimulus_notes'] = self.lin_stimulus_notes.text()
+        else:
+            data['stimulus_notes'] = None
         return data, error
 
     def write_fields(self, data={}):
