@@ -15,11 +15,14 @@ setup(
     version='0.1.1',
     description='Convert data to nwb',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     author='Ben Dichter and Luiz Tauffer',
     author_email='ben.dichter@gmail.com',
     keywords='nwb',
     packages=find_packages(),
-    install_requires=['pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
+    install_requires=[
+        'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
         'pandas', 'jupyter', 'matplotlib', 'h5py', 'pyyaml',
         'spikeextractors', 'spikesorters', 'spiketoolkit', 'herdingspikes',
-        'PySide2', 'nwbwidgets', 'psutil', 'voila'])
+        'PySide2', 'nwbwidgets', 'psutil', 'voila'
+    ])
