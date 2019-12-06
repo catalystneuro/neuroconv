@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='nwbn-conversion-tools',
-    version='0.1',
+    version='0.1.1',
     description='Convert data to nwb',
     long_description=long_description,
     author='Ben Dichter and Luiz Tauffer',

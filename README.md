@@ -2,16 +2,16 @@
 Shared tools for converting data from various formats to NWB:N 2.0
 
 ## Installation
-To clone the repository and set up a conda environment, do:
+To install **nwbn_conversion_tools** directly in an existing environment:
+```
+$ pip install nwbn-conversion-tools
+```
+
+Alternatively, to clone the repository and set up a conda environment, do:
 ```
 $ git clone https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools
 $ conda env create -f nwbn-conversion-tools/make_env.yml
 $ source activate nwbn_conversion
-```
-
-Alternatively, to install **nwbn_conversion_tools** directly in an existing environment:
-```
-$ pip install git+https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools
 ```
 
 ## GUI
