@@ -19,4 +19,4 @@ class Spikeglx2NWB(EphysAcquisition2NWB):
         """
         super(Spikeglx2NWB, self).__init__(nwbfile=nwbfile, metadata=metadata)
 
-        self.RX = se.SpikeGLXRecordingExtractor(npx_file, x_pitch=None, y_pitch=None)
+        self.RX = se.SpikeGLXRecordingExtractor(npx_file, x_pitch=x_pitch, y_pitch=y_pitch)
