@@ -136,7 +136,7 @@ class GroupSpatialSeries(QGroupBox):
         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -224,7 +224,7 @@ class GroupBehavioralEpochs(QGroupBox):
         self.grid.addWidget(self.interval_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -270,7 +270,7 @@ class GroupBehavioralEvents(CollapsibleBox):
         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -318,7 +318,7 @@ class GroupBehavioralTimeSeries(QGroupBox):
         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -365,7 +365,7 @@ class GroupPupilTracking(QGroupBox):
         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -402,7 +402,6 @@ class GroupEyeTracking(CollapsibleBox):
             self.lin_name.setText('EyeTracking'+str(nInstances))
 
         self.lbl_spatial_series = QLabel('spatial_series:')
-        self.spatial_series = GroupSpatialSeries(self)
         self.spatial_series_layout = QVBoxLayout() #GroupSpatialSeries(self)
         self.spatial_series = QGroupBox() #CollapsibleBox()
         self.spatial_series.setLayout(self.spatial_series_layout)
@@ -415,7 +414,7 @@ class GroupEyeTracking(CollapsibleBox):
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -470,7 +469,7 @@ class GroupCompassDirection(QGroupBox):
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -514,7 +513,7 @@ class GroupPosition(CollapsibleBox):
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -579,7 +578,7 @@ class GroupBehavior(QGroupBox):
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-    def add_group(self, group_type, write_data=None):
+    def add_group(self, group_type, metadata=None):
         """Adds group form."""
         if group_type == 'combo':
             group_type = str(self.combo1.currentText())
@@ -606,15 +605,15 @@ class GroupBehavior(QGroupBox):
         elif group_type == 'Position':
             item = GroupPosition(self)
         if group_type != '-- Add group --':
-            if write_data is not None:
-                item.write_fields(data=write_data)
+            if metadata is not None:
+                item.write_fields(data=metadata)
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
             self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
             self.combo1.setCurrentIndex(0)
             self.combo2.addItem(item.lin_name.text())
-            self.refresh_children()
+            self.refresh_children(metadata=metadata)
 
     def del_group(self, group_name):
         """Deletes group form by name."""
@@ -653,10 +652,10 @@ class GroupBehavior(QGroupBox):
                             return True
         return False
 
-    def refresh_children(self):
+    def refresh_children(self, metadata=None):
         """Refreshes references with existing objects in child groups."""
         for child in self.groups_list:
-            child.refresh_objects_references()
+            child.refresh_objects_references(metadata=metadata)
 
     def refresh_del_combo(self):
         """Refreshes del combobox with existing objects names in child groups."""

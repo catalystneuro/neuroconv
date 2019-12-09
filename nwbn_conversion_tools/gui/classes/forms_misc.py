@@ -66,7 +66,7 @@ class GroupIntervalSeries(QGroupBox):
         self.grid.addWidget(self.chk_control_description, 6, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -140,7 +140,7 @@ class GroupUnits(QGroupBox):
         self.grid.addWidget(self.lin_description, 2, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -281,7 +281,7 @@ class GroupDecompositionSeries(QGroupBox):
         self.grid.addWidget(self.chk_control_description, 14, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_source_timeseries.clear()
         for grp in self.parent.groups_list:

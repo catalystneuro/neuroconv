@@ -49,7 +49,7 @@ class GroupElectrodeGroup(QGroupBox):
         self.grid.addWidget(self.combo_device, 3, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_device.clear()
         for grp in self.parent.groups_list:
@@ -178,7 +178,7 @@ class GroupElectricalSeries(CollapsibleBox):
         #self.setLayout(self.grid)
         self.setContentLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -325,7 +325,7 @@ class GroupSpikeEventSeries(QGroupBox):
         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -433,7 +433,7 @@ class GroupEventDetection(QGroupBox):
         self.grid.addWidget(self.chk_times, 4, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_source_electricalseries.clear()
         for grp in self.parent.groups_list:
@@ -492,7 +492,7 @@ class GroupEventWaveform(QGroupBox):
         self.grid.addWidget(self.combo_spike_event_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_spike_event_series.clear()
         for grp in self.parent.groups_list:
@@ -533,13 +533,9 @@ class GroupLFP(QGroupBox):
 
         self.lbl_electrical_series = QLabel('electrical_series<span style="color:'+required_asterisk_color+';">*</span>:')
         self.electrical_series = GroupElectricalSeries(self)
-        #self.combo_electrical_series = CustomComboBox()
-        #self.combo_electrical_series.setToolTip("ElectricalSeries to store in this interface")
 
         self.lbl_decomposition_series = QLabel('decomposition_series<span style="color:'+required_asterisk_color+';">*</span>:')
         self.decomposition_series = GroupDecompositionSeries(self)
-        #self.combo_decomposition_series = CustomComboBox()
-        #self.combo_decomposition_series.setToolTip("DecompositionSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
@@ -551,16 +547,9 @@ class GroupLFP(QGroupBox):
         self.grid.addWidget(self.decomposition_series, 2, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
-        # self.combo_electrical_series.clear()
-        # self.combo_decomposition_series.clear()
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp, GroupElectricalSeries):
-        #         self.combo_electrical_series.addItem(grp.lin_name.text())
-        #     if isinstance(grp, GroupDecompositionSeries):
-        #         self.combo_decomposition_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -573,10 +562,6 @@ class GroupLFP(QGroupBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        # self.combo_electrical_series.clear()
-        # self.combo_electrical_series.addItem(data['electrical_series'])
-        # self.combo_decomposition_series.clear()
-        # self.combo_decomposition_series.addItem(data['decomposition_series'])
 
 
 class GroupFilteredEphys(QGroupBox):
@@ -599,8 +584,6 @@ class GroupFilteredEphys(QGroupBox):
 
         self.lbl_electrical_series = QLabel('electrical_series<span style="color:'+required_asterisk_color+';">*</span>:')
         self.electrical_series = GroupElectricalSeries(self)
-        # self.combo_electrical_series = CustomComboBox()
-        # self.combo_electrical_series.setToolTip("ElectricalSeries to store in this interface")
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
@@ -610,13 +593,9 @@ class GroupFilteredEphys(QGroupBox):
         self.grid.addWidget(self.electrical_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
-        # self.combo_electrical_series.clear()
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp, GroupElectricalSeries):
-        #         self.combo_electrical_series.addItem(grp.lin_name.text())
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -692,7 +671,7 @@ class GroupFeatureExtraction(QGroupBox):
         self.grid.addWidget(self.chk_features, 4, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -756,7 +735,7 @@ class GroupEcephys(QGroupBox):
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-    def add_group(self, group_type, write_data=None):
+    def add_group(self, group_type, metadata=None):
         """Adds group form."""
         if group_type == 'combo':
             group_type = str(self.combo1.currentText())
@@ -781,15 +760,15 @@ class GroupEcephys(QGroupBox):
         elif group_type == 'DecompositionSeries':
             item = GroupDecompositionSeries(self)
         if group_type != '-- Add group --':
-            if write_data is not None:
-                item.write_fields(data=write_data)
+            if metadata is not None:
+                item.write_fields(data=metadata)
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
             self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
             self.combo1.setCurrentIndex(0)
             self.combo2.addItem(item.lin_name.text())
-            self.refresh_children()
+            self.refresh_children(metadata=metadata)
 
     def del_group(self, group_name):
         """Deletes group form by name."""
@@ -828,10 +807,10 @@ class GroupEcephys(QGroupBox):
                             return True
         return False
 
-    def refresh_children(self):
+    def refresh_children(self, metadata=None):
         """Refreshes references with existing objects in child groups."""
         for child in self.groups_list:
-            child.refresh_objects_references()
+            child.refresh_objects_references(metadata=metadata)
 
     def refresh_del_combo(self):
         """Refreshes del combobox with existing objects names in child groups."""
