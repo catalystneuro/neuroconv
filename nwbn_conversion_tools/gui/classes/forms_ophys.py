@@ -179,8 +179,11 @@ class GroupImagingPlane(CollapsibleBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        # TODO
-        #data['optical_channel'] = str(self.combo_optical_channel.currentText())
+        data['optical_channel'] = []
+        nItems = self.optical_channel_layout.count()
+        for i in range(nItems):
+            item = self.optical_channel_layout.itemAt(i).widget()
+            data['optical_channel'].append(item.read_fields())
         data['description'] = self.lin_description.text()
         data['device'] = str(self.combo_device.currentText())
         try:
@@ -706,8 +709,13 @@ class GroupPlaneSegmentation(QGroupBox):
         """Refreshes references with existing objects in parent group."""
         self.combo_imaging_plane.clear()
         for grp in self.parent.parent.groups_list:
+            # Adds all existing ImagingPlanes to combobox
             if isinstance(grp, GroupImagingPlane):
                 self.combo_imaging_plane.addItem(grp.lin_name.text())
+        # If metadata is referring to this specific object, update combobox item
+        if metadata['name'] == self.lin_name.text():
+        #    print(metadata)
+            self.combo_imaging_plane.setCurrentText(metadata['imaging_plane'])
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -759,8 +767,16 @@ class GroupImageSegmentation(CollapsibleBox):
 
     def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
+        if metadata is None:
+            metadata = {}
         for child in self.groups_list:
-            child.refresh_objects_references(metadata=metadata)
+            # Get metadata corresponding to this specific child
+            if 'plane_segmentations' in metadata:
+                submeta = [sub for sub in metadata['plane_segmentations']
+                           if sub['name'] == child.lin_name.text()][0]
+            else:
+                submeta = metadata
+            child.refresh_objects_references(metadata=submeta)
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
