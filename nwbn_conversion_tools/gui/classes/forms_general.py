@@ -435,7 +435,7 @@ class GroupDevice(CollapsibleBox):
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -523,7 +523,7 @@ class GroupCustomExtension(QGroupBox):
                 # self.grid.addWidget(lin_time, ii+1, 4, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -613,7 +613,7 @@ class GroupCustomExample(QGroupBox):
         self.grid.addWidget(self.chk_script, 4, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_link.clear()
         for grp in self.parent.groups_list:

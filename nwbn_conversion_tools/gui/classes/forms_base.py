@@ -106,7 +106,7 @@ class GroupTimeSeries(QGroupBox):
         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -211,7 +211,7 @@ class GroupImage(QGroupBox):
         self.grid.addWidget(self.lin_help, 4, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -275,7 +275,7 @@ class GroupImages(QGroupBox):
         self.grid.addWidget(self.lin_description, 2, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_images.clear()
         for grp in self.parent.groups_list:

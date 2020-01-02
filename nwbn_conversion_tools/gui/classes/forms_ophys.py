@@ -6,31 +6,34 @@ from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 from itertools import groupby
 
 
-#class GroupOpticalChannel(QGroupBox):
-class GroupOpticalChannel(CollapsibleBox):
-    def __init__(self, parent):
+class GroupOpticalChannel(QGroupBox):
+#class GroupOpticalChannel(CollapsibleBox):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.OpticalChannel fields filling form."""
-        super().__init__(title='OpticalChannel', parent=parent)
-        #self.setTitle('OpticalChannel')
+        super().__init__()#title='OpticalChannel', parent=parent)
+        self.setTitle('OpticalChannel')
         self.parent = parent
         self.group_type = 'OpticalChannel'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('OpticalChannel')
+        if 'name' in metadata:
+            self.lin_name = QLineEdit(metadata['name'])
+        else:
+            self.lin_name = QLineEdit('OpticalChannel')
         self.lin_name.setToolTip("the name of this optical channel")
-        # nInstances = 0
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp, GroupOpticalChannel):
-        #         nInstances += 1
-        # if nInstances > 0:
-        #     self.lin_name.setText('OpticalChannel'+str(nInstances))
 
         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_description = QLineEdit('description')
+        if 'description' in metadata:
+            self.lin_description = QLineEdit(metadata['description'])
+        else:
+            self.lin_description = QLineEdit('description')
         self.lin_description.setToolTip("Any notes or comments about the channel")
 
         self.lbl_emission_lambda = QLabel('emission_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_emission_lambda = QLineEdit('0.0')
+        if 'emission_lambda' in metadata:
+            self.lin_emission_lambda = QLineEdit(str(metadata['emission_lambda']))
+        else:
+            self.lin_emission_lambda = QLineEdit('0.0')
         self.lin_emission_lambda.setToolTip("Emission lambda for channel")
 
         self.grid = QGridLayout()
@@ -41,9 +44,9 @@ class GroupOpticalChannel(CollapsibleBox):
         self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
         self.grid.addWidget(self.lbl_emission_lambda, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_emission_lambda, 2, 2, 1, 4)
-        #self.setLayout(self.grid)
+        self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -64,7 +67,7 @@ class GroupOpticalChannel(CollapsibleBox):
         self.lin_name.setText(data['name'])
         self.lin_description.setText(data['description'])
         self.lin_emission_lambda.setText(str(data['emission_lambda']))
-        self.setContentLayout(self.grid)
+        #self.setContentLayout(self.grid)
 
 
 #class GroupImagingPlane(QGroupBox):
@@ -79,16 +82,12 @@ class GroupImagingPlane(CollapsibleBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImagingPlane')
         self.lin_name.setToolTip("The name of this ImagingPlane")
-        # nInstances = 0
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp, GroupImagingPlane):
-        #         nInstances += 1
-        # if nInstances > 0:
-        #     self.lin_name.setText('ImagingPlane'+str(nInstances))
 
         self.lbl_optical_channel = QLabel('optical_channel<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.combo_optical_channel = CustomComboBox()
-        self.combo_optical_channel.setToolTip(
+        self.optical_channel_layout = QVBoxLayout()
+        self.optical_channel = QGroupBox()
+        self.optical_channel.setLayout(self.optical_channel_layout)
+        self.optical_channel.setToolTip(
             "One of possibly many groups storing channels pecific data")
 
         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
@@ -146,7 +145,7 @@ class GroupImagingPlane(CollapsibleBox):
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_optical_channel, 1, 0, 1, 2)
-        self.grid.addWidget(self.combo_optical_channel, 1, 2, 1, 4)
+        self.grid.addWidget(self.optical_channel, 1, 2, 1, 4)
         self.grid.addWidget(self.lbl_description, 2, 0, 1, 2)
         self.grid.addWidget(self.lin_description, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_device, 3, 0, 1, 2)
@@ -169,13 +168,10 @@ class GroupImagingPlane(CollapsibleBox):
         self.grid.addWidget(self.lin_reference_frame, 11, 2, 1, 4)
         #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
-        self.combo_optical_channel.clear()
         self.combo_device.clear()
         for grp in self.parent.groups_list:
-            if isinstance(grp, GroupOpticalChannel):
-                self.combo_optical_channel.addItem(grp.lin_name.text())
             if isinstance(grp, GroupDevice):
                 self.combo_device.addItem(grp.lin_name.text())
 
@@ -183,7 +179,11 @@ class GroupImagingPlane(CollapsibleBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['optical_channel'] = str(self.combo_optical_channel.currentText())
+        data['optical_channel'] = []
+        nItems = self.optical_channel_layout.count()
+        for i in range(nItems):
+            item = self.optical_channel_layout.itemAt(i).widget()
+            data['optical_channel'].append(item.read_fields())
         data['description'] = self.lin_description.text()
         data['device'] = str(self.combo_device.currentText())
         try:
@@ -212,8 +212,11 @@ class GroupImagingPlane(CollapsibleBox):
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-        self.combo_optical_channel.clear()
-        self.combo_optical_channel.addItem(data['optical_channel'])
+        nItems = self.optical_channel_layout.count()
+        for ind, sps in enumerate(data['optical_channel']):
+            if ind >= nItems:
+                item = GroupOpticalChannel(self, metadata=data['optical_channel'][ind])
+                self.optical_channel_layout.addWidget(item)
         if 'description' in data:
             self.lin_description.setText(data['description'])
         self.combo_device.clear()
@@ -233,23 +236,18 @@ class GroupImagingPlane(CollapsibleBox):
         self.setContentLayout(self.grid)
 
 
-class GroupTwoPhotonSeries(QGroupBox):
+#class GroupTwoPhotonSeries(QGroupBox):
+class GroupTwoPhotonSeries(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ophys.TwoPhotonSeries fields filling form."""
-        super().__init__()
-        self.setTitle('TwoPhotonSeries')
+        super().__init__(title='TwoPhotonSeries', parent=parent)
+        #self.setTitle('TwoPhotonSeries')
         self.parent = parent
         self.group_type = 'TwoPhotonSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('TwoPhotonSeries')
         self.lin_name.setToolTip("The name of this TimeSeries dataset")
-        nTPS = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupTwoPhotonSeries):
-                nTPS += 1
-        if nTPS > 0:
-            self.lin_name.setText('TwoPhotonSeries'+str(nTPS))
 
         self.lbl_imaging_plane = QLabel('imaging_plane<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_imaging_plane = CustomComboBox()
@@ -412,14 +410,18 @@ class GroupTwoPhotonSeries(QGroupBox):
         self.grid.addWidget(self.chk_control, 19, 2, 1, 2)
         self.grid.addWidget(self.lbl_control_description, 20, 0, 1, 2)
         self.grid.addWidget(self.chk_control_description, 20, 2, 1, 2)
-        self.setLayout(self.grid)
+        #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_imaging_plane.clear()
         for grp in self.parent.groups_list:
+            # Adds all existing ImagingPlanes to combobox
             if isinstance(grp, GroupImagingPlane):
                 self.combo_imaging_plane.addItem(grp.lin_name.text())
+        # If metadata is referring to this specific object, update combobox item
+        if metadata['name'] == self.lin_name.text():
+            self.combo_imaging_plane.setCurrentText(metadata['imaging_plane'])
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -517,6 +519,7 @@ class GroupTwoPhotonSeries(QGroupBox):
             self.chk_control.setChecked(True)
         if 'control_description' in data:
             self.chk_control_description.setChecked(True)
+        self.setContentLayout(self.grid)
 
 
 class GroupCorrectedImageStack(QGroupBox):
@@ -570,7 +573,7 @@ class GroupCorrectedImageStack(QGroupBox):
         self.grid.addWidget(self.chk_xy_translation, 3, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_original.clear()
         for grp in self.parent.groups_list:
@@ -629,7 +632,7 @@ class GroupMotionCorrection(QGroupBox):
         self.grid.addWidget(self.combo_corrected_images_stacks, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_corrected_images_stacks.clear()
         for grp in self.parent.groups_list:
@@ -702,12 +705,17 @@ class GroupPlaneSegmentation(QGroupBox):
         self.grid.addWidget(self.chk_reference_images, 4, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_imaging_plane.clear()
         for grp in self.parent.parent.groups_list:
+            # Adds all existing ImagingPlanes to combobox
             if isinstance(grp, GroupImagingPlane):
                 self.combo_imaging_plane.addItem(grp.lin_name.text())
+        # If metadata is referring to this specific object, update combobox item
+        if metadata['name'] == self.lin_name.text():
+        #    print(metadata)
+            self.combo_imaging_plane.setCurrentText(metadata['imaging_plane'])
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -743,12 +751,6 @@ class GroupImageSegmentation(CollapsibleBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('ImageSegmentation')
         self.lin_name.setToolTip("The name of this ImageSegmentation.")
-        # nInstances = 0
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp,  GroupImageSegmentation):
-        #         nInstances += 1
-        # if nInstances > 0:
-        #     self.lin_name.setText('ImageSegmentation'+str(nInstances))
 
         self.lbl_plane_segmentations = QLabel('plane_segmentations:')
         self.plane_segmentations_layout = QVBoxLayout()
@@ -763,10 +765,18 @@ class GroupImageSegmentation(CollapsibleBox):
         self.grid.addWidget(self.plane_segmentations, 1, 2, 1, 4)
         #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
+        if metadata is None:
+            metadata = {}
         for child in self.groups_list:
-            child.refresh_objects_references()
+            # Get metadata corresponding to this specific child
+            if 'plane_segmentations' in metadata:
+                submeta = [sub for sub in metadata['plane_segmentations']
+                           if sub['name'] == child.lin_name.text()][0]
+            else:
+                submeta = metadata
+            child.refresh_objects_references(metadata=submeta)
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -942,7 +952,7 @@ class GroupRoiResponseSeries(QGroupBox):
         self.grid.addWidget(self.chk_control_description, 12, 2, 1, 2)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -1035,7 +1045,7 @@ class GroupDfOverF(CollapsibleBox):
         self.grid.addWidget(self.roi_response_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -1092,7 +1102,7 @@ class GroupFluorescence(QGroupBox):
         self.grid.addWidget(self.combo_roi_response_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_roi_response_series.clear()
         for grp in self.parent.groups_list:
@@ -1142,7 +1152,7 @@ class GroupGrayscaleVolume(CollapsibleBox):
         self.grid.addWidget(self.chk_spatial_scale, 2, 2, 1, 2)
         #self.setLayout(self.grid)
 
-    def refresh_objects_references(self):
+    def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         pass
 
@@ -1202,7 +1212,7 @@ class GroupOphys(QGroupBox):
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-    def add_group(self, group_type, write_data=None):
+    def add_group(self, group_type, metadata=None):
         """Adds group form."""
         if group_type == 'combo':
             group_type = str(self.combo1.currentText())
@@ -1231,15 +1241,15 @@ class GroupOphys(QGroupBox):
         elif group_type == 'GrayscaleVolume':
             item = GroupGrayscaleVolume(self)
         if group_type != '-- Add group --':
-            if write_data is not None:
-                item.write_fields(data=write_data)
+            if metadata is not None:
+                item.write_fields(data=metadata)
             item.lin_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
             self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
             self.combo1.setCurrentIndex(0)
             self.combo2.addItem(item.lin_name.text())
-            self.refresh_children()
+            self.refresh_children(metadata=metadata)
 
     def del_group(self, group_name):
         """Deletes group form by name."""
@@ -1278,10 +1288,10 @@ class GroupOphys(QGroupBox):
                             return True
         return False
 
-    def refresh_children(self):
+    def refresh_children(self, metadata=None):
         """Refreshes references with existing objects in child groups."""
         for child in self.groups_list:
-            child.refresh_objects_references()
+            child.refresh_objects_references(metadata=metadata)
 
     def refresh_del_combo(self):
         """Refreshes del combobox with existing objects names in child groups."""

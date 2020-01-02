@@ -487,10 +487,10 @@ class Application(QMainWindow):
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
                             item.add_group(group_type=subgroup,
-                                           write_data=subsub)
+                                           metadata=subsub)
                     else:  # if it's just one item of this class
                         item.add_group(group_type=subgroup,
-                                       write_data=self.metadata[grp][subgroup])
+                                       metadata=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Ecephys':
@@ -500,10 +500,10 @@ class Application(QMainWindow):
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
                             item.add_group(group_type=subgroup,
-                                           write_data=subsub)
+                                           metadata=subsub)
                     else:  # if it's just one item of this class
                         item.add_group(group_type=subgroup,
-                                       write_data=self.metadata[grp][subgroup])
+                                       metadata=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Behavior':
@@ -513,10 +513,10 @@ class Application(QMainWindow):
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
                             item.add_group(group_type=subgroup,
-                                           write_data=subsub)
+                                           metadata=subsub)
                     else:  # if it's just one item of this class
                         item.add_group(group_type=subgroup,
-                                       write_data=self.metadata[grp][subgroup])
+                                       metadata=self.metadata[grp][subgroup])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
         nItems = self.l_vbox1.count()
