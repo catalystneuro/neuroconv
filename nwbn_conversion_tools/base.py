@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Dict
+from typing import Dict
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.file import Subject
@@ -33,8 +33,8 @@ class NWBConverter:
             if domain in metadata and 'Device' in metadata[domain]:
                 self.devices.update(self.create_devices(metadata[domain]['Device']))
 
-        if 'Icephys' in metadata and 'Electrodes' in metadata['Icephys']:
-            self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrodes'])
+        if 'Icephys' in metadata and ('Electrode' in metadata['Icephys']):
+            self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
 
     def create_devices(self, device_meta) -> Dict:
         """
