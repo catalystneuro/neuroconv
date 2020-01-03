@@ -1,4 +1,5 @@
 import uuid
+from typing import List, Dict
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.file import Subject
@@ -33,31 +34,59 @@ class NWBConverter:
                 self.devices.update(self.create_devices(metadata[domain]['Device']))
 
         if 'Icephys' in metadata and 'Electrodes' in metadata['Icephys']:
-            self.elecs = self.create_icephys_elecs(metadata['Icephys']['Electrodes'])
+            self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrodes'])
 
-    def create_devices(self, device_meta):
-        devices = dict()
+    def create_devices(self, device_meta) -> Dict:
+        """
+
+        Parameters
+        ----------
+        device_meta: list or dict
+
+        Returns
+        -------
+        dict
+
+        """
+
         if isinstance(device_meta, list):
-            for idevice_meta in device_meta:
-                if 'tag' in device_meta:
-                    devices[idevice_meta['tag']] = self.nwbfile.create_device(**idevice_meta)
+            devices = dict()
+            [devices.update(self.create_devices(idevice_meta)) for idevice_meta in device_meta]
+            return devices
         else:
-            devices[str(uuid.uuid4())] = self.nwbfile.create_device(**device_meta)
-        return devices
-
-    def create_icephys_elecs(self, elec_meta):
-        if isinstance(elec_meta, list):
-            for ielec_meta in elec_meta:
-                if ielec_meta['device'] in self.devices:
-                    device = self.devices[ielec_meta['device']]
-                else:
-                    raise ValueError('device not found for icephys electrode {}'.format(ielec_meta['name']))
-                self.nwbfile.create_ic_electrode(device=device, **ielec_meta)
-        else:
-            if len(list(self.devices)) == 1:
-                self.nwbfile.create_ic_electrode(device=list(self.devices.values())[0], **elec_meta)
+            if 'tag' in device_meta:
+                key = device_meta['tag']
             else:
-                raise ValueError('must specify device for icephys electrode {}'.format(elec_meta['name']))
+                key = device_meta['name']
+            return {key: self.nwbfile.create_device(**device_meta)}
+
+    def create_icephys_elecs(self, elec_meta) -> Dict:
+        """
+
+        Parameters
+        ----------
+        elec_meta: list or dict
+
+        Returns
+        -------
+        list
+
+        """
+        if isinstance(elec_meta, list):
+            elecs = dict()
+            [elecs.update(self.create_icephys_elecs(**ielec_meta)) for ielec_meta in elec_meta]
+            return elecs
+
+        else:
+            if elec_meta['device'] in self.devices:
+                device = self.devices[elec_meta['device']]
+            else:
+                raise ValueError('device not found for icephys electrode {}'.format(elec_meta['name']))
+            if 'tag' in elec_meta:
+                key = elec_meta['tag']
+            else:
+                key = elec_meta['name']
+            return {key: self.nwbfile.create_ic_electrode(device=device, **elec_meta)}
 
     def save(self, to_path, read_check=True):
         """
