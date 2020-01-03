@@ -12,21 +12,33 @@
       "properties": {
         "keywords": {
           "type": "array",
-          "uniqueItems": true,
-          "items": {"type": "string"}
+          "items": {"title": "keyword", "type": "string"}
         },
         "experiment_description": {"type": "string"},
         "experimenter": {
           "type": "array",
-          "uniqueItems": true,
-          "items": {"type": "string"}
+          "items": {"type": "string", "title": "experimenter"}
         },
         "identifier": {"type":  "string"},
-        "institution": {"type":  "string"},
+        "institution": {
+          "type":  "string",
+          "description": "institution(s) where experiment is performed"},
         "lab": {"type":  "string"},
         "session_description": {"type": "string"},
         "session_start_time": {"type": "string", "format": "date-time"},
-        "surgery": {"type": "string"}
+        "surgery": {"type": "string"},
+        "pharmacology": {
+          "type": "string",
+          "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), painkiller(s), etc., plus dosage, concentration, etc."
+        },
+        "protocol": {
+          "type": "string",
+          "description": "Experimental protocol, if applicable. E.g., include IACUC protocol"
+        },
+        "related_publications": {
+          "type": "array",
+          "items": {"title": "related publication", "type": "string"}
+        }
       }
     },
     "Subject": {
@@ -206,7 +218,8 @@
       "properties": {
         "name": {"type": "string"},
         "description": {"type": "string"},
-        "conversion": {"type": "number", "default": 1.0}
+        "conversion": {"type": "number", "default": 1.0},
+        "tag": {"type": "string"}
       }
     },
     "Devices": {
