@@ -78,7 +78,9 @@ class NWBConverter:
             return elecs
 
         else:
-            if elec_meta['device'] in self.devices:
+            if len(self.devices) == 1:
+                device = list(self.devices.values())[0]
+            elif elec_meta['device'] in self.devices:
                 device = self.devices[elec_meta['device']]
             else:
                 raise ValueError('device not found for icephys electrode {}'.format(elec_meta['name']))
