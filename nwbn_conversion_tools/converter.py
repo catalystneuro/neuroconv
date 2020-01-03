@@ -6,6 +6,9 @@ from pynwb.file import Subject
 
 
 class NWBConverter:
+    """
+    Common conversion code factored out so it can be used by multiple conversion projects
+    """
 
     def __init__(self, metadata, nwbfile=None):
         """
@@ -38,6 +41,7 @@ class NWBConverter:
 
     def create_devices(self, device_meta) -> Dict:
         """
+        Use metadata to generate device object(s) in the NWBFile
 
         Parameters
         ----------
@@ -62,6 +66,7 @@ class NWBConverter:
 
     def create_icephys_elecs(self, elec_meta) -> Dict:
         """
+        Use metadata to generate intracellular electrode object(s) in the NWBFile
 
         Parameters
         ----------
@@ -108,7 +113,8 @@ class NWBConverter:
                 io.read()
 
     def check_module(self, name, description=None):
-        """Check if processing module exists. If not, create it. Then return module
+        """
+        Check if processing module exists. If not, create it. Then return module
 
         Parameters
         ----------

@@ -1,1 +1,1 @@
-from .base import NWBConverter
+from .converter import NWBConverter
