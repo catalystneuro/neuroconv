@@ -5,10 +5,13 @@
   "description": "Schema for the metafile",
   "version": "0.0.1",
   "type": "object",
+  "required": ["NWBFile"],
+  "additionalProperties": false,
   "properties": {
     "NWBFile": {
       "type": "object",
-      "required": ["session_start_time"],
+      "additionalProperties": false,
+      "required": ["session_start_time", "keywords"],
       "properties": {
         "keywords": {
           "type": "array",
@@ -160,7 +163,8 @@
                 "properties": {
                   "name": {"type": "string"},
                   "description": {"type": "string"},
-                  "imaging_plane": {"type": "string"}
+                  "imaging_plane": {"type": "string"},
+                  "tag": {"type": "string"}
                 }
               }
             }
