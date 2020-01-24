@@ -1,5 +1,6 @@
 from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                              QGroupBox, QComboBox, QCheckBox, QMessageBox)
+from PySide2.QtGui import QIntValidator, QDoubleValidator
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
@@ -7,13 +8,14 @@ from itertools import groupby
 
 
 class GroupOpticalChannel(QGroupBox):
-#class GroupOpticalChannel(CollapsibleBox):
     def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.OpticalChannel fields filling form."""
-        super().__init__()#title='OpticalChannel', parent=parent)
+        super().__init__()
         self.setTitle('OpticalChannel')
         self.parent = parent
         self.group_type = 'OpticalChannel'
+
+        validator_float = QDoubleValidator()
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         if 'name' in metadata:
@@ -35,6 +37,7 @@ class GroupOpticalChannel(QGroupBox):
         else:
             self.lin_emission_lambda = QLineEdit('0.0')
         self.lin_emission_lambda.setToolTip("Emission lambda for channel")
+        self.lin_emission_lambda.setValidator(validator_float)
 
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
@@ -67,7 +70,6 @@ class GroupOpticalChannel(QGroupBox):
         self.lin_name.setText(data['name'])
         self.lin_description.setText(data['description'])
         self.lin_emission_lambda.setText(str(data['emission_lambda']))
-        #self.setContentLayout(self.grid)
 
 
 #class GroupImagingPlane(QGroupBox):
@@ -1180,6 +1182,8 @@ class GroupFRET(CollapsibleBox):
         self.group_type = 'FRET'
         self.groups_list = []
 
+        validator_float = QDoubleValidator()
+
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('FRET')
         self.lin_name.setToolTip("The name of this FRET.")
@@ -1189,6 +1193,7 @@ class GroupFRET(CollapsibleBox):
             self.lin_excitation_lambda = QLineEdit(str(metadata['excitation_lambda']))
         else:
             self.lin_excitation_lambda = QLineEdit('0.0')
+        self.lin_excitation_lambda.setValidator(validator_float)
 
         self.lbl_donor = QLabel('donor:')
         self.donor_layout = QVBoxLayout()
@@ -1221,11 +1226,6 @@ class GroupFRET(CollapsibleBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['roi_response_series'] = []
-        nItems = self.roi_response_series_layout.count()
-        for i in range(nItems):
-            item = self.roi_response_series_layout.itemAt(i).widget()
-            data['roi_response_series'].append(item.read_fields())
         return data
 
     def write_fields(self, data={}):
@@ -1257,6 +1257,8 @@ class GroupFRETSeries(QGroupBox):
         self.parent = parent
         self.group_type = 'FRETSeries'
 
+        validator_float = QDoubleValidator()
+
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         if 'name' in metadata:
             self.lin_name = QLineEdit(str(metadata['name']))
@@ -1285,6 +1287,7 @@ class GroupFRETSeries(QGroupBox):
             self.lin_rate = QLineEdit(str(metadata['rate']))
         else:
             self.lin_rate = QLineEdit('0.0')
+        self.lin_rate.setValidator(validator_float)
 
         self.lbl_fluorophore = QLabel("fluorophore:")
         if 'fluorophore' in metadata:
@@ -1316,16 +1319,6 @@ class GroupFRETSeries(QGroupBox):
         self.grid.addWidget(self.lin_fluorophore, 5, 2, 1, 4)
         self.grid.addWidget(self.lbl_unit, 6, 0, 1, 2)
         self.grid.addWidget(self.lin_unit, 6, 2, 1, 4)
-        # self.grid.addWidget(self.lbl_format, 4, 0, 1, 2)
-        # self.grid.addWidget(self.lin_format, 4, 2, 1, 4)
-        # self.grid.addWidget(self.lbl_field_of_view, 5, 0, 1, 2)
-        # self.grid.addWidget(self.chk_field_of_view, 5, 2, 1, 2)
-        # self.grid.addWidget(self.lbl_pmt_gain, 6, 0, 1, 2)
-        # self.grid.addWidget(self.lin_pmt_gain, 6, 2, 1, 4)
-        # self.grid.addWidget(self.lbl_scan_line_rate, 7, 0, 1, 2)
-        # self.grid.addWidget(self.lin_scan_line_rate, 7, 2, 1, 4)
-        # self.grid.addWidget(self.lbl_external_file, 8, 0, 1, 2)
-        # self.grid.addWidget(self.lin_external_file, 8, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
@@ -1340,40 +1333,35 @@ class GroupFRETSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
+        data['description'] = self.lin_description.text()
+        data['device'] = str(self.combo_device.currentText())
         nItems = self.optical_channel_layout.count()
         for i in range(nItems):
             item = self.optical_channel_layout.itemAt(i).widget()
             data['optical_channel'].append(item.read_fields())
-        # data['unit'] = self.lin_unit.text()
-        # data['format'] = self.lin_format.text()
-        # if self.chk_field_of_view.isChecked():
-        #     data['field_of_view'] = True
-        # try:
-        #     data['pmt_gain'] = float(self.lin_pmt_gain.text())
-        # except ValueError as error:
-        #     print(error)
-        # try:
-        #     data['scan_line_rate'] = float(self.lin_scan_line_rate.text())
-        # except ValueError as error:
-        #     print(error)
-        # if self.lin_format.text() == 'external':
-        #     data['external_file'] = self.lin_external_file.text()
-        #     if self.chk_starting_frame.isChecked():
-        #         data['starting_frame'] = True
+        try:
+            data['rate'] = float(self.lin_imaging_rate.text())
+        except ValueError as error:
+            print('FRETSeries: ' + error)
+            data['rate'] = 0.0
+        data['fluorophore'] = self.lin_fluorophore.text()
+        data['unit'] = self.lin_unit.text()
+
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
-
+        self.lin_description.setText(data['description'])
         self.combo_device.clear()
         self.combo_device.addItem(data['device'])
-
         nItems = self.optical_channel_layout.count()
         for ind, sps in enumerate(data['optical_channel']):
             if ind >= nItems:
                 item = GroupOpticalChannel(self, metadata=data['optical_channel'][ind])
                 self.optical_channel_layout.addWidget(item)
+        self.lin_fluorophore.setText(data['fluorophore'])
+        self.lin_unit.setText(data['unit'])
 
 
 class GroupOphys(QGroupBox):
