@@ -1237,12 +1237,14 @@ class GroupFRET(CollapsibleBox):
                 item = GroupFRETSeries(self, metadata=frets)
                 self.groups_list.append(item)
                 self.donor_layout.addWidget(item)
+                item.write_fields(data=frets)
         nItems = self.acceptor_layout.count()
         for ind, frets in enumerate(data['acceptor']):
             if ind >= nItems:
                 item = GroupFRETSeries(self, metadata=frets)
                 self.groups_list.append(item)
                 self.acceptor_layout.addWidget(item)
+                item.write_fields(data=frets)
         self.setContentLayout(self.grid)
 
 
@@ -1269,6 +1271,13 @@ class GroupFRETSeries(QGroupBox):
         self.lbl_device = QLabel('device<span style="color:'+required_asterisk_color+';">*</span>:')
         self.combo_device = CustomComboBox()
         self.combo_device.setToolTip("The device that was used to record")
+
+        self.lbl_optical_channel = QLabel('optical_channel<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.optical_channel_layout = QVBoxLayout()
+        self.optical_channel = QGroupBox()
+        self.optical_channel.setLayout(self.optical_channel_layout)
+        self.optical_channel.setToolTip(
+            "One of possibly many groups storing channels pecific data")
 
         self.lbl_rate = QLabel("rate:")
         if 'rate' in metadata:
@@ -1298,12 +1307,14 @@ class GroupFRETSeries(QGroupBox):
         self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
         self.grid.addWidget(self.lbl_device, 2, 0, 1, 2)
         self.grid.addWidget(self.combo_device, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_rate, 3, 0, 1, 2)
-        self.grid.addWidget(self.lin_rate, 3, 2, 1, 4)
-        self.grid.addWidget(self.lbl_fluorophore, 4, 0, 1, 2)
-        self.grid.addWidget(self.lin_fluorophore, 4, 2, 1, 4)
-        self.grid.addWidget(self.lbl_unit, 5, 0, 1, 2)
-        self.grid.addWidget(self.lin_unit, 5, 2, 1, 4)
+        self.grid.addWidget(self.lbl_optical_channel, 3, 0, 1, 2)
+        self.grid.addWidget(self.optical_channel, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_rate, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_rate, 4, 2, 1, 4)
+        self.grid.addWidget(self.lbl_fluorophore, 5, 0, 1, 2)
+        self.grid.addWidget(self.lin_fluorophore, 5, 2, 1, 4)
+        self.grid.addWidget(self.lbl_unit, 6, 0, 1, 2)
+        self.grid.addWidget(self.lin_unit, 6, 2, 1, 4)
         # self.grid.addWidget(self.lbl_format, 4, 0, 1, 2)
         # self.grid.addWidget(self.lin_format, 4, 2, 1, 4)
         # self.grid.addWidget(self.lbl_field_of_view, 5, 0, 1, 2)
@@ -1319,7 +1330,8 @@ class GroupFRETSeries(QGroupBox):
     def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
         self.combo_device.clear()
-        for grp in self.parent.groups_list:
+        for grp in self.parent.parent.groups_list:
+            #print(grp)
             # Adds all existing Devices to combobox
             if isinstance(grp, GroupDevice):
                 self.combo_device.addItem(grp.lin_name.text())
@@ -1331,49 +1343,42 @@ class GroupFRETSeries(QGroupBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
-        data['imaging_plane'] = self.combo_imaging_plane.currentText()
-        data['unit'] = self.lin_unit.text()
-        data['format'] = self.lin_format.text()
-        if self.chk_field_of_view.isChecked():
-            data['field_of_view'] = True
-        try:
-            data['pmt_gain'] = float(self.lin_pmt_gain.text())
-        except ValueError as error:
-            print(error)
-        try:
-            data['scan_line_rate'] = float(self.lin_scan_line_rate.text())
-        except ValueError as error:
-            print(error)
-        if self.lin_format.text() == 'external':
-            data['external_file'] = self.lin_external_file.text()
-            if self.chk_starting_frame.isChecked():
-                data['starting_frame'] = True
+        nItems = self.optical_channel_layout.count()
+        for i in range(nItems):
+            item = self.optical_channel_layout.itemAt(i).widget()
+            data['optical_channel'].append(item.read_fields())
+        # data['unit'] = self.lin_unit.text()
+        # data['format'] = self.lin_format.text()
+        # if self.chk_field_of_view.isChecked():
+        #     data['field_of_view'] = True
+        # try:
+        #     data['pmt_gain'] = float(self.lin_pmt_gain.text())
+        # except ValueError as error:
+        #     print(error)
+        # try:
+        #     data['scan_line_rate'] = float(self.lin_scan_line_rate.text())
+        # except ValueError as error:
+        #     print(error)
+        # if self.lin_format.text() == 'external':
+        #     data['external_file'] = self.lin_external_file.text()
+        #     if self.chk_starting_frame.isChecked():
+        #         data['starting_frame'] = True
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
+        print('here')
+        print(data)
         self.lin_name.setText(data['name'])
-        # self.combo_imaging_plane.clear()
-        # self.combo_imaging_plane.addItem(data['imaging_plane'])
-        # if 'unit' in data:
-        #     self.lin_unit.setText(data['unit'])
-        # if 'format' in data:
-        #     self.lin_format.setText(data['format'])
-        # if 'field_of_view' in data:
-        #     self.chk_field_of_view.setChecked(True)
-        # if 'pmt_gain' in data:
-        #     self.lin_pmt_gain.setText(str(data['pmt_gain']))
-        # if 'scan_line_rate' in data:
-        #     self.lin_scan_line_rate.setText(str(data['scan_line_rate']))
-        # if 'external_file' in data:
-        #     self.lin_format.setText('external')
-        #     self.lin_external_file.setText(data['external_file'])
-        #     self.chk_starting_frame.setChecked(False)
-        # else:
-        #     self.lin_format.setText('')
-        #     self.lin_external_file.setText('')
-        #     self.chk_starting_frame.setChecked(True)
-        self.setContentLayout(self.grid)
+
+        self.combo_device.clear()
+        self.combo_device.addItem(data['device'])
+
+        nItems = self.optical_channel_layout.count()
+        for ind, sps in enumerate(data['optical_channel']):
+            if ind >= nItems:
+                item = GroupOpticalChannel(self, metadata=data['optical_channel'][ind])
+                self.optical_channel_layout.addWidget(item)
 
 
 class GroupOphys(QGroupBox):
@@ -1448,8 +1453,6 @@ class GroupOphys(QGroupBox):
             item = GroupGrayscaleVolume(self)
         elif group_type == 'FRET':
             item = GroupFRET(parent=self, metadata=metadata)
-        elif group_type == 'FRETSeries':
-            item = GroupFRETSeries(parent=self, metadata=metadata)
         if group_type != '-- Add group --':
             if metadata is not None:
                 item.write_fields(data=metadata)
