@@ -1214,7 +1214,8 @@ class GroupFRET(CollapsibleBox):
 
     def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
-        pass
+        for child in self.groups_list:
+            child.refresh_objects_references(metadata=metadata)
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -1331,13 +1332,9 @@ class GroupFRETSeries(QGroupBox):
         """Refreshes references with existing objects in parent group."""
         self.combo_device.clear()
         for grp in self.parent.parent.groups_list:
-            #print(grp)
             # Adds all existing Devices to combobox
             if isinstance(grp, GroupDevice):
                 self.combo_device.addItem(grp.lin_name.text())
-        # If metadata is referring to this specific object, update combobox item
-        if metadata['name'] == self.lin_name.text():
-            self.combo_device.setCurrentText(metadata['device'])
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -1367,8 +1364,6 @@ class GroupFRETSeries(QGroupBox):
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        print('here')
-        print(data)
         self.lin_name.setText(data['name'])
 
         self.combo_device.clear()
