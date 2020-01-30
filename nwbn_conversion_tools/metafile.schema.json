@@ -3,7 +3,7 @@
   "$id": "metafile.schema.json",
   "title": "Schema for the metafile",
   "description": "Schema for the metafile",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "object",
   "required": ["NWBFile"],
   "additionalProperties": false,
@@ -14,22 +14,23 @@
       "required": ["session_start_time", "keywords"],
       "properties": {
         "keywords": {
+          "description": "Terms to search over",
           "type": "array",
           "items": {"title": "keyword", "type": "string"}
         },
-        "experiment_description": {"type": "string"},
+        "experiment_description": {"type": "string", "description": "general description of the experiment"},
+        "session_id": {"type": "string", "description": "lab-specific ID for the session"},
         "experimenter": {
+          "description": "Name of person/people who performed experiment",
           "type": "array",
           "items": {"type": "string", "title": "experimenter"}
         },
-        "identifier": {"type":  "string"},
-        "institution": {
-          "type":  "string",
-          "description": "institution(s) where experiment is performed"},
-        "lab": {"type":  "string"},
-        "session_description": {"type": "string"},
-        "session_start_time": {"type": "string", "format": "date-time"},
-        "surgery": {"type": "string"},
+        "identifier": {"type":  "string", "description": "A unique text identifier for the file. If one is not provided it will be randomly assigned"},
+        "institution": {"type":  "string", "description": "Institution(s) where experiment is performed"},
+        "lab": {"type":  "string", "description": "Lab where experiment was performed"},
+        "session_description": {"type": "string", "description": "A description of the session where this data was generated"},
+        "session_start_time": {"type": "string", "format": "date-time", "description": "The start date and time of the recording session"},
+        "surgery": {"type": "string", "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."},
         "pharmacology": {
           "type": "string",
           "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), painkiller(s), etc., plus dosage, concentration, etc."
@@ -41,19 +42,22 @@
         "related_publications": {
           "type": "array",
           "items": {"title": "related publication", "type": "string"}
-        }
+        },
+        "notes": {"type": "string", "description": "Notes about the experiment."},
+        "virus": {"type": "string", "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."}
       }
     },
     "Subject": {
       "type": "object",
+      "required": ["subject_id"],
       "properties": {
-        "description": {"type": "string"},
-        "genotype": {"type": "string"},
-        "sex": {"type": "string", "enum": ["M", "F", "U", "O"]},
-        "species": {"type": "string"},
-        "subject_id": {"type": "string"},
-        "weight": {"type": "string"},
-        "date_of_birth": {"type": "string", "format": "date-time"}
+        "description": {"type": "string", "default": "no description", "description": "Description of subject and where subject came from (e.g., breeder, if animal)."},
+        "genotype": {"type": "string", "description": "Genetic strain. If absent, assume Wild Type (WT)"},
+        "sex": {"type": "string", "enum": ["M", "F", "U", "O"], "default": "U"},
+        "species": {"type": "string", "description": "Species of subject. Use latin name."},
+        "subject_id": {"type": "string", "description": "ID of animal/person used/participating in experiment (lab convention)"},
+        "weight": {"type": "string", "description": "Weight at time of experiment, at time of surgery and at other important times."},
+        "date_of_birth": {"type": "string", "format": "date-time", "description": "Date of birth of subject. Can be supplied instead of 'age'."}
       }
     },
     "Behavior": {
@@ -149,22 +153,34 @@
             }
           }
         },
+        "Fluorescence": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {"type": "string", "default": "Fluorescence"},
+            "roi_response_series": {
+              "type": "array",
+              "title": "ROI response series",
+              "items": {"$ref":  "#/definitions/RoiResponseSeries"}
+            }
+          }
+        },
         "ImageSegmentation": {
           "type": "object",
           "required": ["name", "plane_segmentation"],
           "properties": {
             "name":  {"type": "string"},
-            "plane_segmentations": {
+            "PlaneSegmentations": {
               "type": "array",
               "items": {
                 "title": "PlaneSegmentation",
                 "type": "object",
                 "required": ["name", "description"],
                 "properties": {
-                  "name": {"type": "string"},
-                  "description": {"type": "string"},
-                  "imaging_plane": {"type": "string"},
-                  "tag": {"type": "string"}
+                  "name": {"type": "string", "default": "PlaneSegmentation"},
+                  "description": {"type": "string", "default": "Segmented ROIs"},
+                  "imaging_plane": {"type": "string", "description": "name or tag of corresponding ImagingPlane"},
+                  "tag": {"type": "string", "description": "optional tag to be used to link to this PlaneSegmentation"}
                 }
               }
             }
@@ -178,7 +194,7 @@
             "required": ["name", "description"],
             "properties": {
               "name": {"type": "string", "default": "ImagingPlane"},
-              "description": {"type": "string"},
+              "description": {"type": "string", "description": "An area in the brain where imaging was done"},
               "device": {"type": "string"},
               "excitation_lambda": {"type": "number"},
               "imaging_rate": {"type": "number"},
@@ -192,7 +208,8 @@
                   "properties": {
                     "name": {"type": "string", "default": "OpticalChannel"},
                     "description": {"type": "string"},
-                    "emission_lambda": {"type": "number"}
+                    "emission_lambda": {"type": "number"},
+                    "tag": {"type": "string"}
                     }
                 }
               }
@@ -241,7 +258,10 @@
     "RoiResponseSeries": {
       "title": "RoiResponseSeries",
       "type": "object",
-      "allOf": [{"$ref": "#/definitions/TimeSeries"}]
+      "allOf": [{"$ref": "#/definitions/TimeSeries"}],
+      "properties": {
+        "rois": {"type": "string", "description": "Name of a PlaneSegmentation"}
+      }
     }
   }
 }
