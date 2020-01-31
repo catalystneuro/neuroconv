@@ -1026,12 +1026,6 @@ class GroupDfOverF(CollapsibleBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('DfOverF')
         self.lin_name.setToolTip("The name of this DfOverF.")
-        # nInstances = 0
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp,  GroupDfOverF):
-        #         nInstances += 1
-        # if nInstances > 0:
-        #     self.lin_name.setText('DfOverF'+str(nInstances))
 
         self.lbl_roi_response_series = QLabel('roi_response_series:')
         self.roi_response_series_layout = QVBoxLayout()
@@ -1177,7 +1171,7 @@ class GroupFRET(CollapsibleBox):
     def __init__(self, parent, metadata=None):
         """Groupbox for abc.FRET fields filling form."""
         super().__init__(title='FRET', parent=parent)
-        #self.setTitle('DfOverF')
+        #self.setTitle('FRET')
         self.parent = parent
         self.group_type = 'FRET'
         self.groups_list = []
@@ -1187,6 +1181,13 @@ class GroupFRET(CollapsibleBox):
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         self.lin_name = QLineEdit('FRET')
         self.lin_name.setToolTip("The name of this FRET.")
+
+        self.lbl_description = QLabel('description:')
+        if 'description' in metadata:
+            self.lin_description = QLineEdit(metadata['description'])
+        else:
+            self.lin_description = QLineEdit('description')
+        self.lin_description.setToolTip("Any notes or comments about the FRET")
 
         self.lbl_excitation_lambda = QLabel('excitation_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
         if 'excitation_lambda' in metadata:
@@ -1209,12 +1210,14 @@ class GroupFRET(CollapsibleBox):
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_excitation_lambda, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_excitation_lambda, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_donor, 2, 0, 1, 2)
-        self.grid.addWidget(self.donor, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_acceptor, 3, 0, 1, 2)
-        self.grid.addWidget(self.acceptor, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_excitation_lambda, 2, 0, 1, 2)
+        self.grid.addWidget(self.lin_excitation_lambda, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_donor, 3, 0, 1, 2)
+        self.grid.addWidget(self.donor, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_acceptor, 4, 0, 1, 2)
+        self.grid.addWidget(self.acceptor, 4, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
@@ -1226,26 +1229,26 @@ class GroupFRET(CollapsibleBox):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
         data['name'] = self.lin_name.text()
+        data['description'] = self.lin_description.text()
+        data['excitation_lambda'] = float(self.lin_excitation_lambda.text())
+        data['donor'] = self.donor_layout.itemAt(0).widget().read_fields()
+        data['acceptor'] = self.acceptor_layout.itemAt(0).widget().read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
         self.lin_excitation_lambda.setText(str(data['excitation_lambda']))
-        nItems = self.donor_layout.count()
-        for ind, frets in enumerate(data['donor']):
-            if ind >= nItems:
-                item = GroupFRETSeries(self, metadata=frets)
-                self.groups_list.append(item)
-                self.donor_layout.addWidget(item)
-                item.write_fields(data=frets)
-        nItems = self.acceptor_layout.count()
-        for ind, frets in enumerate(data['acceptor']):
-            if ind >= nItems:
-                item = GroupFRETSeries(self, metadata=frets)
-                self.groups_list.append(item)
-                self.acceptor_layout.addWidget(item)
-                item.write_fields(data=frets)
+        # Donor
+        item = GroupFRETSeries(self, metadata=data['donor'])
+        self.groups_list.append(item)
+        self.donor_layout.addWidget(item)
+        item.write_fields(data=data['donor'])
+        # Acceptor
+        item = GroupFRETSeries(self, metadata=data['acceptor'])
+        self.groups_list.append(item)
+        self.acceptor_layout.addWidget(item)
+        item.write_fields(data=data['acceptor'])
         self.setContentLayout(self.grid)
 
 
@@ -1307,18 +1310,18 @@ class GroupFRETSeries(QGroupBox):
         self.grid.setColumnStretch(5, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
         self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
-        self.grid.addWidget(self.lin_description, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_device, 2, 0, 1, 2)
-        self.grid.addWidget(self.combo_device, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_optical_channel, 3, 0, 1, 2)
-        self.grid.addWidget(self.optical_channel, 3, 2, 1, 4)
-        self.grid.addWidget(self.lbl_rate, 4, 0, 1, 2)
-        self.grid.addWidget(self.lin_rate, 4, 2, 1, 4)
-        self.grid.addWidget(self.lbl_fluorophore, 5, 0, 1, 2)
-        self.grid.addWidget(self.lin_fluorophore, 5, 2, 1, 4)
-        self.grid.addWidget(self.lbl_unit, 6, 0, 1, 2)
-        self.grid.addWidget(self.lin_unit, 6, 2, 1, 4)
+        self.grid.addWidget(self.lbl_device, 1, 0, 1, 2)
+        self.grid.addWidget(self.combo_device, 1, 2, 1, 4)
+        self.grid.addWidget(self.lbl_optical_channel, 2, 0, 1, 2)
+        self.grid.addWidget(self.optical_channel, 2, 2, 1, 4)
+        self.grid.addWidget(self.lbl_rate, 3, 0, 1, 2)
+        self.grid.addWidget(self.lin_rate, 3, 2, 1, 4)
+        self.grid.addWidget(self.lbl_fluorophore, 4, 0, 1, 2)
+        self.grid.addWidget(self.lin_fluorophore, 4, 2, 1, 4)
+        self.grid.addWidget(self.lbl_unit, 5, 0, 1, 2)
+        self.grid.addWidget(self.lin_unit, 5, 2, 1, 4)
+        self.grid.addWidget(self.lbl_description, 6, 0, 1, 2)
+        self.grid.addWidget(self.lin_description, 6, 2, 1, 4)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
@@ -1339,14 +1342,9 @@ class GroupFRETSeries(QGroupBox):
         for i in range(nItems):
             item = self.optical_channel_layout.itemAt(i).widget()
             data['optical_channel'].append(item.read_fields())
-        try:
-            data['rate'] = float(self.lin_imaging_rate.text())
-        except ValueError as error:
-            print('FRETSeries: ' + error)
-            data['rate'] = 0.0
+        data['rate'] = float(self.lin_rate.text())
         data['fluorophore'] = self.lin_fluorophore.text()
         data['unit'] = self.lin_unit.text()
-
         return data
 
     def write_fields(self, data={}):
