@@ -1338,6 +1338,7 @@ class GroupFRETSeries(QGroupBox):
         data['name'] = self.lin_name.text()
         data['description'] = self.lin_description.text()
         data['device'] = str(self.combo_device.currentText())
+        data['optical_channel'] = []
         nItems = self.optical_channel_layout.count()
         for i in range(nItems):
             item = self.optical_channel_layout.itemAt(i).widget()
