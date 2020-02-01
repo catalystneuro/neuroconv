@@ -11,6 +11,7 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupS
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
+from nwbn_conversion_tools.gui.classes.forms_basic import BasicForm
 
 import numpy as np
 import nbformat as nbf
@@ -349,7 +350,12 @@ class Application(QMainWindow):
             self.source_paths[key]['path'] = dirname
 
     def load_meta_file(self, filename=None):
-        '''Browser to .yml file containing metadata for NWB.'''
+        """
+        Opens (or browsers to) a .yml file containing metadata for NWB. Then:
+        1. loads the internal variable self.metadata with the content
+        2. writes content to editor
+        3. updates forms
+        """
         if filename is None:
             filename, ftype = QFileDialog.getOpenFileName(
                 parent=self,
@@ -471,8 +477,9 @@ class Application(QMainWindow):
         self.clean_groups()
         for grp in self.metadata:
             if grp == 'NWBFile':
-                item = GroupNwbfile(parent=self, metadata=self.metadata['NWBFile'])
-                item.write_fields(data=self.metadata['NWBFile'])
+                item = BasicForm(parent=self, type='NWBFile', metadata=self.metadata['NWBFile'])
+                #item = GroupNwbfile(parent=self, metadata=self.metadata['NWBFile'])
+                #item.write_fields(data=self.metadata['NWBFile'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Subject':

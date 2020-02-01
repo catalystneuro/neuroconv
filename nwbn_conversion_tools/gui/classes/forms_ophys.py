@@ -1,6 +1,6 @@
 from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                              QGroupBox, QComboBox, QCheckBox, QMessageBox)
-from PySide2.QtGui import QIntValidator, QDoubleValidator
+from PySide2.QtGui import QDoubleValidator
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
