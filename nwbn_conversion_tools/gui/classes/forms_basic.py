@@ -7,6 +7,7 @@ from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 import pynwb
 
 name_class_reference = {
+    'NWBFile': pynwb.file.NWBFile,
     'ImagingPlane': pynwb.ophys.ImagingPlane,
 }
 
@@ -59,6 +60,8 @@ class BasicForm(CollapsibleBox):
             self.grid.addWidget(getattr(self, 'lbl_' + field['name']), ii, 0, 1, 2)
             self.grid.addWidget(getattr(self, 'form_' + field['name']), ii, 2, 1, 4)
             ii += 1
+
+        self.setContentLayout(self.grid)
 
 
         # TO BE SUBSTITUTED ------------------------------------------------------
