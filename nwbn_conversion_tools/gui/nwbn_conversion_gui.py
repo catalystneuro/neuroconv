@@ -477,14 +477,15 @@ class Application(QMainWindow):
         self.clean_groups()
         for grp in self.metadata:
             if grp == 'NWBFile':
-                item = BasicForm(parent=self, type='NWBFile', metadata=self.metadata['NWBFile'])
+                item = BasicForm(parent=self, type=grp, metadata=self.metadata[grp])
                 #item = GroupNwbfile(parent=self, metadata=self.metadata['NWBFile'])
                 #item.write_fields(data=self.metadata['NWBFile'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Subject':
-                item = GroupSubject(parent=self)
-                item.write_fields(data=self.metadata['Subject'])
+                item = BasicForm(parent=self, type=grp, metadata=self.metadata[grp])
+                #item = GroupSubject(parent=self)
+                #item.write_fields(data=self.metadata['Subject'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Ophys':

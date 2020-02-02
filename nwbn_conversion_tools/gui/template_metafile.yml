@@ -15,8 +15,16 @@ NWBFile:
   related_pubications: ''
   session_description: session_description
   session_id: ID01234
-  session_start_time: 2019-09-16 17:10:00
+  session_start_time: 2020-02-02 00:00:00
   slices: ''
   stimulus_notes: ''
   surgery: ''
   virus: ''
+Subject:
+  description: naive
+  genotype: wild-type
+  sex: Male
+  species: Mus musculus
+  subject_id: I5
+  weight: '10.6g'
+  date_of_birth: 2019-09-16 17:10:00

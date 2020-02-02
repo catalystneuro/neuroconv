@@ -6,8 +6,10 @@ from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 import pynwb
 
+
 name_class_reference = {
     'NWBFile': pynwb.file.NWBFile,
+    'Subject': pynwb.file.Subject,
     'ImagingPlane': pynwb.ophys.ImagingPlane,
 }
 
@@ -22,8 +24,11 @@ class BasicForm(CollapsibleBox):
         self.metadata = metadata
         self._pynwb_class = name_class_reference[self.group_type]
 
-        validator_float = QDoubleValidator()
+        self.validator_float = QDoubleValidator()
+        self.init_forms()
 
+    def init_forms(self):
+        """ Initializes forms."""
         # Forms grid, where each row: [label: form]
         self.grid = QGridLayout()
         self.grid.setColumnStretch(5, 1)
@@ -47,7 +52,7 @@ class BasicForm(CollapsibleBox):
             # Float types
             elif field['type'] is 'float':
                 form = QLineEdit('')
-                form.setValidator(validator_float)
+                form.setValidator(self.validator_float)
             # Skip data types, continue looping
             else:
                 continue
@@ -60,9 +65,7 @@ class BasicForm(CollapsibleBox):
             self.grid.addWidget(getattr(self, 'lbl_' + field['name']), ii, 0, 1, 2)
             self.grid.addWidget(getattr(self, 'form_' + field['name']), ii, 2, 1, 4)
             ii += 1
-
         self.setContentLayout(self.grid)
-
 
         # TO BE SUBSTITUTED ------------------------------------------------------
         # self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
@@ -143,7 +146,6 @@ class BasicForm(CollapsibleBox):
 
     def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-
         # if field['name'] in metadata:
         #     form_placeholder = metadata[field['name']]
         # else:
