@@ -7,22 +7,15 @@ from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 import pynwb
 
 
-name_class_reference = {
-    'NWBFile': pynwb.file.NWBFile,
-    'Subject': pynwb.file.Subject,
-    'ImagingPlane': pynwb.ophys.ImagingPlane,
-}
-
-
 class BasicForm(CollapsibleBox):
-    def __init__(self, parent, type, metadata=None):
+    def __init__(self, parent, pynwb_class, metadata=None):
         """Basic Groupbox filling form."""
-        super().__init__(title=type, parent=parent)
+        super().__init__(title=pynwb_class.__name__, parent=parent)
         #self.setTitle(title)
         self.parent = parent
-        self.group_type = type
+        self.group_type = pynwb_class.__name__
         self.metadata = metadata
-        self._pynwb_class = name_class_reference[self.group_type]
+        self.pynwb_class = pynwb_class
 
         self.validator_float = QDoubleValidator()
         self.init_forms()
@@ -34,7 +27,7 @@ class BasicForm(CollapsibleBox):
         self.grid.setColumnStretch(5, 1)
 
         # Loops through list of fields to create a form entry for each type
-        self.fields = self._pynwb_class.__init__.__docval__['args']
+        self.fields = self.pynwb_class.__init__.__docval__['args']
         ii = 0
         for field in self.fields:
             # Required fields get a red star in their label
@@ -105,10 +98,11 @@ class BasicForm(CollapsibleBox):
 
     def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
-        self.combo_device.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupDevice):
-                self.combo_device.addItem(grp.lin_name.text())
+        # self.combo_device.clear()
+        # for grp in self.parent.groups_list:
+        #     if isinstance(grp, GroupDevice):
+        #         self.combo_device.addItem(grp.lin_name.text())
+        pass
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -146,6 +140,7 @@ class BasicForm(CollapsibleBox):
 
     def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
+        pass
         # if field['name'] in metadata:
         #     form_placeholder = metadata[field['name']]
         # else:
@@ -173,4 +168,4 @@ class BasicForm(CollapsibleBox):
         #     self.lin_unit.setText(data['unit'])
         # if 'reference_frame' in data:
         #     self.lin_reference_frame.setText(data['reference_frame'])
-        self.setContentLayout(self.grid)
+        # self.setContentLayout(self.grid)

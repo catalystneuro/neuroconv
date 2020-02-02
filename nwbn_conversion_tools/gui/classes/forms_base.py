@@ -140,29 +140,25 @@ class GroupTimeSeries(QGroupBox):
             data['control_description'] = True
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
-        if 'unit' in data:
-            self.lin_unit.setText(data['unit'])
-        if 'conversion' in data:
-            self.lin_conversion.setText(str(data['conversion']))
-        if 'resolution' in data:
-            self.lin_resolution.setText(str(data['resolution']))
-        if 'timestamps' in data:
+        self.lin_name.setText(metadata['name'])
+        if 'unit' in metadata:
+            self.lin_unit.setText(metadata['unit'])
+        if 'conversion' in metadata:
+            self.lin_conversion.setText(str(metadata['conversion']))
+        if 'resolution' in metadata:
+            self.lin_resolution.setText(str(metadata['resolution']))
+        if 'timestamps' in metadata:
             self.chk_timestamps.setChecked(True)
-        if 'starting_time' in data:
-            self.lin_starting_time.setText(str(data['starting_time']))
-        if 'rate' in data:
-            self.lin_rate.setText(str(data['rate']))
-        if 'comments' in data:
-            self.lin_comments.setText(data['comments'])
-        if 'description' in data:
-            self.lin_description.setText(data['description'])
-        if 'control' in data:
-            self.chk_control.setChecked(True)
-        if 'control_description' in data:
-            self.chk_control_description.setChecked(True)
+        if 'starting_time' in metadata:
+            self.lin_starting_time.setText(str(metadata['starting_time']))
+        if 'rate' in metadata:
+            self.lin_rate.setText(str(metadata['rate']))
+        if 'comments' in metadata:
+            self.lin_comments.setText(metadata['comments'])
+        if 'description' in metadata:
+            self.lin_description.setText(metadata['description'])
         #self.setContentLayout(self.grid)
 
 
@@ -227,15 +223,15 @@ class GroupImage(QGroupBox):
         data['help'] = self.lin_help.text()
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
-        if 'resolution' in data:
-            self.lin_resolution.setText(str(data['resolution']))
-        if 'description' in data:
-            self.lin_description.setText(data['description'])
-        if 'help' in data:
-            self.lin_help.setText(data['help'])
+        self.lin_name.setText(metadata['name'])
+        if 'resolution' in metadata:
+            self.lin_resolution.setText(str(metadata['resolution']))
+        if 'description' in metadata:
+            self.lin_description.setText(metadata['description'])
+        if 'help' in metadata:
+            self.lin_help.setText(metadata['help'])
 
 
 class GroupImages(QGroupBox):
@@ -290,13 +286,13 @@ class GroupImages(QGroupBox):
         data['description'] = self.lin_description.text()
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.lin_name.setText(metadata['name'])
         self.combo_images.clear()
-        self.combo_images.addItem(data['images'])
-        if 'description' in data:
-            self.lin_description.setText(data['description'])
+        self.combo_images.addItem(metadata['images'])
+        if 'description' in metadata:
+            self.lin_description.setText(metadata['description'])
 
 
 class CustomComboBox(QComboBox):

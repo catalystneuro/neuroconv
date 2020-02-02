@@ -65,13 +65,13 @@ class GroupElectrodeGroup(QGroupBox):
         data['device'] = self.combo_device.currentText()
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
-        self.lin_description.setText(data['description'])
-        self.lin_location.setText(data['location'])
+        self.lin_name.setText(metadata['name'])
+        self.lin_description.setText(metadata['description'])
+        self.lin_location.setText(metadata['location'])
         self.combo_device.clear()
-        self.combo_device.addItem(data['device'])
+        self.combo_device.addItem(metadata['device'])
 
 
 #class GroupElectricalSeries(QGroupBox):
@@ -134,22 +134,6 @@ class GroupElectricalSeries(CollapsibleBox):
         self.lin_description.setPlaceholderText("description")
         self.lin_description.setToolTip(" Description of this ElectricalSeries dataset")
 
-        self.lbl_control = QLabel('control:')
-        self.chk_control = QCheckBox("Get from source file")
-        self.chk_control.setChecked(False)
-        self.chk_control.setToolTip(
-            "Numerical labels that apply to each element in data.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
-        self.lbl_control_description = QLabel('control_description:')
-        self.chk_control_description = QCheckBox("Get from source file")
-        self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip(
-            "Description of each control value.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.grid = QGridLayout()
         self.grid.setColumnStretch(4, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
@@ -170,12 +154,6 @@ class GroupElectricalSeries(CollapsibleBox):
         self.grid.addWidget(self.lin_comments, 8, 2, 1, 4)
         self.grid.addWidget(self.lbl_description, 9, 0, 1, 2)
         self.grid.addWidget(self.lin_description, 9, 2, 1, 4)
-        self.grid.addWidget(self.lbl_control, 10, 0, 1, 2)
-        self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
-        self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
-        self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
-
-        #self.setLayout(self.grid)
         self.setContentLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
@@ -208,34 +186,26 @@ class GroupElectricalSeries(CollapsibleBox):
             print(error)
         data['comments'] = self.lin_comments.text()
         data['description'] = self.lin_description.text()
-        if self.chk_control.isChecked():
-            data['control'] = True
-        if self.chk_control_description.isChecked():
-            data['control_description'] = True
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.lin_name.setText(metadata['name'])
         self.chk_electrodes.setChecked(True)
-        if 'conversion' in data:
-            self.lin_conversion.setText(str(data['conversion']))
-        if 'resolution' in data:
-            self.lin_resolution.setText(str(data['resolution']))
-        if 'timestamps' in data:
+        if 'conversion' in metadata:
+            self.lin_conversion.setText(str(metadata['conversion']))
+        if 'resolution' in metadata:
+            self.lin_resolution.setText(str(metadata['resolution']))
+        if 'timestamps' in metadata:
             self.chk_timestamps.setChecked(True)
-        if 'starting_time' in data:
-            self.lin_starting_time.setText(str(data['starting_time']))
-        if 'rate' in data:
-            self.lin_rate.setText(str(data['rate']))
-        if 'comments' in data:
-            self.lin_comments.setText(data['comments'])
-        if 'description' in data:
-            self.lin_description.setText(data['description'])
-        if 'control' in data:
-            self.chk_control.setChecked(True)
-        if 'control_description' in data:
-            self.chk_control_description.setChecked(True)
+        if 'starting_time' in metadata:
+            self.lin_starting_time.setText(str(metadata['starting_time']))
+        if 'rate' in metadata:
+            self.lin_rate.setText(str(metadata['rate']))
+        if 'comments' in metadata:
+            self.lin_comments.setText(metadata['comments'])
+        if 'description' in metadata:
+            self.lin_description.setText(metadata['description'])
 
 
 class GroupSpikeEventSeries(QGroupBox):
@@ -287,22 +257,6 @@ class GroupSpikeEventSeries(QGroupBox):
         self.lin_description.setPlaceholderText("description")
         self.lin_description.setToolTip(" Description of this SpikeEventSeries dataset")
 
-        self.lbl_control = QLabel('control:')
-        self.chk_control = QCheckBox("Get from source file")
-        self.chk_control.setChecked(False)
-        self.chk_control.setToolTip(
-            "Numerical labels that apply to each element in data.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
-        self.lbl_control_description = QLabel('control_description:')
-        self.chk_control_description = QCheckBox("Get from source file")
-        self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip(
-            "Description of each control value.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.grid = QGridLayout()
         self.grid.setColumnStretch(4, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
@@ -319,10 +273,6 @@ class GroupSpikeEventSeries(QGroupBox):
         self.grid.addWidget(self.lin_comments, 8, 2, 1, 4)
         self.grid.addWidget(self.lbl_description, 9, 0, 1, 2)
         self.grid.addWidget(self.lin_description, 9, 2, 1, 4)
-        self.grid.addWidget(self.lbl_control, 10, 0, 1, 2)
-        self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
-        self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
-        self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
@@ -347,29 +297,21 @@ class GroupSpikeEventSeries(QGroupBox):
             data['timestamps'] = True
         data['comments'] = self.lin_comments.text()
         data['description'] = self.lin_description.text()
-        if self.chk_control.isChecked():
-            data['control'] = True
-        if self.chk_control_description.isChecked():
-            data['control_description'] = True
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.lin_name.setText(metadata['name'])
         self.chk_timestamps.setChecked(True)
         self.chk_electrodes.setChecked(True)
-        if 'conversion' in data:
-            self.lin_conversion.setText(str(data['conversion']))
-        if 'resolution' in data:
-            self.lin_resolution.setText(str(data['resolution']))
-        if 'comments' in data:
-            self.lin_comments.setText(data['comments'])
-        if 'description' in data:
-            self.lin_description.setText(data['description'])
-        if 'control' in data:
-            self.chk_control.setChecked(True)
-        if 'control_description' in data:
-            self.chk_control_description.setChecked(True)
+        if 'conversion' in metadata:
+            self.lin_conversion.setText(str(metadata['conversion']))
+        if 'resolution' in metadata:
+            self.lin_resolution.setText(str(metadata['resolution']))
+        if 'comments' in metadata:
+            self.lin_comments.setText(metadata['comments'])
+        if 'description' in metadata:
+            self.lin_description.setText(metadata['description'])
 
 
 class GroupEventDetection(QGroupBox):
@@ -452,12 +394,12 @@ class GroupEventDetection(QGroupBox):
             data['times'] = True
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
-        self.lin_detection_method.setText(data['detection_method'])
+        self.lin_name.setText(metadata['name'])
+        self.lin_detection_method.setText(metadata['detection_method'])
         self.combo_source_electricalseries.clear()
-        self.combo_source_electricalseries.addItem(data['source_electricalseries'])
+        self.combo_source_electricalseries.addItem(metadata['source_electricalseries'])
         self.chk_source_idx.setChecked(True)
         self.chk_times.setChecked(True)
 
@@ -506,11 +448,11 @@ class GroupEventWaveform(QGroupBox):
         data['spike_event_series'] = self.combo_spike_event_series.currentText()
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.lin_name.setText(metadata['name'])
         self.combo_spike_event_series.clear()
-        self.combo_spike_event_series.addItem(data['spike_event_series'])
+        self.combo_spike_event_series.addItem(metadata['spike_event_series'])
 
 
 class GroupLFP(QGroupBox):
@@ -559,9 +501,9 @@ class GroupLFP(QGroupBox):
         data['decomposition_series'] = self.decomposition_series.read_fields()
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.lin_name.setText(metadata['name'])
 
 
 class GroupFilteredEphys(QGroupBox):
@@ -604,7 +546,7 @@ class GroupFilteredEphys(QGroupBox):
         data['electrical_series'] = self.electrical_series.read_fields()
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
         self.lin_name.setText(data['name'])
         # self.combo_electrical_series.clear()
@@ -688,11 +630,11 @@ class GroupFeatureExtraction(QGroupBox):
             data['features'] = True
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.lin_name.setText(metadata['name'])
         self.chk_electrodes.setChecked(True)
-        self.lin_description.setText(data['description'])
+        self.lin_description.setText(metadata['description'])
         self.chk_times.setChecked(True)
         self.chk_features.setChecked(True)
 
@@ -735,40 +677,18 @@ class GroupEcephys(QGroupBox):
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-    def add_group(self, group_type, metadata=None):
+    def add_group(self, group, metadata=None):
         """Adds group form."""
-        if group_type == 'combo':
-            group_type = str(self.combo1.currentText())
-        if group_type == 'Device':
-            item = GroupDevice(self)
-        elif group_type == 'ElectrodeGroup':
-            item = GroupElectrodeGroup(self)
-        elif group_type == 'ElectricalSeries':
-            item = GroupElectricalSeries(self)
-        elif group_type == 'SpikeEventSeries':
-            item = GroupSpikeEventSeries(self)
-        elif group_type == 'EventDetection':
-            item = GroupEventDetection(self)
-        elif group_type == 'EventWaveform':
-            item = GroupEventWaveform(self)
-        elif group_type == 'LFP':
-            item = GroupLFP(self)
-        elif group_type == 'FilteredEphys':
-            item = GroupFilteredEphys(self)
-        elif group_type == 'FeatureExtraction':
-            item = GroupFeatureExtraction(self)
-        elif group_type == 'DecompositionSeries':
-            item = GroupDecompositionSeries(self)
-        if group_type != '-- Add group --':
-            if metadata is not None:
-                item.write_fields(data=metadata)
-            item.lin_name.textChanged.connect(self.refresh_del_combo)
-            self.groups_list.append(item)
-            nWidgetsVbox = self.vbox1.count()
-            self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
-            self.combo1.setCurrentIndex(0)
-            self.combo2.addItem(item.lin_name.text())
-            self.refresh_children(metadata=metadata)
+        print(group)
+        if metadata is not None:
+            group.write_fields(metadata=metadata)
+        group.lin_name.textChanged.connect(self.refresh_del_combo)
+        self.groups_list.append(group)
+        nWidgetsVbox = self.vbox1.count()
+        self.vbox1.insertWidget(nWidgetsVbox-1, group)  # insert before the stretch
+        self.combo1.setCurrentIndex(0)
+        self.combo2.addItem(group.lin_name.text())
+        self.refresh_children(metadata=metadata)
 
     def del_group(self, group_name):
         """Deletes group form by name."""

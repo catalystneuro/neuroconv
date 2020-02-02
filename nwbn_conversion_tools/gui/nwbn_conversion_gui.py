@@ -12,6 +12,7 @@ from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
 from nwbn_conversion_tools.gui.classes.forms_basic import BasicForm
+from nwbn_conversion_tools.gui.utils.name_references import name_class_reference
 
 import numpy as np
 import nbformat as nbf
@@ -29,7 +30,7 @@ import os
 
 class Application(QMainWindow):
     def __init__(self, metafile=None, conversion_module='', source_paths={},
-                 kwargs_fields={}, show_add_del=False):
+                 kwargs_fields={}, extension_forms={}, show_add_del=False):
         super().__init__()
         # Dictionary storing source files paths
         self.source_paths = source_paths
@@ -39,6 +40,9 @@ class Application(QMainWindow):
         self.kwargs_fields = kwargs_fields
         # Boolean control to either show/hide the option for add/del Groups
         self.show_add_del = show_add_del
+        # Updates name_class_reference with extension classes
+        self.name_class_reference = name_class_reference
+        self.name_class_reference.update(extension_forms)
         # Temporary folder path
         self.temp_dir = tempfile.mkdtemp()
 
@@ -477,15 +481,13 @@ class Application(QMainWindow):
         self.clean_groups()
         for grp in self.metadata:
             if grp == 'NWBFile':
-                item = BasicForm(parent=self, type=grp, metadata=self.metadata[grp])
-                #item = GroupNwbfile(parent=self, metadata=self.metadata['NWBFile'])
-                #item.write_fields(data=self.metadata['NWBFile'])
+                item = GroupNwbfile(parent=self, metadata=self.metadata['NWBFile'])
+                item.write_fields(data=self.metadata['NWBFile'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Subject':
-                item = BasicForm(parent=self, type=grp, metadata=self.metadata[grp])
-                #item = GroupSubject(parent=self)
-                #item.write_fields(data=self.metadata['Subject'])
+                item = GroupSubject(parent=self)
+                item.write_fields(data=self.metadata['Subject'])
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Ophys':
@@ -494,11 +496,15 @@ class Application(QMainWindow):
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
-                            item.add_group(group_type=subgroup,
-                                           metadata=subsub)
+                            item.add_group(
+                                group=self.name_class_reference[subgroup](parent=item),
+                                metadata=subsub
+                            )
                     else:  # if it's just one item of this class
-                        item.add_group(group_type=subgroup,
-                                       metadata=self.metadata[grp][subgroup])
+                        item.add_group(
+                            group=self.name_class_reference[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Ecephys':
@@ -507,11 +513,15 @@ class Application(QMainWindow):
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
-                            item.add_group(group_type=subgroup,
-                                           metadata=subsub)
+                            item.add_group(
+                                group=self.name_class_reference[subgroup](parent=item),
+                                metadata=subsub
+                            )
                     else:  # if it's just one item of this class
-                        item.add_group(group_type=subgroup,
-                                       metadata=self.metadata[grp][subgroup])
+                        item.add_group(
+                            group=self.name_class_reference[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Behavior':
@@ -639,14 +649,17 @@ if __name__ == '__main__':
 
 # If it is imported as a module
 def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
-                        kwargs_fields={}, show_add_del=False):
+                        kwargs_fields={}, extension_forms={}, show_add_del=False):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
-    ex = Application(metafile=metafile,
-                     conversion_module=conversion_module,
-                     source_paths=source_paths,
-                     kwargs_fields=kwargs_fields,
-                     show_add_del=show_add_del)
+    ex = Application(
+        metafile=metafile,
+        conversion_module=conversion_module,
+        source_paths=source_paths,
+        kwargs_fields=kwargs_fields,
+        extension_forms=extension_forms,
+        show_add_del=show_add_del
+    )
     sys.exit(app.exec_())

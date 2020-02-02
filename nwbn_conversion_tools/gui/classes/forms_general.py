@@ -445,9 +445,9 @@ class GroupDevice(CollapsibleBox):
         data['name'] = self.lin_name.text()
         return data
 
-    def write_fields(self, data={}):
+    def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(str(data['name']))
+        self.lin_name.setText(str(metadata['name']))
         self.setContentLayout(self.grid)
 
 
