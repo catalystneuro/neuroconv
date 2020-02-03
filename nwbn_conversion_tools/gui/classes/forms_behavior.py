@@ -20,31 +20,31 @@ class GroupSpatialSeries(QGroupBox):
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
         if 'name' in metadata:
-            self.lin_name = QLineEdit(metadata['name'])
+            self.form_name = QLineEdit(metadata['name'])
         else:
-            self.lin_name = QLineEdit('SpatialSeries')
-        self.lin_name.setToolTip("The name of this SpatialSeries dataset.")
+            self.form_name = QLineEdit('SpatialSeries')
+        self.form_name.setToolTip("The name of this SpatialSeries dataset.")
 
         self.lbl_reference_frame = QLabel('reference_frame<span style="color:'+required_asterisk_color+';">*</span>:')
         if 'reference_frame' in metadata:
-            self.lin_reference_frame = QLineEdit(metadata['reference_frame'])
+            self.form_reference_frame = QLineEdit(metadata['reference_frame'])
         else:
-            self.lin_reference_frame = QLineEdit('reference frame')
-        self.lin_reference_frame.setToolTip("Description defining what the zero-position is")
+            self.form_reference_frame = QLineEdit('reference frame')
+        self.form_reference_frame.setToolTip("Description defining what the zero-position is")
 
         self.lbl_conversion = QLabel('conversion:')
         if 'conversion' in metadata:
-            self.lin_conversion = QLineEdit(str(metadata['conversion']))
+            self.form_conversion = QLineEdit(str(metadata['conversion']))
         else:
-            self.lin_conversion = QLineEdit('')
-        self.lin_conversion.setToolTip("Scalar to multiply each element by to convert to meters")
+            self.form_conversion = QLineEdit('')
+        self.form_conversion.setToolTip("Scalar to multiply each element by to convert to meters")
 
         self.lbl_resolution = QLabel('resolution:')
         if 'resolution' in metadata:
-            self.lin_resolution = QLineEdit(str(metadata['resolution']))
+            self.form_resolution = QLineEdit(str(metadata['resolution']))
         else:
-            self.lin_resolution = QLineEdit('')
-        self.lin_resolution.setToolTip(
+            self.form_resolution = QLineEdit('')
+        self.form_resolution.setToolTip(
             "The smallest meaningful difference (in specified unit) between values in data")
 
         self.lbl_timestamps = QLabel('timestamps:')
@@ -60,33 +60,33 @@ class GroupSpatialSeries(QGroupBox):
 
         self.lbl_starting_time = QLabel('starting_time:')
         if 'starting_time' in metadata:
-            self.lin_starting_time = QLineEdit(str(metadata['starting_time']))
+            self.form_starting_time = QLineEdit(str(metadata['starting_time']))
         else:
-            self.lin_starting_time = QLineEdit('')
-        self.lin_starting_time.setToolTip("The timestamp of the first sample")
+            self.form_starting_time = QLineEdit('')
+        self.form_starting_time.setToolTip("The timestamp of the first sample")
 
         self.lbl_rate = QLabel('rate:')
         if 'rate' in metadata:
-            self.lin_rate = QLineEdit(str(metadata['rate']))
+            self.form_rate = QLineEdit(str(metadata['rate']))
         else:
-            self.lin_rate = QLineEdit('')
-        self.lin_rate.setToolTip("Sampling rate in Hz")
+            self.form_rate = QLineEdit('')
+        self.form_rate.setToolTip("Sampling rate in Hz")
 
         self.lbl_comments = QLabel('comments:')
         if 'comments' in metadata:
-            self.lin_comments = QLineEdit(metadata['comments'])
+            self.form_comments = QLineEdit(metadata['comments'])
         else:
-            self.lin_comments = QLineEdit('')
-        self.lin_comments.setPlaceholderText("comments")
-        self.lin_comments.setToolTip("Human-readable comments about this SpatialSeries dataset")
+            self.form_comments = QLineEdit('')
+        self.form_comments.setPlaceholderText("comments")
+        self.form_comments.setToolTip("Human-readable comments about this SpatialSeries dataset")
 
         self.lbl_description = QLabel('description:')
         if 'description' in metadata:
-            self.lin_description = QLineEdit(metadata['description'])
+            self.form_description = QLineEdit(metadata['description'])
         else:
-            self.lin_description = QLineEdit('')
-        self.lin_description.setPlaceholderText("description")
-        self.lin_description.setToolTip(" Description of this SpatialSeries dataset")
+            self.form_description = QLineEdit('')
+        self.form_description.setPlaceholderText("description")
+        self.form_description.setToolTip(" Description of this SpatialSeries dataset")
 
         self.lbl_control = QLabel('control:')
         self.chk_control = QCheckBox("Get from source file")
@@ -113,23 +113,23 @@ class GroupSpatialSeries(QGroupBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_reference_frame, 2, 0, 1, 2)
-        self.grid.addWidget(self.lin_reference_frame, 2, 2, 1, 4)
+        self.grid.addWidget(self.form_reference_frame, 2, 2, 1, 4)
         self.grid.addWidget(self.lbl_conversion, 3, 0, 1, 2)
-        self.grid.addWidget(self.lin_conversion, 3, 2, 1, 4)
+        self.grid.addWidget(self.form_conversion, 3, 2, 1, 4)
         self.grid.addWidget(self.lbl_resolution, 4, 0, 1, 2)
-        self.grid.addWidget(self.lin_resolution, 4, 2, 1, 4)
+        self.grid.addWidget(self.form_resolution, 4, 2, 1, 4)
         self.grid.addWidget(self.lbl_timestamps, 5, 0, 1, 2)
         self.grid.addWidget(self.chk_timestamps, 5, 2, 1, 2)
         self.grid.addWidget(self.lbl_starting_time, 6, 0, 1, 2)
-        self.grid.addWidget(self.lin_starting_time, 6, 2, 1, 4)
+        self.grid.addWidget(self.form_starting_time, 6, 2, 1, 4)
         self.grid.addWidget(self.lbl_rate, 7, 0, 1, 2)
-        self.grid.addWidget(self.lin_rate, 7, 2, 1, 4)
+        self.grid.addWidget(self.form_rate, 7, 2, 1, 4)
         self.grid.addWidget(self.lbl_comments, 8, 0, 1, 2)
-        self.grid.addWidget(self.lin_comments, 8, 2, 1, 4)
+        self.grid.addWidget(self.form_comments, 8, 2, 1, 4)
         self.grid.addWidget(self.lbl_description, 9, 0, 1, 2)
-        self.grid.addWidget(self.lin_description, 9, 2, 1, 4)
+        self.grid.addWidget(self.form_description, 9, 2, 1, 4)
         self.grid.addWidget(self.lbl_control, 10, 0, 1, 2)
         self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
         self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
@@ -143,28 +143,28 @@ class GroupSpatialSeries(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
-        data['reference_frame'] = self.lin_reference_frame.text()
+        data['name'] = self.form_name.text()
+        data['reference_frame'] = self.form_reference_frame.text()
         try:
-            data['conversion'] = float(self.lin_conversion.text())
+            data['conversion'] = float(self.form_conversion.text())
         except ValueError as error:
             print(error)
         try:
-            data['resolution'] = float(self.lin_resolution.text())
+            data['resolution'] = float(self.form_resolution.text())
         except ValueError as error:
             print(error)
         if self.chk_timestamps.isChecked():
             data['timestamps'] = True
         try:
-            data['starting_time'] = float(self.lin_starting_time.text())
+            data['starting_time'] = float(self.form_starting_time.text())
         except ValueError as error:
             print(error)
         try:
-            data['rate'] = float(self.lin_rate.text())
+            data['rate'] = float(self.form_rate.text())
         except ValueError as error:
             print(error)
-        data['comments'] = self.lin_comments.text()
-        data['description'] = self.lin_description.text()
+        data['comments'] = self.form_comments.text()
+        data['description'] = self.form_description.text()
         if self.chk_control.isChecked():
             data['control'] = True
         if self.chk_control_description.isChecked():
@@ -173,22 +173,22 @@ class GroupSpatialSeries(QGroupBox):
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
-        self.lin_reference_frame.setText(data['reference_frame'])
+        self.form_name.setText(data['name'])
+        self.form_reference_frame.setText(data['reference_frame'])
         if 'conversion' in data:
-            self.lin_conversion.setText(str(data['conversion']))
+            self.form_conversion.setText(str(data['conversion']))
         if 'resolution' in data:
-            self.lin_resolution.setText(str(data['resolution']))
+            self.form_resolution.setText(str(data['resolution']))
         if 'timestamps' in data:
             self.chk_timestamps.setChecked(True)
         if 'starting_time' in data:
-            self.lin_starting_time.setText(str(data['starting_time']))
+            self.form_starting_time.setText(str(data['starting_time']))
         if 'rate' in data:
-            self.lin_rate.setText(str(data['rate']))
+            self.form_rate.setText(str(data['rate']))
         if 'comments' in data:
-            self.lin_comments.setText(data['comments'])
+            self.form_comments.setText(data['comments'])
         if 'description' in data:
-            self.lin_description.setText(data['description'])
+            self.form_description.setText(data['description'])
         if 'control' in data:
             self.chk_control.setChecked(True)
         if 'control_description' in data:
@@ -204,14 +204,14 @@ class GroupBehavioralEpochs(QGroupBox):
         self.group_type = 'BehavioralEpochs'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('BehavioralEpochs')
-        self.lin_name.setToolTip("The unique name of this BehavioralEpochs")
+        self.form_name = QLineEdit('BehavioralEpochs')
+        self.form_name.setToolTip("The unique name of this BehavioralEpochs")
         nInstances = 0
         for grp in self.parent.groups_list:
             if isinstance(grp,  GroupBehavioralEpochs):
                 nInstances += 1
         if nInstances > 0:
-            self.lin_name.setText('BehavioralEpochs'+str(nInstances))
+            self.form_name.setText('BehavioralEpochs'+str(nInstances))
 
         self.lbl_interval_series = QLabel('interval_series:')
         self.interval_series = GroupIntervalSeries(self)
@@ -219,7 +219,7 @@ class GroupBehavioralEpochs(QGroupBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_interval_series, 1, 0, 1, 2)
         self.grid.addWidget(self.interval_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
@@ -231,13 +231,13 @@ class GroupBehavioralEpochs(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
+        data['name'] = self.form_name.text()
         data['interval_series'] = self.interval_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.form_name.setText(data['name'])
 
 
 #class GroupBehavioralEvents(QGroupBox):
@@ -250,14 +250,14 @@ class GroupBehavioralEvents(CollapsibleBox):
         self.group_type = 'BehavioralEvents'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('BehavioralEvents')
-        self.lin_name.setToolTip("The unique name of this BehavioralEvents")
+        self.form_name = QLineEdit('BehavioralEvents')
+        self.form_name.setToolTip("The unique name of this BehavioralEvents")
         nInstances = 0
         for grp in self.parent.groups_list:
             if isinstance(grp,  GroupBehavioralEvents):
                 nInstances += 1
         if nInstances > 0:
-            self.lin_name.setText('BehavioralEvents'+str(nInstances))
+            self.form_name.setText('BehavioralEvents'+str(nInstances))
 
         self.lbl_time_series = QLabel('time_series:')
         self.time_series = GroupTimeSeries(self)
@@ -265,7 +265,7 @@ class GroupBehavioralEvents(CollapsibleBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         #self.setLayout(self.grid)
@@ -277,13 +277,13 @@ class GroupBehavioralEvents(CollapsibleBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
+        data['name'] = self.form_name.text()
         data['time_series'] = self.time_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.form_name.setText(data['name'])
         self.setContentLayout(self.grid)
 
 
@@ -296,14 +296,14 @@ class GroupBehavioralTimeSeries(QGroupBox):
         self.group_type = 'BehavioralTimeSeries'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('BehavioralTimeSeries')
-        self.lin_name.setToolTip("The unique name of this BehavioralTimeSeries")
+        self.form_name = QLineEdit('BehavioralTimeSeries')
+        self.form_name.setToolTip("The unique name of this BehavioralTimeSeries")
         nInstances = 0
         for grp in self.parent.groups_list:
             if isinstance(grp,  GroupBehavioralTimeSeries):
                 nInstances += 1
         if nInstances > 0:
-            self.lin_name.setText('BehavioralTimeSeries'+str(nInstances))
+            self.form_name.setText('BehavioralTimeSeries'+str(nInstances))
 
         self.lbl_time_series = QLabel('time_series:')
         self.time_series = GroupTimeSeries(self)
@@ -313,7 +313,7 @@ class GroupBehavioralTimeSeries(QGroupBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
@@ -325,13 +325,13 @@ class GroupBehavioralTimeSeries(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
+        data['name'] = self.form_name.text()
         data['time_series'] = self.time_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.form_name.setText(data['name'])
 
 
 class GroupPupilTracking(QGroupBox):
@@ -343,14 +343,14 @@ class GroupPupilTracking(QGroupBox):
         self.group_type = 'PupilTracking'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('PupilTracking')
-        self.lin_name.setToolTip("The unique name of this PupilTracking")
+        self.form_name = QLineEdit('PupilTracking')
+        self.form_name.setToolTip("The unique name of this PupilTracking")
         nInstances = 0
         for grp in self.parent.groups_list:
             if isinstance(grp,  GroupPupilTracking):
                 nInstances += 1
         if nInstances > 0:
-            self.lin_name.setText('PupilTracking'+str(nInstances))
+            self.form_name.setText('PupilTracking'+str(nInstances))
 
         self.lbl_time_series = QLabel('time_series:')
         self.time_series = GroupTimeSeries(self)
@@ -360,7 +360,7 @@ class GroupPupilTracking(QGroupBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
@@ -372,13 +372,13 @@ class GroupPupilTracking(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
+        data['name'] = self.form_name.text()
         data['time_series'] = self.time_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.form_name.setText(data['name'])
 
 
 #class GroupEyeTracking(QGroupBox):
@@ -392,14 +392,14 @@ class GroupEyeTracking(CollapsibleBox):
         self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('EyeTracking')
-        self.lin_name.setToolTip("The unique name of this EyeTracking")
+        self.form_name = QLineEdit('EyeTracking')
+        self.form_name.setToolTip("The unique name of this EyeTracking")
         nInstances = 0
         for grp in self.parent.groups_list:
             if isinstance(grp,  GroupEyeTracking):
                 nInstances += 1
         if nInstances > 0:
-            self.lin_name.setText('EyeTracking'+str(nInstances))
+            self.form_name.setText('EyeTracking'+str(nInstances))
 
         self.lbl_spatial_series = QLabel('spatial_series:')
         self.spatial_series_layout = QVBoxLayout() #GroupSpatialSeries(self)
@@ -409,7 +409,7 @@ class GroupEyeTracking(CollapsibleBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         #self.setLayout(self.grid)
@@ -421,7 +421,7 @@ class GroupEyeTracking(CollapsibleBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
+        data['name'] = self.form_name.text()
         data['spatial_series'] = []
         nItems = self.spatial_series_layout.count()
         for i in range(nItems):
@@ -431,7 +431,7 @@ class GroupEyeTracking(CollapsibleBox):
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.form_name.setText(data['name'])
         nItems = self.spatial_series_layout.count()
         for ind, sps in enumerate(data['spatial_series']):
             if ind >= nItems:
@@ -449,14 +449,14 @@ class GroupCompassDirection(QGroupBox):
         self.group_type = 'CompassDirection'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('CompassDirection')
-        self.lin_name.setToolTip("The unique name of this CompassDirection")
+        self.form_name = QLineEdit('CompassDirection')
+        self.form_name.setToolTip("The unique name of this CompassDirection")
         nInstances = 0
         for grp in self.parent.groups_list:
             if isinstance(grp,  GroupCompassDirection):
                 nInstances += 1
         if nInstances > 0:
-            self.lin_name.setText('CompassDirection'+str(nInstances))
+            self.form_name.setText('CompassDirection'+str(nInstances))
 
         self.lbl_spatial_series = QLabel('spatial_series:')
         self.spatial_series = GroupSpatialSeries(self)
@@ -464,7 +464,7 @@ class GroupCompassDirection(QGroupBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         self.setLayout(self.grid)
@@ -476,13 +476,13 @@ class GroupCompassDirection(QGroupBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
+        data['name'] = self.form_name.text()
         data['spatial_series'] = self.spatial_series.read_fields()
         return data
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.form_name.setText(data['name'])
 
 
 #class GroupPosition(QGroupBox):
@@ -496,8 +496,8 @@ class GroupPosition(CollapsibleBox):
         self.groups_list = []
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.lin_name = QLineEdit('Position')
-        self.lin_name.setToolTip("The unique name of this Position")
+        self.form_name = QLineEdit('Position')
+        self.form_name.setToolTip("The unique name of this Position")
 
         self.lbl_spatial_series = QLabel('spatial_series:')
         self.spatial_series_layout = QVBoxLayout() #GroupSpatialSeries(self)
@@ -508,7 +508,7 @@ class GroupPosition(CollapsibleBox):
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.lin_name, 0, 2, 1, 4)
+        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
         self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
         self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
         #self.setLayout(self.grid)
@@ -520,7 +520,7 @@ class GroupPosition(CollapsibleBox):
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
         data = {}
-        data['name'] = self.lin_name.text()
+        data['name'] = self.form_name.text()
         data['spatial_series'] = []
         nItems = self.spatial_series_layout.count()
         for i in range(nItems):
@@ -530,7 +530,7 @@ class GroupPosition(CollapsibleBox):
 
     def write_fields(self, data={}):
         """Reads structured dictionary and write in form fields."""
-        self.lin_name.setText(data['name'])
+        self.form_name.setText(data['name'])
         nItems = self.spatial_series_layout.count()
         for ind, sps in enumerate(data['spatial_series']):
             if ind >= nItems:
@@ -607,12 +607,12 @@ class GroupBehavior(QGroupBox):
         if group_type != '-- Add group --':
             if metadata is not None:
                 item.write_fields(data=metadata)
-            item.lin_name.textChanged.connect(self.refresh_del_combo)
+            item.form_name.textChanged.connect(self.refresh_del_combo)
             self.groups_list.append(item)
             nWidgetsVbox = self.vbox1.count()
             self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
             self.combo1.setCurrentIndex(0)
-            self.combo2.addItem(item.lin_name.text())
+            self.combo2.addItem(item.form_name.text())
             self.refresh_children(metadata=metadata)
 
     def del_group(self, group_name):
@@ -631,8 +631,8 @@ class GroupBehavior(QGroupBox):
                 nWidgetsVbox = self.vbox1.count()
                 for i in range(nWidgetsVbox):
                     if self.vbox1.itemAt(i) is not None:
-                        if hasattr(self.vbox1.itemAt(i).widget(), 'lin_name'):
-                            if self.vbox1.itemAt(i).widget().lin_name.text() == group_name:
+                        if hasattr(self.vbox1.itemAt(i).widget(), 'form_name'):
+                            if self.vbox1.itemAt(i).widget().form_name.text() == group_name:
                                 self.groups_list.remove(self.vbox1.itemAt(i).widget())   # deletes list item
                                 self.vbox1.itemAt(i).widget().setParent(None)            # deletes widget
                                 self.combo2.removeItem(self.combo2.findText(group_name))
@@ -662,7 +662,7 @@ class GroupBehavior(QGroupBox):
         self.combo2.clear()
         self.combo2.addItem('-- Del group --')
         for child in self.groups_list:
-            self.combo2.addItem(child.lin_name.text())
+            self.combo2.addItem(child.form_name.text())
         self.refresh_children()
 
     def read_fields(self):

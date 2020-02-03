@@ -11,7 +11,6 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupS
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
-from nwbn_conversion_tools.gui.classes.forms_basic import BasicForm
 from nwbn_conversion_tools.gui.utils.name_references import name_class_reference
 
 import numpy as np
