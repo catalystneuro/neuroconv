@@ -6,6 +6,7 @@ from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 from datetime import datetime
 import numpy as np
+import pynwb
 
 
 #class GroupNwbfile(QGroupBox):
@@ -416,13 +417,12 @@ class GroupSubject(CollapsibleBox):
             self.form_date_of_birth.setText(data['date_of_birth'].strftime("%d/%m/%Y"))
 
 
-#class GroupDevice(QGroupBox):
 class GroupDevice(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.device.Device fields filling form."""
         super().__init__(title='Device', parent=parent)
-        #self.setTitle('Device')
         self.parent = parent
+        self.pynwb_class = pynwb.device.Device
         self.group_type = 'Device'
 
         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')

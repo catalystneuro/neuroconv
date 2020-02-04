@@ -17,7 +17,7 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
 from PySide2.QtGui import QIntValidator, QDoubleValidator
 
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.utils.name_references import name_class_reference
+from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class, name_to_pynwb_class
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 from collections.abc import Iterable
@@ -82,7 +82,7 @@ class BasicFormCollapsible(CollapsibleBox):
 
     def fields_info_update(self):
         """Updates fields info with specific fields from the inheriting class."""
-        print('fields_info_update() needs to be defined in inheriting class.')
+        pass
 
     def make_forms(self):
         """ Initializes forms."""
@@ -122,11 +122,31 @@ class BasicFormCollapsible(CollapsibleBox):
 
             self.grid.addWidget(getattr(self, 'lbl_' + field['name']), ii, 0, 1, 2)
             self.grid.addWidget(getattr(self, 'form_' + field['name']), ii, 2, 1, 4)
-        self.setContentLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        pass
+        """
+        Refreshes references with existing objects in parent / grandparent groups.
+        Refreshes children's references.
+        """
+        # Refreshes self comboboxes
+        for field in self.fields_info:
+            if field['type'] == 'link':
+                form = getattr(self, 'form_' + field['name'])
+                form.clear()
+                form_gui_class = name_to_gui_class[field['class']]
+                # Search through parent
+                for grp in self.parent.groups_list:
+                    # Adds existing specfic groups to combobox
+                    if isinstance(grp, form_gui_class):
+                        getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
+                # Search through grandparent
+                for grp in self.parent.parent.groups_list:
+                    # Adds existing specfic groups to combobox
+                    if isinstance(grp, form_gui_class):
+                        getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
+        # Refreshes children
+        for child in self.groups_list:
+            child.refresh_objects_references(metadata=metadata)
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -174,7 +194,7 @@ class BasicFormCollapsible(CollapsibleBox):
                     n_items = group.children()[0].count()
                     for ind, sps in enumerate(metadata[field['name']]):
                         if ind >= n_items:
-                            item_class = name_class_reference[field['class']]
+                            item_class = name_to_gui_class[field['class']]
                             item = item_class(self, metadata={})
                             item.write_fields(metadata=metadata[field['name']][ind])
                             self.groups_list.append(item)
@@ -240,7 +260,7 @@ class BasicFormFixed(QGroupBox):
 
     def fields_info_update(self):
         """Updates fields info with specific fields from the inheriting class."""
-        print('fields_info_update() needs to be defined in inheriting class.')
+        pass
 
     def make_forms(self):
         """ Initializes forms."""
@@ -283,8 +303,29 @@ class BasicFormFixed(QGroupBox):
         self.setLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        pass
+        """
+        Refreshes references with existing objects in parent / grandparent groups.
+        Refreshes children's references.
+        """
+        # Refreshes self comboboxes
+        for field in self.fields_info:
+            if field['type'] == 'link':
+                form = getattr(self, 'form_' + field['name'])
+                form.clear()
+                form_gui_class = name_to_gui_class[field['class']]
+                # Search through parent
+                for grp in self.parent.groups_list:
+                    # Adds existing specfic groups to combobox
+                    if isinstance(grp, form_gui_class):
+                        getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
+                # Search through grandparent
+                for grp in self.parent.parent.groups_list:
+                    # Adds existing specfic groups to combobox
+                    if isinstance(grp, form_gui_class):
+                        getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
+        # Refreshes children
+        for child in self.groups_list:
+            child.refresh_objects_references(metadata=metadata)
 
     def read_fields(self):
         """Reads fields and returns them structured in a dictionary."""
@@ -332,7 +373,7 @@ class BasicFormFixed(QGroupBox):
                     n_items = group.children()[0].count()
                     for ind, sps in enumerate(metadata[field['name']]):
                         if ind >= n_items:
-                            item_class = name_class_reference[field['class']]
+                            item_class = name_to_gui_class[field['class']]
                             item = item_class(self, metadata={})
                             item.write_fields(metadata=metadata[field['name']][ind])
                             self.groups_list.append(item)

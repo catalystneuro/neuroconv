@@ -11,7 +11,7 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupS
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
-from nwbn_conversion_tools.gui.utils.name_references import name_class_reference
+from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
 
 import numpy as np
 import nbformat as nbf
@@ -39,9 +39,9 @@ class Application(QMainWindow):
         self.kwargs_fields = kwargs_fields
         # Boolean control to either show/hide the option for add/del Groups
         self.show_add_del = show_add_del
-        # Updates name_class_reference with extension classes
-        self.name_class_reference = name_class_reference
-        self.name_class_reference.update(extension_forms)
+        # Updates name_to_gui_class with extension classes
+        self.name_to_gui_class = name_to_gui_class
+        self.name_to_gui_class.update(extension_forms)
         # Temporary folder path
         self.temp_dir = tempfile.mkdtemp()
 
@@ -496,12 +496,12 @@ class Application(QMainWindow):
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
                             item.add_group(
-                                group=self.name_class_reference[subgroup](parent=item),
+                                group=self.name_to_gui_class[subgroup](parent=item),
                                 metadata=subsub
                             )
                     else:  # if it's just one item of this class
                         item.add_group(
-                            group=self.name_class_reference[subgroup](parent=item),
+                            group=self.name_to_gui_class[subgroup](parent=item),
                             metadata=self.metadata[grp][subgroup]
                         )
                 self.groups_list.append(item)
@@ -513,12 +513,12 @@ class Application(QMainWindow):
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
                             item.add_group(
-                                group=self.name_class_reference[subgroup](parent=item),
+                                group=self.name_to_gui_class[subgroup](parent=item),
                                 metadata=subsub
                             )
                     else:  # if it's just one item of this class
                         item.add_group(
-                            group=self.name_class_reference[subgroup](parent=item),
+                            group=self.name_to_gui_class[subgroup](parent=item),
                             metadata=self.metadata[grp][subgroup]
                         )
                 self.groups_list.append(item)
