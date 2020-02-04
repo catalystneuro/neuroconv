@@ -554,9 +554,9 @@ class Application(QMainWindow):
         msg = QMessageBox()
         msg.setWindowTitle("About NWB conversion")
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Version: 1.0.0 \n"
+        msg.setText("Version: 0.2.0 \n"
                     "Shared tools for converting data from various formats to NWB:N 2.0.\n ")
-        msg.setInformativeText("<a href='https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools'>NWB conversion tools Github page</a>")
+        msg.setInformativeText("<a href='https://github.com/ben-dichter-consulting/nwbn-conversion-tools'>NWB conversion tools Github page</a>")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
 
