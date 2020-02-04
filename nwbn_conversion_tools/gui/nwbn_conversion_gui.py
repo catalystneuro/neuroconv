@@ -28,7 +28,8 @@ import os
 
 class Application(QMainWindow):
     def __init__(self, metafile=None, conversion_module='', source_paths={},
-                 kwargs_fields={}, extension_forms={}, show_add_del=False):
+                 kwargs_fields={}, extension_modules={}, extension_forms={},
+                 show_add_del=False):
         super().__init__()
         # Dictionary storing source files paths
         self.source_paths = source_paths
@@ -38,6 +39,8 @@ class Application(QMainWindow):
         self.kwargs_fields = kwargs_fields
         # Boolean control to either show/hide the option for add/del Groups
         self.show_add_del = show_add_del
+        # Extension modules
+        self.extension_modules = extension_modules
         # Updates name_to_gui_class with extension classes
         self.name_to_gui_class = name_to_gui_class
         self.name_to_gui_class.update(extension_forms)
@@ -420,10 +423,14 @@ class Application(QMainWindow):
 
     def run_console(self, fname):
         """Loads NWB file on Ipython console"""
+        # Imports extension modules
+        imports_text = ""
+        for k, v in self.extension_modules.items():
+            imports_text += "\nfrom " + k + " import " + ", ".join(v)
         code = """
             import pynwb
             import os
-
+            """ + imports_text + """
             fpath = os.path.join(r'""" + str(fname) + """')
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
             nwbfile = io.read()
@@ -438,11 +445,15 @@ class Application(QMainWindow):
         self.close_nwb_explorer()
         # Write Figure + ipywidgets to a .ipynb file
         nb = nbf.v4.new_notebook()
+        # Imports extension modules
+        imports_text = ""
+        for k, v in self.extension_modules.items():
+            imports_text += "\nfrom " + k + " import " + ", ".join(v)
         code = """
             from nwbwidgets import nwb2widget
             import pynwb
             import os
-
+            """ + imports_text + """
             fpath = os.path.join(r'""" + str(fname) + """')
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
             nwb = io.read()
@@ -647,7 +658,8 @@ if __name__ == '__main__':
 
 # If it is imported as a module
 def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
-                        kwargs_fields={}, extension_forms={}, show_add_del=False):
+                        kwargs_fields={}, extension_modules={}, extension_forms={},
+                        show_add_del=False):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
@@ -657,6 +669,7 @@ def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
         conversion_module=conversion_module,
         source_paths=source_paths,
         kwargs_fields=kwargs_fields,
+        extension_modules=extension_modules,
         extension_forms=extension_forms,
         show_add_del=show_add_del
     )
