@@ -1,11 +1,10 @@
 from PySide2 import QtCore
-from PySide2.QtCore import Qt
 from PySide2.QtWebEngineWidgets import QWebEngineView
 from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
-                             QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
-                             QGridLayout, QSplitter, QLabel, QFileDialog,
-                             QMessageBox, QComboBox, QScrollArea, QStyle,
-                             QGroupBox, QCheckBox, QTabWidget)
+                               QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
+                               QGridLayout, QSplitter, QLabel, QFileDialog,
+                               QMessageBox, QComboBox, QScrollArea, QStyle,
+                               QGroupBox, QCheckBox, QTabWidget)
 from nwbn_conversion_tools.gui.classes.console_widget import ConsoleWidget
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
@@ -155,7 +154,7 @@ class Application(QMainWindow):
                 chk_kwargs.setChecked(v)
                 chk_kwargs.clicked.connect((lambda x: lambda: self.update_kwargs(x[0], x[1]))([ii, k]))
                 setattr(self, 'chk_kwargs_'+str(ii), chk_kwargs)
-                self.grid_kwargs.addWidget(chk_kwargs, ii//4, ii%4, 1, 1)
+                self.grid_kwargs.addWidget(chk_kwargs, ii//4, ii % 4, 1, 1)
             self.group_kwargs.setLayout(self.grid_kwargs)
             l_grid1.addWidget(self.group_kwargs, 4, 0, 1, 6)
 
@@ -243,7 +242,7 @@ class Application(QMainWindow):
         self.vbox_widgets.addLayout(self.grid_widgets)
         self.vbox_widgets.addWidget(self.html)
 
-        #Layout Console
+        # Layout Console
         console_label = QLabel('Ipython console:')
         self.explorer_console = ConsoleWidget(par=self)
         self.explorer_console.setToolTip("nwbfile --> NWB file data")
@@ -382,7 +381,7 @@ class Application(QMainWindow):
             directory='',
             filter="(*py)"
         )
-        if filename is not '':
+        if filename != '':
             self.conversion_module_path = filename
 
     def load_nwb_file(self):
@@ -404,10 +403,10 @@ class Application(QMainWindow):
             directory='',
             filter="(*nwb)"
         )
-        if filename is not '':
-            #Opens file on Ipython console
+        if filename != '':
+            # Opens file on Ipython console
             self.run_console(fname=filename)
-            #Opens file on NWBWidgets
+            # Opens file on NWBWidgets
             self.run_voila(fname=filename)
 
     def close_nwb_explorer(self):
@@ -576,7 +575,7 @@ def is_listening_to_port(process, port):
     for child in process.children(recursive=True):
         # iterate over child connections
         for con in child.connections():
-            if con.status=='LISTEN':
+            if con.status == 'LISTEN':
                 if isinstance(con.laddr.port, int):
                     is_listening = con.laddr.port == port
                 elif isinstance(con.laddr.port, list):
@@ -653,7 +652,7 @@ def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
-    ex = Application(
+    Application(
         metafile=metafile,
         conversion_module=conversion_module,
         source_paths=source_paths,
