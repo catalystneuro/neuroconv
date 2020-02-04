@@ -11,18 +11,16 @@
 # 'class': the pynwb class of this field, valid only for 'link' and 'group' types
 # 'required': whether it is a required or an optional field
 # 'doc': description of the field
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
-                               QGroupBox, QComboBox, QCheckBox, QMessageBox)
-from PySide2.QtGui import QIntValidator, QDoubleValidator
+                               QGroupBox, QComboBox)
+from PySide2.QtGui import QDoubleValidator
 
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class, name_to_pynwb_class
+from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 from collections.abc import Iterable
-import pynwb
-import hdmf
 
 
 class BasicFormCollapsible(CollapsibleBox):
@@ -44,16 +42,13 @@ class BasicFormCollapsible(CollapsibleBox):
         # Loops through list of fields from class and store info in dictionary
         self.fields = self.pynwb_class.__init__.__docval__['args']
         self.fields_info = []
-        ii = 0
         for field in self.fields:
             # Required fields get a red star in their label
             if 'default' not in field:
                 required = True
-                field_label = field['name'] + "<span style='color:"+required_asterisk_color+";'>*</span>:"
             # Optional fields
             else:
                 required = False
-                field_label = field['name'] + ":"
 
             # Skip data types, continue looping
             if 'shape' in field:
@@ -100,17 +95,17 @@ class BasicFormCollapsible(CollapsibleBox):
                 field_label = field['name'] + ":"
 
             # String types
-            if field['type'] is 'str':
+            if field['type'] == 'str':
                 form = QLineEdit('')
             # Float types
-            elif field['type'] is 'float':
+            elif field['type'] == 'float':
                 form = QLineEdit('')
                 form.setValidator(validator_float)
             # Link types
-            elif field['type'] is 'link':
+            elif field['type'] == 'link':
                 form = CustomComboBox()
             # Group types
-            elif field['type'] is 'group':
+            elif field['type'] == 'group':
                 setattr(self, field['name'] + '_layout', QVBoxLayout())
                 form = QGroupBox()
                 form.setLayout(getattr(self, field['name'] + '_layout'))
@@ -222,16 +217,13 @@ class BasicFormFixed(QGroupBox):
         # Loops through list of fields from class and store info in dictionary
         self.fields = self.pynwb_class.__init__.__docval__['args']
         self.fields_info = []
-        ii = 0
         for field in self.fields:
             # Required fields get a red star in their label
             if 'default' not in field:
                 required = True
-                field_label = field['name'] + "<span style='color:"+required_asterisk_color+";'>*</span>:"
             # Optional fields
             else:
                 required = False
-                field_label = field['name'] + ":"
 
             # Skip data types, continue looping
             if 'shape' in field:
@@ -278,17 +270,17 @@ class BasicFormFixed(QGroupBox):
                 field_label = field['name'] + ":"
 
             # String types
-            if field['type'] is 'str':
+            if field['type'] == 'str':
                 form = QLineEdit('')
             # Float types
-            elif field['type'] is 'float':
+            elif field['type'] == 'float':
                 form = QLineEdit('')
                 form.setValidator(validator_float)
             # Link types
-            elif field['type'] is 'link':
+            elif field['type'] == 'link':
                 form = CustomComboBox()
             # Group types
-            elif field['type'] is 'group':
+            elif field['type'] == 'group':
                 setattr(self, field['name'] + '_layout', QVBoxLayout())
                 form = QGroupBox()
                 form.setLayout(getattr(self, field['name'] + '_layout'))
