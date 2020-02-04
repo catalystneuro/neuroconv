@@ -1,10 +1,28 @@
+# Basic classes for forms creation, writing and reading
+#
+# GUI forms take 3 formats:
+# QLineEdit - for strings and floats (e.g. 'name' and 'rate')
+# QComboBox - for links (e.g. 'device')
+# QGroupBox - for groups (e.g. 'optical_channel')
+#
+# The self.fields_info list take dictionaries with the key/value pairs:
+# 'name': name of the field
+# 'type': 'str', 'float', 'link' or 'group'
+# 'class': the pynwb class of this field, valid only for 'link' and 'group' types
+# 'required': whether it is a required or an optional field
+# 'doc': description of the field
+#-------------------------------------------------------------------------------
 from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
-                             QGroupBox, QComboBox, QCheckBox, QMessageBox)
+                               QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from PySide2.QtGui import QIntValidator, QDoubleValidator
+
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwbn_conversion_tools.gui.utils.name_references import name_class_reference
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
+from collections.abc import Iterable
 import pynwb
+import hdmf
 
 
 class BasicFormCollapsible(CollapsibleBox):
@@ -17,18 +35,15 @@ class BasicFormCollapsible(CollapsibleBox):
         self.pynwb_class = pynwb_class
         self.groups_list = []
 
-        self.validator_float = QDoubleValidator()
-        self.basic_forms()
-        self.specific_forms()
+        self.fill_fields_info()
+        self.fields_info_update()
+        self.make_forms()
 
-    def basic_forms(self):
-        """ Initializes forms."""
-        # Forms grid, where each row: [label: form]
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(5, 1)
-
-        # Loops through list of fields to create a form entry for each type
+    def fill_fields_info(self):
+        """Fills the fields info details dictionary."""
+        # Loops through list of fields from class and store info in dictionary
         self.fields = self.pynwb_class.__init__.__docval__['args']
+        self.fields_info = []
         ii = 0
         for field in self.fields:
             # Required fields get a red star in their label
@@ -40,26 +55,65 @@ class BasicFormCollapsible(CollapsibleBox):
                 required = False
                 field_label = field['name'] + ":"
 
+            # Skip data types, continue looping
+            if 'shape' in field:
+                continue
+            # Skip Iterable type, continue looping
+            if field['type'] == Iterable:
+                continue
             # String types
             if field['type'] is str:
-                form = QLineEdit('')
+                self.fields_info.append({
+                    'name': field['name'],
+                    'type': 'str',
+                    'class': None,
+                    'required': required,
+                    'doc': field['doc']
+                })
             # Float types
             elif field['type'] in ('float', float):
-                form = QLineEdit('')
-                form.setValidator(self.validator_float)
-            # hdmf/pynwb classes
-            # elif type(field['type']).__module__ == '':
-            #     form = field['type'](
-            #         parent=,
-            #         pynwb_class=,
-            #     )
-                #     self.lbl_donor = QLabel('donor:')
-                #     self.donor_layout = QVBoxLayout()
-                #     self.donor = QGroupBox()
-                #     self.donor.setLayout(self.donor_layout)
-            # Skip data types, continue looping
+                self.fields_info.append({
+                    'name': field['name'],
+                    'type': 'float',
+                    'class': None,
+                    'required': required,
+                    'doc': field['doc']
+                })
+
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        print('fields_info_update() needs to be defined in inheriting class.')
+
+    def make_forms(self):
+        """ Initializes forms."""
+        # Forms grid, where each row: [label: form]
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(5, 1)
+        validator_float = QDoubleValidator()
+
+        # Loops through fields info to create a form entry for each
+        for ii, field in enumerate(self.fields_info):
+            # Required fields get a red star in their label
+            if field['required']:
+                field_label = field['name'] + "<span style='color:"+required_asterisk_color+";'>*</span>:"
             else:
-                continue
+                field_label = field['name'] + ":"
+
+            # String types
+            if field['type'] is 'str':
+                form = QLineEdit('')
+            # Float types
+            elif field['type'] is 'float':
+                form = QLineEdit('')
+                form.setValidator(validator_float)
+            # Link types
+            elif field['type'] is 'link':
+                form = CustomComboBox()
+            # Group types
+            elif field['type'] is 'group':
+                setattr(self, field['name'] + '_layout', QVBoxLayout())
+                form = QGroupBox()
+                form.setLayout(getattr(self, field['name'] + '_layout'))
 
             lbl = QLabel(field_label)
             setattr(self, 'lbl_' + field['name'], lbl)
@@ -68,18 +122,10 @@ class BasicFormCollapsible(CollapsibleBox):
 
             self.grid.addWidget(getattr(self, 'lbl_' + field['name']), ii, 0, 1, 2)
             self.grid.addWidget(getattr(self, 'form_' + field['name']), ii, 2, 1, 4)
-            ii += 1
         self.setContentLayout(self.grid)
-
-    def specific_forms(self):
-        print('this needs to be implemented by the child class')
 
     def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
-        # self.combo_device.clear()
-        # for grp in self.parent.groups_list:
-        #     if isinstance(grp, GroupDevice):
-        #         self.combo_device.addItem(grp.lin_name.text())
         pass
 
     def read_fields(self):
@@ -107,41 +153,33 @@ class BasicFormCollapsible(CollapsibleBox):
                 for ii in range(group.children()[0].count()):
                     item = group.children()[0].itemAt(ii).widget()
                     metadata[name].append(item.read_fields())
-        print(metadata)
         return metadata
 
     def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        pass
-        # if field['name'] in metadata:
-        #     form_placeholder = metadata[field['name']]
-        # else:
-        #     form_placeholder = "ADDME"
-
-        # self.lin_name.setText(data['name'])
-        # nItems = self.optical_channel_layout.count()
-        # for ind, sps in enumerate(data['optical_channel']):
-        #     if ind >= nItems:
-        #         item = GroupOpticalChannel(self, metadata=data['optical_channel'][ind])
-        #         self.optical_channel_layout.addWidget(item)
-        # if 'description' in data:
-        #     self.lin_description.setText(data['description'])
-        # self.combo_device.clear()
-        # self.combo_device.addItem(data['device'])
-        # self.lin_excitation_lambda.setText(str(data['excitation_lambda']))
-        # self.lin_imaging_rate.setText(str(data['imaging_rate']))
-        # self.lin_indicator.setText(str(data['indicator']))
-        # self.lin_location.setText(str(data['location']))
-        # if 'manifold' in data:
-        #     self.chk_manifold.setChecked(True)
-        # if 'conversion' in data:
-        #     self.lin_conversion.setText(str(data['conversion']))
-        # if 'unit' in data:
-        #     self.lin_unit.setText(data['unit'])
-        # if 'reference_frame' in data:
-        #     self.lin_reference_frame.setText(data['reference_frame'])
-        # self.setContentLayout(self.grid)
-
+        # Loops through fields info list
+        for i, field in enumerate(self.fields_info):
+            # Write metadata to field
+            if field['name'] in metadata:
+                group = self.grid.itemAtPosition(i, 2).widget()
+                # If field form is a string or float
+                if isinstance(group, QLineEdit):
+                    group.setText(str(metadata[field['name']]))
+                # If field form is a link
+                if isinstance(group, QComboBox):
+                    group.clear()
+                    group.addItem(str(metadata[field['name']]))
+                # If field form is a group
+                if isinstance(group, QGroupBox):
+                    n_items = group.children()[0].count()
+                    for ind, sps in enumerate(metadata[field['name']]):
+                        if ind >= n_items:
+                            item_class = name_class_reference[field['class']]
+                            item = item_class(self, metadata={})
+                            item.write_fields(metadata=metadata[field['name']][ind])
+                            self.groups_list.append(item)
+                            getattr(self, field['name'] + '_layout').addWidget(item)
+        self.setContentLayout(self.grid)
 
 
 class BasicFormFixed(QGroupBox):
@@ -155,18 +193,15 @@ class BasicFormFixed(QGroupBox):
         self.pynwb_class = pynwb_class
         self.groups_list = []
 
-        self.validator_float = QDoubleValidator()
-        self.basic_forms()
-        self.specific_forms()
+        self.fill_fields_info()
+        self.fields_info_update()
+        self.make_forms()
 
-    def basic_forms(self):
-        """ Initializes forms."""
-        # Forms grid, where each row: [label: form]
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(5, 1)
-
-        # Loops through list of fields to create a form entry for each type
+    def fill_fields_info(self):
+        """Fills the fields info details dictionary."""
+        # Loops through list of fields from class and store info in dictionary
         self.fields = self.pynwb_class.__init__.__docval__['args']
+        self.fields_info = []
         ii = 0
         for field in self.fields:
             # Required fields get a red star in their label
@@ -178,15 +213,65 @@ class BasicFormFixed(QGroupBox):
                 required = False
                 field_label = field['name'] + ":"
 
+            # Skip data types, continue looping
+            if 'shape' in field:
+                continue
+            # Skip Iterable type, continue looping
+            if field['type'] == Iterable:
+                continue
             # String types
             if field['type'] is str:
-                form = QLineEdit('')
+                self.fields_info.append({
+                    'name': field['name'],
+                    'type': 'str',
+                    'class': None,
+                    'required': required,
+                    'doc': field['doc']
+                })
             # Float types
             elif field['type'] in ('float', float):
-                form = QLineEdit('')
-                form.setValidator(self.validator_float)
+                self.fields_info.append({
+                    'name': field['name'],
+                    'type': 'float',
+                    'class': None,
+                    'required': required,
+                    'doc': field['doc']
+                })
+
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        print('fields_info_update() needs to be defined in inheriting class.')
+
+    def make_forms(self):
+        """ Initializes forms."""
+        # Forms grid, where each row: [label: form]
+        self.grid = QGridLayout()
+        self.grid.setColumnStretch(5, 1)
+        validator_float = QDoubleValidator()
+
+        # Loops through fields info to create a form entry for each
+        for ii, field in enumerate(self.fields_info):
+            # Required fields get a red star in their label
+            if field['required']:
+                field_label = field['name'] + "<span style='color:"+required_asterisk_color+";'>*</span>:"
             else:
-                continue
+                field_label = field['name'] + ":"
+
+            # String types
+            if field['type'] is 'str':
+                form = QLineEdit('')
+            # Float types
+            elif field['type'] is 'float':
+                form = QLineEdit('')
+                form.setValidator(validator_float)
+            # Link types
+            elif field['type'] is 'link':
+                form = CustomComboBox()
+            # Group types
+            elif field['type'] is 'group':
+                setattr(self, field['name'] + '_layout', QVBoxLayout())
+                form = QGroupBox()
+                form.setLayout(getattr(self, field['name'] + '_layout'))
 
             lbl = QLabel(field_label)
             setattr(self, 'lbl_' + field['name'], lbl)
@@ -195,11 +280,7 @@ class BasicFormFixed(QGroupBox):
 
             self.grid.addWidget(getattr(self, 'lbl_' + field['name']), ii, 0, 1, 2)
             self.grid.addWidget(getattr(self, 'form_' + field['name']), ii, 2, 1, 4)
-            ii += 1
         self.setLayout(self.grid)
-
-    def specific_forms(self):
-        print('this needs to be implemented by the child class')
 
     def refresh_objects_references(self, metadata=None):
         """Refreshes references with existing objects in parent group."""
@@ -234,4 +315,35 @@ class BasicFormFixed(QGroupBox):
 
     def write_fields(self, metadata={}):
         """Reads structured dictionary and write in form fields."""
-        pass
+        # Loops through fields info list
+        for i, field in enumerate(self.fields_info):
+            # Write metadata to field
+            if field['name'] in metadata:
+                group = self.grid.itemAtPosition(i, 2).widget()
+                # If field form is a string or float
+                if isinstance(group, QLineEdit):
+                    group.setText(str(metadata[field['name']]))
+                # If field form is a link
+                if isinstance(group, QComboBox):
+                    group.clear()
+                    group.addItem(str(metadata[field['name']]))
+                # If field form is a group
+                if isinstance(group, QGroupBox):
+                    n_items = group.children()[0].count()
+                    for ind, sps in enumerate(metadata[field['name']]):
+                        if ind >= n_items:
+                            item_class = name_class_reference[field['class']]
+                            item = item_class(self, metadata={})
+                            item.write_fields(metadata=metadata[field['name']][ind])
+                            self.groups_list.append(item)
+                            getattr(self, field['name'] + '_layout').addWidget(item)
+        self.setLayout(self.grid)
+
+
+class CustomComboBox(QComboBox):
+    def __init__(self):
+        """Class created to ignore mouse wheel events on combobox."""
+        super().__init__()
+
+    def wheelEvent(self, event):
+        event.ignore()
