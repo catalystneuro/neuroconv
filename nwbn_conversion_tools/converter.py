@@ -4,6 +4,8 @@ from typing import Dict
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.file import Subject
 
+from spikeextractors import SortingExtractor, RecordingExtractor, NwbSortingExtractor, NwbRecordingExtractor
+
 
 class NWBConverter:
     """
@@ -19,11 +21,7 @@ class NWBConverter:
         nwbfile: pynwb.NWBFile
         """
         if nwbfile is None:
-            nwbfile_args = dict(
-                identifier=str(uuid.uuid4()),
-            )
-            nwbfile_args.update(metadata['NWBFile'])
-            self.nwbfile = NWBFile(**nwbfile_args)
+            self.nwbfile = self.create_NWBFile(**metadata['NWBFile'])
         else:
             self.nwbfile = nwbfile
 
@@ -38,6 +36,11 @@ class NWBConverter:
 
         if 'Icephys' in metadata and ('Electrode' in metadata['Icephys']):
             self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
+
+    def create_NWBFile(self, **NWBFile_metadata):
+        nwbfile_args = dict(identifier=str(uuid.uuid4()),)
+        nwbfile_args.update(**NWBFile_metadata)
+        return NWBFile(**nwbfile_args)
 
     def create_devices(self, device_meta) -> Dict:
         """
@@ -133,3 +136,9 @@ class NWBConverter:
             if description is None:
                 description = name
             return self.nwbfile.create_processing_module(name, description)
+
+    def add_sortingxtractor(self, sortingextractor: SortingExtractor):
+        self.nwbfile = NwbSortingExtractor.read_sorting(sortingextractor, self.nwbfile)
+
+    def add_recordingextractor(self, recordingextractor: RecordingExtractor):
+        self.nwbfile = NwbSortingExtractor.read_recording(recordingextractor, self.nwbfile)
