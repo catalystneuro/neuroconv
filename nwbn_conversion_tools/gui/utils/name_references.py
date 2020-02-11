@@ -20,8 +20,8 @@ name_to_gui_class = {
     'Fluorescence': gui_modules.forms_ophys.GroupFluorescence,
     'GrayscaleVolume': gui_modules.forms_ophys.GroupGrayscaleVolume,
     # Ecephys
-    'ElectrodeGroup': gui_modules.forms_ecephys.GroupElectrodeGroup,
     'ElectricalSeries': gui_modules.forms_ecephys.GroupElectricalSeries,
+    'ElectrodeGroup': gui_modules.forms_ecephys.GroupElectrodeGroup,
     'SpikeEventSeries': gui_modules.forms_ecephys.GroupSpikeEventSeries,
     'EventDetection': gui_modules.forms_ecephys.GroupEventDetection,
     'EventWaveform': gui_modules.forms_ecephys.GroupEventWaveform,

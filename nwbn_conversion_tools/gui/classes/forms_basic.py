@@ -17,7 +17,6 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
 from PySide2.QtGui import QDoubleValidator
 
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 from collections.abc import Iterable
@@ -32,9 +31,14 @@ class BasicFormCollapsible(CollapsibleBox):
         self.metadata = metadata
         self.pynwb_class = pynwb_class
         self.groups_list = []
+        from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
+        self.name_to_gui_class = name_to_gui_class
 
+        # Forms-creation basic info instructions
         self.fill_fields_info()
+        # Updates specific fields from specific classes that inherit BasicFormCollapsible
         self.fields_info_update()
+        # Constructs GUI forms using self.fields_info dictionary
         self.make_forms()
 
     def fill_fields_info(self):
@@ -128,17 +132,18 @@ class BasicFormCollapsible(CollapsibleBox):
             if field['type'] == 'link':
                 form = getattr(self, 'form_' + field['name'])
                 form.clear()
-                form_gui_class = name_to_gui_class[field['class']]
+                form_gui_class = self.name_to_gui_class[field['class']]
                 # Search through parent
                 for grp in self.parent.groups_list:
                     # Adds existing specfic groups to combobox
                     if isinstance(grp, form_gui_class):
                         getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
                 # Search through grandparent
-                for grp in self.parent.parent.groups_list:
-                    # Adds existing specfic groups to combobox
-                    if isinstance(grp, form_gui_class):
-                        getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
+                if hasattr(self.parent.parent, 'groups_list'):
+                    for grp in self.parent.parent.groups_list:
+                        # Adds existing specfic groups to combobox
+                        if isinstance(grp, form_gui_class):
+                            getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
         # Refreshes children
         for child in self.groups_list:
             child.refresh_objects_references(metadata=metadata)
@@ -189,7 +194,7 @@ class BasicFormCollapsible(CollapsibleBox):
                     n_items = group.children()[0].count()
                     for ind, sps in enumerate(metadata[field['name']]):
                         if ind >= n_items:
-                            item_class = name_to_gui_class[field['class']]
+                            item_class = self.name_to_gui_class[field['class']]
                             item = item_class(self, metadata={})
                             item.write_fields(metadata=metadata[field['name']][ind])
                             self.groups_list.append(item)
@@ -207,6 +212,8 @@ class BasicFormFixed(QGroupBox):
         self.metadata = metadata
         self.pynwb_class = pynwb_class
         self.groups_list = []
+        from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
+        self.name_to_gui_class = name_to_gui_class
 
         self.fill_fields_info()
         self.fields_info_update()
@@ -304,17 +311,18 @@ class BasicFormFixed(QGroupBox):
             if field['type'] == 'link':
                 form = getattr(self, 'form_' + field['name'])
                 form.clear()
-                form_gui_class = name_to_gui_class[field['class']]
+                form_gui_class = self.name_to_gui_class[field['class']]
                 # Search through parent
                 for grp in self.parent.groups_list:
                     # Adds existing specfic groups to combobox
                     if isinstance(grp, form_gui_class):
                         getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
                 # Search through grandparent
-                for grp in self.parent.parent.groups_list:
-                    # Adds existing specfic groups to combobox
-                    if isinstance(grp, form_gui_class):
-                        getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
+                if hasattr(self.parent.parent, 'groups_list'):
+                    for grp in self.parent.parent.groups_list:
+                        # Adds existing specfic groups to combobox
+                        if isinstance(grp, form_gui_class):
+                            getattr(self, 'form_' + field['name']).addItem(grp.form_name.text())
         # Refreshes children
         for child in self.groups_list:
             child.refresh_objects_references(metadata=metadata)
@@ -365,7 +373,7 @@ class BasicFormFixed(QGroupBox):
                     n_items = group.children()[0].count()
                     for ind, sps in enumerate(metadata[field['name']]):
                         if ind >= n_items:
-                            item_class = name_to_gui_class[field['class']]
+                            item_class = self.name_to_gui_class[field['class']]
                             item = item_class(self, metadata={})
                             item.write_fields(metadata=metadata[field['name']][ind])
                             self.groups_list.append(item)

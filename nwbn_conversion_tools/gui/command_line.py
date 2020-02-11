@@ -4,6 +4,7 @@
 from nwbn_conversion_tools.gui.nwbn_conversion_gui import nwbn_conversion_gui
 import os
 
+
 def main():
     here = os.path.dirname(os.path.realpath(__file__))
     metafile = os.path.join(here, 'template_metafile.yml')

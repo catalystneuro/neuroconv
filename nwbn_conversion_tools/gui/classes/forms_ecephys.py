@@ -1,77 +1,96 @@
 from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
-                             QGroupBox, QComboBox, QCheckBox, QMessageBox)
+                               QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible
+import pynwb
 from itertools import groupby
 
 
-class GroupElectrodeGroup(QGroupBox):
-    def __init__(self, parent):
+class GroupElectrodeGroup(BasicFormCollapsible):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ecephys.ElectrodeGroup fields filling form."""
-        super().__init__()
-        self.setTitle('ElectrodeGroup')
-        self.parent = parent
-        self.group_type = 'ElectrodeGroup'
+        super().__init__(parent=parent, pynwb_class=pynwb.ecephys.ElectrodeGroup, metadata=metadata)
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_name = QLineEdit('ElectrodeGroup')
-        self.form_name.setToolTip("The unique name of this ElectrodeGroup.")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupElectrodeGroup):
-                nInstances += 1
-        if nInstances > 0:
-            self.form_name.setText('ElectrodeGroup'+str(nInstances))
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        specific_fields = [
+            {'name': 'device',
+             'type': 'link',
+             'class': 'Device',
+             'required': True,
+             'doc': 'The device that was used to record'},
+        ]
+        self.fields_info.extend(specific_fields)
 
-        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_description = QLineEdit('description')
-        self.form_description.setToolTip("Description of this electrode group")
 
-        self.lbl_location = QLabel('location<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_location = QLineEdit('location')
-        self.form_location.setToolTip("Location of this electrode group")
-
-        self.lbl_device = QLabel('device<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.combo_device = CustomComboBox()
-        self.combo_device.setToolTip("The device that was used to record from this electrode group")
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(4, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
-        self.grid.addWidget(self.form_description, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_location, 2, 0, 1, 2)
-        self.grid.addWidget(self.form_location, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_device, 3, 0, 1, 2)
-        self.grid.addWidget(self.combo_device, 3, 2, 1, 4)
-        self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        self.combo_device.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupDevice):
-                self.combo_device.addItem(grp.form_name.text())
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['description'] = self.form_description.text()
-        data['location'] = self.form_location.text()
-        data['device'] = self.combo_device.currentText()
-        return data
-
-    def write_fields(self, metadata={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(metadata['name'])
-        self.form_description.setText(metadata['description'])
-        self.form_location.setText(metadata['location'])
-        self.combo_device.clear()
-        self.combo_device.addItem(metadata['device'])
+# class GroupElectrodeGroup(QGroupBox):
+#     def __init__(self, parent):
+#         """Groupbox for pynwb.ecephys.ElectrodeGroup fields filling form."""
+#         super().__init__()
+#         self.setTitle('ElectrodeGroup')
+#         self.parent = parent
+#         self.group_type = 'ElectrodeGroup'
+#
+#         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+#         self.form_name = QLineEdit('ElectrodeGroup')
+#         self.form_name.setToolTip("The unique name of this ElectrodeGroup.")
+#         nInstances = 0
+#         for grp in self.parent.groups_list:
+#             if isinstance(grp,  GroupElectrodeGroup):
+#                 nInstances += 1
+#         if nInstances > 0:
+#             self.form_name.setText('ElectrodeGroup'+str(nInstances))
+#
+#         self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
+#         self.form_description = QLineEdit('description')
+#         self.form_description.setToolTip("Description of this electrode group")
+#
+#         self.lbl_location = QLabel('location<span style="color:'+required_asterisk_color+';">*</span>:')
+#         self.form_location = QLineEdit('location')
+#         self.form_location.setToolTip("Location of this electrode group")
+#
+#         self.lbl_device = QLabel('device<span style="color:'+required_asterisk_color+';">*</span>:')
+#         self.combo_device = CustomComboBox()
+#         self.combo_device.setToolTip("The device that was used to record from this electrode group")
+#
+#         self.grid = QGridLayout()
+#         self.grid.setColumnStretch(4, 1)
+#         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+#         self.grid.addWidget(self.form_name, 0, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
+#         self.grid.addWidget(self.form_description, 1, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_location, 2, 0, 1, 2)
+#         self.grid.addWidget(self.form_location, 2, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_device, 3, 0, 1, 2)
+#         self.grid.addWidget(self.combo_device, 3, 2, 1, 4)
+#         self.setLayout(self.grid)
+#
+#     def refresh_objects_references(self, metadata=None):
+#         """Refreshes references with existing objects in parent group."""
+#         self.combo_device.clear()
+#         for grp in self.parent.groups_list:
+#             if isinstance(grp, GroupDevice):
+#                 self.combo_device.addItem(grp.form_name.text())
+#
+#     def read_fields(self):
+#         """Reads fields and returns them structured in a dictionary."""
+#         data = {}
+#         data['name'] = self.form_name.text()
+#         data['description'] = self.form_description.text()
+#         data['location'] = self.form_location.text()
+#         data['device'] = self.combo_device.currentText()
+#         return data
+#
+#     def write_fields(self, metadata={}):
+#         """Reads structured dictionary and write in form fields."""
+#         self.form_name.setText(metadata['name'])
+#         self.form_description.setText(metadata['description'])
+#         self.form_location.setText(metadata['location'])
+#         self.combo_device.clear()
+#         self.combo_device.addItem(metadata['device'])
 
 
 #class GroupElectricalSeries(QGroupBox):
