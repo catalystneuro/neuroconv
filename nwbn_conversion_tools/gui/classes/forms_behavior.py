@@ -5,6 +5,8 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupIntervalSeries
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible
+import pynwb
 from itertools import groupby
 
 
@@ -240,7 +242,6 @@ class GroupBehavioralEpochs(QGroupBox):
         self.form_name.setText(data['name'])
 
 
-#class GroupBehavioralEvents(QGroupBox):
 class GroupBehavioralEvents(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.behavior.BehavioralEvents fields filling form."""
@@ -287,51 +288,68 @@ class GroupBehavioralEvents(CollapsibleBox):
         self.setContentLayout(self.grid)
 
 
-class GroupBehavioralTimeSeries(QGroupBox):
-    def __init__(self, parent):
+class GroupBehavioralTimeSeries(BasicFormCollapsible):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.behavior.BehavioralTimeSeries fields filling form."""
-        super().__init__()
-        self.setTitle('BehavioralTimeSeries')
-        self.parent = parent
-        self.group_type = 'BehavioralTimeSeries'
+        super().__init__(parent=parent, pynwb_class=pynwb.behavior.BehavioralTimeSeries, metadata=metadata)
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_name = QLineEdit('BehavioralTimeSeries')
-        self.form_name.setToolTip("The unique name of this BehavioralTimeSeries")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupBehavioralTimeSeries):
-                nInstances += 1
-        if nInstances > 0:
-            self.form_name.setText('BehavioralTimeSeries'+str(nInstances))
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        specific_fields = [
+            {'name': 'time_series',
+             'type': 'group',
+             'class': 'TimeSeries',
+             'required': True,
+             'doc': 'TimeSeries to store in this interface'},
+        ]
+        self.fields_info.extend(specific_fields)
 
-        self.lbl_time_series = QLabel('time_series:')
-        self.time_series = GroupTimeSeries(self)
-        # self.combo_time_series = CustomComboBox()
-        # self.combo_time_series.setToolTip("TimeSeries to store in this interface")
 
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.time_series, 1, 2, 1, 4)
-        self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        pass
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['time_series'] = self.time_series.read_fields()
-        return data
-
-    def write_fields(self, data={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(data['name'])
+# class GroupBehavioralTimeSeries(QGroupBox):
+#     def __init__(self, parent):
+#         """Groupbox for pynwb.behavior.BehavioralTimeSeries fields filling form."""
+#         super().__init__()
+#         self.setTitle('BehavioralTimeSeries')
+#         self.parent = parent
+#         self.group_type = 'BehavioralTimeSeries'
+#
+#         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+#         self.form_name = QLineEdit('BehavioralTimeSeries')
+#         self.form_name.setToolTip("The unique name of this BehavioralTimeSeries")
+#         nInstances = 0
+#         for grp in self.parent.groups_list:
+#             if isinstance(grp,  GroupBehavioralTimeSeries):
+#                 nInstances += 1
+#         if nInstances > 0:
+#             self.form_name.setText('BehavioralTimeSeries'+str(nInstances))
+#
+#         self.lbl_time_series = QLabel('time_series:')
+#         self.time_series = GroupTimeSeries(self)
+#         # self.combo_time_series = CustomComboBox()
+#         # self.combo_time_series.setToolTip("TimeSeries to store in this interface")
+#
+#         self.grid = QGridLayout()
+#         self.grid.setColumnStretch(2, 1)
+#         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+#         self.grid.addWidget(self.form_name, 0, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
+#         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
+#         self.setLayout(self.grid)
+#
+#     def refresh_objects_references(self, metadata=None):
+#         """Refreshes references with existing objects in parent group."""
+#         pass
+#
+#     def read_fields(self):
+#         """Reads fields and returns them structured in a dictionary."""
+#         data = {}
+#         data['name'] = self.form_name.text()
+#         data['time_series'] = self.time_series.read_fields()
+#         return data
+#
+#     def write_fields(self, data={}):
+#         """Reads structured dictionary and write in form fields."""
+#         self.form_name.setText(data['name'])
 
 
 class GroupPupilTracking(QGroupBox):
@@ -578,42 +596,17 @@ class GroupBehavior(QGroupBox):
         self.grid.addLayout(self.vbox1, 2, 0, 1, 6)
         self.setLayout(self.grid)
 
-    def add_group(self, group_type, metadata=None):
+    def add_group(self, group, metadata=None):
         """Adds group form."""
-        if group_type == 'combo':
-            group_type = str(self.combo1.currentText())
-        if group_type == 'Device':
-            item = GroupDevice(self)
-        elif group_type == 'IntervalSeries':
-            item = GroupIntervalSeries(self)
-        elif group_type == 'TimeSeries':
-            item = GroupTimeSeries(self)
-        elif group_type == 'SpatialSeries':
-            item = GroupSpatialSeries(self)
-        elif group_type == 'BehavioralEpochs':
-            item = GroupBehavioralEpochs(self)
-        elif group_type == 'BehavioralEvents':
-            item = GroupBehavioralEvents(self)
-        elif group_type == 'BehavioralTimeSeries':
-            item = GroupBehavioralTimeSeries(self)
-        elif group_type == 'PupilTracking':
-            item = GroupPupilTracking(self)
-        elif group_type == 'EyeTracking':
-            item = GroupEyeTracking(self)
-        elif group_type == 'CompassDirection':
-            item = GroupCompassDirection(self)
-        elif group_type == 'Position':
-            item = GroupPosition(self)
-        if group_type != '-- Add group --':
-            if metadata is not None:
-                item.write_fields(data=metadata)
-            item.form_name.textChanged.connect(self.refresh_del_combo)
-            self.groups_list.append(item)
-            nWidgetsVbox = self.vbox1.count()
-            self.vbox1.insertWidget(nWidgetsVbox-1, item)  # insert before the stretch
-            self.combo1.setCurrentIndex(0)
-            self.combo2.addItem(item.form_name.text())
-            self.refresh_children(metadata=metadata)
+        if metadata is not None:
+            group.write_fields(metadata=metadata)
+        group.form_name.textChanged.connect(self.refresh_del_combo)
+        self.groups_list.append(group)
+        nWidgetsVbox = self.vbox1.count()
+        self.vbox1.insertWidget(nWidgetsVbox-1, group)  # insert before the stretch
+        self.combo1.setCurrentIndex(0)
+        #self.combo2.addItem(group.form_name.text())
+        self.refresh_children(metadata=metadata)
 
     def del_group(self, group_name):
         """Deletes group form by name."""

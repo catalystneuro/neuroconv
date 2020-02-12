@@ -6,7 +6,7 @@ from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 class GroupTimeSeries(QGroupBox):
 #class GroupTimeSeries(CollapsibleBox):
-    def __init__(self, parent):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.base.TimeSeries fields filling form."""
         super().__init__()#title='TimeSeries', parent=parent)
         self.setTitle('TimeSeries')
@@ -64,22 +64,6 @@ class GroupTimeSeries(QGroupBox):
         self.form_description.setPlaceholderText("description")
         self.form_description.setToolTip(" Description of this TimeSeries dataset")
 
-        self.lbl_control = QLabel('control:')
-        self.chk_control = QCheckBox("Get from source file")
-        self.chk_control.setChecked(False)
-        self.chk_control.setToolTip(
-            "Numerical labels that apply to each element in data.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
-        self.lbl_control_description = QLabel('control_description:')
-        self.chk_control_description = QCheckBox("Get from source file")
-        self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip(
-            "Description of each control value.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
         self.grid = QGridLayout()
         self.grid.setColumnStretch(2, 1)
         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
@@ -100,10 +84,6 @@ class GroupTimeSeries(QGroupBox):
         self.grid.addWidget(self.form_comments, 8, 2, 1, 4)
         self.grid.addWidget(self.lbl_description, 9, 0, 1, 2)
         self.grid.addWidget(self.form_description, 9, 2, 1, 4)
-        self.grid.addWidget(self.lbl_control, 10, 0, 1, 2)
-        self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
-        self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
-        self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
         self.setLayout(self.grid)
 
     def refresh_objects_references(self, metadata=None):
@@ -134,10 +114,6 @@ class GroupTimeSeries(QGroupBox):
             print(error)
         data['comments'] = self.form_comments.text()
         data['description'] = self.form_description.text()
-        if self.chk_control.isChecked():
-            data['control'] = True
-        if self.chk_control_description.isChecked():
-            data['control_description'] = True
         return data
 
     def write_fields(self, metadata={}):

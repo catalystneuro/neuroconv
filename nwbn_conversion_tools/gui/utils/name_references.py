@@ -7,6 +7,8 @@ import pynwb
 # It can be updated by extensions at the __init__ of nwbn_conversion_gui.py
 name_to_gui_class = {
     'Device': gui_modules.forms_general.GroupDevice,
+    # Base
+    'TimeSeries': gui_modules.forms_base.GroupTimeSeries,
     # Ophys
     'OpticalChannel': gui_modules.forms_ophys.GroupOpticalChannel,
     'ImagingPlane': gui_modules.forms_ophys.GroupImagingPlane,

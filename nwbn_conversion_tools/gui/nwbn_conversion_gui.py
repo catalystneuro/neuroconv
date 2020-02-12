@@ -539,11 +539,15 @@ class Application(QMainWindow):
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
-                            item.add_group(group_type=subgroup,
-                                           metadata=subsub)
+                            item.add_group(
+                                group=self.name_to_gui_class[subgroup](parent=item),
+                                metadata=subsub
+                            )
                     else:  # if it's just one item of this class
-                        item.add_group(group_type=subgroup,
-                                       metadata=self.metadata[grp][subgroup])
+                        item.add_group(
+                            group=self.name_to_gui_class[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
         nItems = self.l_vbox1.count()

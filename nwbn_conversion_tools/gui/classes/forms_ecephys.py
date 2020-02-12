@@ -93,20 +93,18 @@ class GroupElectrodeGroup(BasicFormCollapsible):
 #         self.combo_device.addItem(metadata['device'])
 
 
-#class GroupElectricalSeries(QGroupBox):
 class GroupElectricalSeries(CollapsibleBox):
     def __init__(self, parent):
         """Groupbox for pynwb.ecephys.ElectricalSeries fields filling form."""
         super().__init__(title="ElectricalSeries", parent=parent)
-        #self.setTitle('ElectricalSeries')
         self.parent = parent
         self.group_type = 'ElectricalSeries'
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lbl_name = QLabel('name<span style="color:' + required_asterisk_color + ';">*</span>:')
         self.form_name = QLineEdit('ElectricalSeries')
         self.form_name.setToolTip("The unique name of this ElectricalSeries dataset.")
 
-        self.lbl_electrodes = QLabel('electrodes<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lbl_electrodes = QLabel('electrodes<span style="color:' + required_asterisk_color + ';">*</span>:')
         self.chk_electrodes = QCheckBox("Get from source file")
         self.chk_electrodes.setChecked(True)
         self.chk_electrodes.setToolTip(
@@ -767,11 +765,12 @@ class GroupEcephys(QGroupBox):
         grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
         # initiate lists as values for groups keys with count > 1
         for k, v in grp_type_count.items():
-            if v > 1 or k == 'Device' or k == 'ElectrodeGroup':
+            if v > 1 or k == 'Device' or k == 'ElectrodeGroup' or k == 'ElectricalSeries':
                 data[k] = []
         # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            if grp_type_count[grp.group_type] > 1 or grp.group_type == 'Device' or grp.group_type == 'ElectrodeGroup':
+            if grp_type_count[grp.group_type] > 1 or grp.group_type == 'Device' \
+               or grp.group_type == 'ElectrodeGroup' or grp.group_type == 'ElectricalSeries':
                 data[grp.group_type].append(grp.read_fields())
             else:
                 data[grp.group_type] = grp.read_fields()
