@@ -128,13 +128,13 @@ class Application(QMainWindow):
             ii = -1
             for k, v in self.source_paths.items():
                 ii += 1
-                lbl_src = QLabel(k+':')
-                setattr(self, 'lbl_src_'+str(ii), lbl_src)
+                lbl_src = QLabel(k + ':')
+                setattr(self, 'lbl_src_' + str(ii), lbl_src)
                 lin_src = QLineEdit('')
-                setattr(self, 'lin_src_'+str(ii), lin_src)
+                setattr(self, 'lin_src_' + str(ii), lin_src)
                 btn_src = QPushButton()
                 btn_src.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-                setattr(self, 'btn_src_'+str(ii), btn_src)
+                setattr(self, 'btn_src_' + str(ii), btn_src)
                 if v['type'] == 'file':
                     btn_src.clicked.connect((lambda x: lambda: self.load_source_files(x[0], x[1]))([ii, k]))
                 else:
@@ -156,8 +156,8 @@ class Application(QMainWindow):
                 chk_kwargs = QCheckBox(k)
                 chk_kwargs.setChecked(v)
                 chk_kwargs.clicked.connect((lambda x: lambda: self.update_kwargs(x[0], x[1]))([ii, k]))
-                setattr(self, 'chk_kwargs_'+str(ii), chk_kwargs)
-                self.grid_kwargs.addWidget(chk_kwargs, ii//4, ii % 4, 1, 1)
+                setattr(self, 'chk_kwargs_' + str(ii), chk_kwargs)
+                self.grid_kwargs.addWidget(chk_kwargs, ii // 4, ii % 4, 1, 1)
             self.group_kwargs.setLayout(self.grid_kwargs)
             l_grid1.addWidget(self.group_kwargs, 4, 0, 1, 6)
 
@@ -323,7 +323,7 @@ class Application(QMainWindow):
 
     def update_kwargs(self, ind, key):
         """Updates the boolean values for keyword arguments."""
-        chk_kw = getattr(self, 'chk_kwargs_'+str(ind))
+        chk_kw = getattr(self, 'chk_kwargs_' + str(ind))
         self.kwargs_fields[key] = chk_kw.isChecked()
 
     def load_source_files(self, ind, key):
@@ -338,7 +338,7 @@ class Application(QMainWindow):
             all_names = ''
             for fname in filenames:
                 all_names += fname + ', '
-            lin_src = getattr(self, 'lin_src_'+str(ind))
+            lin_src = getattr(self, 'lin_src_' + str(ind))
             lin_src.setText(all_names[:-2])
             self.source_paths[key]['path'] = all_names[:-2]
 
@@ -350,7 +350,7 @@ class Application(QMainWindow):
             directory=''
         )
         if len(dirname):
-            lin_src = getattr(self, 'lin_src_'+str(ind))
+            lin_src = getattr(self, 'lin_src_' + str(ind))
             lin_src.setText(dirname)
             self.source_paths[key]['path'] = dirname
 
@@ -460,15 +460,15 @@ class Application(QMainWindow):
             nwb2widget(nwb)
             """
         nb['cells'] = [nbf.v4.new_code_cell(code)]
-        nbpath = os.path.join(self.temp_dir, Path(fname).stem+'.ipynb')
+        nbpath = os.path.join(self.temp_dir, Path(fname).stem + '.ipynb')
         nbf.write(nb, nbpath)
         # Run instance of Voila with the just saved .ipynb file
         port = get_free_port()
         self.voilathread = voilaThread(parent=self, port=port, nbpath=nbpath)
         self.voilathread.start()
         # Load Voila instance on GUI
-        self.update_html(url='http://localhost:'+str(port))
-        #self.parent.write_to_logger(txt=self.name + " ready!")
+        self.update_html(url='http://localhost:' + str(port))
+        # self.parent.write_to_logger(txt=self.name + " ready!")
 
     def update_html(self, url):
         """Loads temporary HTML file and render it."""
@@ -607,7 +607,7 @@ class voilaThread(QtCore.QThread):
         self.nbpath = nbpath
 
     def run(self):
-        os.system("voila " + self.nbpath + " --no-browser --port "+str(self.port))
+        os.system("voila " + self.nbpath + " --no-browser --port " + str(self.port))
 
     def stop(self):
         pid = os.getpid()
