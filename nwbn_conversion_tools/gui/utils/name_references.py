@@ -39,6 +39,9 @@ name_to_gui_class = {
     'EyeTracking': gui_modules.forms_behavior.GroupEyeTracking,
     'CompassDirection': gui_modules.forms_behavior.GroupCompassDirection,
     'Position': gui_modules.forms_behavior.GroupPosition,
+    # Ogen
+    'OptogeneticStimulusSite': gui_modules.forms_ogen.GroupOptogeneticStimulusSite,
+    'OptogeneticSeries': gui_modules.forms_ogen.GroupOptogeneticSeries,
 }
 
 # This carries the reference mapping between pynwb groups names and their

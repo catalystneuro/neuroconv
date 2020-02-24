@@ -10,6 +10,7 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupS
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
+from nwbn_conversion_tools.gui.classes.forms_ogen import GroupOgen
 from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
 
 import numpy as np
@@ -535,6 +536,23 @@ class Application(QMainWindow):
                 self.l_vbox1.addWidget(item)
             if grp == 'Behavior':
                 item = GroupBehavior(self)
+                for subgroup in self.metadata[grp]:
+                    # if many items of same class, in list
+                    if isinstance(self.metadata[grp][subgroup], list):
+                        for subsub in self.metadata[grp][subgroup]:
+                            item.add_group(
+                                group=self.name_to_gui_class[subgroup](parent=item),
+                                metadata=subsub
+                            )
+                    else:  # if it's just one item of this class
+                        item.add_group(
+                            group=self.name_to_gui_class[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
+                self.groups_list.append(item)
+                self.l_vbox1.addWidget(item)
+            if grp == 'Ogen':
+                item = GroupOgen(self)
                 for subgroup in self.metadata[grp]:
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
