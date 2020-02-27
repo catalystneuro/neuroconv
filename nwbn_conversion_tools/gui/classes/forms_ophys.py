@@ -1,239 +1,42 @@
 from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
-                             QGroupBox, QComboBox, QCheckBox, QMessageBox)
-from PySide2.QtGui import QDoubleValidator
+                               QGroupBox, QComboBox, QCheckBox, QMessageBox)
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible, BasicFormFixed
+import pynwb
 from itertools import groupby
 
 
-class GroupOpticalChannel(QGroupBox):
+class GroupOpticalChannel(BasicFormFixed):
     def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.OpticalChannel fields filling form."""
-        super().__init__()
-        self.setTitle('OpticalChannel')
-        self.parent = parent
-        self.group_type = 'OpticalChannel'
+        super().__init__(parent=parent, pynwb_class=pynwb.ophys.OpticalChannel, metadata=metadata)
 
-        validator_float = QDoubleValidator()
-
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        if 'name' in metadata:
-            self.form_name = QLineEdit(metadata['name'])
-        else:
-            self.form_name = QLineEdit('OpticalChannel')
-        self.form_name.setToolTip("the name of this optical channel")
-
-        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
-        if 'description' in metadata:
-            self.form_description = QLineEdit(metadata['description'])
-        else:
-            self.form_description = QLineEdit('description')
-        self.form_description.setToolTip("Any notes or comments about the channel")
-
-        self.lbl_emission_lambda = QLabel('emission_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
-        if 'emission_lambda' in metadata:
-            self.form_emission_lambda = QLineEdit(str(metadata['emission_lambda']))
-        else:
-            self.form_emission_lambda = QLineEdit('0.0')
-        self.form_emission_lambda.setToolTip("Emission lambda for channel")
-        self.form_emission_lambda.setValidator(validator_float)
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_description, 1, 0, 1, 2)
-        self.grid.addWidget(self.form_description, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_emission_lambda, 2, 0, 1, 2)
-        self.grid.addWidget(self.form_emission_lambda, 2, 2, 1, 4)
-        self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
         pass
 
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['description'] = self.form_description.text()
-        try:
-            data['emission_lambda'] = float(self.form_emission_lambda.text())
-        except ValueError as error:
-            print(error)
-            data['emission_lambda'] = 0.0
-        return data
 
-    def write_fields(self, metadata={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(metadata['name'])
-        self.form_description.setText(metadata['description'])
-        self.form_emission_lambda.setText(str(metadata['emission_lambda']))
-
-
-#class GroupImagingPlane(QGroupBox):
-class GroupImagingPlane(CollapsibleBox):
-    def __init__(self, parent):
+class GroupImagingPlane(BasicFormCollapsible):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.ophys.ImagingPlane fields filling form."""
-        super().__init__(title='ImagingPlane', parent=parent)
-        #self.setTitle('ImagingPlane')
-        self.parent = parent
-        self.group_type = 'ImagingPlane'
+        super().__init__(parent=parent, pynwb_class=pynwb.ophys.ImagingPlane, metadata=metadata)
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_name = QLineEdit('ImagingPlane')
-        self.form_name.setToolTip("The name of this ImagingPlane")
-
-        self.lbl_optical_channel = QLabel('optical_channel<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.optical_channel_layout = QVBoxLayout()
-        self.optical_channel = QGroupBox()
-        self.optical_channel.setLayout(self.optical_channel_layout)
-        self.optical_channel.setToolTip(
-            "One of possibly many groups storing channels pecific data")
-
-        self.lbl_description = QLabel('description<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_description = QLineEdit('description')
-        self.form_description.setToolTip("Description of this ImagingPlane")
-
-        self.lbl_device = QLabel('device<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.combo_device = CustomComboBox()
-        self.combo_device.setToolTip("The device that was used to record")
-
-        self.lbl_excitation_lambda = QLabel('excitation_lambda<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_excitation_lambda = QLineEdit('0.0')
-        self.form_excitation_lambda.setToolTip("Excitation wavelength in nm")
-
-        self.lbl_imaging_rate = QLabel('imaging_rate<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_imaging_rate = QLineEdit('0.0')
-        self.form_imaging_rate.setToolTip("Rate images are acquired, in Hz")
-
-        self.lbl_indicator = QLabel('indicator<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_indicator = QLineEdit('indicator')
-        self.form_indicator.setToolTip("Calcium indicator")
-
-        self.lbl_location = QLabel('location<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_location = QLineEdit('location')
-        self.form_location.setToolTip("Location of image plane")
-
-        self.lbl_manifold = QLabel('manifold:')
-        self.chk_manifold = QCheckBox("Get from source file")
-        self.chk_manifold.setChecked(False)
-        self.chk_manifold.setToolTip(
-            "Physical position of each pixel. size=(height, width, xyz).\n "
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
-        self.lbl_conversion = QLabel('conversion:')
-        self.form_conversion = QLineEdit('')
-        self.form_conversion.setPlaceholderText("1")
-        self.form_conversion.setToolTip(
-            "Multiplier to get from stored values to specified unit (e.g., 1e-3 for millimeters)")
-
-        self.lbl_unit = QLabel('unit:')
-        self.form_unit = QLineEdit('')
-        self.form_unit.setPlaceholderText("meters")
-        self.form_unit.setToolTip("Base unit that coordinates are stored in (e.g., Meters)")
-
-        self.lbl_reference_frame = QLabel('reference_frame:')
-        self.form_reference_frame = QLineEdit('')
-        self.form_reference_frame.setPlaceholderText("reference_frame")
-        self.form_reference_frame.setToolTip(
-            "Describes position and reference frame of manifold based on position "
-            "of first element in manifold.")
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(5, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_optical_channel, 1, 0, 1, 2)
-        self.grid.addWidget(self.optical_channel, 1, 2, 1, 4)
-        self.grid.addWidget(self.lbl_description, 2, 0, 1, 2)
-        self.grid.addWidget(self.form_description, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_device, 3, 0, 1, 2)
-        self.grid.addWidget(self.combo_device, 3, 2, 1, 4)
-        self.grid.addWidget(self.lbl_excitation_lambda, 4, 0, 1, 2)
-        self.grid.addWidget(self.form_excitation_lambda, 4, 2, 1, 4)
-        self.grid.addWidget(self.lbl_imaging_rate, 5, 0, 1, 2)
-        self.grid.addWidget(self.form_imaging_rate, 5, 2, 1, 4)
-        self.grid.addWidget(self.lbl_indicator, 6, 0, 1, 2)
-        self.grid.addWidget(self.form_indicator, 6, 2, 1, 4)
-        self.grid.addWidget(self.lbl_location, 7, 0, 1, 2)
-        self.grid.addWidget(self.form_location, 7, 2, 1, 4)
-        self.grid.addWidget(self.lbl_manifold, 8, 0, 1, 2)
-        self.grid.addWidget(self.chk_manifold, 8, 2, 1, 2)
-        self.grid.addWidget(self.lbl_conversion, 9, 0, 1, 2)
-        self.grid.addWidget(self.form_conversion, 9, 2, 1, 4)
-        self.grid.addWidget(self.lbl_unit, 10, 0, 1, 2)
-        self.grid.addWidget(self.form_unit, 10, 2, 1, 4)
-        self.grid.addWidget(self.lbl_reference_frame, 11, 0, 1, 2)
-        self.grid.addWidget(self.form_reference_frame, 11, 2, 1, 4)
-        #self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        self.combo_device.clear()
-        for grp in self.parent.groups_list:
-            if isinstance(grp, GroupDevice):
-                self.combo_device.addItem(grp.form_name.text())
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['optical_channel'] = []
-        nItems = self.optical_channel_layout.count()
-        for i in range(nItems):
-            item = self.optical_channel_layout.itemAt(i).widget()
-            data['optical_channel'].append(item.read_fields())
-        data['description'] = self.form_description.text()
-        data['device'] = str(self.combo_device.currentText())
-        try:
-            data['excitation_lambda'] = float(self.form_excitation_lambda.text())
-        except ValueError as error:
-            print(error)
-            data['excitation_lambda'] = 0.0
-        try:
-            data['imaging_rate'] = float(self.form_imaging_rate.text())
-        except ValueError as error:
-            print(error)
-            data['imaging_rate'] = 0.0
-        data['indicator'] = self.form_indicator.text()
-        data['location'] = self.form_location.text()
-        if self.chk_manifold.isChecked():
-            data['manifold'] = True
-        try:
-            data['conversion'] = float(self.form_conversion.text())
-        except ValueError as error:
-            print(error)
-            data['conversion'] = 0.0
-        data['unit'] = self.form_unit.text()
-        data['reference_frame'] = self.form_reference_frame.text()
-        return data
-
-    def write_fields(self, metadata={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(metadata['name'])
-        nItems = self.optical_channel_layout.count()
-        for ind, sps in enumerate(metadata['optical_channel']):
-            if ind >= nItems:
-                item = GroupOpticalChannel(self, metadata=metadata['optical_channel'][ind])
-                self.optical_channel_layout.addWidget(item)
-        if 'description' in data:
-            self.form_description.setText(metadata['description'])
-        self.combo_device.clear()
-        self.combo_device.addItem(metadata['device'])
-        self.form_excitation_lambda.setText(str(metadata['excitation_lambda']))
-        self.form_imaging_rate.setText(str(metadata['imaging_rate']))
-        self.form_indicator.setText(str(metadata['indicator']))
-        self.form_location.setText(str(metadata['location']))
-        if 'conversion' in metadata:
-            self.form_conversion.setText(str(metadata['conversion']))
-        if 'unit' in data:
-            self.form_unit.setText(metadata['unit'])
-        if 'reference_frame' in data:
-            self.form_reference_frame.setText(metadata['reference_frame'])
-        self.setContentLayout(self.grid)
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        specific_fields = [
+            {'name': 'optical_channel',
+             'type': 'group',
+             'class': 'OpticalChannel',
+             'required': True,
+             'doc': 'One of possibly many groups storing channelspecific data'},
+            {'name': 'device',
+             'type': 'link',
+             'class': 'Device',
+             'required': True,
+             'doc': 'The device that was used to record'},
+        ]
+        self.fields_info.extend(specific_fields)
 
 
 #class GroupTwoPhotonSeries(QGroupBox):
