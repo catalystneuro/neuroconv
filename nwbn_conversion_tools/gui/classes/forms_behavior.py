@@ -5,196 +5,206 @@ from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupIntervalSeries
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
 from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
-from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible
+from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible, BasicFormFixed
 import pynwb
 from itertools import groupby
 
 
-class GroupSpatialSeries(QGroupBox):
+class GroupSpatialSeries(BasicFormFixed):
     def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.behavior.SpatialSeries fields filling form."""
-        super().__init__()
-        self.setTitle('SpatialSeries')
-        self.parent = parent
-        self.group_type = 'SpatialSeries'
-        if metadata is None:
-            metadata = dict()
+        super().__init__(parent=parent, pynwb_class=pynwb.behavior.SpatialSeries, metadata=metadata)
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        if 'name' in metadata:
-            self.form_name = QLineEdit(metadata['name'])
-        else:
-            self.form_name = QLineEdit('SpatialSeries')
-        self.form_name.setToolTip("The name of this SpatialSeries dataset.")
-
-        self.lbl_reference_frame = QLabel('reference_frame<span style="color:'+required_asterisk_color+';">*</span>:')
-        if 'reference_frame' in metadata:
-            self.form_reference_frame = QLineEdit(metadata['reference_frame'])
-        else:
-            self.form_reference_frame = QLineEdit('reference frame')
-        self.form_reference_frame.setToolTip("Description defining what the zero-position is")
-
-        self.lbl_conversion = QLabel('conversion:')
-        if 'conversion' in metadata:
-            self.form_conversion = QLineEdit(str(metadata['conversion']))
-        else:
-            self.form_conversion = QLineEdit('')
-        self.form_conversion.setToolTip("Scalar to multiply each element by to convert to meters")
-
-        self.lbl_resolution = QLabel('resolution:')
-        if 'resolution' in metadata:
-            self.form_resolution = QLineEdit(str(metadata['resolution']))
-        else:
-            self.form_resolution = QLineEdit('')
-        self.form_resolution.setToolTip(
-            "The smallest meaningful difference (in specified unit) between values in data")
-
-        self.lbl_timestamps = QLabel('timestamps:')
-        self.chk_timestamps = QCheckBox("Get from source file")
-        if 'timestamps' in metadata:
-            self.chk_timestamps.setChecked(metadata['timestamps'])
-        else:
-            self.chk_timestamps.setChecked(False)
-        self.chk_timestamps.setToolTip(
-            "Timestamps for samples stored in data.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
-        self.lbl_starting_time = QLabel('starting_time:')
-        if 'starting_time' in metadata:
-            self.form_starting_time = QLineEdit(str(metadata['starting_time']))
-        else:
-            self.form_starting_time = QLineEdit('')
-        self.form_starting_time.setToolTip("The timestamp of the first sample")
-
-        self.lbl_rate = QLabel('rate:')
-        if 'rate' in metadata:
-            self.form_rate = QLineEdit(str(metadata['rate']))
-        else:
-            self.form_rate = QLineEdit('')
-        self.form_rate.setToolTip("Sampling rate in Hz")
-
-        self.lbl_comments = QLabel('comments:')
-        if 'comments' in metadata:
-            self.form_comments = QLineEdit(metadata['comments'])
-        else:
-            self.form_comments = QLineEdit('')
-        self.form_comments.setPlaceholderText("comments")
-        self.form_comments.setToolTip("Human-readable comments about this SpatialSeries dataset")
-
-        self.lbl_description = QLabel('description:')
-        if 'description' in metadata:
-            self.form_description = QLineEdit(metadata['description'])
-        else:
-            self.form_description = QLineEdit('')
-        self.form_description.setPlaceholderText("description")
-        self.form_description.setToolTip(" Description of this SpatialSeries dataset")
-
-        self.lbl_control = QLabel('control:')
-        self.chk_control = QCheckBox("Get from source file")
-        if 'control' in metadata:
-            self.chk_control.setChecked(metadata['control'])
-        else:
-            self.chk_control.setChecked(False)
-        self.chk_control.setToolTip(
-            "Numerical labels that apply to each element in data.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
-        self.lbl_control_description = QLabel('control_description:')
-        self.chk_control_description = QCheckBox("Get from source file")
-        if 'control_description' in metadata:
-            self.chk_control_description.setChecked(metadata['control_description'])
-        else:
-            self.chk_control_description.setChecked(False)
-        self.chk_control_description.setToolTip(
-            "Description of each control value.\n"
-            "Check box if this data will be retrieved from source file.\n"
-            "Uncheck box to ignore it.")
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_reference_frame, 2, 0, 1, 2)
-        self.grid.addWidget(self.form_reference_frame, 2, 2, 1, 4)
-        self.grid.addWidget(self.lbl_conversion, 3, 0, 1, 2)
-        self.grid.addWidget(self.form_conversion, 3, 2, 1, 4)
-        self.grid.addWidget(self.lbl_resolution, 4, 0, 1, 2)
-        self.grid.addWidget(self.form_resolution, 4, 2, 1, 4)
-        self.grid.addWidget(self.lbl_timestamps, 5, 0, 1, 2)
-        self.grid.addWidget(self.chk_timestamps, 5, 2, 1, 2)
-        self.grid.addWidget(self.lbl_starting_time, 6, 0, 1, 2)
-        self.grid.addWidget(self.form_starting_time, 6, 2, 1, 4)
-        self.grid.addWidget(self.lbl_rate, 7, 0, 1, 2)
-        self.grid.addWidget(self.form_rate, 7, 2, 1, 4)
-        self.grid.addWidget(self.lbl_comments, 8, 0, 1, 2)
-        self.grid.addWidget(self.form_comments, 8, 2, 1, 4)
-        self.grid.addWidget(self.lbl_description, 9, 0, 1, 2)
-        self.grid.addWidget(self.form_description, 9, 2, 1, 4)
-        self.grid.addWidget(self.lbl_control, 10, 0, 1, 2)
-        self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
-        self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
-        self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
-        self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
         pass
 
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['reference_frame'] = self.form_reference_frame.text()
-        try:
-            data['conversion'] = float(self.form_conversion.text())
-        except ValueError as error:
-            print(error)
-        try:
-            data['resolution'] = float(self.form_resolution.text())
-        except ValueError as error:
-            print(error)
-        if self.chk_timestamps.isChecked():
-            data['timestamps'] = True
-        try:
-            data['starting_time'] = float(self.form_starting_time.text())
-        except ValueError as error:
-            print(error)
-        try:
-            data['rate'] = float(self.form_rate.text())
-        except ValueError as error:
-            print(error)
-        data['comments'] = self.form_comments.text()
-        data['description'] = self.form_description.text()
-        if self.chk_control.isChecked():
-            data['control'] = True
-        if self.chk_control_description.isChecked():
-            data['control_description'] = True
-        return data
 
-    def write_fields(self, data={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(data['name'])
-        self.form_reference_frame.setText(data['reference_frame'])
-        if 'conversion' in data:
-            self.form_conversion.setText(str(data['conversion']))
-        if 'resolution' in data:
-            self.form_resolution.setText(str(data['resolution']))
-        if 'timestamps' in data:
-            self.chk_timestamps.setChecked(True)
-        if 'starting_time' in data:
-            self.form_starting_time.setText(str(data['starting_time']))
-        if 'rate' in data:
-            self.form_rate.setText(str(data['rate']))
-        if 'comments' in data:
-            self.form_comments.setText(data['comments'])
-        if 'description' in data:
-            self.form_description.setText(data['description'])
-        if 'control' in data:
-            self.chk_control.setChecked(True)
-        if 'control_description' in data:
-            self.chk_control_description.setChecked(True)
+# class GroupSpatialSeries(QGroupBox):
+#     def __init__(self, parent, metadata=None):
+#         """Groupbox for pynwb.behavior.SpatialSeries fields filling form."""
+#         super().__init__()
+#         self.setTitle('SpatialSeries')
+#         self.parent = parent
+#         self.group_type = 'SpatialSeries'
+#         if metadata is None:
+#             metadata = dict()
+#
+#         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+#         if 'name' in metadata:
+#             self.form_name = QLineEdit(metadata['name'])
+#         else:
+#             self.form_name = QLineEdit('SpatialSeries')
+#         self.form_name.setToolTip("The name of this SpatialSeries dataset.")
+#
+#         self.lbl_reference_frame = QLabel('reference_frame<span style="color:'+required_asterisk_color+';">*</span>:')
+#         if 'reference_frame' in metadata:
+#             self.form_reference_frame = QLineEdit(metadata['reference_frame'])
+#         else:
+#             self.form_reference_frame = QLineEdit('reference frame')
+#         self.form_reference_frame.setToolTip("Description defining what the zero-position is")
+#
+#         self.lbl_conversion = QLabel('conversion:')
+#         if 'conversion' in metadata:
+#             self.form_conversion = QLineEdit(str(metadata['conversion']))
+#         else:
+#             self.form_conversion = QLineEdit('')
+#         self.form_conversion.setToolTip("Scalar to multiply each element by to convert to meters")
+#
+#         self.lbl_resolution = QLabel('resolution:')
+#         if 'resolution' in metadata:
+#             self.form_resolution = QLineEdit(str(metadata['resolution']))
+#         else:
+#             self.form_resolution = QLineEdit('')
+#         self.form_resolution.setToolTip(
+#             "The smallest meaningful difference (in specified unit) between values in data")
+#
+#         self.lbl_timestamps = QLabel('timestamps:')
+#         self.chk_timestamps = QCheckBox("Get from source file")
+#         if 'timestamps' in metadata:
+#             self.chk_timestamps.setChecked(metadata['timestamps'])
+#         else:
+#             self.chk_timestamps.setChecked(False)
+#         self.chk_timestamps.setToolTip(
+#             "Timestamps for samples stored in data.\n"
+#             "Check box if this data will be retrieved from source file.\n"
+#             "Uncheck box to ignore it.")
+#
+#         self.lbl_starting_time = QLabel('starting_time:')
+#         if 'starting_time' in metadata:
+#             self.form_starting_time = QLineEdit(str(metadata['starting_time']))
+#         else:
+#             self.form_starting_time = QLineEdit('')
+#         self.form_starting_time.setToolTip("The timestamp of the first sample")
+#
+#         self.lbl_rate = QLabel('rate:')
+#         if 'rate' in metadata:
+#             self.form_rate = QLineEdit(str(metadata['rate']))
+#         else:
+#             self.form_rate = QLineEdit('')
+#         self.form_rate.setToolTip("Sampling rate in Hz")
+#
+#         self.lbl_comments = QLabel('comments:')
+#         if 'comments' in metadata:
+#             self.form_comments = QLineEdit(metadata['comments'])
+#         else:
+#             self.form_comments = QLineEdit('')
+#         self.form_comments.setPlaceholderText("comments")
+#         self.form_comments.setToolTip("Human-readable comments about this SpatialSeries dataset")
+#
+#         self.lbl_description = QLabel('description:')
+#         if 'description' in metadata:
+#             self.form_description = QLineEdit(metadata['description'])
+#         else:
+#             self.form_description = QLineEdit('')
+#         self.form_description.setPlaceholderText("description")
+#         self.form_description.setToolTip(" Description of this SpatialSeries dataset")
+#
+#         self.lbl_control = QLabel('control:')
+#         self.chk_control = QCheckBox("Get from source file")
+#         if 'control' in metadata:
+#             self.chk_control.setChecked(metadata['control'])
+#         else:
+#             self.chk_control.setChecked(False)
+#         self.chk_control.setToolTip(
+#             "Numerical labels that apply to each element in data.\n"
+#             "Check box if this data will be retrieved from source file.\n"
+#             "Uncheck box to ignore it.")
+#
+#         self.lbl_control_description = QLabel('control_description:')
+#         self.chk_control_description = QCheckBox("Get from source file")
+#         if 'control_description' in metadata:
+#             self.chk_control_description.setChecked(metadata['control_description'])
+#         else:
+#             self.chk_control_description.setChecked(False)
+#         self.chk_control_description.setToolTip(
+#             "Description of each control value.\n"
+#             "Check box if this data will be retrieved from source file.\n"
+#             "Uncheck box to ignore it.")
+#
+#         self.grid = QGridLayout()
+#         self.grid.setColumnStretch(2, 1)
+#         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
+#         self.grid.addWidget(self.form_name, 0, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_reference_frame, 2, 0, 1, 2)
+#         self.grid.addWidget(self.form_reference_frame, 2, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_conversion, 3, 0, 1, 2)
+#         self.grid.addWidget(self.form_conversion, 3, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_resolution, 4, 0, 1, 2)
+#         self.grid.addWidget(self.form_resolution, 4, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_timestamps, 5, 0, 1, 2)
+#         self.grid.addWidget(self.chk_timestamps, 5, 2, 1, 2)
+#         self.grid.addWidget(self.lbl_starting_time, 6, 0, 1, 2)
+#         self.grid.addWidget(self.form_starting_time, 6, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_rate, 7, 0, 1, 2)
+#         self.grid.addWidget(self.form_rate, 7, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_comments, 8, 0, 1, 2)
+#         self.grid.addWidget(self.form_comments, 8, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_description, 9, 0, 1, 2)
+#         self.grid.addWidget(self.form_description, 9, 2, 1, 4)
+#         self.grid.addWidget(self.lbl_control, 10, 0, 1, 2)
+#         self.grid.addWidget(self.chk_control, 10, 2, 1, 2)
+#         self.grid.addWidget(self.lbl_control_description, 11, 0, 1, 2)
+#         self.grid.addWidget(self.chk_control_description, 11, 2, 1, 2)
+#         self.setLayout(self.grid)
+#
+#     def refresh_objects_references(self, metadata=None):
+#         """Refreshes references with existing objects in parent group."""
+#         pass
+#
+#     def read_fields(self):
+#         """Reads fields and returns them structured in a dictionary."""
+#         data = {}
+#         data['name'] = self.form_name.text()
+#         data['reference_frame'] = self.form_reference_frame.text()
+#         try:
+#             data['conversion'] = float(self.form_conversion.text())
+#         except ValueError as error:
+#             print(error)
+#         try:
+#             data['resolution'] = float(self.form_resolution.text())
+#         except ValueError as error:
+#             print(error)
+#         if self.chk_timestamps.isChecked():
+#             data['timestamps'] = True
+#         try:
+#             data['starting_time'] = float(self.form_starting_time.text())
+#         except ValueError as error:
+#             print(error)
+#         try:
+#             data['rate'] = float(self.form_rate.text())
+#         except ValueError as error:
+#             print(error)
+#         data['comments'] = self.form_comments.text()
+#         data['description'] = self.form_description.text()
+#         if self.chk_control.isChecked():
+#             data['control'] = True
+#         if self.chk_control_description.isChecked():
+#             data['control_description'] = True
+#         return data
+#
+#     def write_fields(self, data={}):
+#         """Reads structured dictionary and write in form fields."""
+#         self.form_name.setText(data['name'])
+#         self.form_reference_frame.setText(data['reference_frame'])
+#         if 'conversion' in data:
+#             self.form_conversion.setText(str(data['conversion']))
+#         if 'resolution' in data:
+#             self.form_resolution.setText(str(data['resolution']))
+#         if 'timestamps' in data:
+#             self.chk_timestamps.setChecked(True)
+#         if 'starting_time' in data:
+#             self.form_starting_time.setText(str(data['starting_time']))
+#         if 'rate' in data:
+#             self.form_rate.setText(str(data['rate']))
+#         if 'comments' in data:
+#             self.form_comments.setText(data['comments'])
+#         if 'description' in data:
+#             self.form_description.setText(data['description'])
+#         if 'control' in data:
+#             self.chk_control.setChecked(True)
+#         if 'control_description' in data:
+#             self.chk_control_description.setChecked(True)
 
 
 class GroupBehavioralEpochs(QGroupBox):
@@ -305,53 +315,6 @@ class GroupBehavioralTimeSeries(BasicFormCollapsible):
         self.fields_info.extend(specific_fields)
 
 
-# class GroupBehavioralTimeSeries(QGroupBox):
-#     def __init__(self, parent):
-#         """Groupbox for pynwb.behavior.BehavioralTimeSeries fields filling form."""
-#         super().__init__()
-#         self.setTitle('BehavioralTimeSeries')
-#         self.parent = parent
-#         self.group_type = 'BehavioralTimeSeries'
-#
-#         self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-#         self.form_name = QLineEdit('BehavioralTimeSeries')
-#         self.form_name.setToolTip("The unique name of this BehavioralTimeSeries")
-#         nInstances = 0
-#         for grp in self.parent.groups_list:
-#             if isinstance(grp,  GroupBehavioralTimeSeries):
-#                 nInstances += 1
-#         if nInstances > 0:
-#             self.form_name.setText('BehavioralTimeSeries'+str(nInstances))
-#
-#         self.lbl_time_series = QLabel('time_series:')
-#         self.time_series = GroupTimeSeries(self)
-#         # self.combo_time_series = CustomComboBox()
-#         # self.combo_time_series.setToolTip("TimeSeries to store in this interface")
-#
-#         self.grid = QGridLayout()
-#         self.grid.setColumnStretch(2, 1)
-#         self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-#         self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-#         self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
-#         self.grid.addWidget(self.time_series, 1, 2, 1, 4)
-#         self.setLayout(self.grid)
-#
-#     def refresh_objects_references(self, metadata=None):
-#         """Refreshes references with existing objects in parent group."""
-#         pass
-#
-#     def read_fields(self):
-#         """Reads fields and returns them structured in a dictionary."""
-#         data = {}
-#         data['name'] = self.form_name.text()
-#         data['time_series'] = self.time_series.read_fields()
-#         return data
-#
-#     def write_fields(self, data={}):
-#         """Reads structured dictionary and write in form fields."""
-#         self.form_name.setText(data['name'])
-
-
 class GroupPupilTracking(QGroupBox):
     def __init__(self, parent):
         """Groupbox for pynwb.behavior.PupilTracking fields filling form."""
@@ -399,63 +362,21 @@ class GroupPupilTracking(QGroupBox):
         self.form_name.setText(data['name'])
 
 
-#class GroupEyeTracking(QGroupBox):
-class GroupEyeTracking(CollapsibleBox):
-    def __init__(self, parent):
+class GroupEyeTracking(BasicFormCollapsible):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.behavior.EyeTracking fields filling form."""
-        super().__init__(title="GroupEyeTracking", parent=parent)
-        #self.setTitle('EyeTracking')
-        self.parent = parent
-        self.group_type = 'EyeTracking'
-        self.groups_list = []
+        super().__init__(parent=parent, pynwb_class=pynwb.behavior.EyeTracking, metadata=metadata)
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_name = QLineEdit('EyeTracking')
-        self.form_name.setToolTip("The unique name of this EyeTracking")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupEyeTracking):
-                nInstances += 1
-        if nInstances > 0:
-            self.form_name.setText('EyeTracking'+str(nInstances))
-
-        self.lbl_spatial_series = QLabel('spatial_series:')
-        self.spatial_series_layout = QVBoxLayout() #GroupSpatialSeries(self)
-        self.spatial_series = QGroupBox() #CollapsibleBox()
-        self.spatial_series.setLayout(self.spatial_series_layout)
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
-        #self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        pass
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['spatial_series'] = []
-        nItems = self.spatial_series_layout.count()
-        for i in range(nItems):
-            item = self.spatial_series_layout.itemAt(i).widget()
-            data['spatial_series'].append(item.read_fields())
-        return data
-
-    def write_fields(self, data={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(data['name'])
-        nItems = self.spatial_series_layout.count()
-        for ind, sps in enumerate(data['spatial_series']):
-            if ind >= nItems:
-                item = GroupSpatialSeries(self, metadata=data['spatial_series'][ind])
-                self.spatial_series_layout.addWidget(item)
-        self.setContentLayout(self.grid)
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        specific_fields = [
+            {'name': 'spatial_series',
+             'type': 'group',
+             'class': 'SpatialSeries',
+             'required': True,
+             'doc': 'SpatialSeries to store in this interface'},
+        ]
+        self.fields_info.extend(specific_fields)
 
 
 class GroupCompassDirection(QGroupBox):
@@ -503,58 +424,21 @@ class GroupCompassDirection(QGroupBox):
         self.form_name.setText(data['name'])
 
 
-#class GroupPosition(QGroupBox):
-class GroupPosition(CollapsibleBox):
-    def __init__(self, parent):
+class GroupPosition(BasicFormCollapsible):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.behavior.Position fields filling form."""
-        super().__init__(title="Position", parent=parent)
-        #self.setTitle('Position')
-        self.parent = parent
-        self.group_type = 'Position'
-        self.groups_list = []
+        super().__init__(parent=parent, pynwb_class=pynwb.behavior.Position, metadata=metadata)
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_name = QLineEdit('Position')
-        self.form_name.setToolTip("The unique name of this Position")
-
-        self.lbl_spatial_series = QLabel('spatial_series:')
-        self.spatial_series_layout = QVBoxLayout() #GroupSpatialSeries(self)
-        self.spatial_series = QGroupBox() #CollapsibleBox()
-        self.spatial_series.setLayout(self.spatial_series_layout)
-        #self.spatial_series.setContentLayout(self.spatial_series_layout)
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_spatial_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.spatial_series, 1, 2, 1, 4)
-        #self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        pass
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['spatial_series'] = []
-        nItems = self.spatial_series_layout.count()
-        for i in range(nItems):
-            item = self.spatial_series_layout.itemAt(i).widget()
-            data['spatial_series'].append(item.read_fields())
-        return data
-
-    def write_fields(self, data={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(data['name'])
-        nItems = self.spatial_series_layout.count()
-        for ind, sps in enumerate(data['spatial_series']):
-            if ind >= nItems:
-                item = GroupSpatialSeries(self, metadata=data['spatial_series'][ind])
-                self.spatial_series_layout.addWidget(item)
-        self.setContentLayout(self.grid)
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        specific_fields = [
+            {'name': 'spatial_series',
+             'type': 'group',
+             'class': 'SpatialSeries',
+             'required': True,
+             'doc': 'SpatialSeries to store in this interface'},
+        ]
+        self.fields_info.extend(specific_fields)
 
 
 class GroupBehavior(QGroupBox):
@@ -667,11 +551,11 @@ class GroupBehavior(QGroupBox):
         grp_type_count = {value: len(list(freq)) for value, freq in groupby(sorted(grp_types))}
         # initiate lists as values for groups keys with count > 1
         for k, v in grp_type_count.items():
-            if v > 1 or k in ['Device', 'TimeSeries']:
+            if v > 1 or k in ['Device', 'TimeSeries', 'SpatialSeries']:
                 data[k] = []
         # iterate over existing groups and copy their metadata
         for grp in self.groups_list:
-            if grp_type_count[grp.group_type] > 1 or grp.group_type in ['Device', 'TimeSeries']:
+            if grp_type_count[grp.group_type] > 1 or grp.group_type in ['Device', 'TimeSeries', 'SpatialSeries']:
                 data[grp.group_type].append(grp.read_fields())
             else:
                 data[grp.group_type] = grp.read_fields()
