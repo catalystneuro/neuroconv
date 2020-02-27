@@ -3,7 +3,6 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
 from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
 from nwbn_conversion_tools.gui.classes.forms_misc import GroupIntervalSeries
 from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
-from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible, BasicFormFixed
 import pynwb
 from itertools import groupby
@@ -64,50 +63,21 @@ class GroupBehavioralEpochs(QGroupBox):
         self.form_name.setText(data['name'])
 
 
-class GroupBehavioralEvents(CollapsibleBox):
-    def __init__(self, parent):
+class GroupBehavioralEvents(BasicFormCollapsible):
+    def __init__(self, parent, metadata=None):
         """Groupbox for pynwb.behavior.BehavioralEvents fields filling form."""
-        super().__init__(title="BehavioralEvents", parent=parent)
-        #self.setTitle('BehavioralEvents')
-        self.parent = parent
-        self.group_type = 'BehavioralEvents'
+        super().__init__(parent=parent, pynwb_class=pynwb.behavior.BehavioralEvents, metadata=metadata)
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
-        self.form_name = QLineEdit('BehavioralEvents')
-        self.form_name.setToolTip("The unique name of this BehavioralEvents")
-        nInstances = 0
-        for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupBehavioralEvents):
-                nInstances += 1
-        if nInstances > 0:
-            self.form_name.setText('BehavioralEvents'+str(nInstances))
-
-        self.lbl_time_series = QLabel('time_series:')
-        self.time_series = GroupTimeSeries(self)
-
-        self.grid = QGridLayout()
-        self.grid.setColumnStretch(2, 1)
-        self.grid.addWidget(self.lbl_name, 0, 0, 1, 2)
-        self.grid.addWidget(self.form_name, 0, 2, 1, 4)
-        self.grid.addWidget(self.lbl_time_series, 1, 0, 1, 2)
-        self.grid.addWidget(self.time_series, 1, 2, 1, 4)
-        #self.setLayout(self.grid)
-
-    def refresh_objects_references(self, metadata=None):
-        """Refreshes references with existing objects in parent group."""
-        pass
-
-    def read_fields(self):
-        """Reads fields and returns them structured in a dictionary."""
-        data = {}
-        data['name'] = self.form_name.text()
-        data['time_series'] = self.time_series.read_fields()
-        return data
-
-    def write_fields(self, data={}):
-        """Reads structured dictionary and write in form fields."""
-        self.form_name.setText(data['name'])
-        self.setContentLayout(self.grid)
+    def fields_info_update(self):
+        """Updates fields info with specific fields from the inheriting class."""
+        specific_fields = [
+            {'name': 'time_series',
+             'type': 'group',
+             'class': 'TimeSeries',
+             'required': True,
+             'doc': 'TimeSeries to store in this interface'},
+        ]
+        self.fields_info.extend(specific_fields)
 
 
 class GroupBehavioralTimeSeries(BasicFormCollapsible):
@@ -299,9 +269,9 @@ class GroupBehavior(QGroupBox):
         group.form_name.textChanged.connect(self.refresh_del_combo)
         self.groups_list.append(group)
         nWidgetsVbox = self.vbox1.count()
-        self.vbox1.insertWidget(nWidgetsVbox-1, group)  # insert before the stretch
+        self.vbox1.insertWidget(nWidgetsVbox - 1, group)  # insert before the stretch
         self.combo1.setCurrentIndex(0)
-        #self.combo2.addItem(group.form_name.text())
+        # self.combo2.addItem(group.form_name.text())
         self.refresh_children(metadata=metadata)
 
     def del_group(self, group_name):
@@ -312,8 +282,8 @@ class GroupBehavior(QGroupBox):
             # Tests if any other group references this one
             if self.is_referenced(grp_unique_name=group_name):
                 QMessageBox.warning(self, "Cannot delete subgroup",
-                                    group_name+" is being referenced by another subgroup(s).\n"
-                                    "You should remove any references of "+group_name+" before "
+                                    group_name + " is being referenced by another subgroup(s).\n"
+                                    "You should remove any references of " + group_name + " before "
                                     "deleting it!")
                 self.combo2.setCurrentIndex(0)
             else:
