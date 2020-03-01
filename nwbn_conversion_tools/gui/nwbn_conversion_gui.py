@@ -1,16 +1,17 @@
 from PySide2 import QtCore
-from PySide2.QtCore import Qt
 from PySide2.QtWebEngineWidgets import QWebEngineView
 from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
-                             QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
-                             QGridLayout, QSplitter, QLabel, QFileDialog,
-                             QMessageBox, QComboBox, QScrollArea, QStyle,
-                             QGroupBox, QCheckBox, QTabWidget)
+                               QPushButton, QLineEdit, QTextEdit, QVBoxLayout,
+                               QGridLayout, QSplitter, QLabel, QFileDialog,
+                               QMessageBox, QComboBox, QScrollArea, QStyle,
+                               QGroupBox, QCheckBox, QTabWidget)
 from nwbn_conversion_tools.gui.classes.console_widget import ConsoleWidget
 from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
 from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
 from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
 from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
+from nwbn_conversion_tools.gui.classes.forms_ogen import GroupOgen
+from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
 
 import numpy as np
 import nbformat as nbf
@@ -28,7 +29,8 @@ import os
 
 class Application(QMainWindow):
     def __init__(self, metafile=None, conversion_module='', source_paths={},
-                 kwargs_fields={}, show_add_del=False):
+                 kwargs_fields={}, extension_modules={}, extension_forms={},
+                 show_add_del=False):
         super().__init__()
         # Dictionary storing source files paths
         self.source_paths = source_paths
@@ -38,6 +40,11 @@ class Application(QMainWindow):
         self.kwargs_fields = kwargs_fields
         # Boolean control to either show/hide the option for add/del Groups
         self.show_add_del = show_add_del
+        # Extension modules
+        self.extension_modules = extension_modules
+        # Updates name_to_gui_class with extension classes
+        self.name_to_gui_class = name_to_gui_class
+        self.name_to_gui_class.update(extension_forms)
         # Temporary folder path
         self.temp_dir = tempfile.mkdtemp()
 
@@ -122,13 +129,13 @@ class Application(QMainWindow):
             ii = -1
             for k, v in self.source_paths.items():
                 ii += 1
-                lbl_src = QLabel(k+':')
-                setattr(self, 'lbl_src_'+str(ii), lbl_src)
+                lbl_src = QLabel(k + ':')
+                setattr(self, 'lbl_src_' + str(ii), lbl_src)
                 lin_src = QLineEdit('')
-                setattr(self, 'lin_src_'+str(ii), lin_src)
+                setattr(self, 'lin_src_' + str(ii), lin_src)
                 btn_src = QPushButton()
                 btn_src.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
-                setattr(self, 'btn_src_'+str(ii), btn_src)
+                setattr(self, 'btn_src_' + str(ii), btn_src)
                 if v['type'] == 'file':
                     btn_src.clicked.connect((lambda x: lambda: self.load_source_files(x[0], x[1]))([ii, k]))
                 else:
@@ -150,8 +157,8 @@ class Application(QMainWindow):
                 chk_kwargs = QCheckBox(k)
                 chk_kwargs.setChecked(v)
                 chk_kwargs.clicked.connect((lambda x: lambda: self.update_kwargs(x[0], x[1]))([ii, k]))
-                setattr(self, 'chk_kwargs_'+str(ii), chk_kwargs)
-                self.grid_kwargs.addWidget(chk_kwargs, ii//4, ii%4, 1, 1)
+                setattr(self, 'chk_kwargs_' + str(ii), chk_kwargs)
+                self.grid_kwargs.addWidget(chk_kwargs, ii // 4, ii % 4, 1, 1)
             self.group_kwargs.setLayout(self.grid_kwargs)
             l_grid1.addWidget(self.group_kwargs, 4, 0, 1, 6)
 
@@ -239,7 +246,7 @@ class Application(QMainWindow):
         self.vbox_widgets.addLayout(self.grid_widgets)
         self.vbox_widgets.addWidget(self.html)
 
-        #Layout Console
+        # Layout Console
         console_label = QLabel('Ipython console:')
         self.explorer_console = ConsoleWidget(par=self)
         self.explorer_console.setToolTip("nwbfile --> NWB file data")
@@ -317,7 +324,7 @@ class Application(QMainWindow):
 
     def update_kwargs(self, ind, key):
         """Updates the boolean values for keyword arguments."""
-        chk_kw = getattr(self, 'chk_kwargs_'+str(ind))
+        chk_kw = getattr(self, 'chk_kwargs_' + str(ind))
         self.kwargs_fields[key] = chk_kw.isChecked()
 
     def load_source_files(self, ind, key):
@@ -332,7 +339,7 @@ class Application(QMainWindow):
             all_names = ''
             for fname in filenames:
                 all_names += fname + ', '
-            lin_src = getattr(self, 'lin_src_'+str(ind))
+            lin_src = getattr(self, 'lin_src_' + str(ind))
             lin_src.setText(all_names[:-2])
             self.source_paths[key]['path'] = all_names[:-2]
 
@@ -344,12 +351,17 @@ class Application(QMainWindow):
             directory=''
         )
         if len(dirname):
-            lin_src = getattr(self, 'lin_src_'+str(ind))
+            lin_src = getattr(self, 'lin_src_' + str(ind))
             lin_src.setText(dirname)
             self.source_paths[key]['path'] = dirname
 
     def load_meta_file(self, filename=None):
-        '''Browser to .yml file containing metadata for NWB.'''
+        """
+        Opens (or browsers to) a .yml file containing metadata for NWB. Then:
+        1. loads the internal variable self.metadata with the content
+        2. writes content to editor
+        3. updates forms
+        """
         if filename is None:
             filename, ftype = QFileDialog.getOpenFileName(
                 parent=self,
@@ -373,7 +385,7 @@ class Application(QMainWindow):
             directory='',
             filter="(*py)"
         )
-        if filename is not '':
+        if filename != '':
             self.conversion_module_path = filename
 
     def load_nwb_file(self):
@@ -395,10 +407,10 @@ class Application(QMainWindow):
             directory='',
             filter="(*nwb)"
         )
-        if filename is not '':
-            #Opens file on Ipython console
+        if filename != '':
+            # Opens file on Ipython console
             self.run_console(fname=filename)
-            #Opens file on NWBWidgets
+            # Opens file on NWBWidgets
             self.run_voila(fname=filename)
 
     def close_nwb_explorer(self):
@@ -412,10 +424,14 @@ class Application(QMainWindow):
 
     def run_console(self, fname):
         """Loads NWB file on Ipython console"""
+        # Imports extension modules
+        imports_text = ""
+        for k, v in self.extension_modules.items():
+            imports_text += "\nfrom " + k + " import " + ", ".join(v)
         code = """
             import pynwb
             import os
-
+            """ + imports_text + """
             fpath = os.path.join(r'""" + str(fname) + """')
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
             nwbfile = io.read()
@@ -430,26 +446,30 @@ class Application(QMainWindow):
         self.close_nwb_explorer()
         # Write Figure + ipywidgets to a .ipynb file
         nb = nbf.v4.new_notebook()
+        # Imports extension modules
+        imports_text = ""
+        for k, v in self.extension_modules.items():
+            imports_text += "\nfrom " + k + " import " + ", ".join(v)
         code = """
             from nwbwidgets import nwb2widget
             import pynwb
             import os
-
+            """ + imports_text + """
             fpath = os.path.join(r'""" + str(fname) + """')
             io = pynwb.NWBHDF5IO(fpath, 'r', load_namespaces=True)
             nwb = io.read()
             nwb2widget(nwb)
             """
         nb['cells'] = [nbf.v4.new_code_cell(code)]
-        nbpath = os.path.join(self.temp_dir, Path(fname).stem+'.ipynb')
+        nbpath = os.path.join(self.temp_dir, Path(fname).stem + '.ipynb')
         nbf.write(nb, nbpath)
         # Run instance of Voila with the just saved .ipynb file
         port = get_free_port()
         self.voilathread = voilaThread(parent=self, port=port, nbpath=nbpath)
         self.voilathread.start()
         # Load Voila instance on GUI
-        self.update_html(url='http://localhost:'+str(port))
-        #self.parent.write_to_logger(txt=self.name + " ready!")
+        self.update_html(url='http://localhost:' + str(port))
+        # self.parent.write_to_logger(txt=self.name + " ready!")
 
     def update_html(self, url):
         """Loads temporary HTML file and render it."""
@@ -486,11 +506,15 @@ class Application(QMainWindow):
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
-                            item.add_group(group_type=subgroup,
-                                           metadata=subsub)
+                            item.add_group(
+                                group=self.name_to_gui_class[subgroup](parent=item),
+                                metadata=subsub
+                            )
                     else:  # if it's just one item of this class
-                        item.add_group(group_type=subgroup,
-                                       metadata=self.metadata[grp][subgroup])
+                        item.add_group(
+                            group=self.name_to_gui_class[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Ecephys':
@@ -499,11 +523,15 @@ class Application(QMainWindow):
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
-                            item.add_group(group_type=subgroup,
-                                           metadata=subsub)
+                            item.add_group(
+                                group=self.name_to_gui_class[subgroup](parent=item),
+                                metadata=subsub
+                            )
                     else:  # if it's just one item of this class
-                        item.add_group(group_type=subgroup,
-                                       metadata=self.metadata[grp][subgroup])
+                        item.add_group(
+                            group=self.name_to_gui_class[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
             if grp == 'Behavior':
@@ -512,11 +540,32 @@ class Application(QMainWindow):
                     # if many items of same class, in list
                     if isinstance(self.metadata[grp][subgroup], list):
                         for subsub in self.metadata[grp][subgroup]:
-                            item.add_group(group_type=subgroup,
-                                           metadata=subsub)
+                            item.add_group(
+                                group=self.name_to_gui_class[subgroup](parent=item),
+                                metadata=subsub
+                            )
                     else:  # if it's just one item of this class
-                        item.add_group(group_type=subgroup,
-                                       metadata=self.metadata[grp][subgroup])
+                        item.add_group(
+                            group=self.name_to_gui_class[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
+                self.groups_list.append(item)
+                self.l_vbox1.addWidget(item)
+            if grp == 'Ogen':
+                item = GroupOgen(self)
+                for subgroup in self.metadata[grp]:
+                    # if many items of same class, in list
+                    if isinstance(self.metadata[grp][subgroup], list):
+                        for subsub in self.metadata[grp][subgroup]:
+                            item.add_group(
+                                group=self.name_to_gui_class[subgroup](parent=item),
+                                metadata=subsub
+                            )
+                    else:  # if it's just one item of this class
+                        item.add_group(
+                            group=self.name_to_gui_class[subgroup](parent=item),
+                            metadata=self.metadata[grp][subgroup]
+                        )
                 self.groups_list.append(item)
                 self.l_vbox1.addWidget(item)
         nItems = self.l_vbox1.count()
@@ -527,9 +576,9 @@ class Application(QMainWindow):
         msg = QMessageBox()
         msg.setWindowTitle("About NWB conversion")
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Version: 1.0.0 \n"
+        msg.setText("Version: 0.2.0 \n"
                     "Shared tools for converting data from various formats to NWB:N 2.0.\n ")
-        msg.setInformativeText("<a href='https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools'>NWB conversion tools Github page</a>")
+        msg.setInformativeText("<a href='https://github.com/ben-dichter-consulting/nwbn-conversion-tools'>NWB conversion tools Github page</a>")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
 
@@ -559,7 +608,7 @@ def is_listening_to_port(process, port):
     for child in process.children(recursive=True):
         # iterate over child connections
         for con in child.connections():
-            if con.status=='LISTEN':
+            if con.status == 'LISTEN':
                 if isinstance(con.laddr.port, int):
                     is_listening = con.laddr.port == port
                 elif isinstance(con.laddr.port, list):
@@ -576,7 +625,7 @@ class voilaThread(QtCore.QThread):
         self.nbpath = nbpath
 
     def run(self):
-        os.system("voila " + self.nbpath + " --no-browser --port "+str(self.port))
+        os.system("voila " + self.nbpath + " --no-browser --port " + str(self.port))
 
     def stop(self):
         pid = os.getpid()
@@ -631,14 +680,19 @@ if __name__ == '__main__':
 
 # If it is imported as a module
 def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
-                        kwargs_fields={}, show_add_del=False):
+                        kwargs_fields={}, extension_modules={}, extension_forms={},
+                        show_add_del=False):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QApplication(sys.argv)  # instantiate a QtGui (holder for the app)
-    ex = Application(metafile=metafile,
-                     conversion_module=conversion_module,
-                     source_paths=source_paths,
-                     kwargs_fields=kwargs_fields,
-                     show_add_del=show_add_del)
+    Application(
+        metafile=metafile,
+        conversion_module=conversion_module,
+        source_paths=source_paths,
+        kwargs_fields=kwargs_fields,
+        extension_modules=extension_modules,
+        extension_forms=extension_forms,
+        show_add_del=show_add_del
+    )
     sys.exit(app.exec_())
