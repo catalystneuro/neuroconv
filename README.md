@@ -1,6 +1,8 @@
 # nwbn-conversion-tools
 Shared tools for converting data from various formats to NWB:N 2.0
 
+[![PyPI version](https://badge.fury.io/py/nwbn-conversion-tools.svg)](https://badge.fury.io/py/nwbn-conversion-tools)
+
 ## Installation
 To install **nwbn_conversion_tools** directly in an existing environment:
 ```
