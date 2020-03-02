@@ -18,6 +18,7 @@ setup(
     long_description_content_type='text/markdown',
     author='Ben Dichter and Luiz Tauffer',
     author_email='ben.dichter@gmail.com',
+    url='https://github.com/ben-dichter-consulting/nwbn-conversion-tools',
     keywords='nwb',
     packages=find_packages(),
     package_data={'': ['template_metafile.yml']},
