@@ -26,7 +26,7 @@ setup(
         'spikeextractors', 'spikesorters', 'spiketoolkit', 'herdingspikes',
         'PySide2', 'nwbwidgets', 'psutil', 'voila'
     ],
-    entry_points = {
+    entry_points={
         'console_scripts': ['nwbn-gui=nwbn_conversion_tools.gui.command_line:main'],
     }
 )
