@@ -21,7 +21,7 @@ class NWBConverter:
         nwbfile: pynwb.NWBFile
         """
         if nwbfile is None:
-            self.nwbfile = self.create_NWBFile(**metadata['NWBFile'])
+            self.create_nwbfile(metadata['NWBFile'])
         else:
             self.nwbfile = nwbfile
 
@@ -37,10 +37,19 @@ class NWBConverter:
         if 'Icephys' in metadata and ('Electrode' in metadata['Icephys']):
             self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
 
-    def create_NWBFile(self, **NWBFile_metadata):
+    def create_nwbfile(self, metadata_nwbfile):
+        """
+        This method is called at __init__.
+        This method can be overridden by child classes if necessary.
+        Creates self.nwbfile object.
+
+        Parameters
+        ----------
+        metadata_nwbfile: dict
+        """
         nwbfile_args = dict(identifier=str(uuid.uuid4()),)
-        nwbfile_args.update(**NWBFile_metadata)
-        return NWBFile(**nwbfile_args)
+        nwbfile_args.update(**metadata_nwbfile)
+        self.nwbfile = NWBFile(**nwbfile_args)
 
     def create_subject(self, metadata_subject):
         """
