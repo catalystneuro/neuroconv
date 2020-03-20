@@ -123,6 +123,82 @@ class NWBConverter:
                 key = elec_meta['name']
             return {key: self.nwbfile.create_ic_electrode(device=device, **elec_meta)}
 
+    def create_trials_from_df(self, df):
+        """
+        This method should not be overridden.
+        Creates a trials table in self.nwbfile from a Pandas DataFrame.
+
+        Parameters
+        ----------
+        df: Pandas DataFrame
+        """
+        # Tests if trials table already exists
+        if self.nwbfile.trials is not None:
+            print("Trials table already exist in current nwb file.\n"
+                  "Use 'add_trials_columns_from_df' to include new columns.\n"
+                  "Use 'add_trials_from_df' to include new trials.")
+            pass
+        # Tests if required column names are present in df
+        if 'start_time' not in df.columns:
+            print("Required column 'start_time' not present in DataFrame.")
+            pass
+        if 'stop_time' not in df.columns:
+            print("Required column 'stop_time' not present in DataFrame.")
+            pass
+        # Creates new columns
+        for colname in df.columns:
+            if colname not in ['start_time', 'stop_time']:
+                self.nwbfile.add_trial_column(name=colname, description='no description')
+        # Populates trials table from df values
+        for index, row in df.iterrows():
+            self.nwbfile.add_trial(**dict(row))
+
+    def add_trials_from_df(self, df):
+        """
+        This method should not be overridden.
+        Adds trials from a Pandas DataFrame to existing trials table in self.nwbfile.
+
+        Parameters
+        ----------
+        df: Pandas DataFrame
+        """
+        # Tests for mismatch between trials table columns and dataframe columns
+        A = set(self.nwbfile.trials.colnames)
+        B = set(df.columns)
+        if len(A - B) > 0:
+            print("Missing columns in DataFrame: ", A - B)
+            pass
+        if len(B - A) > 0:
+            print("NWBFile trials table does not contain: ", B - A)
+            pass
+        # Adds trials from df values
+        for index, row in df.iterrows():
+            self.nwbfile.add_trial(**dict(row))
+
+    def add_trials_columns_from_df(self, df):
+        """
+        This method should not be overridden.
+        Adds trials columns from a Pandas DataFrame to existing trials table in self.nwbfile.
+
+        Parameters
+        ----------
+        df: Pandas DataFrame
+        """
+        # Tests if dataframe columns already exist in nwbfile trials table
+        A = set(self.nwbfile.trials.colnames)
+        B = set(df.columns)
+        intersection = A.intersection(B)
+        if len(intersection) > 0:
+            print("These columns already exist in nwbfile trials: ", intersection)
+            pass
+        # Adds trials columns with data from df values
+        for (colname, coldata) in df.iteritems():
+            self.nwbfile.add_trial_column(
+                name=colname,
+                description='no description',
+                data=coldata,
+            )
+
     def save(self, to_path, read_check=True):
         """
         This method should not be overridden.
