@@ -20,11 +20,13 @@ class NWBConverter:
         metadata: dict
         nwbfile: pynwb.NWBFile
         """
+        # create self.nwbfile object
         if nwbfile is None:
             self.create_nwbfile(metadata['NWBFile'])
         else:
             self.nwbfile = nwbfile
 
+        # add subject information
         if 'Subject' in metadata:
             self.create_subject(metadata['Subject'])
 
@@ -34,6 +36,7 @@ class NWBConverter:
             if domain in metadata and 'Device' in metadata[domain]:
                 self.devices.update(self.create_devices(metadata[domain]['Device']))
 
+        # add electrodes for icephys
         if 'Icephys' in metadata and ('Electrode' in metadata['Icephys']):
             self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
 
@@ -63,30 +66,31 @@ class NWBConverter:
         """
         self.nwbfile.subject = Subject(**metadata_subject)
 
-    def create_devices(self, device_meta) -> Dict:
+    def create_devices(self, metadata_device) -> Dict:
         """
+        This method is called at __init__.
+        This method should not be overridden.
         Use metadata to generate device object(s) in the NWBFile
 
         Parameters
         ----------
-        device_meta: list or dict
+        metadata_device: list or dict
 
         Returns
         -------
         dict
 
         """
-
-        if isinstance(device_meta, list):
+        if isinstance(metadata_device, list):
             devices = dict()
-            [devices.update(self.create_devices(idevice_meta)) for idevice_meta in device_meta]
+            [devices.update(self.create_devices(idevice_meta)) for idevice_meta in metadata_device]
             return devices
         else:
-            if 'tag' in device_meta:
-                key = device_meta['tag']
+            if 'tag' in metadata_device:
+                key = metadata_device['tag']
             else:
-                key = device_meta['name']
-            return {key: self.nwbfile.create_device(**device_meta)}
+                key = metadata_device['name']
+            return {key: self.nwbfile.create_device(**metadata_device)}
 
     def create_icephys_elecs(self, elec_meta) -> Dict:
         """
