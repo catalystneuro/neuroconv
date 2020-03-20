@@ -26,7 +26,7 @@ class NWBConverter:
             self.nwbfile = nwbfile
 
         if 'Subject' in metadata:
-            self.nwbfile.subject = Subject(**metadata['Subject'])
+            self.create_subject(metadata['Subject'])
 
         # add devices
         self.devices = dict()
@@ -41,6 +41,18 @@ class NWBConverter:
         nwbfile_args = dict(identifier=str(uuid.uuid4()),)
         nwbfile_args.update(**NWBFile_metadata)
         return NWBFile(**nwbfile_args)
+
+    def create_subject(self, metadata_subject):
+        """
+        This method is called at __init__.
+        This method can be overridden by child classes if necessary.
+        Adds information about Subject to self.nwbfile.
+
+        Parameters
+        ----------
+        metadata_subject: dict
+        """
+        self.nwbfile.subject = Subject(**metadata_subject)
 
     def create_devices(self, device_meta) -> Dict:
         """
