@@ -12,21 +12,27 @@ class NWBConverter:
     Common conversion code factored out so it can be used by multiple conversion projects
     """
 
-    def __init__(self, metadata, nwbfile=None):
+    def __init__(self, metadata, nwbfile=None, source_paths=None):
         """
 
         Parameters
         ----------
         metadata: dict
         nwbfile: pynwb.NWBFile
+        source_paths: dict
         """
+        self.metadata = metadata
+        self.source_paths = source_paths
+        
+        # create self.nwbfile object
         if nwbfile is None:
-            self.nwbfile = self.create_NWBFile(**metadata['NWBFile'])
+            self.create_nwbfile(metadata['NWBFile'])
         else:
             self.nwbfile = nwbfile
 
+        # add subject information
         if 'Subject' in metadata:
-            self.nwbfile.subject = Subject(**metadata['Subject'])
+            self.create_subject(metadata['Subject'])
 
         # add devices
         self.devices = dict()
@@ -34,38 +40,61 @@ class NWBConverter:
             if domain in metadata and 'Device' in metadata[domain]:
                 self.devices.update(self.create_devices(metadata[domain]['Device']))
 
+        # add electrodes for icephys
         if 'Icephys' in metadata and ('Electrode' in metadata['Icephys']):
             self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
 
-    def create_NWBFile(self, **NWBFile_metadata):
-        nwbfile_args = dict(identifier=str(uuid.uuid4()),)
-        nwbfile_args.update(**NWBFile_metadata)
-        return NWBFile(**nwbfile_args)
-
-    def create_devices(self, device_meta) -> Dict:
+    def create_nwbfile(self, metadata_nwbfile):
         """
+        This method is called at __init__.
+        This method can be overridden by child classes if necessary.
+        Creates self.nwbfile object.
+
+        Parameters
+        ----------
+        metadata_nwbfile: dict
+        """
+        nwbfile_args = dict(identifier=str(uuid.uuid4()),)
+        nwbfile_args.update(**metadata_nwbfile)
+        self.nwbfile = NWBFile(**nwbfile_args)
+
+    def create_subject(self, metadata_subject):
+        """
+        This method is called at __init__.
+        This method can be overridden by child classes if necessary.
+        Adds information about Subject to self.nwbfile.
+
+        Parameters
+        ----------
+        metadata_subject: dict
+        """
+        self.nwbfile.subject = Subject(**metadata_subject)
+
+    def create_devices(self, metadata_device) -> Dict:
+        """
+        This method is called at __init__.
+        This method should not be overridden.
         Use metadata to generate device object(s) in the NWBFile
 
         Parameters
         ----------
-        device_meta: list or dict
+        metadata_device: list or dict
 
         Returns
         -------
         dict
 
         """
-
-        if isinstance(device_meta, list):
+        if isinstance(metadata_device, list):
             devices = dict()
-            [devices.update(self.create_devices(idevice_meta)) for idevice_meta in device_meta]
+            [devices.update(self.create_devices(idevice_meta)) for idevice_meta in metadata_device]
             return devices
         else:
-            if 'tag' in device_meta:
-                key = device_meta['tag']
+            if 'tag' in metadata_device:
+                key = metadata_device['tag']
             else:
-                key = device_meta['name']
-            return {key: self.nwbfile.create_device(**device_meta)}
+                key = metadata_device['name']
+            return {key: self.nwbfile.create_device(**metadata_device)}
 
     def create_icephys_elecs(self, elec_meta) -> Dict:
         """
@@ -98,8 +127,86 @@ class NWBConverter:
                 key = elec_meta['name']
             return {key: self.nwbfile.create_ic_electrode(device=device, **elec_meta)}
 
+    def create_trials_from_df(self, df):
+        """
+        This method should not be overridden.
+        Creates a trials table in self.nwbfile from a Pandas DataFrame.
+
+        Parameters
+        ----------
+        df: Pandas DataFrame
+        """
+        # Tests if trials table already exists
+        if self.nwbfile.trials is not None:
+            print("Trials table already exist in current nwb file.\n"
+                  "Use 'add_trials_columns_from_df' to include new columns.\n"
+                  "Use 'add_trials_from_df' to include new trials.")
+            pass
+        # Tests if required column names are present in df
+        if 'start_time' not in df.columns:
+            print("Required column 'start_time' not present in DataFrame.")
+            pass
+        if 'stop_time' not in df.columns:
+            print("Required column 'stop_time' not present in DataFrame.")
+            pass
+        # Creates new columns
+        for colname in df.columns:
+            if colname not in ['start_time', 'stop_time']:
+                self.nwbfile.add_trial_column(name=colname, description='no description')
+        # Populates trials table from df values
+        for index, row in df.iterrows():
+            self.nwbfile.add_trial(**dict(row))
+
+    def add_trials_from_df(self, df):
+        """
+        This method should not be overridden.
+        Adds trials from a Pandas DataFrame to existing trials table in self.nwbfile.
+
+        Parameters
+        ----------
+        df: Pandas DataFrame
+        """
+        # Tests for mismatch between trials table columns and dataframe columns
+        A = set(self.nwbfile.trials.colnames)
+        B = set(df.columns)
+        if len(A - B) > 0:
+            print("Missing columns in DataFrame: ", A - B)
+            pass
+        if len(B - A) > 0:
+            print("NWBFile trials table does not contain: ", B - A)
+            pass
+        # Adds trials from df values
+        for index, row in df.iterrows():
+            self.nwbfile.add_trial(**dict(row))
+
+    def add_trials_columns_from_df(self, df):
+        """
+        This method should not be overridden.
+        Adds trials columns from a Pandas DataFrame to existing trials table in self.nwbfile.
+
+        Parameters
+        ----------
+        df: Pandas DataFrame
+        """
+        # Tests if dataframe columns already exist in nwbfile trials table
+        A = set(self.nwbfile.trials.colnames)
+        B = set(df.columns)
+        intersection = A.intersection(B)
+        if len(intersection) > 0:
+            print("These columns already exist in nwbfile trials: ", intersection)
+            pass
+        # Adds trials columns with data from df values
+        for (colname, coldata) in df.iteritems():
+            self.nwbfile.add_trial_column(
+                name=colname,
+                description='no description',
+                data=coldata,
+            )
+
     def save(self, to_path, read_check=True):
         """
+        This method should not be overridden.
+        Saves object self.nwbfile.
 
         Parameters
         ----------
