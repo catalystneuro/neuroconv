@@ -12,14 +12,18 @@ class NWBConverter:
     Common conversion code factored out so it can be used by multiple conversion projects
     """
 
-    def __init__(self, metadata, nwbfile=None):
+    def __init__(self, metadata, nwbfile=None, source_paths=None):
         """
 
         Parameters
         ----------
         metadata: dict
         nwbfile: pynwb.NWBFile
+        source_paths: dict
         """
+        self.metadata = metadata
+        self.source_paths = source_paths
+        
         # create self.nwbfile object
         if nwbfile is None:
             self.create_nwbfile(metadata['NWBFile'])
