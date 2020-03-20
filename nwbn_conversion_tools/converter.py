@@ -121,6 +121,8 @@ class NWBConverter:
 
     def save(self, to_path, read_check=True):
         """
+        This method should not be overridden.
+        Saves object self.nwbfile.
 
         Parameters
         ----------
