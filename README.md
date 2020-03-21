@@ -45,6 +45,13 @@ nwbn_conversion_gui(
 [Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/master/nwbn_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
 
 
-## optical physiology
-### processing
+### Optophysiology
+#### processing
 * [CELLMax](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ophys/processing/CELLMax/README.md)
+
+### Electrophysiology
+* [SpikeGLX](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/spikeglx/README.md)
+* [Intan](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/intan/README.md)
+
+### Behavior
+* [Bpod](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/behavior/bpod/README.md)
