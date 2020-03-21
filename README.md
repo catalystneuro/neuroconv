@@ -17,7 +17,17 @@ $ source activate nwbn_conversion
 ```
 
 ## GUI
-After activating the correct environment, nwbn_conversion_tools GUI can be imported and run from the python interpreter.
+After activating the correct environment, nwbn_conversion_tools GUI can be called from command line:
+```shell
+nwbn-gui
+```
+
+To initiate the GUI with a specific metafile:
+```shell
+nwbn-gui metafile.yml
+```
+
+The GUI can also be imported and run from python scripts:
 ```python
 from nwbn_conversion_tools.gui.nwbn_conversion_gui import nwbn_conversion_gui
 
