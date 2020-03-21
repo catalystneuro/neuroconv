@@ -4,7 +4,7 @@ Shared tools for converting data from various formats to NWB:N 2.0
 [![PyPI version](https://badge.fury.io/py/nwbn-conversion-tools.svg)](https://badge.fury.io/py/nwbn-conversion-tools)
 
 ## Installation
-To install **nwbn_conversion_tools** directly in an existing environment:
+To install **nwbn-conversion-tools** directly in an existing environment:
 ```
 $ pip install nwbn-conversion-tools
 ```
@@ -17,6 +17,8 @@ $ source activate nwbn_conversion
 ```
 
 ## GUI
+The Graphic User Interface of nwbn-conversion-tools provides an user-friendly way of editing metafiles for the conversion tasks and for exploring nwb files.
+
 After activating the correct environment, nwbn_conversion_tools GUI can be called from command line:
 ```shell
 nwbn-gui
