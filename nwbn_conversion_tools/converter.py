@@ -23,7 +23,7 @@ class NWBConverter:
         """
         self.metadata = metadata
         self.source_paths = source_paths
-        
+
         # create self.nwbfile object
         if nwbfile is None:
             self.create_nwbfile(metadata['NWBFile'])
@@ -152,7 +152,11 @@ class NWBConverter:
         # Creates new columns
         for colname in df.columns:
             if colname not in ['start_time', 'stop_time']:
-                self.nwbfile.add_trial_column(name=colname, description='no description')
+                # Indexed columns should be of type 'object' in the dataframe
+                if df[colname].dtype == 'object':
+                    self.nwbfile.add_trial_column(name=colname, description='no description', index=True)
+                else:
+                    self.nwbfile.add_trial_column(name=colname, description='no description')
         # Populates trials table from df values
         for index, row in df.iterrows():
             self.nwbfile.add_trial(**dict(row))
@@ -197,10 +201,16 @@ class NWBConverter:
             pass
         # Adds trials columns with data from df values
         for (colname, coldata) in df.iteritems():
+            # Indexed columns should be of type 'object' in the dataframe
+            if df[colname].dtype == 'object':
+                index = True
+            else:
+                index = False
             self.nwbfile.add_trial_column(
                 name=colname,
                 description='no description',
                 data=coldata,
+                index=index
             )
 
     def save(self, to_path, read_check=True):
