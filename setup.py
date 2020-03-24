@@ -26,7 +26,7 @@ setup(
     install_requires=[
         'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
         'pandas', 'jupyter', 'matplotlib', 'h5py', 'pyyaml', 'jupyter-client==5.3.4',
-        'spikeextractors', 'spikesorters', 'spiketoolkit', 'herdingspikes',
+        'spikeextractors', 'spikesorters', 'spiketoolkit',
         'PySide2', 'nwbwidgets', 'psutil', 'voila'
     ],
     entry_points={
