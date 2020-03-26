@@ -17,7 +17,7 @@ $ source activate nwbn_conversion
 ```
 
 ## GUI
-The Graphic User Interface of nwbn-conversion-tools provides an user-friendly way of editing metafiles for the conversion tasks and for exploring nwb files.
+The Graphic User Interface of nwbn-conversion-tools provides an user-friendly way of editing metafiles for the conversion tasks and for exploring nwb files with [nwb-jupyter-widgets](https://github.com/NeurodataWithoutBorders/nwb-jupyter-widgets) and an embedded IPython console.
 
 After activating the correct environment, nwbn_conversion_tools GUI can be called from command line:
 ```shell
@@ -56,15 +56,29 @@ nwbn_conversion_gui(
 ```
 [Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/master/nwbn_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
 
+<details>
+  <summary>
+    <strong>GUI demonstration</strong>
+  </summary>
+  ![](images/gif_gui_demonstration.gif)
+</details>
 
 ## Converters
-### Optophysiology
-#### processing
+#### Optophysiology
 * [CELLMax](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ophys/processing/CELLMax/README.md)
 
-### Electrophysiology
+#### Electrophysiology
 * [SpikeGLX](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/spikeglx/README.md)
 * [Intan](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/intan/README.md)
 
-### Behavior
+#### Behavior
 * [Bpod](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/behavior/bpod/README.md)
+
+
+## Used by
+
+* [Axel lab](https://www.axellab.columbia.edu/)
+* [Buffalo lab](https://buffalomemorylab.com/)
+* [Giocomo lab](https://giocomolab.weebly.com/)
+* [Jaeger lab](https://scholarblogs.emory.edu/jaegerlab/)
+* [Tolias lab](https://toliaslab.org/)
