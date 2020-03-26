@@ -60,7 +60,9 @@ nwbn_conversion_gui(
   <summary>
     <strong>GUI demonstration</strong>
   </summary>
+
   ![](images/gif_gui_demonstration.gif)
+
 </details>
 
 ## Converters
