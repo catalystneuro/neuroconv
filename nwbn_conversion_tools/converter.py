@@ -136,6 +136,13 @@ class NWBConverter:
                     description=eg_description
                 )
 
+    def create_electrodes_ecephys(self):
+        """
+        This method should be overridden by child classes if necessary.
+        Create electrodes in the NWBFile.
+        """
+        pass
+
     def create_icephys_elecs(self, elec_meta) -> Dict:
         """
         Use metadata to generate intracellular electrode object(s) in the NWBFile
