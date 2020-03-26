@@ -40,6 +40,10 @@ class NWBConverter:
             if domain in metadata and 'Device' in metadata[domain]:
                 self.devices.update(self.create_devices(metadata[domain]['Device']))
 
+        # add electrode groups
+        if 'ElectrodeGroup' in metadata['Ecephys']:
+            self.create_electrode_groups(metadata['Ecephys'])
+
         # add electrodes for icephys
         if 'Icephys' in metadata and ('Electrode' in metadata['Icephys']):
             self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
@@ -74,7 +78,7 @@ class NWBConverter:
         """
         This method is called at __init__.
         This method should not be overridden.
-        Use metadata to generate device object(s) in the NWBFile
+        Use metadata to create Device object(s) in the NWBFile
 
         Parameters
         ----------
@@ -95,6 +99,42 @@ class NWBConverter:
             else:
                 key = metadata_device['name']
             return {key: self.nwbfile.create_device(**metadata_device)}
+
+    def create_electrode_groups(self, metadata_ecephys):
+        """
+        This method is called at __init__.
+        This method should not be overridden.
+        Use metadata to create ElectrodeGroup object(s) in the NWBFile
+
+        Parameters
+        ----------
+        metadata_ecephys : dict
+            Dict with key:value pairs for defining the Ecephys group from where this
+            ElectrodeGroup belongs. This should contain keys for required groups
+            such as 'Device', 'ElectrodeGroup', etc.
+        """
+        for metadata_elec_group in metadata_ecephys['ElectrodeGroup']:
+            eg_name = metadata_elec_group['name']
+            # Tests if ElectrodeGroup already exists
+            aux = [i.name == eg_name for i in self.nwbfile.children]
+            if any(aux):
+                print(eg_name + ' already exists in current NWBFile.')
+            else:
+                device_name = metadata_elec_group['device']
+                if device_name in self.nwbfile.devices:
+                    device = self.nwbfile.devices[device_name]
+                else:
+                    print('Device ', device_name, ' for ElectrodeGroup ', eg_name, ' does not exist.')
+                    print('Make sure ', device_name, ' is defined in metadata.')
+
+                eg_description = metadata_elec_group['description']
+                eg_location = metadata_elec_group['location']
+                self.nwbfile.create_electrode_group(
+                    name=eg_name,
+                    location=eg_location,
+                    device=device,
+                    description=eg_description
+                )
 
     def create_icephys_elecs(self, elec_meta) -> Dict:
         """
