@@ -6,6 +6,7 @@ This converter is built on top of the publicly available [Python RHD file reader
 Example of usage:
 ```python
 from nwbn_conversion_tools.ecephys import Intan2NWB
+import yaml
 
 # Metadata
 metafile = 'metafile.yml'
@@ -14,10 +15,13 @@ with open(metafile, 'r') as f:
 
 # Source paths
 source_paths = dict()
-source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': 'PATH_TO_DIR'}
+#source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': 'PATH_TO_DIR'}
+
+from pathlib import Path
+source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': Path.cwd()}
 
 # Initialize converter
-converter = Spikeglx2NWB(nwbfile=None, metadata=metadata, source_paths=source_paths)
+converter = Intan2NWB(nwbfile=None, metadata=metadata, source_paths=source_paths)
 
 # Run conversion
 converter.run_conversion()
