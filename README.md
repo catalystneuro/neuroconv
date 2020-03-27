@@ -60,20 +60,20 @@ nwbn_conversion_gui(
 
 ## Converters
 #### Optophysiology
-* [CELLMax](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ophys/processing/CELLMax/README.md)
+* [CELLMax](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ophys/processing/CELLMax)
 
 #### Electrophysiology
-* [SpikeGLX](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/spikeglx/README.md)
-* [Intan](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/intan/README.md)
+* [SpikeGLX](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/spikeglx)
+* [Intan](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/ecephys/intan)
 
 #### Behavior
-* [Bpod](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/behavior/bpod/README.md)
+* [Bpod](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/blob/master/nwbn_conversion_tools/behavior/bpod)
 
 
 ## Used by
 
-* [Axel lab](https://www.axellab.columbia.edu/)
-* [Buffalo lab](https://buffalomemorylab.com/)
-* [Giocomo lab](https://giocomolab.weebly.com/)
-* [Jaeger lab](https://scholarblogs.emory.edu/jaegerlab/)
-* [Tolias lab](https://toliaslab.org/)
+* [Axel lab](https://www.axellab.columbia.edu/): [axel-lab-to-nwb](https://github.com/ben-dichter-consulting/axel-lab-to-nwb)
+* [Buffalo lab](https://buffalomemorylab.com/): [buffalo-lab-data-to-nwb](https://github.com/ben-dichter-consulting/buffalo-lab-data-to-nwb)
+* [Giocomo lab](https://giocomolab.weebly.com/): [giocomo-lab-to-nwb](https://github.com/ben-dichter-consulting/giocomo-lab-to-nwb)
+* [Jaeger lab](https://scholarblogs.emory.edu/jaegerlab/): [jaeger-lab-to-nwb](https://github.com/ben-dichter-consulting/jaeger-lab-to-nwb)
+* [Tolias lab](https://toliaslab.org/): [tolias-lab-to-nwb](https://github.com/ben-dichter-consulting/tolias-lab-to-nwb)
