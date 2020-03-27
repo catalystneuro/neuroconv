@@ -3,6 +3,8 @@ Shared tools for converting data from various formats to NWB:N 2.0
 
 [![PyPI version](https://badge.fury.io/py/nwbn-conversion-tools.svg)](https://badge.fury.io/py/nwbn-conversion-tools)
 
+![](images/gif_gui_demonstration.gif)
+
 ## Installation
 To install **nwbn-conversion-tools** directly in an existing environment:
 ```
@@ -55,15 +57,6 @@ nwbn_conversion_gui(
 )
 ```
 [Here](https://github.com/NeurodataWithoutBorders/nwbn-conversion-tools/tree/master/nwbn_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
-
-<details>
-  <summary>
-    <strong>GUI demonstration</strong>
-  </summary>
-
-  ![](images/gif_gui_demonstration.gif)
-
-</details>
 
 ## Converters
 #### Optophysiology
