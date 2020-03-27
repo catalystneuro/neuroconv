@@ -1,14 +1,32 @@
-from nwbn_conversion_tools.base import Convert2NWB
-import pynwb
+from nwbn_conversion_tools.converter import NWBConverter
+import spikeextractors as se
 import spikesorters as ss
 import spiketoolkit as st
+import pynwb
+
+from pathlib import Path
 import numpy as np
 
 
-class EphysAcquisition2NWB(Convert2NWB):
-    def __init__(self, nwbfile, metadata={}):
-        super(EphysAcquisition2NWB, self).__init__(nwbfile=nwbfile, metadata=metadata)
-        self.RX = None
+class Spikeglx2NWB(NWBConverter):
+    def __init__(self, nwbfile, metadata, source_paths, x_pitch=None, y_pitch=None):
+        """
+        Reads data from SpikeGLX file, using SpikeGLXRecordingExtractor class
+        from SpikeExtractors: https://github.com/SpikeInterface/spikeextractors
+
+        Parameters
+        ----------
+        nwbfile: pynwb.NWBFile
+        metadata: dict
+        source_paths: {'npx_file': {'type': 'file', 'path': PATH_TO_FILE}}
+            Dictionary with path to SpikeGLX file to be read.
+        x_pitch : float
+        y_pitch : float
+        """
+        super().__init__(nwbfile=nwbfile, metadata=metadata, source_paths=source_paths)
+        # Read
+        npx_file = Path(self.source_paths['npx_file']['path'])
+        self.RX = se.SpikeGLXRecordingExtractor(npx_file, x_pitch=x_pitch, y_pitch=y_pitch)
         self.SX = None
 
     def add_acquisition(self, es_name, metadata):
@@ -49,14 +67,14 @@ class EphysAcquisition2NWB(Convert2NWB):
             # channels gains - for RecordingExtractor, these are values to cast traces to uV
             # for nwb, the conversions (gains) cast the data to Volts
             gains = np.squeeze([self.RX.get_channel_gains(channel_ids=[ch])
-                     if 'gain' in self.RX.get_channel_property_names(channel_id=ch) else 1
-                     for ch in channel_ids])
+                                if 'gain' in self.RX.get_channel_property_names(channel_id=ch) else 1
+                                for ch in channel_ids])
             if len(np.unique(gains)) == 1:  # if all gains are equal
-                scalar_conversion = np.unique(gains)[0]*1e-6
+                scalar_conversion = np.unique(gains)[0] * 1e-6
                 channel_conversion = None
             else:
                 scalar_conversion = 1.
-                channel_conversion = gains*1e-6
+                channel_conversion = gains * 1e-6
             es_data = self.RX.get_traces().T
             es = pynwb.ecephys.ElectricalSeries(
                 name=es_name,
@@ -71,25 +89,7 @@ class EphysAcquisition2NWB(Convert2NWB):
             )
             self.nwbfile.add_acquisition(es)
 
-    def add_device(self, dev_name):
-        """
-        Adds a Device group to current NWBFile.
-
-        Parameters
-        ----------
-        dev_name : str
-            Name of Device to be created.
-        """
-        # Tests if Device already exists
-        aux = [i.name == dev_name for i in self.nwbfile.children]
-        if any(aux):
-            device = self.nwbfile.children[np.where(aux)[0][0]]
-            print(dev_name+' already exists in current NWBFile.')
-        else:
-            device = self.nwbfile.create_device(name=dev_name)
-        return device
-
-    def add_electrode_group(self, eg_name, metadata):
+    def create_electrodes_ecephys(self, eg_name, metadata):
         """
         Adds a ElectrodeGroup group to current NWBFile.
 

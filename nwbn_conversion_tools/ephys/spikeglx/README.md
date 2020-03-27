@@ -1,4 +1,5 @@
-from nwbn_conversion_tools.ephys.acquisition.spikeglx.spikeglx import Spikeglx2NWB
+```python
+from nwbn_conversion_tools.ecephys.spikeglx import Spikeglx2NWB
 import yaml
 
 metafile = 'metafile.yml'
@@ -19,3 +20,4 @@ extractor.run_spike_sorting()
 
 # To save content to NWB file:
 extractor.save(to_path='output.nwb')
+```

@@ -1,0 +1,23 @@
+Ecephys:
+  Device:
+    - name: Device
+  ElectricalSeries:
+    - description: ADDME
+      name: ElectricalSeries
+  ElectrodeGroup:
+    - description: description
+      device: Device
+      location: ADDME
+      name: ElectrodeGroup
+NWBFile:
+  experiment_description: ADDME
+  experimenter: Name
+  identifier: ABC123
+  institution: My University
+  keywords:
+  - kw1
+  - kw2
+  lab: My lab
+  session_description: session_description
+  session_id: ADDME
+  session_start_time: 2019-09-16 17:10:00
