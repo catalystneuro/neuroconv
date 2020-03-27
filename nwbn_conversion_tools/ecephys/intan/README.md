@@ -15,10 +15,7 @@ with open(metafile, 'r') as f:
 
 # Source paths
 source_paths = dict()
-#source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': 'PATH_TO_DIR'}
-
-from pathlib import Path
-source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': Path.cwd()}
+source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': 'PATH_TO_DIR'}
 
 # Initialize converter
 converter = Intan2NWB(nwbfile=None, metadata=metadata, source_paths=source_paths)
