@@ -1,27 +1,26 @@
+## Intan converter
+
+Conversion of Intan Technologies electrophysiology data from `rhd` to `nwb`.
+This converter is built on top of the publicly available [Python RHD file reader](http://intantech.com/downloads.html?tabSelect=Software).
+
+Example of usage:
 ```python
-from nwbn_conversion_tools.ecephys import Spikeglx2NWB
-import yaml
+from nwbn_conversion_tools.ecephys import Intan2NWB
 
 # Metadata
 metafile = 'metafile.yml'
 with open(metafile, 'r') as f:
     metadata = yaml.safe_load(f)
 
-# Paths to source data
+# Source paths
 source_paths = dict()
-source_paths['npx_file'] = {
-    'type': 'file',
-    'path': 'PATH_TO_FILE/filename.imec0.ap.bin'
-}
+source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': 'PATH_TO_DIR'}
 
 # Initialize converter
 converter = Spikeglx2NWB(nwbfile=None, metadata=metadata, source_paths=source_paths)
 
 # Run conversion
 converter.run_conversion()
-
-# Run spike sorting and store results on NWB:
-converter.run_spike_sorting()
 
 # To visualize NWB contents:
 print(converter.nwbfile)
