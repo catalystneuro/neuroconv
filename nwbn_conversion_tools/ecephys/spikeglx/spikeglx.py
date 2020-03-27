@@ -24,152 +24,30 @@ class Spikeglx2NWB(NWBConverter):
         y_pitch : float
         """
         super().__init__(nwbfile=nwbfile, metadata=metadata, source_paths=source_paths)
-        # Read
+        # Read SpikeGLX data to recordingextractor
         npx_file = Path(self.source_paths['npx_file']['path'])
         self.RX = se.SpikeGLXRecordingExtractor(npx_file, x_pitch=x_pitch, y_pitch=y_pitch)
         self.SX = None
 
-    def add_acquisition(self, es_name, metadata):
+    def run_conversion(self):
         """
         Adds voltages traces in self.RX as ElectricalSeries at acquisition group
         of current NWBFile.
-
-        Parameters
-        ----------
-        es_name : str
-            Name of ElectricalSeries to be created.
-        metadata : dict
-            Dict with key:value pairs for defining the Ecephys group from where this
-            ElectricalSeries belongs. This should contain keys for required groups
-            such as 'Device', 'ElectrodeGroup', etc.
         """
-        # Tests if ElectricalSeries already exists
-        aux = [i.name == es_name for i in self.nwbfile.children]
-        if any(aux):
-            es = self.nwbfile.children[np.where(aux)[0][0]]
-            print(es_name + ' already exists in current NWBFile.')
-            return es
-        else:  # ElectricalSeries can be created in acquisition
-            self.add_electrode_group(
-                eg_name=metadata['ElectrodeGroup'][0]['name'],
-                metadata=metadata
-            )
+        # Devices and ElectrodeGroups are automatically created at NWBConverter.__init__()
+        # Add electrodes, use staticmethod from se.NwbRecordingExtractor
+        self.nwbfile = se.NwbRecordingExtractor.add_electrodes(
+            recording=self.RX,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata
+        )
 
-            channel_ids = self.RX.get_channel_ids()
-            electrode_table_region = self.nwbfile.create_electrode_table_region(
-                region=list(channel_ids),
-                description='electrode_table_region'
-            )
-
-            # sampling rate
-            rate = self.RX.get_sampling_frequency()
-
-            # channels gains - for RecordingExtractor, these are values to cast traces to uV
-            # for nwb, the conversions (gains) cast the data to Volts
-            gains = np.squeeze([self.RX.get_channel_gains(channel_ids=[ch])
-                                if 'gain' in self.RX.get_channel_property_names(channel_id=ch) else 1
-                                for ch in channel_ids])
-            if len(np.unique(gains)) == 1:  # if all gains are equal
-                scalar_conversion = np.unique(gains)[0] * 1e-6
-                channel_conversion = None
-            else:
-                scalar_conversion = 1.
-                channel_conversion = gains * 1e-6
-            es_data = self.RX.get_traces().T
-            es = pynwb.ecephys.ElectricalSeries(
-                name=es_name,
-                data=es_data,
-                electrodes=electrode_table_region,
-                starting_time=self.RX.frame_to_time(0),
-                rate=rate,
-                conversion=scalar_conversion,
-                channel_conversion=channel_conversion,
-                comments='Generated from SpikeInterface::NwbRecordingExtractor',
-                description='acquisition_description'
-            )
-            self.nwbfile.add_acquisition(es)
-
-    def create_electrodes_ecephys(self, eg_name, metadata):
-        """
-        Adds a ElectrodeGroup group to current NWBFile.
-
-        Parameters
-        ----------
-        eg_name : str
-            Name of ElectrodeGroup to be created.
-        metadata : dict
-            Dict with key:value pairs for defining the Ecephys group from where this
-            ElectrodeGroup belongs. This should contain keys for required groups
-            such as 'Device', 'ElectrodeGroup', etc.
-        """
-        # Tests if ElectrodeGroup already exists
-        aux = [i.name == eg_name for i in self.nwbfile.children]
-        if any(aux):
-            electrode_group = self.nwbfile.children[np.where(aux)[0][0]]
-            print(eg_name + ' already exists in current NWBFile.')
-        else:
-            device = self.add_device(dev_name=metadata['ElectrodeGroup'][0]['device'])
-
-            eg_description = metadata['ElectrodeGroup'][0]['description']
-            eg_location = metadata['ElectrodeGroup'][0]['location']
-            electrode_group = self.nwbfile.create_electrode_group(
-                name=eg_name,
-                location=eg_location,
-                device=device,
-                description=eg_description
-            )
-
-            # add new electrodes with id, (rel_x, rel_y) and groups
-            if self.nwbfile.electrodes is None or 'rel_x' not in self.nwbfile.electrodes.colnames:
-                self.nwbfile.add_electrode_column('rel_x', 'x position of electrode in electrode group')
-            if self.nwbfile.electrodes is None or 'rel_y' not in self.nwbfile.electrodes.colnames:
-                self.nwbfile.add_electrode_column('rel_y', 'y position of electrode in electrode group')
-
-            # add electrodes
-            channel_ids = self.RX.get_channel_ids()
-            for m in channel_ids:
-                if 'location' in self.RX.get_channel_property_names(m):
-                    location = self.RX.get_channel_property(m, 'location')
-                    while len(location) < 2:
-                        location = np.append(location, [0])
-                else:
-                    location = [np.nan, np.nan]
-                impedance = -1.0
-                self.nwbfile.add_electrode(
-                    id=m,
-                    x=np.nan, y=np.nan, z=np.nan,
-                    rel_x=float(location[0]), rel_y=float(location[1]),
-                    imp=impedance,
-                    location='electrode_location',
-                    filtering='none',
-                    group=electrode_group,
-                )
-
-            # add other existing electrode properties
-            properties = self.RX.get_shared_channel_property_names()
-            for pr in properties:
-                vals = [self.RX.get_channel_property(ind, pr) for ind in channel_ids]
-                desc = 'no description'
-                # property 'group' of electrodes can not be updated
-                if pr == 'group':
-                    continue
-                # property 'gain' should not be in the NWB electrodes_table
-                if pr == 'gain':
-                    continue
-                # property 'location' -> (rel_x, rel_y) already added
-                if pr == 'location':
-                    continue
-                # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
-                if pr == 'brain_area':
-                    pr = 'location'
-                    desc = 'brain area location'
-                self.nwbfile.add_electrode_column(
-                    name=pr,
-                    description=desc,
-                    data=vals,
-                )
-
-        return electrode_group
+        # Add electrical series
+        self.nwbfile = se.NwbRecordingExtractor.add_electrical_series(
+            recording=self.RX,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata
+        )
 
     def add_units(self):
         """

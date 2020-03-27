@@ -2,22 +2,29 @@
 from nwbn_conversion_tools.ecephys.spikeglx import Spikeglx2NWB
 import yaml
 
+# Metadata
 metafile = 'metafile.yml'
 with open(metafile, 'r') as f:
     metadata = yaml.safe_load(f)
-npx_file = 'G4_190620_keicontrasttrack_10secBaseline1_g0_t0.imec0.ap.bin'
 
-extractor = Spikeglx2NWB(nwbfile=None, metadata=metadata, npx_file=npx_file)
+# Paths to source data
+source_paths = dict()
+source_paths['npx_file'] = {
+    'type': 'file',
+    'path': 'PATH_TO_FILE/filename.imec0.ap.bin'
+}
+
+converter = Spikeglx2NWB(nwbfile=None, metadata=metadata, source_paths=source_paths)
 
 # To visualize NWB contents:
-print(extractor.nwbfile)
+print(converter.nwbfile)
 
 # To add Acquisition:
-extractor.add_acquisition(es_name='ElectricalSeries', metadata=metadata['Ephys'])
+converter.run_conversion()
 
 # Run spike sorting and store results on NWB:
-extractor.run_spike_sorting()
+converter.run_spike_sorting()
 
 # To save content to NWB file:
-extractor.save(to_path='output.nwb')
+converter.save(to_path='output.nwb')
 ```
