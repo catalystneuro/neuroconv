@@ -1,5 +1,5 @@
 from PySide2.QtWidgets import QVBoxLayout, QGridLayout, QGroupBox, QComboBox
-from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible
+from nwb_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible
 import pynwb
 from itertools import groupby
 

@@ -5,7 +5,7 @@ This converter is built on top of the publicly available [Python RHD file reader
 
 Example of usage:
 ```python
-from nwbn_conversion_tools.ecephys import Intan2NWB
+from nwb_conversion_tools.ecephys import Intan2NWB
 import yaml
 
 # Metadata

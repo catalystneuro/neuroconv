@@ -16,8 +16,8 @@ from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                                QGroupBox, QComboBox)
 from PySide2.QtGui import QDoubleValidator
 
-from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+from nwb_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwb_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 from collections.abc import Iterable
 
@@ -31,7 +31,7 @@ class BasicFormCollapsible(CollapsibleBox):
         self.metadata = metadata
         self.pynwb_class = pynwb_class
         self.groups_list = []
-        from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
+        from nwb_conversion_tools.gui.utils.name_references import name_to_gui_class
         self.name_to_gui_class = name_to_gui_class
 
         # Forms-creation basic info instructions
@@ -212,7 +212,7 @@ class BasicFormFixed(QGroupBox):
         self.metadata = metadata
         self.pynwb_class = pynwb_class
         self.groups_list = []
-        from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
+        from nwb_conversion_tools.gui.utils.name_references import name_to_gui_class
         self.name_to_gui_class = name_to_gui_class
 
         self.fill_fields_info()

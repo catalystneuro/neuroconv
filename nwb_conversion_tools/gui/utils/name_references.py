@@ -1,10 +1,10 @@
-import nwbn_conversion_tools.gui.classes as gui_modules
+import nwb_conversion_tools.gui.classes as gui_modules
 import pynwb
 
 
 # This carries the reference mapping between pynwb groups names and their
 # respective GUI forms constructing classes.
-# It can be updated by extensions at the __init__ of nwbn_conversion_gui.py
+# It can be updated by extensions at the __init__ of nwb_conversion_gui.py
 name_to_gui_class = {
     'Device': gui_modules.forms_general.GroupDevice,
     # Base
@@ -46,7 +46,7 @@ name_to_gui_class = {
 
 # This carries the reference mapping between pynwb groups names and their
 # respective pynwb classes.
-# It can be updated by extensions at the __init__ of nwbn_conversion_gui.py
+# It can be updated by extensions at the __init__ of nwb_conversion_gui.py
 name_to_pynwb_class = {
     'Device': pynwb.device.Device,
     # Ophys

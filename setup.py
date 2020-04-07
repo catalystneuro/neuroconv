@@ -11,14 +11,14 @@ with open(path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 setup(
-    name='nwbn-conversion-tools',
-    version='0.3.3',
+    name='nwb-conversion-tools',
+    version='0.3.4',
     description='Convert data to nwb',
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Ben Dichter and Luiz Tauffer',
     author_email='ben.dichter@gmail.com',
-    url='https://github.com/ben-dichter-consulting/nwbn-conversion-tools',
+    url='https://github.com/catalystneuro/nwb-conversion-tools',
     keywords='nwb',
     packages=find_packages(),
     package_data={'': ['template_metafile.yml']},
@@ -30,6 +30,6 @@ setup(
         'PySide2', 'nwbwidgets', 'psutil', 'voila'
     ],
     entry_points={
-        'console_scripts': ['nwbn-gui=nwbn_conversion_tools.gui.command_line:main'],
+        'console_scripts': ['nwb-gui=nwb_conversion_tools.gui.command_line:main'],
     }
 )

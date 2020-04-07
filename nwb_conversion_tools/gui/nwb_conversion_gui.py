@@ -5,13 +5,13 @@ from PySide2.QtWidgets import (QMainWindow, QWidget, QApplication, QAction,
                                QGridLayout, QSplitter, QLabel, QFileDialog,
                                QMessageBox, QComboBox, QScrollArea, QStyle,
                                QGroupBox, QCheckBox, QTabWidget)
-from nwbn_conversion_tools.gui.classes.console_widget import ConsoleWidget
-from nwbn_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
-from nwbn_conversion_tools.gui.classes.forms_ophys import GroupOphys
-from nwbn_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
-from nwbn_conversion_tools.gui.classes.forms_behavior import GroupBehavior
-from nwbn_conversion_tools.gui.classes.forms_ogen import GroupOgen
-from nwbn_conversion_tools.gui.utils.name_references import name_to_gui_class
+from nwb_conversion_tools.gui.classes.console_widget import ConsoleWidget
+from nwb_conversion_tools.gui.classes.forms_general import GroupNwbfile, GroupSubject
+from nwb_conversion_tools.gui.classes.forms_ophys import GroupOphys
+from nwb_conversion_tools.gui.classes.forms_ecephys import GroupEcephys
+from nwb_conversion_tools.gui.classes.forms_behavior import GroupBehavior
+from nwb_conversion_tools.gui.classes.forms_ogen import GroupOgen
+from nwb_conversion_tools.gui.utils.name_references import name_to_gui_class
 
 import numpy as np
 import nbformat as nbf
@@ -578,7 +578,7 @@ class Application(QMainWindow):
         msg.setIcon(QMessageBox.Information)
         msg.setText("Version: 0.2.0 \n"
                     "Shared tools for converting data from various formats to NWB:N 2.0.\n ")
-        msg.setInformativeText("<a href='https://github.com/ben-dichter-consulting/nwbn-conversion-tools'>NWB conversion tools Github page</a>")
+        msg.setInformativeText("<a href='https://github.com/catalystneuro/nwb-conversion-tools'>NWB conversion tools Github page</a>")
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
 
@@ -679,9 +679,9 @@ if __name__ == '__main__':
 
 
 # If it is imported as a module
-def nwbn_conversion_gui(metafile=None, conversion_module='', source_paths={},
-                        kwargs_fields={}, extension_modules={}, extension_forms={},
-                        show_add_del=False):
+def nwb_conversion_gui(metafile=None, conversion_module='', source_paths={},
+                       kwargs_fields={}, extension_modules={}, extension_forms={},
+                       show_add_del=False):
     """Sets up QT application."""
     app = QtCore.QCoreApplication.instance()
     if app is None:

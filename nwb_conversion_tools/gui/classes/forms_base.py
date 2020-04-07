@@ -1,7 +1,7 @@
 from PySide2.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
                              QComboBox, QCheckBox)
-from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+from nwb_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwb_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 
 class GroupTimeSeries(QGroupBox):
@@ -146,15 +146,15 @@ class GroupImage(QGroupBox):
         self.parent = parent
         self.group_type = 'Image'
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lbl_name = QLabel('name<span style="color:' + required_asterisk_color + ';">*</span>:')
         self.form_name = QLineEdit('Image')
         self.form_name.setToolTip("The unique name of this Image dataset")
         nInstances = 0
         for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupImage):
+            if isinstance(grp, GroupImage):
                 nInstances += 1
         if nInstances > 0:
-            self.form_name.setText('Image'+str(nInstances))
+            self.form_name.setText('Image' + str(nInstances))
 
         self.lbl_resolution = QLabel('resolution:')
         self.form_resolution = QLineEdit('')
@@ -218,15 +218,15 @@ class GroupImages(QGroupBox):
         self.parent = parent
         self.group_type = 'Images'
 
-        self.lbl_name = QLabel('name<span style="color:'+required_asterisk_color+';">*</span>:')
+        self.lbl_name = QLabel('name<span style="color:' + required_asterisk_color + ';">*</span>:')
         self.form_name = QLineEdit('Images')
         self.form_name.setToolTip("The name of this set of images")
         nInstances = 0
         for grp in self.parent.groups_list:
-            if isinstance(grp,  GroupImages):
+            if isinstance(grp, GroupImages):
                 nInstances += 1
         if nInstances > 0:
-            self.form_name.setText('Images'+str(nInstances))
+            self.form_name.setText('Images' + str(nInstances))
 
         self.lbl_images = QLabel('images:')
         self.combo_images = CustomComboBox()

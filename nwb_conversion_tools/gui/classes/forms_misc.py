@@ -1,7 +1,7 @@
 from PySide2.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
                              QComboBox, QCheckBox)
-from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.classes.forms_base import GroupTimeSeries
+from nwb_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwb_conversion_tools.gui.classes.forms_base import GroupTimeSeries
 
 
 class GroupIntervalSeries(QGroupBox):

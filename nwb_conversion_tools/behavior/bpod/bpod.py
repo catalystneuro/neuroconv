@@ -1,6 +1,6 @@
 from pynwb import NWBFile
 from pynwb.behavior import BehavioralEvents
-from nwbn_conversion_tools.converter import NWBConverter
+from nwb_conversion_tools.converter import NWBConverter
 
 from pathlib import Path
 from datetime import datetime

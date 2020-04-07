@@ -1,7 +1,7 @@
 # Opens the NWB conversion GUI
 # authors: Luiz Tauffer and Ben Dichter
 # ------------------------------------------------------------------------------
-from nwbn_conversion_tools.gui.nwbn_conversion_gui import nwbn_conversion_gui
+from nwb_conversion_tools.gui.nwb_conversion_gui import nwb_conversion_gui
 import os
 
 
@@ -16,7 +16,7 @@ def main():
 
     kwargs_fields = {}
 
-    nwbn_conversion_gui(
+    nwb_conversion_gui(
         metafile=metafile,
         conversion_module=conversion_module,
         source_paths=source_paths,

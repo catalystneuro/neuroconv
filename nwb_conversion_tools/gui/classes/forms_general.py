@@ -1,8 +1,8 @@
 from PySide2.QtGui import QIntValidator, QDoubleValidator
 from PySide2.QtWidgets import (QLineEdit, QGridLayout, QLabel, QGroupBox,
                              QComboBox, QCheckBox)
-from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+from nwb_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwb_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
 
 from datetime import datetime
 import numpy as np

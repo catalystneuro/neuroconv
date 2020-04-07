@@ -1,10 +1,10 @@
 from PySide2.QtWidgets import (QLineEdit, QVBoxLayout, QGridLayout, QLabel,
                                QGroupBox, QComboBox, QCheckBox, QMessageBox)
-from nwbn_conversion_tools.gui.classes.forms_general import GroupDevice
-from nwbn_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
-from nwbn_conversion_tools.gui.utils.configs import required_asterisk_color
-from nwbn_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
-from nwbn_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible
+from nwb_conversion_tools.gui.classes.forms_general import GroupDevice
+from nwb_conversion_tools.gui.classes.forms_misc import GroupDecompositionSeries
+from nwb_conversion_tools.gui.utils.configs import required_asterisk_color
+from nwb_conversion_tools.gui.classes.collapsible_box import CollapsibleBox
+from nwb_conversion_tools.gui.classes.forms_basic import BasicFormCollapsible
 import pynwb
 from itertools import groupby
 

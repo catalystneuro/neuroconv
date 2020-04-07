@@ -1,4 +1,4 @@
-from nwbn_conversion_tools.converter import NWBConverter
+from nwb_conversion_tools.converter import NWBConverter
 import spikeextractors as se
 import spikesorters as ss
 import spiketoolkit as st

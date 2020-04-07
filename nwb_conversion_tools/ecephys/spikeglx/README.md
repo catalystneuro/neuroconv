@@ -1,5 +1,5 @@
 ```python
-from nwbn_conversion_tools.ecephys import Spikeglx2NWB
+from nwb_conversion_tools.ecephys import Spikeglx2NWB
 import yaml
 
 # Metadata
