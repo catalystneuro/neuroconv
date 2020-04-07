@@ -1,4 +1,5 @@
 # Simple tests to kickstart the testing of nwb-conversion-tools
+from pathlib import Path
 
 
 def test_base_class():
@@ -6,8 +7,10 @@ def test_base_class():
     from datetime import datetime
     import yaml
 
+    here = Path(__file__).parent.absolute()
+
     # Load metadata from YAML file
-    metafile = 'metafile_tests.yml'
+    metafile = here / 'metafile_tests.yml'
     with open(metafile) as f:
         metadata = yaml.safe_load(f)
 
