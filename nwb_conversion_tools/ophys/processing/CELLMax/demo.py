@@ -1,4 +1,4 @@
-from nwbn_conversion_tools.ophys.processing.CELLMax import CellMax2NWB
+from nwb_conversion_tools.ophys.processing.CELLMax import CellMax2NWB
 from pynwb import NWBFile
 from datetime import datetime
 from dateutil.tz import tzlocal

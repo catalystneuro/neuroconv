@@ -1,7 +1,7 @@
 from pynwb.ophys import OpticalChannel, ImageSegmentation
 from pynwb.device import Device
 
-from nwbn_conversion_tools.base import Convert2NWB
+from nwb_conversion_tools.base import Convert2NWB
 import numpy as np
 
 

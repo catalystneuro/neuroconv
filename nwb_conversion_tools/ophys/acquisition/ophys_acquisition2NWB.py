@@ -1,4 +1,4 @@
-from nwbn_conversion_tools.base import Convert2NWB
+from nwb_conversion_tools.base import Convert2NWB
 
 
 class OphysAcquisition2NWB(Convert2NWB):

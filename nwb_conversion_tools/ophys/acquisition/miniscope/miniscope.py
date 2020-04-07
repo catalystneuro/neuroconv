@@ -4,7 +4,7 @@ from pynwb.image import ImageSeries
 from natsort import natsorted
 from glob import glob
 
-from nwbn_conversion_tools.ophys.acquisition.ophys_acquisition2NWB import OphysAcquisition2NWB
+from nwb_conversion_tools.ophys.acquisition.ophys_acquisition2NWB import OphysAcquisition2NWB
 
 
 class Miniscope2NWB(OphysAcquisition2NWB):

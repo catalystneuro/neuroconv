@@ -1,6 +1,6 @@
 from h5py import File
 from pynwb.ophys import Fluorescence
-from nwbn_conversion_tools.ophys.processing.ophys_processing2NWB import OphysProcessing2NWB
+from nwb_conversion_tools.ophys.processing.ophys_processing2NWB import OphysProcessing2NWB
 
 import numpy as np
 
