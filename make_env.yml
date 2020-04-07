@@ -1,4 +1,4 @@
-name: nwbn_conversion
+name: nwb_conversion_tools
 channels:
 - defaults
 - anaconda
