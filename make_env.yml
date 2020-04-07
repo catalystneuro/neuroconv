@@ -1,28 +1,8 @@
-name: nwb_conversion_tools
+name: nwb_conversion_env
 channels:
 - defaults
 - anaconda
 - conda-forge
 dependencies:
 - python=3.7
-- ipython
 - pip
-- numpy
-- scipy
-- pandas
-- jupyter
-- matplotlib
-- h5py
-- pyside2
-- pynwb
-- hdmf
-- pyyaml
-- psutil
-- voila
-- pip:
-  - spikeextractors
-  - spikesorters
-  - spiketoolkit
-  - herdingspikes
-  - nwbwidgets
-  - -e .
