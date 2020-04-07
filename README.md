@@ -15,7 +15,7 @@ Alternatively, to clone the repository and set up a conda environment, do:
 ```
 $ git clone https://github.com/NeurodataWithoutBorders/nwb-conversion-tools
 $ cd nwb-conversion-tools
-$ conda env create -f nwb-conversion-tools/make_env.yml
+$ conda env create -f make_env.yml
 $ conda activate nwb_conversion_env
 $ pip install .
 ```
