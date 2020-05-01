@@ -40,13 +40,13 @@ class NWBConverter:
             if domain in metadata and 'Device' in metadata[domain]:
                 self.devices.update(self.create_devices(metadata[domain]['Device']))
 
-        # add electrode groups
-        if 'ElectrodeGroup' in metadata['Ecephys']:
-            self.create_electrode_groups(metadata['Ecephys'])
+        if 'Ecephys' in metadata:
+            if 'ElectrodeGroup' in metadata['Ecephys']:
+                self.create_electrode_groups(metadata['Ecephys'])
 
-        # add electrodes for icephys
-        if 'Icephys' in metadata and ('Electrode' in metadata['Icephys']):
-            self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
+        if 'Icephys' in metadata:
+            if 'Electrode' in metadata['Icephys']:
+                self.ic_elecs = self.create_icephys_elecs(metadata['Icephys']['Electrode'])
 
     def create_nwbfile(self, metadata_nwbfile):
         """
