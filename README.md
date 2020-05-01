@@ -1,5 +1,11 @@
-# nwb-conversion-tools
-Shared tools for converting data from various formats to NWB:N 2.0
+# NWB conversion tools
+Framework for converting data from various formats to NWB 2.0
+
+Features:
+* Command line interface
+* Python API
+* Qt GUI for customized metadata curation
+* Leverages SpikeExtractor to support conversion from a number or proprietary formats.
 
 [![PyPI version](https://badge.fury.io/py/nwb-conversion-tools.svg)](https://badge.fury.io/py/nwb-conversion-tools)
 
