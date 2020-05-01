@@ -1,4 +1,4 @@
-# nwb-conversion-tools
+# NWB conversion tools
 Framework for converting data from various formats to NWB 2.0
 
 Features:
