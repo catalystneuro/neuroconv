@@ -301,7 +301,7 @@ class NWBConverter:
                 description = name
             return self.nwbfile.create_processing_module(name, description)
 
-    def add_sortingxtractor(self, sortingextractor: SortingExtractor):
+    def add_sortingextractor(self, sortingextractor: SortingExtractor):
         self.nwbfile = NwbSortingExtractor.read_sorting(sortingextractor, self.nwbfile)
 
     def add_recordingextractor(self, recordingextractor: RecordingExtractor):
