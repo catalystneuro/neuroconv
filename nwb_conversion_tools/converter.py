@@ -77,7 +77,6 @@ class NWBConverter:
     def create_devices(self, metadata_device) -> Dict:
         """
         This method is called at __init__.
-        This method should not be overridden.
         Use metadata to create Device object(s) in the NWBFile
 
         Parameters
@@ -103,7 +102,6 @@ class NWBConverter:
     def create_electrode_groups(self, metadata_ecephys):
         """
         This method is called at __init__.
-        This method should not be overridden.
         Use metadata to create ElectrodeGroup object(s) in the NWBFile
 
         Parameters
@@ -305,4 +303,4 @@ class NWBConverter:
         self.nwbfile = NwbSortingExtractor.read_sorting(sortingextractor, self.nwbfile)
 
     def add_recordingextractor(self, recordingextractor: RecordingExtractor):
-        self.nwbfile = NwbSortingExtractor.read_recording(recordingextractor, self.nwbfile)
+        self.nwbfile = NwbRecordingExtractor.read_recording(recordingextractor, self.nwbfile)
