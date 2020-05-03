@@ -1,11 +1,11 @@
 from h5py import File
 from pynwb.ophys import Fluorescence
-from nwb_conversion_tools.ophys.processing.ophys_processing2NWB import OphysProcessing2NWB
+from nwb_conversion_tools.ophys import ProcessedOphysNWBConverter
 
 import numpy as np
 
 
-class CellMax2NWB(OphysProcessing2NWB):
+class CellMax2NWB(ProcessedOphysNWBConverter):
 
     def __init__(self, nwbfile, from_path,
                  emission_lambda=np.nan,
