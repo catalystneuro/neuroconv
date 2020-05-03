@@ -8,14 +8,15 @@ with open(metafile, 'r') as f:
     metadata = yaml.safe_load(f)
 
 # Paths to source data
-source_paths = dict()
-source_paths['npx_file'] = {
-    'type': 'file',
-    'path': 'PATH_TO_FILE/filename.imec0.ap.bin'
-}
+source_paths = dict(
+    npx_file=dict(
+        type='file',
+        path='PATH_TO_FILE/filename.imec0.ap.bin'
+    )
+)
 
 # Initialize converter
-converter = Spikeglx2NWB(nwbfile=None, metadata=metadata, source_paths=source_paths)
+converter = Spikeglx2NWB(metadata=metadata, source_paths=source_paths)
 
 # Run conversion
 converter.run_conversion()

@@ -14,11 +14,15 @@ with open(metafile, 'r') as f:
     metadata = yaml.safe_load(f)
 
 # Source paths
-source_paths = dict()
-source_paths['dir_ecephys_rhd'] = {'type': 'dir', 'path': 'PATH_TO_DIR'}
+source_paths = dict(
+    dir_ecephys_rhd=dict(
+        type='dir',
+        path='PATH_TO_DIR'
+    )
+)
 
 # Initialize converter
-converter = Intan2NWB(nwbfile=None, metadata=metadata, source_paths=source_paths)
+converter = Intan2NWB(metadata=metadata, source_paths=source_paths)
 
 # Run conversion
 converter.run_conversion()
