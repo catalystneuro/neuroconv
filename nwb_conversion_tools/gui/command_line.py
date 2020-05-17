@@ -2,13 +2,13 @@
 # authors: Luiz Tauffer and Ben Dichter
 # ------------------------------------------------------------------------------
 from nwb_conversion_tools.gui.nwb_conversion_gui import nwb_conversion_gui
-import os
+from pathlib import Path
 
 
 def main():
-    here = os.path.dirname(os.path.realpath(__file__))
-    metafile = os.path.join(here, 'template_metafile.yml')
-    conversion_module = os.path.join(here, 'template_conversion_module.py')
+    here = Path(__file__).resolve().parent
+    metafile = here / 'template_metafile.yml'
+    conversion_module = here / 'template_conversion_module.py'
 
     source_paths = {}
     source_paths['file1'] = {'type': 'file', 'path': ''}
