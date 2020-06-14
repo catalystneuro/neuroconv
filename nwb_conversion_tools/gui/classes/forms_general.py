@@ -276,8 +276,11 @@ class GroupNwbfile(CollapsibleBox):
             str_datetime = data['session_start_time'].strftime('%d/%m/%Y, %H:%M')
             self.form_session_start_time1.setText(str_datetime.split(',')[0])
             self.form_session_start_time2.setText(str_datetime.split(',')[1].strip())
-        if 'experimenter' in data:
-            self.form_experimenter.setText(data['experimenter'])
+        if 'experimenter' in data and data['experimenter'] is not None:
+            if isinstance(data['experimenter'],list):
+                self.form_experimenter.setText(','.join(str(x) for x in data['experimenter']))
+            else:
+                self.form_experimenter.setText(data['experimenter'])
         if 'experiment_description' in data:
             self.form_experiment_description.setText(data['experiment_description'])
         if 'session_id' in data:
