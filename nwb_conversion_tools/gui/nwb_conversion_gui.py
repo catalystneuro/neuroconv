@@ -657,28 +657,32 @@ class ConversionFunctionThread(QtCore.QThread):
         self.error = None
 
     def run(self):
-        #try:
         if not self.parent.lin_nwb_file.text():
-            raise ValueError('select a save location for nwbfile')
+            error = ValueError('select a save location for nwbfile')
+            self.error = error.__class__.__name__ + ':' + str(error)
+            raise error
         if self.parent.conversion_module_path:# if not an empty string (if value was selected from gui)
-            mod_file = self.parent.conversion_module_path
-            spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
-            conv_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(conv_module)
-            metadata = self.parent.read_metadata_from_form()
-            conv_module.conversion_function(source_paths=self.parent.source_paths,
-                                            f_nwb=self.parent.lin_nwb_file.text(),
-                                            metadata=metadata,
-                                            **self.parent.kwargs_fields)
+            try:
+                mod_file = self.parent.conversion_module_path
+                spec = importlib.util.spec_from_file_location(os.path.basename(mod_file).strip('.py'), mod_file)
+                conv_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(conv_module)
+                metadata = self.parent.read_metadata_from_form()
+                conv_module.conversion_function(source_paths=self.parent.source_paths,
+                                                f_nwb=self.parent.lin_nwb_file.text(),
+                                                metadata=metadata,
+                                                **self.parent.kwargs_fields)
+            except Exception as error:
+                self.error = error.__class__.__name__ + ':' + str(error)
         else:
-            metadata = self.parent.read_metadata_from_form()
-            fileloc = list(self.parent.source_paths.values())[0]['path']
-            conversion_obj = self.parent.conversion_class(fileloc, None, metadata)
-            conversion_obj.run_conversion()
-            conversion_obj.save(self.parent.lin_nwb_file.text())
-        #    self.error = None
-        #except Exception as error:
-        #    self.error = error
+            try:
+                metadata = self.parent.read_metadata_from_form()
+                fileloc = list(self.parent.source_paths.values())[0]['path']
+                conversion_obj = self.parent.conversion_class(fileloc, None, metadata)
+                conversion_obj.run_conversion()
+                conversion_obj.save(self.parent.lin_nwb_file.text())
+            except Exception as error:
+                self.error = error.__class__.__name__ + ':' + str(error)
 
 
 class CustomComboBox(QComboBox):
