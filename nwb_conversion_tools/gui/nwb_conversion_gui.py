@@ -60,7 +60,8 @@ class Application(QMainWindow):
         self.init_gui()
         self.init_meta_tab()
         self.load_meta_file(filename=metafile)
-        self.init_nwb_explorer()
+        if nwbwidgets:
+            self.init_nwb_explorer()
         self.show()
 
     def init_gui(self):
