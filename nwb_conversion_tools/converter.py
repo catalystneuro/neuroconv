@@ -270,12 +270,15 @@ class NWBConverter:
             If True, try to read the file after writing
         """
 
+        print('Saving to file, please wait...')
         with NWBHDF5IO(to_path, 'w') as io:
             io.write(self.nwbfile)
+            print('File successfully saved at: ', str(to_path))
 
         if read_check:
             with NWBHDF5IO(to_path, 'r') as io:
                 io.read()
+                print('Read check: OK')
 
     def check_module(self, name, description=None):
         """
