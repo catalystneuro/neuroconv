@@ -59,7 +59,7 @@ kwargs = {'option_1': True, 'option_2': False}
 
 nwb_conversion_gui(
     metafile=metafile,
-    conversion_module=conversion_module,
+    conversion_class=conversion_class,
     source_paths=source_paths,
     kwargs_fields=kwargs,
 )
