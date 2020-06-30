@@ -64,24 +64,24 @@ nwb_conversion_gui(
     kwargs_fields=kwargs,
 )
 ```
-[Here](https://github.com/NeurodataWithoutBorders/nwb-conversion-tools/tree/master/nwb_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
+[Here](https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/gui) you can find templates for `metafile.yml` and `conversion_module.py`.
 
 ## Converters
 #### Optophysiology
-* [CELLMax](https://github.com/NeurodataWithoutBorders/nwb-conversion-tools/blob/master/nwb_conversion_tools/ophys/processing/CELLMax)
+* [CELLMax](https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/ophys/CELLMax)
+* [Miniscope](https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/ophys/miniscope)
 
 #### Electrophysiology
-* [SpikeGLX](https://github.com/NeurodataWithoutBorders/nwb-conversion-tools/blob/master/nwb_conversion_tools/ecephys/spikeglx)
-* [Intan](https://github.com/NeurodataWithoutBorders/nwb-conversion-tools/blob/master/nwb_conversion_tools/ecephys/intan)
+* [SpikeGLX](https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/ecephys/spikeglx)
+* [Intan](https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/ecephys/intan)
 
 #### Behavior
-* [Bpod](https://github.com/NeurodataWithoutBorders/nwb-conversion-tools/blob/master/nwb_conversion_tools/behavior/bpod)
-
+* [Bpod](https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/behavior/bpod)
 
 ## Used by
 
-* [Axel lab](https://www.axellab.columbia.edu/): [axel-lab-to-nwb](https://github.com/ben-dichter-consulting/axel-lab-to-nwb)
-* [Buffalo lab](https://buffalomemorylab.com/): [buffalo-lab-data-to-nwb](https://github.com/ben-dichter-consulting/buffalo-lab-data-to-nwb)
-* [Giocomo lab](https://giocomolab.weebly.com/): [giocomo-lab-to-nwb](https://github.com/ben-dichter-consulting/giocomo-lab-to-nwb)
-* [Jaeger lab](https://scholarblogs.emory.edu/jaegerlab/): [jaeger-lab-to-nwb](https://github.com/ben-dichter-consulting/jaeger-lab-to-nwb)
-* [Tolias lab](https://toliaslab.org/): [tolias-lab-to-nwb](https://github.com/ben-dichter-consulting/tolias-lab-to-nwb)
+* [Axel lab](https://www.axellab.columbia.edu/): [axel-lab-to-nwb](https://github.com/catalystneuro/axel-lab-to-nwb)
+* [Buffalo lab](https://buffalomemorylab.com/): [buffalo-lab-data-to-nwb](https://github.com/catalystneuro/buffalo-lab-data-to-nwb)
+* [Giocomo lab](https://giocomolab.weebly.com/): [giocomo-lab-to-nwb](https://github.com/catalystneuro/giocomo-lab-to-nwb)
+* [Jaeger lab](https://scholarblogs.emory.edu/jaegerlab/): [jaeger-lab-to-nwb](https://github.com/catalystneuro/jaeger-lab-to-nwb)
+* [Tolias lab](https://toliaslab.org/): [tolias-lab-to-nwb](https://github.com/catalystneuro/tolias-lab-to-nwb)
