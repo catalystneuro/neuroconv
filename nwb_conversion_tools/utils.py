@@ -13,7 +13,7 @@ def get_schema_from_method_signature(class_method):
     input_schema = deepcopy(base_schema)
 
     for param in inspect.signature(class_method.__init__).parameters.values():
-        if param.name is not 'self':
+        if param.name != 'self':
             arg_spec = dict(name=param.name, type='string')
             if param.default is param.empty:
                 input_schema['required'].append(param.name)
