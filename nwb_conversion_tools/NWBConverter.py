@@ -2,7 +2,6 @@
 from copy import deepcopy
 from utils import get_schema_from_hdmf_class
 from pynwb.file import NWBFile, Subject
-from BaseDataInterface import NeuroscopeRecordingInterface
 
 base_schema = dict(
     required=[],
@@ -51,8 +50,3 @@ class NWBConverter:
         # default implementation will be to sequentially run each data interface, but this can be overridden as needed
         [data_interface.convert_data(nwbfile_path, metadata_dict[name], stub_test)
          for name, data_interface in self.data_interface_objects.items()]
-
-
-
-class BuzsakiLabNWBConverter(NWBConverter):
-    data_interface_classes = {'neuroscope': NeuroscopeRecordingInterface}
