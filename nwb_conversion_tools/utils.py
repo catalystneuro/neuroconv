@@ -1,16 +1,25 @@
 import inspect
 from copy import deepcopy
 
-base_schema = dict(
+def get_base_schema():
+    base_schema = dict(
         required=[],
-        properties=[],
+        properties={},
         type='object',
-        additionalProperties=False)
-
+        additionalProperties=False
+        )
+    return base_schema
+    
+def get_root_schema():
+    root_schema = deepcopy(get_base_schema())
+    root_schema.update({
+        "$schema": "http://json-schema.org/draft-07/schema#",
+    })
+    return root_schema
 
 def get_schema_from_method_signature(class_method):
 
-    input_schema = deepcopy(base_schema)
+    input_schema = deepcopy(get_base_schema())
 
     for param in inspect.signature(class_method.__init__).parameters.values():
         if param.name != 'self':
@@ -19,7 +28,7 @@ def get_schema_from_method_signature(class_method):
                 input_schema['required'].append(param.name)
             elif param.default is not None:
                 arg_spec.update(default=param.default)
-            input_schema['properties'].append(arg_spec)
+            input_schema['properties'].update(arg_spec)
         input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
 
     return input_schema
@@ -27,7 +36,7 @@ def get_schema_from_method_signature(class_method):
 
 def get_schema_from_docval(docval):
 
-    schema = deepcopy(base_schema)
+    schema = deepcopy(get_base_schema())
     for docval_arg in docval['args']:
         if docval_arg['type'] is str or (isinstance(docval_arg['type'], tuple) and str in docval_arg['type']):
             schema_arg = dict(name=docval_arg['name'], type='string', description=docval_arg['doc'])
@@ -36,7 +45,7 @@ def get_schema_from_docval(docval):
                     schema_arg.update(default=docval_arg['default'])
             else:
                 schema['required'].append(docval_arg['name'])
-            schema['properties'].append(schema_arg)
+            schema['properties'].update(schema_arg)
 
     if 'allow_extra' in docval:
         schema['additionalProperties'] = docval['allow_extra']

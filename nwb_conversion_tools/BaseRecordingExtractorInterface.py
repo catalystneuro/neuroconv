@@ -1,21 +1,11 @@
 
 from copy import deepcopy
-from utils import get_schema_from_method_signature, get_schema_from_hdmf_class
-import BaseDataInterface
+from .utils import get_base_schema, get_schema_from_method_signature, \
+                   get_schema_from_hdmf_class
+from .BaseDataInterface import BaseDataInterface
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup,ElectricalSeries
 from pynwb.epoch import TimeIntervals
-
-base_schema = dict(
-    required=[],
-    properties={},
-    type='object',
-    additionalProperties='false')
-
-root_schema = deepcopy(base_schema)
-root_schema.update({
-    "$schema": "http://json-schema.org/draft-07/schema#",
-})
     
 class BaseRecordingExtractorInterface(BaseDataInterface):
     RX = None
@@ -29,7 +19,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         self.recording_extactor = self.RX(**input_args)
     
     def get_metadata_schema(self):
-        metadata_schema = deepcopy(base_schema)
+        metadata_schema = deepcopy(get_base_schema())
         
         # ideally most of this be automatically determined from pynwb docvals
         metadata_schema['properties']['Device'] = get_schema_from_hdmf_class(Device)

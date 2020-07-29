@@ -7,7 +7,7 @@ from pynwb.file import Subject
 from spikeextractors import SortingExtractor, RecordingExtractor, NwbSortingExtractor, NwbRecordingExtractor
 
 
-class NWBConverter:
+class oldNWBConverter:
     """
     Common conversion code factored out so it can be used by multiple conversion projects
     """

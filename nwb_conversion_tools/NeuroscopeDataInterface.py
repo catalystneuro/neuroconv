@@ -1,5 +1,5 @@
 
-from BaseDataInterface import BaseRecordingExtractorInterface
+from .BaseRecordingExtractorInterface import BaseRecordingExtractorInterface
 import spikeextractors as se
 
 # then defining an recording interface any SpikeInterface is one line:

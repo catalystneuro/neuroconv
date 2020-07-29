@@ -1,18 +1,7 @@
 
 from copy import deepcopy
-from utils import get_schema_from_hdmf_class
+from .utils import get_schema_from_hdmf_class, get_root_schema
 from pynwb.file import NWBFile, Subject
-
-base_schema = dict(
-    required=[],
-    properties={},
-    type='object',
-    additionalProperties='false')
-
-root_schema = deepcopy(base_schema)
-root_schema.update({
-    "$schema": "http://json-schema.org/draft-07/schema#",
-})
 
 class NWBConverter:
     
@@ -21,7 +10,7 @@ class NWBConverter:
     @classmethod
     def get_input_schema(cls): # I'm thinking about making this a class attribute instead of a class method
         """Compile input schemas from each of the data interface classes"""
-        input_schema = deepcopy(root_schema)
+        input_schema = deepcopy(get_root_schema())
         for name, data_interface in cls.data_interface_classes.items():
             input_schema['properties'].update(data_interface.get_input_schema())
         return input_schema
@@ -33,7 +22,7 @@ class NWBConverter:
         
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects"""
-        metadata_schema = deepcopy(root_schema)
+        metadata_schema = deepcopy(get_root_schema())
         metadata_schema['properties'] = dict(
             NWBFile=get_schema_from_hdmf_class(NWBFile),
             Subject=get_schema_from_hdmf_class(Subject)

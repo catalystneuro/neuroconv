@@ -1,17 +1,5 @@
 
 from abc import abstractmethod
-from copy import deepcopy
-
-base_schema = dict(
-    required=[],
-    properties={},
-    type='object',
-    additionalProperties='false')
-
-root_schema = deepcopy(base_schema)
-root_schema.update({
-    "$schema": "http://json-schema.org/draft-07/schema#",
-})
 
 class BaseDataInterface:
     
