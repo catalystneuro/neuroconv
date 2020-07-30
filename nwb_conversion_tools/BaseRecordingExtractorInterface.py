@@ -44,6 +44,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
                 geom=np.random.normal(0, 1, (num_channels, 2)))
             se.NwbRecordingExtractor.write_recording(test_recording_extractor, nwbfile_path)
         else:
-            se.NwbRecordingExtractor.write_recording(self.recording_extractor, nwbfile_path)
+            se.NwbRecordingExtractor.write_recording(self.recording_extractor, nwbfile_path, metadata_dict)
     
     
