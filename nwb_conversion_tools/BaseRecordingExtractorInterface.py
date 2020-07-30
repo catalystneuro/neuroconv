@@ -25,7 +25,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         metadata_schema['properties']['Device'] = get_schema_from_hdmf_class(Device)
         metadata_schema['properties']['ElectrodeGroup'] = get_schema_from_hdmf_class(ElectrodeGroup)
         metadata_schema['properties']['ElectricalSeries'] = get_schema_from_hdmf_class(ElectricalSeries)
-        metadata_schema['properties']['Epochs'] = get_schema_from_hdmf_class(TimeIntervals)
         required_fields = ['Device','ElectrodeGroup','ElectricalSeries']
         for field in required_fields:
             metadata_schema['required'].append(field)
