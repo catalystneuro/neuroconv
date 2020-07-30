@@ -6,6 +6,8 @@ from .BaseDataInterface import BaseDataInterface
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup,ElectricalSeries
 from pynwb.epoch import TimeIntervals
+import numpy as np
+import spikeextractors as se
     
 class BaseRecordingExtractorInterface(BaseDataInterface):
     RX = None
@@ -16,7 +18,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
     
     def __init__(self, **input_args):
         super().__init__(**input_args)
-        self.recording_extactor = self.RX(**input_args)
+        self.recording_extractor = self.RX(**input_args)
     
     def get_metadata_schema(self):
         metadata_schema = deepcopy(get_base_schema())
@@ -34,10 +36,15 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
     
     def convert_data(self, nwbfile_path, metadata_dict, stub_test=False):
         if stub_test:
-            # placeholder
-            a = 1
+            # example recording extractor for fast testing
+            num_channels = 4
+            num_frames = 10000
+            test_recording_extractor = se.NumpyRecordingExtractor(
+                timeseries=(np.random.normal(0, 1, (num_channels, num_frames)) * 100).astype(int), 
+                sampling_frequency=20000,
+                geom=np.random.normal(0, 1, (num_channels, 2)))
+            se.NwbRecordingExtractor.write_recording(test_recording_extractor, nwbfile_path)
         else:
-            # placeholder
-            a = 2
+            se.NwbRecordingExtractor.write_recording(self.recording_extractor, nwbfile_path)
     
     
