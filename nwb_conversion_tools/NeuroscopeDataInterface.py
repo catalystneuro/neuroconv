@@ -1,9 +1,13 @@
-
 from .BaseRecordingExtractorInterface import BaseRecordingExtractorInterface
+from .BaseSortingExtractorInterface import BaseSortingExtractorInterface
 import spikeextractors as se
 
-# then defining an recording interface any SpikeInterface is one line:
+
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     RX = se.NeuroscopeRecordingExtractor
+
+
+class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
+    SX = se.NeuroscopeMultiSortingExtractor
     
     
