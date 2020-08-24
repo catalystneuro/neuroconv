@@ -1,0 +1,25 @@
+{
+		"source_data": [
+				{
+						"name": "raw_data",
+						"path": "path/to/file",
+						"type": "file"
+				},
+				{
+					  "name": "processed_data",
+						"path": "path/to/dir",
+						"type": "dir"
+				},
+				{
+						"name": "ref_image",
+						"path": "path/to/file",
+						"type": "file"
+				}
+		],
+
+		"conversion_options": [
+				{"name": "add_raw", "value": true},
+				{"name": "add_processed", "value": true},
+				{"name": "add_behavior", "value": true}
+		]
+}
