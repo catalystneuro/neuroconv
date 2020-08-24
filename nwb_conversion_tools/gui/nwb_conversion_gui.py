@@ -42,6 +42,8 @@ class Application(QMainWindow):
         # Boolean control to either show/hide the option for add/del Groups
         self.show_add_del = show_add_del
         # Extension modules
+        if extension_modules is None:
+            extension_modules = {}
         self.extension_modules = extension_modules
         # Updates name_to_gui_class with extension classes
         self.name_to_gui_class = name_to_gui_class
