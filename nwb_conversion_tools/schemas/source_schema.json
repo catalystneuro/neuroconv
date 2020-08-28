@@ -6,22 +6,27 @@
   "version": "0.1.0",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "raw_data",
-    "processed_data"
-  ],
   "properties": {
-    "raw_data": {
-      "type": "string",
-      "format": "file",
-      "default": "path/to/file"
+    "additionalProperties": false,
+    "source files": {
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "raw_data",
+        "processed_data"
+      ],
+      "properties": {
+        "raw_data": {
+          "type": "string",
+          "format": "file"
+        },
+        "processed_data": {
+          "type": "string",
+          "format": "directory"
+        }
+      }
     },
-    "processed_data": {
-      "type": "string",
-      "format": "directory",
-      "default": "path/to/directory"
-    },
-    "conversion_options": {
+    "conversion options": {
       "type": "object",
       "properties": {
         "add_raw": {
