@@ -1,63 +1,42 @@
 {
-    "$schema": "http://json-schema.org/schema#",
-    "$id": "https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/schemas/source_schema.json",
-    "title": "Schema for the source data and conversion options",
-    "description": "Schema for the source data and conversion options",
-    "version": "0.1.0",
-    "type" : "object",
-    "properties" : {
-
-        "source_data": {
-            "required": [],
-            "type": "array",
-            "additionalProperties": false,
-            "title": "Source data",
-            "description": "Source files and directories with data to be converted",
-            "properties": {},
-            "items": {
-                "type": "object",
-                "required": ["name", "type", "path"],
-                "additionalProperties": false,
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name describing source file or directory"
-                    },
-                    "type": {
-                        "type": "string",
-                        "description": "Defines if source is file or directory",
-                        "enum": ["file", "dir"]
-                    },
-                    "path": {
-                        "type": "string",
-                        "description": "Path to source file or directory"
-                    }
-                }
-            }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/catalystneuro/nwb-conversion-tools/tree/master/nwb_conversion_tools/schemas/source_schema.json",
+  "title": "Source data and conversion options",
+  "description": "Schema for the source data and conversion options",
+  "version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "raw_data",
+    "processed_data"
+  ],
+  "properties": {
+    "raw_data": {
+      "type": "string",
+      "format": "file",
+      "default": "path/to/file"
+    },
+    "processed_data": {
+      "type": "string",
+      "format": "directory",
+      "default": "path/to/directory"
+    },
+    "conversion_options": {
+      "type": "object",
+      "properties": {
+        "add_raw": {
+          "type": "boolean",
+          "default": true
         },
-
-        "conversion_options":{
-            "required": [],
-            "type": "array",
-            "additionalProperties": false,
-            "title": "Options",
-            "description": "Conversion options",
-            "properties": {},
-            "items": {
-                "type": "object",
-                "required": ["name", "value"],
-                "additionalProperties": false,
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "description": "Name describing option"
-                    },
-                    "value": {
-                        "type": "boolean",
-                        "description": "Boolean option",
-                    }
-                }
-            }
+        "add_processed": {
+          "type": "boolean",
+          "default": true
+        },
+        "add_behavior": {
+          "type": "boolean",
+          "default": true
         }
+      }
     }
+  }
 }
