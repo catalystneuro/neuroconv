@@ -39,7 +39,7 @@ class NWBConverter:
 
         return metadata_schema
 
-    def get_metadata(self, metadata: dict = None):
+    def get_metadata(self):
         """Auto-fill as much of the metadata schema as possible."""
         pass
 
