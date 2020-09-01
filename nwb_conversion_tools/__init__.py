@@ -1,1 +1,1 @@
-from .NWBConverter import NWBConverter
+from .nwbconverter import NWBConverter

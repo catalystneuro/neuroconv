@@ -1,6 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .BaseRecordingExtractorInterface import BaseRecordingExtractorInterface
-from .BaseSortingExtractorInterface import BaseSortingExtractorInterface
+from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .basesortingextractorinterface import BaseSortingExtractorInterface
 import spikeextractors as se
 
 
