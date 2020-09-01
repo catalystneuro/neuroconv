@@ -2,7 +2,7 @@
 from copy import deepcopy
 from .utils import get_base_schema, get_schema_from_method_signature, \
                    get_schema_from_hdmf_class
-from .BaseDataInterface import BaseDataInterface
+from .basedatainterface import BaseDataInterface
 from pynwb.ecephys import SpikeEventSeries
 import spikeextractors as se
 from pynwb import NWBFile
@@ -36,39 +36,25 @@ class BaseSortingExtractorInterface(BaseDataInterface):
 
         property_descriptions = {}
         if stub_test:
-            test_ids = self.sorting_extractor.get_unit_ids()
             # No easy way to lazily figure out upper bound on frames for SortingExtractor?
             end_frame = 100
-
-            test_sorting_extractor = se.SubSortingExtractor(self.sorting_extractor,
-                                                            unit_ids=test_ids,
+            stub_sorting_extractor = se.SubSortingExtractor(self.sorting_extractor,
+                                                            unit_ids=self.sorting_extractor.get_unit_ids(),
                                                             start_frame=0,
                                                             end_frame=end_frame)
-
-            for metadata_column in metadata_dict['UnitProperties']:
-                property_descriptions.update({metadata_column['name']: metadata_column['description']})
-                for unit_id in test_sorting_extractor.get_unit_ids():
-                    if metadata_column['name'] == 'electrode_group':
-                        data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
-                    else:
-                        data = metadata_column['data'][unit_id]
-
-                    test_sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
-
-            se.NwbSortingExtractor.write_sorting(test_sorting_extractor,
-                                                 property_descriptions=property_descriptions,
-                                                 nwbfile=nwbfile)
+            sorting_extractor = stub_sorting_extractor
         else:
-            for metadata_column in metadata_dict['UnitProperties']:
-                property_descriptions.update({metadata_column['name']: metadata_column['description']})
-                for unit_id in self.sorting_extractor.get_unit_ids():
-                    if metadata_column['name'] == 'electrode_group':
-                        data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
-                    else:
-                        data = metadata_column['data'][unit_id]
+            sorting_extractor = self.sorting_extractor
 
-                    self.sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
+        for metadata_column in metadata_dict['UnitProperties']:
+            property_descriptions.update({metadata_column['name']: metadata_column['description']})
+            for unit_id in sorting_extractor.get_unit_ids():
+                if metadata_column['name'] == 'electrode_group':
+                    data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
+                else:
+                    data = metadata_column['data'][unit_id]
+                sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
 
-            se.NwbSortingExtractor.write_sorting(self.sorting_extractor,
-                                                 property_descriptions=property_descriptions,
-                                                 nwbfile=nwbfile)
+        se.NwbSortingExtractor.write_sorting(sorting_extractor,
+                                             property_descriptions=property_descriptions,
+                                             nwbfile=nwbfile)

@@ -1,5 +1,4 @@
 """Authors: Cody Baker and Ben Dichter."""
-from copy import deepcopy
 from .utils import get_schema_from_hdmf_class, get_root_schema
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
@@ -8,12 +7,14 @@ import uuid
 
 
 class NWBConverter:
-    data_interface_classes = None  # dict of all data interfaces
+    """Primary class for all NWB conversion classes."""
+
+    data_interface_classes = None
 
     @classmethod
     def get_input_schema(cls):
         """Compile input schemas from each of the data interface classes."""
-        input_schema = deepcopy(get_root_schema())
+        input_schema = get_root_schema()
         for name, data_interface in cls.data_interface_classes.items():
             input_schema['properties'].update(data_interface.get_input_schema())
         return input_schema
@@ -25,17 +26,22 @@ class NWBConverter:
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
-        metadata_schema = deepcopy(get_root_schema())
+        metadata_schema = get_root_schema()
         metadata_schema['properties'] = dict(
             NWBFile=get_schema_from_hdmf_class(NWBFile),
             Subject=get_schema_from_hdmf_class(Subject)
         )
         for name, data_interface in self.data_interface_objects.items():
-            metadata_schema['properties'].update(data_interface.get_metadata_schema()['properties'])
-            for field in data_interface.get_metadata_schema()['required']:
+            this_schema = data_interface.get_metadata_schema()
+            metadata_schema['properties'].update({name: this_schema['properties']})
+            for field in this_schema['required']:
                 metadata_schema['required'].append(field)
 
         return metadata_schema
+
+    def get_metadata(self, metadata: dict = None):
+        """Auto-fill as much of the metadata schema as possible."""
+        pass
 
     def run_conversion(self, nwbfile_path, metadata_dict, stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
@@ -48,8 +54,6 @@ class NWBConverter:
         subject = Subject(**metadata_dict['Subject'])
         nwbfile = NWBFile(subject=subject, **metadata_dict['NWBFile'])
 
-        """Run all of the data interfaces"""
-        # default implementation will be to sequentially run each data interface, but this can be overridden as needed
         [data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
          for name, data_interface in self.data_interface_objects.items()]
 

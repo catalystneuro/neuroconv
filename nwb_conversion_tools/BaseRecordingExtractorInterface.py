@@ -2,7 +2,7 @@
 from copy import deepcopy
 from .utils import get_base_schema, get_schema_from_method_signature, \
                    get_schema_from_hdmf_class
-from .BaseDataInterface import BaseDataInterface
+from .basedatainterface import BaseDataInterface
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 import spikeextractors as se
@@ -38,21 +38,18 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
             test_ids = self.recording_extractor.get_channel_ids()
             end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
 
-            test_recording_extractor = se.SubRecordingExtractor(self.recording_extractor,
-                                                                channel_ids=test_ids,
-                                                                start_frame=0,
-                                                                end_frame=end_frame)
+            stub_recording_extractor = se.SubRecordingExtractor(self.recording_extractor,
+                                                                       channel_ids=test_ids,
+                                                                       start_frame=0,
+                                                                       end_frame=end_frame)
         else:
-            test_recording_extractor = self.recording_extractor
+            stub_recording_extractor = self.recording_extractor
 
-        if 'Ecephys' in metadata_dict and 'shank_channels' in metadata_dict['Ecephys']:
-            # TODO: consider if .index might be a better option than forcing len()
-            max_idx = len(metadata_dict['Ecephys']['shank_channels'])
-            truncated_ids = test_recording_extractor.get_channel_ids()[:max_idx]
-            recording_extractor = se.SubRecordingExtractor(test_recording_extractor,
-                                                           channel_ids=truncated_ids)
+        if 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
+            recording_extractor = se.SubRecordingExtractor(stub_recording_extractor,
+                                                           channel_ids=metadata_dict['Ecephys']['subset_channels'])
         else:
-            recording_extractor = test_recording_extractor
+            recording_extractor = stub_recording_extractor
 
         se.NwbRecordingExtractor.write_recording(recording_extractor,
                                                  nwbfile=nwbfile,
