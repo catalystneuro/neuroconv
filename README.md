@@ -1,5 +1,7 @@
 # NWB conversion tools
-Framework for converting data from various formats to NWB 2.0
+Framework for converting data from various formats to NWB 2.0.
+
+Under heavy construction. API is changing rapidly.
 
 Features:
 * Command line interface
