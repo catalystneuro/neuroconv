@@ -39,9 +39,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
             end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
 
             stub_recording_extractor = se.SubRecordingExtractor(self.recording_extractor,
-                                                                       channel_ids=test_ids,
-                                                                       start_frame=0,
-                                                                       end_frame=end_frame)
+                                                                channel_ids=test_ids,
+                                                                start_frame=0,
+                                                                end_frame=end_frame)
         else:
             stub_recording_extractor = self.recording_extractor
 
