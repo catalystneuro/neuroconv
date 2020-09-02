@@ -1,7 +1,8 @@
 # NWB conversion tools
-Framework for converting data from various formats to NWB 2.0.
+NWB Conversion Tools is a package for creating NWB files by converting and combining neural data in proprietary formats and adding essential metadata.
 
-Under heavy construction. API is changing rapidly.
+**Under heavy construction. API is changing rapidly.**
+
 
 Features:
 * Command line interface
