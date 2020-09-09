@@ -1,5 +1,5 @@
+"""Authors: Cody Baker and Ben Dichter."""
 import inspect
-from copy import deepcopy
 
 def get_base_schema():
     base_schema = dict(
@@ -9,17 +9,19 @@ def get_base_schema():
         additionalProperties=False
         )
     return base_schema
-    
+
+
 def get_root_schema():
-    root_schema = deepcopy(get_base_schema())
+    root_schema = get_base_schema()
     root_schema.update({
         "$schema": "http://json-schema.org/draft-07/schema#",
     })
     return root_schema
 
+
 def get_schema_from_method_signature(class_method):
 
-    input_schema = deepcopy(get_base_schema())
+    input_schema = get_base_schema()
 
     for param in inspect.signature(class_method.__init__).parameters.values():
         if param.name != 'self':
@@ -36,7 +38,7 @@ def get_schema_from_method_signature(class_method):
 
 def get_schema_from_docval(docval):
 
-    schema = deepcopy(get_base_schema())
+    schema = get_base_schema()
     for docval_arg in docval['args']:
         if docval_arg['type'] is str or (isinstance(docval_arg['type'], tuple) and str in docval_arg['type']):
             schema_arg = dict(name=docval_arg['name'], type='string', description=docval_arg['doc'])

@@ -19,9 +19,10 @@ class NWBConverter:
             input_schema['properties'].update(data_interface.get_input_schema())
         return input_schema
 
-    def __init__(self, **input_paths):
+    def __init__(self, **input_args):
         """Initialize all of the underlying data interfaces."""
-        self.data_interface_objects = {name: data_interface(**input_paths[name])
+        self.input_args = input_args
+        self.data_interface_objects = {name: data_interface(**input_args[name])
                                        for name, data_interface in self.data_interface_classes.items()}
 
     def get_metadata_schema(self):
