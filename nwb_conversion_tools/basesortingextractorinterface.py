@@ -1,5 +1,4 @@
 """Authors: Cody Baker and Ben Dichter."""
-from copy import deepcopy
 from .utils import get_base_schema, get_schema_from_method_signature, \
                    get_schema_from_hdmf_class
 from .basedatainterface import BaseDataInterface
@@ -20,7 +19,7 @@ class BaseSortingExtractorInterface(BaseDataInterface):
         self.sorting_extractor = self.SX(**input_args)
 
     def get_metadata_schema(self):
-        metadata_schema = deepcopy(get_base_schema())
+        metadata_schema = get_base_schema()
 
         # ideally most of this be automatically determined from pynwb docvals
         metadata_schema['properties']['SpikeEventSeries'] = get_schema_from_hdmf_class(SpikeEventSeries)
