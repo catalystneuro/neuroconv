@@ -1,21 +1,35 @@
 import inspect
 from copy import deepcopy
 
+
 def get_base_schema():
     base_schema = dict(
         required=[],
         properties={},
         type='object',
         additionalProperties=False
-        )
+    )
     return base_schema
-    
+
+
 def get_root_schema():
     root_schema = deepcopy(get_base_schema())
     root_schema.update({
         "$schema": "http://json-schema.org/draft-07/schema#",
     })
     return root_schema
+
+
+def get_input_schema():
+    input_schema = deepcopy(get_root_schema())
+    input_schema.update({
+        "title": "Source data and conversion options",
+        "description": "Schema for the source data and conversion options",
+        "version": "0.1.0",
+        "type": "object",
+    })
+    return input_schema
+
 
 def get_schema_from_method_signature(class_method):
 
