@@ -60,10 +60,8 @@ class NWBConverter:
             Subject=get_schema_from_hdmf_class(Subject)
         )
         for name, data_interface in self.data_interface_objects.items():
-            this_schema = data_interface.get_metadata_schema()
-            metadata_schema['properties'].update({name: this_schema['properties']})
-            for field in this_schema['required']:
-                metadata_schema['required'].append(field)
+            interface_schema = data_interface.get_metadata_schema()
+            metadata_schema = dict_deep_update(metadata_schema, interface_schema)
 
         return metadata_schema
 
