@@ -21,7 +21,7 @@ def get_root_schema():
 
 
 def get_input_schema():
-    input_schema = deepcopy(get_root_schema())
+    input_schema = get_root_schema()
     input_schema.update({
         "title": "Source data and conversion options",
         "description": "Schema for the source data and conversion options",
