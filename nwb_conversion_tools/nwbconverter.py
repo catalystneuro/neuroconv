@@ -11,6 +11,8 @@ def dict_deep_update(d, u):
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
             d[k] = dict_deep_update(d.get(k, {}), v)
+        elif isinstance(v, list):
+            d[k] = d.get(k, []) + v
         else:
             d[k] = v
     return d
