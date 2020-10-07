@@ -1,9 +1,21 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import get_schema_from_hdmf_class, get_root_schema
+from .utils import get_schema_from_hdmf_class, get_root_schema, get_input_schema
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 from datetime import datetime
 import uuid
+import collections.abc
+
+
+def dict_deep_update(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = dict_deep_update(d.get(k, {}), v)
+        elif isinstance(v, list):
+            d[k] = d.get(k, []) + v
+        else:
+            d[k] = v
+    return d
 
 
 class NWBConverter:
@@ -14,15 +26,30 @@ class NWBConverter:
     @classmethod
     def get_input_schema(cls):
         """Compile input schemas from each of the data interface classes."""
-        input_schema = get_root_schema()
+        input_schema = get_input_schema()
         for name, data_interface in cls.data_interface_classes.items():
-            input_schema['properties'].update(data_interface.get_input_schema())
+            input_schema['properties'] = dict_deep_update(input_schema['properties'], data_interface.get_input_schema())
         return input_schema
 
-    def __init__(self, **input_args):
+    def __init__(self, **input_data):
         """Initialize all of the underlying data interfaces."""
-        self.input_args = input_args
-        self.data_interface_objects = {name: data_interface(**input_args[name])
+        # This dictionary routes the user options (source_data and conversion_options)
+        # to the respective data interfaces
+        # It automatically checks with the interface schemas which data belongs to each
+        self.data_interface_objects = dict()
+        input_data_routed = dict()
+        for interface_name, interface in self.data_interface_classes.items():
+            input_data_routed[interface_name] = dict()
+            interface_schema = interface.get_input_schema()
+            blocks = ['source_data', 'conversion_options']
+            for b in blocks:
+                if b in interface_schema:
+                    input_data_routed[interface_name][b] = {
+                        k: input_data[b][k]
+                        for k in interface_schema[b]['properties'].keys()
+                    }
+
+        self.data_interface_objects = {name: data_interface(**input_data_routed[name])
                                        for name, data_interface in self.data_interface_classes.items()}
 
     def get_metadata_schema(self):
@@ -33,10 +60,8 @@ class NWBConverter:
             Subject=get_schema_from_hdmf_class(Subject)
         )
         for name, data_interface in self.data_interface_objects.items():
-            this_schema = data_interface.get_metadata_schema()
-            metadata_schema['properties'].update({name: this_schema['properties']})
-            for field in this_schema['required']:
-                metadata_schema['required'].append(field)
+            interface_schema = data_interface.get_metadata_schema()
+            metadata_schema = dict_deep_update(metadata_schema, interface_schema)
 
         return metadata_schema
 
