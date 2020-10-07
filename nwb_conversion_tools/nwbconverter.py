@@ -5,6 +5,7 @@ from pynwb.file import Subject
 from datetime import datetime
 import uuid
 import collections.abc
+import numpy as np
 
 
 def dict_deep_update(d, u):
@@ -13,6 +14,8 @@ def dict_deep_update(d, u):
             d[k] = dict_deep_update(d.get(k, {}), v)
         elif isinstance(v, list):
             d[k] = d.get(k, []) + v
+            # Remove repeated items if they exist
+            d[k] = list(np.unique(d[k]))
         else:
             d[k] = v
     return d
@@ -66,10 +69,16 @@ class NWBConverter:
         return metadata_schema
 
     def get_metadata(self):
-        """Auto-fill as much of the metadata schema as possible."""
-        pass
+        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        metadata = dict()
+        for interface_name, interface in self.data_interface_objects.items():
+            interface_metadada = interface.get_metadata()
+            metadata = dict_deep_update(metadata, interface_metadada)
 
-    def run_conversion(self, nwbfile_path, metadata_dict, stub_test=False):
+        return metadata
+
+    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True,
+                       stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         if 'NWBFile' not in metadata_dict:
             metadata_dict['NWBFile'] = {'session_description': 'no description',
@@ -83,6 +92,13 @@ class NWBConverter:
         [data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
          for name, data_interface in self.data_interface_objects.items()]
 
-        # run_conversion will always overwrite the existing nwbfile_path
-        with NWBHDF5IO(nwbfile_path, mode='w') as io:
-            io.write(nwbfile)
+        if save_to_file:
+            if nwbfile_path is not None:
+                raise TypeError('A path to the output file must be provided, but nwbfile_path got value None')
+            # run_conversion will always overwrite the existing nwbfile_path
+            with NWBHDF5IO(nwbfile_path, mode='w') as io:
+                io.write(nwbfile)
+            print(f'NWB file saved at {nwbfile_path}')
+            return None
+        else:
+            return nwbfile
