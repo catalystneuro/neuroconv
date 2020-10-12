@@ -114,3 +114,91 @@ def get_schema_from_docval(docval):
         schema['additionalProperties'] = docval['allow_extra']
 
     return schema
+
+
+def get_schema_for_NWBFile():
+    schema = get_base_schema()
+    schema['tag'] = 'pynwb.file.NWBFile'
+    schema['required'] = ["session_description", "identifier", "session_start_time"]
+    schema['properties'] = {
+        "session_description": {
+            "type": "string",
+            "format": "long",
+            "description": "a description of the session where this data was generated"
+        },
+        "identifier": {
+            "type": "string",
+            "description": "a unique text identifier for the file"
+        },
+        "session_start_time": {
+            "type": "string",
+            "description": "the start date and time of the recording session",
+            "format": "date-time"
+        },
+        "experimenter": {
+            "type": "array",
+            "items": {"type": "string", "title": "experimenter"},
+            "description": "name of person who performed experiment"
+        },
+        "experimentd_description": {
+            "type": "string",
+            "description": "general description of the experiment"
+        },
+        "sessiond_id": {
+            "type": "string",
+            "description": "lab-specific ID for the session"
+        },
+        "institution": {
+            "type": "string",
+            "description": "institution(s) where experiment is performed"
+        },
+        "notes": {
+            "type": "string",
+            "description": "Notes about the experiment."
+        },
+        "pharmacology": {
+            "type": "string",
+            "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), painkiller(s), etc., plus dosage, concentration, etc."
+        },
+        "protocol": {
+            "type": "string",
+            "description": "Experimental protocol, if applicable. E.g., include IACUC protocol"
+        },
+        "related_publications": {
+            "type": "string",
+            "description": "Publication information.PMID, DOI, URL, etc. If multiple, concatenate together and describe which is which. such as PMID, DOI, URL, etc"
+        },
+        "slices": {
+            "type": "string",
+            "description": "Description of slices, including information about preparation thickness, orientation, temperature and bath solution"
+        },
+        "source_script": {
+            "type": "string",
+            "description": "Script file used to create this NWB file."
+        },
+        "source_script_file_name": {
+            "type": "string",
+            "description": "Name of the source_script file"
+        },
+        "data_collection": {
+            "type": "string",
+            "description": "Notes about data collection and analysis."
+        },
+        "surgery": {
+            "type": "string",
+            "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+        },
+        "virus": {
+            "type": "string",
+            "description": "Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc."
+        },
+        "stimulus_notes": {
+            "type": "string",
+            "description": "Notes about stimuli, such as how and where presented."
+        },
+        "lab": {
+            "type": "string",
+            "description": "lab where experiment was performed"
+        }
+    }
+    return schema
