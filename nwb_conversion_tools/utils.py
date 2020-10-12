@@ -5,12 +5,12 @@ from datetime import datetime
 import numpy as np
 
 
-def get_base_schema():
+def get_base_schema(tag=None):
     base_schema = dict(
         required=[],
         properties={},
         type='object',
-        tag='',
+        tag=['' if tag is None else tag][0],
         additionalProperties=False
     )
     return base_schema
