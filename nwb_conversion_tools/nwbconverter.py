@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import get_schema_from_hdmf_class, get_root_schema, get_input_schema
+from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
+                    get_schema_for_NWBFile)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 from datetime import datetime
@@ -15,7 +16,8 @@ def dict_deep_update(d, u):
         elif isinstance(v, list):
             d[k] = d.get(k, []) + v
             # Remove repeated items if they exist
-            d[k] = list(np.unique(d[k]))
+            if len(v) > 0 and not isinstance(v[0], dict):
+                d[k] = list(np.unique(d[k]))
         else:
             d[k] = v
     return d
@@ -59,7 +61,7 @@ class NWBConverter:
         """Compile metadata schemas from each of the data interface objects."""
         metadata_schema = get_root_schema()
         metadata_schema['properties'] = dict(
-            NWBFile=get_schema_from_hdmf_class(NWBFile),
+            NWBFile=get_schema_for_NWBFile(),
             Subject=get_schema_from_hdmf_class(Subject)
         )
         for name, data_interface in self.data_interface_objects.items():
@@ -84,11 +86,21 @@ class NWBConverter:
             metadata_dict['NWBFile'] = {'session_description': 'no description',
                                         'identifier': str(uuid.uuid4()),
                                         'session_start_time': datetime.now()}
+
+        # add Subject
         if 'Subject' not in metadata_dict:
             metadata_dict['Subject'] = {}
         subject = Subject(**metadata_dict['Subject'])
         nwbfile = NWBFile(subject=subject, **metadata_dict['NWBFile'])
 
+        # add devices
+        for domain in ('Icephys', 'Ecephys', 'Ophys'):
+            if domain in metadata_dict:
+                dev_keys = [k for k in metadata_dict[domain].keys() if 'Device' in k]
+                for dev in dev_keys:
+                    nwbfile.create_device(**metadata_dict[domain][dev])
+
+        # Run data interfaces data conversion
         [data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
          for name, data_interface in self.data_interface_objects.items()]
 
