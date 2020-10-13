@@ -10,9 +10,10 @@ def get_base_schema(tag=None):
         required=[],
         properties={},
         type='object',
-        tag=['' if tag is None else tag][0],
         additionalProperties=False
     )
+    if tag is not None:
+        base_schema.update(tag=tag)
     return base_schema
 
 
