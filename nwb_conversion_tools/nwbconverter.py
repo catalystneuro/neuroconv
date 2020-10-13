@@ -111,6 +111,5 @@ class NWBConverter:
             with NWBHDF5IO(nwbfile_path, mode='w') as io:
                 io.write(nwbfile)
             print(f'NWB file saved at {nwbfile_path}')
-            return None
         else:
             return nwbfile
