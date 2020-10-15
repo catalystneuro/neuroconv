@@ -51,7 +51,6 @@ class NWBConverter:
                     k: input_data[b][interface_name][k]
                     for k in interface_schema[b]['properties'].keys()
                 }
-
         self.data_interface_objects = {name: data_interface(**input_data_routed[name])
                                        for name, data_interface in self.data_interface_classes.items()}
 
@@ -81,7 +80,6 @@ class NWBConverter:
                        stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         if 'NWBFile' not in metadata_dict:
-            print(metadata_dict)
             metadata_dict['NWBFile'] = dict(
                 session_description="no description",
                 identifier=str(uuid.uuid4()),
@@ -106,7 +104,7 @@ class NWBConverter:
          for name, data_interface in self.data_interface_objects.items()]
 
         if save_to_file:
-            if nwbfile_path is not None:
+            if nwbfile_path is None:
                 raise TypeError('A path to the output file must be provided, but nwbfile_path got value None')
             # run_conversion will always overwrite the existing nwbfile_path
             with NWBHDF5IO(nwbfile_path, mode='w') as io:
