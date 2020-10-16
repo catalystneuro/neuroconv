@@ -50,7 +50,7 @@ def get_schema_from_method_signature(class_method):
             elif param.default is not None:
                 arg_spec[param.name].update(default=param.default)
             input_schema['properties'].update(arg_spec)
-        #input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
+        input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
 
     return input_schema
 
