@@ -50,7 +50,7 @@ class NWBConverter:
             for b in blocks:
                 if b in interface_schema:
                     input_data_routed[interface_name][b] = {
-                        k: input_data[b][k]
+                        k: input_data[b].get(k, None)
                         for k in interface_schema[b]['properties'].keys()
                     }
 
@@ -101,8 +101,8 @@ class NWBConverter:
                     nwbfile.create_device(**metadata_dict[domain][dev])
 
         # Run data interfaces data conversion
-        [data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
-         for name, data_interface in self.data_interface_objects.items()]
+        for name, data_interface in self.data_interface_objects.items():
+            data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
 
         if save_to_file:
             if nwbfile_path is not None:
