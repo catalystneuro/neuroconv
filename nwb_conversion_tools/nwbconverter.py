@@ -46,16 +46,15 @@ class NWBConverter:
         for interface_name, interface in self.data_interface_classes.items():
             input_data_routed[interface_name] = dict()
             interface_schema = interface.get_input_schema()
-            blocks = ['source_data', 'conversion_options']
-            for b in blocks:
-                if b in interface_schema:
-                    input_data_routed[interface_name][b] = {
-                        k: input_data[b].get(k, None)
-                        for k in interface_schema[b]['properties'].keys()
-                    }
-
-        self.data_interface_objects = {name: data_interface(**input_data_routed[name])
-                                       for name, data_interface in self.data_interface_classes.items()}
+            for b in set(interface_schema.keys()).intersection(set(['source_data', 'conversion_options'])):
+                input_data_routed[interface_name] = {
+                    k: input_data[b].get(k, None)
+                    for k in interface_schema[b]['properties'].keys()
+                }
+        self.data_interface_objects = {
+            name: data_interface(**input_data_routed[name])
+            for name, data_interface in self.data_interface_classes.items()
+        }
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
@@ -83,9 +82,11 @@ class NWBConverter:
                        stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         if 'NWBFile' not in metadata_dict:
-            metadata_dict['NWBFile'] = {'session_description': 'no description',
-                                        'identifier': str(uuid.uuid4()),
-                                        'session_start_time': datetime.now()}
+            metadata_dict['NWBFile'] = dict(
+                session_description="no description",
+                identifier=str(uuid.uuid4()),
+                session_start_time=datetime.now()
+            )
 
         # add Subject
         if 'Subject' not in metadata_dict:
@@ -105,7 +106,7 @@ class NWBConverter:
             data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
 
         if save_to_file:
-            if nwbfile_path is not None:
+            if nwbfile_path is None:
                 raise TypeError('A path to the output file must be provided, but nwbfile_path got value None')
             # run_conversion will always overwrite the existing nwbfile_path
             with NWBHDF5IO(nwbfile_path, mode='w') as io:

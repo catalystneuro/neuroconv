@@ -40,11 +40,15 @@ def get_schema_from_method_signature(class_method):
     input_schema = get_base_schema()
     for param in inspect.signature(class_method.__init__).parameters.values():
         if param.name != 'self':
-            arg_spec = dict(name=param.name, type='string')
+            arg_spec = {
+                param.name: dict(
+                    type='string'
+                )
+            }
             if param.default is param.empty:
                 input_schema['required'].append(param.name)
             elif param.default is not None:
-                arg_spec.update(default=param.default)
+                arg_spec[param.name].update(default=param.default)
             input_schema['properties'].update(arg_spec)
         input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
 
