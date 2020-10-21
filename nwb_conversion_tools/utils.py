@@ -56,13 +56,15 @@ def get_schema_from_method_signature(class_method):
 
 
 def get_schema_from_hdmf_class(hdmf_class):
-    schema = get_schema_from_docval(hdmf_class.__init__.__docval__)
+    schema = get_schema_from_docval(hdmf_class=hdmf_class)
     schema['tag'] = hdmf_class.__module__ + '.' + hdmf_class.__name__
     return schema
 
 
-def get_schema_from_docval(docval):
-    pynwb_link_types = [pynwb.device.Device, pynwb.ophys.ImagingPlane, pynwb.image.ImageSeries]
+def get_schema_from_docval(hdmf_class):
+    docval = hdmf_class.__init__.__docval__
+    # pynwb_link_types = [pynwb.device.Device, pynwb.ophys.ImagingPlane, pynwb.image.ImageSeries]
+    pynwb_children_fields = [f['name'] for f in hdmf_class.get_fields_conf() if f.get('child', False)]
     schema = get_base_schema()
     for docval_arg in docval['args']:
         schema_arg = dict()
@@ -79,17 +81,12 @@ def get_schema_from_docval(docval):
         elif docval_arg['type'] is datetime or (isinstance(docval_arg['type'], tuple) and datetime in docval_arg['type']):
             schema_arg[docval_arg['name']] = dict(type='string', description=docval_arg['doc'], format='date-time')
 
-        # if link to another nwb object
-        elif docval_arg['type'] in pynwb_link_types:
-            target = docval_arg['type'].__module__ + '.' + docval_arg['type'].__name__
-            schema_arg[docval_arg['name']] = dict(type='string', description=docval_arg['doc'], target=target)
-        elif isinstance(docval_arg['type'], tuple) and any([t in pynwb_link_types for t in docval_arg['type']]):
-            ind = np.where([t in pynwb_link_types for t in docval_arg['type']])[0][0]
-            target = docval_arg['type'][ind].__module__ + '.' + docval_arg['type'][ind].__name__
-            schema_arg[docval_arg['name']] = dict(type='string', description=docval_arg['doc'], target=target)
-
         # if TimeSeries, skip it
         elif docval_arg['type'] is pynwb.base.TimeSeries or (isinstance(docval_arg['type'], tuple) and pynwb.base.TimeSeries in docval_arg['type']):
+            continue
+
+        # if PlaneSegmentation, skip it
+        elif docval_arg['type'] is pynwb.ophys.PlaneSegmentation or (isinstance(docval_arg['type'], tuple) and pynwb.ophys.PlaneSegmentation in docval_arg['type']):
             continue
 
         else:
@@ -101,8 +98,23 @@ def get_schema_from_docval(docval):
             # if another nwb object (or list of nwb objects)
             if any([t.__module__.split('.')[0] == 'pynwb' for t in docval_arg_type if hasattr(t, '__module__')]):
                 is_nwb = [t.__module__.split('.')[0] == 'pynwb' for t in list(docval_arg_type) if hasattr(t, '__module__')]
-                items = [get_schema_from_hdmf_class(docval_arg_type[np.where(is_nwb)[0][0]])]
-                schema_arg[docval_arg['name']] = dict(type='array', description=docval_arg['doc'], items=items, minItems=1, maxItems=1)
+                item = docval_arg_type[np.where(is_nwb)[0][0]]
+                print(docval_arg['name'])
+                print(docval_arg['name'] in pynwb_children_fields)
+                # if it is child
+                if docval_arg['name'] in pynwb_children_fields:
+                    items = [get_schema_from_hdmf_class(item)]
+                    schema_arg[docval_arg['name']] = dict(
+                        type='array', description=docval_arg['doc'],
+                        items=items, minItems=1, maxItems=1
+                    )
+                # if it is link
+                else:
+                    target = item.__module__ + '.' + item.__name__
+                    schema_arg[docval_arg['name']] = dict(
+                        type='string', description=docval_arg['doc'],
+                        target=target
+                    )
             else:
                 continue
 
