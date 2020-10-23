@@ -56,16 +56,13 @@ def get_schema_from_method_signature(class_method):
 
 
 def get_schema_from_hdmf_class(hdmf_class):
-    schema = get_schema_from_docval(hdmf_class=hdmf_class)
-    schema['tag'] = hdmf_class.__module__ + '.' + hdmf_class.__name__
-    return schema
-
-
-def get_schema_from_docval(hdmf_class):
-    docval = hdmf_class.__init__.__docval__
-    # pynwb_link_types = [pynwb.device.Device, pynwb.ophys.ImagingPlane, pynwb.image.ImageSeries]
-    pynwb_children_fields = [f['name'] for f in hdmf_class.get_fields_conf() if f.get('child', False)]
+    """Get metadata schema from hdmf class"""
     schema = get_base_schema()
+    schema['tag'] = hdmf_class.__module__ + '.' + hdmf_class.__name__
+
+    pynwb_children_fields = [f['name'] for f in hdmf_class.get_fields_conf() if f.get('child', False)]
+
+    docval = hdmf_class.__init__.__docval__
     for docval_arg in docval['args']:
         schema_arg = dict()
 
