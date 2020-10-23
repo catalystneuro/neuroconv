@@ -47,7 +47,7 @@ class NWBConverter:
             input_data_routed[interface_name] = dict()
             interface_schema = interface.get_input_schema()
             for b in set(interface_schema.keys()).intersection(set(['source_data', 'conversion_options'])):
-                input_data_routed[interface_name][b] = {
+                input_data_routed[interface_name] = {
                     k: input_data[b].get(k, None)
                     for k in interface_schema[b]['properties'].keys()
                 }
@@ -104,7 +104,7 @@ class NWBConverter:
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
-            nwbfile = data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
+            data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
 
         if save_to_file:
             if nwbfile_path is None:
