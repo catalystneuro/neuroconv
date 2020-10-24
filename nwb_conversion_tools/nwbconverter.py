@@ -98,9 +98,7 @@ class NWBConverter:
         # add devices
         for domain in ('Icephys', 'Ecephys', 'Ophys'):
             if domain in metadata_dict:
-                dev_keys = [k for k in metadata_dict[domain].keys() if 'Device' in k]
-                for dev in dev_keys:
-                    nwbfile.create_device(**metadata_dict[domain][dev])
+                [nwbfile.create_device(**metadata_dict[domain][obj]) for obj in metadata_dict[domain] if 'Device' in obj]
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
