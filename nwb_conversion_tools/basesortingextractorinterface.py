@@ -12,7 +12,7 @@ class BaseSortingExtractorInterface(BaseDataInterface):
 
     @classmethod
     def get_input_schema(cls):
-        return dict(source_data=get_schema_from_method_signature(cls.SX))
+        return get_schema_from_method_signature(cls.SX)
 
     def __init__(self, **input_args):
         super().__init__(**input_args)
