@@ -96,20 +96,17 @@ def get_schema_from_hdmf_class(hdmf_class):
             if any([t.__module__.split('.')[0] == 'pynwb' for t in docval_arg_type if hasattr(t, '__module__')]):
                 is_nwb = [t.__module__.split('.')[0] == 'pynwb' for t in list(docval_arg_type) if hasattr(t, '__module__')]
                 item = docval_arg_type[np.where(is_nwb)[0][0]]
-                print(docval_arg['name'])
-                print(docval_arg['name'] in pynwb_children_fields)
                 # if it is child
                 if docval_arg['name'] in pynwb_children_fields:
                     items = [get_schema_from_hdmf_class(item)]
-                    schema_arg[docval_arg['name']] = dict(
-                        type='array', description=docval_arg['doc'],
-                        items=items, minItems=1, maxItems=1
+                    schema_arg[docval_arg['name']].update(
+                        type='array', items=items, minItems=1, maxItems=1
                     )
                 # if it is link
                 else:
                     target = item.__module__ + '.' + item.__name__
-                    schema_arg[docval_arg['name']] = dict(
-                        type='string', description=docval_arg['doc'],
+                    schema_arg[docval_arg['name']].update(
+                        type='string',
                         target=target
                     )
             else:
