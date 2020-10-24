@@ -64,19 +64,19 @@ def get_schema_from_hdmf_class(hdmf_class):
 
     docval = hdmf_class.__init__.__docval__
     for docval_arg in docval['args']:
-        schema_arg = dict()
+        schema_arg = {docval_arg['name']: dict(description=docval_arg['doc'])}
 
         # type float
         if docval_arg['type'] == 'float' or (isinstance(docval_arg['type'], tuple) and 'float' in docval_arg['type']):
-            schema_arg[docval_arg['name']] = dict(type='number', description=docval_arg['doc'])
+            schema_arg[docval_arg['name']].update(type='number')
 
         # type string
         elif docval_arg['type'] is str or (isinstance(docval_arg['type'], tuple) and str in docval_arg['type']):
-            schema_arg[docval_arg['name']] = dict(type='string', description=docval_arg['doc'])
+            schema_arg[docval_arg['name']].update(type='string')
 
         # type datetime
         elif docval_arg['type'] is datetime or (isinstance(docval_arg['type'], tuple) and datetime in docval_arg['type']):
-            schema_arg[docval_arg['name']] = dict(type='string', description=docval_arg['doc'], format='date-time')
+            schema_arg[docval_arg['name']].update(type='string', format='date-time')
 
         # if TimeSeries, skip it
         elif docval_arg['type'] is pynwb.base.TimeSeries or (isinstance(docval_arg['type'], tuple) and pynwb.base.TimeSeries in docval_arg['type']):
