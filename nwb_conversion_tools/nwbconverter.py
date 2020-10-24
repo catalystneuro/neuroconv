@@ -88,11 +88,17 @@ class NWBConverter:
                 identifier=str(uuid.uuid4()),
                 session_start_time=datetime.now()
             )
+        else:
+            # convert ISO 8601 string to datetime
+            metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
+                metadata_dict['NWBFile']['session_start_time']
+            )
 
         # add Subject
         if 'Subject' not in metadata_dict:
             metadata_dict['Subject'] = {}
         subject = Subject(**metadata_dict['Subject'])
+
         nwbfile = NWBFile(subject=subject, **metadata_dict['NWBFile'])
 
         # add devices
@@ -102,7 +108,7 @@ class NWBConverter:
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
+            data_interface.convert_data(nwbfile, metadata_dict, stub_test)
 
         if save_to_file:
             if nwbfile_path is None:
