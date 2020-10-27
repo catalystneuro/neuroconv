@@ -7,7 +7,7 @@ import segmentationextractors as segx
 
 from .utils import get_base_schema, get_schema_from_method_signature, \
                    get_schema_from_hdmf_class
-from .BaseDataInterface import BaseDataInterface
+from .basedatainterface import BaseDataInterface
 
 
 class BaseSegmentationExtractorInterface(BaseDataInterface):
