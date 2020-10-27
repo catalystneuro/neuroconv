@@ -90,15 +90,10 @@ class NWBConverter:
 
         # add Subject
         if 'Subject' not in metadata_dict:
-            metadata_dict['Subject'] = {}
+            metadata_dict['Subject'] = dict()
         subject = Subject(**metadata_dict['Subject'])
 
         nwbfile = NWBFile(subject=subject, **metadata_dict['NWBFile'])
-
-        # add devices
-        for domain in ('Icephys', 'Ecephys', 'Ophys'):
-            if domain in metadata_dict:
-                [nwbfile.create_device(**metadata_dict[domain][obj]) for obj in metadata_dict[domain] if 'Device' in obj]
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
