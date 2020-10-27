@@ -108,7 +108,7 @@ class NWBConverter:
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict, stub_test)
+            data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
 
         if save_to_file:
             if nwbfile_path is None:
