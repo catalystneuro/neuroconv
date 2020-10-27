@@ -13,7 +13,7 @@ class BaseDataInterface:
         self.input_args = input_args
 
     @abstractmethod
-    def get_metadata_schema():
+    def get_metadata_schema(self):
         pass
 
     @abstractmethod

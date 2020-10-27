@@ -1,10 +1,11 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import get_base_schema, get_schema_from_method_signature, \
-                   get_schema_from_hdmf_class
-from .basedatainterface import BaseDataInterface
+import spikeextractors as se
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
-import spikeextractors as se
+
+from .basedatainterface import BaseDataInterface
+from .utils import get_base_schema, get_schema_from_method_signature, \
+    get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface):
@@ -22,12 +23,13 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         metadata_schema = get_base_schema()
 
         # ideally most of this be automatically determined from pynwb docvals
-        metadata_schema['properties']['Device'] = get_schema_from_hdmf_class(Device)
-        metadata_schema['properties']['ElectrodeGroup'] = get_schema_from_hdmf_class(ElectrodeGroup)
-        metadata_schema['properties']['ElectricalSeries'] = get_schema_from_hdmf_class(ElectricalSeries)
+        metadata_schema['properties'].update(
+            Device=get_schema_from_hdmf_class(Device),
+            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
+            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
+        )
         required_fields = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        for field in required_fields:
-            metadata_schema['required'].append(field)
+        metadata_schema['required'] += required_fields
 
         return metadata_schema
 

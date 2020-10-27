@@ -1,7 +1,8 @@
 """Authors: Cody Baker and Ben Dichter."""
+import spikeextractors as se
+
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from .basesortingextractorinterface import BaseSortingExtractorInterface
-import spikeextractors as se
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):

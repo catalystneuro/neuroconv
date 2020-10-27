@@ -1,10 +1,11 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import get_base_schema, get_schema_from_method_signature, \
-                   get_schema_from_hdmf_class
-from .basedatainterface import BaseDataInterface
-from pynwb.ecephys import SpikeEventSeries
 import spikeextractors as se
 from pynwb import NWBFile
+from pynwb.ecephys import SpikeEventSeries
+
+from .basedatainterface import BaseDataInterface
+from .utils import get_base_schema, get_schema_from_method_signature, \
+    get_schema_from_hdmf_class
 
 
 class BaseSortingExtractorInterface(BaseDataInterface):

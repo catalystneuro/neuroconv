@@ -1,8 +1,9 @@
 """Authors: Cody Baker, Ben Dichter and Luiz Tauffer."""
-import pynwb
 import inspect
 from datetime import datetime
+
 import numpy as np
+import pynwb
 
 
 def get_base_schema(tag=None):
@@ -79,11 +80,15 @@ def get_schema_from_hdmf_class(hdmf_class):
             schema_arg[docval_arg['name']].update(type='string', format='date-time')
 
         # if TimeSeries, skip it
-        elif docval_arg['type'] is pynwb.base.TimeSeries or (isinstance(docval_arg['type'], tuple) and pynwb.base.TimeSeries in docval_arg['type']):
+        elif docval_arg['type'] is pynwb.base.TimeSeries or \
+                (isinstance(docval_arg['type'], tuple) and
+                 pynwb.base.TimeSeries in docval_arg['type']):
             continue
 
         # if PlaneSegmentation, skip it
-        elif docval_arg['type'] is pynwb.ophys.PlaneSegmentation or (isinstance(docval_arg['type'], tuple) and pynwb.ophys.PlaneSegmentation in docval_arg['type']):
+        elif docval_arg['type'] is pynwb.ophys.PlaneSegmentation or \
+                (isinstance(docval_arg['type'], tuple) and
+                 pynwb.ophys.PlaneSegmentation in docval_arg['type']):
             continue
 
         else:
@@ -94,7 +99,8 @@ def get_schema_from_hdmf_class(hdmf_class):
 
             # if another nwb object (or list of nwb objects)
             if any([t.__module__.split('.')[0] == 'pynwb' for t in docval_arg_type if hasattr(t, '__module__')]):
-                is_nwb = [t.__module__.split('.')[0] == 'pynwb' for t in list(docval_arg_type) if hasattr(t, '__module__')]
+                is_nwb = [t.__module__.split('.')[0] == 'pynwb' for t in list(docval_arg_type) if
+                          hasattr(t, '__module__')]
                 item = docval_arg_type[np.where(is_nwb)[0][0]]
                 # if it is child
                 if docval_arg['name'] in pynwb_children_fields:
@@ -169,7 +175,8 @@ def get_schema_for_NWBFile():
         },
         "pharmacology": {
             "type": "string",
-            "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), painkiller(s), etc., plus dosage, concentration, etc."
+            "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), "
+                           "painkiller(s), etc., plus dosage, concentration, etc."
         },
         "protocol": {
             "type": "string",
@@ -177,11 +184,13 @@ def get_schema_for_NWBFile():
         },
         "related_publications": {
             "type": "string",
-            "description": "Publication information.PMID, DOI, URL, etc. If multiple, concatenate together and describe which is which. such as PMID, DOI, URL, etc"
+            "description": "Publication information.PMID, DOI, URL, etc. If multiple, concatenate together and describe"
+                           " which is which. such as PMID, DOI, URL, etc"
         },
         "slices": {
             "type": "string",
-            "description": "Description of slices, including information about preparation thickness, orientation, temperature and bath solution"
+            "description": "Description of slices, including information about preparation thickness, orientation, "
+                           "temperature and bath solution"
         },
         "source_script": {
             "type": "string",
@@ -201,7 +210,8 @@ def get_schema_for_NWBFile():
         },
         "virus": {
             "type": "string",
-            "description": "Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc."
+            "description": "Information about virus(es) used in experiments, including virus ID, source, date made, "
+                           "injection location, volume, etc."
         },
         "stimulus_notes": {
             "type": "string",
