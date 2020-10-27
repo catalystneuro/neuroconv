@@ -80,8 +80,8 @@ A hypothetical **OphysDataInterface** class would return a similar dictionary, w
 <summary>
   <strong>LabConverter input schema</strong>
 </summary>
-<pre lang="json">
 
+```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "source.schema.json",
@@ -147,7 +147,8 @@ A hypothetical **OphysDataInterface** class would return a similar dictionary, w
     }
   }
 }
-</pre>
+```
+
 </details>
 <br>
 
@@ -164,8 +165,8 @@ Similar to input data, each DataInterface produces its own metadata schema refle
 <summary>
   <strong>EcephysDataInterface metadata schema</strong>
 </summary>
-<pre lang="json">
 
+```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "metafile.schema.json",
@@ -197,7 +198,7 @@ Similar to input data, each DataInterface produces its own metadata schema refle
           "format": "date-time"
         }
       }
-    }
+    },
     "Ecephys": {
       "type": "object",
       "title": "Ecephys",
@@ -211,7 +212,8 @@ Similar to input data, each DataInterface produces its own metadata schema refle
     }
   }
 }
-</pre>
+```
+
 </details>
 <br>
 
