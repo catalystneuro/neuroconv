@@ -1,6 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from spikeextractors import SpikeGLXRecordingExtractor
+
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
