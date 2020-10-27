@@ -23,8 +23,8 @@ The **input schema** is a JSON schema that defines the rules for organizing the 
 <summary>
   <strong>EcephysDataInterface input schema</strong>
 </summary>
-<pre lang="json">
 
+```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "source.schema.json",
@@ -70,7 +70,7 @@ The **input schema** is a JSON schema that defines the rules for organizing the 
     }
   }
 }
-</pre>
+```
 </details>
 <br>
 
