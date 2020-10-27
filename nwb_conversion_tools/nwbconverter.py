@@ -37,21 +37,20 @@ class NWBConverter:
         return input_schema
 
     def __init__(self, **input_data):
-        """Initialize all of the underlying data interfaces."""
-        # This dictionary routes the user options (source_data and conversion_options)
-        # to the respective data interfaces
-        # It automatically checks with the interface schemas which data belongs to each
+        """
+        Initialize all of the underlying data interfaces.
+
+        This dictionary routes the user options (source_data and conversion_options) to the respective data interfaces.
+        It automatically checks with the interface schemas which data belongs to each
+        """
         self.data_interface_objects = dict()
         input_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
-            input_data_routed[interface_name] = dict()
             interface_schema = interface.get_input_schema()
-            for b in set(input_data.keys()).intersection(set(['source_data', 'conversion_options'])):
-                input_data_routed[interface_name].update({
-                    k: input_data[b].get(k, None)
-                    for k in interface_schema['properties'].keys()
-                    if k not in input_data_routed[interface_name]
-                })
+            input_data_routed[interface_name] = {
+                k: input_data[interface_name].get(k, None)
+                for k in interface_schema['properties'].keys()
+            }
         self.data_interface_objects = {
             name: data_interface(**input_data_routed[name])
             for name, data_interface in self.data_interface_classes.items()
@@ -87,11 +86,6 @@ class NWBConverter:
                 session_description="no description",
                 identifier=str(uuid.uuid4()),
                 session_start_time=datetime.now()
-            )
-        else:
-            # convert ISO 8601 string to datetime
-            metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
-                metadata_dict['NWBFile']['session_start_time']
             )
 
         # add Subject
