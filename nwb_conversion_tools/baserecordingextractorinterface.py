@@ -33,7 +33,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile, metadata_dict, stub_test=False):
+    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
         if stub_test:
             num_frames = 100
             test_ids = self.recording_extractor.get_channel_ids()
@@ -46,7 +46,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         else:
             stub_recording_extractor = self.recording_extractor
 
-        if 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
+        if metadata_dict is not None and 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
             recording_extractor = se.SubRecordingExtractor(stub_recording_extractor,
                                                            channel_ids=metadata_dict['Ecephys']['subset_channels'])
         else:
