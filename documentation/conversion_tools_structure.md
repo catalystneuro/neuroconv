@@ -220,3 +220,34 @@ Similar to input data, each DataInterface produces its own metadata schema refle
 Each DataInterface also provides a way to automatically fetch as much metadata as possible directly from the dataset it interfaces with. This is done with the method `get_metadata()`.
 
 OphysDataInterface would return a similar dictionaries for metadata_schema and metadata, with properties related to optophysiology data. The LabConverter will combine the DataInterfaces specific schemas and metadatas into a full dictionaries, and potentially include properties that lie outside the scope of specific DataInterfaces.
+
+
+## Step-by-step operations
+
+1. LabConverter.get_input_schema()  
+    1.1 Loop through DataInterface.get_input_schema()  
+    1.2 Combine returned schemas  
+    1.3* Create Input Forms  
+
+2. Get user-input input_data that complies to the returned full input_schema
+
+3. Instantiate LabConverter(input_data)  
+    3.1 Instantiate all DataInterface(input_data)
+
+4. LabConverter.get_metadata_schema()  
+    4.1 Loop through DataInterface.get_metadata_schema()  
+    4.2 Combine returned schemas  
+    4.3* Create Metadata Forms  
+
+5. Automatically fetches available metadata with LabConverter.get_metadata()  
+    5.1 Loop through DataInterface.get_metadata()  
+    5.2 Combine returned metadata  
+    5.3 Include lab-specific metadata not fetched by DataInterfaces  
+    5.4* Pre-fill Metadata Forms with fetched metadata  
+
+6. Get user-input metadata that complies to the returned full metadata_schema  
+
+7. Run conversion with LabConverter.run_conversion(metadata)  
+    7.1 Loop through DataInterface.convert_data(metadata)  
+
+\* When Converter interfaces with GUI Forms
