@@ -251,3 +251,5 @@ OphysDataInterface would return a similar dictionaries for metadata_schema and m
     7.1 Loop through DataInterface.convert_data(metadata)  
 
 \* When Converter interfaces with GUI Forms
+
+![](converter-gui-operations.png)
