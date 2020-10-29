@@ -33,7 +33,10 @@ class NWBConverter:
         """Compile input schemas from each of the data interface classes."""
         input_schema = get_input_schema()
         for name, data_interface in cls.data_interface_classes.items():
-            input_schema['properties'] = dict_deep_update(input_schema['properties'], data_interface.get_input_schema())
+            input_schema['properties'] = dict_deep_update(
+                input_schema['properties'],
+                data_interface.get_input_schema()['properties']
+            )
         return input_schema
 
     def __init__(self, **input_data):
