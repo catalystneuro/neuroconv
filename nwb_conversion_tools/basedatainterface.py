@@ -1,20 +1,21 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod
+from .utils import get_input_schema, get_metadata_schema
 
 
 class BaseDataInterface:
 
     @classmethod
-    @abstractmethod
     def get_input_schema(cls):
-        pass
+        input_schema = get_input_schema()
+        return input_schema
 
     def __init__(self, **input_args):
         self.input_args = input_args
 
-    @abstractmethod
     def get_metadata_schema():
-        pass
+        metadata_schema = get_metadata_schema()
+        return metadata_schema
 
     @abstractmethod
     def get_metadata(self):

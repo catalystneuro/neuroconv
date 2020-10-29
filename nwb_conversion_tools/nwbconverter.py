@@ -1,5 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
+from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_input_schema,
                     get_schema_for_NWBFile)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
@@ -62,7 +62,7 @@ class NWBConverter:
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
-        metadata_schema = get_root_schema()
+        metadata_schema = get_metadata_schema()
         metadata_schema['properties'] = dict(
             NWBFile=get_schema_for_NWBFile(),
             Subject=get_schema_from_hdmf_class(Subject)
