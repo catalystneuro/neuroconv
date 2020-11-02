@@ -49,7 +49,6 @@ class NWBConverter:
         for interface_name, interface in self.data_interface_classes.items():
             input_data_routed[interface_name] = dict()
             interface_schema_properties = interface.get_input_schema()['properties']
-            print(interface_schema_properties)
             for b in set(interface_schema_properties.keys()).intersection(set(['source_data', 'conversion_options'])):
                 input_data_routed[interface_name].update({
                     k: input_data[b].get(k, None)
@@ -97,13 +96,14 @@ class NWBConverter:
             )
         else:
             # convert ISO 8601 string to datetime
-            metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
-                metadata_dict['NWBFile']['session_start_time']
-            )
+            if isinstance(metadata_dict['NWBFile']['session_start_time'], str):
+                metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
+                    metadata_dict['NWBFile']['session_start_time']
+                )
 
         # add Subject
         if 'Subject' not in metadata_dict:
-            metadata_dict['Subject'] = {}
+            metadata_dict['Subject'] = dict()
         subject = Subject(**metadata_dict['Subject'])
 
         nwbfile = NWBFile(subject=subject, **metadata_dict['NWBFile'])
