@@ -73,3 +73,8 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
 
     SX = se.NeuroscopeMultiSortingExtractor
+
+    def get_metadata():
+        """Retrieve UnitProperties metadata specific to the Neuroscope format."""
+        # TODO
+        raise NotImplementedError
