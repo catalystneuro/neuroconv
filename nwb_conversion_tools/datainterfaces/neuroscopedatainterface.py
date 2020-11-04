@@ -27,7 +27,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         all_shank_channels = np.concatenate(shank_channels)
         all_shank_channels.sort()
         shank_electrode_number = [x for channels in shank_channels for x, _ in enumerate(channels)]
-        shank_group_name = ["shank{}".format(n+1) for n, channels in enumerate(shank_channels) for _ in channels]
+        shank_group_name = [f"shank{n+1}" for n, channels in enumerate(shank_channels) for _ in channels]
 
         re_metadata = dict(
             Ecephys=dict(
