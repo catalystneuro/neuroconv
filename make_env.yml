@@ -1,4 +1,4 @@
-name: catalyst
+name: nwb_conversion_env
 channels:
 - defaults
 - anaconda
