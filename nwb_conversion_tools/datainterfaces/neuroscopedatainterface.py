@@ -78,4 +78,4 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
     def get_metadata(self):
         """Retrieve UnitProperties metadata specific to the Neuroscope format."""
         # TODO
-        return dict()
+        raise NotImplementedError
