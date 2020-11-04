@@ -56,8 +56,8 @@ class NWBConverter:
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = dict()
         for interface in self.data_interface_objects.values():
-            interface_metadada = interface.get_metadata()
-            metadata = dict_deep_update(metadata, interface_metadada)
+            interface_metadata = interface.get_metadata()
+            metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
