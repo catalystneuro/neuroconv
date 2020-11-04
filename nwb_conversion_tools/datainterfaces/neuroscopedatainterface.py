@@ -2,7 +2,6 @@
 import spikeextractors as se
 from lxml import etree as et
 from pathlib import Path
-from itertools import compress
 import numpy as np
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
