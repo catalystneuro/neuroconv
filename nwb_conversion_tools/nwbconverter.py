@@ -5,22 +5,6 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 from datetime import datetime
 import uuid
-import collections.abc
-import numpy as np
-
-
-def dict_deep_update(d, u):
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, {}), v)
-        elif isinstance(v, list):
-            d[k] = d.get(k, []) + v
-            # Remove repeated items if they exist
-            if len(v) > 0 and not isinstance(v[0], dict):
-                d[k] = list(np.unique(d[k]))
-        else:
-            d[k] = v
-    return d
 
 
 class NWBConverter:
@@ -80,7 +64,6 @@ class NWBConverter:
 
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
-
         nwbfile_kwargs = dict(
                 session_description="no description",
                 identifier=str(uuid.uuid4()),
@@ -97,7 +80,7 @@ class NWBConverter:
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
+            data_interface.convert_data(nwbfile, metadata_dict, stub_test)
 
         if save_to_file:
             if nwbfile_path is None:
