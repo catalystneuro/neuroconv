@@ -40,10 +40,12 @@ class NWBConverter:
         return input_schema
 
     def __init__(self, **input_data):
-        """Initialize all of the underlying data interfaces."""
-        # This dictionary routes the user options (source_data and conversion_options)
-        # to the respective data interfaces
-        # It automatically checks with the interface schemas which data belongs to each
+        """
+        Initialize all of the underlying data interfaces.
+
+        This dictionary routes the user options (source_data and conversion_options) to the respective data interfaces.
+        It automatically checks with the interface schemas which data belongs to each
+        """
         self.data_interface_objects = dict()
         input_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
@@ -85,11 +87,10 @@ class NWBConverter:
 
         return metadata
 
-    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True,
-                       stub_test=False):
+    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
-        if 'NWBFile' not in metadata_dict:
-            metadata_dict['NWBFile'] = dict(
+
+        nwbfile_kwargs = dict(
                 session_description="no description",
                 identifier=str(uuid.uuid4()),
                 session_start_time=datetime.now()
@@ -106,16 +107,14 @@ class NWBConverter:
             metadata_dict['Subject'] = dict()
         subject = Subject(**metadata_dict['Subject'])
 
-        nwbfile = NWBFile(subject=subject, **metadata_dict['NWBFile'])
+        if 'Subject' in metadata_dict:
+            nwbfile_kwargs.update(subject=Subject(**metadata_dict['Subject']))
 
-        # add devices
-        for domain in ('Icephys', 'Ecephys', 'Ophys'):
-            if domain in metadata_dict:
-                [nwbfile.create_device(**metadata_dict[domain][obj]) for obj in metadata_dict[domain] if 'Device' in obj]
+        nwbfile = NWBFile(**nwbfile_kwargs)
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict, stub_test)
+            data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
 
         if save_to_file:
             if nwbfile_path is None:

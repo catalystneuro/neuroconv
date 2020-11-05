@@ -1,10 +1,11 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import get_base_schema, get_schema_from_method_signature, \
-                   get_schema_from_hdmf_class
-from .basedatainterface import BaseDataInterface
+import spikeextractors as se
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
-import spikeextractors as se
+
+from .basedatainterface import BaseDataInterface
+from .utils import get_base_schema, get_schema_from_method_signature, \
+    get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface):
@@ -12,7 +13,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
     @classmethod
     def get_input_schema(cls):
-        return dict(source_data=get_schema_from_method_signature(cls.RX))
+        return get_schema_from_method_signature(cls.RX)
 
     def __init__(self, **input_args):
         super().__init__(**input_args)
@@ -22,16 +23,17 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         metadata_schema = get_base_schema()
 
         # ideally most of this be automatically determined from pynwb docvals
-        metadata_schema['properties']['Device'] = get_schema_from_hdmf_class(Device)
-        metadata_schema['properties']['ElectrodeGroup'] = get_schema_from_hdmf_class(ElectrodeGroup)
-        metadata_schema['properties']['ElectricalSeries'] = get_schema_from_hdmf_class(ElectricalSeries)
+        metadata_schema['properties'].update(
+            Device=get_schema_from_hdmf_class(Device),
+            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
+            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
+        )
         required_fields = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        for field in required_fields:
-            metadata_schema['required'].append(field)
+        metadata_schema['required'] += required_fields
 
         return metadata_schema
 
-    def convert_data(self, nwbfile, metadata_dict, stub_test=False):
+    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
         if stub_test:
             num_frames = 100
             test_ids = self.recording_extractor.get_channel_ids()
@@ -44,7 +46,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         else:
             stub_recording_extractor = self.recording_extractor
 
-        if 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
+        if metadata_dict is not None and 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
             recording_extractor = se.SubRecordingExtractor(stub_recording_extractor,
                                                            channel_ids=metadata_dict['Ecephys']['subset_channels'])
         else:

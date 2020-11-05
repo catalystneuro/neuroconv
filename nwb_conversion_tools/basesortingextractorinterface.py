@@ -1,10 +1,11 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import get_base_schema, get_schema_from_method_signature, \
-                   get_schema_from_hdmf_class
-from .basedatainterface import BaseDataInterface
-from pynwb.ecephys import SpikeEventSeries
 import spikeextractors as se
 from pynwb import NWBFile
+from pynwb.ecephys import SpikeEventSeries
+
+from .basedatainterface import BaseDataInterface
+from .utils import get_base_schema, get_schema_from_method_signature, \
+    get_schema_from_hdmf_class
 
 
 class BaseSortingExtractorInterface(BaseDataInterface):
@@ -12,7 +13,7 @@ class BaseSortingExtractorInterface(BaseDataInterface):
 
     @classmethod
     def get_input_schema(cls):
-        return dict(source_data=get_schema_from_method_signature(cls.SX))
+        return get_schema_from_method_signature(cls.SX)
 
     def __init__(self, **input_args):
         super().__init__(**input_args)
