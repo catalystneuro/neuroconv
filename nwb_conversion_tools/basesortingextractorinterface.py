@@ -30,7 +30,7 @@ class BaseSortingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile: NWBFile, metadata_dict: dict, stub_test: bool = False):
+    def convert_data(self, nwbfile: NWBFile, metadata_dict: dict, stub_test: bool = False, **conversion_options):
         if 'UnitProperties' not in metadata_dict:
             metadata_dict['UnitProperties'] = []
 

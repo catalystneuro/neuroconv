@@ -35,7 +35,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface):
         # return metadata_schema # SegmentationExtractor metadata json-schema here.
         raise NotImplementedError
 
-    def convert_data(self, nwbfile_path, metadata_dict, stub_test=False):
+    def convert_data(self, nwbfile_path, metadata_dict, stub_test=False, **conversion_options):
         # if stub_test:
         #     # example recording extractor for fast testing
         #     num_channels = 4

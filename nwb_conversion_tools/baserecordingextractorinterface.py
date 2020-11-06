@@ -33,7 +33,17 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
+    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False, **conversion_options):
+        """
+        Primary function for converting recording extractor data to nwb.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile object
+        metadata_dict : dictionary
+        stub_test : boolean, optional (default False)
+            If True, will truncate the data to run the conversion faster and take up less memory.
+        """
         if stub_test:
             num_frames = 100
             test_ids = self.recording_extractor.get_channel_ids()
