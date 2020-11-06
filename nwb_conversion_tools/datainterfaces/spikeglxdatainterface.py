@@ -10,7 +10,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_input_schema(cls):
         input_schema = super().get_input_schema()
-        input_schema['properties'].update(sync_with_ttl=dict(type='string', default=True))
+        input_schema['properties'].update(sync_with_ttl=dict(type='boolean', default=True))
         return input_schema
 
     def __init__(self, **input_args):
@@ -24,6 +24,4 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             recording_ap = self.recording_extractor
             ttl, states = recording_ap.get_ttl_events()
             rising_times = ttl[states == 1]
-            start_time = recording_ap.frame_to_time(rising_times[0])
-            start_frame_ap = int(recording_ap.time_to_frame(start_time))
-            self.recording_extractor = SubRecordingExtractor(self.recording_extractor, start_frame=start_frame_ap)
+            self.recording_extractor = SubRecordingExtractor(self.recording_extractor, start_frame=rising_times[0])
