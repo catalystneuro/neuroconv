@@ -1,2 +1,3 @@
 from .neuroscopedatainterface import NeuroscopeRecordingInterface, NeuroscopeSortingInterface
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
+from .intandatainterface import IntanRecordingInterface
