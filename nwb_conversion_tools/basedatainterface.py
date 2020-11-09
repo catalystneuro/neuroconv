@@ -17,7 +17,7 @@ class BaseDataInterface:
         pass
 
     @abstractmethod
-    def get_metadata(self, metadata):
+    def get_metadata(self):
         pass
 
     @abstractmethod
