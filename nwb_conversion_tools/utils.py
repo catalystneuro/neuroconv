@@ -1,9 +1,11 @@
 """Authors: Cody Baker, Ben Dichter and Luiz Tauffer."""
 import inspect
 from datetime import datetime
+import collections.abc
 
 import numpy as np
 import pynwb
+
 
 
 def get_schema_data(data_dict, schema_dict):
@@ -28,6 +30,21 @@ def get_schema_data(data_dict, schema_dict):
             else:
                 out_dict[key] = val
     return out_dict
+
+
+def dict_deep_update(d, u):
+    """Perform an update to all nested keys of dictionary d from dictionary u."""
+    for k, v in u.items():
+        if isinstance(v, collections.abc.Mapping):
+            d[k] = dict_deep_update(d.get(k, {}), v)
+        elif isinstance(v, list):
+            d[k] = d.get(k, []) + v
+            # Remove repeated items if they exist
+            if len(v) > 0 and not isinstance(v[0], dict):
+                d[k] = list(np.unique(d[k]))
+        else:
+            d[k] = v
+    return d
 
 
 def get_base_schema(tag=None):
