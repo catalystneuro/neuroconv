@@ -33,7 +33,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False, **conversion_options):
+    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
         """
         Primary function for converting recording extractor data to nwb.
 
@@ -65,3 +65,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         se.NwbRecordingExtractor.write_recording(recording_extractor,
                                                  nwbfile=nwbfile,
                                                  metadata=metadata_dict)
+
+    def get_conversion_schema(self):
+        return get_schema_from_method_signature(self.convert_data)
