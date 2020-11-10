@@ -9,8 +9,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = SpikeGLXRecordingExtractor
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test: bool = False, sync_with_ttl: bool = True,
-                     **conversion_options):
+    def convert_data(self, nwbfile, metadata_dict: None, stub_test: bool = False, sync_with_ttl: bool = True):
         """Primary function for converting recording extractor data to nwb."""
         if sync_with_ttl:
             ttl, states = self.recording_extractor.get_ttl_events()
