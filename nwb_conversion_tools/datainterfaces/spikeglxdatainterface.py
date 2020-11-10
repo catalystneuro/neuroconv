@@ -17,7 +17,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor = SubRecordingExtractor(self.recording_extractor, start_frame=rising_times[0])
         super().convert_data(nwbfile=nwbfile, metadata_dict=metadata_dict, stub_test=stub_test)
 
-    def get_metadata():
+    def get_metadata(self):
         """Retrieve Ecephys metadata specific to the SpikeGLX format."""
         # TODO
-        raise NotImplementedError
+        return dict()
