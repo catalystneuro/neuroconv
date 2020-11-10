@@ -21,5 +21,9 @@ class BaseDataInterface:
         pass
 
     @abstractmethod
+    def get_conversion_schema(self):
+        pass
+
+    @abstractmethod
     def convert_data(self, nwbfile_path, metadata_dict, **conversion_options):
         pass
