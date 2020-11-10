@@ -82,7 +82,7 @@ def get_schema_from_method_signature(class_method, exclude=None):
     if exclude is None:
         exclude = []
     input_schema = get_base_schema()
-    for param in inspect.signature(class_method.__init__).parameters.values():
+    for param in inspect.signature(class_method).parameters.values():
         if param.name not in exclude + ['self']:
             arg_spec = {
                 param.name: dict(

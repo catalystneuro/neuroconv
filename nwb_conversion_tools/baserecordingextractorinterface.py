@@ -13,7 +13,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
     @classmethod
     def get_input_schema(cls):
-        return get_schema_from_method_signature(cls.RX)
+        return get_schema_from_method_signature(cls.RX.__init__)
 
     def __init__(self, **input_args):
         super().__init__(**input_args)
@@ -33,7 +33,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False, **conversion_options):
+    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
         """
         Primary function for converting recording extractor data to nwb.
 

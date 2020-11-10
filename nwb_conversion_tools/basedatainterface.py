@@ -25,8 +25,8 @@ class BaseDataInterface:
     @classmethod
     @abstractmethod
     def get_conversion_options_schema(cls):
-        return get_schema_from_method_signature(cls.convert_data, exclude=['nwbfile', 'metadata_dict'])
+        return get_schema_from_method_signature(cls.convert_data, exclude=['nwbfile', 'metadata_dict', 'stub_test'])
 
     @abstractmethod
-    def convert_data(self, nwbfile_path, metadata_dict, **conversion_options):
+    def convert_data(self, nwbfile_path, metadata_dict):
         pass
