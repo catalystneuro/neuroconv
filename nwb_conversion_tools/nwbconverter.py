@@ -3,7 +3,6 @@ from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schem
                     get_schema_for_NWBFile, dict_deep_update)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
-from datetime import datetime
 import uuid
 
 
@@ -64,9 +63,7 @@ class NWBConverter:
                        **conversion_options):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         nwbfile_kwargs = dict(
-            session_description="no description",
             identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now()
         )
         if 'NWBFile' in metadata_dict:
             nwbfile_kwargs.update(metadata_dict['NWBFile'])

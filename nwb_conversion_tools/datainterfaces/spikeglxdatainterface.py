@@ -5,14 +5,6 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
+    """Primary data interface class for converting the SpikeGLX format."""
 
     RX = SpikeGLXRecordingExtractor
-
-    def get_metadata(self):
-        """Auto-populate as much of the metadata as possible from the SpikeGLX format."""
-        re_metadata = dict(
-            Ecephys=dict(
-            )
-        )
-        return re_metadata
