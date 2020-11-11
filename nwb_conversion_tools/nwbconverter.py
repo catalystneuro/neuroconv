@@ -59,8 +59,7 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False,
-                       **conversion_options):
+    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, **conversion_options):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         nwbfile_kwargs = dict(
             identifier=str(uuid.uuid4()),
@@ -79,7 +78,7 @@ class NWBConverter:
                 for k in conversion_schema['properties'].keys()
             }
         for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict, stub_test, **conversion_data_routed[name])
+            data_interface.convert_data(nwbfile, metadata_dict, **conversion_data_routed[name])
 
         if save_to_file:
             if nwbfile_path is None:
