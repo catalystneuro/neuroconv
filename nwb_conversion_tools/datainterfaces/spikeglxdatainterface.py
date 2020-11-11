@@ -1,5 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
-from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor
+from spikeextractors import SpikeGLXRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
@@ -9,10 +9,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = SpikeGLXRecordingExtractor
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test: bool = False, sync_with_ttl: bool = True):
-        """Primary function for converting recording extractor data to nwb."""
-        if sync_with_ttl:
-            ttl, states = self.recording_extractor.get_ttl_events()
-            rising_times = ttl[states == 1]
-            self.recording_extractor = SubRecordingExtractor(self.recording_extractor, start_frame=rising_times[0])
-        super().convert_data(nwbfile=nwbfile, metadata_dict=metadata_dict, stub_test=stub_test)
+    def get_metadata(self):
+        """Auto-populate as much of the metadata as possible from the SpikeGLX format."""
+        re_metadata = dict(
+            Ecephys=dict(
+            )
+        )
+        return re_metadata
