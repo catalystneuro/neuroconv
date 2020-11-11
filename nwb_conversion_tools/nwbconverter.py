@@ -1,26 +1,10 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_input_schema,
-                    get_schema_for_NWBFile)
+from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
+                    get_metadata_schema, get_schema_for_NWBFile, dict_deep_update)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 from datetime import datetime
 import uuid
-import collections.abc
-import numpy as np
-
-
-def dict_deep_update(d, u):
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, {}), v)
-        elif isinstance(v, list):
-            d[k] = d.get(k, []) + v
-            # Remove repeated items if they exist
-            if len(v) > 0 and not isinstance(v[0], dict):
-                d[k] = list(np.unique(d[k]))
-        else:
-            d[k] = v
-    return d
 
 
 class NWBConverter:
@@ -71,25 +55,19 @@ class NWBConverter:
         )
         for name, data_interface in self.data_interface_objects.items():
             interface_schema = data_interface.get_metadata_schema()
-            metadata_schema['properties'] = dict_deep_update(
-                metadata_schema['properties'],
-                interface_schema['properties']
-            )
-
+            metadata_schema = dict_deep_update(metadata_schema, interface_schema)
         return metadata_schema
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = dict()
-        for interface_name, interface in self.data_interface_objects.items():
-            interface_metadada = interface.get_metadata()
-            metadata = dict_deep_update(metadata, interface_metadada)
-
+        for interface in self.data_interface_objects.values():
+            interface_metadata = interface.get_metadata()
+            metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
-
         nwbfile_kwargs = dict(
                 session_description="no description",
                 identifier=str(uuid.uuid4()),
@@ -114,7 +92,7 @@ class NWBConverter:
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
+            data_interface.convert_data(nwbfile, metadata_dict, stub_test)
 
         if save_to_file:
             if nwbfile_path is None:
