@@ -20,4 +20,4 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the SpikeGLX format."""
         # TODO
-        return dict()
+        return dict(Ecephys=dict())
