@@ -76,7 +76,7 @@ class NWBConverter:
 
         conversion_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
-            conversion_schema = interface.get_conversion_schema()
+            conversion_schema = interface.get_conversion_options_schema()
             conversion_data_routed[interface_name] = {
                 k: conversion_options[interface_name].get(k, None)
                 for k in conversion_schema['properties'].keys()
