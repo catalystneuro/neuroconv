@@ -12,7 +12,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
     RX = None
 
     @classmethod
-    def get_input_schema(cls):
+    def get_input_schema(cls, root=False):
         return get_schema_from_method_signature(cls.RX)
 
     def __init__(self, **input_args):
@@ -24,8 +24,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         metadata_schema = get_metadata_schema()
 
         # Initiate Ecephys metadata
-        metadata_schema['properties']['Ecephys'] = dict()
-        metadata_schema['properties']['Ecephys'].update(
+        metadata_schema['properties']['Ecephys'] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
@@ -34,7 +33,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
+    def run_conversion(self, nwbfile, metadata_dict: None, stub_test=False):
         if stub_test:
             num_frames = 100
             test_ids = self.recording_extractor.get_channel_ids()

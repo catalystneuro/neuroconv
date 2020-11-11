@@ -1,6 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
-                    get_metadata_schema, get_schema_for_NWBFile, dict_deep_update)
+                    get_metadata_schema, get_schema_for_NWBFile, dict_deep_update,
+                    get_base_schema)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 from datetime import datetime
@@ -13,15 +14,29 @@ class NWBConverter:
     data_interface_classes = None
 
     @classmethod
-    def get_input_schema(cls):
+    def get_source_schema(cls):
         """Compile input schemas from each of the data interface classes."""
         input_schema = get_input_schema()
         for name, data_interface in cls.data_interface_classes.items():
-            input_schema['properties'] = dict_deep_update(
-                input_schema['properties'],
-                data_interface.get_input_schema()['properties']
-            )
+            input_schema['properties'][name] = data_interface.get_input_schema()
+
         return input_schema
+
+    @classmethod
+    def get_conversion_options_schema(cls):
+        conversion_options_schema = get_base_schema()
+        for data_interface in cls.data_interface_classes.values():
+            conversion_options_schema['properties'].update(data_interface.get_conversion_options_schema()['properties'])
+
+        return conversion_options_schema
+
+    @classmethod
+    def get_input_schema(cls):
+        schema = get_root_schema()
+        schema['properties'].update(
+            source=cls.get_source_schema(),
+            conversion_options=cls.get_conversion_options_schema()
+        )
 
     def __init__(self, **input_data):
         """
@@ -89,7 +104,7 @@ class NWBConverter:
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict, stub_test)
+            data_interface.run_conversion(nwbfile, metadata_dict, stub_test)
 
         # Save result to file or return object
         if save_to_file:

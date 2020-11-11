@@ -1,12 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
-from copy import deepcopy
-from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
-import numpy as np
-import segmentationextractors as segx
-
-from .utils import get_base_schema, get_schema_from_method_signature, \
-                   get_schema_from_hdmf_class
+from .utils import get_schema_from_method_signature
 from .basedatainterface import BaseDataInterface
 
 
@@ -35,7 +28,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface):
         # return metadata_schema # SegmentationExtractor metadata json-schema here.
         raise NotImplementedError
 
-    def convert_data(self, nwbfile_path, metadata_dict, stub_test=False):
+    def run_conversion(self, nwbfile_path, metadata_dict, stub_test=False):
         # if stub_test:
         #     # example recording extractor for fast testing
         #     num_channels = 4

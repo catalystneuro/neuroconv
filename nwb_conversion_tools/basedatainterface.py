@@ -13,7 +13,7 @@ class BaseDataInterface:
     def __init__(self, **input_args):
         self.input_args = input_args
 
-    def get_metadata_schema():
+    def get_metadata_schema(self):
         return get_metadata_schema()
 
     @abstractmethod
@@ -21,5 +21,5 @@ class BaseDataInterface:
         pass
 
     @abstractmethod
-    def convert_data(self, nwbfile_path, metadata_dict):
+    def run_conversion(self, nwbfile_path, metadata_dict):
         pass
