@@ -90,32 +90,32 @@ class NWBConverter:
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
 
+        # Minimal values
         nwbfile_kwargs = dict(
-                session_description="no description",
-                identifier=str(uuid.uuid4()),
-                session_start_time=datetime.now()
+            session_description="no description",
+            identifier=str(uuid.uuid4()),
+            session_start_time=datetime.now()
+        )
+        # convert ISO 8601 string to datetime
+        if 'NWBFile' in metadata_dict and isinstance(metadata_dict['NWBFile']['session_start_time'], str):
+            metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
+                metadata_dict['NWBFile']['session_start_time']
             )
-        else:
-            # convert ISO 8601 string to datetime
-            if isinstance(metadata_dict['NWBFile']['session_start_time'], str):
-                metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
-                    metadata_dict['NWBFile']['session_start_time']
-                )
+
+        # Initiate nwbfile
+        nwbfile_kwargs.update(metadata_dict['NWBFile'])
+        nwbfile = NWBFile(**nwbfile_kwargs)
 
         # add Subject
         if 'Subject' not in metadata_dict:
             metadata_dict['Subject'] = dict()
-        subject = Subject(**metadata_dict['Subject'])
-
-        if 'Subject' in metadata_dict:
-            nwbfile_kwargs.update(subject=Subject(**metadata_dict['Subject']))
-
-        nwbfile = NWBFile(**nwbfile_kwargs)
+        nwbfile.subject = Subject(**metadata_dict['Subject'])
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
             data_interface.convert_data(nwbfile, metadata_dict[name], stub_test)
 
+        # Save result to file or return object
         if save_to_file:
             if nwbfile_path is None:
                 raise TypeError('A path to the output file must be provided, but nwbfile_path got value None')
