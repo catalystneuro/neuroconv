@@ -84,9 +84,8 @@ class NWBConverter:
         nwbfile = NWBFile(**nwbfile_kwargs)
 
         # add Subject
-        if 'Subject' not in metadata_dict:
-            metadata_dict['Subject'] = dict()
-        nwbfile.subject = Subject(**metadata_dict['Subject'])
+        if 'Subject' in metadata_dict:
+            nwbfile.subject = Subject(**metadata_dict['Subject'])
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
