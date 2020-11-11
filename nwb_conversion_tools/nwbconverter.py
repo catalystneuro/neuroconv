@@ -3,6 +3,7 @@ from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schem
                     get_schema_for_NWBFile, dict_deep_update)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
+from datetime import datetime
 import uuid
 
 
@@ -27,6 +28,7 @@ class NWBConverter:
         It automatically checks with the interface schemas which data belongs to each
         """
         self.data_interface_objects = dict()
+
         input_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
             interface_schema = interface.get_input_schema()
@@ -63,6 +65,7 @@ class NWBConverter:
         """Build nwbfile object, auto-populate with minimal values if missing."""
         nwbfile_kwargs = dict(
             identifier=str(uuid.uuid4()),
+            session_start_time=datetime.now()
         )
         if 'NWBFile' in metadata_dict:
             nwbfile_kwargs.update(metadata_dict['NWBFile'])
