@@ -33,13 +33,12 @@ class NWBConverter:
         self.data_interface_objects = dict()
         input_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
-            input_data_routed[interface_name] = dict()
             interface_schema_properties = interface.get_input_schema()['properties']
             for b in set(interface_schema_properties.keys()).intersection(set(['source_data', 'conversion_options'])):
-                input_data_routed[interface_name].update({
+                input_data_routed[interface_name] = {
                     k: input_data[b].get(k, None)
                     for k in interface_schema_properties[b]['properties'].keys()
-                })
+                }
 
         self.data_interface_objects = {
             name: data_interface(**input_data_routed[name])
