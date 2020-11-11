@@ -4,8 +4,8 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_base_schema, get_schema_from_method_signature, \
-    get_schema_from_hdmf_class
+from .utils import (get_schema_from_method_signature, get_schema_from_hdmf_class,
+                    get_metadata_schema)
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface):
@@ -20,16 +20,17 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         self.recording_extractor = self.RX(**input_args)
 
     def get_metadata_schema(self):
-        metadata_schema = get_base_schema()
+        # Initiate empty metadata schema
+        metadata_schema = get_metadata_schema()
 
-        # ideally most of this be automatically determined from pynwb docvals
-        metadata_schema['properties'].update(
+        # Initiate Ecephys metadata
+        metadata_schema['properties']['Ecephys'] = dict()
+        metadata_schema['properties']['Ecephys'].update(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
-        required_fields = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        metadata_schema['required'] += required_fields
+        metadata_schema['properties']['Ecephys'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
 
         return metadata_schema
 
