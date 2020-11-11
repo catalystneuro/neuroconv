@@ -72,7 +72,6 @@ class NWBConverter:
         nwbfile_kwargs = dict(
             session_description="no description",
             identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now()
         )
         # convert ISO 8601 string to datetime
         if 'NWBFile' in metadata_dict and isinstance(metadata_dict['NWBFile']['session_start_time'], str):
