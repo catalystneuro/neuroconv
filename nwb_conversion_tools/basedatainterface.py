@@ -20,7 +20,7 @@ class BaseDataInterface:
 
     @abstractmethod
     def get_metadata(self):
-        pass
+        return dict()
 
     @classmethod
     @abstractmethod

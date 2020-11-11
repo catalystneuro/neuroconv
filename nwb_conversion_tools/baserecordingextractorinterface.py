@@ -49,10 +49,12 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
             test_ids = self.recording_extractor.get_channel_ids()
             end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
 
-            stub_recording_extractor = se.SubRecordingExtractor(self.recording_extractor,
-                                                                channel_ids=test_ids,
-                                                                start_frame=0,
-                                                                end_frame=end_frame)
+            stub_recording_extractor = se.SubRecordingExtractor(
+                self.recording_extractor,
+                channel_ids=test_ids,
+                start_frame=0,
+                end_frame=end_frame
+            )
         else:
             stub_recording_extractor = self.recording_extractor
 
@@ -62,6 +64,8 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         else:
             recording_extractor = stub_recording_extractor
 
-        se.NwbRecordingExtractor.write_recording(recording_extractor,
-                                                 nwbfile=nwbfile,
-                                                 metadata=metadata_dict)
+        se.NwbRecordingExtractor.write_recording(
+            recording_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata_dict
+        )
