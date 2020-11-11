@@ -14,8 +14,7 @@ class BaseDataInterface:
         self.input_args = input_args
 
     def get_metadata_schema():
-        metadata_schema = get_metadata_schema()
-        return metadata_schema
+        return get_metadata_schema()
 
     @abstractmethod
     def get_metadata(self):
