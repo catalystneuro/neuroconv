@@ -8,6 +8,8 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary interface for reading and converting SpikeInterface objects through Pickle files."""
 
+    RX = None
+
     @classmethod
     def get_input_schema(cls):
         """Return partial json schema for expected input arguments."""
@@ -25,6 +27,8 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
 class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
     """Primary interface for reading and converting SpikeInterface objects through Pickle files."""
+
+    SX = None
 
     @classmethod
     def get_input_schema(cls):
