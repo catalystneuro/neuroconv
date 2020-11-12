@@ -1,18 +1,16 @@
 """Authors: Alessio Buccino."""
 import spikeextractors as se
-from pynwb import NWBFile
-from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup, ElectricalSeries, SpikeEventSeries
 
-from ..basedatainterface import BaseDataInterface
-from ..utils import get_base_schema, get_schema_from_method_signature, \
-    get_schema_from_hdmf_class
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
-class SIPickleRecordingExtractorInterface(BaseDataInterface):
+class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
+    """Primary interface for reading and converting SpikeInterface objects through Pickle files."""
 
     @classmethod
     def get_input_schema(cls):
+        """Return partial json schema for expected input arguments."""
         return dict(
             required=['pkl_file'],
             properties=dict(
@@ -21,51 +19,16 @@ class SIPickleRecordingExtractorInterface(BaseDataInterface):
         )
 
     def __init__(self, **input_args):
-        super().__init__(**input_args)
+        self.input_args = input_args
         self.recording_extractor = se.load_extractor_from_pickle(**input_args)
 
-    def get_metadata_schema(self):
-        metadata_schema = get_base_schema()
 
-        # ideally most of this be automatically determined from pynwb docvals
-        metadata_schema['properties'].update(
-            Device=get_schema_from_hdmf_class(Device),
-            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
-            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        required_fields = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        metadata_schema['required'] += required_fields
-
-        return metadata_schema
-
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
-        if stub_test:
-            num_frames = 100
-            test_ids = self.recording_extractor.get_channel_ids()
-            end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
-
-            stub_recording_extractor = se.SubRecordingExtractor(self.recording_extractor,
-                                                                channel_ids=test_ids,
-                                                                start_frame=0,
-                                                                end_frame=end_frame)
-        else:
-            stub_recording_extractor = self.recording_extractor
-
-        if metadata_dict is not None and 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
-            recording_extractor = se.SubRecordingExtractor(stub_recording_extractor,
-                                                           channel_ids=metadata_dict['Ecephys']['subset_channels'])
-        else:
-            recording_extractor = stub_recording_extractor
-
-        se.NwbRecordingExtractor.write_recording(recording_extractor,
-                                                 nwbfile=nwbfile,
-                                                 metadata=metadata_dict)
-
-
-class SIPickleSortingExtractorInterface(BaseDataInterface):
+class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
+    """Primary interface for reading and converting SpikeInterface objects through Pickle files."""
 
     @classmethod
     def get_input_schema(cls):
+        """Return partial json schema for expected input arguments."""
         return dict(
             required=['pkl_file'],
             properties=dict(
@@ -74,45 +37,5 @@ class SIPickleSortingExtractorInterface(BaseDataInterface):
         )
 
     def __init__(self, **input_args):
-        super().__init__(**input_args)
+        self.input_args = input_args
         self.sorting_extractor = se.load_extractor_from_pickle(**input_args)
-
-    def get_metadata_schema(self):
-        metadata_schema = get_base_schema()
-
-        # ideally most of this be automatically determined from pynwb docvals
-        metadata_schema['properties']['SpikeEventSeries'] = get_schema_from_hdmf_class(SpikeEventSeries)
-        required_fields = ['SpikeEventSeries']
-        for field in required_fields:
-            metadata_schema['required'].append(field)
-
-        return metadata_schema
-
-    def convert_data(self, nwbfile: NWBFile, metadata_dict: dict, stub_test: bool = False):
-        if 'UnitProperties' not in metadata_dict:
-            metadata_dict['UnitProperties'] = []
-
-        property_descriptions = {}
-        if stub_test:
-            # No easy way to lazily figure out upper bound on frames for SortingExtractor?
-            end_frame = 100
-            stub_sorting_extractor = se.SubSortingExtractor(self.sorting_extractor,
-                                                            unit_ids=self.sorting_extractor.get_unit_ids(),
-                                                            start_frame=0,
-                                                            end_frame=end_frame)
-            sorting_extractor = stub_sorting_extractor
-        else:
-            sorting_extractor = self.sorting_extractor
-
-        for metadata_column in metadata_dict['UnitProperties']:
-            property_descriptions.update({metadata_column['name']: metadata_column['description']})
-            for unit_id in sorting_extractor.get_unit_ids():
-                if metadata_column['name'] == 'electrode_group':
-                    data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
-                else:
-                    data = metadata_column['data'][unit_id]
-                sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
-
-        se.NwbSortingExtractor.write_sorting(sorting_extractor,
-                                             property_descriptions=property_descriptions,
-                                             nwbfile=nwbfile)
