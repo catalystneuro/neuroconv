@@ -51,11 +51,6 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
                         data=shank_electrode_number
                     ),
                     dict(
-                        name='group',
-                        description="A reference to the ElectrodeGroup this electrode is a part of.",
-                        data=shank_group_name
-                    ),
-                    dict(
                         name='group_name',
                         description="The name of the ElectrodeGroup this electrode is a part of.",
                         data=shank_group_name
