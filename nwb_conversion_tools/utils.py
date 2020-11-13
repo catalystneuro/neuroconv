@@ -7,29 +7,8 @@ import numpy as np
 import pynwb
 
 
-
-def get_schema_data(data_dict, schema_dict):
-    """
-
-    Parameters
-    ----------
-    data_dict: dict
-        data that follows the schema but may have more unwanted parts
-    schema_dict: dict
-        schema that you want to pull out
-    Returns
-    -------
-    dict
-
-    """
-    out_dict = {}
-    for key, val in data_dict.items():
-        if key in schema_dict['properties']:
-            if isinstance(val, dict):
-                out_dict[key] = get_schema_data(val, schema_dict['properties'][key])
-            else:
-                out_dict[key] = val
-    return out_dict
+def get_schema_data(in_data, data_schema):
+    return {k: in_data.get(k, None) for k in data_schema['properties'].keys()}
 
 
 def dict_deep_update(d, u):

@@ -1,6 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
-                    get_schema_for_NWBFile, dict_deep_update)
+                    get_schema_for_NWBFile, dict_deep_update, get_schema_data)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 from datetime import datetime
@@ -32,10 +32,10 @@ class NWBConverter:
         input_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
             interface_schema = interface.get_input_schema()
-            input_data_routed[interface_name] = {
-                k: input_data[interface_name].get(k, None)
-                for k in interface_schema['properties'].keys()
-            }
+            input_data_routed[interface_name] = get_schema_data(
+                input_data[interface_name],
+                interface_schema
+            )
         self.data_interface_objects = {
             name: data_interface(**input_data_routed[name])
             for name, data_interface in self.data_interface_classes.items()
@@ -76,10 +76,10 @@ class NWBConverter:
         conversion_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
             conversion_schema = interface.get_conversion_options_schema()
-            conversion_data_routed[interface_name] = {
-                k: conversion_options[interface_name].get(k, None)
-                for k in conversion_schema['properties'].keys()
-            }
+            conversion_data_routed[interface_name] = get_schema_data(
+                conversion_options[interface_name],
+                conversion_schema
+            )
         for name, data_interface in self.data_interface_objects.items():
             data_interface.convert_data(nwbfile, metadata_dict, **conversion_data_routed[name])
 
