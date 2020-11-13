@@ -6,12 +6,12 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting the SpikeGLX format."""
+    """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
 
     RX = SpikeGLXRecordingExtractor
 
     def get_metadata(self):
-        """Auto-populate as much metadata as possible from the SpikeGLX format."""
+        """Auto-populate as much metadata as possible from the high-pass (ap) SpikeGLX format."""
         file_path = Path(self.input_args['file_path'])
         session_id = file_path.parent.stem
 
@@ -27,7 +27,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Ecephys=dict(
                 Device=[
                     dict(
-                        description=session_id + '.ap.meta'
+                        description=f"More details for the high-pass (ap) data found in {session_id}.ap.meta!"
                     )
                 ],
                 ElectrodeGroup=[
@@ -51,7 +51,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 ],
                 ElectricalSeries=dict(
                     name='ElectricalSeries',
-                    description="Raw acquisition traces."
+                    description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
                 )
             )
         )
