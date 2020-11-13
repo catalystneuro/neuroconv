@@ -36,12 +36,14 @@ class BaseSortingExtractorInterface(BaseDataInterface):
 
         property_descriptions = {}
         if stub_test:
-            # No easy way to lazily figure out upper bound on frames for SortingExtractor?
-            end_frame = 100
-            stub_sorting_extractor = se.SubSortingExtractor(self.sorting_extractor,
-                                                            unit_ids=self.sorting_extractor.get_unit_ids(),
-                                                            start_frame=0,
-                                                            end_frame=end_frame)
+            max_min_spike_time = max([min(x) for y in self.sorting_extractor.get_unit_ids()
+                                      for x in [self.sorting_extractor.get_unit_spike_train(y)] if any(x)])
+            stub_sorting_extractor = se.SubSortingExtractor(
+                self.sorting_extractor,
+                unit_ids=self.sorting_extractor.get_unit_ids(),
+                start_frame=0,
+                end_frame=1.1*max_min_spike_time
+            )
             sorting_extractor = stub_sorting_extractor
         else:
             sorting_extractor = self.sorting_extractor
@@ -55,6 +57,8 @@ class BaseSortingExtractorInterface(BaseDataInterface):
                     data = metadata_column['data'][unit_id]
                 sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
 
-        se.NwbSortingExtractor.write_sorting(sorting_extractor,
-                                             property_descriptions=property_descriptions,
-                                             nwbfile=nwbfile)
+        se.NwbSortingExtractor.write_sorting(
+            sorting_extractor,
+            property_descriptions=property_descriptions,
+            nwbfile=nwbfile
+        )
