@@ -38,12 +38,11 @@ class BaseSortingExtractorInterface(BaseDataInterface):
         if stub_test:
             max_min_spike_time = max([min(x) for y in self.sorting_extractor.get_unit_ids()
                                       for x in [self.sorting_extractor.get_unit_spike_train(y)] if any(x)])
-            end_frame = 1.1 * max_min_spike_time
             stub_sorting_extractor = se.SubSortingExtractor(
                 self.sorting_extractor,
                 unit_ids=self.sorting_extractor.get_unit_ids(),
                 start_frame=0,
-                end_frame=end_frame
+                end_frame=1.1*max_min_spike_time
             )
             sorting_extractor = stub_sorting_extractor
         else:
