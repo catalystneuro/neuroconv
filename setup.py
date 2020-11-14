@@ -27,7 +27,6 @@ setup(
         'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
         'pandas', 'jupyter', 'matplotlib', 'h5py', 'pyyaml',
         'spikeextractors', 'spikesorters', 'spiketoolkit',
-        'PySide2', 'psutil', 'voila', 'jupyter-client'
     ],
     entry_points={
         'console_scripts': ['nwb-gui=nwb_conversion_tools.gui.command_line:main'],
