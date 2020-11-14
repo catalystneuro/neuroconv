@@ -1,5 +1,5 @@
-from pynwb import NWBHDF5IO
 import numpy as np
+from pynwb import NWBHDF5IO
 
 
 def check_sorted(data):

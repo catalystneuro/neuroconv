@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
+
 from spikeextractors import SpikeGLXRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface

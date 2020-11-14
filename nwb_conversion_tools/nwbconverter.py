@@ -1,10 +1,12 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
-                    get_schema_for_NWBFile, dict_deep_update)
+import uuid
+from datetime import datetime
+
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
-from datetime import datetime
-import uuid
+
+from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
+                    get_schema_for_NWBFile, dict_deep_update)
 
 
 class NWBConverter:
@@ -63,10 +65,10 @@ class NWBConverter:
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         nwbfile_kwargs = dict(
-                session_description="no description",
-                identifier=str(uuid.uuid4()),
-                session_start_time=datetime.now()
-            )
+            session_description="no description",
+            identifier=str(uuid.uuid4()),
+            session_start_time=datetime.now()
+        )
 
         if 'NWBFile' in metadata_dict:
             nwbfile_kwargs.update(metadata_dict['NWBFile'])

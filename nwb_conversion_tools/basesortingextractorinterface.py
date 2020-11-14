@@ -42,7 +42,7 @@ class BaseSortingExtractorInterface(BaseDataInterface):
                 self.sorting_extractor,
                 unit_ids=self.sorting_extractor.get_unit_ids(),
                 start_frame=0,
-                end_frame=1.1*max_min_spike_time
+                end_frame=1.1 * max_min_spike_time
             )
             sorting_extractor = stub_sorting_extractor
         else:
