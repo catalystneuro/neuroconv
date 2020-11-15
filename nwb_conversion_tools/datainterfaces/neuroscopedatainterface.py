@@ -1,12 +1,12 @@
 """Authors: Cody Baker and Ben Dichter."""
+from pathlib import Path
+
+import numpy as np
 import spikeextractors as se
 from lxml import etree as et
-from pathlib import Path
-import numpy as np
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ..utils import dict_deep_update
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -22,12 +22,12 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         xml_filepath = session_path / f"{session_id}.xml"
         root = et.parse(str(xml_filepath.absolute())).getroot()
         shank_channels = [[int(channel.text)
-                          for channel in group.find('channels')]
+                           for channel in group.find('channels')]
                           for group in root.find('spikeDetection').find('channelGroups').findall('group')]
         all_shank_channels = np.concatenate(shank_channels)
         all_shank_channels.sort()
         shank_electrode_number = [x for channels in shank_channels for x, _ in enumerate(channels)]
-        shank_group_name = [f"shank{n+1}" for n, channels in enumerate(shank_channels) for _ in channels]
+        shank_group_name = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
 
         re_metadata = dict(
             Ecephys=dict(
@@ -39,8 +39,8 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
                 ],
                 ElectrodeGroup=[
                     dict(
-                        name=f'shank{n+1}',
-                        description=f"shank{n+1} electrodes"
+                        name=f'shank{n + 1}',
+                        description=f"shank{n + 1} electrodes"
                     )
                     for n, _ in enumerate(shank_channels)
                 ],
@@ -49,11 +49,6 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
                         name='shank_electrode_number',
                         description="0-indexed channel within a shank.",
                         data=shank_electrode_number
-                    ),
-                    dict(
-                        name='group',
-                        description="A reference to the ElectrodeGroup this electrode is a part of.",
-                        data=shank_group_name
                     ),
                     dict(
                         name='group_name',

@@ -1,10 +1,12 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
-                    get_metadata_schema, get_schema_for_NWBFile, dict_deep_update)
+import uuid
+from datetime import datetime
+
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
-from datetime import datetime
-import uuid
+
+from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
+                    get_schema_for_NWBFile, dict_deep_update)
 
 
 class NWBConverter:
@@ -73,22 +75,20 @@ class NWBConverter:
         nwbfile_kwargs = dict(
             session_description="no description",
             identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now()
         )
-        # convert ISO 8601 string to datetime
-        if 'NWBFile' in metadata_dict and isinstance(metadata_dict['NWBFile']['session_start_time'], str):
-            metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
-                metadata_dict['NWBFile']['session_start_time']
-            )
 
-        # Initiate nwbfile
-        nwbfile_kwargs.update(metadata_dict['NWBFile'])
+        if 'NWBFile' in metadata_dict:
+            nwbfile_kwargs.update(metadata_dict['NWBFile'])
+
+            # convert ISO 8601 string to datetime
+            if isinstance(nwbfile_kwargs['session_start_time'], str):
+                nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
+                    metadata_dict['NWBFile']['session_start_time'])
+
+        if 'Subject' in metadata_dict:
+            nwbfile_kwargs.update(subject=Subject(**metadata_dict['Subject']))
+
         nwbfile = NWBFile(**nwbfile_kwargs)
-
-        # add Subject
-        if 'Subject' not in metadata_dict:
-            metadata_dict['Subject'] = dict()
-        nwbfile.subject = Subject(**metadata_dict['Subject'])
 
         # Run data interfaces data conversion
         for name, data_interface in self.data_interface_objects.items():
