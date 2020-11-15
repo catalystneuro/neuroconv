@@ -24,11 +24,8 @@ setup(
     package_data={'': ['template_metafile.yml']},
     include_package_data=True,
     install_requires=[
-        'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
-        'pandas', 'jupyter', 'matplotlib', 'h5py', 'pyyaml', 'jupyter-client',
-        'spikeextractors', 'spikesorters', 'spiketoolkit',
-        'PySide2', 'nwbwidgets', 'psutil', 'voila'
-    ],
+        'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'pandas', 'h5py',
+        'pyyaml', 'spikeextractors', 'spikesorters', 'spiketoolkit'],
     entry_points={
         'console_scripts': ['nwb-gui=nwb_conversion_tools.gui.command_line:main'],
     }

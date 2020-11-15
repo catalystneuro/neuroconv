@@ -33,6 +33,23 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
+    def get_metadata(self):
+        out = super().get_metadata()
+        out['properties'].update(
+            Ecephys=dict(
+                ElectricalSeries=dict(
+                    name='ElectricalSeries',
+                    description='raw acquired data'
+                ),
+                Device=dict(
+                    name='device',
+                    description='ecephys probe'
+                )
+            )
+        )
+
+        return out
+
     def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
         """
         Primary function for converting recording extractor data to nwb.

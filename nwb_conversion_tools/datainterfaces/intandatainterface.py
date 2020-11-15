@@ -29,7 +29,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         re_metadata = dict(
             Ecephys=dict(
-                Device=[dict()],
+                Device=[dict(
+                    name='Neuropixel'
+                )],
                 ElectrodeGroup=[
                     dict(
                         name=f'Group{group_name}',
