@@ -58,9 +58,6 @@ def get_input_schema():
     return input_schema
 
 
-def get_schema_from_method_signature(class_method, exclude=None):
-    if exclude is None:
-        exclude = []
 def get_metadata_schema():
     metadata_schema = get_root_schema()
     metadata_schema.update({
@@ -73,7 +70,9 @@ def get_metadata_schema():
     return metadata_schema
 
 
-def get_schema_from_method_signature(class_method):
+def get_schema_from_method_signature(class_method, exclude=None):
+    if exclude is None:
+        exclude = []
     input_schema = get_base_schema()
     for param in inspect.signature(class_method).parameters.values():
         if param.name != 'self':
@@ -93,7 +92,7 @@ def get_schema_from_method_signature(class_method):
 
 
 def get_schema_from_hdmf_class(hdmf_class):
-    """Get metadata schema from hdmf class"""
+    """Get metadata schema from hdmf class."""
     schema = get_base_schema()
     schema['tag'] = hdmf_class.__module__ + '.' + hdmf_class.__name__
 

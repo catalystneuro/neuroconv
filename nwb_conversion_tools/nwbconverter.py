@@ -6,7 +6,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_input_schema,
-                    get_schema_for_NWBFile, dict_deep_update)
+                    get_schema_for_NWBFile, dict_deep_update, get_schema_data)
 
 
 class NWBConverter:
@@ -61,21 +61,18 @@ class NWBConverter:
 
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, conversion_options=None):
         """Build nwbfile object, auto-populate with minimal values if missing."""
-
         if conversion_options is None:
             conversion_options = dict()
-
-
+        nwbfile_kwargs = dict()
         if 'NWBFile' in metadata_dict:
             nwbfile_kwargs.update(metadata_dict['NWBFile'])
-
-            # convert ISO 8601 string to datetime
-            if isinstance(nwbfile_kwargs['session_start_time'], str):
-                nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
-                    metadata_dict['NWBFile']['session_start_time'])
-
         if 'Subject' in metadata_dict:
             nwbfile_kwargs.update(subject=Subject(**metadata_dict['Subject']))
+        # convert ISO 8601 string to datetime
+        if isinstance(nwbfile_kwargs['session_start_time'], str):
+            nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
+                metadata_dict['NWBFile']['session_start_time']
+            )
         nwbfile = NWBFile(**nwbfile_kwargs)
 
         for interface_name, data_interface in self.data_interface_objects.items():
