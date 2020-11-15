@@ -16,8 +16,5 @@ class BaseSegmentationExtractorInterface(BaseDataInterface):
         super().__init__(**input_args)
         self.segmentation_extractor = self.SegX(**input_args)
 
-    def get_metadata_schema(self):
-        raise NotImplementedError
-
     def convert_data(self, nwbfile_path, metadata_dict, stub_test=False):
         raise NotImplementedError
