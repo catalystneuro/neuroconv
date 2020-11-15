@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md')) as f:
 
 setup(
     name='nwb-conversion-tools',
-    version='0.3.4',
+    version='0.5.0',
     description='Convert data to nwb',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -24,10 +24,8 @@ setup(
     package_data={'': ['template_metafile.yml']},
     include_package_data=True,
     install_requires=[
-        'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'bs4',
-        'pandas', 'jupyter', 'matplotlib', 'h5py', 'pyyaml',
-        'spikeextractors', 'spikesorters', 'spiketoolkit',
-    ],
+        'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'pandas', 'h5py',
+        'pyyaml', 'spikeextractors', 'spikesorters', 'spiketoolkit'],
     entry_points={
         'console_scripts': ['nwb-gui=nwb_conversion_tools.gui.command_line:main'],
     }
