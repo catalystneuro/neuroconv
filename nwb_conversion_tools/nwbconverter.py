@@ -19,7 +19,10 @@ class NWBConverter:
         """Compile input schemas from each of the data interface classes."""
         input_schema = get_input_schema()
         for name, data_interface in cls.data_interface_classes.items():
-            input_schema['properties'] = dict_deep_update(input_schema['properties'], data_interface.get_input_schema())
+            input_schema['properties'] = dict_deep_update(
+                input_schema['properties'],
+                data_interface.get_input_schema()['properties']
+            )
         return input_schema
 
     def __init__(self, **input_data):
@@ -32,11 +35,14 @@ class NWBConverter:
         self.data_interface_objects = dict()
         input_data_routed = dict()
         for interface_name, interface in self.data_interface_classes.items():
-            interface_schema = interface.get_input_schema()
-            input_data_routed[interface_name] = {
-                k: input_data[interface_name].get(k, None)
-                for k in interface_schema['properties'].keys()
-            }
+            input_data_routed[interface_name] = dict()
+            interface_schema_properties = interface.get_input_schema()['properties']
+            for b in set(interface_schema_properties.keys()).intersection(set(['source_data', 'conversion_options'])):
+                input_data_routed[interface_name].update({
+                    k: input_data[b].get(k, None)
+                    for k in interface_schema_properties[b]['properties'].keys()
+                })
+
         self.data_interface_objects = {
             name: data_interface(**input_data_routed[name])
             for name, data_interface in self.data_interface_classes.items()
@@ -44,7 +50,7 @@ class NWBConverter:
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
-        metadata_schema = get_root_schema()
+        metadata_schema = get_metadata_schema()
         metadata_schema['properties'] = dict(
             NWBFile=get_schema_for_NWBFile(),
             Subject=get_schema_from_hdmf_class(Subject)
@@ -64,14 +70,20 @@ class NWBConverter:
 
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
         """Build nwbfile object, auto-populate with minimal values if missing."""
+
+        # Minimal values
         nwbfile_kwargs = dict(
             session_description="no description",
             identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now()
         )
 
         if 'NWBFile' in metadata_dict:
             nwbfile_kwargs.update(metadata_dict['NWBFile'])
+
+            # convert ISO 8601 string to datetime
+            if isinstance(nwbfile_kwargs['session_start_time'], str):
+                nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
+                    metadata_dict['NWBFile']['session_start_time'])
 
         if 'Subject' in metadata_dict:
             nwbfile_kwargs.update(subject=Subject(**metadata_dict['Subject']))
@@ -82,6 +94,7 @@ class NWBConverter:
         for name, data_interface in self.data_interface_objects.items():
             data_interface.convert_data(nwbfile, metadata_dict, stub_test)
 
+        # Save result to file or return object
         if save_to_file:
             if nwbfile_path is None:
                 raise TypeError('A path to the output file must be provided, but nwbfile_path got value None')

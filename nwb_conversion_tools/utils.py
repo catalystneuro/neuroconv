@@ -45,12 +45,24 @@ def get_root_schema():
 def get_input_schema():
     input_schema = get_root_schema()
     input_schema.update({
+        "$id": "input.schema.json",
         "title": "Source data and conversion options",
         "description": "Schema for the source data and conversion options",
         "version": "0.1.0",
-        "type": "object",
     })
     return input_schema
+
+
+def get_metadata_schema():
+    metadata_schema = get_root_schema()
+    metadata_schema.update({
+        "$id": "metadata.schema.json",
+        "title": "Metadata",
+        "description": "Schema for the metadata",
+        "version": "0.1.0",
+        "required": ["NWBFile"],
+    })
+    return metadata_schema
 
 
 def get_schema_from_method_signature(class_method):
