@@ -7,6 +7,11 @@ import numpy as np
 import pynwb
 
 
+def get_schema_data(in_data, data_schema):
+    """Output the parts of the input dictionary in_data that are within the json schema properties of data_schema."""
+    return {k: in_data[k] for k in data_schema['properties'] if k in in_data}
+
+
 def dict_deep_update(d, u):
     """Perform an update to all nested keys of dictionary d from dictionary u."""
     for k, v in u.items():
@@ -53,6 +58,9 @@ def get_input_schema():
     return input_schema
 
 
+def get_schema_from_method_signature(class_method, exclude=None):
+    if exclude is None:
+        exclude = []
 def get_metadata_schema():
     metadata_schema = get_root_schema()
     metadata_schema.update({
@@ -67,7 +75,7 @@ def get_metadata_schema():
 
 def get_schema_from_method_signature(class_method):
     input_schema = get_base_schema()
-    for param in inspect.signature(class_method.__init__).parameters.values():
+    for param in inspect.signature(class_method).parameters.values():
         if param.name != 'self':
             arg_spec = {
                 param.name: dict(
