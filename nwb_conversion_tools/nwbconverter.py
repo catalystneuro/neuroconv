@@ -74,11 +74,7 @@ class NWBConverter:
                 conversion_options[interface_name],
                 conversion_schema
             )
-            data_interface.convert_data(
-                nwbfile=nwbfile,
-                metadata_dict=metadata_dict,
-                **conversion_data_routed[interface_name]
-            )
+            data_interface.convert_data(nwbfile, metadata_dict, **conversion_data_routed[interface_name])
 
         if save_to_file:
             if nwbfile_path is None:
