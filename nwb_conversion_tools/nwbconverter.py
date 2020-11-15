@@ -5,7 +5,7 @@ from datetime import datetime
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schema,
+from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_input_schema,
                     get_schema_for_NWBFile, dict_deep_update)
 
 
