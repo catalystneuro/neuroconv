@@ -8,7 +8,7 @@ import pynwb
 
 
 def get_schema_data(in_data, data_schema):
-    return {k: in_data.get(k, None) for k in data_schema['properties'].keys()}
+    return {k: in_data[k] for k in data_schema['properties'] if k in in_data}
 
 
 def dict_deep_update(d, u):
