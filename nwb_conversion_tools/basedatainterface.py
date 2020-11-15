@@ -1,24 +1,24 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod
 
+from .utils import get_input_schema, get_metadata_schema
+
 
 class BaseDataInterface:
 
     @classmethod
-    @abstractmethod
     def get_input_schema(cls):
-        pass
+        return get_input_schema()
+
+    @classmethod
+    def get_metadata_schema(cls):
+        return get_metadata_schema()
 
     def __init__(self, **input_args):
         self.input_args = input_args
 
-    @abstractmethod
-    def get_metadata_schema(self):
-        pass
-
-    @abstractmethod
     def get_metadata(self):
-        pass
+        return dict()
 
     @abstractmethod
     def convert_data(self, nwbfile_path, metadata_dict):
