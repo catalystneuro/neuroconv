@@ -28,18 +28,11 @@ class NWBConverter:
         It automatically checks with the interface schemas which data belongs to each
         """
         self.data_interface_objects = dict()
-
         input_data_routed = dict()
-        for interface_name, interface in self.data_interface_classes.items():
-            interface_schema = interface.get_input_schema()
-            input_data_routed[interface_name] = get_schema_data(
-                input_data[interface_name],
-                interface_schema
-            )
-        self.data_interface_objects = {
-            name: data_interface(**input_data_routed[name])
-            for name, data_interface in self.data_interface_classes.items()
-        }
+        for interface_name, data_interface in self.data_interface_classes.items():
+            interface_schema = data_interface.get_input_schema()
+            input_data_routed[interface_name] = get_schema_data(input_data[interface_name], interface_schema)
+            self.data_interface_objects.update({interface_name: data_interface(**input_data_routed[interface_name])})
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
@@ -64,6 +57,7 @@ class NWBConverter:
     def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, **conversion_options):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         nwbfile_kwargs = dict(
+            session_description="Auto-generated description from NWBConverter.",
             identifier=str(uuid.uuid4()),
             session_start_time=datetime.now()
         )
@@ -74,14 +68,17 @@ class NWBConverter:
         nwbfile = NWBFile(**nwbfile_kwargs)
 
         conversion_data_routed = dict()
-        for interface_name, interface in self.data_interface_classes.items():
-            conversion_schema = interface.get_conversion_options_schema()
+        for interface_name, data_interface in self.data_interface_objects.items():
+            conversion_schema = data_interface.get_conversion_options_schema()
             conversion_data_routed[interface_name] = get_schema_data(
                 conversion_options[interface_name],
                 conversion_schema
             )
-        for name, data_interface in self.data_interface_objects.items():
-            data_interface.convert_data(nwbfile, metadata_dict, **conversion_data_routed[name])
+            data_interface.convert_data(
+                nwbfile=nwbfile,
+                metadata_dict=metadata_dict,
+                **conversion_data_routed[interface_name]
+            )
 
         if save_to_file:
             if nwbfile_path is None:
