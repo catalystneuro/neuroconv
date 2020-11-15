@@ -59,7 +59,6 @@ class NWBConverter:
         nwbfile_kwargs = dict(
             session_description="Auto-generated description from NWBConverter.",
             identifier=str(uuid.uuid4()),
-            session_start_time=datetime.now()
         )
         if 'NWBFile' in metadata_dict:
             nwbfile_kwargs.update(metadata_dict['NWBFile'])
