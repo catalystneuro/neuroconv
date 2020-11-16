@@ -4,8 +4,9 @@ from .utils import (get_schema_from_hdmf_class, get_root_schema, get_input_schem
                     get_base_schema)
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
-from datetime import datetime
-import uuid
+
+from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_input_schema,
+                    get_schema_for_NWBFile, dict_deep_update, get_schema_data)
 
 
 class NWBConverter:
@@ -42,7 +43,7 @@ class NWBConverter:
         """
         Initialize all of the underlying data interfaces.
 
-        This dictionary routes the user options (source_data and conversion_options) to the respective data interfaces.
+        This dictionary routes the user options (input_data and conversion_options) to the respective data interfaces.
         It automatically checks with the interface schemas which data belongs to each
         """
         self.data_interface_objects = dict()
@@ -67,6 +68,7 @@ class NWBConverter:
             NWBFile=get_schema_for_NWBFile(),
             Subject=get_schema_from_hdmf_class(Subject)
         )
+        metadata_schema['required'].append('NWBFile')
         for name, data_interface in self.data_interface_objects.items():
             interface_schema = data_interface.get_metadata_schema()
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
@@ -74,13 +76,18 @@ class NWBConverter:
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
-        metadata = dict()
+        metadata = dict(
+            NWBFile=dict(
+                session_description="no description",
+                identifier=str(uuid.uuid4()),
+            )
+        )
         for interface in self.data_interface_objects.values():
             interface_metadata = interface.get_metadata()
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, stub_test=False):
+    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, conversion_options=None):
         """Build nwbfile object, auto-populate with minimal values if missing."""
 
         # Minimal values
@@ -89,13 +96,10 @@ class NWBConverter:
             identifier=str(uuid.uuid4()),
         )
         # convert ISO 8601 string to datetime
-        if 'NWBFile' in metadata_dict and isinstance(metadata_dict['NWBFile']['session_start_time'], str):
-            metadata_dict['NWBFile']['session_start_time'] = datetime.fromisoformat(
+        if isinstance(nwbfile_kwargs['session_start_time'], str):
+            nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
                 metadata_dict['NWBFile']['session_start_time']
             )
-
-        # Initiate nwbfile
-        nwbfile_kwargs.update(metadata_dict['NWBFile'])
         nwbfile = NWBFile(**nwbfile_kwargs)
 
         # add Subject
