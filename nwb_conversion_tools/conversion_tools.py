@@ -5,7 +5,7 @@ import spikeextractors as se
 
 def save_si_object(si_object, output_folder, cache_raw=False, include_properties=True, include_features=False):
     """
-    Saves an arbitrary SI object to a temprary location for NWB conversion.
+    Save an arbitrary SI object to a temprary location for NWB conversion.
 
     Parameters
     ----------
@@ -26,7 +26,6 @@ def save_si_object(si_object, output_folder, cache_raw=False, include_properties
     spikeinterface_folder: str
         The output spikeinterface folder
     """
-
     spikeinterface_folder = Path(output_folder) / "spikeinterface"
     spikeinterface_folder.mkdir(parents=True, exist_ok=True)
 
@@ -36,7 +35,7 @@ def save_si_object(si_object, output_folder, cache_raw=False, include_properties
         else:
             cache = si_object
 
-    elif isinstance(si_object, se.SortingExtractor):  # asssumes a single sorting extractor at the moment, not an iterable
+    elif isinstance(si_object, se.SortingExtractor):  # TODO: asssumes a single extractor at the moment (not  iterable)
         if not si_object.is_dumpable or cache_raw:
             cache = se.CacheSortingExtractor(si_object, spikeinterface_folder / "sorting.npz")
         else:
@@ -49,7 +48,10 @@ def save_si_object(si_object, output_folder, cache_raw=False, include_properties
 
     # save both json and pickle
     cache.dump_to_json(spikeinterface_folder / json_file)
-    cache.dump_to_pickle(spikeinterface_folder / pkl_file,
-                         include_properties=include_properties, include_features=include_features)
+    cache.dump_to_pickle(
+        spikeinterface_folder / pkl_file,
+        include_properties=include_properties,
+        include_features=include_features
+    )
 
     return spikeinterface_folder
