@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 import spikeextractors as se
+import numpy as np
 from pynwb import NWBFile
 from pynwb.ecephys import SpikeEventSeries
 
@@ -30,11 +31,30 @@ class BaseSortingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile: NWBFile, metadata_dict: dict, stub_test: bool = False):
+    def convert_data(self, nwbfile: NWBFile, metadata_dict: dict, stub_test: bool = False,
+                     write_ecephys_metadata: bool = False):
         if 'UnitProperties' not in metadata_dict:
             metadata_dict['UnitProperties'] = []
+        if write_ecephys_metadata and 'Ecephys' in metadata_dict:
+            n_channels = max([len(x['data']) for x in metadata_dict['Ecephys']['Electrodes']])
+            recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
+            se.NwbRecordingExtractor.add_devices(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata_dict
+            )
+            se.NwbRecordingExtractor.add_electrode_groups(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata_dict
+            )
+            se.NwbRecordingExtractor.add_electrodes(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata_dict
+            )
 
-        property_descriptions = {}
+        property_descriptions = dict()
         if stub_test:
             max_min_spike_time = max([min(x) for y in self.sorting_extractor.get_unit_ids()
                                       for x in [self.sorting_extractor.get_unit_spike_train(y)] if any(x)])
