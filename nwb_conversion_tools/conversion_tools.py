@@ -3,64 +3,53 @@ from pathlib import Path
 import spikeextractors as se
 
 
-def save_si_object(si_object, source_folder):
-    """Take an arbitrary SpikeInterface object and save to a temporary location for NWB conversion."""
-    # TODO
-    # Cache, dump to pickle (checks for what is/isnt dumbable)
-    # return pickle file location?
-    spikeinterface_folder = Path(source_folder) / "spikeinterface"
+def save_si_object(si_object, output_folder, cache_raw=False, include_properties=True, include_features=False):
+    """
+    Saves an arbitrary SI object to a temprary location for NWB conversion.
+
+    Parameters
+    ----------
+    si_object: RecordingExtractor or SortingExtractor
+        The extractor to be saved.
+    output_folder: str or Path
+        The folder where the object is saved.
+    cache_raw: bool
+        If True, the Extractor is cached to a binary file (not recommended for RecordingExtractor objects)
+        (default False).
+    include_properties: bool
+        If True, properties (channel or unit) are saved (default True).
+    include_features: bool
+        If True, spike features are saved (default False)
+
+    Returns
+    -------
+    spikeinterface_folder: str
+        The output spikeinterface folder
+    """
+
+    spikeinterface_folder = Path(output_folder) / "spikeinterface"
     spikeinterface_folder.mkdir(parents=True, exist_ok=True)
-    cache_folder = spikeinterface_folder / "cache"
-    cache_folder.mkdir(parents=True, exist_ok=True)
 
     if isinstance(si_object, se.RecordingExtractor):
-        cache = se.CacheRecordingExtractor(si_object, save_path=cache_folder / "raw.dat")
-        cache_file = cache_folder / "raw.pkl"
+        if not si_object.is_dumpable or cache_raw:
+            cache = se.CacheRecordingExtractor(si_object, save_path=spikeinterface_folder / "raw.dat")
+        else:
+            cache = si_object
 
-    if isinstance(si_object, se.SortingExtractor):  # asssumes a single sorting extractor at the moment, not an iterable
-        cache = se.CacheSortingExtractor(si_object, cache_folder / "sorting.npz")
-        cache_file = cache_folder / "raw.pkl"
+    elif isinstance(si_object, se.SortingExtractor):  # asssumes a single sorting extractor at the moment, not an iterable
+        if not si_object.is_dumpable or cache_raw:
+            cache = se.CacheSortingExtractor(si_object, spikeinterface_folder / "sorting.npz")
+        else:
+            cache = si_object
+    else:
+        raise ValueError("The 'si_object' argument shoulde be a SpikeInterface Extractor!")
 
-    cache.dump_to_pickle(cache_folder / cache_file)  # TODO, this can also take options like 'include_features' in the future
+    json_file = spikeinterface_folder / "raw.json"
+    pkl_file = spikeinterface_folder / "raw.pkl"
 
-    # TODO: extend to include cases below
-    # if cache_raw:
-    #     recording_lfp_cache = se.CacheRecordingExtractor(
-    #         recording_lf_sync,
-    #         save_path=cache_folder / 'lfp.dat'
-    #     )
-    # else:
-    #     recording_lfp_cache = recording_lf_sync
-    # recording_lfp_cache.dump_to_pickle(cache_folder / 'lfp.pkl')
+    # save both json and pickle
+    cache.dump_to_json(spikeinterface_folder / json_file)
+    cache.dump_to_pickle(spikeinterface_folder / pkl_file,
+                         include_properties=include_properties, include_features=include_features)
 
-    # if cache_processed:
-    #     recording_processed_cache = se.CacheRecordingExtractor(
-    #         recording_processed,
-    #         save_path=cache_folder / 'processed.dat'
-    #     )
-    # else:
-    #     recording_processed_cache = recording_processed
-    # recording_processed_cache.dump_to_pickle(cache_folder / 'raw.pkl')
-
-    # iterable sorter output
-    # for result_name, sorting in sorting_outputs.items():
-    #     rec_name, sorter = result_name
-    #     sorting_cache = se.CacheSortingExtractor(si_object, cache_folder / f'sorting_{sorter}.npz')
-    #     sorting_cache.dump_to_pickle(cache_folder / f'sorting_{sorter}.pkl', include_features=False)
-
-    # Curated output
-    # for (sorter, sorting_curated) in zip(sorter_names_curation, sorting_auto_curated):
-    #     if cache_curated:
-    #         sorting_auto_cache = se.CacheSortingExtractor(sorting_curated, cache_folder / f'sorting_{sorter}_auto.npz')
-    #     else:
-    #         sorting_auto_cache = sorting_curated
-    #     sorting_auto_cache.dump_to_pickle(cache_folder / f'sorting_{sorter}_auto.pkl', include_features=False)
-
-    # Ensamble output
-    # if cache_comparison:
-    #     sorting_ensamble_cache = se.CacheSortingExtractor(sorting, cache_folder / f'sorting_ensamble.npz')
-    # else:
-    #     sorting_ensamble_cache = sorting_ensamble
-    # sorting_ensamble_cache.dump_to_pickle(cache_folder / f'sorting_ensamble.pkl', include_features=False)
-
-    return cache_folder
+    return spikeinterface_folder
