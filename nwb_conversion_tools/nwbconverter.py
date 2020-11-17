@@ -59,19 +59,19 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def run_conversion(self, metadata_dict, nwbfile_path=None, save_to_file=True, conversion_options=None):
+    def run_conversion(self, metadata, nwbfile_path=None, save_to_file=True, conversion_options=None):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         if conversion_options is None:
             conversion_options = dict()
         nwbfile_kwargs = dict()
-        if 'NWBFile' in metadata_dict:
-            nwbfile_kwargs.update(metadata_dict['NWBFile'])
-        if 'Subject' in metadata_dict:
-            nwbfile_kwargs.update(subject=Subject(**metadata_dict['Subject']))
+        if 'NWBFile' in metadata:
+            nwbfile_kwargs.update(metadata['NWBFile'])
+        if 'Subject' in metadata:
+            nwbfile_kwargs.update(subject=Subject(**metadata['Subject']))
         # convert ISO 8601 string to datetime
         if isinstance(nwbfile_kwargs['session_start_time'], str):
             nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
-                metadata_dict['NWBFile']['session_start_time']
+                metadata['NWBFile']['session_start_time']
             )
         nwbfile = NWBFile(**nwbfile_kwargs)
 
@@ -80,7 +80,7 @@ class NWBConverter:
                 conversion_options,
                 data_interface.get_conversion_options_schema()
             )
-            data_interface.convert_data(nwbfile, metadata_dict, **these_conversion_options)
+            data_interface.run_conversion(nwbfile, metadata, **these_conversion_options)
 
         # Save result to file or return object
         if save_to_file:

@@ -47,10 +47,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
                 )
             )
         )
-
         return out
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
+    def run_conversion(self, nwbfile, metadata: None, stub_test=False):
         """
         Primary function for converting recording extractor data to nwb.
 
@@ -75,14 +74,16 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
         else:
             stub_recording_extractor = self.recording_extractor
 
-        if metadata_dict is not None and 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
-            recording_extractor = se.SubRecordingExtractor(stub_recording_extractor,
-                                                           channel_ids=metadata_dict['Ecephys']['subset_channels'])
+        if metadata is not None and 'Ecephys' in metadata and 'subset_channels' in metadata['Ecephys']:
+            recording_extractor = se.SubRecordingExtractor(
+                stub_recording_extractor,
+                channel_ids=metadata['Ecephys']['subset_channels']
+            )
         else:
             recording_extractor = stub_recording_extractor
 
         se.NwbRecordingExtractor.write_recording(
             recording_extractor,
             nwbfile=nwbfile,
-            metadata=metadata_dict
+            metadata=metadata
         )

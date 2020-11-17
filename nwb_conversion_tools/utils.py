@@ -103,21 +103,27 @@ def get_schema_from_hdmf_class(hdmf_class):
         schema_arg = {docval_arg['name']: dict(description=docval_arg['doc'])}
 
         # type float
-        if docval_arg['type'] == 'float' or (isinstance(docval_arg['type'], tuple) and 'float' in docval_arg['type']):
+        if docval_arg['type'] == 'float' \
+            or (isinstance(docval_arg['type'], tuple)
+                and 'float' in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='number')
 
         # type string
-        elif docval_arg['type'] is str or (isinstance(docval_arg['type'], tuple) and str in docval_arg['type']):
+        elif docval_arg['type'] is str \
+            or (isinstance(docval_arg['type'], tuple)
+                and str in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='string')
 
         # type datetime
-        elif docval_arg['type'] is datetime or (isinstance(docval_arg['type'], tuple) and datetime in docval_arg['type']):
+        elif docval_arg['type'] is datetime \
+            or (isinstance(docval_arg['type'], tuple)
+                and datetime in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='string', format='date-time')
 
         # if TimeSeries, skip it
-        elif docval_arg['type'] is pynwb.base.TimeSeries or \
-                (isinstance(docval_arg['type'], tuple) and
-                 pynwb.base.TimeSeries in docval_arg['type']):
+        elif docval_arg['type'] is pynwb.base.TimeSeries \
+            or (isinstance(docval_arg['type'], tuple)
+                and pynwb.base.TimeSeries in docval_arg['type']):
             continue
 
         # if PlaneSegmentation, skip it

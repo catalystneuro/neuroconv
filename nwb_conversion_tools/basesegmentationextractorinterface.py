@@ -16,5 +16,5 @@ class BaseSegmentationExtractorInterface(BaseDataInterface):
         super().__init__(**input_args)
         self.segmentation_extractor = self.SegX(**input_args)
 
-    def convert_data(self, nwbfile_path, metadata_dict, stub_test=False):
+    def run_conversion(self, nwbfile_path, metadata, stub_test=False):
         raise NotImplementedError

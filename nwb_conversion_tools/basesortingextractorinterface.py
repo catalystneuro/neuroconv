@@ -31,27 +31,27 @@ class BaseSortingExtractorInterface(BaseDataInterface):
 
         return metadata_schema
 
-    def convert_data(self, nwbfile: NWBFile, metadata_dict: dict, stub_test: bool = False,
-                     write_ecephys_metadata: bool = False):
-        if 'UnitProperties' not in metadata_dict:
-            metadata_dict['UnitProperties'] = []
-        if write_ecephys_metadata and 'Ecephys' in metadata_dict:
-            n_channels = max([len(x['data']) for x in metadata_dict['Ecephys']['Electrodes']])
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False,
+                       write_ecephys_metadata: bool = False):
+        if 'UnitProperties' not in metadata:
+            metadata['UnitProperties'] = []
+        if write_ecephys_metadata and 'Ecephys' in metadata:
+            n_channels = max([len(x['data']) for x in metadata['Ecephys']['Electrodes']])
             recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
             se.NwbRecordingExtractor.add_devices(
                 recording=recording,
                 nwbfile=nwbfile,
-                metadata=metadata_dict
+                metadata=metadata
             )
             se.NwbRecordingExtractor.add_electrode_groups(
                 recording=recording,
                 nwbfile=nwbfile,
-                metadata=metadata_dict
+                metadata=metadata
             )
             se.NwbRecordingExtractor.add_electrodes(
                 recording=recording,
                 nwbfile=nwbfile,
-                metadata=metadata_dict
+                metadata=metadata
             )
 
         property_descriptions = dict()
@@ -68,7 +68,7 @@ class BaseSortingExtractorInterface(BaseDataInterface):
         else:
             sorting_extractor = self.sorting_extractor
 
-        for metadata_column in metadata_dict['UnitProperties']:
+        for metadata_column in metadata['UnitProperties']:
             property_descriptions.update({metadata_column['name']: metadata_column['description']})
             for unit_id in sorting_extractor.get_unit_ids():
                 if metadata_column['name'] == 'electrode_group':
