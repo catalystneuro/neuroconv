@@ -29,7 +29,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
-        metadata_schema['properties']['Ecephys'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
+        metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
 
         return metadata_schema
 
