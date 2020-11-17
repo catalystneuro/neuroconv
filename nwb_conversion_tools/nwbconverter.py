@@ -5,7 +5,7 @@ from datetime import datetime
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_input_schema,
+from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_base_source_schema,
                     get_schema_for_NWBFile, dict_deep_update, get_schema_data)
 
 
@@ -15,21 +15,21 @@ class NWBConverter:
     data_interface_classes = None
 
     @classmethod
-    def get_input_schema(cls):
+    def get_source_schema(cls):
         """Compile input schemas from each of the data interface classes."""
-        input_schema = get_input_schema()
+        source_schema = get_base_source_schema()
         for name, data_interface in cls.data_interface_classes.items():
-            input_schema['properties'].update(name=data_interface.get_input_schema())
-        return input_schema
+            source_schema['properties'].update(name=data_interface.get_source_schema())
+        return source_schema
 
-    def __init__(self, **input_data):
+    def __init__(self, **source_data):
         """
         Initialize all of the underlying data interfaces.
 
         This dictionary routes the user options (input_data and conversion_options) to the respective data interfaces.
         It automatically checks with the interface schemas which data belongs to each
         """
-        self.data_interface_objects = {name: data_interface(**input_data[name])
+        self.data_interface_objects = {name: data_interface(**source_data[name])
                                        for name, data_interface in
                                        self.data_interface_classes.items()}
 

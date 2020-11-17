@@ -9,7 +9,7 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary interface for reading and converting SpikeInterface objects through Pickle files."""
 
     @classmethod
-    def get_input_schema(cls):
+    def get_source_schema(cls):
         """Return partial json schema for expected input arguments."""
         return dict(
             required=['pkl_file'],
@@ -18,9 +18,9 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
             )
         )
 
-    def __init__(self, **input_args):
-        self.input_args = input_args
-        self.recording_extractor = se.load_extractor_from_pickle(**input_args)
+    def __init__(self, **source_data):
+        self.source_data = source_data
+        self.recording_extractor = se.load_extractor_from_pickle(**source_data)
 
 
 class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
@@ -36,6 +36,6 @@ class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
             )
         )
 
-    def __init__(self, **input_args):
-        self.input_args = input_args
-        self.sorting_extractor = se.load_extractor_from_pickle(**input_args)
+    def __init__(self, **source_data):
+        self.source_data = source_data
+        self.sorting_extractor = se.load_extractor_from_pickle(**source_data)

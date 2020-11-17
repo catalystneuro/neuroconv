@@ -12,11 +12,11 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
     RX = None
 
     @classmethod
-    def get_input_schema(cls):
+    def get_source_schema(cls):
         return get_schema_from_method_signature(cls.RX.__init__)
 
-    def __init__(self, **input_args):
-        super().__init__(**input_args)
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
         self.recording_extractor = self.RX(**input_args)
 
     def get_metadata_schema(self):
