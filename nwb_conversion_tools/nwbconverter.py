@@ -46,20 +46,9 @@ class NWBConverter:
         This dictionary routes the user options (input_data and conversion_options) to the respective data interfaces.
         It automatically checks with the interface schemas which data belongs to each
         """
-        self.data_interface_objects = dict()
-        input_data_routed = dict()
-        for interface_name, interface in self.data_interface_classes.items():
-            interface_schema_properties = interface.get_input_schema()['properties']
-            for b in set(interface_schema_properties.keys()).intersection(set(['source_data', 'conversion_options'])):
-                input_data_routed[interface_name] = {
-                    k: input_data[b].get(k, None)
-                    for k in interface_schema_properties[b]['properties'].keys()
-                }
-
-        self.data_interface_objects = {
-            name: data_interface(**input_data_routed[name])
-            for name, data_interface in self.data_interface_classes.items()
-        }
+        self.data_interface_objects = {name: data_interface(**input_data[name])
+                                       for name, data_interface in
+                                       self.data_interface_classes.items()}
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
