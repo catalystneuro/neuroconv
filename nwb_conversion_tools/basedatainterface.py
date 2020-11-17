@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod
+import warnings
 
 from .utils import get_base_input_schema, get_metadata_schema, get_schema_from_method_signature
 
@@ -26,3 +27,9 @@ class BaseDataInterface:
     @abstractmethod
     def run_conversion(self, nwbfile_path, metadata):
         pass
+
+    @abstractmethod
+    def convert_data(self, nwbfile_path, metadata):
+        warnings.warn("The convert_data method should now be renamed to run_conversion "
+                      "as of nwb-conversion-tools v0.6.0", DeprecationWarning)
+        self.run_conversion(nwbfile_path, metadata)
