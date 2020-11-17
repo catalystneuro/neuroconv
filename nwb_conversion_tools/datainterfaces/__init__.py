@@ -2,3 +2,4 @@ from .neuroscopedatainterface import NeuroscopeRecordingInterface, NeuroscopeSor
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .sipickledatainterfaces import SIPickleRecordingExtractorInterface, SIPickleSortingExtractorInterface
 from .intandatainterface import IntanRecordingInterface
+from .ceddatainterface import CEDRecordingInterface
