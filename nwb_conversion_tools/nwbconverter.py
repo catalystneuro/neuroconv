@@ -29,9 +29,13 @@ class NWBConverter:
         This dictionary routes the user options (input_data and conversion_options) to the respective data interfaces.
         It automatically checks with the interface schemas which data belongs to each
         """
-        self.data_interface_objects = {name: data_interface(**source_data[name])
-                                       for name, data_interface in
-                                       self.data_interface_classes.items()}
+        self.data_interface_objects = dict()
+        for interface_name, data_interface in self.data_interface_classes.items():
+            valid_source_data = get_schema_data(
+                source_data[interface_name],
+                data_interface.get_source_schema()
+            )
+            self.data_interface_objects.update({interface_name: data_interface(**valid_source_data)})
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
@@ -76,11 +80,11 @@ class NWBConverter:
         nwbfile = NWBFile(**nwbfile_kwargs)
 
         for interface_name, data_interface in self.data_interface_objects.items():
-            these_conversion_options = get_schema_data(
-                conversion_options,
+            valid_conversion_options = get_schema_data(
+                conversion_options[interface_name],
                 data_interface.get_conversion_options_schema()
             )
-            data_interface.run_conversion(nwbfile, metadata, **these_conversion_options)
+            data_interface.run_conversion(nwbfile, metadata, **valid_conversion_options)
 
         # Save result to file or return object
         if save_to_file:
