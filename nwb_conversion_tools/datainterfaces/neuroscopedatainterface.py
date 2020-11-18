@@ -14,7 +14,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = se.NeuroscopeRecordingExtractor
 
-    def __init__(self, *args, **kwargsargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         root = self.get_xml()
