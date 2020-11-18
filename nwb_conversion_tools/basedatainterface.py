@@ -25,11 +25,11 @@ class BaseDataInterface:
         return get_schema_from_method_signature(cls.convert_data, exclude=['nwbfile', 'metadata'])
 
     @abstractmethod
-    def run_conversion(self, nwbfile_path, metadata):
+    def run_conversion(self, nwbfile_path, metadata, **conversion_options):
         pass
 
     @abstractmethod
-    def convert_data(self, nwbfile_path, metadata):
+    def convert_data(self, nwbfile_path, metadata, **conversion_options):
         warnings.warn("The convert_data method should now be renamed to run_conversion "
                       "as of nwb-conversion-tools v0.6.0", DeprecationWarning)
-        self.run_conversion(nwbfile_path, metadata)
+        self.run_conversion(nwbfile_path, metadata, **conversion_options)

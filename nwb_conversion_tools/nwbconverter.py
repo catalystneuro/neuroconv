@@ -85,12 +85,12 @@ class NWBConverter:
             )
         nwbfile = NWBFile(**nwbfile_kwargs)
 
+        # Validate conversion_options against conversion_options_schema
+        validate(instance=conversion_options, schema=self.get_conversion_options_schema())
+
+        # If conversion_options is valid, procede to run conversions for DataInterfaces
         for interface_name, data_interface in self.data_interface_objects.items():
-            valid_conversion_options = get_schema_data(
-                conversion_options[interface_name],
-                data_interface.get_conversion_options_schema()
-            )
-            data_interface.run_conversion(nwbfile, metadata, **valid_conversion_options)
+            data_interface.run_conversion(nwbfile, metadata, **conversion_options[interface_name])
 
         # Save result to file or return object
         if save_to_file:
