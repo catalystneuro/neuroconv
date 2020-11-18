@@ -2,14 +2,14 @@
 from abc import abstractmethod
 import warnings
 
-from .utils import get_base_input_schema, get_metadata_schema, get_schema_from_method_signature
+from .utils import get_base_source_schema, get_metadata_schema, get_schema_from_method_signature
 
 
 class BaseDataInterface:
 
     @classmethod
     def get_source_schema(cls):
-        return get_base_input_schema()
+        return get_base_source_schema()
 
     def __init__(self, **source_data):
         self.source_data = source_data
