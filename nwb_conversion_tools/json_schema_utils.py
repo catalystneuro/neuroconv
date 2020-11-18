@@ -66,7 +66,7 @@ def get_schema_from_method_signature(class_method, exclude=None):
 
     for param in inspect.signature(class_method).parameters.values():
         if param.name not in exclude + ['self']:
-            if param.name != 'self' and param.annotation:
+            if param.annotation:
                 param_type = annotation_json_type_map[str(param.annotation).split("'")[1]]
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
