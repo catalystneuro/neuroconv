@@ -7,7 +7,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from .utils import get_schema_from_hdmf_class, get_schema_for_NWBFile
-from .json_schema_utils import dict_deep_update, get_root_schema
+from .json_schema_utils import dict_deep_update, get_base_schema, fill_defaults
 
 
 class NWBConverter:
@@ -18,26 +18,26 @@ class NWBConverter:
     @classmethod
     def get_source_schema(cls):
         """Compile input schemas from each of the data interface classes."""
-        source_schema = get_root_schema()
-        source_schema.update({
-            "$id": "source.schema.json",
-            "title": "Source data schema",
-            "description": "Schema for the source data, files and directories",
-            "version": "0.1.0",
-        })
+        source_schema = get_base_schema(
+            root=True,
+            id_='source.schema.json',
+            title='Source data schema',
+            description='Schema for the source data, files and directories',
+            version='0.1.0'
+        )
         for name, data_interface in cls.data_interface_classes.items():
             source_schema['properties'].update(name=data_interface.get_source_schema())
         return source_schema
 
     @classmethod
     def get_conversion_options_schema(cls):
-        conversion_options_schema = get_root_schema()
-        conversion_options_schema.update({
-            "$id": "conversion_options.schema.json",
-            "title": "Conversion options schema",
-            "description": "Schema for the conversion options",
-            "version": "0.1.0",
-        })
+        conversion_options_schema = get_base_schema(
+            root=True,
+            id_='conversion_options.schema.json',
+            title="Conversion options schema",
+            description="Schema for the conversion options",
+            version="0.1.0"
+        )
         for name, data_interface in cls.data_interface_classes.items():
             conversion_options_schema['properties'].update(name=data_interface.get_conversion_options_schema())
         return conversion_options_schema
@@ -57,21 +57,23 @@ class NWBConverter:
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
-        metadata_schema = get_root_schema()
-        metadata_schema.update({
-            "$id": "metadata.schema.json",
-            "title": "Metadata",
-            "description": "Schema for the metadata",
-            "version": "0.1.0",
-            "required": ["NWBFile"],
-            "properties": dict(
+        metadata_schema = get_base_schema(
+            id_='metadata.schema.json',
+            root=True,
+            title='Metadata',
+            description='Schema for the metadata',
+            version="0.1.0",
+            required=["NWBFile"],
+            properties=dict(
                 NWBFile=get_schema_for_NWBFile(),
                 Subject=get_schema_from_hdmf_class(Subject)
             )
-        })
+        )
         for data_interface in self.data_interface_objects.values():
             interface_schema = data_interface.get_metadata_schema()
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
+
+        fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):

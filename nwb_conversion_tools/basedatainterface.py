@@ -2,7 +2,8 @@
 from abc import abstractmethod
 import warnings
 
-from .json_schema_utils import get_base_schema, get_schema_from_method_signature
+from .json_schema_utils import (
+    get_base_schema, get_schema_from_method_signature, fill_defaults)
 
 
 class BaseDataInterface:
@@ -15,7 +16,7 @@ class BaseDataInterface:
         self.source_data = source_data
 
     def get_metadata_schema(self):
-        return get_base_schema()
+        return fill_defaults(get_base_schema(), self.get_metadata())
 
     def get_metadata(self):
         return dict()

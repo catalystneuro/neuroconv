@@ -1,4 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
+from abc import ABC
+
 import spikeextractors as se
 import numpy as np
 from pynwb import NWBFile
@@ -6,10 +8,10 @@ from pynwb.ecephys import SpikeEventSeries
 
 from .basedatainterface import BaseDataInterface
 from .utils import get_schema_from_hdmf_class
-from .json_schema_utils import get_base_schema, get_schema_from_method_signature
+from .json_schema_utils import get_base_schema, get_schema_from_method_signature, fill_defaults
 
 
-class BaseSortingExtractorInterface(BaseDataInterface):
+class BaseSortingExtractorInterface(BaseDataInterface, ABC):
     SX = None
 
     @classmethod
@@ -21,13 +23,13 @@ class BaseSortingExtractorInterface(BaseDataInterface):
         self.sorting_extractor = self.SX(**source_data)
 
     def get_metadata_schema(self):
-        metadata_schema = get_base_schema()
-
-        # ideally most of this be automatically determined from pynwb docvals
-        metadata_schema['properties']['SpikeEventSeries'] = get_schema_from_hdmf_class(SpikeEventSeries)
-        required_fields = ['SpikeEventSeries']
-        for field in required_fields:
-            metadata_schema['required'].append(field)
+        metadata_schema = get_base_schema(
+            required=['SpikeEventSeries'],
+            properties=dict(
+                SpikeEventSeries=get_schema_from_hdmf_class(SpikeEventSeries)
+            )
+        )
+        fill_defaults(metadata_schema, self.get_metadata())
 
         return metadata_schema
 

@@ -17,7 +17,7 @@ def dict_deep_update(d, u):
     return d
 
 
-def get_base_schema(tag=None):
+def get_base_schema(tag=None, root=False, id_=None, **kwargs):
     base_schema = dict(
         required=[],
         properties={},
@@ -26,18 +26,34 @@ def get_base_schema(tag=None):
     )
     if tag is not None:
         base_schema.update(tag=tag)
+
+    if root:
+        base_schema.update({
+            "$schema": "http://json-schema.org/draft-07/schema#"
+        })
+
+    if id_:
+        base_schema.update({"$id": id_})
+
+    base_schema.update(**kwargs)
+
     return base_schema
 
 
-def get_root_schema():
-    root_schema = get_base_schema()
-    root_schema.update({
-        "$schema": "http://json-schema.org/draft-07/schema#",
-    })
-    return root_schema
-
-
 def get_schema_from_method_signature(class_method, exclude=None):
+    """
+    Take a class method and return a jsonschema of the input args
+
+    Parameters
+    ----------
+    class_method: function
+    exclude: list, optional
+
+    Returns
+    -------
+    dict
+
+    """
     if exclude is None:
         exclude = []
     input_schema = get_base_schema()
@@ -56,3 +72,23 @@ def get_schema_from_method_signature(class_method, exclude=None):
         input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
 
     return input_schema
+
+
+def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
+    """
+    Insert the values of the defaults dict as default values in the schema
+    in place.
+
+    Parameters
+    ----------
+    schema: dict
+    defaults: dict
+    overwrite: bool
+    """
+    for key, val in schema['properties'].items():
+        if key in defaults:
+            if val['type'] == 'object':
+                fill_defaults(val, defaults[key], overwrite=overwrite)
+            else:
+                if overwrite or ('default' not in val):
+                    val['default'] = defaults[key]

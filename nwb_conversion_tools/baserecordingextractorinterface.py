@@ -1,14 +1,16 @@
 """Authors: Cody Baker and Ben Dichter."""
+from abc import ABC
+
 import spikeextractors as se
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from .basedatainterface import BaseDataInterface
 from .utils import get_schema_from_hdmf_class
-from .json_schema_utils import get_schema_from_method_signature
+from .json_schema_utils import get_schema_from_method_signature, fill_defaults
 
 
-class BaseRecordingExtractorInterface(BaseDataInterface):
+class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     RX = None
 
     @classmethod
@@ -30,7 +32,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
         metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-
+        fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):
@@ -55,9 +57,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
         Parameters
         ----------
-        nwbfile: NWBFile object
-        metadata: dictionary
-        stub_test: boolean, optional (default False)
+        nwbfile: pynwb.NWBFile
+        metadata: dict
+        stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
 

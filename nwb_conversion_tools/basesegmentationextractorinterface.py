@@ -1,9 +1,11 @@
 """Authors: Cody Baker and Ben Dichter."""
+from abc import ABC
+
 from .basedatainterface import BaseDataInterface
 from .json_schema_utils import get_schema_from_method_signature
 
 
-class BaseSegmentationExtractorInterface(BaseDataInterface):
+class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
     SegX = None
 
     @classmethod

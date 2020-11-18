@@ -3,6 +3,7 @@ import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ..json_schema_utils import get_base_schema
 
 
 class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
@@ -11,7 +12,7 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Return partial json schema for expected input arguments."""
-        return dict(
+        return get_base_schema(
             required=['pkl_file'],
             properties=dict(
                 pkl_file=dict(type='string')
@@ -29,12 +30,15 @@ class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
     @classmethod
     def get_input_schema(cls):
         """Return partial json schema for expected input arguments."""
-        return dict(
+        out = get_base_schema()
+        out.update(
             required=['pkl_file'],
             properties=dict(
                 pkl_file=dict(type='string')
             )
         )
+
+        return out
 
     def __init__(self, **source_data):
         self.source_data = source_data
