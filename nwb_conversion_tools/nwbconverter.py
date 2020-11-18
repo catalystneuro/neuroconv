@@ -111,9 +111,7 @@ class NWBConverter:
 
         # If conversion_options is valid, procede to run conversions for DataInterfaces
         for interface_name, data_interface in self.data_interface_objects.items():
-            if interface_name not in conversion_options:
-                conversion_options.update({interface_name: dict()})
-            data_interface.run_conversion(nwbfile, metadata, **conversion_options[interface_name])
+            data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
 
         # Save result to file or return object
         if save_to_file:
