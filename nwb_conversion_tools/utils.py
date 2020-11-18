@@ -1,94 +1,10 @@
 """Authors: Cody Baker, Ben Dichter and Luiz Tauffer."""
-import inspect
 from datetime import datetime
-import collections.abc
 
 import numpy as np
 import pynwb
 
-
-def get_schema_data(in_data, data_schema):
-    """Output the parts of the input dictionary in_data that are within the json schema properties of data_schema."""
-    return {k: in_data[k] for k in data_schema['properties'] if k in in_data}
-
-
-def dict_deep_update(d, u):
-    """Perform an update to all nested keys of dictionary d from dictionary u."""
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, {}), v)
-        elif isinstance(v, list):
-            d[k] = d.get(k, []) + v
-            # Remove repeated items if they exist
-            if len(v) > 0 and not isinstance(v[0], dict):
-                d[k] = list(np.unique(d[k]))
-        else:
-            d[k] = v
-    return d
-
-
-def get_base_schema(tag=None):
-    base_schema = dict(
-        required=[],
-        properties={},
-        type='object',
-        additionalProperties=False
-    )
-    if tag is not None:
-        base_schema.update(tag=tag)
-    return base_schema
-
-
-def get_root_schema():
-    root_schema = get_base_schema()
-    root_schema.update({
-        "$schema": "http://json-schema.org/draft-07/schema#",
-    })
-    return root_schema
-
-
-def get_input_schema():
-    input_schema = get_root_schema()
-    input_schema.update({
-        "$id": "input.schema.json",
-        "title": "Source data and conversion options",
-        "description": "Schema for the source data and conversion options",
-        "version": "0.1.0",
-    })
-    return input_schema
-
-
-def get_metadata_schema():
-    metadata_schema = get_root_schema()
-    metadata_schema.update({
-        "$id": "metadata.schema.json",
-        "title": "Metadata",
-        "description": "Schema for the metadata",
-        "version": "0.1.0",
-        "required": ["NWBFile"],
-    })
-    return metadata_schema
-
-
-def get_schema_from_method_signature(class_method, exclude=None):
-    if exclude is None:
-        exclude = []
-    input_schema = get_base_schema()
-    for param in inspect.signature(class_method).parameters.values():
-        if param.name != 'self':
-            arg_spec = {
-                param.name: dict(
-                    type='string'
-                )
-            }
-            if param.default is param.empty:
-                input_schema['required'].append(param.name)
-            elif param.default is not None:
-                arg_spec[param.name].update(default=param.default)
-            input_schema['properties'].update(arg_spec)
-        input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
-
-    return input_schema
+from .json_schema_utils import get_base_schema
 
 
 def get_schema_from_hdmf_class(hdmf_class):
@@ -103,21 +19,27 @@ def get_schema_from_hdmf_class(hdmf_class):
         schema_arg = {docval_arg['name']: dict(description=docval_arg['doc'])}
 
         # type float
-        if docval_arg['type'] == 'float' or (isinstance(docval_arg['type'], tuple) and 'float' in docval_arg['type']):
+        if docval_arg['type'] == 'float' \
+            or (isinstance(docval_arg['type'], tuple)
+                and 'float' in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='number')
 
         # type string
-        elif docval_arg['type'] is str or (isinstance(docval_arg['type'], tuple) and str in docval_arg['type']):
+        elif docval_arg['type'] is str \
+            or (isinstance(docval_arg['type'], tuple)
+                and str in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='string')
 
         # type datetime
-        elif docval_arg['type'] is datetime or (isinstance(docval_arg['type'], tuple) and datetime in docval_arg['type']):
+        elif docval_arg['type'] is datetime \
+            or (isinstance(docval_arg['type'], tuple)
+                and datetime in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='string', format='date-time')
 
         # if TimeSeries, skip it
-        elif docval_arg['type'] is pynwb.base.TimeSeries or \
-                (isinstance(docval_arg['type'], tuple) and
-                 pynwb.base.TimeSeries in docval_arg['type']):
+        elif docval_arg['type'] is pynwb.base.TimeSeries \
+            or (isinstance(docval_arg['type'], tuple)
+                and pynwb.base.TimeSeries in docval_arg['type']):
             continue
 
         # if PlaneSegmentation, skip it
