@@ -38,7 +38,7 @@ class NWBConverter:
         # Validate source_data against source_schema
         validate(instance=source_data, schema=self.get_source_schema())
 
-        # If data is valid, procede to instantiate DataInterface objects
+        # If data is valid, proceed to instantiate DataInterface objects
         self.data_interface_objects = dict()
         for interface_name, data_interface in self.data_interface_classes.items():
             self.data_interface_objects.update({interface_name: data_interface(**source_data[interface_name])})
