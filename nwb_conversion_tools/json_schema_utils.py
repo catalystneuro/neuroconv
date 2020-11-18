@@ -2,11 +2,6 @@ import collections.abc
 import inspect
 
 
-def get_schema_data(in_data, data_schema):
-    """Output the parts of the input dictionary in_data that are within the json schema properties of data_schema."""
-    return {k: in_data[k] for k in data_schema['properties'] if k in in_data}
-
-
 def dict_deep_update(d, u):
     """Perform an update to all nested keys of dictionary d from dictionary u."""
     for k, v in u.items():
