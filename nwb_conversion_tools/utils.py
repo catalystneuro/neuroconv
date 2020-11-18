@@ -50,15 +50,26 @@ def get_root_schema():
 def get_base_source_schema():
     source_schema = get_root_schema()
     source_schema.update({
-        "$id": "input.schema.json",
-        "title": "Source data and conversion options",
-        "description": "Schema for the source data and conversion options",
+        "$id": "source.schema.json",
+        "title": "Source data schema",
+        "description": "Schema for the source data, files and directories",
         "version": "0.1.0",
     })
     return source_schema
 
 
-def get_metadata_schema():
+def get_base_conversion_options_schema():
+    conversion_options_schema = get_root_schema()
+    conversion_options_schema.update({
+        "$id": "conversion_options.schema.json",
+        "title": "Conversion options schema",
+        "description": "Schema for the conversion options",
+        "version": "0.1.0",
+    })
+    return conversion_options_schema
+
+
+def get_base_metadata_schema():
     metadata_schema = get_root_schema()
     metadata_schema.update({
         "$id": "metadata.schema.json",

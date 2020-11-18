@@ -5,7 +5,8 @@ from datetime import datetime
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .utils import (get_schema_from_hdmf_class, get_metadata_schema, get_base_source_schema,
+from .utils import (get_schema_from_hdmf_class, get_base_metadata_schema,
+                    get_base_source_schema, get_base_conversion_options_schema,
                     get_schema_for_NWBFile, dict_deep_update, get_schema_data)
 
 
@@ -21,6 +22,13 @@ class NWBConverter:
         for name, data_interface in cls.data_interface_classes.items():
             source_schema['properties'].update(name=data_interface.get_source_schema())
         return source_schema
+
+    @classmethod
+    def get_conversion_options_schema(cls):
+        conversion_options = get_base_conversion_options_schema()
+        for name, data_interface in cls.data_interface_classes.items():
+            conversion_options['properties'].update(name=data_interface.get_conversion_options_schema())
+        return conversion_options
 
     def __init__(self, **source_data):
         """
@@ -39,7 +47,7 @@ class NWBConverter:
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
-        metadata_schema = get_metadata_schema()
+        metadata_schema = get_base_metadata_schema()
         metadata_schema['properties'] = dict(
             NWBFile=get_schema_for_NWBFile(),
             Subject=get_schema_from_hdmf_class(Subject)
