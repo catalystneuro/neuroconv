@@ -1,6 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 import uuid
 from datetime import datetime
+from jsonschema import validate
 
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
@@ -32,18 +33,15 @@ class NWBConverter:
 
     def __init__(self, **source_data):
         """
-        Initialize all of the underlying data interfaces.
-
-        This dictionary routes the user options (input_data and conversion_options) to the respective data interfaces.
-        It automatically checks with the interface schemas which data belongs to each
+        Validate source_data against source_schema and initialize all data interfaces.
         """
+        # Validate source_data against source_schema
+        validate(instance=source_data, schema=self.get_source_schema())
+
+        # If data is valid, procede to instantiate DataInterface objects
         self.data_interface_objects = dict()
         for interface_name, data_interface in self.data_interface_classes.items():
-            valid_source_data = get_schema_data(
-                source_data[interface_name],
-                data_interface.get_source_schema()
-            )
-            self.data_interface_objects.update({interface_name: data_interface(**valid_source_data)})
+            self.data_interface_objects.update({interface_name: data_interface(**source_data[interface_name])})
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
