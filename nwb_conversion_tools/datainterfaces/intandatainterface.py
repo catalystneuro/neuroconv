@@ -12,7 +12,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Intan format."""
-        intan_file_metadata = read_rhd(self.input_args['file_path'])[1]
+        intan_file_metadata = read_rhd(self.source_data['file_path'])[1]
         exclude_chan_types = ['AUX', 'ADC', 'VDD']
 
         group_names = [x['native_channel_name'].split('-')[0] for x in intan_file_metadata

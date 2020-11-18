@@ -13,7 +13,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Auto-populate as much metadata as possible from the high-pass (ap) SpikeGLX format."""
-        file_path = Path(self.input_args['file_path'])
+        file_path = Path(self.source_data['file_path'])
         session_id = file_path.parent.stem
 
         n_shanks = int(self.recording_extractor._meta['snsShankMap'][1])
