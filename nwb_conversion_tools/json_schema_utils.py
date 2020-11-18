@@ -59,7 +59,9 @@ def get_schema_from_method_signature(class_method, exclude=None):
         bool="boolean",
         str="string",
         int="number",
-        float="number"
+        float="number",
+        dict="object",
+        list="array"
     )
 
     for param in inspect.signature(class_method).parameters.values():
