@@ -14,6 +14,27 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = se.NeuroscopeRecordingExtractor
 
+    def __init__(self, **input_args):
+        super().__init__(**input_args)
+
+        root = self.get_xml()
+
+        shank_channels = [[int(channel.text)
+                           for channel in group.find('channels')]
+                          for group in root.find('spikeDetection').find('channelGroups').findall('group')]
+        all_shank_channels = np.concatenate(shank_channels)
+
+        self.subset_channels = sorted(all_shank_channels)
+
+    def get_xml(self):
+        file_path = Path(self.input_args['file_path'])
+        session_path = file_path.parent
+        session_id = session_path.stem
+        xml_filepath = session_path / f"{session_id}.xml"
+        root = et.parse(str(xml_filepath.absolute())).getroot()
+
+        return root
+
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
         file_path = Path(self.input_args['file_path'])
@@ -69,8 +90,3 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
 
     SX = se.NeuroscopeMultiSortingExtractor
-
-    def get_metadata(self):
-        """Retrieve UnitProperties metadata specific to the Neuroscope format."""
-        # TODO
-        raise NotImplementedError

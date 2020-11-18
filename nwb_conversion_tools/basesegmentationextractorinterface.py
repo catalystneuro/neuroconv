@@ -1,7 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
-from .utils import get_schema_from_method_signature
 from .basedatainterface import BaseDataInterface
-from .utils import get_schema_from_method_signature
+from .json_schema_utils import get_schema_from_method_signature
 
 
 class BaseSegmentationExtractorInterface(BaseDataInterface):

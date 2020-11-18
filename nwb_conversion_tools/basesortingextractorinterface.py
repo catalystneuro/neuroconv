@@ -5,8 +5,8 @@ from pynwb import NWBFile
 from pynwb.ecephys import SpikeEventSeries
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_base_schema, get_schema_from_method_signature, \
-    get_schema_from_hdmf_class
+from .utils import get_schema_from_hdmf_class
+from .json_schema_utils import get_base_schema, get_schema_from_method_signature
 
 
 class BaseSortingExtractorInterface(BaseDataInterface):
