@@ -17,7 +17,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
 
     def __init__(self, **source_data):
         super().__init__(**source_data)
-        self.recording_extractor = self.RX(**input_args)
+        self.recording_extractor = self.RX(**source_data)
 
     def get_metadata_schema(self):
         metadata_schema = get_base_schema()
