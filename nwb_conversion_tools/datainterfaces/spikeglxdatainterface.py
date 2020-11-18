@@ -24,7 +24,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         shank_electrode_number = channels
         shank_group_name = ["Shank1" for x in channels]
 
-        re_metadata = dict(
+        ecephys_metadata = dict(
             Ecephys=dict(
                 Device=[
                     dict(
@@ -56,4 +56,4 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 )
             )
         )
-        return re_metadata
+        return ecephys_metadata

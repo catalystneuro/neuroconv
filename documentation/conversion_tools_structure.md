@@ -3,20 +3,19 @@
 **DataInterfaces** are classes that interface specific data types with NWB. DataInterfaces are the specialist building blocks of any conversion task. <br>
 **Converters** are classes responsible for combining and coordinating the operations of multiple DataInterfaces in order to assemble the output of complex neurophysiology experiments into a single, time-aligned NWB file.
 
-Any conversion task requires two sets of information:
-- Input data
+Any conversion task requires three sets of information:
+- Source data
 - Metadata
+- Conversion options
 
 Users can edit entries in these sets through [graphical user interface forms](https://github.com/catalystneuro/nwb-web-gui) and through command line interface for every Converter.
 
 
-## Input schema and data
+## Source schema and data
 
-The **input schema** is a JSON schema that defines the rules for organizing the **input data**. Input data has two main properties: <br>
-1. Paths to source data files and directories
-2. Boolean options to control the conversion process
+The **source schema** is a JSON schema that defines the rules for organizing the **source data**. Source data basically contains paths to source data files and directories.
 
-**DataInterface** classes have the abstract method `get_input_schema()` which is responsible to return a dictionary compliant with the general input schema structure. For example, a hypothetical **EcephysDataInterface**, dealing extracellular electrophysiology data, would return:
+**DataInterface** classes have the abstract method `get_source_schema()` which is responsible to return the source schema in form of a dictionary. For example, a hypothetical **EcephysDataInterface**, dealing extracellular electrophysiology data, would return:
 
 
 <details>
@@ -28,44 +27,25 @@ The **input schema** is a JSON schema that defines the rules for organizing the 
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "source.schema.json",
-  "title": "Source data and conversion options",
-  "description": "Schema for the source data and conversion options",
+  "title": "Source data",
+  "description": "Schema for the source data",
   "version": "0.1.0",
   "type": "object",
   "additionalProperties": false,
+  "required": [
+    "path_file_raw_ecephys",
+    "path_dir_processed_ecephys"
+  ],
   "properties": {
-    "source_data": {
-      "title": "Source Data",
-      "type": "object",
-      "required": [
-        "path_file_raw_ecephys",
-        "path_dir_processed_ecephys"
-      ],
-      "properties": {
-        "path_file_raw_ecephys": {
-          "type": "string",
-          "format": "file",
-          "description": "path to raw ecephys data file"
-        },
-        "path_dir_processed_ecephys": {
-          "type": "string",
-          "format": "directory",
-          "description": "path to directory containing processed ecephys data files"
-        }
-      }
-    },
-    "conversion_options": {
-      "title": "Conversion Options",
-      "type": "object",
-      "properties": {
-        "ecephys_option_1": {
-          "type": "boolean",
-          "default": true
-        },
-        "ecephys_option_2": {
-          "type": "boolean",
-          "default": true
-        }
+      "path_file_raw_ecephys": {
+        "type": "string",
+        "format": "file",
+        "description": "path to raw ecephys data file"
+      },
+      "path_dir_processed_ecephys": {
+        "type": "string",
+        "format": "directory",
+        "description": "path to directory containing processed ecephys data files"
       }
     }
   }
@@ -74,7 +54,7 @@ The **input schema** is a JSON schema that defines the rules for organizing the 
 </details>
 <br>
 
-A hypothetical **OphysDataInterface** class would return a similar dictionary, with properties related to optophysiology data. Now any lab that has simultaneous ecephys and ophys recordings that could be interfaced with those classes can combine them using a converter. This hypothetical **LabConverter** is then responsible for combining **EcephysDataInterface** and **OphysDataInterface** operations and its `get_input_schema()` method would return:
+A hypothetical **OphysDataInterface** class would return a similar dictionary, with properties related to optophysiology source data. Now any lab that has simultaneous ecephys and ophys recordings that could be interfaced with those classes can combine them using a converter. This hypothetical **LabConverter** is then responsible for combining **EcephysDataInterface** and **OphysDataInterface** operations and its `get_source_schema()` method would return:
 
 <details>
 <summary>
@@ -85,64 +65,37 @@ A hypothetical **OphysDataInterface** class would return a similar dictionary, w
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "source.schema.json",
-  "title": "Source data and conversion options",
-  "description": "Schema for the source data and conversion options",
+  "title": "Source data",
+  "description": "Schema for the source data",
   "version": "0.1.0",
   "type": "object",
   "additionalProperties": false,
+  "required": [
+    "path_file_raw_ecephys",
+    "path_dir_processed_ecephys",
+    "path_file_raw_ophys",
+    "path_dir_processed_ophys"
+  ],
   "properties": {
-    "source_data": {
-      "title": "Source Data",
-      "type": "object",
-      "required": [
-        "path_file_raw_ecephys",
-        "path_dir_processed_ecephys",
-        "path_file_raw_ophys",
-        "path_dir_processed_ophys"
-      ],
-      "properties": {
-        "path_file_raw_ecephys": {
-          "type": "string",
-          "format": "file",
-          "description": "path to raw ecephys data file"
-        },
-        "path_dir_processed_ecephys": {
-          "type": "string",
-          "format": "directory",
-          "description": "path to directory containing processed ecephys data files"
-        },
-        "path_file_raw_ophys": {
-          "type": "string",
-          "format": "file",
-          "description": "path to raw ophys data file"
-        },
-        "path_dir_processed_ophys": {
-          "type": "string",
-          "format": "file",
-          "description": "path to file containing processed ophys data files"
-        }
-      }
-    },
-    "conversion_options": {
-      "title": "Conversion Options",
-      "type": "object",
-      "properties": {
-        "ecephys_option_1": {
-          "type": "boolean",
-          "default": true
-        },
-        "ecephys_option_2": {
-          "type": "boolean",
-          "default": true
-        },
-        "ophys_option_1": {
-          "type": "boolean",
-          "default": true
-        },
-        "ophys_option_2": {
-          "type": "boolean",
-          "default": true
-        }
+      "path_file_raw_ecephys": {
+        "type": "string",
+        "format": "file",
+        "description": "path to raw ecephys data file"
+      },
+      "path_dir_processed_ecephys": {
+        "type": "string",
+        "format": "directory",
+        "description": "path to directory containing processed ecephys data files"
+      },
+      "path_file_raw_ophys": {
+        "type": "string",
+        "format": "file",
+        "description": "path to raw ophys data file"
+      },
+      "path_dir_processed_ophys": {
+        "type": "string",
+        "format": "file",
+        "description": "path to file containing processed ophys data files"
       }
     }
   }
@@ -152,7 +105,7 @@ A hypothetical **OphysDataInterface** class would return a similar dictionary, w
 </details>
 <br>
 
-The input schema for LabConverter therefore defines all the fields and how they should be filled for a conversion task from this specific ecephys/ophys experiment to a NWB file.
+The source schema for LabConverter therefore defines all the source fields and how they should be filled for a conversion task from this specific ecephys/ophys experiment to a NWB file.
 
 
 ## Metadata schema and data
@@ -248,7 +201,7 @@ OphysDataInterface would return a similar dictionaries for metadata_schema and m
 6. Get user-input metadata that complies to the returned full metadata_schema  
 
 7. Run conversion with LabConverter.run_conversion(metadata)  
-    7.1 Loop through DataInterface.convert_data(metadata)  
+    7.1 Loop through DataInterface.run_conversion(metadata)  
 
 \* When Converter interfaces with GUI Forms
 
