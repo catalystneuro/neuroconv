@@ -177,15 +177,15 @@ OphysDataInterface would return a similar dictionaries for metadata_schema and m
 
 ## Step-by-step operations
 
-1. LabConverter.get_input_schema()  
-    1.1 Loop through DataInterface.get_input_schema()  
+1. LabConverter.get_source_schema()  
+    1.1 Loop through DataInterface.get_source_schema()  
     1.2 Combine returned schemas  
-    1.3* Create Input Forms  
+    1.3* Create Source Form  
 
-2. Get user-input input_data that complies to the returned full input_schema
+2. Get user-input source_data (paths to files and directories) that complies to the returned full source_schema
 
-3. Instantiate LabConverter(input_data)  
-    3.1 Instantiate all DataInterface(input_data)
+3. Instantiate LabConverter(source_data)  
+    3.1 Instantiate all DataInterface(source_data)
 
 4. LabConverter.get_metadata_schema()  
     4.1 Loop through DataInterface.get_metadata_schema()  
@@ -200,8 +200,15 @@ OphysDataInterface would return a similar dictionaries for metadata_schema and m
 
 6. Get user-input metadata that complies to the returned full metadata_schema  
 
-7. Run conversion with LabConverter.run_conversion(metadata)  
-    7.1 Loop through DataInterface.run_conversion(metadata)  
+7. LabConverter.get_conversion_options_schema()  
+    7.1 Loop through DataInterface.get_conversion_options_schema()  
+    7.2 Combine returned schemas  
+    7.3* Create Conversion Options Form
+
+8. Get user-input conversion options that complies to the returned full conversion_options_schema  
+
+9. Run conversion with LabConverter.run_conversion(metadata, conversion_options)  
+    7.1 Loop through DataInterface.run_conversion(metadata, conversion_options)  
 
 \* When Converter interfaces with GUI Forms
 
