@@ -25,12 +25,13 @@ class NWBConverter:
             description='Schema for the source data, files and directories',
             version='0.1.0'
         )
-        for name, data_interface in cls.data_interface_classes.items():
-            source_schema['properties'].update(name=data_interface.get_source_schema())
+        for interface_name, data_interface in cls.data_interface_classes.items():
+            source_schema['properties'].update({interface_name: data_interface.get_source_schema()})
         return source_schema
 
     @classmethod
     def get_conversion_options_schema(cls):
+        """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(
             root=True,
             id_='conversion_options.schema.json',
@@ -38,14 +39,14 @@ class NWBConverter:
             description="Schema for the conversion options",
             version="0.1.0"
         )
-        for name, data_interface in cls.data_interface_classes.items():
-            conversion_options_schema['properties'].update(name=data_interface.get_conversion_options_schema())
+        for interface_name, data_interface in cls.data_interface_classes.items():
+            conversion_options_schema['properties'].update({
+                interface_name: data_interface.get_conversion_options_schema()
+            })
         return conversion_options_schema
 
     def __init__(self, **source_data):
-        """
-        Validate source_data against source_schema and initialize all data interfaces.
-        """
+        """Validate source_data against source_schema and initialize all data interfaces."""
         # Validate source_data against source_schema
         validate(instance=source_data, schema=self.get_source_schema())
 
@@ -90,7 +91,7 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def run_conversion(self, metadata: dict, nwbfile_path=None, save_to_file: bool = True,
+    def run_conversion(self, metadata: dict, nwbfile_path: str = None, save_to_file: bool = True,
                        conversion_options: dict = None):
         """Build nwbfile object, auto-populate with minimal values if missing."""
         if conversion_options is None:
@@ -110,6 +111,8 @@ class NWBConverter:
 
         # If conversion_options is valid, procede to run conversions for DataInterfaces
         for interface_name, data_interface in self.data_interface_objects.items():
+            if interface_name not in conversion_options:
+                conversion_options.update({interface_name: dict()})
             data_interface.run_conversion(nwbfile, metadata, **conversion_options[interface_name])
 
         # Save result to file or return object

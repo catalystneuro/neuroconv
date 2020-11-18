@@ -1,3 +1,4 @@
+"""Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
 
@@ -18,6 +19,7 @@ def dict_deep_update(d, u):
 
 
 def get_base_schema(tag=None, root=False, id_=None, **kwargs):
+    """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=[],
         properties={},
@@ -26,23 +28,19 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs):
     )
     if tag is not None:
         base_schema.update(tag=tag)
-
     if root:
         base_schema.update({
             "$schema": "http://json-schema.org/draft-07/schema#"
         })
-
     if id_:
         base_schema.update({"$id": id_})
-
     base_schema.update(**kwargs)
-
     return base_schema
 
 
 def get_schema_from_method_signature(class_method, exclude=None):
     """
-    Take a class method and return a jsonschema of the input args
+    Take a class method and return a jsonschema of the input args.
 
     Parameters
     ----------
@@ -59,9 +57,17 @@ def get_schema_from_method_signature(class_method, exclude=None):
     input_schema = get_base_schema()
     for param in inspect.signature(class_method).parameters.values():
         if param.name not in exclude + ['self']:
+            if param.name != 'self' and param.annotation:
+                if param.annotation is bool:
+                    param_type = "boolean"
+                if param.annotation is str:
+                    param_type = "string"
+            else:
+                raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
+                                          "is not assigned! Please implement.")
             arg_spec = {
                 param.name: dict(
-                    type='string'
+                    type=param_type
                 )
             }
             if param.default is param.empty:
@@ -70,14 +76,12 @@ def get_schema_from_method_signature(class_method, exclude=None):
                 arg_spec[param.name].update(default=param.default)
             input_schema['properties'].update(arg_spec)
         input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
-
     return input_schema
 
 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     """
-    Insert the values of the defaults dict as default values in the schema
-    in place.
+    Insert the values of the defaults dict as default values in the schema in place.
 
     Parameters
     ----------

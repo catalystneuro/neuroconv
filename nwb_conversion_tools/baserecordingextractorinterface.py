@@ -2,6 +2,7 @@
 from abc import ABC
 
 import spikeextractors as se
+from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
@@ -11,10 +12,13 @@ from .json_schema_utils import get_schema_from_method_signature, fill_defaults
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
+    """Primary class for all RecordingExtractorInterfaces."""
+
     RX = None
 
     @classmethod
     def get_source_schema(cls):
+        """Compile input schema for the RecordingExtractor."""
         return get_schema_from_method_signature(cls.RX.__init__)
 
     def __init__(self, **source_data):
@@ -23,6 +27,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         self.subset_channels = None
 
     def get_metadata_schema(self):
+        """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
@@ -36,6 +41,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         return metadata_schema
 
     def get_metadata(self):
+        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         out = super().get_metadata()
         out['properties'].update(
             Ecephys=dict(
@@ -51,7 +57,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         )
         return out
 
-    def run_conversion(self, nwbfile, metadata: None, stub_test=False):
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
         """
         Primary function for converting recording extractor data to nwb.
 
@@ -62,7 +68,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-
         recording_extractor = self.recording_extractor
         if stub_test or self.subset_channels is not None:
             kwargs = dict()

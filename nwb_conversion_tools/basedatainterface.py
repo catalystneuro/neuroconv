@@ -12,6 +12,10 @@ class BaseDataInterface:
     def get_source_schema(cls):
         return get_base_schema()
 
+    @classmethod
+    def get_conversion_options_schema(cls):
+        return get_schema_from_method_signature(cls.run_conversion, exclude=['nwbfile', 'metadata'])
+
     def __init__(self, **source_data):
         self.source_data = source_data
 
@@ -21,12 +25,8 @@ class BaseDataInterface:
     def get_metadata(self):
         return dict()
 
-    @classmethod
-    def get_conversion_options_schema(cls):
-        return get_schema_from_method_signature(cls.run_conversion, exclude=['nwbfile', 'metadata'])
-
     @abstractmethod
-    def run_conversion(self, nwbfile_path, metadata, **conversion_options):
+    def run_conversion(self, nwbfile_path: str, metadata: dict, **conversion_options):
         pass
 
     @abstractmethod
