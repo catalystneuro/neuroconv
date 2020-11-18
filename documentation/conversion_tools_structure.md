@@ -248,7 +248,7 @@ OphysDataInterface would return a similar dictionaries for metadata_schema and m
 6. Get user-input metadata that complies to the returned full metadata_schema  
 
 7. Run conversion with LabConverter.run_conversion(metadata)  
-    7.1 Loop through DataInterface.convert_data(metadata)  
+    7.1 Loop through DataInterface.run_conversion(metadata)  
 
 \* When Converter interfaces with GUI Forms
 
