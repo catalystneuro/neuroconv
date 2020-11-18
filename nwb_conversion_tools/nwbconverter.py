@@ -8,7 +8,7 @@ from pynwb.file import Subject
 
 from .utils import (get_schema_from_hdmf_class, get_base_metadata_schema,
                     get_base_source_schema, get_base_conversion_options_schema,
-                    get_schema_for_NWBFile, dict_deep_update, get_schema_data)
+                    get_schema_for_NWBFile, dict_deep_update)
 
 
 class NWBConverter:
@@ -62,6 +62,7 @@ class NWBConverter:
             NWBFile=dict(
                 session_description="no description",
                 identifier=str(uuid.uuid4()),
+                session_start_time=datetime.strptime('1900-01-01 00:00:00', '%Y-%m-%d %H:%M:%S'),
             )
         )
         for interface in self.data_interface_objects.values():
