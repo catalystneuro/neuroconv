@@ -45,23 +45,10 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata = super().get_metadata()
         metadata.update(
             Ecephys=dict(
-                ElectricalSeries=
-                dict(
-                    name='ElectricalSeries',
-                    description='raw acquired data'
-                ),
-                Device=[
-                    # dict(
-                    #     name='device',
-                    #     description='ecephys probe'
-                    # )
-                ],
-                ElectrodeGroup=[
-                    # dict()
-                ],
-                Electrodes=[
-                    # dict()
-                ]
+                ElectricalSeries=dict(),
+                Device=[],
+                ElectrodeGroup=[],
+                Electrodes=[]
             )
         )
         return metadata
