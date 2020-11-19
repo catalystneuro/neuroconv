@@ -1,63 +1,14 @@
 """Authors: Cody Baker, Ben Dichter and Luiz Tauffer."""
-import inspect
 from datetime import datetime
 
 import numpy as np
 import pynwb
 
-
-def get_base_schema(tag=None):
-    base_schema = dict(
-        required=[],
-        properties={},
-        type='object',
-        additionalProperties=False
-    )
-    if tag is not None:
-        base_schema.update(tag=tag)
-    return base_schema
-
-
-def get_root_schema():
-    root_schema = get_base_schema()
-    root_schema.update({
-        "$schema": "http://json-schema.org/draft-07/schema#",
-    })
-    return root_schema
-
-
-def get_input_schema():
-    input_schema = get_root_schema()
-    input_schema.update({
-        "title": "Source data and conversion options",
-        "description": "Schema for the source data and conversion options",
-        "version": "0.1.0",
-        "type": "object",
-    })
-    return input_schema
-
-
-def get_schema_from_method_signature(class_method):
-    input_schema = get_base_schema()
-    for param in inspect.signature(class_method.__init__).parameters.values():
-        if param.name != 'self':
-            arg_spec = {
-                param.name: dict(
-                    type='string'
-                )
-            }
-            if param.default is param.empty:
-                input_schema['required'].append(param.name)
-            elif param.default is not None:
-                arg_spec[param.name].update(default=param.default)
-            input_schema['properties'].update(arg_spec)
-        input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
-
-    return input_schema
+from .json_schema_utils import get_base_schema
 
 
 def get_schema_from_hdmf_class(hdmf_class):
-    """Get metadata schema from hdmf class"""
+    """Get metadata schema from hdmf class."""
     schema = get_base_schema()
     schema['tag'] = hdmf_class.__module__ + '.' + hdmf_class.__name__
 
@@ -68,21 +19,27 @@ def get_schema_from_hdmf_class(hdmf_class):
         schema_arg = {docval_arg['name']: dict(description=docval_arg['doc'])}
 
         # type float
-        if docval_arg['type'] == 'float' or (isinstance(docval_arg['type'], tuple) and 'float' in docval_arg['type']):
+        if docval_arg['type'] == 'float' \
+            or (isinstance(docval_arg['type'], tuple)
+                and 'float' in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='number')
 
         # type string
-        elif docval_arg['type'] is str or (isinstance(docval_arg['type'], tuple) and str in docval_arg['type']):
+        elif docval_arg['type'] is str \
+            or (isinstance(docval_arg['type'], tuple)
+                and str in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='string')
 
         # type datetime
-        elif docval_arg['type'] is datetime or (isinstance(docval_arg['type'], tuple) and datetime in docval_arg['type']):
+        elif docval_arg['type'] is datetime \
+            or (isinstance(docval_arg['type'], tuple)
+                and datetime in docval_arg['type']):
             schema_arg[docval_arg['name']].update(type='string', format='date-time')
 
         # if TimeSeries, skip it
-        elif docval_arg['type'] is pynwb.base.TimeSeries or \
-                (isinstance(docval_arg['type'], tuple) and
-                 pynwb.base.TimeSeries in docval_arg['type']):
+        elif docval_arg['type'] is pynwb.base.TimeSeries \
+            or (isinstance(docval_arg['type'], tuple)
+                and pynwb.base.TimeSeries in docval_arg['type']):
             continue
 
         # if PlaneSegmentation, skip it
