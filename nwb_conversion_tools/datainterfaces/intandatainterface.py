@@ -12,7 +12,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Intan format."""
-        intan_file_metadata = read_rhd(self.input_args['file_path'])[1]
+        intan_file_metadata = read_rhd(self.source_data['file_path'])[1]
         exclude_chan_types = ['AUX', 'ADC', 'VDD']
 
         group_names = [x['native_channel_name'].split('-')[0] for x in intan_file_metadata
@@ -27,7 +27,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             ]
         ]
 
-        re_metadata = dict(
+        ecephys_metadata = dict(
             Ecephys=dict(
                 Device=[dict(
                     name="Neuropixel"
@@ -55,7 +55,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         )
 
         if len(unique_group_names) > 1:
-            re_metadata['Ecephys']['Electrodes'].append(
+            ecephys_metadata['Ecephys']['Electrodes'].append(
                 dict(
                     name='group_electrode_number',
                     description="0-indexed channel within a group.",
@@ -70,7 +70,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             ]
         )
         if any_custom_names:
-            re_metadata['Ecephys']['Electrodes'].append(
+            ecephys_metadata['Ecephys']['Electrodes'].append(
                 dict(
                     name='custom_channel_name',
                     description="Custom channel name assigned in Intan.",
@@ -81,4 +81,4 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                 )
             )
 
-        return re_metadata
+        return ecephys_metadata

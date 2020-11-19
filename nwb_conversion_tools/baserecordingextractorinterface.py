@@ -1,39 +1,47 @@
 """Authors: Cody Baker and Ben Dichter."""
+from abc import ABC
+
 import spikeextractors as se
+from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_base_schema, get_schema_from_method_signature, \
-    get_schema_from_hdmf_class
+from .utils import get_schema_from_hdmf_class
+from .json_schema_utils import get_schema_from_method_signature, fill_defaults
 
 
-class BaseRecordingExtractorInterface(BaseDataInterface):
+class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
+    """Primary class for all RecordingExtractorInterfaces."""
+
     RX = None
 
     @classmethod
-    def get_input_schema(cls):
+    def get_source_schema(cls):
+        """Compile input schema for the RecordingExtractor."""
         return get_schema_from_method_signature(cls.RX.__init__)
 
-    def __init__(self, **input_args):
-        super().__init__(**input_args)
-        self.recording_extractor = self.RX(**input_args)
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
+        self.recording_extractor = self.RX(**source_data)
+        self.subset_channels = None
 
     def get_metadata_schema(self):
-        metadata_schema = get_base_schema()
+        """Compile metadata schema for the RecordingExtractor."""
+        metadata_schema = super().get_metadata_schema()
 
-        # ideally most of this be automatically determined from pynwb docvals
-        metadata_schema['properties'].update(
+        # Initiate Ecephys metadata
+        metadata_schema['properties']['Ecephys'] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
-        required_fields = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        metadata_schema['required'] += required_fields
-
+        metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
+        fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):
+        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         out = super().get_metadata()
         out['properties'].update(
             Ecephys=dict(
@@ -47,42 +55,38 @@ class BaseRecordingExtractorInterface(BaseDataInterface):
                 )
             )
         )
-
         return out
 
-    def convert_data(self, nwbfile, metadata_dict: None, stub_test=False):
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
         """
         Primary function for converting recording extractor data to nwb.
 
         Parameters
         ----------
-        nwbfile : NWBFile object
-        metadata_dict : dictionary
-        stub_test : boolean, optional (default False)
+        nwbfile: pynwb.NWBFile
+        metadata: dict
+        stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if stub_test:
-            num_frames = 100
-            test_ids = self.recording_extractor.get_channel_ids()
-            end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
+        recording_extractor = self.recording_extractor
+        if stub_test or self.subset_channels is not None:
+            kwargs = dict()
 
-            stub_recording_extractor = se.SubRecordingExtractor(
+            if stub_test:
+                num_frames = 100
+                end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
+                kwargs.update(end_frame=end_frame)
+
+            if self.subset_channels is not None:
+                kwargs.update(channel_ids=self.subset_channels)
+
+            recording_extractor = se.SubRecordingExtractor(
                 self.recording_extractor,
-                channel_ids=test_ids,
-                start_frame=0,
-                end_frame=end_frame
+                **kwargs
             )
-        else:
-            stub_recording_extractor = self.recording_extractor
-
-        if metadata_dict is not None and 'Ecephys' in metadata_dict and 'subset_channels' in metadata_dict['Ecephys']:
-            recording_extractor = se.SubRecordingExtractor(stub_recording_extractor,
-                                                           channel_ids=metadata_dict['Ecephys']['subset_channels'])
-        else:
-            recording_extractor = stub_recording_extractor
 
         se.NwbRecordingExtractor.write_recording(
             recording_extractor,
             nwbfile=nwbfile,
-            metadata=metadata_dict
+            metadata=metadata
         )
