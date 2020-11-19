@@ -19,6 +19,6 @@ class BaseSegmentationExtractorInterface(BaseDataInterface):
     def convert_data(self, nwbfile, metadata_dict):
         re.NwbSegmentationExtractor.write_segmentation(
             self.segmentation_extractor,
-            nwbfile_path,
+            nwbfile=nwbfile,
             metadata=metadata_dict
         )
