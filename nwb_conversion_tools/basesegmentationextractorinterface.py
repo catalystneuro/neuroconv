@@ -1,4 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
+import roiextractors as re
 from abc import ABC
 
 from .basedatainterface import BaseDataInterface
@@ -16,5 +17,9 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         super().__init__(**source_data)
         self.segmentation_extractor = self.SegX(**source_data)
 
-    def run_conversion(self, nwbfile_path, metadata, stub_test=False):
-        raise NotImplementedError
+    def run_conversion(self, nwbfile, metadata_dict):
+        re.NwbSegmentationExtractor.write_segmentation(
+            self.segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata_dict
+        )
