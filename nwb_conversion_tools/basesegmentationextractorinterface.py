@@ -16,7 +16,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface):
         super().__init__(**input_args)
         self.segmentation_extractor = self.SegX(**input_args)
 
-    def convert_data(self, nwbfile_path, metadata_dict):
+    def convert_data(self, nwbfile, metadata_dict):
         re.NwbSegmentationExtractor.write_segmentation(
             self.segmentation_extractor,
             nwbfile_path,
