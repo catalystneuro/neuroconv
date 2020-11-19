@@ -42,20 +42,29 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
-        out = super().get_metadata()
-        out['properties'].update(
+        metadata = super().get_metadata()
+        metadata.update(
             Ecephys=dict(
-                ElectricalSeries=dict(
+                ElectricalSeries=
+                dict(
                     name='ElectricalSeries',
                     description='raw acquired data'
                 ),
-                Device=dict(
-                    name='device',
-                    description='ecephys probe'
-                )
+                Device=[
+                    # dict(
+                    #     name='device',
+                    #     description='ecephys probe'
+                    # )
+                ],
+                ElectrodeGroup=[
+                    # dict()
+                ],
+                Electrodes=[
+                    # dict()
+                ]
             )
         )
-        return out
+        return metadata
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
         """
