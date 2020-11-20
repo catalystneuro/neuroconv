@@ -3,12 +3,15 @@ from pathlib import Path
 import spikeextractors as se
 
 
-def save_si_object(si_object, output_folder, cache_raw=False, include_properties=True, include_features=False):
+def save_si_object(object_name: str, si_object, spikeinterface_folder,
+                   cache_raw=False, include_properties=True, include_features=False):
     """
     Save an arbitrary SI object to a temprary location for NWB conversion.
 
     Parameters
     ----------
+    object_name: str
+        The unique name of the SpikeInterface object.
     si_object: RecordingExtractor or SortingExtractor
         The extractor to be saved.
     output_folder: str or Path
@@ -20,14 +23,11 @@ def save_si_object(si_object, output_folder, cache_raw=False, include_properties
         If True, properties (channel or unit) are saved (default True).
     include_features: bool
         If True, spike features are saved (default False)
-
-    Returns
     -------
     spikeinterface_folder: str
         The output spikeinterface folder
     """
-    spikeinterface_folder = Path(output_folder) / "spikeinterface"
-    spikeinterface_folder.mkdir(parents=True, exist_ok=True)
+    Path(spikeinterface_folder).mkdir(parents=True, exist_ok=True)
 
     if isinstance(si_object, se.RecordingExtractor):
         if not si_object.is_dumpable or cache_raw:
@@ -43,15 +43,11 @@ def save_si_object(si_object, output_folder, cache_raw=False, include_properties
     else:
         raise ValueError("The 'si_object' argument shoulde be a SpikeInterface Extractor!")
 
-    json_file = spikeinterface_folder / "raw.json"
-    pkl_file = spikeinterface_folder / "raw.pkl"
-
-    # save both json and pickle
+    json_file = spikeinterface_folder / f"{object_name}.json"
+    pkl_file = spikeinterface_folder / f"{object_name}.pkl"
     cache.dump_to_json(spikeinterface_folder / json_file)
     cache.dump_to_pickle(
         spikeinterface_folder / pkl_file,
         include_properties=include_properties,
         include_features=include_features
     )
-
-    return spikeinterface_folder
