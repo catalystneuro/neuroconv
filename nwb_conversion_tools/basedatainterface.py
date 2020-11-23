@@ -20,7 +20,14 @@ class BaseDataInterface:
         self.source_data = source_data
 
     def get_metadata_schema(self):
-        return fill_defaults(get_base_schema(), self.get_metadata())
+        metadata_schema = get_base_schema(
+            id_='metadata.schema.json',
+            root=True,
+            title='Metadata',
+            description='Schema for the metadata',
+            version="0.1.0",
+        )
+        return metadata_schema
 
     def get_metadata(self):
         return dict()
