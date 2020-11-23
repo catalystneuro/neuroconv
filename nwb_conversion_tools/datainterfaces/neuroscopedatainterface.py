@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import spikeextractors as se
 from lxml import etree as et
+from scipy.io import loadmat
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -102,4 +103,45 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         session_id = session_path.stem
         xml_file_path = session_path / f"{session_id}.xml"
         metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
+
+        cell_filepath = session_path / f"{session_id}.spikes.cellinfo.mat"
+        if cell_filepath.is_file():
+            cell_info = loadmat(cell_filepath)['spikes']
+
+        celltype_mapping = {'pE': "excitatory", 'pI': "inhibitory"}
+        celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
+        if celltype_filepath.is_file():
+            celltype_info = [str(celltype_mapping[x[0]])
+                             for x in loadmat(celltype_filepath)['CellClass']['label'][0][0][0]]
+
+        metadata.update(
+            UnitProperties=[
+                dict(
+                    name="cell_type",
+                    description="Type of cell this has been classified as.",
+                    data=celltype_info
+                ),
+                dict(
+                    name="global_id",
+                    description="Global id for this cell for the entire experiment.",
+                    data=[int(x) for x in cell_info['UID'][0][0][0]]
+                ),
+                dict(
+                    name="shank_id",
+                    description="0-indexed id of cluster identified from the shank.",
+                    # - 2 b/c the 0 and 1 IDs from each shank have been removed
+                    data=[int(x - 2) for x in cell_info['cluID'][0][0][0]]
+                ),
+                dict(
+                    name="electrode_group",
+                    description="The electrode group that each unit was identified by.",
+                    data=["shank" + str(x) for x in cell_info['shankID'][0][0][0]]
+                ),
+                dict(
+                    name="region",
+                    description="Brain region where each unit was detected.",
+                    data=[str(x[0]) for x in cell_info['region'][0][0][0]]
+                )
+            ]
+        )
         return metadata
