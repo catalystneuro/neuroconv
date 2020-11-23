@@ -27,7 +27,8 @@ class NWBConverter:
             version='0.1.0'
         )
         for interface_name, data_interface in cls.data_interface_classes.items():
-            source_schema['properties'].update({interface_name: data_interface.get_source_schema()})
+            source_schema['properties'].update(
+                {interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
     @classmethod
@@ -88,7 +89,7 @@ class NWBConverter:
             )
         )
         for interface in self.data_interface_objects.values():
-            interface_metadata = unroot_schema(interface.get_metadata())
+            interface_metadata = interface.get_metadata()
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
