@@ -21,7 +21,7 @@ def get_schema_from_hdmf_class(hdmf_class):
         # type float
         if docval_arg['type'] == 'float' \
             or (isinstance(docval_arg['type'], tuple)
-                and 'float' in docval_arg['type']):
+                and any([it in docval_arg['type'] for it in [float, 'float']])):
             schema_arg[docval_arg['name']].update(type='number')
 
         # type string
