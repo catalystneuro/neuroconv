@@ -7,7 +7,8 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from .utils import get_schema_from_hdmf_class, get_schema_for_NWBFile
-from .json_schema_utils import dict_deep_update, get_base_schema, fill_defaults
+from .json_schema_utils import dict_deep_update, get_base_schema, fill_defaults, \
+    unroot_schema
 
 
 class NWBConverter:
@@ -26,7 +27,8 @@ class NWBConverter:
             version='0.1.0'
         )
         for interface_name, data_interface in cls.data_interface_classes.items():
-            source_schema['properties'].update({interface_name: data_interface.get_source_schema()})
+            source_schema['properties'].update(
+                {interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
     @classmethod
@@ -41,7 +43,7 @@ class NWBConverter:
         )
         for interface_name, data_interface in cls.data_interface_classes.items():
             conversion_options_schema['properties'].update({
-                interface_name: data_interface.get_conversion_options_schema()
+                interface_name: unroot_schema(data_interface.get_conversion_options_schema())
             })
         return conversion_options_schema
 
@@ -71,7 +73,7 @@ class NWBConverter:
             )
         )
         for data_interface in self.data_interface_objects.values():
-            interface_schema = data_interface.get_metadata_schema()
+            interface_schema = unroot_schema(data_interface.get_metadata_schema())
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
 
         fill_defaults(metadata_schema, self.get_metadata())
