@@ -12,7 +12,7 @@ from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from .utils import check_module
 
 
-class BaseRecordingExtractorInterface(BaseRecordingExtractorInterface, ABC):
+class BaseLFPExtractorInterface(BaseRecordingExtractorInterface, ABC):
     """Primary class for all LFP data interfaces."""
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False,

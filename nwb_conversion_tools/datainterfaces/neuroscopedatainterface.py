@@ -7,7 +7,19 @@ from lxml import etree as et
 from scipy.io import loadmat
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+
+
+def get_xml(dat_file_path):
+    """Auxiliary function for retrieving root of xml."""
+    file_path = Path(dat_file_path)
+    session_path = file_path.parent
+    session_id = session_path.stem
+    xml_filepath = session_path / f"{session_id}.xml"
+    root = et.parse(str(xml_filepath.absolute())).getroot()
+
+    return root
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -17,6 +29,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path):
+        """Auto-populates ecephys metadata from the xml_file_path."""
         session_path = Path(xml_file_path).parent
         session_id = session_path.stem
         root = et.parse(str(xml_file_path.absolute())).getroot()
@@ -62,26 +75,18 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             )
         )
 
+        return ecephys_metadata
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        root = self.get_xml()
-
+        root = get_xml(self.source_data['file_path'])
         shank_channels = [[int(channel.text)
                            for channel in group.find('channels')]
                           for group in root.find('spikeDetection').find('channelGroups').findall('group')]
         all_shank_channels = np.concatenate(shank_channels)
 
         self.subset_channels = sorted(all_shank_channels)
-
-    def get_xml(self):
-        file_path = Path(self.input_args['file_path'])
-        session_path = file_path.parent
-        session_id = session_path.stem
-        xml_filepath = session_path / f"{session_id}.xml"
-        root = et.parse(str(xml_filepath.absolute())).getroot()
-
-        return root
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
@@ -90,7 +95,25 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         session_id = session_path.stem
         xml_file_path = session_path / f"{session_id}.xml"
         ecephys_metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
+
         return ecephys_metadata
+
+
+class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
+    """Primary data interface class for converting Neuroscope LFP data."""
+
+    RX = se.NeuroscopeRecordingExtractor
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        root = get_xml(self.source_data['file_path'])
+        shank_channels = [[int(channel.text)
+                           for channel in group.find('channels')]
+                          for group in root.find('spikeDetection').find('channelGroups').findall('group')]
+        all_shank_channels = np.concatenate(shank_channels)
+
+        self.subset_channels = sorted(all_shank_channels)
 
 
 class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
@@ -99,7 +122,8 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
     SX = se.NeuroscopeMultiSortingExtractor
 
     def get_metadata(self):
-        session_path = Path(self.input_args['folder_path'])
+        """Auto-populates spiking unit metadata."""
+        session_path = Path(self.source_data['folder_path'])
         session_id = session_path.stem
         xml_file_path = session_path / f"{session_id}.xml"
         metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
@@ -114,6 +138,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
             celltype_info = [str(celltype_mapping[x[0]])
                              for x in loadmat(celltype_filepath)['CellClass']['label'][0][0][0]]
 
+        # TODO: generalize for the non-existence of these fields
         metadata.update(
             UnitProperties=[
                 dict(
