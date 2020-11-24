@@ -1,6 +1,7 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
+import re
 
 
 def dict_deep_update(d, u):
@@ -67,9 +68,20 @@ def get_schema_from_method_signature(class_method, exclude=None):
     for param in inspect.signature(class_method).parameters.values():
         if param.name not in exclude + ['self']:
             if param.annotation:
-                print(str(param.annotation).split("'"))
-                print(str(param.annotation).split("'")[1])
-                param_type = annotation_json_type_map[str(param.annotation).split("'")[1]]
+                anno = str(param.annotation)
+                if "Union" in anno:
+                    types = re.search("typing.Union\[(.*)\]", anno).group(1).split(",")
+                    intersect_valid_keys = list(set(annotation_json_type_map.keys()).intersection(types))
+                    assert len(intersect_valid_keys) == 1, \
+                        "There must be only one valid annotation type that maps to json! " \
+                        f"{len(intersect_valid_keys)} found."
+                    param_type = annotation_json_type_map[intersect_valid_keys[0]]
+                elif "'" in anno:
+                    param_type = annotation_json_type_map[anno.split("'")[1]]
+                else:
+                    raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
+                                              "is not implemented! Please request it to be added at github.com/"
+                                              "catalystneuro/nwb-conversion-tools/issues.")
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
                                           "is not assigned! Please implement.")
