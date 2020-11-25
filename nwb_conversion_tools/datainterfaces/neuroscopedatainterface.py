@@ -101,7 +101,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
         return NeuroscopeRecordingInterface.get_ecephys_metadata(
-            data_file_path=self.source_data['file_path']
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
         )
 
 
@@ -112,7 +112,15 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subset_channels = get_sorted_shank_channels(self.source_data['file_path'])
+        self.subset_channels = get_sorted_shank_channels(
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
+        )
+
+    def get_metadata(self):
+        """Retrieve Ecephys metadata specific to the Neuroscope format."""
+        return NeuroscopeRecordingInterface.get_ecephys_metadata(
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
+        )
 
 
 class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
@@ -124,8 +132,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         """Auto-populates spiking unit metadata."""
         session_path = Path(self.source_data['folder_path'])
         session_id = session_path.stem
-        xml_file_path = session_path / f"{session_id}.xml"
-        metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
+        # TODO: add condition for retrieving ecephys metadata if no recoring or lfp are included in conversion
 
         unit_properties = []
         cell_filepath = session_path / f"{session_id}.spikes.cellinfo.mat"
@@ -153,7 +160,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
                     dict(
                         name="electrode_group",
                         description="The electrode group that each unit was identified by.",
-                        data=["shank" + str(x) for x in cell_info['shankID'][0][0][0]]
+                        data=[f"shank{x}" for x in cell_info['shankID'][0][0][0]]
                     )
                 )
             if 'region' in cell_info:
