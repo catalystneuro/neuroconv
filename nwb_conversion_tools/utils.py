@@ -31,7 +31,6 @@ def check_module(nwbfile: pynwb.NWBFile, name, description=None):
     Returns
     -------
     pynwb.module
-
     """
     if name in nwbfile.modules:
         return nwbfile.modules[name]
