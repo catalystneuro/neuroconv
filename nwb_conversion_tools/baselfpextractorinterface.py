@@ -7,7 +7,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .utils import check_module
+from .utils import check_module, add_ecephys_metadata
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
@@ -30,24 +30,8 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             Maximum amount of memory (in MB) to use per iteration of the DataChunkIterator
             (requires traces to be memmap objects)
         """
-        if write_ecephys_metadata and 'Ecephys' in metadata:
-            n_channels = max([len(x['data']) for x in metadata['Ecephys']['Electrodes']])
-            recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
-            se.NwbRecordingExtractor.add_devices(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata
-            )
-            se.NwbRecordingExtractor.add_electrode_groups(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata
-            )
-            se.NwbRecordingExtractor.add_electrodes(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata
-            )
+        if write_ecephys_metadata:
+            add_ecephys_metadata(nwbfile, metadata)
 
         lfp_extractor = self.recording_extractor
         if stub_test or self.subset_channels is not None:

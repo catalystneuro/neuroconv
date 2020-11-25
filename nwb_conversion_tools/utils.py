@@ -3,11 +3,22 @@ from datetime import datetime
 
 import numpy as np
 import pynwb
+import spikeextractors as se
 
 from .json_schema_utils import get_base_schema
 
 
-def check_module(nwbfile, name, description=None):
+def add_ecephys_metadata(nwbfile: pynwb.NWBFile, metadata: dict):
+    """Add information contained in the 'Ecephys' key of the metadata to the NWBFile."""
+    if 'Ecephys' in metadata:
+        n_channels = max([len(x['data']) for x in metadata['Ecephys']['Electrodes']])
+        recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
+        se.NwbRecordingExtractor.add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+        se.NwbRecordingExtractor.add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
+        se.NwbRecordingExtractor.add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+
+def check_module(nwbfile: pynwb.NWBFile, name, description=None):
     """
     Check if processing module exists. If not, create it. Then return module.
 

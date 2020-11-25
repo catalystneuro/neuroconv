@@ -7,7 +7,7 @@ from pynwb import NWBFile
 from pynwb.ecephys import SpikeEventSeries
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_schema_from_hdmf_class
+from .utils import get_schema_from_hdmf_class, add_ecephys_metadata
 from .json_schema_utils import get_base_schema, get_schema_from_method_signature, fill_defaults
 
 
@@ -37,24 +37,8 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                        write_ecephys_metadata: bool = False):
         if 'UnitProperties' not in metadata:
             metadata['UnitProperties'] = []
-        if write_ecephys_metadata and 'Ecephys' in metadata:
-            n_channels = max([len(x['data']) for x in metadata['Ecephys']['Electrodes']])
-            recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
-            se.NwbRecordingExtractor.add_devices(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata
-            )
-            se.NwbRecordingExtractor.add_electrode_groups(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata
-            )
-            se.NwbRecordingExtractor.add_electrodes(
-                recording=recording,
-                nwbfile=nwbfile,
-                metadata=metadata
-            )
+        if write_ecephys_metadata:
+            add_ecephys_metadata(nwbfile, metadata)
 
         property_descriptions = dict()
         if stub_test:
