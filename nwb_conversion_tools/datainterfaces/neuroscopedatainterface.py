@@ -178,8 +178,4 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
 
-        if len(unit_properties) == 0:
-            sorting_metadata = dict()
-        else:
-            sorting_metadata = dict(UnitProperties=unit_properties)
-        return sorting_metadata
+        return dict(UnitProperties=unit_properties)
