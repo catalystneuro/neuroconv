@@ -18,7 +18,7 @@ def add_ecephys_metadata(nwbfile: pynwb.NWBFile, metadata: dict):
         se.NwbRecordingExtractor.add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
-def check_module(nwbfile: pynwb.NWBFile, name, description=None):
+def check_module(nwbfile: pynwb.NWBFile, name: str, description: str = None):
     """
     Check if processing module exists. If not, create it. Then return module.
 
