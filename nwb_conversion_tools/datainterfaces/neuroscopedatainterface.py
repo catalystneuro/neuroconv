@@ -19,12 +19,12 @@ def get_xml_file_path(data_file_path: str):
     """
     session_path = Path(data_file_path).parent
     session_id = session_path.stem
-    return session_path / f"{session_id}.xml"
+    return str((session_path / f"{session_id}.xml").absolute())
 
 
 def get_xml(xml_file_path: str):
     """Auxiliary function for retrieving root of xml."""
-    root = et.parse(str(xml_file_path.absolute())).getroot()
+    root = et.parse(xml_file_path).getroot()
 
     return root
 
@@ -96,7 +96,9 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subset_channels = get_sorted_shank_channels(self.source_data['file_path'])
+        self.subset_channels = get_sorted_shank_channels(
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
+        )
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
