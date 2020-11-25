@@ -90,7 +90,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
-        file_path = Path(self.input_args['file_path'])
+        file_path = Path(self.source_data['file_path'])
         session_path = file_path.parent
         session_id = session_path.stem
         xml_file_path = session_path / f"{session_id}.xml"

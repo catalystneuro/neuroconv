@@ -68,41 +68,50 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface, ABC):
                 **kwargs
             )
 
-        if self.subset_channels is None:
-            if nwbfile.electrodes is not None \
-                    and lfp_extractor.get_num_channels() <= len(nwbfile.electrodes.id.data[:]):
-                electrode_inds = list(range(lfp_extractor.get_num_channels()))
-            else:
-                electrode_inds = list(range(len(nwbfile.electrodes.id.data[:])))
+        if nwbfile.electrodes is None \
+                or lfp_extractor.get_num_channels() <= len(nwbfile.electrodes.id.data[:]):
+            electrode_inds = list(range(lfp_extractor.get_num_channels()))
+        else:
+            electrode_inds = list(range(len(nwbfile.electrodes.id.data[:])))
+        table_region = nwbfile.create_electrode_table_region(electrode_inds, "Electrode table reference.")
 
-        table_region = nwbfile.create_electrode_table_region(electrode_inds, 'electrode table reference')
-        n_bytes = np.dtype(lfp_extractor.get_dtype()).itemsize
-        buffer_size = int(buffer_mb * 1e6) // (lfp_extractor.get_num_channels() * n_bytes)
+        ecephys_mod = check_module(
+            nwbfile,
+            'ecephys',
+            "intermediate data from extracellular electrophysiology recordings, e.g., LFP"
+        )
+        if 'LFP' not in ecephys_mod.data_interfaces:
+            ecephys_mod.add_data_interface(LFP(name='LFP'))
 
         if isinstance(lfp_extractor.get_traces(), np.memmap):
-            data = H5DataIO(
-                DataChunkIterator(
-                    lfp_extractor.get_traces(),
-                    buffer_size=buffer_size
-                ),
-                compression='gzip'
+            n_bytes = np.dtype(lfp_extractor.get_dtype()).itemsize
+            buffer_size = int(buffer_mb * 1e6) // (lfp_extractor.get_num_channels() * n_bytes)
+            lfp_data = DataChunkIterator(
+                lfp_extractor.get_traces(),
+                buffer_size=buffer_size
             )
-            lfp_electrical_series = ElectricalSeries(
-                name="LFP",
+        else:
+            def data_generator(recording, channels_ids):
+                #  generates data chunks for iterator
+                for id in channels_ids:
+                    data = recording.get_traces(channel_ids=[id]).flatten()
+                    yield data
+            lfp_data = DataChunkIterator(
+                data=data_generator(
+                    recording=lfp_extractor,
+                    channels_ids=lfp_extractor.get_channel_ids()
+                ),
+                iter_axis=1,  # nwb standard is time as zero axis
+                maxshape=(lfp_extractor.get_num_frames(), lfp_extractor.get_num_channels())
+            )
+        ecephys_mod.data_interfaces['LFP'].add_electrical_series(
+            ElectricalSeries(
+                name='LFP',
                 description="Local field potential signal.",
-                data=data,
+                data=H5DataIO(lfp_data, compression="gzip"),
                 electrodes=table_region,
                 conversion=1e-6,
                 rate=lfp_extractor.get_sampling_frequency(),
                 resolution=np.nan
             )
-            ecephys_mod = check_module(
-                nwbfile,
-                'ecephys',
-                "intermediate data from extracellular electrophysiology recordings, e.g., LFP"
-            )
-            if 'LFP' not in ecephys_mod.data_interfaces:
-                ecephys_mod.add_data_interface(LFP(name='LFP'))
-            ecephys_mod.data_interfaces['LFP'].add_electrical_series(lfp_electrical_series)
-        else:
-            raise NotImplementedError("LFP interface is not setup to convert non-memory maps!")
+        )

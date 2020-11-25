@@ -71,13 +71,14 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             sorting_extractor = self.sorting_extractor
 
         for metadata_column in metadata['UnitProperties']:
-            property_descriptions.update({metadata_column['name']: metadata_column['description']})
-            for unit_id in sorting_extractor.get_unit_ids():
-                if metadata_column['name'] == 'electrode_group':
-                    data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
-                else:
-                    data = metadata_column['data'][unit_id]
-                sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
+            if len(metadata_column['data']) == len(sorting_extractor.get_unit_ids()):
+                property_descriptions.update({metadata_column['name']: metadata_column['description']})
+                for unit_id in sorting_extractor.get_unit_ids():
+                    if metadata_column['name'] == 'electrode_group':
+                        data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
+                    else:
+                        data = metadata_column['data'][unit_id]
+                    sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
 
         se.NwbSortingExtractor.write_sorting(
             sorting_extractor,
