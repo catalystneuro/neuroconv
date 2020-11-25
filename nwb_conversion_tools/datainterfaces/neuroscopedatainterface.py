@@ -11,15 +11,33 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
-def get_xml(dat_file_path):
-    """Auxiliary function for retrieving root of xml."""
-    file_path = Path(dat_file_path)
-    session_path = file_path.parent
+def get_xml_file_path(data_file_path: str):
+    """
+    Infer the xml_file_path from the data_file_path (.dat or .eeg).
+
+    Assumes the two are in the same folder and follow the session_id naming convention.
+    """
+    session_path = Path(data_file_path).parent
     session_id = session_path.stem
-    xml_filepath = session_path / f"{session_id}.xml"
-    root = et.parse(str(xml_filepath.absolute())).getroot()
+    return session_path / f"{session_id}.xml"
+
+
+def get_xml(xml_file_path: str):
+    """Auxiliary function for retrieving root of xml."""
+    root = et.parse(str(xml_file_path.absolute())).getroot()
 
     return root
+
+
+def get_sorted_shank_channels(xml_file_path: str):
+    """."""
+    root = get_xml(xml_file_path)
+    shank_channels = [[int(channel.text)
+                       for channel in group.find('channels')]
+                      for group in root.find('spikeDetection').find('channelGroups').findall('group')]
+    all_shank_channels = np.concatenate(shank_channels)
+
+    return sorted(all_shank_channels)
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -28,22 +46,21 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     RX = se.NeuroscopeRecordingExtractor
 
     @staticmethod
-    def get_ecephys_metadata(xml_file_path):
-        """Auto-populates ecephys metadata from the xml_file_path."""
+    def get_ecephys_metadata(xml_file_path: str):
+        """Auto-populates ecephys metadata from the xml_file_path inferred."""
         session_path = Path(xml_file_path).parent
         session_id = session_path.stem
         root = et.parse(str(xml_file_path.absolute())).getroot()
         shank_channels = [[int(channel.text)
                            for channel in group.find('channels')]
                           for group in root.find('spikeDetection').find('channelGroups').findall('group')]
-        all_shank_channels = np.concatenate(shank_channels)
-        all_shank_channels.sort()
+        sorted_shank_channels = get_sorted_shank_channels(xml_file_path=xml_file_path)
         shank_electrode_number = [x for channels in shank_channels for x, _ in enumerate(channels)]
         shank_group_name = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
 
         ecephys_metadata = dict(
             Ecephys=dict(
-                subset_channels=all_shank_channels,
+                subset_channels=sorted_shank_channels,
                 Device=[
                     dict(
                         description=session_id + '.xml'
@@ -70,7 +87,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
                 ],
                 ElectricalSeries=dict(
                     name='ElectricalSeries',
-                    description="raw acquisition traces"
+                    description="Raw acquisition traces."
                 )
             )
         )
@@ -79,24 +96,13 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        root = get_xml(self.source_data['file_path'])
-        shank_channels = [[int(channel.text)
-                           for channel in group.find('channels')]
-                          for group in root.find('spikeDetection').find('channelGroups').findall('group')]
-        all_shank_channels = np.concatenate(shank_channels)
-
-        self.subset_channels = sorted(all_shank_channels)
+        self.subset_channels = get_sorted_shank_channels(self.source_data['file_path'])
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
-        file_path = Path(self.source_data['file_path'])
-        session_path = file_path.parent
-        session_id = session_path.stem
-        xml_file_path = session_path / f"{session_id}.xml"
-        ecephys_metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
-
-        return ecephys_metadata
+        return NeuroscopeRecordingInterface.get_ecephys_metadata(
+            data_file_path=self.source_data['file_path']
+        )
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
@@ -106,14 +112,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        root = get_xml(self.source_data['file_path'])
-        shank_channels = [[int(channel.text)
-                           for channel in group.find('channels')]
-                          for group in root.find('spikeDetection').find('channelGroups').findall('group')]
-        all_shank_channels = np.concatenate(shank_channels)
-
-        self.subset_channels = sorted(all_shank_channels)
+        self.subset_channels = get_sorted_shank_channels(self.source_data['file_path'])
 
 
 class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
@@ -128,45 +127,59 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         xml_file_path = session_path / f"{session_id}.xml"
         metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
 
+        unit_properties = []
         cell_filepath = session_path / f"{session_id}.spikes.cellinfo.mat"
         if cell_filepath.is_file():
-            cell_info = loadmat(cell_filepath)['spikes']
+            cell_info = loadmat(cell_filepath).get('spikes', dict())
+            if 'UID' in cell_info:
+                unit_properties.append(
+                    dict(
+                        name="global_id",
+                        description="Global id for this cell for the entire experiment.",
+                        data=[int(x) for x in cell_info['UID'][0][0][0]]
+                    )
+                )
+            if 'cluID' in cell_info:
+                unit_properties.append(
+                    dict(
+                        name="shank_id",
+                        description="0-indexed id of cluster identified from the shank.",
+                        # - 2 b/c the 0 and 1 IDs from each shank have been removed
+                        data=[int(x - 2) for x in cell_info['cluID'][0][0][0]]
+                    )
+                )
+            if 'shankID' in cell_info:
+                unit_properties.append(
+                    dict(
+                        name="electrode_group",
+                        description="The electrode group that each unit was identified by.",
+                        data=["shank" + str(x) for x in cell_info['shankID'][0][0][0]]
+                    )
+                )
+            if 'region' in cell_info:
+                unit_properties.append(
+                    dict(
+                        name="region",
+                        description="Brain region where each unit was detected.",
+                        data=[str(x[0]) for x in cell_info['region'][0][0][0]]
+                    )
+                )
 
         celltype_mapping = {'pE': "excitatory", 'pI': "inhibitory"}
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
-            celltype_info = [str(celltype_mapping[x[0]])
-                             for x in loadmat(celltype_filepath)['CellClass']['label'][0][0][0]]
-
-        # TODO: generalize for the non-existence of these fields
-        metadata.update(
-            UnitProperties=[
-                dict(
-                    name="cell_type",
-                    description="Type of cell this has been classified as.",
-                    data=celltype_info
-                ),
-                dict(
-                    name="global_id",
-                    description="Global id for this cell for the entire experiment.",
-                    data=[int(x) for x in cell_info['UID'][0][0][0]]
-                ),
-                dict(
-                    name="shank_id",
-                    description="0-indexed id of cluster identified from the shank.",
-                    # - 2 b/c the 0 and 1 IDs from each shank have been removed
-                    data=[int(x - 2) for x in cell_info['cluID'][0][0][0]]
-                ),
-                dict(
-                    name="electrode_group",
-                    description="The electrode group that each unit was identified by.",
-                    data=["shank" + str(x) for x in cell_info['shankID'][0][0][0]]
-                ),
-                dict(
-                    name="region",
-                    description="Brain region where each unit was detected.",
-                    data=[str(x[0]) for x in cell_info['region'][0][0][0]]
+            celltype_info = loadmat(celltype_filepath).get('CellClass', dict())
+            if 'label' in celltype_info:
+                unit_properties.append(
+                    dict(
+                        name="cell_type",
+                        description="Type of cell this has been classified as.",
+                        data=[str(celltype_mapping[x[0]]) for x in celltype_info['label'][0][0][0]]
+                    )
                 )
-            ]
-        )
-        return metadata
+
+        if len(unit_properties) == 0:
+            sorting_metadata = dict()
+        else:
+            sorting_metadata = dict(UnitProperties=unit_properties)
+        return sorting_metadata
