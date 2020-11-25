@@ -116,3 +116,16 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
             else:
                 if overwrite or ('default' not in val):
                     val['default'] = defaults[key]
+
+
+def unroot_schema(schema: dict):
+    """Modifies a json-schema dictionary to make it not root
+
+    Parameters
+    ----------
+    schema: dict
+    """
+
+    terms = ('required', 'properties', 'type', 'additionalProperties',
+             'title', 'description')
+    return {k: v for k, v in schema.items() if k in terms}

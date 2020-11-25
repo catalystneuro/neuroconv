@@ -44,7 +44,7 @@ def get_schema_from_hdmf_class(hdmf_class):
         # type float
         if docval_arg['type'] == 'float' \
             or (isinstance(docval_arg['type'], tuple)
-                and 'float' in docval_arg['type']):
+                and any([it in docval_arg['type'] for it in [float, 'float']])):
             schema_arg[docval_arg['name']].update(type='number')
 
         # type string
@@ -78,9 +78,8 @@ def get_schema_from_hdmf_class(hdmf_class):
                 docval_arg_type = docval_arg['type']
 
             # if another nwb object (or list of nwb objects)
-            if any([t.__module__.split('.')[0] == 'pynwb' for t in docval_arg_type if hasattr(t, '__module__')]):
-                is_nwb = [t.__module__.split('.')[0] == 'pynwb' for t in list(docval_arg_type) if
-                          hasattr(t, '__module__')]
+            if any([hasattr(t, '__nwbfields__') for t in docval_arg_type]):
+                is_nwb = [hasattr(t, '__nwbfields__') for t in docval_arg_type]
                 item = docval_arg_type[np.where(is_nwb)[0][0]]
                 # if it is child
                 if docval_arg['name'] in pynwb_children_fields:
