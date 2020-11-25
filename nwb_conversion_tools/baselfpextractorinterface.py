@@ -1,6 +1,4 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import ABC
-
 import numpy as np
 import spikeextractors as se
 from pynwb import NWBFile
@@ -12,7 +10,7 @@ from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from .utils import check_module
 
 
-class BaseLFPExtractorInterface(BaseRecordingExtractorInterface, ABC):
+class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False,
