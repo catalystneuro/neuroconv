@@ -47,7 +47,7 @@ class NWBConverter:
             })
         return conversion_options_schema
 
-    def __init__(self, **source_data):
+    def __init__(self, source_data):
         """Validate source_data against source_schema and initialize all data interfaces."""
         # Validate source_data against source_schema
         validate(instance=source_data, schema=self.get_source_schema())
