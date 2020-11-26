@@ -69,7 +69,7 @@ def get_schema_from_method_signature(class_method, exclude=None):
         if param.name not in exclude + ['self']:
             if param.annotation:
                 anno = str(param.annotation)
-                if "Union" in anno:
+                if "typing.Union" in anno:
                     types = re.search("typing.Union\[(.*)\]", anno).group(1).split(",")
                     intersect_valid_keys = list(set(annotation_json_type_map.keys()).intersection(types))
                     assert len(intersect_valid_keys) == 1, \
