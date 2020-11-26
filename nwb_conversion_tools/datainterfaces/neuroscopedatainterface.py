@@ -50,7 +50,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         """Auto-populates ecephys metadata from the xml_file_path inferred."""
         session_path = Path(xml_file_path).parent
         session_id = session_path.stem
-        root = et.parse(str(xml_file_path.absolute())).getroot()
+        root = get_xml(xml_file_path)
         shank_channels = [[int(channel.text)
                            for channel in group.find('channels')]
                           for group in root.find('spikeDetection').find('channelGroups').findall('group')]
