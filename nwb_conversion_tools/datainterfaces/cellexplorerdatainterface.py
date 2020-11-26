@@ -8,7 +8,7 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
-    """Primary data interface class for converting a NeuroscopeSortingExtractor."""
+    """Primary data interface class for converting Cell Explorer spiking data."""
 
     # TODO: technically, there is separately stored spiking information specific to the cell explorer format
     # but we would need to make a sorting extractor for that. Defaulting to using the Neuroscope for now.
