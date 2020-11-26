@@ -79,12 +79,13 @@ def get_schema_from_method_signature(class_method, exclude=None):
                 elif "'" in anno:
                     param_type = annotation_json_type_map[anno.split("'")[1]]
                 else:
-                    raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
-                                              "is not implemented! Please request it to be added at github.com/"
-                                              "catalystneuro/nwb-conversion-tools/issues.")
+                    raise NotImplementedError("The annotation format of '{param}' in function '{class_method}' "
+                                              "is unrecognized!")
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
-                                          "is not assigned! Please implement.")
+                                          "is not implemented! Please request it to be added at github.com/"
+                                          "catalystneuro/nwb-conversion-tools/issues.")
+
             arg_spec = {
                 param.name: dict(
                     type=param_type
