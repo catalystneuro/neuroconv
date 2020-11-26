@@ -4,7 +4,6 @@ from pathlib import Path
 import numpy as np
 import spikeextractors as se
 from lxml import etree as et
-from scipy.io import loadmat
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
