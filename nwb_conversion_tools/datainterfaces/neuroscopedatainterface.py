@@ -27,15 +27,18 @@ def get_xml(xml_file_path: str):
     return root
 
 
-def get_sorted_shank_channels(xml_file_path: str):
-    """."""
+def get_shank_channels(xml_file_path: str, sort: bool = False):
+    """Auxiliary function for retrieving the list of structured shank-only channels."""
     root = get_xml(xml_file_path)
-    shank_channels = [[int(channel.text)
-                       for channel in group.find('channels')]
-                      for group in root.find('spikeDetection').find('channelGroups').findall('group')]
-    all_shank_channels = np.concatenate(shank_channels)
+    shank_channels = [
+        [int(channel.text) for channel in group.find('channels')]
+        for group in root.find('spikeDetection').find('channelGroups').findall('group')
+    ]
 
-    return sorted(all_shank_channels)
+    if sort:
+        shank_channels = sorted(np.concatenate(shank_channels))
+
+    return shank_channels
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -48,17 +51,10 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         """Auto-populates ecephys metadata from the xml_file_path inferred."""
         session_path = Path(xml_file_path).parent
         session_id = session_path.stem
-        root = get_xml(xml_file_path)
-        shank_channels = [[int(channel.text)
-                           for channel in group.find('channels')]
-                          for group in root.find('spikeDetection').find('channelGroups').findall('group')]
-        sorted_shank_channels = get_sorted_shank_channels(xml_file_path=xml_file_path)
-        shank_electrode_number = [x for channels in shank_channels for x, _ in enumerate(channels)]
-        shank_group_name = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
+        shank_channels = get_shank_channels(xml_file_path)
 
         ecephys_metadata = dict(
             Ecephys=dict(
-                subset_channels=sorted_shank_channels,
                 Device=[
                     dict(
                         description=session_id + '.xml'
@@ -75,12 +71,12 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
                     dict(
                         name='shank_electrode_number',
                         description="0-indexed channel within a shank.",
-                        data=shank_electrode_number
+                        data=[x for channels in shank_channels for x, _ in enumerate(channels)]
                     ),
                     dict(
                         name='group_name',
                         description="The name of the ElectrodeGroup this electrode is a part of.",
-                        data=shank_group_name
+                        data=[f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
                     )
                 ],
                 ElectricalSeries=dict(
@@ -94,8 +90,9 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subset_channels = get_sorted_shank_channels(
-            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
+        self.subset_channels = get_shank_channels(
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path']),
+            sort=True
         )
 
     def get_metadata(self):
