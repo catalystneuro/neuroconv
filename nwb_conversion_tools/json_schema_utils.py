@@ -1,7 +1,6 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
-import re
 
 
 def dict_deep_update(d, u):
@@ -42,16 +41,13 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs):
 def get_schema_from_method_signature(class_method, exclude=None):
     """
     Take a class method and return a jsonschema of the input args.
-
     Parameters
     ----------
     class_method: function
     exclude: list, optional
-
     Returns
     -------
     dict
-
     """
     if exclude is None:
         exclude = []
@@ -68,20 +64,7 @@ def get_schema_from_method_signature(class_method, exclude=None):
     for param in inspect.signature(class_method).parameters.values():
         if param.name not in exclude + ['self']:
             if param.annotation:
-                anno = str(param.annotation)
-                if "Union" in anno:
-                    types = re.search("typing.Union\[(.*)\]", anno).group(1).split(",")
-                    intersect_valid_keys = list(set(annotation_json_type_map.keys()).intersection(types))
-                    assert len(intersect_valid_keys) == 1, \
-                        "There must be only one valid annotation type that maps to json! " \
-                        f"{len(intersect_valid_keys)} found."
-                    param_type = annotation_json_type_map[intersect_valid_keys[0]]
-                elif "'" in anno:
-                    param_type = annotation_json_type_map[anno.split("'")[1]]
-                else:
-                    raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
-                                              "is not implemented! Please request it to be added at github.com/"
-                                              "catalystneuro/nwb-conversion-tools/issues.")
+                param_type = annotation_json_type_map[str(param.annotation).split("'")[1]]
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
                                           "is not assigned! Please implement.")
@@ -102,7 +85,6 @@ def get_schema_from_method_signature(class_method, exclude=None):
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     """
     Insert the values of the defaults dict as default values in the schema in place.
-
     Parameters
     ----------
     schema: dict
@@ -120,7 +102,6 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 
 def unroot_schema(schema: dict):
     """Modifies a json-schema dictionary to make it not root
-
     Parameters
     ----------
     schema: dict
