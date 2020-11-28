@@ -3,6 +3,7 @@ from pathlib import Path
 
 import spikeextractors as se
 from scipy.io import loadmat
+import numpy as np
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
@@ -14,23 +15,16 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
     def get_metadata(self):
         """Auto-populates spiking unit metadata."""
-        session_path = Path(self.source_data['folder_path'])
+        session_path = Path(self.source_data['spikes_matfile_path']).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recoring or lfp are included in conversion
 
         unit_properties = []
         cell_filepath = session_path / f"{session_id}.spikes.cellinfo.mat"
         if cell_filepath.is_file():
-            cell_info = loadmat(cell_filepath).get('spikes', dict())
-            if 'UID' in cell_info:
-                unit_properties.append(
-                    dict(
-                        name="global_id",
-                        description="Global id for this cell for the entire experiment.",
-                        data=[int(x) for x in cell_info['UID'][0][0][0]]
-                    )
-                )
-            if 'cluID' in cell_info:
+            cell_info = loadmat(cell_filepath).get('spikes', np.empty(0))
+            cell_info_fields = cell_info.dtype.names
+            if 'cluID' in cell_info_fields:
                 unit_properties.append(
                     dict(
                         name="shank_id",
@@ -39,7 +33,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                         data=[int(x - 2) for x in cell_info['cluID'][0][0][0]]
                     )
                 )
-            if 'shankID' in cell_info:
+            if 'shankID' in cell_info_fields:
                 unit_properties.append(
                     dict(
                         name="electrode_group",
@@ -47,7 +41,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                         data=[f"shank{x}" for x in cell_info['shankID'][0][0][0]]
                     )
                 )
-            if 'region' in cell_info:
+            if 'region' in cell_info_fields:
                 unit_properties.append(
                     dict(
                         name="region",
@@ -59,8 +53,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         celltype_mapping = {'pE': "excitatory", 'pI': "inhibitory"}
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
-            celltype_info = loadmat(celltype_filepath).get('CellClass', dict())
-            if 'label' in celltype_info:
+            celltype_info = loadmat(celltype_filepath).get('CellClass', np.empty(0))
+            if 'label' in celltype_info.dtype.names:
                 unit_properties.append(
                     dict(
                         name="cell_type",
