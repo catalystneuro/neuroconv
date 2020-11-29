@@ -71,8 +71,8 @@ def get_schema_from_method_signature(class_method, exclude=None):
         if param_name not in exclude:
             if param.annotation:
                 param_type = [
-                    annotation_json_type_map[y] for x in param.annotation.__args__
-                    for y in [str(x).split("'")[1]] if y in annotation_json_type_map
+                    annotation_json_type_map[anno] for arg_types in param.annotation.__args__
+                    for anno in [str(arg_types).split("'")[1]] if anno in annotation_json_type_map
                 ]
                 assert len(param_type) == 1, \
                     f"There must be only one valid annotation type that maps to json! {len(param_type)} found."
