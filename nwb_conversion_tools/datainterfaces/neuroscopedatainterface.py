@@ -27,8 +27,10 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         self.subset_channels = sorted(all_shank_channels)
 
     def get_xml(self):
-        file_path = Path(self.input_args['file_path'])
-        session_path = file_path.parent
+        if 'file_path' in self.source_data:
+            session_path = Path(self.source_data['file_path']).parent
+        elif 'folder_path' in self.source_data:
+            session_path = Path(self.source_data['folder_path'])
         session_id = session_path.stem
         xml_filepath = session_path / f"{session_id}.xml"
         root = et.parse(str(xml_filepath.absolute())).getroot()
@@ -37,8 +39,10 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
-        file_path = Path(self.input_args['file_path'])
-        session_path = file_path.parent
+        if 'file_path' in self.source_data:
+            session_path = Path(self.source_data['file_path']).parent
+        elif 'folder_path' in self.source_data:
+            session_path = Path(self.source_data['folder_path'])
         session_id = session_path.stem
         xml_filepath = session_path / f"{session_id}.xml"
         root = et.parse(str(xml_filepath.absolute())).getroot()
@@ -84,6 +88,12 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             )
         )
         return ecephys_metadata
+
+
+class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
+    """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
+
+    RX = se.NeuroscopeMultiRecordingTimeExtractor
 
 
 class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
