@@ -70,12 +70,12 @@ def get_schema_from_method_signature(class_method, exclude=None):
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
-                types = [str(x).split("'")[1] for x in param.annotation.__args__]
-                intersect_valid_keys = list(set(annotation_json_type_map).intersection(types))
-                assert len(intersect_valid_keys) == 1, \
-                    "There must be only one valid annotation type that maps to json! " \
-                    f"{len(intersect_valid_keys)} found."
-                param_type = annotation_json_type_map[intersect_valid_keys[0]]
+                param_type = [
+                    annotation_json_type_map[y] for x in param.annotation.__args__
+                    for y in [str(x).split("'")[1]] if y in annotation_json_type_map
+                ]
+                assert len(param_type) == 1, \
+                    f"There must be only one valid annotation type that maps to json! {len(param_type)} found."
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
                                           "is not implemented! Please request it to be added at github.com/"
@@ -83,7 +83,7 @@ def get_schema_from_method_signature(class_method, exclude=None):
 
             arg_spec = {
                 param_name: dict(
-                    type=param_type
+                    type=param_type[0]
                 )
             }
             if param.default is param.empty:
