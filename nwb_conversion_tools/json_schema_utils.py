@@ -67,8 +67,8 @@ def get_schema_from_method_signature(class_method, exclude=None):
         list="array"
     )
 
-    for param in inspect.signature(class_method).parameters.values():
-        if param.name not in exclude:
+    for param_name, param in inspect.signature(class_method).parameters.items():
+        if param_name not in exclude:
             if param.annotation:
                 anno = str(param.annotation)
                 if "typing.Union" in anno:
@@ -89,14 +89,14 @@ def get_schema_from_method_signature(class_method, exclude=None):
                                           "catalystneuro/nwb-conversion-tools/issues.")
 
             arg_spec = {
-                param.name: dict(
+                param_name: dict(
                     type=param_type
                 )
             }
             if param.default is param.empty:
-                input_schema['required'].append(param.name)
+                input_schema['required'].append(param_name)
             elif param.default is not None:
-                arg_spec[param.name].update(default=param.default)
+                arg_spec[param_name].update(default=param.default)
             input_schema['properties'].update(arg_spec)
         input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
