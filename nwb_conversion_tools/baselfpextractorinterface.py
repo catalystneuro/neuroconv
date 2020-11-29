@@ -65,11 +65,12 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         if 'LFP' not in ecephys_mod.data_interfaces:
             ecephys_mod.add_data_interface(LFP(name='LFP'))
 
-        if isinstance(lfp_extractor.get_traces(), np.memmap):
+        traces = lfp_extractor.get_traces()
+        if isinstance(traces, np.memmap):
             n_bytes = np.dtype(lfp_extractor.get_dtype()).itemsize
             buffer_size = int(buffer_mb * 1e6) // (lfp_extractor.get_num_channels() * n_bytes)
             lfp_data = DataChunkIterator(
-                lfp_extractor.get_traces(),
+                traces,
                 buffer_size=buffer_size
             )
         else:
