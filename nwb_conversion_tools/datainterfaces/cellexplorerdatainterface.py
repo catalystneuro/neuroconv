@@ -44,7 +44,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if 'region' in cell_info_fields:
                 unit_properties.append(
                     dict(
-                        name="region",
+                        name="location",
                         description="Brain region where each unit was detected.",
                         data=[str(x[0]) for x in cell_info['region'][0][0][0]]
                     )
