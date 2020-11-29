@@ -54,7 +54,9 @@ def get_schema_from_method_signature(class_method, exclude=None):
 
     """
     if exclude is None:
-        exclude = []
+        exclude = ['self']
+    else:
+        exclude = exclude + ['self']
     input_schema = get_base_schema()
     annotation_json_type_map = dict(
         bool="boolean",
@@ -66,12 +68,12 @@ def get_schema_from_method_signature(class_method, exclude=None):
     )
 
     for param in inspect.signature(class_method).parameters.values():
-        if param.name not in exclude + ['self']:
+        if param.name not in exclude:
             if param.annotation:
                 anno = str(param.annotation)
                 if "typing.Union" in anno:
                     types = re.search("typing.Union\[(.*)\]", anno).group(1).split(",")
-                    intersect_valid_keys = list(set(annotation_json_type_map.keys()).intersection(types))
+                    intersect_valid_keys = list(set(annotation_json_type_map).intersection(types))
                     assert len(intersect_valid_keys) == 1, \
                         "There must be only one valid annotation type that maps to json! " \
                         f"{len(intersect_valid_keys)} found."
