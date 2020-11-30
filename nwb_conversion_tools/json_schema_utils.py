@@ -1,6 +1,7 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
+import numpy as np
 
 
 def dict_deep_update(d, u):
@@ -53,33 +54,46 @@ def get_schema_from_method_signature(class_method, exclude=None):
 
     """
     if exclude is None:
-        exclude = []
+        exclude = ['self']
+    else:
+        exclude = exclude + ['self']
     input_schema = get_base_schema()
-    annotation_json_type_map = dict(
-        bool="boolean",
-        str="string",
-        int="number",
-        float="number",
-        dict="object",
-        list="array"
-    )
+    annotation_json_type_map = {
+        bool: "boolean",
+        str: "string",
+        int: "number",
+        float: "number",
+        dict: "object",
+        list: "array"
+    }
 
-    for param in inspect.signature(class_method).parameters.values():
-        if param.name not in exclude + ['self']:
+    for param_name, param in inspect.signature(class_method).parameters.items():
+        if param_name not in exclude:
             if param.annotation:
-                param_type = annotation_json_type_map[str(param.annotation).split("'")[1]]
+                valid_args = [x in annotation_json_type_map for x in param.annotation.__args__]
+                if any(valid_args):
+                    param_type = [annotation_json_type_map[x] for x in np.array(param.annotation.__args__)[valid_args]]
+                else:
+                    raise ValueError("There must be only one valid annotation type that maps to json! "
+                                     f"{param.annotation.__args__} found.")
+
+                if len(set(param_type)) > 1:
+                    raise ValueError("Conflicting json parameter types were detected from the annotation! "
+                                     f"{param.annotation.__args__} found.")
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
-                                          "is not assigned! Please implement.")
+                                          "is not implemented! Please request it to be added at github.com/"
+                                          "catalystneuro/nwb-conversion-tools/issues or create the json-schema"
+                                          "for this method manually.")
             arg_spec = {
-                param.name: dict(
-                    type=param_type
+                param_name: dict(
+                    type=param_type[0]
                 )
             }
             if param.default is param.empty:
-                input_schema['required'].append(param.name)
+                input_schema['required'].append(param_name)
             elif param.default is not None:
-                arg_spec[param.name].update(default=param.default)
+                arg_spec[param_name].update(default=param.default)
             input_schema['properties'].update(arg_spec)
         input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
