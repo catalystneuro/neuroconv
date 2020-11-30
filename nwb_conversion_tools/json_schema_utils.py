@@ -1,7 +1,6 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
-import re
 
 
 def dict_deep_update(d, u):
@@ -80,7 +79,6 @@ def get_schema_from_method_signature(class_method, exclude=None):
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
                                           "is not implemented! Please request it to be added at github.com/"
                                           "catalystneuro/nwb-conversion-tools/issues.")
-
             arg_spec = {
                 param_name: dict(
                     type=param_type[0]
