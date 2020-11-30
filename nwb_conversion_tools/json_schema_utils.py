@@ -1,6 +1,7 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
+import numpy as np
 
 
 def dict_deep_update(d, u):
@@ -69,12 +70,16 @@ def get_schema_from_method_signature(class_method, exclude=None):
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
-                param_type = [
-                    annotation_json_type_map[arg_type] for arg_type in param.annotation.__args__
-                    if arg_type in annotation_json_type_map
-                ]
-                assert len(param_type) == 1, \
-                    f"There must be only one valid annotation type that maps to json! {len(param_type)} found."
+                valid_args = [x in annotation_json_type_map for x in param.annotation.__args__]
+                if any(valid_args):
+                    param_type = [annotation_json_type_map[x] for x in np.array(param.annotation.__args__)[valid_args]]
+                else:
+                    raise ValueError("There must be only one valid annotation type that maps to json! "
+                                     f"{param.annotation.__args__} found.")
+
+                if len(set(param_type)) > 1:
+                    raise ValueError("Conflicting json parameter types were detected from the annotation! "
+                                     f"{param.annotation.__args__} found.")
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
                                           "is not implemented! Please request it to be added at github.com/"
