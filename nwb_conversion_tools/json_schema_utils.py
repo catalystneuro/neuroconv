@@ -58,21 +58,21 @@ def get_schema_from_method_signature(class_method, exclude=None):
     else:
         exclude = exclude + ['self']
     input_schema = get_base_schema()
-    annotation_json_type_map = dict(
-        bool="boolean",
-        str="string",
-        int="number",
-        float="number",
-        dict="object",
-        list="array"
-    )
+    annotation_json_type_map = {
+        bool: "boolean",
+        str: "string",
+        int: "number",
+        float: "number",
+        dict: "object",
+        list: "array"
+    }
 
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
                 param_type = [
-                    annotation_json_type_map[arg_type.__name__] for arg_type in param.annotation.__args__
-                    if arg_type.__name__ in annotation_json_type_map
+                    annotation_json_type_map[arg_type] for arg_type in param.annotation.__args__
+                    if arg_type in annotation_json_type_map
                 ]
                 assert len(param_type) == 1, \
                     f"There must be only one valid annotation type that maps to json! {len(param_type)} found."
