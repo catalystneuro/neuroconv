@@ -1,14 +1,23 @@
 """Authors: Cody Baker and Ben Dichter."""
 import spikeextractors as se
-from pyintan.intan import read_rhd
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+
+try:
+    from pyintan.intan import read_rhd
+    HAVE_PYINTAN = True
+except ImportError:
+    HAVE_PYINTAN = False
+INSTALL_MESSAGE = "Please install pyintan to use this extractor!"
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a IntanRecordingExtractor."""
 
     RX = se.IntanRecordingExtractor
+
+    def __init__(self, *args, **kwargs):
+        assert HAVE_PYINTAN, INSTALL_MESSAGE
+        super().__init__(*args, **kwargs)
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Intan format."""

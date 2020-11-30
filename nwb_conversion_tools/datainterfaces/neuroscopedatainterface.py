@@ -3,10 +3,16 @@ from pathlib import Path
 
 import numpy as np
 import spikeextractors as se
-from lxml import etree as et
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+
+try:
+    from lxml import etree as et
+    HAVE_LXML = True
+except ImportError:
+    HAVE_LXML = False
+INSTALL_MESSAGE = "Please install lxml to use this extractor!"
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -15,10 +21,11 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     RX = se.NeuroscopeRecordingExtractor
 
     def __init__(self, *args, **kwargs):
+        assert HAVE_LXML, INSTALL_MESSAGE
+
         super().__init__(*args, **kwargs)
 
         root = self.get_xml()
-
         shank_channels = [[int(channel.text)
                            for channel in group.find('channels')]
                           for group in root.find('spikeDetection').find('channelGroups').findall('group')]
