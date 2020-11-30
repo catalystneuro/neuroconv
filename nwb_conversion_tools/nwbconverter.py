@@ -103,6 +103,11 @@ class NWBConverter:
 
         nwbfile_kwargs = metadata['NWBFile']
         if 'Subject' in metadata:
+            # convert ISO 8601 string to datetime
+            if 'date_of_birth' in metadata['Subject'] and isinstance(metadata['Subject']['date_of_birth'], str):
+                metadata['Subject']['date_of_birth'] = datetime.fromisoformat(
+                    metadata['Subject']['date_of_birth']
+                )
             nwbfile_kwargs.update(subject=Subject(**metadata['Subject']))
         # convert ISO 8601 string to datetime
         if isinstance(nwbfile_kwargs['session_start_time'], str):
