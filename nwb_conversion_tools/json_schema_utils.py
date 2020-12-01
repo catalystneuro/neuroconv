@@ -4,15 +4,17 @@ import inspect
 import numpy as np
 
 
-def dict_deep_update(d, u):
+def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
     """Perform an update to all nested keys of dictionary d from dictionary u."""
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, {}), v)
-        elif isinstance(v, list):
+            d[k] = dict_deep_update(d.get(k, {}), v,
+                                    append_list=append_list,
+                                    remove_repeats=remove_repeats)
+        elif append_list and isinstance(v, list):
             d[k] = d.get(k, []) + v
             # Remove repeated items if they exist
-            if len(v) > 0 and not isinstance(v[0], dict):
+            if remove_repeats and len(v) > 0 and not isinstance(v[0], dict):
                 d[k] = list(set(d[k]))
         else:
             d[k] = v

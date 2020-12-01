@@ -2,7 +2,11 @@ import json
 from pathlib import Path
 from typing import Union
 
-from nwb_conversion_tools.json_schema_utils import get_schema_from_method_signature
+from nwb_conversion_tools.json_schema_utils import get_schema_from_method_signature, dict_deep_update
+
+
+def compare_dicts(a: dict, b: dict):
+    assert json.dumps(a, sort_keys=True, indent=2) == json.dumps(b, sort_keys=True, indent=2)
 
 
 def test_get_schema_from_method_signature():
@@ -33,4 +37,38 @@ def test_get_schema_from_method_signature():
         type="object"
     )
 
-    assert json.dumps(schema, sort_keys=True, indent=2) == json.dumps(correct_schema, sort_keys=True, indent=2)
+    compare_dicts(schema, correct_schema)
+
+
+def test_dict_deep_update():
+
+    a = dict(
+        a=1,
+        b='hello',
+        c=dict(
+            a=2
+        ),
+        d=[1, 2, 3]
+    )
+
+    b = dict(
+        a=3,
+        b='goodbye',
+        c=dict(
+            b=1
+        ),
+        d=[4, 5, 6]
+    )
+
+    result = dict_deep_update(a, b)
+
+    correct_result = {'a': 3, 'b': 'goodbye', 'c': {'a': 2, 'b': 1}, 'd': [1, 2, 3, 4, 5, 6]}
+
+    compare_dicts(result, correct_result)
+
+    result2 = dict_deep_update(a, b, append_list=False)
+
+    correct_result2 = {'a': 3, 'b': 'goodbye', 'c': {'a': 2, 'b': 1}, 'd': [4, 5, 6]}
+
+    compare_dicts(result2, correct_result2)
+
