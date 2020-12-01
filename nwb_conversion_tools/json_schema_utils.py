@@ -1,6 +1,7 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
+
 import numpy as np
 
 
