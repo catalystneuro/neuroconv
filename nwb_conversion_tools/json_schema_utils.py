@@ -19,7 +19,7 @@ def dict_deep_update(d, u):
     return d
 
 
-def get_base_schema(tag=None, root=False, id_=None, **kwargs):
+def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=[],
@@ -39,9 +39,9 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs):
     return base_schema
 
 
-def get_schema_from_method_signature(class_method, exclude=None):
+def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
-    Take a class method and return a jsonschema of the input args.
+    Take a class method and return a json-schema of the input args.
 
     Parameters
     ----------
