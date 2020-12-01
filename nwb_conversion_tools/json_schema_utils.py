@@ -19,7 +19,7 @@ def dict_deep_update(d, u):
     return d
 
 
-def get_base_schema(tag=None, root=False, id_=None, **kwargs):
+def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=[],
@@ -39,9 +39,9 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs):
     return base_schema
 
 
-def get_schema_from_method_signature(class_method, exclude=None):
+def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
-    Take a class method and return a jsonschema of the input args.
+    Take a class method and return a json-schema of the input args.
 
     Parameters
     ----------
@@ -70,9 +70,14 @@ def get_schema_from_method_signature(class_method, exclude=None):
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
-                valid_args = [x in annotation_json_type_map for x in param.annotation.__args__]
+                if hasattr(param.annotation, "__args__"):
+                    args = param.annotation.__args__
+                else:
+                    args = [param.annotation]
+
+                valid_args = [x in annotation_json_type_map for x in args]
                 if any(valid_args):
-                    param_type = [annotation_json_type_map[x] for x in np.array(param.annotation.__args__)[valid_args]]
+                    param_type = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
                 else:
                     raise ValueError("There must be only one valid annotation type that maps to json! "
                                      f"{param.annotation.__args__} found.")
