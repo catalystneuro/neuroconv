@@ -2,7 +2,7 @@
 import roiextractors as re
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_schema_from_method_signature
+from .json_schema_utils import get_schema_from_method_signature, fill_defaults
 
 
 class BaseImagingExtractorInterface(BaseDataInterface):
