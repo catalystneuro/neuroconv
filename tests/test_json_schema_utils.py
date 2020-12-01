@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Union
 
-from nwb_conversion_tools.json_schema_utils import get_schema_from_method_signature, dict_deep_update
+from nwb_conversion_tools.json_schema_utils import get_schema_from_method_signature, dict_deep_update, fill_defaults
 
 
 def compare_dicts(a: dict, b: dict):
@@ -72,3 +72,63 @@ def test_dict_deep_update():
 
     compare_dicts(result2, correct_result2)
 
+
+def test_fill_defaults():
+
+    schema = dict(
+        additionalProperties=False,
+        properties=dict(
+            a=dict(type="number"),
+            b=dict(type="number"),
+            c=dict(type="string"),
+            d=dict(type="boolean"),
+            e=dict(
+                default="hi",
+                type="string"
+            )
+        ),
+        required=[
+            "a",
+            "b",
+            "c",
+            "d",
+        ],
+        type="object"
+    )
+
+    defaults = dict(
+        a=3,
+        c="bye",
+        e="new"
+    )
+
+    fill_defaults(schema, defaults)
+
+    correct_new_schema = dict(
+        additionalProperties=False,
+        properties=dict(
+            a=dict(
+                type="number",
+                default=3
+            ),
+            b=dict(type="number"),
+            c=dict(
+                type="string",
+                default="bye"
+            ),
+            d=dict(type="boolean"),
+            e=dict(
+                default="new",
+                type="string"
+            )
+        ),
+        required=[
+            "a",
+            "b",
+            "c",
+            "d",
+        ],
+        type="object"
+    )
+
+    compare_dicts(schema, correct_new_schema)
