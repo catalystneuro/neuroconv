@@ -45,26 +45,24 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata = super().get_metadata()
         metadata.update(
             Ecephys=dict(
-                ElectricalSeries=dict(),
                 Device=[],
                 ElectrodeGroup=[],
-                Electrodes=[]
+                Electrodes=[],
+                ElectricalSeries=dict(),
             )
         )
         return metadata
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
+    def subset_recording(self, stub_test: bool = False):
         """
-        Primary function for converting recording extractor data to nwb.
+        Subset a recording extractor according to stub and channel subset options.
 
         Parameters
         ----------
-        nwbfile: pynwb.NWBFile
-        metadata: dict
-        stub_test: bool, optional (default False)
-            If True, will truncate the data to run the conversion faster and take up less memory.
+        recording_extractor : se.RecordingExtractor
+        stub_test : bool, optional (default False)
+        subset_channels : Optional[list], optional
         """
-        recording_extractor = self.recording_extractor
         if stub_test or self.subset_channels is not None:
             kwargs = dict()
 
@@ -80,7 +78,20 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                 self.recording_extractor,
                 **kwargs
             )
+        return recording_extractor
 
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
+        """
+        Primary function for converting recording extractor data to nwb.
+
+        Parameters
+        ----------
+        nwbfile: pynwb.NWBFile
+        metadata: dict
+        stub_test: bool, optional (default False)
+            If True, will truncate the data to run the conversion faster and take up less memory.
+        """
+        recording_extractor = self.subset_recording(stub_test=stub_test)
         se.NwbRecordingExtractor.write_recording(
             recording_extractor,
             nwbfile=nwbfile,

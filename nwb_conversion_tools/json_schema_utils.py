@@ -50,11 +50,9 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
     ----------
     class_method: function
     exclude: list, optional
-
     Returns
     -------
     dict
-
     """
     if exclude is None:
         exclude = ['self']
@@ -127,13 +125,13 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 
 
 def unroot_schema(schema: dict):
-    """Modifies a json-schema dictionary to make it not root
+    """
+    Modify a json-schema dictionary to make it not root.
 
     Parameters
     ----------
     schema: dict
     """
-
     terms = ('required', 'properties', 'type', 'additionalProperties',
              'title', 'description')
     return {k: v for k, v in schema.items() if k in terms}
