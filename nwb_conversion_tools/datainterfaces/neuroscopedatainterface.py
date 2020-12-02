@@ -141,8 +141,10 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
 
     def get_metadata(self):
         """Auto-populates spiking unit metadata."""
+        session_path = Path(self.source_data['folder_path'])
+        session_id = session_path.stem
         metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(
-            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
+            xml_file_path=str((session_path / f"{session_id}.xml").absolute())
         )
         metadata.update(UnitProperties=[])
         return metadata
