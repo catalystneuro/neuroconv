@@ -12,6 +12,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
+        metadata['Ecephys'].pop('ElectricalSeries')
         metadata['Ecephys'].update(
             LFPElectricalSeries=dict(),
         )
