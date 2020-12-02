@@ -117,9 +117,16 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
-        return NeuroscopeRecordingInterface.get_ecephys_metadata(
+        metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(
             xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
         )
+        metadata['Ecephys'].update(
+            LFPElectricalSeries=dict(
+                name="LFP",
+                description="Local field potential signal."
+            )
+        )
+        return metadata
 
 
 class NeuroscopeSortingInterface(BaseSortingExtractorInterface):

@@ -9,6 +9,14 @@ from .utils import subset_recording
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
+    def get_metadata(self):
+        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        metadata = super().get_metadata()
+        metadata['Ecephys'].update(
+            LFPElectricalSeries=dict(),
+        )
+        return metadata
+
     def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
         """
         Primary function for converting LFP extractor data to nwb.
