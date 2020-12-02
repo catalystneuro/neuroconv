@@ -7,7 +7,7 @@ from pynwb import NWBFile
 from pynwb.ecephys import SpikeEventSeries
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_schema_from_hdmf_class, add_ecephys_metadata
+from .utils import get_schema_from_hdmf_class
 from .json_schema_utils import get_base_schema, get_schema_from_method_signature, fill_defaults
 
 
@@ -37,8 +37,6 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                        write_ecephys_metadata: bool = False):
         if 'UnitProperties' not in metadata:
             metadata['UnitProperties'] = []
-        if write_ecephys_metadata:
-            add_ecephys_metadata(nwbfile, metadata)
 
         property_descriptions = dict()
         if stub_test:

@@ -4,40 +4,38 @@ from datetime import datetime
 import numpy as np
 import pynwb
 import spikeextractors as se
+from typing import Optional
 
 from .json_schema_utils import get_base_schema
 
 
-def add_ecephys_metadata(nwbfile: pynwb.NWBFile, metadata: dict):
-    """Add information contained in the 'Ecephys' key of the metadata to the NWBFile."""
-    if 'Ecephys' in metadata:
-        n_channels = max([len(x['data']) for x in metadata['Ecephys']['Electrodes']])
-        recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
-        se.NwbRecordingExtractor.add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
-        se.NwbRecordingExtractor.add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-        se.NwbRecordingExtractor.add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
-
-def check_module(nwbfile: pynwb.NWBFile, name: str, description: str = None):
+def subset_recording(recording_extractor: se.RecordingExtractor, stub_test: bool = False,
+                     subset_channels: Optional[list] = None):
     """
-    Check if processing module exists. If not, create it. Then return module.
+    Subset a recording extractor according to stub and channel subset options.
 
     Parameters
     ----------
-    nwbfile: pynwb.NWBFile
-    name: str
-    description: str | None (optional)
-
-    Returns
-    -------
-    pynwb.module
+    recording_extractor : se.RecordingExtractor
+    stub_test : bool, optional (default False)
+    subset_channels : Optional[list], optional
     """
-    if name in nwbfile.modules:
-        return nwbfile.modules[name]
-    else:
-        if description is None:
-            description = name
-        return nwbfile.create_processing_module(name, description)
+    if stub_test or subset_channels is not None:
+        kwargs = dict()
+
+        if stub_test:
+            num_frames = 100
+            end_frame = min([num_frames, recording_extractor.get_num_frames()])
+            kwargs.update(end_frame=end_frame)
+
+        if subset_channels is not None:
+            kwargs.update(channel_ids=subset_channels)
+
+        recording_extractor = se.SubRecordingExtractor(
+            recording_extractor,
+            **kwargs
+        )
+    return recording_extractor
 
 
 def get_schema_from_hdmf_class(hdmf_class):
