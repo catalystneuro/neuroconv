@@ -18,6 +18,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         session_path = Path(self.source_data['spikes_matfile_path']).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recoring or lfp are included in conversion
+        metadata = dict(NWBFile=dict(session_id=session_id))
 
         unit_properties = []
         cell_filepath = session_path / f"{session_id}.spikes.cellinfo.mat"
@@ -62,5 +63,5 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                         data=[str(celltype_mapping[str(x[0])]) for x in celltype_info['label'][0][0][0]]
                     )
                 )
-
-        return dict(UnitProperties=unit_properties)
+        metadata.update(UnitProperties=unit_properties)
+        return metadata
