@@ -79,11 +79,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
                         description="The name of the ElectrodeGroup this electrode is a part of.",
                         data=[f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
                     )
-                ],
-                ElectricalSeries=dict(
-                    name='ElectricalSeries',
-                    description="Raw acquisition traces."
-                )
+                ]
             )
         )
 
@@ -98,9 +94,17 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
-        return NeuroscopeRecordingInterface.get_ecephys_metadata(
+        metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(
             xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
         )
+        metadata['Ecephys'].update(
+            ElectricalSeries=dict(
+                name='ElectricalSeries',
+                description="Raw acquisition traces."
+            )
+        )
+
+        return metadata
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
@@ -126,6 +130,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
                 description="Local field potential signal."
             )
         )
+
         return metadata
 
 
