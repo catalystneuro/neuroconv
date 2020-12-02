@@ -1,36 +1,34 @@
-from abc import ABC
-
 from roiextractors import CnmfeSegmentationExtractor, ExtractSegmentationExtractor, \
     CaimanSegmentationExtractor, Suite2pSegmentationExtractor, SimaSegmentationExtractor
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
-class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface, ABC):
+class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for CnmfeRecordingInterface"""
 
     SegX = CnmfeSegmentationExtractor
 
 
-class ExtractSegmentationInterface(BaseSegmentationExtractorInterface, ABC):
+class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for ExtractSegmentationExtractor"""
 
     SegX = ExtractSegmentationExtractor
 
 
-class CaimanSegmentationInterface(BaseSegmentationExtractorInterface, ABC):
+class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for CaimanSegmentationExtractor"""
 
     SegX = CaimanSegmentationExtractor
 
 
-class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface, ABC):
+class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Suite2pSegmentationExtractor"""
 
     SegX = Suite2pSegmentationExtractor
 
 
-class SimaSegmentationInterface(BaseSegmentationExtractorInterface, ABC):
+class SimaSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for SimaSegmentationExtractor"""
 
     SegX = SimaSegmentationExtractor

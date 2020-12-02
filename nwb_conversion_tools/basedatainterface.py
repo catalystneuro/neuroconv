@@ -1,12 +1,12 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import warnings
 
 from .json_schema_utils import (
     get_base_schema, get_schema_from_method_signature, fill_defaults)
 
 
-class BaseDataInterface:
+class BaseDataInterface(ABC):
 
     @classmethod
     def get_source_schema(cls):
