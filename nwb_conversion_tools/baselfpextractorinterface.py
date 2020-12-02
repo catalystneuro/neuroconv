@@ -3,7 +3,6 @@ import spikeextractors as se
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .utils import subset_recording
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
@@ -31,11 +30,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         write_ecephys_metadata: bool, optional (default False)
             If True, will use the information in metadata['Ecephys'] to write electrode metadata into the NWBFile.
         """
-        recording_extractor = subset_recording(
-            recording_extractor=self.recording_extractor,
-            stub_test=stub_test,
-            subset_channels=self.subset_channels
-        )
+        recording_extractor = self.subset_recording(stub_test=stub_test)
         se.NwbRecordingExtractor.write_recording(
             recording_extractor,
             nwbfile=nwbfile,

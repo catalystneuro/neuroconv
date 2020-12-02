@@ -3,11 +3,17 @@ from pathlib import Path
 
 import numpy as np
 import spikeextractors as se
-from lxml import etree as et
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+
+try:
+    from lxml import etree as et
+    HAVE_LXML = True
+except ImportError:
+    HAVE_LXML = False
+INSTALL_MESSAGE = "Please install lxml to use this extractor!"
 
 
 def get_xml_file_path(data_file_path: str):
@@ -105,6 +111,12 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         )
 
         return metadata
+
+
+class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
+    """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
+
+    RX = se.NeuroscopeMultiRecordingTimeExtractor
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
