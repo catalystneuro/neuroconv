@@ -141,4 +141,8 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
 
     def get_metadata(self):
         """Auto-populates spiking unit metadata."""
-        raise NotImplementedError("get_metadata() for NeuroscopeSortingInterface is not yet implemented!")
+        metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
+        )
+        metadata.update(UnitProperties=[])
+        return metadata

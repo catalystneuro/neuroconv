@@ -37,6 +37,24 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                        write_ecephys_metadata: bool = False):
         if 'UnitProperties' not in metadata:
             metadata['UnitProperties'] = []
+        if write_ecephys_metadata and 'Ecephys' in metadata:
+            n_channels = max([len(x['data']) for x in metadata['Ecephys']['Electrodes']])
+            recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
+            se.NwbRecordingExtractor.add_devices(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata
+            )
+            se.NwbRecordingExtractor.add_electrode_groups(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata
+            )
+            se.NwbRecordingExtractor.add_electrodes(
+                recording=recording,
+                nwbfile=nwbfile,
+                metadata=metadata
+            )
 
         property_descriptions = dict()
         if stub_test:
@@ -53,14 +71,13 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             sorting_extractor = self.sorting_extractor
 
         for metadata_column in metadata['UnitProperties']:
-            if len(metadata_column['data']) == len(sorting_extractor.get_unit_ids()):
-                property_descriptions.update({metadata_column['name']: metadata_column['description']})
-                for unit_id in sorting_extractor.get_unit_ids():
-                    if metadata_column['name'] == 'electrode_group':
-                        data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
-                    else:
-                        data = metadata_column['data'][unit_id]
-                    sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
+            property_descriptions.update({metadata_column['name']: metadata_column['description']})
+            for unit_id in sorting_extractor.get_unit_ids():
+                if metadata_column['name'] == 'electrode_group':
+                    data = nwbfile.electrode_groups[metadata_column['data'][unit_id]]
+                else:
+                    data = metadata_column['data'][unit_id]
+                sorting_extractor.set_unit_property(unit_id, metadata_column['name'], data)
 
         se.NwbSortingExtractor.write_sorting(
             sorting_extractor,

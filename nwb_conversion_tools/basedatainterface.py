@@ -8,10 +8,6 @@ from .json_schema_utils import (
 
 class BaseDataInterface:
 
-    @staticmethod
-    def get_ecephys_metadata(data_file_path: str):
-        raise NotImplementedError("The get_ecephys_metadata method has not been configured for this class!")
-
     @classmethod
     def get_source_schema(cls):
         return get_base_schema()
