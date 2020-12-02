@@ -2,23 +2,27 @@
 import collections.abc
 import inspect
 
+import numpy as np
 
-def dict_deep_update(d, u):
+
+def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
     """Perform an update to all nested keys of dictionary d from dictionary u."""
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, {}), v)
-        elif isinstance(v, list):
+            d[k] = dict_deep_update(d.get(k, {}), v,
+                                    append_list=append_list,
+                                    remove_repeats=remove_repeats)
+        elif append_list and isinstance(v, list):
             d[k] = d.get(k, []) + v
             # Remove repeated items if they exist
-            if len(v) > 0 and not isinstance(v[0], dict):
+            if remove_repeats and len(v) > 0 and not isinstance(v[0], dict):
                 d[k] = list(set(d[k]))
         else:
             d[k] = v
     return d
 
 
-def get_base_schema(tag=None, root=False, id_=None, **kwargs):
+def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=[],
@@ -38,9 +42,9 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs):
     return base_schema
 
 
-def get_schema_from_method_signature(class_method, exclude=None):
+def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
-    Take a class method and return a jsonschema of the input args.
+    Take a class method and return a json-schema of the input args.
 
     Parameters
     ----------
@@ -51,33 +55,51 @@ def get_schema_from_method_signature(class_method, exclude=None):
     dict
     """
     if exclude is None:
-        exclude = []
+        exclude = ['self']
+    else:
+        exclude = exclude + ['self']
     input_schema = get_base_schema()
-    annotation_json_type_map = dict(
-        bool="boolean",
-        str="string",
-        int="number",
-        float="number",
-        dict="object",
-        list="array"
-    )
+    annotation_json_type_map = {
+        bool: "boolean",
+        str: "string",
+        int: "number",
+        float: "number",
+        dict: "object",
+        list: "array"
+    }
 
-    for param in inspect.signature(class_method).parameters.values():
-        if param.name not in exclude + ['self']:
+    for param_name, param in inspect.signature(class_method).parameters.items():
+        if param_name not in exclude:
             if param.annotation:
-                param_type = annotation_json_type_map[str(param.annotation).split("'")[1]]
+                if hasattr(param.annotation, "__args__"):
+                    args = param.annotation.__args__
+                else:
+                    args = [param.annotation]
+
+                valid_args = [x in annotation_json_type_map for x in args]
+                if any(valid_args):
+                    param_type = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
+                else:
+                    raise ValueError("There must be only one valid annotation type that maps to json! "
+                                     f"{param.annotation.__args__} found.")
+
+                if len(set(param_type)) > 1:
+                    raise ValueError("Conflicting json parameter types were detected from the annotation! "
+                                     f"{param.annotation.__args__} found.")
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
-                                          "is not assigned! Please implement.")
+                                          "is not implemented! Please request it to be added at github.com/"
+                                          "catalystneuro/nwb-conversion-tools/issues or create the json-schema"
+                                          "for this method manually.")
             arg_spec = {
-                param.name: dict(
-                    type=param_type
+                param_name: dict(
+                    type=param_type[0]
                 )
             }
             if param.default is param.empty:
-                input_schema['required'].append(param.name)
+                input_schema['required'].append(param_name)
             elif param.default is not None:
-                arg_spec[param.name].update(default=param.default)
+                arg_spec[param_name].update(default=param.default)
             input_schema['properties'].update(arg_spec)
         input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
