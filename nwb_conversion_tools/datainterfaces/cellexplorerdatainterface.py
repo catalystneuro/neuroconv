@@ -50,7 +50,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
 
-        celltype_mapping = {'pE': "excitatory", 'pI': "inhibitory"}
+        celltype_mapping = {'pE': "excitatory", 'pI': "inhibitory", '[]': 'unclassified'}
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
             celltype_info = loadmat(celltype_filepath).get('CellClass', np.empty(0))
@@ -59,7 +59,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     dict(
                         name="cell_type",
                         description="Type of cell this has been classified as.",
-                        data=[str(celltype_mapping[x[0]]) for x in celltype_info['label'][0][0][0]]
+                        data=[str(celltype_mapping[str(x[0])]) for x in celltype_info['label'][0][0][0]]
                     )
                 )
 
