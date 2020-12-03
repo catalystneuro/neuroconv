@@ -56,6 +56,7 @@ class NWBConverter:
         self.data_interface_objects = {
             name: data_interface(**source_data[name])
             for name, data_interface in self.data_interface_classes.items()
+            if name in source_data
         }
 
     def get_metadata_schema(self):

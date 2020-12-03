@@ -1,25 +1,28 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
+
 import numpy as np
 
 
-def dict_deep_update(d, u):
+def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
     """Perform an update to all nested keys of dictionary d from dictionary u."""
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, {}), v)
-        elif isinstance(v, list):
+            d[k] = dict_deep_update(d.get(k, {}), v,
+                                    append_list=append_list,
+                                    remove_repeats=remove_repeats)
+        elif append_list and isinstance(v, list):
             d[k] = d.get(k, []) + v
             # Remove repeated items if they exist
-            if len(v) > 0 and not isinstance(v[0], dict):
+            if remove_repeats and len(v) > 0 and not isinstance(v[0], dict):
                 d[k] = list(set(d[k]))
         else:
             d[k] = v
     return d
 
 
-def get_base_schema(tag=None, root=False, id_=None, **kwargs):
+def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=[],
@@ -39,19 +42,17 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs):
     return base_schema
 
 
-def get_schema_from_method_signature(class_method, exclude=None):
+def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
-    Take a class method and return a jsonschema of the input args.
+    Take a class method and return a json-schema of the input args.
 
     Parameters
     ----------
     class_method: function
     exclude: list, optional
-
     Returns
     -------
     dict
-
     """
     if exclude is None:
         exclude = ['self']
@@ -70,9 +71,14 @@ def get_schema_from_method_signature(class_method, exclude=None):
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
-                valid_args = [x in annotation_json_type_map for x in param.annotation.__args__]
+                if hasattr(param.annotation, "__args__"):
+                    args = param.annotation.__args__
+                else:
+                    args = [param.annotation]
+
+                valid_args = [x in annotation_json_type_map for x in args]
                 if any(valid_args):
-                    param_type = [annotation_json_type_map[x] for x in np.array(param.annotation.__args__)[valid_args]]
+                    param_type = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
                 else:
                     raise ValueError("There must be only one valid annotation type that maps to json! "
                                      f"{param.annotation.__args__} found.")
@@ -119,13 +125,13 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 
 
 def unroot_schema(schema: dict):
-    """Modifies a json-schema dictionary to make it not root
+    """
+    Modify a json-schema dictionary to make it not root.
 
     Parameters
     ----------
     schema: dict
     """
-
     terms = ('required', 'properties', 'type', 'additionalProperties',
              'title', 'description')
     return {k: v for k, v in schema.items() if k in terms}
