@@ -36,7 +36,6 @@ class BaseDataInterface(ABC):
     def run_conversion(self, nwbfile_path: str, metadata: dict, **conversion_options):
         pass
 
-    @abstractmethod
     def convert_data(self, nwbfile_path, metadata, **conversion_options):
         warnings.warn("The convert_data method should now be renamed to run_conversion "
                       "as of nwb-conversion-tools v0.6.0", DeprecationWarning)
