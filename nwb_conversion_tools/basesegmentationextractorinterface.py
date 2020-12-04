@@ -8,7 +8,7 @@ from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhoton
 
 from .utils import get_schema_from_hdmf_class
 from .basedatainterface import BaseDataInterface
-from .json_schema_utils import get_schema_from_method_signature, fill_defaults
+from .json_schema_utils import get_schema_from_method_signature, fill_defaults, get_base_schema
 
 
 class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
@@ -25,16 +25,17 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
     def get_metadata_schema(self):
         """Compile metadata schema for the RoiExtractor."""
         metadata_schema = super().get_metadata_schema()
-
-        # Initiate Ecephys metadata
-        metadata_schema['properties']['Ophys'] = dict(
+        metadata_schema['required'] = ['Ophys']
+        # Initiate Ophys metadata
+        metadata_schema['properties']['Ophys'] = get_base_schema()
+        metadata_schema['properties']['Ophys']['properties'] = dict(
             Device=get_schema_from_hdmf_class(Device),
             Fluorescence=get_schema_from_hdmf_class(Fluorescence),
             ImageSegmentation=get_schema_from_hdmf_class(ImageSegmentation),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries)
         )
-        metadata_schema['properties']['Ecephys']['required'] = \
+        metadata_schema['properties']['Ophys']['required'] = \
             ['Device', 'Fluorescence', 'ImageSegmentation', 'ImagingPlane', 'TwoPhotonSeries']
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
@@ -44,6 +45,8 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         Must comply with metadata schema."""
         metadata = super().get_metadata()
         metadata.update(re.NwbSegmentationExtractor.get_nwb_metadata(self.segmentation_extractor))
+        metadata['Ophys'] = metadata.pop('ophys')
+        _ = metadata.pop('NWBFile')
         return metadata
 
     def run_conversion(self, nwbfile_path: str, metadata_dict: dict, overwrite: bool = False):
