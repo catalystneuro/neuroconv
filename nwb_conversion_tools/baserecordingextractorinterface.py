@@ -80,7 +80,8 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             )
         return recording_extractor
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False,
+                       use_timestamps: bool = False):
         """
         Primary function for converting recording extractor data to nwb.
 
@@ -95,5 +96,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         se.NwbRecordingExtractor.write_recording(
             recording_extractor,
             nwbfile=nwbfile,
-            metadata=metadata
+            metadata=metadata,
+            use_timestamps=use_timestamps
         )
