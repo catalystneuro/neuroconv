@@ -36,7 +36,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries)
         )
         metadata_schema['properties']['Ophys']['required'] = \
-            ['Device', 'Fluorescence', 'ImageSegmentation', 'ImagingPlane', 'TwoPhotonSeries']
+            ['Device', 'Fluorescence', 'ImageSegmentation']
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
@@ -45,7 +45,6 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         Must comply with metadata schema."""
         metadata = super().get_metadata()
         metadata.update(re.NwbSegmentationExtractor.get_nwb_metadata(self.segmentation_extractor))
-        metadata['Ophys'] = metadata.pop('ophys')
         _ = metadata.pop('NWBFile')
         return metadata
 
