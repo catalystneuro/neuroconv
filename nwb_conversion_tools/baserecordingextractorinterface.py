@@ -59,9 +59,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
         Parameters
         ----------
-        recording_extractor : se.RecordingExtractor
         stub_test : bool, optional (default False)
-        subset_channels : Optional[list], optional
         """
         kwargs = dict()
 
