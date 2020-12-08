@@ -1,12 +1,12 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import warnings
 
 from .json_schema_utils import (
     get_base_schema, get_schema_from_method_signature, fill_defaults)
 
 
-class BaseDataInterface:
+class BaseDataInterface(ABC):
 
     @classmethod
     def get_source_schema(cls):
@@ -36,7 +36,6 @@ class BaseDataInterface:
     def run_conversion(self, nwbfile_path: str, metadata: dict, **conversion_options):
         pass
 
-    @abstractmethod
     def convert_data(self, nwbfile_path, metadata, **conversion_options):
         warnings.warn("The convert_data method should now be renamed to run_conversion "
                       "as of nwb-conversion-tools v0.6.0", DeprecationWarning)
