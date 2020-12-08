@@ -86,7 +86,7 @@ class NWBConverter:
             NWBFile=dict(
                 session_description="no description",
                 identifier=str(uuid.uuid4()),
-                session_start_time=datetime(1900, 1, 1)
+                session_start_time=datetime(1970, 1, 1)
             )
         )
         for interface in self.data_interface_objects.values():

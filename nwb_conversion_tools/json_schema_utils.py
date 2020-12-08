@@ -73,19 +73,21 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
             if param.annotation:
                 if hasattr(param.annotation, "__args__"):
                     args = param.annotation.__args__
+                    valid_args = [x in annotation_json_type_map for x in args]
+                    if any(valid_args):
+                        param_types = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
+                    else:
+                        raise ValueError("No valid arguments were found in the json type mapping!")
+                    if len(set(param_types)) > 1:
+                        raise ValueError("Conflicting json parameter types were detected from the annotation! "
+                                         f"{param.annotation.__args__} found.")
+                    param_type = param_types[0]
                 else:
-                    args = [param.annotation]
-
-                valid_args = [x in annotation_json_type_map for x in args]
-                if any(valid_args):
-                    param_type = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
-                else:
-                    raise ValueError("There must be only one valid annotation type that maps to json! "
-                                     f"{param.annotation.__args__} found.")
-
-                if len(set(param_type)) > 1:
-                    raise ValueError("Conflicting json parameter types were detected from the annotation! "
-                                     f"{param.annotation.__args__} found.")
+                    arg = param.annotation
+                    if arg in annotation_json_type_map:
+                        param_type = annotation_json_type_map[arg]
+                    else:
+                        raise ValueError("No valid arguments were found in the json type mapping!")
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
                                           "is not implemented! Please request it to be added at github.com/"
@@ -93,7 +95,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                                           "for this method manually.")
             arg_spec = {
                 param_name: dict(
-                    type=param_type[0]
+                    type=param_type
                 )
             }
             if param.default is param.empty:
