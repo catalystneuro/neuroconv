@@ -59,25 +59,22 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
         Parameters
         ----------
-        recording_extractor : se.RecordingExtractor
         stub_test : bool, optional (default False)
-        subset_channels : Optional[list], optional
         """
-        if stub_test or self.subset_channels is not None:
-            kwargs = dict()
+        kwargs = dict()
 
-            if stub_test:
-                num_frames = 100
-                end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
-                kwargs.update(end_frame=end_frame)
+        if stub_test:
+            num_frames = 100
+            end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
+            kwargs.update(end_frame=end_frame)
 
-            if self.subset_channels is not None:
-                kwargs.update(channel_ids=self.subset_channels)
+        if self.subset_channels is not None:
+            kwargs.update(channel_ids=self.subset_channels)
 
-            recording_extractor = se.SubRecordingExtractor(
-                self.recording_extractor,
-                **kwargs
-            )
+        recording_extractor = se.SubRecordingExtractor(
+            self.recording_extractor,
+            **kwargs
+        )
         return recording_extractor
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
@@ -91,9 +88,12 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        recording_extractor = self.subset_recording(stub_test=stub_test)
+        if stub_test or self.subset_channels is not None:
+            recording = self.subset_recording(stub_test=stub_test)
+        else:
+            recording = self.recording_extractor
         se.NwbRecordingExtractor.write_recording(
-            recording_extractor,
+            recording=recording,
             nwbfile=nwbfile,
             metadata=metadata
         )

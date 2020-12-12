@@ -2,6 +2,8 @@
 import uuid
 from datetime import datetime
 from jsonschema import validate
+from pathlib import Path
+from typing import Optional
 
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
@@ -94,9 +96,12 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def run_conversion(self, metadata: dict, nwbfile_path: str = None, save_to_file: bool = True,
-                       conversion_options: dict = None):
+    def run_conversion(self, metadata: dict, save_to_file: bool = True, nwbfile_path: Optional[str] = None,
+                       overwrite: bool = False, nwbfile: Optional[NWBFile] = None,
+                       conversion_options: Optional[dict] = None):
         """Build nwbfile object, auto-populate with minimal values if missing."""
+        assert (not save_to_file and nwbfile_path is None) or nwbfile is None, \
+            "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
         if conversion_options is None:
             conversion_options = dict()
         else:
@@ -105,7 +110,8 @@ class NWBConverter:
         nwbfile_kwargs = metadata['NWBFile']
         if 'Subject' in metadata:
             # convert ISO 8601 string to datetime
-            if 'date_of_birth' in metadata['Subject'] and isinstance(metadata['Subject']['date_of_birth'], str):
+            if 'date_of_birth' in metadata['Subject'] \
+                    and isinstance(metadata['Subject']['date_of_birth'], str):
                 metadata['Subject']['date_of_birth'] = datetime.fromisoformat(
                     metadata['Subject']['date_of_birth']
                 )
@@ -117,17 +123,26 @@ class NWBConverter:
             )
         nwbfile = NWBFile(**nwbfile_kwargs)
 
-        # If conversion_options is valid, procede to run conversions for DataInterfaces
-        for interface_name, data_interface in self.data_interface_objects.items():
-            data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
-
         # Save result to file or return object
         if save_to_file:
             if nwbfile_path is None:
-                raise TypeError('A path to the output file must be provided, but nwbfile_path got value None')
-            # run_conversion will always overwrite the existing nwbfile_path
-            with NWBHDF5IO(nwbfile_path, mode='w') as io:
+                raise TypeError("A path to the output file must be provided, but nwbfile_path got value None")
+
+            if Path(nwbfile_path).is_file() and not overwrite:
+                mode = "r+"
+            else:
+                mode = "w"
+
+            with NWBHDF5IO(nwbfile_path, mode=mode) as io:
+                if mode == "r+":
+                    nwbfile = io.read()
+
+                for interface_name, data_interface in self.data_interface_objects.items():
+                    data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
+
                 io.write(nwbfile)
-            print(f'NWB file saved at {nwbfile_path}')
+            print(f"NWB file saved at {nwbfile_path}!")
         else:
+            for interface_name, data_interface in self.data_interface_objects.items():
+                data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
             return nwbfile
