@@ -45,11 +45,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         # fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self):
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
-        metadata = super().get_metadata()
-        return metadata
-
     def subset_recording(self, stub_test: bool = False):
         """
         Subset a recording extractor according to stub and channel subset options.
