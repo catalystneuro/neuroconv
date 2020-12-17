@@ -37,20 +37,20 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
         metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        fill_defaults(metadata_schema, self.get_metadata())
+        # fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
-        metadata.update(
-            Ecephys=dict(
-                Device=[],
-                ElectrodeGroup=[],
-                Electrodes=[],
-                ElectricalSeries=dict(),
-            )
-        )
+        # metadata.update(
+        #     Ecephys=dict(
+        #         Device=[],
+        #         ElectrodeGroup=[],
+        #         Electrodes=[],
+        #         ElectricalSeries=dict(),
+        #     )
+        # )
         return metadata
 
     def subset_recording(self, stub_test: bool = False):
