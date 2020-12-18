@@ -38,7 +38,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
         metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        # fill_defaults(metadata_schema, self.get_metadata())
+        fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):
