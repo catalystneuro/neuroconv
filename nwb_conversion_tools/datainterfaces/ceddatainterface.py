@@ -26,3 +26,7 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
             )
         )
         return source_schema
+
+    @classmethod
+    def get_all_channels_info(cls, file_path):
+        return cls.RX.get_all_channels_info(file_path)
