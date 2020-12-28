@@ -44,6 +44,14 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
+        # metadata.update(
+        #     Ecephys=dict(
+        #         Device=[],
+        #         ElectrodeGroup=[],
+        #         Electrodes=[],
+        #         ElectricalSeries=dict(),
+        #     )
+        # )
         return metadata
 
     def subset_recording(self, stub_test: bool = False):
@@ -85,7 +93,8 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
-        write_args = dict(recording=recording, nwbfile=nwbfile, metadata=metadata)
-        if 'Ecephys' not in metadata:
-            write_args.update(metadata=None)
-        se.NwbRecordingExtractor.write_recording(**write_args)
+        se.NwbRecordingExtractor.write_recording(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=metadata
+        )
