@@ -33,6 +33,11 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         )
         return source_schema
 
+    @classmethod
+    def get_all_channels_info(cls, file_path):
+        """Access channel info from SpikeExtractor class."""
+        return cls.RX.get_all_channels_info(file_path)
+
     def get_metadata(self):
         file_path = Path(self.source_data['file_path'])
         session_id = file_path.stem
