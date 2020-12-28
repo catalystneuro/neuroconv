@@ -1,6 +1,5 @@
 """Authors: Luiz Tauffer and Cody Baker."""
 from pathlib import Path
-import numpy as np
 
 import spikeextractors as se
 
@@ -19,6 +18,7 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
+        """Compile input schema for the RecordingExtractor."""
         source_schema = get_schema_from_method_signature(
             class_method=cls.RX.__init__,
             exclude=['smrx_channel_ids']
@@ -39,16 +39,18 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         return cls.RX.get_all_channels_info(file_path)
 
     def get_metadata(self):
+        """Auto-populate as much metadata as possible from the high-pass (ap) SpikeGLX format."""
         file_path = Path(self.source_data['file_path'])
         session_id = file_path.stem
 
-        prb_channels = [
-            42, 36, 32, 38, 39, 47, 45, 37, 44, 46, 48, 35, 34, 40, 41, 43, 62, 60, 58, 56, 54, 52, 50, 33, 49, 51, 53,
-            55, 57, 59, 61, 63, 1, 3, 5, 7, 9, 11, 13, 30, 14, 12, 10, 8, 6, 4, 2, 0, 21, 27, 31, 25, 24, 16, 18, 26,
-            19, 17, 15, 28, 29, 23, 22, 20
-        ]
-        prb_locations = [[0, x * 20] for x in range(len(prb_channels))]
-        self.recording_extractor.set_channel_locations(locations=np.array(prb_locations)[prb_channels, :])
+        prb = read_probe_file(file_path)
+        n_group = len(prb['channel_groups'])
+        if n_group > 1:
+            raise NotImplementedError("CED metadata for more than a single group is not yet supported.")
+
+        prb_channels = list(prb['channel_groups'].values())[0]['channels']
+        prb_xy = list(prb['channel_groups'].values())[0]['geometry']
+        self.recording_extractor.set_channel_locations(locations=prb_xy, channel_ids=prb_channels)
         group_name = ["Group1"] * len(prb_channels)
 
         metadata = dict(
@@ -67,19 +69,19 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
                 ],
                 Electrodes=[
                     dict(
-                        name='group_name',
-                        description="The name of the ElectrodeGroup this electrode is a part of.",
-                        data=group_name
-                    ),
-                    dict(
                         name='probe_electrode_number',
                         description="Probe file channel index.",
                         data=prb_channels
+                    ),
+                    dict(
+                        name='group_name',
+                        description="The name of the ElectrodeGroup this electrode is a part of.",
+                        data=group_name
                     )
                 ],
                 ElectricalSeries=dict(
                     name='ElectricalSeries',
-                    description="Raw acquisition traces for CED data from rhd channels."
+                    description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
                 )
             )
         )
