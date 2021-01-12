@@ -4,7 +4,7 @@ from .neuroscopedatainterface import (
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface
 )
-from .spikeglxdatainterface import SpikeGLXRecordingInterface
+from .spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .sipickledatainterfaces import (
     SIPickleRecordingExtractorInterface,
     SIPickleSortingExtractorInterface)
