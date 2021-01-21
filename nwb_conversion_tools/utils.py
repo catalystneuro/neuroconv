@@ -121,11 +121,11 @@ def get_schema_for_NWBFile():
             "items": {"type": "string", "title": "experimenter"},
             "description": "name of person who performed experiment"
         },
-        "experimentd_description": {
+        "experiment_description": {
             "type": "string",
             "description": "general description of the experiment"
         },
-        "sessiond_id": {
+        "session_id": {
             "type": "string",
             "description": "lab-specific ID for the session"
         },
