@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
 
-from spikeextractors import SpikeGLXRecordingExtractor
+from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
@@ -16,7 +16,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         file_path = Path(self.source_data['file_path'])
         session_id = file_path.parent.stem
 
-        n_shanks = int(self.recording_extractor._meta['snsShankMap'][1])
+        if isinstance(self.recording_extractor, SubRecordingExtractor):
+            n_shanks = int(self.recording_extractor._parent_recording._meta['snsShankMap'][1])
+        else:
+            n_shanks = int(self.recording_extractor._meta['snsShankMap'][1])
         if n_shanks > 1:
             raise NotImplementedError("SpikeGLX metadata for more than a single shank is not yet supported.")
 
