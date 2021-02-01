@@ -113,10 +113,31 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
+class NeuroscopeMultiRecordingTimeInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
 
     RX = se.NeuroscopeMultiRecordingTimeExtractor
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.subset_channels = get_shank_channels(
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['folder_path']),
+            sort=True
+        )
+        
+    def get_metadata(self):
+        """Retrieve Ecephys metadata specific to the Neuroscope format."""
+        metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(
+            xml_file_path=get_xml_file_path(data_file_path=self.source_data['folder_path'])
+        )
+        metadata['Ecephys'].update(
+            ElectricalSeries=dict(
+                name='ElectricalSeries',
+                description="Raw acquisition traces."
+            )
+        )
+
+        return metadata
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
