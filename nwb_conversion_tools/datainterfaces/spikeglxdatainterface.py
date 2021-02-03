@@ -1,4 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
+from datetime import datetime
 from pathlib import Path
 
 from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor
@@ -26,6 +27,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         channels = self.recording_extractor.get_channel_ids()
         shank_electrode_number = channels
         shank_group_name = ["Shank1" for x in channels]
+        session_start_time = datetime.fromisoformat(
+            self.recording_extractor._meta['fileCreateTime']).astimezone()
 
         ecephys_metadata = dict(
             Ecephys=dict(
@@ -57,7 +60,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                     name='ElectricalSeries',
                     description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
                 )
-            )
+            ),
+            NWBFile=dict(session_start_time=session_start_time)
         )
 
         return ecephys_metadata
