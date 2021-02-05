@@ -43,10 +43,11 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         _ = metadata.pop('NWBFile')
         return metadata
 
-    def run_conversion(self, nwbfile_path: str, metadata_dict: dict, **kwargs):
+    def run_conversion(self, nwbfile: NWBFile, metadata_dict: dict, overwrite: bool = False, **kwargs):
         re.NwbImagingExtractor.write_imaging(
             self.imaging_extractor,
-            save_path=nwbfile_path,
+            nwbfile=nwbfile,
             metadata=metadata_dict,
+            overwrite=overwrite,
             **kwargs
         )
