@@ -12,7 +12,7 @@ class BaseImagingExtractorInterface(BaseDataInterface):
     IX = None
 
     @classmethod
-    def get_input_schema(cls):
+    def get_source_schema(cls):
         return get_schema_from_method_signature(cls.IX.__init__)
 
     def __init__(self, **input_args):
