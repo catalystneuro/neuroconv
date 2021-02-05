@@ -18,6 +18,11 @@ from .roiextractordatainterface import (
     ExtractSegmentationInterface,
     SimaSegmentationInterface
 )
+from .imagingextractorinterface import (
+    SbxImagingInterface,
+    TiffImagingInterface,
+    Hdf5ImagingInterface
+)
 
 
 interface_list = [
@@ -33,5 +38,8 @@ interface_list = [
     CnmfeSegmentationInterface,
     Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
-    SimaSegmentationInterface
+    SimaSegmentationInterface,
+    SbxImagingInterface,
+    TiffImagingInterface,
+    Hdf5ImagingInterface
 ]
