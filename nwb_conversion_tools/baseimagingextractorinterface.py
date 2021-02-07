@@ -12,7 +12,7 @@ class BaseImagingExtractorInterface(BaseDataInterface):
     IX = None
 
     @classmethod
-    def get_input_schema(cls):
+    def get_source_schema(cls):
         return get_schema_from_method_signature(cls.IX.__init__)
 
     def __init__(self, **input_args):
@@ -43,10 +43,10 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         _ = metadata.pop('NWBFile')
         return metadata
 
-    def run_conversion(self, nwbfile_path: str, metadata_dict: dict, **kwargs):
+    def run_conversion(self, nwbfile: NWBFile, metadata_dict: dict, overwrite: bool = False):
         re.NwbImagingExtractor.write_imaging(
             self.imaging_extractor,
-            save_path=nwbfile_path,
+            nwbfile=nwbfile,
             metadata=metadata_dict,
-            **kwargs
+            overwrite=overwrite
         )
