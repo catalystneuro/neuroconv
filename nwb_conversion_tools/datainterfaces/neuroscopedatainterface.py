@@ -35,12 +35,23 @@ def get_xml(xml_file_path: str):
 
 
 def get_shank_channels(xml_file_path: str, sort: bool = False):
-    """Auxiliary function for retrieving the list of structured shank-only channels."""
+    """
+    Auxiliary function for retrieving the list of structured shank-only channels.
+
+    Attempts to retrieve these first from the spikeDetection sub-field in the event that spike sorting was performed on
+    the raw data. In the event that spike sorting was not performed, it then retrieves only the anatomicalDescription.
+    """
     root = get_xml(xml_file_path)
-    shank_channels = [
-        [int(channel.text) for channel in group.find('channels')]
-        for group in root.find('spikeDetection').find('channelGroups').findall('group')
-    ]
+    try:
+        shank_channels = [
+            [int(channel.text) for channel in group.find('channels')]
+            for group in root.find('spikeDetection').find('channelGroups').findall('group')
+        ]
+    except (TypeError, AttributeError):
+        shank_channels = [
+            [int(channel.text) for channel in group.findall('channel')]
+            for group in root.find('anatomicalDescription').find('channelGroups').findall('group')
+        ]
 
     if sort:
         shank_channels = sorted(np.concatenate(shank_channels))

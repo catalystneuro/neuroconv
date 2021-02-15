@@ -1,6 +1,15 @@
 """Authors: Cody Baker, Alessio Buccino."""
 from pathlib import Path
+import numpy as np
+
 import spikeextractors as se
+
+
+def check_regular_timestamps(ts):
+    """Check whether rate should be used instead of timestamps."""
+    time_tol_decimals = 9
+    uniq_diff_ts = np.unique(np.diff(ts).round(decimals=time_tol_decimals))
+    return len(uniq_diff_ts) == 1
 
 
 def save_si_object(object_name: str, si_object, output_folder,
