@@ -6,8 +6,10 @@ pandas==1.0.3
 scipy==1.4.1
 h5py==2.10.0
 PyYAML==5.3.1
-spikeextractors==0.9.3
+# spikeextractors==0.9.3
+git+https://github.com/SpikeInterface/spikeextractors@return_scaled
 spikesorters==0.3.0
 spiketoolkit==0.6.1
 psutil==5.7.0
 git+https://github.com/catalystneuro/roiextractors
+neo

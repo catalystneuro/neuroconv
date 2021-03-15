@@ -79,7 +79,7 @@ class NWBConverter:
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
 
-        fill_defaults(metadata_schema, self.get_metadata())
+        # fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):

@@ -29,11 +29,11 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                 SpikeEventSeries=get_schema_from_hdmf_class(SpikeEventSeries)
             )
         )
-        fill_defaults(metadata_schema, self.get_metadata())
+        # fill_defaults(metadata_schema, self.get_metadata())
 
         return metadata_schema
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False,
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False, 
                        write_ecephys_metadata: bool = False):
         if 'UnitProperties' not in metadata:
             metadata['UnitProperties'] = []
