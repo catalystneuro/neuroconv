@@ -13,7 +13,21 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
-        return get_schema_from_method_signature(
+        source_schema = get_schema_from_method_signature(
             class_method=cls.RX.__init__,
-            exclude=['smrx_ch_inds']
+            exclude=['smrx_channel_ids']
         )
+        source_schema.update(additionalProperties=True)
+        source_schema['properties'].update(
+            file_path=dict(
+                type=source_schema['properties']['file_path']['type'],
+                format="file",
+                description="path to data file"
+            )
+        )
+
+        return source_schema
+
+    @classmethod
+    def get_all_channels_info(cls, file_path):
+        return cls.RX.get_all_channels_info(file_path)

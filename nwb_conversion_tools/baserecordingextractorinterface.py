@@ -10,7 +10,7 @@ from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from .basedatainterface import BaseDataInterface
 from .utils import get_schema_from_hdmf_class
-from .json_schema_utils import get_schema_from_method_signature, fill_defaults
+from .json_schema_utils import get_schema_from_method_signature, fill_defaults, get_base_schema
 
 PathType = Union[str, Path, None]
 
@@ -36,19 +36,15 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
-        metadata_schema['properties']['Ecephys'] = dict(
+        metadata_schema['properties']['Ecephys'] = get_base_schema(tag='Ecephys')
+        metadata_schema['properties']['Ecephys']['properties'] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
         metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        # fill_defaults(metadata_schema, self.get_metadata())
+        fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
-
-    def get_metadata(self):
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
-        metadata = super().get_metadata()
-        return metadata
 
     def subset_recording(self, stub_test: bool = False):
         """
