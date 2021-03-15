@@ -25,6 +25,7 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
                 description="path to data file"
             )
         )
+
         return source_schema
 
     @classmethod
