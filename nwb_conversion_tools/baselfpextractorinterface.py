@@ -9,12 +9,17 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
     def get_metadata(self):
-        metadata = super().get_metadata()
-        metadata['Ecephys'].pop('ElectricalSeries')
-        metadata['Ecephys'].update(
-            LFPElectricalSeries=dict(),
+        metadata = dict(
+            Ecephys=dict(
+                LFPElectricalSeries=dict(
+                    name="LFP",
+                    description="Local field potential signal."
+                )
+            )
         )
+
         return metadata
+
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, stub_test: bool = False):
         if stub_test or self.subset_channels is not None:

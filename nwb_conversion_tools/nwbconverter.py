@@ -79,7 +79,7 @@ class NWBConverter:
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
 
-        fill_defaults(metadata_schema, self.get_metadata())
+        # fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):
@@ -107,21 +107,22 @@ class NWBConverter:
         else:
             validate(instance=conversion_options, schema=self.get_conversion_options_schema())
 
-        nwbfile_kwargs = metadata['NWBFile']
-        if 'Subject' in metadata:
+        if nwbfile is None:
+            nwbfile_kwargs = metadata['NWBFile']
+            if 'Subject' in metadata:
+                # convert ISO 8601 string to datetime
+                if 'date_of_birth' in metadata['Subject'] \
+                        and isinstance(metadata['Subject']['date_of_birth'], str):
+                    metadata['Subject']['date_of_birth'] = datetime.fromisoformat(
+                        metadata['Subject']['date_of_birth']
+                    )
+                nwbfile_kwargs.update(subject=Subject(**metadata['Subject']))
             # convert ISO 8601 string to datetime
-            if 'date_of_birth' in metadata['Subject'] \
-                    and isinstance(metadata['Subject']['date_of_birth'], str):
-                metadata['Subject']['date_of_birth'] = datetime.fromisoformat(
-                    metadata['Subject']['date_of_birth']
+            if isinstance(nwbfile_kwargs['session_start_time'], str):
+                nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
+                    metadata['NWBFile']['session_start_time']
                 )
-            nwbfile_kwargs.update(subject=Subject(**metadata['Subject']))
-        # convert ISO 8601 string to datetime
-        if isinstance(nwbfile_kwargs['session_start_time'], str):
-            nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
-                metadata['NWBFile']['session_start_time']
-            )
-        nwbfile = NWBFile(**nwbfile_kwargs)
+            nwbfile = NWBFile(**nwbfile_kwargs)
 
         # Save result to file or return object
         if save_to_file:

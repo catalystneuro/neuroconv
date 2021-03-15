@@ -48,10 +48,10 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         _ = metadata.pop('NWBFile')
         return metadata
 
-    def run_conversion(self, nwbfile_path: str, metadata_dict: dict, overwrite: bool = False):
+    def run_conversion(self, nwbfile: NWBFile, metadata_dict: dict, overwrite: bool = False):
         re.NwbSegmentationExtractor.write_segmentation(
             self.segmentation_extractor,
-            save_path=nwbfile_path,
+            nwbfile=nwbfile,
             metadata=metadata_dict,
             overwrite=overwrite
         )
