@@ -12,3 +12,4 @@ spiketoolkit==0.7.4
 psutil==5.7.0
 roiextractors
 neo
+

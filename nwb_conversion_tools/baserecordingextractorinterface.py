@@ -70,9 +70,17 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         )
         return recording_extractor
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, use_times: bool = False, 
-                       write_as_lfp: bool = False, save_path: PathType = None, 
-                       overwrite: bool = False, stub_test: bool = False):
+    def run_conversion(
+      self,
+      nwbfile: NWBFile,
+      metadata: dict = None,
+      stub_test: bool = False,
+      use_times: bool = False, 
+      write_as_lfp: bool = False,
+      save_path: PathType = None, 
+      overwrite: bool = False,
+      buffer_mb: int = 500
+    ):
         """
         Primary function for converting recording extractor data to nwb.
 
@@ -97,6 +105,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             If using save_path, whether or not to overwrite the NWBFile if it already exists.
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
+        buffer_mb: int (optional, defaults to 500MB)
+            Maximum amount of memory (in MB) to use per iteration of the internal DataChunkIterator.
+            Requires trace data in the RecordingExtractor to be a memmap object.
         """
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
@@ -110,5 +121,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             use_times=use_times,
             write_as_lfp=write_as_lfp,
             save_path=save_path,
-            overwrite=overwrite
+            overwrite=overwrite,
+            buffer_mb=buffer_mb
         )
