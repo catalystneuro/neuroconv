@@ -1,8 +1,49 @@
 """Authors: Cody Baker, Alessio Buccino."""
 from pathlib import Path
 import numpy as np
+import uuid
+from datetime import datetime
 
+from pynwb import NWBFile
+from pynwb.file import Subject
 import spikeextractors as se
+
+from .json_schema_utils import dict_deep_update
+
+
+def get_default_nwbfile_metadata():
+    """
+    Return structure with defaulted metadata values required for a NWBFile.
+
+    These standard defaults are
+        metadata["NWBFile"]["session_description"] = "no description"
+        metadata["NWBFile"]["session_description"] = datetime(1970, 1, 1)
+
+    Proper conversions should override these fields prior to calling NWBConverter.run_conversion()
+    """
+    metadata = dict(
+        NWBFile=dict(
+            session_description="no description",
+            session_start_time=datetime(1970, 1, 1),
+            identifier=str(uuid.uuid4())
+        )
+    )
+    return metadata
+
+
+def make_nwbfile_from_metadata(metadata: dict):
+    """Make NWBFile from available metadata."""
+    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
+    nwbfile_kwargs = metadata["NWBFile"]
+    if "Subject" in metadata:
+        # convert ISO 8601 string to datetime
+        if "date_of_birth" in metadata["Subject"] and isinstance(metadata["Subject"]["date_of_birth"], str):
+            metadata["Subject"]["date_of_birth"] = datetime.fromisoformat(metadata["Subject"]["date_of_birth"])
+        nwbfile_kwargs.update(subject=Subject(**metadata["Subject"]))
+    # convert ISO 8601 string to datetime
+    if isinstance(nwbfile_kwargs.get("session_start_time", None), str):
+        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
+    return NWBFile(**nwbfile_kwargs)
 
 
 def check_regular_timestamps(ts):
