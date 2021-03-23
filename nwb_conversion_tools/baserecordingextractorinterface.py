@@ -1,6 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import ABC
-from typing import Union
+from typing import Union, Optional
 from pathlib import Path
 
 import spikeextractors as se
@@ -12,7 +12,7 @@ from .basedatainterface import BaseDataInterface
 from .utils import get_schema_from_hdmf_class
 from .json_schema_utils import get_schema_from_method_signature, fill_defaults, get_base_schema
 
-PathType = Union[str, Path, None]
+OptionalPathType = Optional[Union[str, Path]]
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
@@ -75,14 +75,13 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
       nwbfile: NWBFile,
       metadata: dict = None,
       stub_test: bool = False,
-      use_times: bool = False, 
-      write_as_lfp: bool = False,
-      save_path: PathType = None, 
+      use_times: bool = False,
+      save_path: OptionalPathType = None,
       overwrite: bool = False,
       buffer_mb: int = 500
     ):
         """
-        Primary function for converting recording extractor data to nwb.
+        Primary function for converting raw (unprocessed) recording extractor data to nwb.
 
         Parameters
         ----------
@@ -91,13 +90,10 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata: dict
             metadata info for constructing the nwb file (optional).
             Should be of the format
-                metadata['Ecephys']['ElectricalSeries'] = {'name': my_name,
-                                                           'description': my_description}
+                metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
         use_times: bool
             If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
             the sampling rate is used.
-        write_as_lfp: bool (optional, defaults to False)
-            If True, writes the traces under a processing LFP module in the NWBFile instead of acquisition.
         save_path: PathType
             Required if an nwbfile is not passed. Must be the path to the nwbfile
             being appended, otherwise one is created and written.
@@ -119,7 +115,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             nwbfile=nwbfile,
             metadata=metadata,
             use_times=use_times,
-            write_as_lfp=write_as_lfp,
+            write_as_lfp=False,
             save_path=save_path,
             overwrite=overwrite,
             buffer_mb=buffer_mb
