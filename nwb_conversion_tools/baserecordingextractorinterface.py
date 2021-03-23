@@ -81,7 +81,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
       buffer_mb: int = 500
     ):
         """
-        Primary function for converting high-pass recording extractor data to nwb.
+        Primary function for converting raw (unprocessed) recording extractor data to nwb.
 
         Parameters
         ----------
