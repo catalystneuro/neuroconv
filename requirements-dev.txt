@@ -5,7 +5,7 @@ numpy==1.18.2
 pandas==1.0.3
 scipy==1.4.1
 h5py==2.10.0
-PyYAML==5.3.1
+PyYAML==5.4
 git+https://github.com/SpikeInterface/spikeextractors
 spikesorters==0.4.4
 spiketoolkit==0.7.4
