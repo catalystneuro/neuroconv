@@ -9,7 +9,7 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
-class TutorialRecordingExtractorInterface(BaseRecordingExtractorInterface):
+class TutorialRecordingInterface(BaseRecordingExtractorInterface):
     """High-pass recording data interface for demonstrating NWB Conversion Tools usage in tutorials."""
 
     RX = se.NumpyRecordingExtractor
@@ -61,7 +61,7 @@ class TutorialRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class TutorialSortingExtractorInterface(BaseSortingExtractorInterface):
+class TutorialSortingInterface(BaseSortingExtractorInterface):
     """Sorting data interface for demonstrating NWB Conversion Tools usage in tutorials."""
 
     SX = se.NumpySortingExtractor

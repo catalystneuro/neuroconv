@@ -1,6 +1,6 @@
 from .tutorialdatainterface import (
-    TutorialRecordingExtractorInterface,
-    TutorialSortingExtractorInterface
+    TutorialRecordingInterface,
+    TutorialSortingInterface
 )
 
 from .neuroscopedatainterface import (
@@ -35,8 +35,8 @@ from .imagingextractorinterface import (
 
 
 interface_list = [
-    TutorialRecordingExtractorInterface,
-    TutorialSortingExtractorInterface,
+    TutorialRecordingInterface,
+    TutorialSortingInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeSortingInterface,
     SpikeGLXRecordingInterface,
