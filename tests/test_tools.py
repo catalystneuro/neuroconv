@@ -7,7 +7,7 @@ from nwb_conversion_tools.conversion_tools import check_regular_timestamps, chec
 
 class TestConversionTools(TestCase):
 
-    def test_check_regular_timestamps():
+    def test_check_regular_timestamps(self):
         assert check_regular_timestamps([1, 2, 3])
         assert not check_regular_timestamps([1, 2, 4])
 
@@ -21,4 +21,4 @@ class TestConversionTools(TestCase):
         nwbfile.create_processing_module(name=name_1, description=description_1)
         assert isinstance(check_module(nwbfile=nwbfile, name=name_1, description=description_1), ProcessingModule)
         assert isinstance(check_module(nwbfile=nwbfile, name=name_2, description=description_1), ProcessingModule)
-        self.assertWarns(check_module(nwbfile=nwbfile, name=name_1, description=description_2))
+        self.assertWarns(UserWarning, check_module, **dict(nwbfile=nwbfile, name=name_1, description=description_2))
