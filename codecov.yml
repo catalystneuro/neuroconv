@@ -4,16 +4,5 @@ codecov:
 
 coverage:
   status:
-    project:
-      default:
-        target: 75%
-        flags:
-            - unit
-            - integration
-        threshold: 1  # check is successful is coverage decreased by less than 1%
-      unit:
-        target: 55%
-        flags:
-            - unit
-        threshold: 1
-    patch: off # no github status notice for coverage of the PR diff.
+    project: off
+    patch: off
