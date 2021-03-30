@@ -1,6 +1,15 @@
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false  # if true: only post the comment if coverage changes
+  require_base: no        # [yes :: must have a base report to post]
+  require_head: yes       # [yes :: must have a head report to post]
+  branches:               # branch names that can post comment
+    - "master"
+
 codecov:
   notify:
-    require_ci_to_pass: yes   # delay sending notifications until all CI is finished
+    require_ci_to_pass: yes
 
 coverage:
   status:
