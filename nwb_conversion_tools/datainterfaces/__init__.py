@@ -1,3 +1,8 @@
+from .tutorialdatainterface import (
+    TutorialRecordingInterface,
+    TutorialSortingInterface
+)
+
 from .neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
@@ -18,6 +23,10 @@ from .roiextractordatainterface import (
     ExtractSegmentationInterface,
     SimaSegmentationInterface
 )
+
+from .blackrockdatainterface import BlackrockRecordingExtractorInterface, BlackrockSortingExtractorInterface
+from .openephysdatainterface import OpenEphysRecordingExtractorInterface, OpenEphysSortingExtractorInterface
+
 from .imagingextractorinterface import (
     SbxImagingInterface,
     TiffImagingInterface,
@@ -26,6 +35,8 @@ from .imagingextractorinterface import (
 
 
 interface_list = [
+    TutorialRecordingInterface,
+    TutorialSortingInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeSortingInterface,
     SpikeGLXRecordingInterface,
@@ -39,6 +50,10 @@ interface_list = [
     Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
     SimaSegmentationInterface,
+    BlackrockRecordingExtractorInterface,
+    BlackrockSortingExtractorInterface,
+    OpenEphysRecordingExtractorInterface, 
+    OpenEphysSortingExtractorInterface,
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface

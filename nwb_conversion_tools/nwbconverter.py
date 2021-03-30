@@ -1,6 +1,4 @@
 """Authors: Cody Baker and Ben Dichter."""
-import uuid
-from datetime import datetime
 from jsonschema import validate
 from pathlib import Path
 from typing import Optional
@@ -8,6 +6,7 @@ from typing import Optional
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
+from .conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
 from .utils import get_schema_from_hdmf_class, get_schema_for_NWBFile
 from .json_schema_utils import dict_deep_update, get_base_schema, fill_defaults, \
     unroot_schema
@@ -84,47 +83,49 @@ class NWBConverter:
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
-        metadata = dict(
-            NWBFile=dict(
-                session_description="no description",
-                identifier=str(uuid.uuid4()),
-                session_start_time=datetime(1970, 1, 1)
-            )
-        )
+        metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
             interface_metadata = interface.get_metadata()
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def run_conversion(self, metadata: dict, save_to_file: bool = True, nwbfile_path: Optional[str] = None,
-                       overwrite: bool = False, nwbfile: Optional[NWBFile] = None,
-                       conversion_options: Optional[dict] = None):
-        """Build nwbfile object, auto-populate with minimal values if missing."""
+    def run_conversion(
+            self,
+            metadata: dict,
+            save_to_file: Optional[bool] = True,
+            nwbfile_path: Optional[str] = None,
+            overwrite: Optional[bool] = False,
+            nwbfile: Optional[NWBFile] = None,
+            conversion_options: Optional[dict] = None
+    ):
+        """
+        Run the NWB conversion over all the instantiated data interfaces.
+
+        Parameters
+        ----------
+        metadata : dict
+        save_to_file : bool, optional
+            If False, returns an NWBFile object instead of writing it to the nwbfile_path. The default is True.
+        nwbfile_path : str, optional
+            Location to save the NWBFile, if save_to_file is True. The default is None.
+        overwrite : bool, optional
+            If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
+            If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
+            The default is False.
+        nwbfile : NWBFile, optional
+            A pre-existing NWBFile object to be appended (instead of reading from nwbfile_path).
+        conversion_options : dict, optional
+            Similar to source_data, a dictionary containing keywords for each interface for which non-default
+            conversion specification is requested.
+        """
         assert (not save_to_file and nwbfile_path is None) or nwbfile is None, \
             "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
+
         if conversion_options is None:
             conversion_options = dict()
         else:
             validate(instance=conversion_options, schema=self.get_conversion_options_schema())
 
-        if nwbfile is None:
-            nwbfile_kwargs = metadata['NWBFile']
-            if 'Subject' in metadata:
-                # convert ISO 8601 string to datetime
-                if 'date_of_birth' in metadata['Subject'] \
-                        and isinstance(metadata['Subject']['date_of_birth'], str):
-                    metadata['Subject']['date_of_birth'] = datetime.fromisoformat(
-                        metadata['Subject']['date_of_birth']
-                    )
-                nwbfile_kwargs.update(subject=Subject(**metadata['Subject']))
-            # convert ISO 8601 string to datetime
-            if isinstance(nwbfile_kwargs['session_start_time'], str):
-                nwbfile_kwargs['session_start_time'] = datetime.fromisoformat(
-                    metadata['NWBFile']['session_start_time']
-                )
-            nwbfile = NWBFile(**nwbfile_kwargs)
-
-        # Save result to file or return object
         if save_to_file:
             if nwbfile_path is None:
                 raise TypeError("A path to the output file must be provided, but nwbfile_path got value None")
@@ -137,6 +138,8 @@ class NWBConverter:
             with NWBHDF5IO(nwbfile_path, mode=mode) as io:
                 if mode == "r+":
                     nwbfile = io.read()
+                elif nwbfile is None:
+                    nwbfile = make_nwbfile_from_metadata(metadata=metadata)
 
                 for interface_name, data_interface in self.data_interface_objects.items():
                     data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
@@ -144,6 +147,8 @@ class NWBConverter:
                 io.write(nwbfile)
             print(f"NWB file saved at {nwbfile_path}!")
         else:
+            if nwbfile is None:
+                nwbfile = make_nwbfile_from_metadata(metadata=metadata)
             for interface_name, data_interface in self.data_interface_objects.items():
                 data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
             return nwbfile
