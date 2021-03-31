@@ -1,15 +1,39 @@
-## Converting data to NWB
-Below is a collection of simple conversion scripts that are all tested against small 
-proprietary examples files. They are all optimized to handle very large data by iteratively
-steping through large files and read/writing them one piece at a time. They also leverage
-lossless compression within HDF5, which allows you to make large datasets smaller without
-losing any data. We have seen this reduce large datasets by up to 66%!
+Part 3, Automated Format Conversions
+====================================
 
+Conversion to NWB presents some challenges that come up again and again:
 
-<details>
-<summary>Extracellular electrophysiology</summary>
+1. **Variety**. There is a large variety of proprietary formats in neurophysiology.
+   Even within a single lab, you may have data from several different acquisition systems.
+   Converting to NWB requires understanding how data is stored in that format,
+   what metadata is present in the file, and where that metadata is within the proprietary
+   files, as well as where they should go within NWB.
+1. **Volume**. Neurophysiology data is large and the volume of individual session data
+   is growing every year. HDF5 is designed to handle data at this scale, and has several
+   tools that can help, including iterative read/write, chunking of large datasets,
+   and streamlined compression/decompression. To dig into these tools yourself,
+   see the PyNWB and MatNWB tutorials on advanced data I/O listed in the table above.
 
-<br>
+In order to make converting to NWB faster and less laborious (for our own team and for others),
+we have developed an ecosystem of conversion tools that provide support for converting a
+number of different proprietary formats to NWB. These tools handle the challenges of
+variety and volume for the most common of data types.
+
+Extracellular Electrophysiology
+--------------------------------
+
+A package within the SpikeInterface project called [SpikeExtractors](https://spikeinterface.readthedocs.io/en/latest/)
+has been developed to read extracellular electrophysiological data
+from a variety of proprietary formats, for both raw and spike-sorted data.
+We worked with the development team to robustly handle the technical details
+of converting from these formats to NWB through the SpikeExtractors interface.
+SpikeExtractors also leverages advanced I/O tools to automatically chunk large
+datasets and apply lossless compression that is transparent to the user but can
+substantially reduce the size of the NWB file. This package does not support
+every electrophysiology data type, but does support a large number of them -
+at the time of this writing, 21 raw formats and 18 spike-sorted formats.
+Many of these formats are supported through a wrapper around [python-neo](https://neo.readthedocs.io/en/latest/) reader classes.
+
 For extracellular electrophysiology, we use the SpikeExtractors repository from the 
 [SpikeInterface](http://spikeinterface.readthedocs.io/) 
 project. To install this package, run
@@ -17,20 +41,15 @@ project. To install this package, run
 ```bash
 $ pip install spikeextractors
 ```
-        
-All of the format listed below are tested against example dataset in the 
-[ephy_testing_data](https://gin.g-node.org/NeuralEnsemble/ephy_testing_data) GIN repository 
-maintained by the NEO team.
-<blockquote>
-<p>
-    
-<details>
-<summary>Recording</summary><blockquote>
-<p>
-        
+
+Below is a collection of simple, tested conversion scripts for common extracellular electrophysiology formats (click
+ the triangle to expand):
 
 <details>
-<summary>    Blackrock</summary><blockquote>
+<summary><b>Raw voltage traces</b></summary><blockquote>
+<p>
+<details>
+<summary>Blackrock</summary><blockquote>
 <p>
 
 ```python
@@ -44,7 +63,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Intan</summary><blockquote>
+<summary>Intan</summary><blockquote>
 <p>
 
 ```python
@@ -58,7 +77,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    MEArec</summary><blockquote>
+<summary>MEArec</summary><blockquote>
 <p>
 
 ```python
@@ -72,7 +91,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Neuralynx</summary><blockquote>
+<summary>Neuralynx</summary><blockquote>
 <p>
 
 ```python
@@ -86,7 +105,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Neuroscope</summary><blockquote>
+<summary>Neuroscope</summary><blockquote>
 <p>
 
 ```python
@@ -100,7 +119,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    OpenEphys (legacy)</summary><blockquote>
+<summary>OpenEphys (legacy)</summary><blockquote>
 <p>
 
 ```python
@@ -114,7 +133,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    OpenEphys binary (Neuropixels)</summary><blockquote>
+<summary>OpenEphys binary (Neuropixels)</summary><blockquote>
 <p>
 
 ```python
@@ -128,7 +147,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Phy</summary><blockquote>
+<summary>Phy</summary><blockquote>
 <p>
 
 ```python
@@ -142,7 +161,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
         
 
 <details>
-<summary>    SpikeGLX</summary><blockquote>
+<summary>SpikeGLX</summary><blockquote>
 <p>
 
 ```python
@@ -158,12 +177,12 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 </blockquote></details>
     
 <details>
-<summary>Sorting</summary><blockquote>
+<summary><b>Spike-sorted data</b></summary><blockquote>
 <p>
         
 
 <details>
-<summary>    Blackrock</summary><blockquote>
+<summary>Blackrock</summary><blockquote>
 <p>
 
 ```python
@@ -177,7 +196,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Klusta</summary><blockquote>
+<summary>Klusta</summary><blockquote>
 <p>
 
 ```python
@@ -191,7 +210,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
         
 
 <details>
-<summary>    MEArec</summary><blockquote>
+<summary>MEArec</summary><blockquote>
 <p>
 
 ```python
@@ -205,7 +224,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Phy</summary><blockquote>
+<summary>Phy</summary><blockquote>
 <p>
 
 ```python
@@ -219,7 +238,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Plexon</summary><blockquote>
+<summary>Plexon</summary><blockquote>
 <p>
 
 ```python
@@ -233,7 +252,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
         
 
 <details>
-<summary>    Spyking Circus</summary><blockquote>
+<summary>Spyking Circus</summary><blockquote>
 <p>
 
 ```python
@@ -246,34 +265,34 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 </blockquote></details>
         
 </p>
-</blockquote></details>
-    
-</p>
-</blockquote></details>
-
-<details>
-<summary>Optical physiology</summary>
+</blockquote>
+</details>
 
 <br>
-For optical physiology, we use the [RoiExtractors](https://roiextractors.readthedocs.io/en/latest/)
-library developed by [CatalystNeuro](catalystneuro.com). To install, run
+
+All of these conversions are tested against the 
+[ephy_testing_data](https://gin.g-node.org/NeuralEnsemble/ephy_testing_data) GIN repository.
+
+Optical Neurophysiology
+------------------------
+We also developed a sister-package, [RoiExtractors](https://github.com/catalystneuro/roiextractors), which does the same
+for common raw and processed data types in optical neurophysiology, image stacks and regions of interest (ROIs).
+Analogous to SpikeExtractors, RoiExtractors contains ImagingExtractors for reading image stacks and 
+SegmentationExtractors for reading extracted ROIs saved from popular processing pipelines.
+
+To install, run
 
 ```bash
 $ pip install roiextractors
 ``` 
 
-All formats listed in the optical physiology section are tested against the 
-[ophys_testing_data](https://gin.g-node.org/CatalystNeuro/ophys_testing_data) GIN repository.
-<blockquote>
-<p>
-    
 <details>
-<summary>Imaging</summary><blockquote>
+<summary><b>Imaging</b></summary><blockquote>
 <p>
         
 
 <details>
-<summary>    Tiff</summary><blockquote>
+<summary>Tiff</summary><blockquote>
 <p>
 
 ```python
@@ -287,7 +306,7 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
         
 
 <details>
-<summary>    Hdf5</summary><blockquote>
+<summary>Hdf5</summary><blockquote>
 <p>
 
 ```python
@@ -301,7 +320,7 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
         
 
 <details>
-<summary>    SBX</summary><blockquote>
+<summary>SBX</summary><blockquote>
 <p>
 
 ```python
@@ -317,12 +336,12 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
 </blockquote></details>
     
 <details>
-<summary>Segmentation</summary><blockquote>
+<summary><b>ROI Segmentation</b></summary><blockquote>
 <p>
         
 
 <details>
-<summary>    CaImAn</summary><blockquote>
+<summary>CaImAn</summary><blockquote>
 <p>
 
 ```python
@@ -336,7 +355,7 @@ NwbSegmentationExtractor.write_segmentation(seg_ex, "output_path.nwb")
         
 
 <details>
-<summary>    Suite2p</summary><blockquote>
+<summary>Suite2p</summary><blockquote>
 <p>
 
 ```python
@@ -350,6 +369,17 @@ NwbSegmentationExtractor.write_segmentation(seg_ex, "output_path.nwb")
         
 </p>
 </blockquote></details>
-    
-</p>
-</blockquote></details>
+
+<br>
+
+
+All format conversions listed here are tested against the 
+[ophys_testing_data](https://gin.g-node.org/CatalystNeuro/ophys_testing_data) GIN repository.
+
+
+Intracellular Electrophysiology
+--------------------------------
+Conversion of common intracellular electrophysiology data types to NWB is
+supported by [IPFX](https://github.com/AllenInstitute/ipfx/blob/master/ipfx/x_to_nwb/Readme.md), developed by the Allen Institute.
+This package has not yet been integrated into NWB Conversion Tools.
+

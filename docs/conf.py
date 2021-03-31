@@ -1,6 +1,6 @@
-project = 'nwb-conversion-tools'
-copyright = '2021, Cody Baker'
-author = 'Cody Baker'
+project = 'NWB Conversion Tools'
+copyright = '2021, CatalystNeuro'
+author = 'Cody Baker and Ben Dichter'
 
 extensions = ['myst_parser']
 templates_path = ['_templates']
