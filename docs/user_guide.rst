@@ -1,5 +1,5 @@
-Converting neurophysiology data to NWB
-=======================================
+User Guide: Converting neurophysiology data to NWB
+==================================================
 
 Neurodata Without Borders (NWB) provides a common self-describing format
 ideal for archiving neurophysiology data and sharing it with colleagues.
@@ -17,8 +17,11 @@ MATLAB APIs maintained by the core development team, then discuss
 automated tools for converting formats.
 
 .. toctree::
-    :glob:
+    :maxdepth: 1
 
-    chapters/*
-
+    part01_core_nwb
+    part02_nwb_apis
+    part03_format_conversions
+    part04_conversion_tools
+    part05_web_ui
 
