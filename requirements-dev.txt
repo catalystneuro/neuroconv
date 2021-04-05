@@ -12,3 +12,4 @@ spiketoolkit==0.7.4
 psutil==5.7.0
 roiextractors==0.3.1
 neo==0.9.0
+opencv-python==4.5.1.48
