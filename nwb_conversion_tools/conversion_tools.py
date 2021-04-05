@@ -12,19 +12,19 @@ import spikeextractors as se
 from .json_schema_utils import dict_deep_update
 
 
-def check_module(nwbfile: NWBFile, name: str, description: str = None):
+def get_module(nwbfile: NWBFile, name: str, description: str = None):
     """Check if processing module exists. If not, create it. Then return module."""
     if name in nwbfile.modules:
         if description is not None and nwbfile.modules[name].description != description:
             warn(
-                "Custom description given to check_module does not match existing module description! "
+                "Custom description given to get_module does not match existing module description! "
                 "Ignoring custom description."
             )
         return nwbfile.modules[name]
     else:
         if description is None:
-            description = name
-        return nwbfile.create_processing_module(name, description)
+            description = "No description."
+        return nwbfile.create_processing_module(name=name, description=description)
 
 
 def get_default_nwbfile_metadata():
