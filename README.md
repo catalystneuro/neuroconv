@@ -10,8 +10,6 @@ Features:
 * Python API
 * Leverages SpikeExtractor to support conversion from a number or proprietary formats.
 
-[![PyPI version](https://badge.fury.io/py/nwb-conversion-tools.svg)](https://badge.fury.io/py/nwb-conversion-tools)
-
 ## Installation
 To install **nwb-conversion-tools** directly in an existing environment:
 ```
