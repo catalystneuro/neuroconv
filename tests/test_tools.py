@@ -19,6 +19,10 @@ class TestConversionTools(TestCase):
         description_1 = "description_1"
         description_2 = "description_2"
         nwbfile.create_processing_module(name=name_1, description=description_1)
-        assert isinstance(get_module(nwbfile=nwbfile, name=name_1, description=description_1), ProcessingModule)
-        assert isinstance(get_module(nwbfile=nwbfile, name=name_2, description=description_1), ProcessingModule)
+        mod_1 = get_module(nwbfile=nwbfile, name=name_1, description=description_1)
+        mod_2 = get_module(nwbfile=nwbfile, name=name_2, description=description_2)
+        assert isinstance(mod_1, ProcessingModule)
+        assert mod_1.description == description_1
+        assert isinstance(mod_2, ProcessingModule)
+        assert mod_2.description == description_2
         self.assertWarns(UserWarning, get_module, **dict(nwbfile=nwbfile, name=name_1, description=description_2))
