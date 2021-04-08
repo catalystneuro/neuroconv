@@ -89,4 +89,5 @@ def test_movie_interface():
         conversion_options=dict(Movie=dict(module_name=module_name, module_description=module_description)),
     )
     assert module_name in nwbfile.modules and nwbfile.modules[module_name].description == module_description
+
     rmtree(test_dir)
