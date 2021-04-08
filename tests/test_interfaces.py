@@ -68,4 +68,25 @@ def test_movie_interface():
             overwrite=True,
             conversion_options=conversion_options
         )
+
+    module_name = "TestModule"
+    module_description = "This is a test module."
+    nwbfile = converter.run_conversion(
+        metadata=metadata,
+        save_to_file=False
+    )
+    assert f"Video: {Path(movie_file).stem}" in nwbfile.acquisition
+    nwbfile = converter.run_conversion(
+        metadata=metadata,
+        save_to_file=False,
+        nwbfile=nwbfile,
+        conversion_options=dict(Movie=dict(module_name=module_name)),
+    )
+    assert module_name in nwbfile.modules
+    nwbfile = converter.run_conversion(
+        metadata=metadata,
+        save_to_file=False,
+        conversion_options=dict(Movie=dict(module_name=module_name, module_description=module_description)),
+    )
+    assert module_name in nwbfile.modules and nwbfile.modules[module_name].description == module_description
     rmtree(test_dir)

@@ -13,7 +13,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 
 from .interface_utils.movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
-from ..conversion_tools import check_regular_timestamps
+from ..conversion_tools import check_regular_timestamps, get_module
 
 
 try:
@@ -41,7 +41,9 @@ class MovieInterface(BaseDataInterface):
         stub_test: bool = False,
         external_mode: bool = True,
         starting_times: Optional[list] = None,
-        chunk_data: bool = True
+        chunk_data: bool = True,
+        module_name: Optional[str] = None,
+        module_description: Optional[str] = None
      ):
         """
         Convert the movie data files to ImageSeries and write them in the NWBFile.
@@ -67,6 +69,11 @@ class MovieInterface(BaseDataInterface):
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
             of 70 (from compression experiments). Based on experiements for a ~30 FPS system of ~400 x ~600 color
             frames, the equivalent uncompressed RAM usage is around 2GB per minute of video. The default is True.
+        module_name: str, optional
+            Name of the processing module to add the ImageSeries object to. Default behavior is to add as acquisition.
+        module_description: str, optional
+            If the processing module specified by module_name does not exist, it will be created with this description.
+            The default description is the same as used by the conversion_tools.get_module function.
         """
         file_paths = self.source_data['file_paths']
 
@@ -167,4 +174,9 @@ class MovieInterface(BaseDataInterface):
                             chunks=best_gzip_chunk
                         )
                     )
-            nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
+            if module_name is None:
+                nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
+            else:
+                get_module(nwbfile=nwbfile, name=module_name, description=module_description).add(
+                    ImageSeries(**image_series_kwargs)
+                )
