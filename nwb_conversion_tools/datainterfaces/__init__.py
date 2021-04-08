@@ -33,6 +33,8 @@ from .imagingextractorinterface import (
     Hdf5ImagingInterface
 )
 
+from .axonadatainterface import AxonaRecordingExtractorInterface
+
 
 interface_list = [
     TutorialRecordingInterface,
@@ -56,5 +58,6 @@ interface_list = [
     OpenEphysSortingExtractorInterface,
     SbxImagingInterface,
     TiffImagingInterface,
-    Hdf5ImagingInterface
+    Hdf5ImagingInterface,
+    AxonaRecordingExtractorInterface
 ]
