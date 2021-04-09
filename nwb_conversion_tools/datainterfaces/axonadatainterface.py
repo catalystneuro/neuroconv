@@ -124,7 +124,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             ElectrodeGroup=dict(
                 name='Group0',
                 location='',
-                device='',
+                device='Axona',
                 description="Group0 - all electrodes grouped together.",
             ),
             ElectricalSeries=dict(
