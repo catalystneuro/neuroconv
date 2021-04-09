@@ -23,5 +23,5 @@ automated tools for converting formats.
     part02_nwb_apis
     part03_format_conversions
     part04_conversion_tools
-    part05_web_ui
+    part05_dandi
 
