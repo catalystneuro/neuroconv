@@ -37,13 +37,24 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
         # Initiate Ecephys metadata
         metadata_schema['properties']['Ecephys'] = get_base_schema(tag='Ecephys')
+        metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup']
         metadata_schema['properties']['Ecephys']['properties'] = dict(
-            Device=get_schema_from_hdmf_class(Device),
-            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
+            Device=dict(
+                type="array",
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}
+            ),
+            ElectrodeGroup=dict(
+                type="array",
+                items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
+            ),
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
-        metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup', 'ElectricalSeries']
-        fill_defaults(metadata_schema, self.get_metadata())
+        # Schema definition for arrays
+        metadata_schema['properties']['Ecephys']['properties']["definitions"] = dict(
+            Device=get_schema_from_hdmf_class(Device),
+            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
+        )
+        #fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def subset_recording(self, stub_test: bool = False):

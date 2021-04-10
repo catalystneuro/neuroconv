@@ -24,7 +24,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
 
     def get_metadata_schema(self):
         metadata_schema = get_base_schema(
-            required=['SpikeEventSeries'],
+            # required=['SpikeEventSeries'],
             properties=dict(
                 SpikeEventSeries=get_schema_from_hdmf_class(SpikeEventSeries)
             )

@@ -28,7 +28,7 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
         required=[],
         properties={},
         type='object',
-        additionalProperties=False
+        additionalProperties=True
     )
     if tag is not None:
         base_schema.update(tag=tag)
