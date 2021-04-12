@@ -83,10 +83,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             'experimenter',
             'comments',
             'duration',
-            'sw_version',
-            'tracker_version',
-            'stim_version',
-            'audio_version'
+            'sw_version'
         ]
         set_file = self.source_data['filename'].split('.')[0]+'.set'
         par = parse_generic_header(set_file, params_of_interest)
