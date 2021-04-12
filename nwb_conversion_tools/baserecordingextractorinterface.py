@@ -41,10 +41,12 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata_schema['properties']['Ecephys']['properties'] = dict(
             Device=dict(
                 type="array",
+                minItems=1,
                 items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}
             ),
             ElectrodeGroup=dict(
                 type="array",
+                minItems=1,
                 items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
             ),
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
