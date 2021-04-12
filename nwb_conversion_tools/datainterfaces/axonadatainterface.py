@@ -1,8 +1,6 @@
 """Authors: Steffen Buergers"""
-import random
 import re
 import datetime
-import string
 import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -44,6 +42,7 @@ def parse_generic_header(filename, params):
 def read_iso_datetime(set_file):
     """
     Creates datetime object (y, m, d, h, m, s) from .set file header
+    and converts it to ISO 8601 format
     """
     with open(set_file, 'r', encoding='cp1252') as f:
         for line in f:
@@ -57,9 +56,7 @@ def read_iso_datetime(set_file):
 
 
 class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
-    """
-    Primary data interface class for converting a AxonaRecordingExtractor
-    """
+    """Primary data interface class for converting a AxonaRecordingExtractor"""
 
     RX = se.AxonaRecordingExtractor
 
@@ -79,16 +76,9 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         }
         return source_schema
 
-    def __init__(self, **source_data):
-        super().__init__(**source_data)
-
     def get_metadata(self):
-        """
-        Auto-fill metadata where possible. Must comply with metadata schema.
-        """
 
         # Extract information for specific parameters from .set file
-        # TODO not all are currently used or part of the metadata_schema
         params_of_interest = [
             'experimenter',
             'comments',
@@ -98,35 +88,48 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             'stim_version',
             'audio_version'
         ]
-        set_file = self.source_data['filename']+'.set'
+        set_file = self.source_data['filename'].split('.')[0]+'.set'
         par = parse_generic_header(set_file, params_of_interest)
 
+        # Extract information from AxonaRecordingExtractor
+        elec_group_names = self.recording_extractor.get_channel_groups()
+        unique_elec_group_names = set(elec_group_names)
+
         # Add available metadata
-        # NOTE that this interface is meant to be used within an NWBconverter,
-        # which contains a much larger metadata_schema. As such a datainterface
-        # metadata by itself does not necessarily validate with its own schema!
         metadata = super().get_metadata()
         metadata['NWBFile'] = dict(
             session_start_time=read_iso_datetime(set_file),
             session_description=par['comments'],
-            identifier=''.join(random.choices(string.ascii_uppercase +
-                                              string.digits, k=12)),
+            session_duration=par['duration']+'s',
             experimenter=[par['experimenter']]
         )
 
         metadata['Ecephys'] = dict(
-            Device=dict(
+            Device=[
+                dict(
                     name="Axona",
-                    description="Axona DacqUSB, sw_version={}".format(
-                        par['sw_version']),
+                    description="Axona DacqUSB, sw_version={}"
+                                .format(par['sw_version']),
                     manufacturer="Axona"
                 ),
-            ElectrodeGroup=dict(
-                name='Group0',
-                location='',
-                device='Axona',
-                description="Group0 - all electrodes grouped together.",
-            ),
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name=f'Group{group_name}',
+                    location='',
+                    device='Axona',
+                    description=f"Group {group_name} electrodes.",
+                )
+                for group_name in unique_elec_group_names
+            ],
+            Electrodes=[
+                dict(
+                    name='group_name',
+                    description="The name of the ElectrodeGroup this \
+                        electrode is a part of.",
+                    data=[f"Group{x}" for x in elec_group_names]
+                )
+            ],
             ElectricalSeries=dict(
                 name='ElectricalSeries',
                 description="Raw acquisition traces."
