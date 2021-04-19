@@ -13,6 +13,7 @@ from ..json_schema_utils import get_schema_from_method_signature
 from .interface_utils.brpylib import NsxFile
 
 PathType = Union[str, Path, None]
+OptionalPathType = Optional[Union[str, Path]]
 
 
 class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
@@ -32,7 +33,8 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata_schema['properties']['filename']['description'] = 'Path to Blackrock file.'
         return metadata_schema
     
-    def __init__(self, filename: PathType, nsx_to_load: Optional[int] = None):
+    def __init__(self, filename: PathType):
+        nsx_to_load = int(str(filename).split('.')[-1][-1])
         super().__init__(filename=filename, nsx_to_load=nsx_to_load)
 
     def get_metadata(self):
@@ -59,16 +61,25 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             ElectrodeGroup=[],
         )
 
-        if self.source_data['nsx_to_load'] != 6:
-            metadata['Ecephys']['LFPElectricalSeries'] = dict()
+        if self.source_data['filename'].split('.')[-1][-1] == '6':
+            metadata['Ecephys']['ElectricalSeries_raw'] = dict()
         else:
-            metadata['Ecephys']['ElectricalSeries'] = dict()
+            metadata['Ecephys']['ElectricalSeries_processed'] = dict()
 
         return metadata
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict = None, use_times: bool = False, 
-                       write_as_lfp: bool = False, save_path: PathType = None, overwrite: bool = False, 
-                       stub_test: bool = False):
+    def run_conversion(
+        self, 
+        nwbfile: NWBFile,
+        metadata: dict = None,
+        stub_test: bool = False,
+        use_times: bool = False,
+        save_path: OptionalPathType = None,
+        overwrite: bool = False,
+        buffer_mb: int = 500,
+        write_as: str = 'raw',
+        es_key: str = None
+    ):
         """
         Primary function for converting recording extractor data to nwb.
 
@@ -94,17 +105,23 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if self.source_data['nsx_to_load'] != 6:
-            write_as_lfp = True
+        if self.source_data['filename'].split('.')[-1][-1] == '6':
+            write_as = 'raw'
+        elif write_as not in ['processed', 'lfp']:
+            write_as = 'processed'
+
+        print(f'Converting Blackrock {write_as} traces...')
 
         super().run_conversion(
             nwbfile=nwbfile, 
             metadata=metadata, 
             use_times=use_times, 
-            write_as_lfp=write_as_lfp,
+            write_as=write_as,
+            es_key=es_key,
             save_path=save_path, 
             overwrite=overwrite,
-            stub_test=stub_test
+            stub_test=stub_test,
+            buffer_mb=buffer_mb
         )
 
 

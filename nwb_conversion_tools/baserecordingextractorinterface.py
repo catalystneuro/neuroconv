@@ -71,14 +71,16 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         return recording_extractor
 
     def run_conversion(
-      self,
-      nwbfile: NWBFile,
-      metadata: dict = None,
-      stub_test: bool = False,
-      use_times: bool = False,
-      save_path: OptionalPathType = None,
-      overwrite: bool = False,
-      buffer_mb: int = 500
+        self,
+        nwbfile: NWBFile,
+        metadata: dict = None,
+        stub_test: bool = False,
+        use_times: bool = False,
+        save_path: OptionalPathType = None,
+        overwrite: bool = False,
+        buffer_mb: int = 500,
+        write_as: str = 'raw',
+        es_key: str = None,
     ):
         """
         Primary function for converting raw (unprocessed) recording extractor data to nwb.
@@ -104,6 +106,10 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         buffer_mb: int (optional, defaults to 500MB)
             Maximum amount of memory (in MB) to use per iteration of the internal DataChunkIterator.
             Requires trace data in the RecordingExtractor to be a memmap object.
+        write_as: str (optional, defaults to 'raw')
+            Options: 'raw', 'lfp' or 'processed'
+        es_key: str (optional)
+            Key in metadata dictionary containing metadata info for the specific electrical series
         """
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
@@ -115,7 +121,8 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             nwbfile=nwbfile,
             metadata=metadata,
             use_times=use_times,
-            write_as_lfp=False,
+            write_as=write_as,
+            es_key=es_key,
             save_path=save_path,
             overwrite=overwrite,
             buffer_mb=buffer_mb

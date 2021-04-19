@@ -10,8 +10,8 @@ from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 OptionalPathType = Optional[Union[str, Path]]
 
 
-class BaseLFPExtractorInterface(BaseProcessingExtractorInterface):
-    """Previous class, for backward compatibility"""
+class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
+    """Primary class for all LFP data interfaces."""
 
     def get_metadata(self):
         metadata = dict(
@@ -25,10 +25,6 @@ class BaseLFPExtractorInterface(BaseProcessingExtractorInterface):
 
         return metadata
 
-
-class BaseProcessingExtractorInterface(BaseRecordingExtractorInterface):
-    """Primary class for all processed data interfaces."""
-
     def run_conversion(
       self,
       nwbfile: NWBFile,
@@ -41,7 +37,6 @@ class BaseProcessingExtractorInterface(BaseRecordingExtractorInterface):
     ):
         """
         Primary function for converting low-pass recording extractor data to nwb.
-
         Parameters
         ----------
         nwbfile: NWBFile
@@ -73,7 +68,7 @@ class BaseProcessingExtractorInterface(BaseRecordingExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             use_times=use_times,
-            write_as_processed=True,
+            write_as_lfp=True,
             save_path=save_path,
             overwrite=overwrite,
             buffer_mb=buffer_mb
