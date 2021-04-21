@@ -121,10 +121,14 @@ class NWBConverter:
         assert (not save_to_file and nwbfile_path is None) or nwbfile is None, \
             "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
 
+        # Validate conversion options
         if conversion_options is None:
             conversion_options = dict()
         else:
             validate(instance=conversion_options, schema=self.get_conversion_options_schema())
+
+        # Validate metadata
+        validate(instance=metadata, schema=self.get_metadata_schema())
 
         if save_to_file:
             if nwbfile_path is None:
