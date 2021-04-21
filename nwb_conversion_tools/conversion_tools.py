@@ -40,7 +40,7 @@ def get_default_nwbfile_metadata():
     metadata = dict(
         NWBFile=dict(
             session_description="no description",
-            session_start_time=datetime(1970, 1, 1),
+            session_start_time=datetime(1970, 1, 1).isoformat(),
             identifier=str(uuid.uuid4())
         )
     )
