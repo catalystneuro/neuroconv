@@ -48,10 +48,16 @@ class NWBConverter:
             })
         return conversion_options_schema
 
+    @classmethod
+    def validate_source(cls, source_data):
+        """Validate source_data against Converter source_schema."""
+        validate(instance=source_data, schema=cls.get_source_schema())
+        print('Source data is valid!')
+
     def __init__(self, source_data):
         """Validate source_data against source_schema and initialize all data interfaces."""
         # Validate source_data against source_schema
-        validate(instance=source_data, schema=self.get_source_schema())
+        self.validate_source(source_data=source_data)
 
         # If data is valid, proceed to instantiate DataInterface objects
         self.data_interface_objects = {
@@ -89,14 +95,24 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
+    def validate_metadata(self, metadata):
+        """Validate metadata against Converter metadata_schema."""
+        validate(instance=metadata, schema=self.get_metadata_schema())
+        print('Metadata is valid!')
+
+    def validate_conversion_options(self, conversion_options):
+        """Validate conversion_options against Converter conversion_options_schema."""
+        validate(instance=conversion_options, schema=self.get_conversion_options_schema())
+        print('conversion_options is valid!')
+
     def run_conversion(
-            self,
-            metadata: dict,
-            save_to_file: Optional[bool] = True,
-            nwbfile_path: Optional[str] = None,
-            overwrite: Optional[bool] = False,
-            nwbfile: Optional[NWBFile] = None,
-            conversion_options: Optional[dict] = None
+        self,
+        metadata: dict,
+        save_to_file: Optional[bool] = True,
+        nwbfile_path: Optional[str] = None,
+        overwrite: Optional[bool] = False,
+        nwbfile: Optional[NWBFile] = None,
+        conversion_options: Optional[dict] = None
     ):
         """
         Run the NWB conversion over all the instantiated data interfaces.
@@ -125,10 +141,10 @@ class NWBConverter:
         if conversion_options is None:
             conversion_options = dict()
         else:
-            validate(instance=conversion_options, schema=self.get_conversion_options_schema())
+            self.validate_conversion_options(conversion_options=conversion_options)
 
         # Validate metadata
-        validate(instance=metadata, schema=self.get_metadata_schema())
+        self.validate_metadata(metadata=metadata)
 
         if save_to_file:
             if nwbfile_path is None:
