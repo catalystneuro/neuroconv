@@ -2,7 +2,6 @@
 import random
 import string
 import pytz
-import uuid
 from typing import Union, Optional
 from pathlib import Path
 import spikeextractors as se
