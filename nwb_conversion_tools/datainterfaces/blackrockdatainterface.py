@@ -49,7 +49,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata['NWBFile'] = dict(
             session_start_time=session_start_time_tzaware.strftime('%Y-%m-%dT%H:%M:%S'),
             session_description=comment,
-            identifier=str(uuid.uuid4())
         )
 
         metadata['Ecephys'] = dict(
