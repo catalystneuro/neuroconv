@@ -144,7 +144,7 @@ class NWBConverter:
             self.validate_conversion_options(conversion_options=conversion_options)
 
         # Validate metadata
-        self.validate_metadata(metadata=metadata)
+        # self.validate_metadata(metadata=metadata)
 
         if save_to_file:
             if nwbfile_path is None:
