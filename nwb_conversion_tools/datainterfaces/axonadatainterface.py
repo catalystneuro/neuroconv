@@ -109,31 +109,9 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             "tag": "Electrodes"
         }
 
-        metadata_schema['properties']['Ecephys']['properties']["definitions"]\
-            .update(dict(
-                    Electrodes=Electrodes,
-                    ElectricalSeries=get_schema_from_hdmf_class(
-                        ElectricalSeries)
-                    ))
-
-        metadata_schema['properties']['Ecephys']['required'].extend(
-            ['Electrodes', 'ElectricalSeries']
-        )
         metadata_schema['properties']['Ecephys']['properties'].update(
-            dict(
-                Electrodes=dict(
-                    type="array",
-                    minItems=1,
-                    items={"$ref": "#/properties/Ecephys/properties/\
-                        definitions/Electrodes"}
-                ),
-                ElectricalSeries=dict(
-                    type="array",
-                    minItems=1,
-                    items={"$ref": "#/properties/Ecephys/properties/\
-                        definitions/ElectricalSeries"}
-                )
-            )
+            Electrodes=Electrodes,
+            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries),
         )
 
         return metadata_schema
