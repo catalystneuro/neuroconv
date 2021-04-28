@@ -5,6 +5,10 @@ import inspect
 import numpy as np
 
 
+def exist_dict_in_list(d, l):
+    return any([d == i for i in l])
+
+
 def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
     """Perform an update to all nested keys of dictionary d from dictionary u."""
     for k, v in u.items():
@@ -13,10 +17,16 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
                                     append_list=append_list,
                                     remove_repeats=remove_repeats)
         elif append_list and isinstance(v, list):
-            d[k] = d.get(k, []) + v
-            # Remove repeated items if they exist
-            if remove_repeats and len(v) > 0 and not isinstance(v[0], dict):
-                d[k] = list(set(d[k]))
+            if len(v) > 0 and isinstance(v[0], dict):
+                for vv in v: 
+                    # add dict only if not repeated
+                    if not exist_dict_in_list(vv, d.get(k, [])):
+                        d[k] = d.get(k, []) + list(vv)
+            else:
+                d[k] = d.get(k, []) + v
+                # Remove repeated items if they exist
+                if remove_repeats and len(d[k]) > 0:
+                    d[k] = list(set(d[k]))
         else:
             d[k] = v
     return d
@@ -28,7 +38,7 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
         required=[],
         properties={},
         type='object',
-        additionalProperties=False
+        additionalProperties=True
     )
     if tag is not None:
         base_schema.update(tag=tag)

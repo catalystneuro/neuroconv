@@ -53,11 +53,20 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         metadata['Ecephys'] = dict(
-            Device=[dict(
-                name='Device_ecephys',
-                description='no description'
-            )],
-            ElectrodeGroup=[],
+            Device=[
+                dict(
+                    name='Device_ecephys',
+                    description='no description'
+                )
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name='ElecetrodeGroup', 
+                    description='no description', 
+                    location='no description', 
+                    device='Device_ecephys'
+                )
+            ],
         )
 
         if self.source_data['filename'].split('.')[-1][-1] == '6':
