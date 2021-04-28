@@ -20,13 +20,14 @@ def append_replace_dict_in_list(d, l, k):
     if k in d and len(l) > 0:
         # Index where the value dictionary[k] exists in the list of dicts
         ind = np.where([d[k] == i[k] for i in l])[0]
-        if ind:
-            l[ind] = d
+        if len(ind) > 0:
+            l[ind[0]] = d
         else:
             l.append(d)
     else:
         l.append(d)
     return l
+
 
 def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
     """Perform an update to all nested keys of dictionary d from dictionary u."""
@@ -38,10 +39,10 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
         elif append_list and isinstance(v, list):
             if len(v) > 0 and isinstance(v[0], dict):
                 for vv in v:
+                    d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k='name')
                     # add dict only if not repeated
-                    if not exist_dict_in_list(vv, d.get(k, [])):
+                    # if not exist_dict_in_list(vv, d.get(k, [])):
                         # d[k] = d.get(k, []) + [vv]
-                        d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k='name')
             else:
                 d[k] = d.get(k, []) + v
                 # Remove repeated items if they exist
