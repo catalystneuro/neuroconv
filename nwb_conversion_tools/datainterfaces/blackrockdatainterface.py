@@ -61,12 +61,19 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             ],
             ElectrodeGroup=[
                 dict(
-                    name='ElecetrodeGroup', 
+                    name='ElectrodeGroup', 
                     description='no description', 
                     location='no description', 
                     device='Device_ecephys'
                 )
             ],
+            Electrodes=[
+                dict(
+                    name='group_name',
+                    description='name of the electrode group',
+                    data=['ElectrodeGroup' for i in self.recording_extractor.get_channel_groups()]
+                )
+            ]
         )
 
         if self.source_data['filename'].split('.')[-1][-1] == '6':
