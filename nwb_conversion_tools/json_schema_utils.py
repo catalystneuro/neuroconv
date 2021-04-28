@@ -18,10 +18,10 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
                                     remove_repeats=remove_repeats)
         elif append_list and isinstance(v, list):
             if len(v) > 0 and isinstance(v[0], dict):
-                for vv in v: 
+                for vv in v:
                     # add dict only if not repeated
                     if not exist_dict_in_list(vv, d.get(k, [])):
-                        d[k] = d.get(k, []) + list(vv)
+                        d[k] = d.get(k, []) + [vv]
             else:
                 d[k] = d.get(k, []) + v
                 # Remove repeated items if they exist
