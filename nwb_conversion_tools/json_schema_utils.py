@@ -6,8 +6,27 @@ import numpy as np
 
 
 def exist_dict_in_list(d, l):
+    """Returns True if an identical dictionary exists in the list, False otherwise"""
     return any([d == i for i in l])
 
+
+def append_replace_dict_in_list(d, l, k):
+    """
+    Append a dictionary to a list of dictionaries.
+    If some dictionary already contains the same value as d[k], it gets 
+    replaced by the new dict.
+    Returns the updated list.
+    """
+    if k in d and len(l) > 0:
+        # Index where the value dictionary[k] exists in the list of dicts
+        ind = np.where([d[k] == i[k] for i in l])[0]
+        if ind:
+            l[ind] = d
+        else:
+            l.append(d)
+    else:
+        l.append(d)
+    return l
 
 def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
     """Perform an update to all nested keys of dictionary d from dictionary u."""
@@ -21,7 +40,8 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
                 for vv in v:
                     # add dict only if not repeated
                     if not exist_dict_in_list(vv, d.get(k, [])):
-                        d[k] = d.get(k, []) + [vv]
+                        # d[k] = d.get(k, []) + [vv]
+                        d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k='name')
             else:
                 d[k] = d.get(k, []) + v
                 # Remove repeated items if they exist
