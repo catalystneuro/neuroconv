@@ -48,9 +48,8 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         comment = nsx_file.basic_header['Comment']
 
         metadata['NWBFile'] = dict(
-            session_start_time=session_start_time_tzaware,
+            session_start_time=session_start_time_tzaware.strftime('%Y-%m-%dT%H:%M:%S'),
             session_description=comment,
-            identifier=''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
         )
 
         metadata['Ecephys'] = dict(
