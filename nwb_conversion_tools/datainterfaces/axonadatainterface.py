@@ -3,7 +3,11 @@ import re
 import datetime
 import spikeextractors as se
 
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from pynwb.ecephys import ElectricalSeries
+from nwb_conversion_tools.utils import get_schema_from_hdmf_class
+from nwb_conversion_tools.baserecordingextractorinterface import (
+    BaseRecordingExtractorInterface
+)
 
 
 def parse_generic_header(filename, params):
@@ -76,6 +80,64 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         }
         return source_schema
 
+    def get_metadata_schema(self):
+        metadata_schema = super().get_metadata_schema()
+
+        # Update Ecephys metadata
+        Electrodes = {
+            "required": [
+                "name",
+                "description",
+                "data"
+            ],
+            "properties": {
+                "name": {
+                    "description": "Electrode group name this electrode is a part of.",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description of this electrode group",
+                    "type": "string"
+                },
+                "data": {
+                    "description": "Electrode group name for each electrode.",
+                    "type": "array",
+                }
+            },
+            "type": "array",
+            "additionalProperties": False,
+            "tag": "Electrodes"
+        }
+
+        metadata_schema['properties']['Ecephys']['properties']["definitions"]\
+            .update(dict(
+                    Electrodes=Electrodes,
+                    ElectricalSeries=get_schema_from_hdmf_class(
+                        ElectricalSeries)
+                    ))
+
+        metadata_schema['properties']['Ecephys']['required'].extend(
+            ['Electrodes', 'ElectricalSeries']
+        )
+        metadata_schema['properties']['Ecephys']['properties'].update(
+            dict(
+                Electrodes=dict(
+                    type="array",
+                    minItems=1,
+                    items={"$ref": "#/properties/Ecephys/properties/\
+                        definitions/Electrodes"}
+                ),
+                ElectricalSeries=dict(
+                    type="array",
+                    minItems=1,
+                    items={"$ref": "#/properties/Ecephys/properties/\
+                        definitions/ElectricalSeries"}
+                )
+            )
+        )
+
+        return metadata_schema
+
     def get_metadata(self):
 
         # Extract information for specific parameters from .set file
@@ -97,7 +159,6 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata['NWBFile'] = dict(
             session_start_time=read_iso_datetime(set_file),
             session_description=par['comments'],
-            session_duration=par['duration']+'s',
             experimenter=[par['experimenter']]
         )
 
@@ -122,8 +183,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             Electrodes=[
                 dict(
                     name='group_name',
-                    description="The name of the ElectrodeGroup this \
-                        electrode is a part of.",
+                    description="The name of the ElectrodeGroup this electrode is a part of.",
                     data=[f"Group{x}" for x in elec_group_names]
                 )
             ],
