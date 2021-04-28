@@ -12,8 +12,8 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ..json_schema_utils import get_schema_from_method_signature
 from .interface_utils.brpylib import NsxFile
 
-PathType = Union[str, Path, None]
-OptionalPathType = Optional[Union[str, Path]]
+PathType = Union[str, Path]
+OptionalPathType = Optional[PathType]
 
 
 class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
