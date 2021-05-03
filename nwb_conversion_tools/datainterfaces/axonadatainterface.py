@@ -4,9 +4,9 @@ import datetime
 import spikeextractors as se
 
 from pynwb.ecephys import ElectricalSeries
-from nwb_conversion_tools.utils import get_schema_from_hdmf_class
-from nwb_conversion_tools.basedatainterface import BaseDataInterface
-from nwb_conversion_tools.baserecordingextractorinterface import (
+from ..utils import get_schema_from_hdmf_class
+from ..basedatainterface import BaseDataInterface
+from ..baserecordingextractorinterface import (
     BaseRecordingExtractorInterface
 )
 
