@@ -5,6 +5,7 @@ import spikeextractors as se
 
 from pynwb.ecephys import ElectricalSeries
 from nwb_conversion_tools.utils import get_schema_from_hdmf_class
+from nwb_conversion_tools.basedatainterface import BaseDataInterface
 from nwb_conversion_tools.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface
 )
@@ -172,3 +173,8 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         return metadata
+
+
+class AxonaPositionDataInterface(BaseDataInterface):
+    """Primary data interface class for converting a AxonaRecordingExtractor"""
+    pass
