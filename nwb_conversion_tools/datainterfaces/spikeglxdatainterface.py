@@ -3,10 +3,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Union, Optional
 from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor
+from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..json_schema_utils import get_schema_from_method_signature
+from ..utils import get_schema_from_hdmf_class
 
 PathType = Union[str, Path, None]
 
@@ -33,7 +35,18 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         if stub_test:
             self.subset_channels = [0, 1]
 
+    def get_metadata_schema(self):
+        """Compile metadata schema for the RecordingExtractor."""
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema['properties']['Ecephys']['properties'].update(
+            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+        )
+        return metadata_schema
+
     def get_metadata(self):
+        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        metadata = super().get_metadata()
+
         file_path = Path(self.source_data['file_path'])
         session_id = file_path.parent.stem
 
@@ -52,40 +65,44 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         shank_electrode_number = channels
         shank_group_name = ["Shank1" for x in channels]
 
-        ecephys_metadata = dict(
-            Ecephys=dict(
-                Device=[
-                    dict(
-                        description=f"More details for the high-pass (ap) data found in {session_id}.ap.meta!"
-                    )
-                ],
-                ElectrodeGroup=[
-                    dict(
-                        name='Shank1',
-                        description="Shank1 electrodes."
-                    )
-                ],
-                Electrodes=[
-                    dict(
-                        name='shank_electrode_number',
-                        description="0-indexed channel within a shank.",
-                        data=shank_electrode_number
-                    ),
-                    dict(
-                        name='group_name',
-                        description="The name of the ElectrodeGroup this electrode is a part of.",
-                        data=shank_group_name
-                    )
-                ],
-                ElectricalSeries=dict(
-                    name='ElectricalSeries',
-                    description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
-                )
-            ),
-            NWBFile=dict(session_start_time=session_start_time)
+        metadata['NWBFile'] = dict(
+            session_start_time=session_start_time.strftime('%Y-%m-%dT%H:%M:%S'),
         )
 
-        return ecephys_metadata
+        metadata['Ecephys'] = dict(
+            Device=[
+                dict(
+                    name='Device_ecephys',
+                    description=f"More details for the high-pass (ap) data found in {session_id}.ap.meta!"
+                )
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name='Shank1',
+                    description="Shank1 electrodes.",
+                    location='no description', 
+                    device='Device_ecephys'
+                )
+            ],
+            Electrodes=[
+                dict(
+                    name='shank_electrode_number',
+                    description="0-indexed channel within a shank.",
+                    data=shank_electrode_number
+                ),
+                dict(
+                    name='group_name',
+                    description="The name of the ElectrodeGroup this electrode is a part of.",
+                    data=shank_group_name
+                )
+            ],
+            ElectricalSeries_raw=dict(
+                name='ElectricalSeries',
+                description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
+            )
+        )
+
+        return metadata
 
 
 class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
