@@ -6,7 +6,7 @@ pandas==1.0.3
 scipy==1.4.1
 h5py==2.10.0
 PyYAML==5.4
-git+https://github.com/SpikeInterface/spikeextractors
+git+https://github.com/SpikeInterface/spikeextractors/tree/axonaextractor
 spikesorters==0.4.4
 spiketoolkit==0.7.4
 psutil==5.7.0
