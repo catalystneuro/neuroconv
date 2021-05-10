@@ -5,6 +5,7 @@ import datetime
 
 import spikeextractors as se
 
+from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 from pynwb.behavior import Position, SpatialSeries
 
@@ -74,19 +75,22 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
     RX = se.AxonaRecordingExtractor
 
     @classmethod
-    def get_source_schema(cls):
-        source_schema = {
-            'required': ['filename'],
-            'properties': {
-                'filename': {
-                    'type': 'string',
-                    'format': 'file',
-                    'description': 'Full filename of Axona .set file (or other)'
-                }
-            },
-            'type': 'object',
-            'additionalProperties': True
-        }
+    def get_source_schema(cls): 
+        
+        source_schema = super().get_source_schema()
+        source_schema.update(
+            required=['filename'],
+            properties=dict(
+                filename=dict(
+                    type='string',
+                    format='file',
+                    description='Full filename of Axona .set file (or other)'
+                )
+            ),
+            type='object',
+            additionalProperties=True
+        )
+
         return source_schema
 
     def get_metadata_schema(self):
