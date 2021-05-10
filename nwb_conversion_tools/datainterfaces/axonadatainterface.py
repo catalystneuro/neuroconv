@@ -1,4 +1,5 @@
 """Authors: Steffen Buergers"""
+import os
 import re
 import datetime
 
@@ -195,7 +196,7 @@ def establish_mmap_to_position_data(filename):
 
     Parameters:
     -------
-    filename (Path or Str): Full filename of Axona file with any 
+    filename (Path or Str): Full filename of Axona file with any
         extension.
 
     Returns:
@@ -226,39 +227,36 @@ def establish_mmap_to_position_data(filename):
 
     # Establish memory map to .bin file, considering only position data
     if contains_pos_tracking:
-        num_channels_pos = 8
-        dur_pos = dur_ecephys
-        num_pos_samples = int(dur_pos * sr_pos)
-
         fbin = open(bin_file, 'rb')
         mmpos = mmap.mmap(fbin.fileno(), 0, access=mmap.ACCESS_READ)
 
     return mmpos
 
+
 def read_bin_file_position_data(filename):
     '''
-    Reads position data from Axona .bin file (if present in 
+    Reads position data from Axona .bin file (if present in
     recording) and returns it as a numpy.array.
-    
+
     Parameters:
     -------
-    filename (Path or Str): Full filename of Axona file with any 
+    filename (Path or Str): Full filename of Axona file with any
         extension.
-    
+
     Returns:
     -------
     pos (np.array)
     '''
     bin_file = filename.split('.')[0]+'.bin'
     mm = establish_mmap_to_position_data(bin_file)
-    
+
     bytes_packet = 432
     num_packets = int(os.path.getsize(bin_file) / bytes_packet)
-    
+
     set_file = filename.split('.')[0]+'.set'
     par = parse_generic_header(set_file, ['rawRate', 'duration'])
     sr_ecephys = int(par['rawRate'])
-    
+
     pos = np.array([]).astype(float)
 
     flags = np.ndarray((num_packets,), 'S4', mm, 0, bytes_packet)
@@ -274,8 +272,9 @@ def read_bin_file_position_data(filename):
     packets_per_ms = sr_ecephys / 3000
     pos[:, 0] = pos[:, 0] / packets_per_ms
     pos = np.delete(pos, 1, 1)
-    
+
     return pos
+
 
 def generate_position_data(filename):
     '''
@@ -284,9 +283,9 @@ def generate_position_data(filename):
 
     Parameters:
     -------
-    filename (Path or Str): Full filename of Axona file with any 
+    filename (Path or Str): Full filename of Axona file with any
         extension.
-    
+
     Returns:
     -------
     position (pynwb.behavior.Position)
@@ -306,7 +305,7 @@ def generate_position_data(filename):
             reference_frame='start of raw aquisition (.bin file)'
         )
         position.add_spatial_series(spatial_series)
-    
+
     return position
 
 
@@ -314,32 +313,34 @@ class AxonaPositionDataInterface(BaseDataInterface):
     """Primary data interface class for converting a AxonaRecordingExtractor"""
 
     @classmethod
-    def get_source_schema(cls): 
-        
-        source_schema = {
-            'required': ['filename'],
-            'properties': {
-                'filename': {
-                    'type': 'string',
-                    'format': 'file',
-                    'description': 'Full filename of Axona .bin or .pos file'
-                }
-            },
-            'type': 'object',
-            'additionalProperties': True
-        }
+    def get_source_schema(cls):
+
+        source_schema = super().get_source_schema()
+        source_schema.update(
+            required=['filename'],
+            properties=dict(
+                filename=dict(
+                    type='string',
+                    format='file',
+                    description='Full filename of Axona .bin or .pos file'
+                )
+            ),
+            type='object',
+            additionalProperties=True
+        )
+
         return source_schema
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict):
         """
         Run conversion for this data interface.
-        
+
         Parameters
         ----------
         nwbfile : NWBFile
         metadata : dict
         """
-        position = generate_position_data(filename)
+        position = generate_position_data(self.filename)
 
         # Create processing module for behavioral data
         behavior_module = nwbfile.create_processing_module(
