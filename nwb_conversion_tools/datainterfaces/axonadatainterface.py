@@ -2,6 +2,9 @@
 import os
 import re
 import datetime
+import contextlib
+import mmap
+import numpy as np
 
 import spikeextractors as se
 
@@ -14,9 +17,6 @@ from ..basedatainterface import BaseDataInterface
 from ..baserecordingextractorinterface import (
     BaseRecordingExtractorInterface
 )
-
-import contextlib
-import mmap
 
 
 # Helper functions for AxonaRecordingExtractorInterface
@@ -75,8 +75,8 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
     RX = se.AxonaRecordingExtractor
 
     @classmethod
-    def get_source_schema(cls): 
-        
+    def get_source_schema(cls):
+
         source_schema = super().get_source_schema()
         source_schema.update(
             required=['filename'],
