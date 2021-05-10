@@ -314,7 +314,7 @@ def generate_position_data(filename):
 
 
 class AxonaPositionDataInterface(BaseDataInterface):
-    """Primary data interface class for converting a AxonaRecordingExtractor"""
+    """Primary data interface class for converting Axona position data"""
 
     @classmethod
     def get_source_schema(cls):
