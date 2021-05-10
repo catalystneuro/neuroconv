@@ -342,7 +342,8 @@ class AxonaPositionDataInterface(BaseDataInterface):
         nwbfile : NWBFile
         metadata : dict
         """
-        position = generate_position_data(self.filename)
+        filename = self.source_data['filename']
+        position = generate_position_data(filename)
 
         # Create processing module for behavioral data
         nwbfile.create_processing_module(
