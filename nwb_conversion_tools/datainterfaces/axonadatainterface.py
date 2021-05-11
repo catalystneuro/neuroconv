@@ -9,14 +9,14 @@ import numpy as np
 import spikeextractors as se
 
 from pynwb import NWBFile
-from pynwb.ecephys import ElectricalSeries
 from pynwb.behavior import Position, SpatialSeries
 
-from ..utils import get_schema_from_hdmf_class
 from ..basedatainterface import BaseDataInterface
 from ..baserecordingextractorinterface import (
     BaseRecordingExtractorInterface
 )
+
+from spikeextractors.extractors.nwbextractors.nwbextractors import check_module
 
 
 # Helper functions for AxonaRecordingExtractorInterface
@@ -91,42 +91,6 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         }
         return source_schema
 
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-
-        # Update Ecephys metadata
-        Electrodes = {
-            "required": [
-                "name",
-                "description",
-                "data"
-            ],
-            "properties": {
-                "name": {
-                    "description": "Electrode group name this electrode is a part of.",
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Description of this electrode group",
-                    "type": "string"
-                },
-                "data": {
-                    "description": "Electrode group name for each electrode.",
-                    "type": "array",
-                }
-            },
-            "type": "array",
-            "additionalProperties": False,
-            "tag": "Electrodes"
-        }
-
-        metadata_schema['properties']['Ecephys']['properties'].update(
-            Electrodes=Electrodes,
-            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries),
-        )
-
-        return metadata_schema
-
     def get_metadata(self):
 
         # Extract information for specific parameters from .set file
@@ -172,7 +136,8 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             Electrodes=[
                 dict(
                     name='group_name',
-                    description="The name of the ElectrodeGroup this electrode is a part of.",
+                    description="""The name of the ElectrodeGroup this electrode
+                                is a part of.""",
                     data=[f"Group{x}" for x in elec_group_names]
                 )
             ],
@@ -345,9 +310,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
         filename = self.source_data['filename']
         position = generate_position_data(filename)
 
-        # Create processing module for behavioral data
-        nwbfile.create_processing_module(
-            name='behavior',
-            description='behavioral data'
-        )
+        # Create or update processing module for behavioral data
+        check_module(nwbfile=nwbfile, name='behavior',
+                     description='behavioral data')
         nwbfile.processing['behavior'].add(position)
