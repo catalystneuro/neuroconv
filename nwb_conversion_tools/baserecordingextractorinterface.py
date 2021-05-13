@@ -75,6 +75,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                     data=dict(
                         type="array",
                         description="values for each row in this electrodes column"
+                        default=[np.nan]*len(self.recording_extractor.get_channel_ids())
                     )
                 )
             )
