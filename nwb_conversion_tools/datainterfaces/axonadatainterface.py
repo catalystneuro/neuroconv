@@ -36,7 +36,7 @@ def parse_generic_header(filename, params):
     EXAMPLE
     parse_generic_header('myset_file.set', ['experimenter', 'trial_time'])
     """
-    header = {}
+    header = dict()
     params = set(params)
     with open(filename, 'rb') as f:
         for bin_line in f:
