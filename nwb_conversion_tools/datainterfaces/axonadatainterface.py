@@ -75,18 +75,18 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
 
-        source_schema = {
-            'required': ['filename'],
-            'properties': {
-                'filename': {
-                    'type': 'string',
-                    'format': 'file',
-                    'description': 'Full path to Axona .set file.'
-                }
-            },
-            'type': 'object',
-            'additionalProperties': True
-        }
+        source_schema = dict(
+            required=['filename'],
+            properties=dict(
+                filename=dict(
+                    type='string',
+                    format='file',
+                    description='Full path to Axona .set file.'
+                )
+            ),
+            type='object',
+            additionalProperties=True
+        )
         return source_schema
 
     def get_metadata(self):
