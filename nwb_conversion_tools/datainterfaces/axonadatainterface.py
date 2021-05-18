@@ -53,7 +53,7 @@ def parse_generic_header(filename, params):
     return header
 
 
-def read_iso_datetime(set_file):
+def read_axona_iso_datetime(set_file):
     """
     Creates datetime object (y, m, d, h, m, s) from .set file header
     and converts it to ISO 8601 format
