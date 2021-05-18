@@ -42,8 +42,7 @@ def parse_generic_header(filename, params):
         for bin_line in f:
             if b'data_start' in bin_line:
                 break
-            line = bin_line.decode('cp1252').replace('\r\n', '').\
-                replace('\r', '').strip()
+            line = bin_line.decode('cp1252').replace('\r\n', '').replace('\r', '').strip()
             parts = line.split(' ')
             key = parts[0]
             if key in params:
