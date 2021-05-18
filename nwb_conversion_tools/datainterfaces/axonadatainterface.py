@@ -7,7 +7,6 @@ import mmap
 import numpy as np
 
 import spikeextractors as se
-
 from pynwb import NWBFile
 from pynwb.behavior import Position, SpatialSeries
 
