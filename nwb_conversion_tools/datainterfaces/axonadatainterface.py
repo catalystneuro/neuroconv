@@ -1,7 +1,6 @@
 """Authors: Steffen Buergers"""
 import os
-import re
-import datetime
+import dateutil
 import contextlib
 import mmap
 import numpy as np
@@ -59,12 +58,11 @@ def read_axona_iso_datetime(set_file):
     with open(set_file, 'r', encoding='cp1252') as f:
         for line in f:
             if line.startswith('trial_date'):
-                date_string = re.findall(r'\d+\s\w+\s\d{4}$', line)[0]
+                date_string = line[len('trial_date')+1::].replace('\n', '')
             if line.startswith('trial_time'):
                 time_string = line[len('trial_time')+1::].replace('\n', '')
 
-    return datetime.datetime.strptime(date_string + ', ' + time_string,
-                                      "%d %b %Y, %H:%M:%S").isoformat()
+    dateutil.parser.parse(date_string + ' ' + time_string).isoformat()
 
 
 class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
@@ -108,7 +106,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         # Add available metadata
         metadata = super().get_metadata()
         metadata['NWBFile'] = dict(
-            session_start_time=read_iso_datetime(set_file),
+            session_start_time=read_axona_iso_datetime(set_file),
             session_description=par['comments'],
             experimenter=[par['experimenter']]
         )
