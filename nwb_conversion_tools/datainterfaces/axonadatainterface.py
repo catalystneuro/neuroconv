@@ -62,7 +62,7 @@ def read_axona_iso_datetime(set_file):
             if line.startswith('trial_time'):
                 time_string = line[len('trial_time')+1::].replace('\n', '')
 
-    dateutil.parser.parse(date_string + ' ' + time_string).isoformat()
+    return dateutil.parser.parse(date_string + ' ' + time_string).isoformat()
 
 
 class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
