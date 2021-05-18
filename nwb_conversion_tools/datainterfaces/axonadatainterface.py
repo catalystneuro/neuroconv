@@ -14,7 +14,7 @@ from ..baserecordingextractorinterface import (
     BaseRecordingExtractorInterface
 )
 
-from spikeextractors.extractors.nwbextractors.nwbextractors import check_module
+from nwb_conversion_tools.conversion_tools import get_module
 
 
 # Helper functions for AxonaRecordingExtractorInterface
@@ -307,6 +307,5 @@ class AxonaPositionDataInterface(BaseDataInterface):
         position = generate_position_data(filename)
 
         # Create or update processing module for behavioral data
-        check_module(nwbfile=nwbfile, name='behavior',
-                     description='behavioral data')
+        get_module(nwbfile=nwbfile, name='behavior', description='behavioral data')
         nwbfile.processing['behavior'].add(position)
