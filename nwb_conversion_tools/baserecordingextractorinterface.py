@@ -10,8 +10,9 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_schema_from_hdmf_class
-from .json_schema_utils import get_schema_from_method_signature, fill_defaults, get_base_schema
+from .utils.json_schema import (get_schema_from_hdmf_class, get_schema_from_method_signature, 
+    fill_defaults, get_base_schema)
+from .utils.spike_interface import write_recording
 
 OptionalPathType = Optional[Union[str, Path]]
 
@@ -82,7 +83,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                 )
             )
         )
-        #fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def subset_recording(self, stub_test: bool = False):
@@ -155,7 +155,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         else:
             recording = self.recording_extractor
 
-        se.NwbRecordingExtractor.write_recording(
+        write_recording(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,

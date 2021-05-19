@@ -10,8 +10,7 @@ from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ..json_schema_utils import get_schema_from_method_signature
-from ..utils import get_schema_from_hdmf_class
+from ..utils.json_schema import get_schema_from_hdmf_class, get_schema_from_method_signature
 from .interface_utils.brpylib import NsxFile
 
 PathType = Union[str, Path]

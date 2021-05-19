@@ -6,9 +6,9 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
-from .utils import get_schema_from_hdmf_class
 from .basedatainterface import BaseDataInterface
-from .json_schema_utils import get_schema_from_method_signature, fill_defaults, get_base_schema
+from .utils.json_schema import (get_schema_from_hdmf_class, get_schema_from_method_signature, 
+    fill_defaults, get_base_schema)
 
 
 class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):

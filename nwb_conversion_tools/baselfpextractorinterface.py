@@ -6,6 +6,7 @@ import spikeextractors as se
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .utils.spike_interface import write_recording
 
 OptionalPathType = Optional[Union[str, Path]]
 
@@ -63,7 +64,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
-        se.NwbRecordingExtractor.write_recording(
+        write_recording(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
