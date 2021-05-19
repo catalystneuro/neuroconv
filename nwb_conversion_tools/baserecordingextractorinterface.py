@@ -53,6 +53,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             Electrodes=dict(
                 type="array",
                 minItems=0,
+                renderForm=False,
                 items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"}
             ),
         )
