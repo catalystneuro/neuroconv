@@ -2,6 +2,7 @@
 from abc import ABC
 from typing import Union, Optional
 from pathlib import Path
+import numpy as np
 
 import spikeextractors as se
 from pynwb import NWBFile
@@ -74,7 +75,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                     ),
                     data=dict(
                         type="array",
-                        description="values for each row in this electrodes column"
+                        description="values for each row in this electrodes column",
                         default=[np.nan]*len(self.recording_extractor.get_channel_ids())
                     )
                 )
