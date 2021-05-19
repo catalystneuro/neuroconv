@@ -2,6 +2,7 @@
 from abc import ABC
 from typing import Union, Optional
 from pathlib import Path
+import numpy as np
 
 import spikeextractors as se
 from pynwb import NWBFile
@@ -48,12 +49,38 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                 type="array",
                 minItems=1,
                 items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
-            )
+            ),
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"}
+            ),
         )
         # Schema definition for arrays
         metadata_schema['properties']['Ecephys']['properties']["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
+            Electrodes=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(
+                        type="string",
+                        description="name of this electrodes column"
+                    ),
+                    description=dict(
+                        type="string",
+                        description="description of this electrodes column"
+                    ),
+                    data=dict(
+                        type="array",
+                        description="values for each row in this electrodes column",
+                        default=[np.nan]*len(self.recording_extractor.get_channel_ids())
+                    )
+                )
+            )
         )
         #fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema

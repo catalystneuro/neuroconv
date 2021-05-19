@@ -6,10 +6,12 @@ from typing import Union, Optional
 from pathlib import Path
 import spikeextractors as se
 from pynwb import NWBFile
+from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ..json_schema_utils import get_schema_from_method_signature
+from ..utils import get_schema_from_hdmf_class
 from .interface_utils.brpylib import NsxFile
 
 PathType = Union[str, Path]
@@ -37,6 +39,15 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         nsx_to_load = int(str(filename).split('.')[-1][-1])
         super().__init__(filename=filename, nsx_to_load=nsx_to_load)
 
+    def get_metadata_schema(self):
+        """Compile metadata schema for the RecordingExtractor."""
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema['properties']['Ecephys']['properties'].update(
+            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries),
+            ElectricalSeries_processed=get_schema_from_hdmf_class(ElectricalSeries),
+        )
+        return metadata_schema
+
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
@@ -53,17 +64,37 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         metadata['Ecephys'] = dict(
-            Device=[dict(
-                name='Device_ecephys',
-                description='no description'
-            )],
-            ElectrodeGroup=[],
+            Device=[
+                dict(
+                    name='Device_ecephys',
+                    description='no description'
+                )
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name='ElectrodeGroup', 
+                    description='no description', 
+                    location='no description', 
+                    device='Device_ecephys'
+                )
+            ],
+            Electrodes=[
+                dict(
+                    name='group_name',
+                    description='name of the electrode group',
+                    data=['ElectrodeGroup' for i in self.recording_extractor.get_channel_groups()]
+                )
+            ]
         )
 
         if self.source_data['filename'].split('.')[-1][-1] == '6':
-            metadata['Ecephys']['ElectricalSeries_raw'] = dict()
+            metadata['Ecephys']['ElectricalSeries_raw'] = dict(
+                name='ElectricalSeries_raw'
+            )
         else:
-            metadata['Ecephys']['ElectricalSeries_processed'] = dict()
+            metadata['Ecephys']['ElectricalSeries_processed'] = dict(
+                name='ElectricalSeries_processed'
+            )
 
         return metadata
 

@@ -49,8 +49,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         session_start_time_tzaware = pytz.timezone('EST').localize(session_start_time)
 
         metadata['NWBFile'] = dict(
-            session_start_time=session_start_time_tzaware,
-            identifier=str(uuid.uuid1())
+            session_start_time=session_start_time_tzaware.strftime('%Y-%m-%dT%H:%M:%S'),
         )
 
         # Ecephys metadata
@@ -60,7 +59,21 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
                 name=device_name,
                 description='no description'
             )],
-            ElectrodeGroup=[],
+            ElectrodeGroup=[
+                dict(
+                    name='ElectrodeGroup', 
+                    description='no description', 
+                    location='no description', 
+                    device=device_name
+                )
+            ],
+            Electrodes=[
+                dict(
+                    name='group_name',
+                    description='name of the electrode group',
+                    data=['ElectrodeGroup' for i in self.recording_extractor.get_channel_groups()]
+                )
+            ]
         )
 
         return metadata
