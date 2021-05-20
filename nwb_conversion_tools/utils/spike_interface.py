@@ -5,8 +5,10 @@ import numpy as np
 import distutils.version
 from pathlib import Path
 from typing import Union
+
 import spikeextractors as se
 import pynwb
+
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update

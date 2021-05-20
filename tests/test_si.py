@@ -16,13 +16,10 @@ class TestExtractors(unittest.TestCase):
     def setUp(self):
         self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3, self.example_info = self._create_example(seed=0)
         self.test_dir = tempfile.mkdtemp()
-        # self.test_dir = '.'
 
     def tearDown(self):
-        # Remove the directory after the test
         del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
         shutil.rmtree(self.test_dir)
-        # pass
 
     def _create_example(self, seed):
         channel_ids = [0, 1, 2, 3]
