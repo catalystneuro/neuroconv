@@ -844,8 +844,7 @@ def write_recording(
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
         # If not NWBRecording, make metadata from information available on Recording
-        metadata_0 = get_nwb_metadata(recording=recording)
-        metadata = dict_deep_update(metadata_0, metadata)
+        metadata = get_nwb_metadata(recording=recording)
 
     if nwbfile is None:
         if Path(save_path).is_file() and not overwrite:
