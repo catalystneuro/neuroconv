@@ -30,6 +30,11 @@ class BaseDataInterface(ABC):
         return metadata_schema
 
     def get_metadata(self):
+        """Child DataInterface classes should override this to match their metadata"""
+        return dict()
+
+    def get_conversion_options(self):
+        """Child DataInterface classes should override this to match their conversion options"""
         return dict()
 
     @abstractmethod
