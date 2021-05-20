@@ -145,7 +145,7 @@ class NWBConverter:
 
         # Validate conversion options
         if conversion_options is None:
-            conversion_options = dict()
+            conversion_options = self.get_conversion_options()
         else:
             self.validate_conversion_options(conversion_options=conversion_options)
 
