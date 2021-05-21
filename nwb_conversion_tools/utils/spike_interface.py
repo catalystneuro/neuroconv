@@ -282,8 +282,6 @@ def add_electrodes(
     recording: RecordingExtractor
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
     metadata: dict
         metadata info for constructing the nwb file (optional).
         Should be of the format
@@ -292,6 +290,10 @@ def add_electrodes(
                                                     'data': [my_electrode_data]}, ...]
         where each dictionary corresponds to a column in the Electrodes table and [my_electrode_data] is a list in
         one-to-one correspondence with the nwbfile electrode ids and RecordingExtractor channel ids.
+    write_scaled: bool (optional, defaults to True)
+        If True, writes the scaled traces (return_scaled=True)
+    exclude: tuple
+        TODO - Add description
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
@@ -331,6 +333,9 @@ def add_electrodes(
     if metadata is None:
         metadata = dict(Ecephys=dict())
 
+    if 'Ecephys' not in metadata:
+        metadata['Ecephys'] = dict()
+
     if 'Electrodes' not in metadata['Ecephys']:
         metadata['Ecephys']['Electrodes'] = []
 
@@ -338,7 +343,7 @@ def add_electrodes(
                 and isinstance(x['data'], list) for x in metadata['Ecephys']['Electrodes']]), \
         "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries!"
     assert all([x['name'] != 'group' for x in metadata['Ecephys']['Electrodes']]), \
-        "Passing metadata field 'group' is depricated; pass group_name instead!"
+        "Passing metadata field 'group' is deprecated; pass group_name instead!"
 
     if nwbfile.electrodes is None:
         nwb_elec_ids = []
