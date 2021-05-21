@@ -267,7 +267,8 @@ def add_electrodes(
     recording: se.RecordingExtractor, 
     nwbfile=None, 
     metadata: dict = None,
-    write_scaled: bool = True
+    write_scaled: bool = True,
+    exclude: tuple = ()
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -305,10 +306,8 @@ def add_electrodes(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    if nwbfile.electrode_groups is None:
-        add_electrode_groups(recording, nwbfile, metadata)
-
-    # TODO - is this still needed??
+    if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
+        se.NwbRecordingExtractor.add_electrode_groups(recording, nwbfile, metadata)
     # For older versions of pynwb, we need to manually add these columns
     if distutils.version.LooseVersion(pynwb.__version__) < '1.3.0':
         if nwbfile.electrodes is None or 'rel_x' not in nwbfile.electrodes.colnames:
@@ -329,6 +328,7 @@ def add_electrodes(
     )
     if metadata is None:
         metadata = dict(Ecephys=dict())
+
     if 'Electrodes' not in metadata['Ecephys']:
         metadata['Ecephys']['Electrodes'] = []
 
@@ -343,13 +343,47 @@ def add_electrodes(
     else:
         nwb_elec_ids = nwbfile.electrodes.id.data[:]
 
-    for metadata_column in metadata['Ecephys']['Electrodes']:
-        if (nwbfile.electrodes is None or metadata_column['name'] not in nwbfile.electrodes.colnames) \
-                and metadata_column['name'] not in defaults:
-            nwbfile.add_electrode_column(
-                name=str(metadata_column['name']),
-                description=str(metadata_column['description'])
-            )
+    elec_columns = {}  # name: description
+    property_names = set()
+    for chan_id in recording.get_channel_ids():
+        for i in recording.get_channel_property_names(channel_id=chan_id):
+            property_names.add(i)
+    for prop in property_names:
+        if prop not in ['gain', 'offset', 'location', 'name'] + list(exclude):
+            # property 'gain' should not be in the NWB electrodes_table
+            # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
+            # property 'offset' should not be in the NWB electrodes_table as not officially supported by schema v2.2.5
+
+            data = []
+            for chan_id in recording.get_channel_ids():
+                if prop in recording.get_channel_property_names(channel_id=chan_id):
+                    data.append(recording.get_channel_property(channel_id=chan_id, property_name=prop))
+                else:
+                    if len(data) > 0 and isinstance(data[-1], str):
+                        data.append('')
+                    else:
+                        data.append(np.nan)
+            prop = 'location' if prop == 'brain_area' else prop
+            prop = 'group_name' if prop == 'group' else prop
+            elec_columns[prop] = dict(description=prop, data=data)
+
+    for x in metadata['Ecephys']['Electrodes']:
+        name = x.pop('name')
+        if name not in elec_columns:
+            elec_columns[name] = dict(description=name)
+        if 'description' in x:
+            elec_columns[name]['description'] = x['description']
+        if 'data' in x:
+            assert len(x['data']) == recording.get_num_channels()
+            elec_columns[name]['data'] = x['data']
+
+    for name, dat in elec_columns.items():
+        if 'data' not in dat and name not in defaults:
+            raise ValueError(f"no data for electrode column {name}")
+
+    for name, des_dict in elec_columns.items():
+        if name not in defaults:
+            nwbfile.add_electrode_column(name=name, description=des_dict['description'])
 
     for j, channel_id in enumerate(recording.get_channel_ids()):
         if channel_id not in nwb_elec_ids:
@@ -367,12 +401,12 @@ def add_electrodes(
                     )
                 )
 
-            for metadata_column in metadata['Ecephys']['Electrodes']:
-                if metadata_column['name'] == 'group_name':
-                    group_name = list_get(metadata_column['data'], j, defaults['group_name'])
+            for name, desc in elec_columns.items():
+                if name == 'group_name':
+                    group_name = str(list_get(desc['data'], j, defaults['group_name']))
                     if group_name not in nwbfile.electrode_groups:
                         warnings.warn(f"Electrode group for electrode {channel_id} was not "
-                                        "found in the nwbfile! Automatically adding.")
+                                      "found in the nwbfile! Automatically adding.")
                         missing_group_metadata = dict(
                             Ecephys=dict(
                                 ElectrodeGroup=[dict(
@@ -380,33 +414,18 @@ def add_electrodes(
                                     description="no description",
                                     location="unknown",
                                     device="Device"
-                                )
-                            ])
+                                )]
+                            )
                         )
-                        add_electrode_groups(recording, nwbfile, missing_group_metadata)
+                        se.NwbRecordingExtractor.add_electrode_groups(recording, nwbfile, missing_group_metadata)
                     electrode_kwargs.update(
                         dict(
                             group=nwbfile.electrode_groups[group_name],
                             group_name=group_name
                         )
                     )
-                else:
-                    if metadata_column['name'] in defaults:
-                        electrode_kwargs.update({
-                            metadata_column['name']: list_get(metadata_column['data'], j,
-                                                                defaults[metadata_column['name']])
-                        })
-                    else:
-                        if j < len(metadata_column['data']):
-                            electrode_kwargs.update({
-                                metadata_column['name']: metadata_column['data'][j]
-                            })
-                        else:
-                            metadata_column_name = metadata_column['name']
-                            warnings.warn(f"Custom column {metadata_column_name} "
-                                            f"has incomplete data for channel id [{j}] and no "
-                                            "set default! Electrode will not be added.")
-                            continue
+                elif 'data' in desc:
+                    electrode_kwargs[name] = desc['data'][j]
 
             if not any([x.get('name', '') == 'group_name' for x in metadata['Ecephys']['Electrodes']]):
                 group_id = recording.get_channel_groups(channel_ids=channel_id)[0]
@@ -419,35 +438,15 @@ def add_electrodes(
                     )
                 else:
                     warnings.warn("No metadata was passed specifying the electrode group for "
-                                    f"electrode {channel_id}, and the internal recording channel group was "
-                                    f"assigned a value (str({group_id})) not present as electrode "
-                                    "groups in the NWBFile! Electrode will not be added.")
+                                  f"electrode {channel_id}, and the internal recording channel group was "
+                                  f"assigned a value (str({group_id})) not present as electrode "
+                                  "groups in the NWBFile! Electrode will not be added.")
                     continue
 
             nwbfile.add_electrode(**electrode_kwargs)
     assert nwbfile.electrodes is not None, \
         "Unable to form electrode table! Check device, electrode group, and electrode metadata."
 
-    # property 'gain' should not be in the NWB electrodes_table
-    # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
-    # property 'offset' should not be in the NWB electrodes_table as not officially supported by schema v2.2.5
-    channel_prop_names = set(recording.get_shared_channel_property_names()) - set(nwbfile.electrodes.colnames) \
-                            - {'gain', 'location', 'offset'}
-    for channel_prop_name in channel_prop_names:
-        for channel_id in recording.get_channel_ids():
-            val = recording.get_channel_property(channel_id, channel_prop_name)
-            descr = 'no description'
-            if channel_prop_name == 'brain_area':
-                channel_prop_name = 'location'
-                descr = 'brain area location'
-            set_dynamic_table_property(
-                dynamic_table=nwbfile.electrodes,
-                row_ids=[int(channel_id)],
-                property_name=channel_prop_name,
-                values=[val],
-                default_value=np.nan,
-                description=descr
-            )
 
 def add_electrical_series(
     recording: se.RecordingExtractor,
