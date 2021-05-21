@@ -13,4 +13,4 @@ Refer to the `DANDI documentation <https://www.dandiarchive.org/handbook/10_usin
     DANDI requires each NWB file to have a `Subject` field with `subject_id` defined. It is possible to create a
     valid NWB file without this field, but it will not be accepted by DANDI.
 
-If you experience any problems or questions, the [DANDI helpdesk](https://github.com/dandi/helpdesk/discussions) is the best place to ask for help. 
+If you experience any problems or questions, the `DANDI helpdesk <https://github.com/dandi/helpdesk/discussions>`_ is the best place to ask for help. 
