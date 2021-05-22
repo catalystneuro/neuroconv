@@ -368,7 +368,7 @@ def add_electrodes(
                 else:
                     if len(data) > 0 and isinstance(data[-1], str):
                         data.append('')
-                    else:
+                    elif len(data) > 0:
                         data.append(np.nan)
             prop = 'location' if prop == 'brain_area' else prop
             prop = 'group_name' if prop == 'group' else prop
