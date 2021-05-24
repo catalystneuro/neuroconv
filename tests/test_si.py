@@ -11,7 +11,7 @@ from spikeextractors.testing import (
 )
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording
+from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
 
 
 class TestExtractors(unittest.TestCase):
@@ -109,102 +109,85 @@ class TestExtractors(unittest.TestCase):
         return (RX, RX2, RX3, SX, SX2, SX3, example_info)
 
 
-    def test_nwb_extractor(self):
-        path1 = self.test_dir + '/test.nwb'
-        write_recording(self.RX, path1)
-        RX_nwb = se.NwbRecordingExtractor(path1)
+    def test_write_recording(self):
+        path = self.test_dir + '/test.nwb'
+
+        write_recording(self.RX, path)
+        RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
-
         del RX_nwb
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        RX_nwb = se.NwbRecordingExtractor(path1)
+
+        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
 
-        # append sorting to existing file
-        se.NwbSortingExtractor.write_sorting(sorting=self.SX, save_path=path1, overwrite=False)
-
-        path2 = self.test_dir + "/firings_true.nwb"
-        write_recording(recording=self.RX, save_path=path2)
-        se.NwbSortingExtractor.write_sorting(sorting=self.SX, save_path=path2)
-        SX_nwb = se.NwbSortingExtractor(path2)
-        check_sortings_equal(self.SX, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test for handling unit property descriptions argument
-        property_descriptions = dict(stability="This is a description of stability.")
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        se.NwbSortingExtractor.write_sorting(
-            sorting=self.SX,
-            save_path=path1,
-            property_descriptions=property_descriptions
-        )
-        SX_nwb = se.NwbSortingExtractor(path1)
-        check_sortings_equal(self.SX, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test for handling skip_properties argument
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        se.NwbSortingExtractor.write_sorting(
-            sorting=self.SX,
-            save_path=path1,
-            skip_properties=['stability']
-        )
-        SX_nwb = se.NwbSortingExtractor(path1)
-        assert 'stability' not in SX_nwb.get_shared_unit_property_names()
-        check_sortings_equal(self.SX, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test for handling skip_features argument
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. USe use_times=False
-        se.NwbSortingExtractor.write_sorting(
-            sorting=self.SX2,
-            save_path=path1,
-            skip_features=['widths'],
-            use_times=False
-        )
-        SX_nwb = se.NwbSortingExtractor(path1)
-        assert 'widths' not in SX_nwb.get_shared_unit_spike_feature_names()
-        check_sortings_equal(self.SX2, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test writting multiple recordings using metadata
+        # Writting multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
-        path_nwb = self.test_dir + '/test_multiple.nwb'
-        se.NwbRecordingExtractor.write_recording(
+        path_multi = self.test_dir + '/test_multiple.nwb'
+        write_recording(
             recording=self.RX,
-            save_path=path_nwb,
+            save_path=path_multi,
             metadata=metadata,
             write_as='raw',
             es_key='ElectricalSeries_raw',
         )
-        se.NwbRecordingExtractor.write_recording(
+        write_recording(
             recording=self.RX2,
-            save_path=path_nwb,
+            save_path=path_multi,
             metadata=metadata,
             write_as='processed',
             es_key='ElectricalSeries_processed',
         )
-        se.NwbRecordingExtractor.write_recording(
+        write_recording(
             recording=self.RX3,
-            save_path=path_nwb,
+            save_path=path_multi,
             metadata=metadata,
             write_as='lfp',
             es_key='ElectricalSeries_lfp',
         )
 
-        RX_nwb = se.NwbRecordingExtractor(
-            file_path=path_nwb,
-            electrical_series_name='raw_traces'
-        )
+        RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name='raw_traces')
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
         del RX_nwb
+
+    def test_write_sorting(self):
+        path = self.test_dir + '/test.nwb'
+
+        # Append sorting to existing file
+        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        write_sorting(sorting=self.SX, save_path=path, overwrite=False)
+        SX_nwb = se.NwbSortingExtractor(path)
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+
+        # Test for handling unit property descriptions argument
+        property_descriptions = dict(stability="This is a description of stability.")
+        se.NwbRecordingExtractor.write_recording(recording=self.RX, save_path=path, overwrite=True)
+        write_sorting(sorting=self.SX, save_path=path, property_descriptions=property_descriptions, overwrite=True)
+        SX_nwb = se.NwbSortingExtractor(path)
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+
+        # Test for handling skip_properties argument
+        write_sorting(sorting=self.SX, save_path=path, skip_properties=['stability'], overwrite=True)
+        SX_nwb = se.NwbSortingExtractor(path)
+        assert 'stability' not in SX_nwb.get_shared_unit_property_names()
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+
+        # Test for handling skip_features argument
+        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. USe use_times=False
+        write_sorting(sorting=self.SX2, save_path=path, skip_features=['widths'], use_times=False)
+        SX_nwb = se.NwbSortingExtractor(path)
+        assert 'widths' not in SX_nwb.get_shared_unit_spike_feature_names()
+        check_sortings_equal(self.SX2, SX_nwb)
+        check_dumping(SX_nwb)
 
     def check_metadata_write(self, metadata: dict, nwbfile_path: Path, recording: se.RecordingExtractor):
         standard_metadata = get_nwb_metadata(recording=recording)
@@ -315,7 +298,3 @@ class TestExtractors(unittest.TestCase):
             nwbfile_path=path,
             recording=self.RX
         )
-
-
-if __name__ == '__main__':
-    unittest.main()
