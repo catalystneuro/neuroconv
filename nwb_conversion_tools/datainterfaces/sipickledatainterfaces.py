@@ -3,7 +3,7 @@ import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ..json_schema_utils import get_base_schema
+from ..utils.json_schema import get_base_schema
 
 
 class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):

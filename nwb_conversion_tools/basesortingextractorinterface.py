@@ -7,8 +7,9 @@ from pynwb import NWBFile
 from pynwb.ecephys import SpikeEventSeries
 
 from .basedatainterface import BaseDataInterface
-from .utils import get_schema_from_hdmf_class
-from .json_schema_utils import get_base_schema, get_schema_from_method_signature, fill_defaults
+from .utils.json_schema import (get_schema_from_hdmf_class, get_base_schema, 
+    get_schema_from_method_signature, fill_defaults)
+from .utils.spike_interface import add_devices, add_electrode_groups, add_electrodes
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):
@@ -39,17 +40,20 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         if write_ecephys_metadata and 'Ecephys' in metadata:
             n_channels = max([len(x['data']) for x in metadata['Ecephys']['Electrodes']])
             recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
-            se.NwbRecordingExtractor.add_devices(
+
+            add_devices(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata
             )
-            se.NwbRecordingExtractor.add_electrode_groups(
+
+            add_electrode_groups(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata
             )
-            se.NwbRecordingExtractor.add_electrodes(
+            
+            add_electrodes(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata

@@ -10,7 +10,7 @@ from pynwb import NWBFile
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ..json_schema_utils import get_schema_from_method_signature
+from ..utils.json_schema import get_schema_from_method_signature
 from .interface_utils.brpylib import NsxFile
 
 PathType = Union[str, Path, None]

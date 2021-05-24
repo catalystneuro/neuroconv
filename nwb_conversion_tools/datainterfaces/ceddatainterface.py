@@ -2,7 +2,7 @@
 import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ..json_schema_utils import get_schema_from_method_signature
+from ..utils.json_schema import get_schema_from_method_signature
 
 
 class CEDRecordingInterface(BaseRecordingExtractorInterface):

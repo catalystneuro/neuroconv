@@ -7,8 +7,7 @@ from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ..json_schema_utils import get_schema_from_method_signature
-from ..utils import get_schema_from_hdmf_class
+from ..utils.json_schema import get_schema_from_method_signature, get_schema_from_hdmf_class
 
 PathType = Union[str, Path, None]
 
