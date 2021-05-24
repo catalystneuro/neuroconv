@@ -33,6 +33,11 @@ from .imagingextractorinterface import (
     Hdf5ImagingInterface
 )
 
+from .axonadatainterface import (
+    AxonaRecordingExtractorInterface,
+    AxonaPositionDataInterface
+)
+
 
 interface_list = [
     TutorialRecordingInterface,
@@ -52,9 +57,11 @@ interface_list = [
     SimaSegmentationInterface,
     BlackrockRecordingExtractorInterface,
     BlackrockSortingExtractorInterface,
-    OpenEphysRecordingExtractorInterface, 
+    OpenEphysRecordingExtractorInterface,
     OpenEphysSortingExtractorInterface,
     SbxImagingInterface,
     TiffImagingInterface,
-    Hdf5ImagingInterface
+    Hdf5ImagingInterface,
+    AxonaRecordingExtractorInterface,
+    AxonaPositionDataInterface
 ]
