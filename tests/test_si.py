@@ -158,6 +158,7 @@ class TestExtractors(unittest.TestCase):
 
     def test_write_sorting(self):
         path = self.test_dir + '/test.nwb'
+        sf = self.RX.get_sampling_frequency()
 
         # Append sorting to existing file
         write_recording(recording=self.RX, save_path=path, overwrite=True)
@@ -168,14 +169,25 @@ class TestExtractors(unittest.TestCase):
 
         # Test for handling unit property descriptions argument
         property_descriptions = dict(stability="This is a description of stability.")
-        se.NwbRecordingExtractor.write_recording(recording=self.RX, save_path=path, overwrite=True)
-        write_sorting(sorting=self.SX, save_path=path, property_descriptions=property_descriptions, overwrite=True)
+        write_sorting(
+            sorting=self.SX,
+            save_path=path,
+            property_descriptions=property_descriptions,
+            overwrite=True,
+            sampling_frequency=sf
+        )
         SX_nwb = se.NwbSortingExtractor(path)
         check_sortings_equal(self.SX, SX_nwb)
         check_dumping(SX_nwb)
 
         # Test for handling skip_properties argument
-        write_sorting(sorting=self.SX, save_path=path, skip_properties=['stability'], overwrite=True)
+        write_sorting(
+            sorting=self.SX,
+            save_path=path,
+            skip_properties=['stability'],
+            overwrite=True,
+            sampling_frequency=sf
+        )
         SX_nwb = se.NwbSortingExtractor(path)
         assert 'stability' not in SX_nwb.get_shared_unit_property_names()
         check_sortings_equal(self.SX, SX_nwb)
@@ -183,7 +195,13 @@ class TestExtractors(unittest.TestCase):
 
         # Test for handling skip_features argument
         # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. USe use_times=False
-        write_sorting(sorting=self.SX2, save_path=path, skip_features=['widths'], use_times=False)
+        write_sorting(
+            sorting=self.SX2,
+            save_path=path,
+            skip_features=['widths'],
+            use_times=False,
+            sampling_frequency=sf
+        )
         SX_nwb = se.NwbSortingExtractor(path)
         assert 'widths' not in SX_nwb.get_shared_unit_spike_feature_names()
         check_sortings_equal(self.SX2, SX_nwb)
