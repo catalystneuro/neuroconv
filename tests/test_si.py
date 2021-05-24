@@ -173,10 +173,9 @@ class TestExtractors(unittest.TestCase):
             sorting=self.SX,
             save_path=path,
             property_descriptions=property_descriptions,
-            overwrite=True,
-            sampling_frequency=sf
+            overwrite=True
         )
-        SX_nwb = se.NwbSortingExtractor(path)
+        SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         check_sortings_equal(self.SX, SX_nwb)
         check_dumping(SX_nwb)
 
@@ -185,24 +184,23 @@ class TestExtractors(unittest.TestCase):
             sorting=self.SX,
             save_path=path,
             skip_properties=['stability'],
-            overwrite=True,
-            sampling_frequency=sf
+            overwrite=True
         )
-        SX_nwb = se.NwbSortingExtractor(path)
+        SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         assert 'stability' not in SX_nwb.get_shared_unit_property_names()
         check_sortings_equal(self.SX, SX_nwb)
         check_dumping(SX_nwb)
 
         # Test for handling skip_features argument
-        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. USe use_times=False
+        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. Set use_times=False
         write_sorting(
             sorting=self.SX2,
             save_path=path,
             skip_features=['widths'],
             use_times=False,
-            sampling_frequency=sf
+            overwrite=True
         )
-        SX_nwb = se.NwbSortingExtractor(path)
+        SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         assert 'widths' not in SX_nwb.get_shared_unit_spike_feature_names()
         check_sortings_equal(self.SX2, SX_nwb)
         check_dumping(SX_nwb)
