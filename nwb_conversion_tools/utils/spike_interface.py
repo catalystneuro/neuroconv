@@ -362,11 +362,14 @@ def add_electrodes(
             data = []
             for chan_id in recording.get_channel_ids():
                 if prop in recording.get_channel_property_names(channel_id=chan_id):
-                    data.append(recording.get_channel_property(channel_id=chan_id, property_name=prop))
+                    chan_data = recording.get_channel_property(channel_id=chan_id, property_name=prop)
+                    if isinstance(chan_data,str) and len(data)>0 and not isinstance(data[-1],str):
+                        data = ['']*len(data)
+                    data.append(chan_data)
                 else:
                     if len(data) > 0 and isinstance(data[-1], str):
                         data.append('')
-                    elif len(data) > 0:
+                    else:
                         data.append(np.nan)
             prop = 'location' if prop == 'brain_area' else prop
             prop = 'group_name' if prop == 'group' else prop
