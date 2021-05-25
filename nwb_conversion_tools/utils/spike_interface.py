@@ -355,8 +355,9 @@ def add_electrodes(
     for chan_id in recording.get_channel_ids():
         for i in recording.get_channel_property_names(channel_id=chan_id):
             property_names.add(i)
+    exclude_names = set(['gain', 'offset', 'location', 'name'] + list(exclude))
     for prop in property_names:
-        if prop not in ['gain', 'offset', 'location', 'name'] + list(exclude):
+        if prop not in exclude_names:
             # property 'gain' should not be in the NWB electrodes_table
             # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
             # property 'offset' should not be in the NWB electrodes_table as not officially supported by schema v2.2.5
