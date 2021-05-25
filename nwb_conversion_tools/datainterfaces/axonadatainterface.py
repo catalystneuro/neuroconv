@@ -147,8 +147,8 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
                     data=[f"Group{x}" for x in elec_group_names]
                 )
             ],
-            ElectricalSeries=dict(
-                name='ElectricalSeries',
+            ElectricalSeries_raw=dict(
+                name='ElectricalSeries_raw',
                 description="Raw acquisition traces."
             )
         )
