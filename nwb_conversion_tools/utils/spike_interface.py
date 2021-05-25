@@ -269,7 +269,6 @@ def add_electrodes(
     recording: se.RecordingExtractor, 
     nwbfile=None, 
     metadata: dict = None,
-    write_scaled: bool = True,
     exclude: tuple = ()
 ):
     """
@@ -290,10 +289,9 @@ def add_electrodes(
                                                     'data': [my_electrode_data]}, ...]
         where each dictionary corresponds to a column in the Electrodes table and [my_electrode_data] is a list in
         one-to-one correspondence with the nwbfile electrode ids and RecordingExtractor channel ids.
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
     exclude: tuple
-        TODO - Add description
+        An iterable containing the string names of channel properties in the RecordingExtractor
+        object to ignore when writing to the NWBFile.
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
@@ -751,7 +749,6 @@ def add_all_to_nwbfile(
         recording=recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        write_scaled=write_scaled
     )
     
     add_electrical_series(
