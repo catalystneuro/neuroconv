@@ -348,18 +348,17 @@ def add_electrodes(
     else:
         nwb_elec_ids = nwbfile.electrodes.id.data[:]
 
-    elec_columns = {}  # name: description
+    elec_columns = dict()  # name: description
     property_names = set()
     for chan_id in recording.get_channel_ids():
         for i in recording.get_channel_property_names(channel_id=chan_id):
             property_names.add(i)
     exclude_names = set(['gain', 'offset', 'location', 'name'] + list(exclude))
+    # property 'gain' should not be in the NWB electrodes_table
+    # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
+    # property 'offset' should not be in the NWB electrodes_table as not officially supported by schema v2.2.5
     for prop in property_names:
         if prop not in exclude_names:
-            # property 'gain' should not be in the NWB electrodes_table
-            # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
-            # property 'offset' should not be in the NWB electrodes_table as not officially supported by schema v2.2.5
-
             data = []
             for chan_id in recording.get_channel_ids():
                 if prop in recording.get_channel_property_names(channel_id=chan_id):
@@ -374,14 +373,15 @@ def add_electrodes(
             elec_columns[prop] = dict(description=prop, data=data)
 
     for x in metadata['Ecephys']['Electrodes']:
-        name = x.pop('name')
+        args = dict(x)
+        name = args.pop('name')
         if name not in elec_columns:
             elec_columns[name] = dict(description=name)
-        if 'description' in x:
-            elec_columns[name]['description'] = x['description']
-        if 'data' in x:
-            assert len(x['data']) == recording.get_num_channels()
-            elec_columns[name]['data'] = x['data']
+        if 'description' in args:
+            elec_columns[name]['description'] = args['description']
+        if 'data' in args:
+            assert len(args['data']) == recording.get_num_channels()
+            elec_columns[name]['data'] = args['data']
 
     for name, dat in elec_columns.items():
         if 'data' not in dat and name not in defaults:
