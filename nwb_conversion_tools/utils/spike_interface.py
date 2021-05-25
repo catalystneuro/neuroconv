@@ -451,6 +451,7 @@ def add_electrodes(
                 description=descr
             )
 
+
 def add_electrical_series(
     recording: se.RecordingExtractor,
     nwbfile=None,
@@ -687,6 +688,7 @@ def add_epochs(
                     tags=epoch_name
                 )
 
+
 def add_all_to_nwbfile(
     recording: se.RecordingExtractor,
     nwbfile=None,
@@ -906,12 +908,12 @@ def get_nspikes(units_table, unit_id):
 
 
 def write_units(
-        sorting: se.SortingExtractor,
-        nwbfile,
-        property_descriptions: Optional[dict] = None,
-        skip_properties: Optional[List[str]] = None,
-        skip_features: Optional[List[str]] = None,
-        use_times: bool = True
+    sorting: se.SortingExtractor,
+    nwbfile,
+    property_descriptions: Optional[dict] = None,
+    skip_properties: Optional[List[str]] = None,
+    skip_features: Optional[List[str]] = None,
+    use_times: bool = True
 ):
     """Auxilliary function for write_sorting."""
     unit_ids = sorting.get_unit_ids()
@@ -1086,15 +1088,15 @@ def write_units(
 
 
 def write_sorting(
-        sorting: se.SortingExtractor,
-        save_path: PathType = None,
-        overwrite: bool = False,
-        nwbfile=None,
-        property_descriptions: Optional[dict] = None,
-        skip_properties: Optional[List[str]] = None,
-        skip_features: Optional[List[str]] = None,
-        use_times: bool = True,
-        **nwbfile_kwargs
+    sorting: se.SortingExtractor,
+    save_path: PathType = None,
+    overwrite: bool = False,
+    nwbfile=None,
+    property_descriptions: Optional[dict] = None,
+    skip_properties: Optional[List[str]] = None,
+    skip_features: Optional[List[str]] = None,
+    use_times: bool = True,
+    **nwbfile_kwargs
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
