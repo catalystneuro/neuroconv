@@ -1153,7 +1153,7 @@ def write_sorting(
                 )
                 default_nwbfile_kwargs.update(**nwbfile_kwargs)
                 nwbfile = pynwb.NWBFile(**default_nwbfile_kwargs)
-            se.NwbSortingExtractor.write_units(
+            write_units(
                 sorting=sorting,
                 nwbfile=nwbfile,
                 property_descriptions=property_descriptions,
@@ -1163,7 +1163,7 @@ def write_sorting(
             )
             io.write(nwbfile)
     else:
-        se.NwbSortingExtractor.write_units(
+        write_units(
             sorting=sorting,
             nwbfile=nwbfile,
             property_descriptions=property_descriptions,
