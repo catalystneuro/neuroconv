@@ -376,7 +376,8 @@ def add_electrodes(
         args = dict(x)
         name = args.pop('name')
         if name not in elec_columns:
-            elec_columns[name] = dict(description=args['description'])
+            elec_columns[name] = dict()
+        elec_columns[name]['description'] = args['description']
         if 'data' in args:
             assert len(args['data']) == recording.get_num_channels()
             elec_columns[name]['data'] = args['data']
