@@ -8,7 +8,9 @@ import numpy as np
 import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.behavior import Position, SpatialSeries
+from pynwb.ecephys import ElectricalSeries
 
+from ..utils.json_schema import get_schema_from_hdmf_class
 from ..basedatainterface import BaseDataInterface
 from ..baserecordingextractorinterface import (
     BaseRecordingExtractorInterface
@@ -87,6 +89,14 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
         return source_schema
 
+    def get_metadata_schema(self):
+        """Compile metadata schema for the RecordingExtractor."""
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema['properties']['Ecephys']['properties'].update(
+            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+        )
+        return metadata_schema
+
     def get_metadata(self):
 
         # Extract information for specific parameters from .set file
@@ -137,8 +147,8 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
                     data=[f"Group{x}" for x in elec_group_names]
                 )
             ],
-            ElectricalSeries=dict(
-                name='ElectricalSeries',
+            ElectricalSeries_raw=dict(
+                name='ElectricalSeries_raw',
                 description="Raw acquisition traces."
             )
         )
