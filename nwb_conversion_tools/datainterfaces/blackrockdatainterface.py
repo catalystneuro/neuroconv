@@ -25,14 +25,13 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
-        metadata_schema = get_schema_from_method_signature(
+        source_schema = get_schema_from_method_signature(
             class_method=cls.__init__,
             exclude=['block_index', 'seg_index']
         )
-        metadata_schema['additionalProperties'] = True
-        metadata_schema['properties']['filename']['format'] = 'file'
-        metadata_schema['properties']['filename']['description'] = 'Path to Blackrock file.'
-        return metadata_schema
+        source_schema['properties']['filename']['format'] = 'file'
+        source_schema['properties']['filename']['description'] = 'Path to Blackrock file.'
+        return source_schema
     
     def __init__(self, filename: PathType):
         nsx_to_load = int(str(filename).split('.')[-1][-1])
