@@ -38,7 +38,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = super().get_metadata_schema()
         metadata_schema['properties']['Ecephys']['properties'].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries),
+            ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
@@ -50,12 +51,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         session_id = file_path.parent.stem
 
         if isinstance(self.recording_extractor, SubRecordingExtractor):
-            n_shanks = int(self.recording_extractor._parent_recording._meta['snsShankMap'][1])
+            n_shanks = int(self.recording_extractor._parent_recording._meta.get('snsShankMap', [1, 1])[1])
             session_start_time = datetime.fromisoformat(
                 self.recording_extractor._parent_recording._meta['fileCreateTime']
             ).astimezone()
         else:
-            n_shanks = int(self.recording_extractor._meta['snsShankMap'][1])
+            n_shanks = int(self.recording_extractor._meta.get('snsShankMap', [1, 1])[1])
             session_start_time = datetime.fromisoformat(self.recording_extractor._meta['fileCreateTime']).astimezone()
         if n_shanks > 1:
             raise NotImplementedError("SpikeGLX metadata for more than a single shank is not yet supported.")
@@ -94,14 +95,37 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                     description="The name of the ElectrodeGroup this electrode is a part of.",
                     data=shank_group_name
                 )
-            ],
-            ElectricalSeries_raw=dict(
-                name='ElectricalSeries',
-                description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
-            )
+            ]
         )
 
+        if self.source_data['file_path'].split('.')[-2] == 'ap':
+            metadata['Ecephys']['ElectricalSeries_raw'] = dict(
+                name='ElectricalSeries_raw',
+                description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
+            )
+        elif self.source_data['file_path'].split('.')[-2] == 'lf':
+            metadata['Ecephys']['ElectricalSeries_lfp'] = dict(
+                name='ElectricalSeries_lfp',
+                description="LFP traces for the processed (lf) SpikeGLX data."
+            )
+
         return metadata
+
+    def get_conversion_options(self):
+        conversion_options = dict()
+        if self.source_data['file_path'].split('.')[-2] == 'ap':
+            conversion_options = dict(
+                write_as='raw', 
+                es_key='ElectricalSeries_raw', 
+                stub_test=False
+            )
+        elif self.source_data['file_path'].split('.')[-2] == 'lf':
+            conversion_options = dict(
+                write_as='lfp', 
+                es_key='ElectricalSeries_lfp', 
+                stub_test=False
+            )  
+        return conversion_options
 
 
 class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
