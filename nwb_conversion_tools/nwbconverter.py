@@ -98,7 +98,7 @@ class NWBConverter:
         """Auto-fill as much of the conversion options as possible. Must comply with conversion_options_schema."""
         conversion_options = dict()
         for interface_name, interface in self.data_interface_objects.items():
-            conversion_options[interface_name] = interface_name=interface.get_conversion_options()
+            conversion_options[interface_name] = interface.get_conversion_options()
         return conversion_options
 
     def validate_metadata(self, metadata):
