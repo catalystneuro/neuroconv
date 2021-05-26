@@ -113,7 +113,7 @@ class NWBConverter:
 
     def run_conversion(
         self,
-        metadata: dict,
+        metadata: Optional[dict] = None,
         save_to_file: Optional[bool] = True,
         nwbfile_path: Optional[str] = None,
         overwrite: Optional[bool] = False,
@@ -125,7 +125,7 @@ class NWBConverter:
 
         Parameters
         ----------
-        metadata : dict
+        metadata : dict, optional
         save_to_file : bool, optional
             If False, returns an NWBFile object instead of writing it to the nwbfile_path. The default is True.
         nwbfile_path : str, optional
@@ -143,15 +143,19 @@ class NWBConverter:
         assert (not save_to_file and nwbfile_path is None) or nwbfile is None, \
             "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
 
+        # Validate metadata
+        if metadata is None:
+            metadata = self.get_metadata()
+        else:
+            self.validate_metadata(metadata=metadata)
+
         # Validate conversion options
         if conversion_options is None:
             conversion_options = self.get_conversion_options()
         else:
             self.validate_conversion_options(conversion_options=conversion_options)
 
-        # Validate metadata
-        # self.validate_metadata(metadata=metadata)
-
+        # Save data to file or to nwbfile object
         if save_to_file:
             if nwbfile_path is None:
                 raise TypeError("A path to the output file must be provided, but nwbfile_path got value None")
