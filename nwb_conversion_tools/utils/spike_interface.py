@@ -8,7 +8,7 @@ from typing import Union
 from collections import defaultdict
 import spikeextractors as se
 import pynwb
-
+from numbers import Real
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update
@@ -238,9 +238,9 @@ def add_electrode_groups(
             if device_name not in nwbfile.devices:
                 new_device = dict(
                     Ecephys=dict(
-                        Device=dict(
+                        Device=[dict(
                             name=device_name
-                        )
+                        )]
                     )
                 )
                 add_devices(recording, nwbfile, metadata=new_device)
@@ -306,6 +306,12 @@ def add_electrodes(
     If no group information is passed via metadata, automatic linking to existing electrode groups,
     possibly including the default, will occur.
     """
+    if nwbfile.electrodes is not None:
+        ids_absent = [id not in nwbfile.electrodes.id for id in recording.get_channel_ids()]
+        if not all(ids_absent):
+            warnings.warn('cannot create electrodes for this recording as ids already exist')
+            return
+        
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
@@ -348,7 +354,8 @@ def add_electrodes(
     else:
         nwb_elec_ids = nwbfile.electrodes.id.data[:]
 
-    elec_columns = defaultdict(dict())  # dict(name: dict(description='',data=data))
+    elec_columns = defaultdict(dict)  # dict(name: dict(description='',data=data, index=False))
+    elec_columns_append = defaultdict(dict)
     property_names = set()
     for chan_id in recording.get_channel_ids():
         for i in recording.get_channel_property_names(channel_id=chan_id):
@@ -357,36 +364,78 @@ def add_electrodes(
     # property 'gain' should not be in the NWB electrodes_table
     # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
     # property 'offset' should not be in the NWB electrodes_table as not officially supported by schema v2.2.5
+    channel_property_defaults = {list: [],
+                                 np.ndarray: np.array(np.nan),
+                                 str: '',
+                                 Real: np.nan}
+    found_property_types = {prop: Real for prop in property_names}
     for prop in property_names:
+        prop_skip = False
         if prop not in exclude_names:
             data = []
+            prop_chan_count = 0
+            # build data:
             for chan_id in recording.get_channel_ids():
                 if prop in recording.get_channel_property_names(channel_id=chan_id):
+                    prop_chan_count += 1
                     chan_data = recording.get_channel_property(channel_id=chan_id, property_name=prop)
-                    if isinstance(chan_data,str) and len(data)>0 and not isinstance(data[-1],str):
-                        data = ['']*len(data)
+                    # find the type and store (only when the first channel with given property is found):
+                    if prop_chan_count==1:
+                        proptype = [proptype for proptype in channel_property_defaults if isinstance(chan_data, proptype)]
+                        if len(proptype) > 0:
+                            found_property_types[prop] = proptype[0]
+                            # cast as float if any number:
+                            if found_property_types[prop]==Real:
+                                chan_data = np.float(chan_data)
+                            # update data if wrong datatype items filled prior:
+                            if len(data) > 0 and not isinstance(data[-1], found_property_types[prop]):
+                                data = [channel_property_defaults[found_property_types[prop]]] * len(data)
+                        else:
+                            prop_skip = True  # skip storing that property if not of default type
+                            break
                     data.append(chan_data)
                 else:
-                    if len(data) > 0 and isinstance(data[-1], str):
-                        data.append('')
-                    else:
-                        data.append(np.nan)
-            prop = 'location' if prop == 'brain_area' else prop
-            prop = 'group_name' if prop == 'group' else prop
-            elec_columns[prop].update(description=prop, data=data)
+                    data.append(channel_property_defaults[found_property_types[prop]])
+            # store data after build:
+            if not prop_skip:
+                index = found_property_types[prop] == ArrayType
+                prop_name_new = 'location' if prop == 'brain_area' else prop
+                prop_name_new = 'group_name' if prop == 'group' else prop
+                found_property_types[prop_name_new] = found_property_types.pop(prop)
+                elec_columns[prop_name_new].update(description=prop_name_new, data=data, index=index)
 
     for x in metadata['Ecephys']['Electrodes']:
         elec_columns[x['name']]['description'] = x['description']
         if x['name'] not in list(elec_columns):
             raise ValueError(f'"{x["name"]}" not a property of se object')
 
-    for name, des_dict in elec_columns.items():
-        if name not in defaults:
-            nwbfile.add_electrode_column(name=name, description=des_dict['description'])
+    # updating default arguments if electrodes table already present:
+    default_updated = dict()
+    if nwbfile.electrodes is not None:
+        for colname in nwbfile.electrodes.colnames:
+            if colname!='group':
+                samp_data = nwbfile.electrodes[colname].data[0]
+                default_datatype = [proptype for proptype in channel_property_defaults if isinstance(samp_data, proptype)][0]
+                default_updated.update({colname:channel_property_defaults[default_datatype]})
+    default_updated.update(defaults)
 
+    for name, des_dict in elec_columns.items():
+        des_args = dict(des_dict)
+        if name not in default_updated:
+            if nwbfile.electrodes is None:
+                nwbfile.add_electrode_column(name=name, description=des_args['description'], index=des_args['index'])
+            else:
+                # build default junk values for data to force add columns later:
+                combine_data = [channel_property_defaults[found_property_types[name]]] * len(nwbfile.electrodes.id)
+                des_args['data'] = combine_data + des_args['data']
+                elec_columns_append[name] = des_args
+    
+    for name in elec_columns_append:
+        _ = elec_columns.pop(name)
+        
     for j, channel_id in enumerate(recording.get_channel_ids()):
         if channel_id not in nwb_elec_ids:
-            electrode_kwargs = dict(defaults)
+            electrode_kwargs = dict(default_updated)
             electrode_kwargs.update(id=channel_id)
 
             # recording.get_channel_locations defaults to np.nan if there are none
@@ -402,7 +451,7 @@ def add_electrodes(
 
             for name, desc in elec_columns.items():
                 if name == 'group_name':
-                    group_name = str(desc['data'][i])
+                    group_name = str(desc['data'][j])
                     if group_name!='' and group_name not in nwbfile.electrode_groups:
                         warnings.warn(f"Electrode group {group_name} for electrode {channel_id} was not "
                                       "found in the nwbfile! Automatically adding.")
@@ -436,6 +485,9 @@ def add_electrodes(
                 )
 
             nwbfile.add_electrode(**electrode_kwargs)
+    # add columns for existing electrodes:
+    for col_name, cols_args in elec_columns_append.items():
+        nwbfile.add_electrode_column(col_name,**cols_args)
     assert nwbfile.electrodes is not None, \
         "Unable to form electrode table! Check device, electrode group, and electrode metadata."
 
