@@ -146,8 +146,7 @@ class NWBConverter:
         # Validate metadata
         if metadata is None:
             metadata = self.get_metadata()
-        else:
-            self.validate_metadata(metadata=metadata)
+        self.validate_metadata(metadata=metadata)
 
         # Validate conversion options
         if conversion_options is None:
