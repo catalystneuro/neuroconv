@@ -169,7 +169,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             xml_file_path=get_xml_file_path(data_file_path=self.source_data['file_path'])
         )
         metadata['Ecephys'].update(
-            LFPElectricalSeries=dict(
+            ElectricalSeries_lfp=dict(
                 name="LFP",
                 description="Local field potential signal."
             )

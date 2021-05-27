@@ -23,7 +23,6 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
                 )
             )
         )
-
         return metadata
 
     def run_conversion(
@@ -69,8 +68,8 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             use_times=use_times,
-            write_as='lfp',
-            es_key='LFPElectricalSeries',
+            write_as="lfp",
+            es_key="ElectricalSeries_lfp",
             save_path=save_path,
             overwrite=overwrite,
             buffer_mb=buffer_mb
