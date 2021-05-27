@@ -24,14 +24,13 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
-        metadata_schema = get_schema_from_method_signature(
+        source_schema = get_schema_from_method_signature(
             class_method=cls.__init__,
             exclude=['recording_id', 'experiment_id', 'stub_test']
         )
-        metadata_schema['properties']['folder_path']['format'] = 'directory'
-        metadata_schema['properties']['folder_path']['description'] = 'Path to directory containing OpenEphys files.'
-        metadata_schema['additionalProperties'] = True
-        return metadata_schema
+        source_schema['properties']['folder_path']['format'] = 'directory'
+        source_schema['properties']['folder_path']['description'] = 'Path to directory containing OpenEphys files.'
+        return source_schema
     
     def __init__(self, folder_path: PathType, experiment_id: Optional[int] = 0, 
                  recording_id: Optional[int] = 0, stub_test: Optional[bool] = False):
