@@ -451,7 +451,7 @@ def add_electrodes(
 
             for name, desc in elec_columns.items():
                 if name == 'group_name':
-                    group_name = str(desc['data'][j])
+                    group_name = str(int(desc['data'][j]))
                     if group_name!='' and group_name not in nwbfile.electrode_groups:
                         warnings.warn(f"Electrode group {group_name} for electrode {channel_id} was not "
                                       "found in the nwbfile! Automatically adding.")
