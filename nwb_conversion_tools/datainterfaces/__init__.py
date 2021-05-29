@@ -1,67 +1,71 @@
-from .tutorialdatainterface import (
+from .ecephys.ecephystutorialdatainterface import (
     TutorialRecordingInterface,
     TutorialSortingInterface
 )
-
-from .neuroscopedatainterface import (
+from .ecephys.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface
 )
-from .spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
-from .sipickledatainterfaces import (
+from .ecephys.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
+from .ecephys.sipickledatainterfaces import (
     SIPickleRecordingExtractorInterface,
-    SIPickleSortingExtractorInterface)
-from .intandatainterface import IntanRecordingInterface
-from .ceddatainterface import CEDRecordingInterface
-from .cellexplorerdatainterface import CellExplorerSortingInterface
-from .roiextractordatainterface import (
+    SIPickleSortingExtractorInterface
+)
+from .ecephys.intandatainterface import IntanRecordingInterface
+from .ecephys.ceddatainterface import CEDRecordingInterface
+from .ecephys.cellexplorerdatainterface import CellExplorerSortingInterface
+from .ecephys.blackrockdatainterface import BlackrockRecordingExtractorInterface, BlackrockSortingExtractorInterface
+from .ecephys.openephysdatainterface import OpenEphysRecordingExtractorInterface, OpenEphysSortingExtractorInterface
+from .ecephys.axonadatainterface import (
+    AxonaRecordingExtractorInterface,
+    AxonaPositionDataInterface
+)
+
+from .ophys.roiextractordatainterface import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
     SimaSegmentationInterface
 )
-
-from .blackrockdatainterface import BlackrockRecordingExtractorInterface, BlackrockSortingExtractorInterface
-from .openephysdatainterface import OpenEphysRecordingExtractorInterface, OpenEphysSortingExtractorInterface
-
-from .imagingextractorinterface import (
+from .ophys.imagingextractorinterface import (
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface
 )
 
-from .axonadatainterface import (
-    AxonaRecordingExtractorInterface,
-    AxonaPositionDataInterface
-)
+from .behavior.moviedatainterface import MovieInterface
 
 
 interface_list = [
     TutorialRecordingInterface,
     TutorialSortingInterface,
     NeuroscopeRecordingInterface,
+    NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface,
+    NeuroscopeLFPInterface,
     SpikeGLXRecordingInterface,
+    SpikeGLXLFPInterface,
     SIPickleRecordingExtractorInterface,
     SIPickleSortingExtractorInterface,
     IntanRecordingInterface,
-    CellExplorerSortingInterface,
     CEDRecordingInterface,
+    CellExplorerSortingInterface,
+    BlackrockRecordingExtractorInterface,
+    BlackrockSortingExtractorInterface,
+    OpenEphysRecordingExtractorInterface,
+    OpenEphysSortingExtractorInterface,
+    AxonaRecordingExtractorInterface,
+    AxonaPositionDataInterface,
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
     SimaSegmentationInterface,
-    BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
-    OpenEphysRecordingExtractorInterface,
-    OpenEphysSortingExtractorInterface,
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
-    AxonaRecordingExtractorInterface,
-    AxonaPositionDataInterface
+    MovieInterface
 ]

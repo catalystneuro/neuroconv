@@ -10,9 +10,9 @@ from pynwb import NWBFile
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.ecephys import ElectricalSeries
 
-from ..utils.json_schema import get_schema_from_hdmf_class
-from ..basedatainterface import BaseDataInterface
-from ..baserecordingextractorinterface import (
+from ...utils.json_schema import get_schema_from_hdmf_class
+from ...basedatainterface import BaseDataInterface
+from ...baserecordingextractorinterface import (
     BaseRecordingExtractorInterface
 )
 

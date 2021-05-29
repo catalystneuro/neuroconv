@@ -9,7 +9,7 @@ import cv2
 
 from nwb_conversion_tools import interface_list
 from nwb_conversion_tools import NWBConverter
-from nwb_conversion_tools.datainterfaces.moviedatainterface import MovieInterface
+from nwb_conversion_tools.datainterfaces.behavior.moviedatainterface import MovieInterface
 
 
 def test_interface_schemas():
