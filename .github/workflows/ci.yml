@@ -1,5 +1,9 @@
 name: Example workflow for Codecov
-on: [pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 jobs:
   run:
     runs-on: ${{ matrix.os }}
@@ -7,9 +11,9 @@ jobs:
       matrix:
         os: [ubuntu-latest]
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v2
     - name: Setup Python
-      uses: actions/setup-python@master
+      uses: actions/setup-python@v2
       with:
         python-version: 3.7
     - name: Install dependencies
