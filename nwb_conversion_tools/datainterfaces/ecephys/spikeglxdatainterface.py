@@ -13,7 +13,6 @@ PathType = Union[str, Path, None]
 
 
 def fetch_spikeglx_metadata(file_path: str, recording: RecordingExtractor, metadata: dict):
-    # file_path = Path(self.source_data['file_path'])
     file_path = Path(file_path)
     session_id = file_path.parent.stem
 
