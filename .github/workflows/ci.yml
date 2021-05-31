@@ -1,5 +1,5 @@
 name: Example workflow for Codecov
-on: [pull_request]
+on: [push]
 jobs:
   run:
     runs-on: ${{ matrix.os }}
