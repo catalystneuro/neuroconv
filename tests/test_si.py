@@ -6,7 +6,10 @@ import numpy as np
 
 import spikeextractors as se
 from spikeextractors.testing import (
-    check_sortings_equal, check_recordings_equal, check_dumping, check_recording_return_types,
+    check_sortings_equal,
+    check_recordings_equal,
+    check_dumping,
+    check_recording_return_types,
     get_default_nwbfile_metadata
 )
 from pynwb import NWBHDF5IO

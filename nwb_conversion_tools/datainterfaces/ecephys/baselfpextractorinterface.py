@@ -2,11 +2,10 @@
 from typing import Optional, Union
 from pathlib import Path
 
-import spikeextractors as se
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .utils.spike_interface import write_recording
+from ...utils.spike_interface import write_recording
 
 OptionalPathType = Optional[Union[str, Path]]
 
@@ -37,6 +36,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     ):
         """
         Primary function for converting low-pass recording extractor data to nwb.
+
         Parameters
         ----------
         nwbfile: NWBFile

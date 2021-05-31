@@ -8,8 +8,8 @@ from pathlib import Path
 import spikeextractors as se
 from pynwb import NWBFile
 
-from ...baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...basesortingextractorinterface import BaseSortingExtractorInterface
+from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .basesortingextractorinterface import BaseSortingExtractorInterface
 from ...utils.json_schema import get_schema_from_method_signature
 from ..interface_utils.brpylib import NsxFile
 

@@ -6,10 +6,14 @@ import numpy as np
 from pynwb import NWBFile
 from pynwb.ecephys import SpikeEventSeries
 
-from .basedatainterface import BaseDataInterface
-from .utils.json_schema import (get_schema_from_hdmf_class, get_base_schema, 
-    get_schema_from_method_signature, fill_defaults)
-from .utils.spike_interface import add_devices, add_electrode_groups, add_electrodes
+from ...basedatainterface import BaseDataInterface
+from ...utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_base_schema, 
+    get_schema_from_method_signature,
+    fill_defaults
+)
+from ...utils.spike_interface import add_devices, add_electrode_groups, add_electrodes
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):

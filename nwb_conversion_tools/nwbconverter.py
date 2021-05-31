@@ -6,9 +6,15 @@ from typing import Optional
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
-from .utils.json_schema import (get_schema_from_hdmf_class, get_schema_for_NWBFile,
-    dict_deep_update, get_base_schema, fill_defaults, unroot_schema)
+from .utils.conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from .utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_schema_for_NWBFile,
+    dict_deep_update,
+    get_base_schema,
+    fill_defaults,
+    unroot_schema
+)
 
 
 class NWBConverter:

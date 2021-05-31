@@ -9,7 +9,7 @@ from pynwb import NWBFile
 from pynwb.file import Subject
 import spikeextractors as se
 
-from .utils.json_schema import dict_deep_update
+from .json_schema import dict_deep_update
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):

@@ -12,11 +12,8 @@ from pynwb.ecephys import ElectricalSeries
 
 from ...utils.json_schema import get_schema_from_hdmf_class
 from ...basedatainterface import BaseDataInterface
-from ...baserecordingextractorinterface import (
-    BaseRecordingExtractorInterface
-)
-
-from nwb_conversion_tools.conversion_tools import get_module
+from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ...utils.conversion_tools import get_module
 
 
 # Helper functions for AxonaRecordingExtractorInterface

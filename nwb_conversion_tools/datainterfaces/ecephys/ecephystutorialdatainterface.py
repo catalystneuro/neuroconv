@@ -5,8 +5,8 @@ import numpy as np
 import spikeextractors as se
 
 from ...utils.json_schema import get_schema_from_method_signature
-from ...baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...basesortingextractorinterface import BaseSortingExtractorInterface
+from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .basesortingextractorinterface import BaseSortingExtractorInterface
 
 
 class TutorialRecordingInterface(BaseRecordingExtractorInterface):

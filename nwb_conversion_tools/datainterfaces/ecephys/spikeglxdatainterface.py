@@ -5,8 +5,8 @@ from typing import Union, Optional
 from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor, RecordingExtractor
 from pynwb.ecephys import ElectricalSeries
 
-from ...baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...baselfpextractorinterface import BaseLFPExtractorInterface
+from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .baselfpextractorinterface import BaseLFPExtractorInterface
 from ...utils.json_schema import get_schema_from_method_signature, get_schema_from_hdmf_class
 
 PathType = Union[str, Path, None]
