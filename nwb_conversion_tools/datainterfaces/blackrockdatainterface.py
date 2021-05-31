@@ -26,7 +26,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
         metadata_schema = get_schema_from_method_signature(
-            class_method=cls.RX.__init__,
+            class_method=cls.__init__,
             exclude=['block_index', 'seg_index']
         )
         metadata_schema['additionalProperties'] = True

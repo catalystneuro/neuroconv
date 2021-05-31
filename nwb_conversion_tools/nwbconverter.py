@@ -94,6 +94,13 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
+    def get_conversion_options(self):
+        """Auto-fill as much of the conversion options as possible. Must comply with conversion_options_schema."""
+        conversion_options = dict()
+        for interface_name, interface in self.data_interface_objects.items():
+            conversion_options[interface_name] = interface_name=interface.get_conversion_options()
+        return conversion_options
+
     def validate_metadata(self, metadata):
         """Validate metadata against Converter metadata_schema."""
         validate(instance=metadata, schema=self.get_metadata_schema())
@@ -138,7 +145,7 @@ class NWBConverter:
 
         # Validate conversion options
         if conversion_options is None:
-            conversion_options = dict()
+            conversion_options = self.get_conversion_options()
         else:
             self.validate_conversion_options(conversion_options=conversion_options)
 
