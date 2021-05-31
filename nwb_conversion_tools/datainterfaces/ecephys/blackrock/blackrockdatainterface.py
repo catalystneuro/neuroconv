@@ -8,10 +8,10 @@ import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
-from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .basesortingextractorinterface import BaseSortingExtractorInterface
-from ...utils.json_schema import get_schema_from_hdmf_class, get_schema_from_method_signature
-from ..interface_utils.brpylib import NsxFile
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils.json_schema import get_schema_from_hdmf_class, get_schema_from_method_signature
+from .brpylib import NsxFile
 
 PathType = Union[str, Path]
 OptionalPathType = Optional[PathType]

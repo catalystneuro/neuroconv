@@ -8,10 +8,9 @@ from pathlib import Path
 import spikeextractors as se
 from pynwb import NWBFile
 
-from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .basesortingextractorinterface import BaseSortingExtractorInterface
-from ...utils.json_schema import get_schema_from_method_signature
-from ..interface_utils.brpylib import NsxFile
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils.json_schema import get_schema_from_method_signature
 
 PathType = Union[str, Path, None]
 
@@ -31,7 +30,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema['properties']['folder_path']['format'] = 'directory'
         source_schema['properties']['folder_path']['description'] = 'Path to directory containing OpenEphys files.'
         return source_schema
-    
+
     def __init__(self, folder_path: PathType, experiment_id: Optional[int] = 0, 
                  recording_id: Optional[int] = 0, stub_test: Optional[bool] = False):
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, 

@@ -4,9 +4,9 @@ from pathlib import Path
 import numpy as np
 import spikeextractors as se
 
-from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .baselfpextractorinterface import BaseLFPExtractorInterface
-from .basesortingextractorinterface import BaseSortingExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..baselfpextractorinterface import BaseLFPExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 try:
     from lxml import etree as et

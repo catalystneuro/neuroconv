@@ -1,42 +1,42 @@
-from .ecephys.ecephystutorialdatainterface import (
+from .ecephys.tutorial.ecephystutorialdatainterface import (
     TutorialRecordingInterface,
     TutorialSortingInterface
 )
-from .ecephys.neuroscopedatainterface import (
+from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface
 )
-from .ecephys.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
-from .ecephys.sipickledatainterfaces import (
+from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
+from .ecephys.spikeinterface.sipickledatainterfaces import (
     SIPickleRecordingExtractorInterface,
     SIPickleSortingExtractorInterface
 )
-from .ecephys.intandatainterface import IntanRecordingInterface
-from .ecephys.ceddatainterface import CEDRecordingInterface
-from .ecephys.cellexplorerdatainterface import CellExplorerSortingInterface
-from .ecephys.blackrockdatainterface import BlackrockRecordingExtractorInterface, BlackrockSortingExtractorInterface
-from .ecephys.openephysdatainterface import OpenEphysRecordingExtractorInterface, OpenEphysSortingExtractorInterface
-from .ecephys.axonadatainterface import (
+from .ecephys.intan.intandatainterface import IntanRecordingInterface
+from .ecephys.ced.ceddatainterface import CEDRecordingInterface
+from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
+from .ecephys.blackrock.blackrockdatainterface import BlackrockRecordingExtractorInterface, BlackrockSortingExtractorInterface
+from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingExtractorInterface, OpenEphysSortingExtractorInterface
+from .ecephys.axona.axonadatainterface import (
     AxonaRecordingExtractorInterface,
     AxonaPositionDataInterface
 )
 
-from .ophys.roiextractordatainterface import (
+from .ophys.roi.roiextractordatainterface import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
     SimaSegmentationInterface
 )
-from .ophys.imagingextractorinterface import (
+from .ophys.imaging.imagingextractorinterface import (
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface
 )
 
-from .behavior.moviedatainterface import MovieInterface
+from .behavior.movie.moviedatainterface import MovieInterface
 
 
 interface_list = [

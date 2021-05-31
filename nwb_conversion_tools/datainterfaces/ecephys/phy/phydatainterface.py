@@ -1,7 +1,7 @@
 """Authors: Cody Baker."""
 import spikeextractors as se
 
-from .basesortingextractorinterface import BaseSortingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 
 
 class PhySortingInterface(BaseSortingExtractorInterface):

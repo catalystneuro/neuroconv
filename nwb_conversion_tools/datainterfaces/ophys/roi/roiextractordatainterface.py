@@ -6,7 +6,7 @@ from roiextractors import (
     SimaSegmentationExtractor
 )
 
-from .basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):

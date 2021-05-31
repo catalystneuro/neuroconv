@@ -1,9 +1,9 @@
 """Authors: Alessio Buccino."""
 import spikeextractors as se
 
-from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from .basesortingextractorinterface import BaseSortingExtractorInterface
-from ...utils.json_schema import get_base_schema
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils.json_schema import get_base_schema
 
 
 class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):

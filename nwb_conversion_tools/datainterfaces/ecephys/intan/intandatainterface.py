@@ -1,6 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 import spikeextractors as se
-from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 try:
     from pyintan.intan import read_rhd
