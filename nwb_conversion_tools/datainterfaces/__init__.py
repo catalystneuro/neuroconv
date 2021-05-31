@@ -23,18 +23,15 @@ from .ecephys.axona.axonadatainterface import (
     AxonaPositionDataInterface
 )
 
-from .ophys.roi.roiextractordatainterface import (
-    CaimanSegmentationInterface,
-    CnmfeSegmentationInterface,
-    Suite2pSegmentationInterface,
-    ExtractSegmentationInterface,
-    SimaSegmentationInterface
-)
-from .ophys.imaging.imagingextractorinterface import (
-    SbxImagingInterface,
-    TiffImagingInterface,
-    Hdf5ImagingInterface
-)
+from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
+from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
+from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
+from .ophys.sima.simadatainterface import SimaSegmentationInterface
+
+from .ophys.sbx.sbxdatainterface import SbxImagingInterface
+from .ophys.tiff.tiffdatainterface import TiffImagingInterface
+from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 
 from .behavior.movie.moviedatainterface import MovieInterface
 
