@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import distutils.version
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional, List
 
 import spikeextractors as se
 import pynwb
@@ -451,6 +451,7 @@ def add_electrodes(
                 description=descr
             )
 
+
 def add_electrical_series(
     recording: se.RecordingExtractor,
     nwbfile=None,
@@ -687,6 +688,7 @@ def add_epochs(
                     tags=epoch_name
                 )
 
+
 def add_all_to_nwbfile(
     recording: se.RecordingExtractor,
     nwbfile=None,
@@ -889,4 +891,283 @@ def write_recording(
             write_as=write_as,
             es_key=es_key,
             write_scaled=write_scaled
+        )
+
+
+def get_nspikes(units_table, unit_id):
+    """Return the number of spikes for chosen unit."""
+    ids = np.array(units_table.id[:])
+    indexes = np.where(ids == unit_id)[0]
+    if not len(indexes):
+        raise ValueError(f"{unit_id} is an invalid unit_id. Valid ids: {ids}.")
+    index = indexes[0]
+    if index == 0:
+        return units_table['spike_times_index'].data[index]
+    else:
+        return units_table['spike_times_index'].data[index] - units_table['spike_times_index'].data[index - 1]
+
+
+def write_units(
+    sorting: se.SortingExtractor,
+    nwbfile,
+    property_descriptions: Optional[dict] = None,
+    skip_properties: Optional[List[str]] = None,
+    skip_features: Optional[List[str]] = None,
+    use_times: bool = True
+):
+    """Auxilliary function for write_sorting."""
+    unit_ids = sorting.get_unit_ids()
+    fs = sorting.get_sampling_frequency()
+    if fs is None:
+        raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
+
+    all_properties = set()
+    all_features = set()
+    for unit_id in unit_ids:
+        all_properties.update(sorting.get_unit_property_names(unit_id))
+        all_features.update(sorting.get_unit_spike_feature_names(unit_id))
+
+    default_descriptions = dict(
+        isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
+        firing_rate="Number of spikes per unit of time.",
+        template="The extracellular average waveform.",
+        max_channel="The recording channel id with the largest amplitude.",
+        halfwidth="The full-width half maximum of the negative peak computed on the maximum channel.",
+        peak_to_valley="The duration between the negative and the positive peaks computed on the maximum channel.",
+        snr="The signal-to-noise ratio of the unit.",
+        quality="Quality of the unit as defined by phy (good, mua, noise).",
+        spike_amplitude="Average amplitude of peaks detected on the channel.",
+        spike_rate="Average rate of peaks detected on the channel."
+    )
+    if property_descriptions is None:
+        property_descriptions = dict(default_descriptions)
+    else:
+        property_descriptions = dict(default_descriptions, **property_descriptions)
+    if skip_properties is None:
+        skip_properties = []
+    if skip_features is None:
+        skip_features = []
+
+    if nwbfile.units is None:
+        # Check that array properties have the same shape across units
+        property_shapes = dict()
+        for pr in all_properties:
+            shapes = []
+            for unit_id in unit_ids:
+                if pr in sorting.get_unit_property_names(unit_id):
+                    prop_value = sorting.get_unit_property(unit_id, pr)
+                    if isinstance(prop_value, (int, np.integer, float, str, bool)):
+                        shapes.append(1)
+                    elif isinstance(prop_value, (list, np.ndarray)):
+                        if np.array(prop_value).ndim == 1:
+                            shapes.append(len(prop_value))
+                        else:
+                            shapes.append(np.array(prop_value).shape)
+                    elif isinstance(prop_value, dict):
+                        print(f"Skipping property '{pr}' because dictionaries are not supported.")
+                        skip_properties.append(pr)
+                        break
+                else:
+                    shapes.append(np.nan)
+            property_shapes[pr] = shapes
+
+        for pr in property_shapes.keys():
+            elems = [elem for elem in property_shapes[pr] if not np.any(np.isnan(elem))]
+            if not np.all([elem == elems[0] for elem in elems]):
+                print(f"Skipping property '{pr}' because it has variable size across units.")
+                skip_properties.append(pr)
+
+        write_properties = set(all_properties) - set(skip_properties)
+        for pr in write_properties:
+            if pr not in property_descriptions:
+                warnings.warn(
+                    f"Description for property {pr} not found in property_descriptions. "
+                    "Setting description to 'no description'"
+                )
+        for pr in write_properties:
+            unit_col_args = dict(name=pr, description=property_descriptions.get(pr, "No description."))
+            if pr in ['max_channel', 'max_electrode'] and nwbfile.electrodes is not None:
+                unit_col_args.update(table=nwbfile.electrodes)
+            nwbfile.add_unit_column(**unit_col_args)
+
+        for unit_id in unit_ids:
+            unit_kwargs = dict()
+            if use_times:
+                spkt = sorting.frame_to_time(sorting.get_unit_spike_train(unit_id=unit_id))
+            else:
+                spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
+            for pr in write_properties:
+                if pr in sorting.get_unit_property_names(unit_id):
+                    prop_value = sorting.get_unit_property(unit_id, pr)
+                    unit_kwargs.update({pr: prop_value})
+                else:  # Case of missing data for this unit and this property
+                    unit_kwargs.update({pr: np.nan})
+            nwbfile.add_unit(id=int(unit_id), spike_times=spkt, **unit_kwargs)
+
+        # TODO
+        # # Stores average and std of spike traces
+        # This will soon be updated to the current NWB standard
+        # if 'waveforms' in sorting.get_unit_spike_feature_names(unit_id=id):
+        #     wf = sorting.get_unit_spike_features(unit_id=id,
+        #                                          feature_name='waveforms')
+        #     relevant_ch = most_relevant_ch(wf)
+        #     # Spike traces on the most relevant channel
+        #     traces = wf[:, relevant_ch, :]
+        #     traces_avg = np.mean(traces, axis=0)
+        #     traces_std = np.std(traces, axis=0)
+        #     nwbfile.add_unit(
+        #         id=id,
+        #         spike_times=spkt,
+        #         waveform_mean=traces_avg,
+        #         waveform_sd=traces_std
+        #     )
+
+        # Check that multidimensional features have the same shape across units
+        feature_shapes = dict()
+        for ft in all_features:
+            shapes = []
+            for unit_id in unit_ids:
+                if ft in sorting.get_unit_spike_feature_names(unit_id):
+                    feat_value = sorting.get_unit_spike_features(unit_id, ft)
+                    if isinstance(feat_value[0], (int, np.integer, float, str, bool)):
+                        break
+                    elif isinstance(feat_value[0], (list, np.ndarray)):  # multidimensional features
+                        if np.array(feat_value).ndim > 1:
+                            shapes.append(np.array(feat_value).shape)
+                            feature_shapes[ft] = shapes
+                    elif isinstance(feat_value[0], dict):
+                        print(f"Skipping feature '{ft}' because dictionaries are not supported.")
+                        skip_features.append(ft)
+                        break
+                else:
+                    print(f"Skipping feature '{ft}' because not share across all units.")
+                    skip_features.append(ft)
+                    break
+
+        nspikes = {k: get_nspikes(nwbfile.units, int(k)) for k in unit_ids}
+
+        for ft in feature_shapes.keys():
+            # skip first dimension (num_spikes) when comparing feature shape
+            if not np.all([elem[1:] == feature_shapes[ft][0][1:] for elem in feature_shapes[ft]]):
+                print(f"Skipping feature '{ft}' because it has variable size across units.")
+                skip_features.append(ft)
+
+        for ft in set(all_features) - set(skip_features):
+            values = []
+            if not ft.endswith('_idxs'):
+                for unit_id in sorting.get_unit_ids():
+                    feat_vals = sorting.get_unit_spike_features(unit_id, ft)
+
+                    if len(feat_vals) < nspikes[unit_id]:
+                        skip_features.append(ft)
+                        print(f"Skipping feature '{ft}' because it is not defined for all spikes.")
+                        break
+                        # this means features are available for a subset of spikes
+                        # all_feat_vals = np.array([np.nan] * nspikes[unit_id])
+                        # feature_idxs = sorting.get_unit_spike_features(unit_id, feat_name + '_idxs')
+                        # all_feat_vals[feature_idxs] = feat_vals
+                    else:
+                        all_feat_vals = feat_vals
+                    values.append(all_feat_vals)
+
+                flatten_vals = [item for sublist in values for item in sublist]
+                nspks_list = [sp for sp in nspikes.values()]
+                spikes_index = np.cumsum(nspks_list).astype('int64')
+                if ft in nwbfile.units:  # If property already exists, skip it
+                    warnings.warn(f'Feature {ft} already present in units table, skipping it')
+                    continue
+                set_dynamic_table_property(
+                    dynamic_table=nwbfile.units,
+                    row_ids=[int(k) for k in unit_ids],
+                    property_name=ft,
+                    values=flatten_vals,
+                    index=spikes_index,
+                )
+    else:
+        warnings.warn("The nwbfile already contains units. These units will not be over-written.")
+
+
+def write_sorting(
+    sorting: se.SortingExtractor,
+    save_path: PathType = None,
+    overwrite: bool = False,
+    nwbfile=None,
+    property_descriptions: Optional[dict] = None,
+    skip_properties: Optional[List[str]] = None,
+    skip_features: Optional[List[str]] = None,
+    use_times: bool = True,
+    metadata: dict = None
+):
+    """
+    Primary method for writing a SortingExtractor object to an NWBFile.
+
+    Parameters
+    ----------
+    sorting: SortingExtractor
+    save_path: PathType
+        Required if an nwbfile is not passed. The location where the NWBFile either exists, or will be written.
+    overwrite: bool
+        If using save_path, whether or not to overwrite the NWBFile if it already exists.
+    nwbfile: NWBFile
+        Required if a save_path is not specified. If passed, this function
+        will fill the relevant fields within the nwbfile. E.g., calling
+        spikeextractors.NwbRecordingExtractor.write_recording(
+            my_recording_extractor, my_nwbfile
+        )
+        will result in the appropriate changes to the my_nwbfile object.
+    property_descriptions: dict
+        For each key in this dictionary which matches the name of a unit
+        property in sorting, adds the value as a description to that
+        custom unit column.
+    skip_properties: list of str
+        Each string in this list that matches a unit property will not be written to the NWBFile.
+    skip_features: list of str
+        Each string in this list that matches a spike feature will not be written to the NWBFile.
+    use_times: bool (optional, defaults to False)
+        If True, the times are saved to the nwb file using sorting.frame_to_time(). If False (default),
+        the sampling rate is used.
+    metadata: dict
+        Information for constructing the nwb file (optional).
+        Only used if no nwbfile exists at the save_path, and no nwbfile was directly passed.
+    """
+    assert save_path is None or nwbfile is None, \
+        "Either pass a save_path location, or nwbfile object, but not both!"
+    if nwbfile is not None:
+        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be a pynwb.NWBFile object!"
+
+    if nwbfile is None:
+        if Path(save_path).is_file() and not overwrite:
+            read_mode = 'r+'
+        else:
+            read_mode = 'w'
+
+        with pynwb.NWBHDF5IO(str(save_path), mode=read_mode) as io:
+            if read_mode == 'r+':
+                nwbfile = io.read()
+            else:
+                nwbfile_kwargs = dict(
+                    session_description="Auto-generated by NwbSortingExtractor without description.",
+                    identifier=str(uuid.uuid4()),
+                    session_start_time=datetime(1970, 1, 1)
+                )
+                if metadata is not None and 'NWBFile' in metadata:
+                    nwbfile_kwargs.update(metadata['NWBFile'])
+                nwbfile = pynwb.NWBFile(**nwbfile_kwargs)
+            write_units(
+                sorting=sorting,
+                nwbfile=nwbfile,
+                property_descriptions=property_descriptions,
+                skip_properties=skip_properties,
+                skip_features=skip_features,
+                use_times=use_times
+            )
+            io.write(nwbfile)
+    else:
+        write_units(
+            sorting=sorting,
+            nwbfile=nwbfile,
+            property_descriptions=property_descriptions,
+            skip_properties=skip_properties,
+            skip_features=skip_features,
+            use_times=use_times
         )
