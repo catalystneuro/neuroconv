@@ -157,12 +157,7 @@ def add_devices(
         name="Device",
         description="Ecephys probe."
     )
-    if metadata is None or 'Device' not in metadata['Ecephys']:
-        metadata = dict(
-            Ecephys=dict(
-                Device=[defaults]
-            )
-        )
+
     if metadata is None:
         metadata = dict() 
 
@@ -491,7 +486,6 @@ def add_electrodes(
         nwbfile.add_electrode_column(col_name,**cols_args)
     assert nwbfile.electrodes is not None, \
         "Unable to form electrode table! Check device, electrode group, and electrode metadata."
-
 
 
 def add_electrical_series(
