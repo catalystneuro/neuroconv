@@ -1,11 +1,18 @@
 """Authors: Cody Baker and Ben Dichter."""
 from typing import Optional, Union
 from pathlib import Path
+import numpy as np 
 
 from pynwb import NWBFile
+from pynwb.device import Device
+from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...utils.spike_interface import write_recording
+from ...utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_base_schema
+)
 
 OptionalPathType = Optional[Union[str, Path]]
 
@@ -13,13 +20,53 @@ OptionalPathType = Optional[Union[str, Path]]
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
+    def get_metadata_schema(self):
+        """Compile metadata schema for the RecordingExtractor."""
+        metadata_schema = super().get_metadata_schema()
+
+        # Initiate Ecephys metadata
+        metadata_schema['properties']['Ecephys'] = get_base_schema(tag='Ecephys')
+        metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup']
+        metadata_schema['properties']['Ecephys']['properties'] = dict(
+            Device=dict(
+                type="array",
+                minItems=1,
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}
+            ),
+            ElectrodeGroup=dict(
+                type="array",
+                minItems=1,
+                items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
+            )
+        )
+        # Schema definition for arrays
+        metadata_schema['properties']['Ecephys']['properties']["definitions"] = dict(
+            Device=get_schema_from_hdmf_class(Device),
+            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup)
+        )
+        return metadata_schema
+
     def get_metadata(self):
-        metadata = dict(
-            Ecephys=dict(
-                ElectricalSeries_lfp=dict(
-                    name="LFP",
-                    description="Local field potential signal."
+        metadata = super().get_metadata()
+        metadata['Ecephys'] = dict(
+            Device=[
+                dict(
+                    name='Device_ecephys',
+                    description='no description'
                 )
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name=str(group_id),
+                    description="no description",
+                    location="unknown",
+                    device='Device_ecephys'
+                )
+                for group_id in np.unique(self.recording_extractor.get_channel_groups())
+            ],
+            ElectricalSeries_lfp=dict(
+                name="LFP",
+                description="Local field potential signal."
             )
         )
         return metadata

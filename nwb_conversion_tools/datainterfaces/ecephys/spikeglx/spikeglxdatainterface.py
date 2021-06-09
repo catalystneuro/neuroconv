@@ -98,6 +98,24 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
 
     RX = SpikeGLXRecordingExtractor
 
+    def __init__(self, file_path: PathType, stub_test: Optional[bool] = False):
+        super().__init__(file_path=str(file_path))
+        if stub_test:
+            self.subset_channels = [0, 1]
+
+        # Set electrodes properties
+        for ch in self.recording_extractor.get_channel_ids():
+            self.recording_extractor.set_channel_property(
+                channel_id=ch, 
+                property_name='shank_electrode_number', 
+                value=ch
+            )    
+            self.recording_extractor.set_channel_property(
+                channel_id=ch, 
+                property_name='shank_group_name', 
+                value='Shank1'
+            )
+
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
