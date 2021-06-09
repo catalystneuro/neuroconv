@@ -16,7 +16,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         metadata = dict(
             Ecephys=dict(
-                LFPElectricalSeries=dict(
+                ElectricalSeries_lfp=dict(
                     name="LFP",
                     description="Local field potential signal."
                 )
