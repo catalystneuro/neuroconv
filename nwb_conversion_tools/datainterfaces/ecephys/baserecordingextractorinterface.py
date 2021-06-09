@@ -89,6 +89,27 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         )
         return metadata_schema
 
+    def get_metadata(self):
+        metadata = super().get_metadata()
+        metadata['Ecephys'] = dict(
+            Device=[
+                dict(
+                    name='Device_ecephys',
+                    description='no description'
+                )
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name=str(group_id),
+                    description="no description",
+                    location="unknown",
+                    device='Device_ecephys'
+                )
+                for group_id in np.unique(self.recording_extractor.get_channel_groups())
+            ],
+        )
+        return metadata
+
     def subset_recording(self, stub_test: bool = False):
         """
         Subset a recording extractor according to stub and channel subset options.

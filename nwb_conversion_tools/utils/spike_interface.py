@@ -153,9 +153,11 @@ def add_devices(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    # Default Device metadata
     defaults = dict(
         name="Device",
-        description="Ecephys probe."
+        description="Ecephys probe. Automatically generated."
     )
 
     if metadata is None:
@@ -204,8 +206,11 @@ def add_electrode_groups(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
     if len(nwbfile.devices) == 0:
-        add_devices(recording, nwbfile)
+        warnings.warn('When adding ElectrodeGroup, no Devices were found on nwbfile. Creating a Device now...')
+        add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
     if metadata is None:
         metadata = dict()
 
@@ -232,14 +237,14 @@ def add_electrode_groups(
         if grp.get('name', defaults[0]['name']) not in nwbfile.electrode_groups:
             device_name = grp.get('device', defaults[0]['device'])
             if device_name not in nwbfile.devices:
-                new_device = dict(
+                new_device_metadata = dict(
                     Ecephys=dict(
                         Device=[dict(
                             name=device_name
                         )]
                     )
                 )
-                add_devices(recording, nwbfile, metadata=new_device)
+                add_devices(recording, nwbfile, metadata=new_device_metadata)
                 warnings.warn(f"Device \'{device_name}\' not detected in "
                               "attempted link to electrode group! Automatically generating.")
             electrode_group_kwargs = dict(defaults[0], **grp)
