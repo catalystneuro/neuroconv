@@ -7,12 +7,15 @@ from datetime import datetime
 
 import spikeextractors as se
 from spikeextractors.testing import (
-    check_sortings_equal, check_recordings_equal, check_dumping, check_recording_return_types,
+    check_sortings_equal,
+    check_recordings_equal,
+    check_dumping,
+    check_recording_return_types,
     get_default_nwbfile_metadata
 )
 from pynwb import NWBHDF5IO, NWBFile
 
-from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording
+from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
 
 
 def _create_example(seed):
@@ -110,102 +113,187 @@ class TestExtractors(unittest.TestCase):
         del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
         shutil.rmtree(self.test_dir)
 
-    def test_nwb_extractor(self):
-        path1 = self.test_dir + '/test.nwb'
-        write_recording(self.RX, path1)
-        RX_nwb = se.NwbRecordingExtractor(path1)
+    def _create_example(self, seed):
+        channel_ids = [0, 1, 2, 3]
+        num_channels = 4
+        num_frames = 10000
+        num_ttls = 30
+        sampling_frequency = 30000
+        X = np.random.RandomState(seed=seed).normal(0, 1, (num_channels, num_frames))
+        geom = np.random.RandomState(seed=seed).normal(0, 1, (num_channels, 2))
+        X = (X * 100).astype(int)
+        ttls = np.sort(np.random.permutation(num_frames)[:num_ttls])
+
+        RX = se.NumpyRecordingExtractor(timeseries=X, sampling_frequency=sampling_frequency, geom=geom)
+        RX.set_ttls(ttls)
+        RX.set_channel_locations([0, 0], channel_ids=0)
+        RX.add_epoch("epoch1", 0, 10)
+        RX.add_epoch("epoch2", 10, 20)
+        for i, channel_id in enumerate(RX.get_channel_ids()):
+            RX.set_channel_property(channel_id=channel_id, property_name='shared_channel_prop', value=i)
+
+        RX2 = se.NumpyRecordingExtractor(timeseries=X, sampling_frequency=sampling_frequency, geom=geom)
+        RX2.copy_epochs(RX)
+        times = np.arange(RX.get_num_frames()) / RX.get_sampling_frequency() + 5
+        RX2.set_times(times)
+
+        RX3 = se.NumpyRecordingExtractor(timeseries=X, sampling_frequency=sampling_frequency, geom=geom)
+
+        SX = se.NumpySortingExtractor()
+        SX.set_sampling_frequency(sampling_frequency)
+        spike_times = [200, 300, 400]
+        train1 = np.sort(np.rint(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times[0])).astype(int))
+        SX.add_unit(unit_id=1, times=train1)
+        SX.add_unit(unit_id=2, times=np.sort(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times[1])))
+        SX.add_unit(unit_id=3, times=np.sort(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times[2])))
+        SX.set_unit_property(unit_id=1, property_name='stability', value=80)
+        SX.add_epoch("epoch1", 0, 10)
+        SX.add_epoch("epoch2", 10, 20)
+
+        SX2 = se.NumpySortingExtractor()
+        SX2.set_sampling_frequency(sampling_frequency)
+        spike_times2 = [100, 150, 450]
+        train2 = np.rint(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times2[0])).astype(int)
+        SX2.add_unit(unit_id=3, times=train2)
+        SX2.add_unit(unit_id=4, times=np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times2[1]))
+        SX2.add_unit(unit_id=5, times=np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times2[2]))
+        SX2.set_unit_property(unit_id=4, property_name='stability', value=80)
+        SX2.set_unit_spike_features(unit_id=3, feature_name='widths', value=np.asarray([3] * spike_times2[0]))
+        SX2.copy_epochs(SX)
+        SX2.copy_times(RX2)
+        for i, unit_id in enumerate(SX2.get_unit_ids()):
+            SX2.set_unit_property(unit_id=unit_id, property_name='shared_unit_prop', value=i)
+            SX2.set_unit_spike_features(
+                unit_id=unit_id,
+                feature_name='shared_unit_feature',
+                value=np.asarray([i] * spike_times2[i])
+            )
+
+        SX3 = se.NumpySortingExtractor()
+        train3 = np.asarray([1, 20, 21, 35, 38, 45, 46, 47])
+        SX3.add_unit(unit_id=0, times=train3)
+        features3 = np.asarray([0, 5, 10, 15, 20, 25, 30, 35])
+        features4 = np.asarray([0, 10, 20, 30])
+        feature4_idx = np.asarray([0, 2, 4, 6])
+        SX3.set_unit_spike_features(unit_id=0, feature_name='dummy', value=features3)
+        SX3.set_unit_spike_features(unit_id=0, feature_name='dummy2', value=features4, indexes=feature4_idx)
+
+        example_info = dict(
+            channel_ids=channel_ids,
+            num_channels=num_channels,
+            num_frames=num_frames,
+            sampling_frequency=sampling_frequency,
+            unit_ids=[1, 2, 3],
+            train1=train1,
+            train2=train2,
+            train3=train3,
+            features3=features3,
+            unit_prop=80,
+            channel_prop=(0, 0),
+            ttls=ttls,
+            epochs_info=((0, 10), (10, 20)),
+            geom=geom,
+            times=times
+        )
+
+        return (RX, RX2, RX3, SX, SX2, SX3, example_info)
+
+
+    def test_write_recording(self):
+        path = self.test_dir + '/test.nwb'
+
+        write_recording(self.RX, path)
+        RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
-
         del RX_nwb
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        RX_nwb = se.NwbRecordingExtractor(path1)
+
+        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
 
-        # append sorting to existing file
-        se.NwbSortingExtractor.write_sorting(sorting=self.SX, save_path=path1, overwrite=False)
-
-        path2 = self.test_dir + "/firings_true.nwb"
-        write_recording(recording=self.RX, save_path=path2)
-        se.NwbSortingExtractor.write_sorting(sorting=self.SX, save_path=path2)
-        SX_nwb = se.NwbSortingExtractor(path2)
-        check_sortings_equal(self.SX, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test for handling unit property descriptions argument
-        property_descriptions = dict(stability="This is a description of stability.")
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        se.NwbSortingExtractor.write_sorting(
-            sorting=self.SX,
-            save_path=path1,
-            property_descriptions=property_descriptions
-        )
-        SX_nwb = se.NwbSortingExtractor(path1)
-        check_sortings_equal(self.SX, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test for handling skip_properties argument
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        se.NwbSortingExtractor.write_sorting(
-            sorting=self.SX,
-            save_path=path1,
-            skip_properties=['stability']
-        )
-        SX_nwb = se.NwbSortingExtractor(path1)
-        assert 'stability' not in SX_nwb.get_shared_unit_property_names()
-        check_sortings_equal(self.SX, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test for handling skip_features argument
-        write_recording(recording=self.RX, save_path=path1, overwrite=True)
-        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. USe use_times=False
-        se.NwbSortingExtractor.write_sorting(
-            sorting=self.SX2,
-            save_path=path1,
-            skip_features=['widths'],
-            use_times=False
-        )
-        SX_nwb = se.NwbSortingExtractor(path1)
-        assert 'widths' not in SX_nwb.get_shared_unit_spike_feature_names()
-        check_sortings_equal(self.SX2, SX_nwb)
-        check_dumping(SX_nwb)
-
-        # Test writting multiple recordings using metadata
+        # Writting multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
-        path_nwb = self.test_dir + '/test_multiple.nwb'
-        se.NwbRecordingExtractor.write_recording(
+        path_multi = self.test_dir + '/test_multiple.nwb'
+        write_recording(
             recording=self.RX,
-            save_path=path_nwb,
+            save_path=path_multi,
             metadata=metadata,
             write_as='raw',
             es_key='ElectricalSeries_raw',
         )
-        se.NwbRecordingExtractor.write_recording(
+        write_recording(
             recording=self.RX2,
-            save_path=path_nwb,
+            save_path=path_multi,
             metadata=metadata,
             write_as='processed',
             es_key='ElectricalSeries_processed',
         )
-        se.NwbRecordingExtractor.write_recording(
+        write_recording(
             recording=self.RX3,
-            save_path=path_nwb,
+            save_path=path_multi,
             metadata=metadata,
             write_as='lfp',
             es_key='ElectricalSeries_lfp',
         )
 
-        RX_nwb = se.NwbRecordingExtractor(
-            file_path=path_nwb,
-            electrical_series_name='raw_traces'
-        )
+        RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name='raw_traces')
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
         del RX_nwb
+
+    def test_write_sorting(self):
+        path = self.test_dir + '/test.nwb'
+        sf = self.RX.get_sampling_frequency()
+
+        # Append sorting to existing file
+        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        write_sorting(sorting=self.SX, save_path=path, overwrite=False)
+        SX_nwb = se.NwbSortingExtractor(path)
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+
+        # Test for handling unit property descriptions argument
+        property_descriptions = dict(stability="This is a description of stability.")
+        write_sorting(
+            sorting=self.SX,
+            save_path=path,
+            property_descriptions=property_descriptions,
+            overwrite=True
+        )
+        SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+
+        # Test for handling skip_properties argument
+        write_sorting(
+            sorting=self.SX,
+            save_path=path,
+            skip_properties=['stability'],
+            overwrite=True
+        )
+        SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
+        assert 'stability' not in SX_nwb.get_shared_unit_property_names()
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+
+        # Test for handling skip_features argument
+        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. Set use_times=False
+        write_sorting(
+            sorting=self.SX2,
+            save_path=path,
+            skip_features=['widths'],
+            use_times=False,
+            overwrite=True
+        )
+        SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
+        assert 'widths' not in SX_nwb.get_shared_unit_spike_feature_names()
+        check_sortings_equal(self.SX2, SX_nwb)
+        check_dumping(SX_nwb)
 
     def check_metadata_write(self, metadata: dict, nwbfile_path: Path, recording: se.RecordingExtractor):
         standard_metadata = get_nwb_metadata(recording=recording)

@@ -6,9 +6,15 @@ from typing import Optional
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
-from .utils.json_schema import (get_schema_from_hdmf_class, get_schema_for_NWBFile,
-    dict_deep_update, get_base_schema, fill_defaults, unroot_schema)
+from .utils.conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from .utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_schema_for_NWBFile,
+    dict_deep_update,
+    get_base_schema,
+    fill_defaults,
+    unroot_schema
+)
 
 
 class NWBConverter:
@@ -94,6 +100,13 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
+    def get_conversion_options(self):
+        """Auto-fill as much of the conversion options as possible. Must comply with conversion_options_schema."""
+        conversion_options = dict()
+        for interface_name, interface in self.data_interface_objects.items():
+            conversion_options[interface_name] = interface.get_conversion_options()
+        return conversion_options
+
     def validate_metadata(self, metadata):
         """Validate metadata against Converter metadata_schema."""
         validate(instance=metadata, schema=self.get_metadata_schema())
@@ -106,7 +119,7 @@ class NWBConverter:
 
     def run_conversion(
         self,
-        metadata: dict,
+        metadata: Optional[dict] = None,
         save_to_file: Optional[bool] = True,
         nwbfile_path: Optional[str] = None,
         overwrite: Optional[bool] = False,
@@ -118,7 +131,7 @@ class NWBConverter:
 
         Parameters
         ----------
-        metadata : dict
+        metadata : dict, optional
         save_to_file : bool, optional
             If False, returns an NWBFile object instead of writing it to the nwbfile_path. The default is True.
         nwbfile_path : str, optional
@@ -136,15 +149,18 @@ class NWBConverter:
         assert (not save_to_file and nwbfile_path is None) or nwbfile is None, \
             "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
 
+        # Validate metadata
+        if metadata is None:
+            metadata = self.get_metadata()
+        self.validate_metadata(metadata=metadata)
+
         # Validate conversion options
         if conversion_options is None:
-            conversion_options = dict()
+            conversion_options = self.get_conversion_options()
         else:
             self.validate_conversion_options(conversion_options=conversion_options)
 
-        # Validate metadata
-        # self.validate_metadata(metadata=metadata)
-
+        # Save data to file or to nwbfile object
         if save_to_file:
             if nwbfile_path is None:
                 raise TypeError("A path to the output file must be provided, but nwbfile_path got value None")
