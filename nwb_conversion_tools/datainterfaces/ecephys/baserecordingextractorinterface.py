@@ -54,12 +54,33 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                 type="array",
                 minItems=1,
                 items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
-            )
+            ),
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"}
+            ),
         )
         # Schema definition for arrays
         metadata_schema['properties']['Ecephys']['properties']["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
-            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup)
+            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
+            Electrodes=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(
+                        type="string",
+                        description="name of this electrodes column"
+                    ),
+                    description=dict(
+                        type="string",
+                        description="description of this electrodes column"
+                    )
+                )
+            )
         )
         return metadata_schema
 

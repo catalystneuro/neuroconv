@@ -344,9 +344,9 @@ def add_electrodes(
     if 'Electrodes' not in metadata['Ecephys']:
         metadata['Ecephys']['Electrodes'] = []
 
-    assert all([isinstance(x, dict) and set(x.keys()) == set(['name', 'description', 'data'])
-                and isinstance(x['data'], list) for x in metadata['Ecephys']['Electrodes']]), \
-        "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries!"
+    assert all([isinstance(x, dict) and set(x.keys()) == set(['name', 'description'])
+                for x in metadata['Ecephys']['Electrodes']]), \
+        "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, containing the keys 'name' and 'description'"
     assert all([x['name'] != 'group' for x in metadata['Ecephys']['Electrodes']]), \
         "Passing metadata field 'group' is deprecated; pass group_name instead!"
 

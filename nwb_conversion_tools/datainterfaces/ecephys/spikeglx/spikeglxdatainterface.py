@@ -29,6 +29,18 @@ def fetch_spikeglx_metadata(file_path: str, recording: RecordingExtractor, metad
 
     metadata['NWBFile'] = dict(session_start_time=session_start_time.strftime('%Y-%m-%dT%H:%M:%S'))
 
+    # Electrodes columns descriptions
+    metadata["Ecephys"]["Electrodes"] = [
+        dict(
+            name="shank_electrode_number",
+            description="0-indexed channel within a shank."
+        ),
+        dict(
+            name="shank_group_name",
+            description="The name of the ElectrodeGroup this electrode is a part of."
+        )
+    ]
+
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
