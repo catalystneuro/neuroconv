@@ -42,29 +42,28 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
-        metadata_schema['required'] = ['Ecephys']
         metadata_schema['properties']['Ecephys'] = get_base_schema(tag='Ecephys')
         metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup']
         metadata_schema['properties']['Ecephys']['properties'] = dict(
             Device=dict(
                 type="array",
                 minItems=1,
-                items={"$ref": "#/definitions/Device"}
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}
             ),
             ElectrodeGroup=dict(
                 type="array",
                 minItems=1,
-                items={"$ref": "#/definitions/ElectrodeGroup"}
+                items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
             ),
             Electrodes=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
-                items={"$ref": "#/definitions/Electrodes"}
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"}
             ),
         )
         # Schema definition for arrays
-        metadata_schema["definitions"] = dict(
+        metadata_schema['properties']['Ecephys']['properties']["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             Electrodes=dict(
