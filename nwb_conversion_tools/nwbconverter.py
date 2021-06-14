@@ -6,10 +6,15 @@ from typing import Optional
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
-from .utils import get_schema_from_hdmf_class, get_schema_for_NWBFile
-from .json_schema_utils import dict_deep_update, get_base_schema, fill_defaults, \
+from .utils.conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from .utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_schema_for_NWBFile,
+    dict_deep_update,
+    get_base_schema,
+    fill_defaults,
     unroot_schema
+)
 
 
 class NWBConverter:
@@ -48,10 +53,16 @@ class NWBConverter:
             })
         return conversion_options_schema
 
+    @classmethod
+    def validate_source(cls, source_data):
+        """Validate source_data against Converter source_schema."""
+        validate(instance=source_data, schema=cls.get_source_schema())
+        print('Source data is valid!')
+
     def __init__(self, source_data):
         """Validate source_data against source_schema and initialize all data interfaces."""
         # Validate source_data against source_schema
-        validate(instance=source_data, schema=self.get_source_schema())
+        self.validate_source(source_data=source_data)
 
         # If data is valid, proceed to instantiate DataInterface objects
         self.data_interface_objects = {
@@ -89,21 +100,38 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
+    def get_conversion_options(self):
+        """Auto-fill as much of the conversion options as possible. Must comply with conversion_options_schema."""
+        conversion_options = dict()
+        for interface_name, interface in self.data_interface_objects.items():
+            conversion_options[interface_name] = interface.get_conversion_options()
+        return conversion_options
+
+    def validate_metadata(self, metadata):
+        """Validate metadata against Converter metadata_schema."""
+        validate(instance=metadata, schema=self.get_metadata_schema())
+        print('Metadata is valid!')
+
+    def validate_conversion_options(self, conversion_options):
+        """Validate conversion_options against Converter conversion_options_schema."""
+        validate(instance=conversion_options, schema=self.get_conversion_options_schema())
+        print('conversion_options is valid!')
+
     def run_conversion(
-            self,
-            metadata: dict,
-            save_to_file: Optional[bool] = True,
-            nwbfile_path: Optional[str] = None,
-            overwrite: Optional[bool] = False,
-            nwbfile: Optional[NWBFile] = None,
-            conversion_options: Optional[dict] = None
+        self,
+        metadata: Optional[dict] = None,
+        save_to_file: Optional[bool] = True,
+        nwbfile_path: Optional[str] = None,
+        overwrite: Optional[bool] = False,
+        nwbfile: Optional[NWBFile] = None,
+        conversion_options: Optional[dict] = None
     ):
         """
         Run the NWB conversion over all the instantiated data interfaces.
 
         Parameters
         ----------
-        metadata : dict
+        metadata : dict, optional
         save_to_file : bool, optional
             If False, returns an NWBFile object instead of writing it to the nwbfile_path. The default is True.
         nwbfile_path : str, optional
@@ -121,11 +149,18 @@ class NWBConverter:
         assert (not save_to_file and nwbfile_path is None) or nwbfile is None, \
             "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
 
-        if conversion_options is None:
-            conversion_options = dict()
-        else:
-            validate(instance=conversion_options, schema=self.get_conversion_options_schema())
+        # Validate metadata
+        if metadata is None:
+            metadata = self.get_metadata()
+        self.validate_metadata(metadata=metadata)
 
+        # Validate conversion options
+        if conversion_options is None:
+            conversion_options = self.get_conversion_options()
+        else:
+            self.validate_conversion_options(conversion_options=conversion_options)
+
+        # Save data to file or to nwbfile object
         if save_to_file:
             if nwbfile_path is None:
                 raise TypeError("A path to the output file must be provided, but nwbfile_path got value None")

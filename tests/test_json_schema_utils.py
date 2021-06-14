@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Union
 
-from nwb_conversion_tools.json_schema_utils import get_schema_from_method_signature, dict_deep_update, fill_defaults
+from nwb_conversion_tools.utils.json_schema import get_schema_from_method_signature, dict_deep_update, fill_defaults
 
 
 def compare_dicts(a: dict, b: dict):

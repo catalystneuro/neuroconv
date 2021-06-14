@@ -31,6 +31,10 @@ NWB Conversion Tools relies heavily on [SpikeExtractors](https://github.com/Spik
 You can use a graphical interface for your converter with [NWB Web GUI](https://github.com/catalystneuro/nwb-web-gui).
 
 
+## Rebuilding on Read the Docs
+As a maintainer, once the changes to the documentation are on the master branch, go to [https://readthedocs.org/projects/nwb-conversion-tools/](https://readthedocs.org/projects/nwb-conversion-tools/) and click "Build version". Check the console output and its log for any errors.
+
+
 ## Used by
 
 * [Axel lab](https://www.axellab.columbia.edu/): [axel-lab-to-nwb](https://github.com/catalystneuro/axel-lab-to-nwb)

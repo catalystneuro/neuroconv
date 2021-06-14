@@ -2,7 +2,7 @@
 from abc import abstractmethod, ABC
 import warnings
 
-from .json_schema_utils import (
+from .utils.json_schema import (
     get_base_schema, get_schema_from_method_signature, fill_defaults)
 
 
@@ -30,6 +30,11 @@ class BaseDataInterface(ABC):
         return metadata_schema
 
     def get_metadata(self):
+        """Child DataInterface classes should override this to match their metadata"""
+        return dict()
+
+    def get_conversion_options(self):
+        """Child DataInterface classes should override this to match their conversion options"""
         return dict()
 
     @abstractmethod
