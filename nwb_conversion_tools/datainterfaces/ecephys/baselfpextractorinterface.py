@@ -1,11 +1,18 @@
 """Authors: Cody Baker and Ben Dichter."""
 from typing import Optional, Union
 from pathlib import Path
+import numpy as np 
 
 from pynwb import NWBFile
+from pynwb.device import Device
+from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...utils.spike_interface import write_recording
+from ...utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_base_schema
+)
 
 OptionalPathType = Optional[Union[str, Path]]
 
@@ -14,12 +21,11 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
     def get_metadata(self):
-        metadata = dict(
-            Ecephys=dict(
-                LFPElectricalSeries=dict(
-                    name="LFP",
-                    description="Local field potential signal."
-                )
+        metadata = super().get_metadata()
+        metadata['Ecephys'].update(
+            ElectricalSeries_lfp=dict(
+                name="LFP",
+                description="Local field potential signal."
             )
         )
         return metadata
