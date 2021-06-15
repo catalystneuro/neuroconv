@@ -221,7 +221,7 @@ class TestExtractors(unittest.TestCase):
             device="Device"
         )
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
             device_source = metadata["Ecephys"].get("Device", standard_metadata["Ecephys"]["Device"])

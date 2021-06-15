@@ -32,7 +32,7 @@ def check_constant_rate(time_series):
 
 
 def auto_qc(fpath):
-    io = NWBHDF5IO(fpath, 'r')
+    io = NWBHDF5IO(fpath, 'r', load_namespaces=True)
     nwb = io.read()
 
     # trials
