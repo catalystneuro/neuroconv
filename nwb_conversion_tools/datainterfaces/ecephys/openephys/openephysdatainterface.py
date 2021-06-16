@@ -50,30 +50,6 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
             session_start_time=session_start_time_tzaware.strftime('%Y-%m-%dT%H:%M:%S'),
         )
 
-        # Ecephys metadata
-        device_name = self.recording_extractor._fileobj.experiments[0].acquisition_system
-        metadata['Ecephys'] = dict(
-            Device=[dict(
-                name=device_name,
-                description='no description'
-            )],
-            ElectrodeGroup=[
-                dict(
-                    name='ElectrodeGroup', 
-                    description='no description', 
-                    location='no description', 
-                    device=device_name
-                )
-            ],
-            Electrodes=[
-                dict(
-                    name='group_name',
-                    description='name of the electrode group',
-                    data=['ElectrodeGroup' for i in self.recording_extractor.get_channel_groups()]
-                )
-            ]
-        )
-
         return metadata
 
 

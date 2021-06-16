@@ -56,35 +56,13 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         session_start_time_tzaware = pytz.timezone('EST').localize(session_start_time)
         comment = nsx_file.basic_header['Comment']
 
+        # Updates basic metadata from files
         metadata['NWBFile'] = dict(
             session_start_time=session_start_time_tzaware.strftime('%Y-%m-%dT%H:%M:%S'),
             session_description=comment,
         )
 
-        metadata['Ecephys'] = dict(
-            Device=[
-                dict(
-                    name='Device_ecephys',
-                    description='no description'
-                )
-            ],
-            ElectrodeGroup=[
-                dict(
-                    name='ElectrodeGroup', 
-                    description='no description', 
-                    location='no description', 
-                    device='Device_ecephys'
-                )
-            ],
-            Electrodes=[
-                dict(
-                    name='group_name',
-                    description='name of the electrode group',
-                    data=['ElectrodeGroup' for i in self.recording_extractor.get_channel_groups()]
-                )
-            ]
-        )
-
+        # Checks if data is raw or processed
         if self.source_data['filename'].split('.')[-1][-1] == '6':
             metadata['Ecephys']['ElectricalSeries_raw'] = dict(
                 name='ElectricalSeries_raw'

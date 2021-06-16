@@ -78,16 +78,32 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                     description=dict(
                         type="string",
                         description="description of this electrodes column"
-                    ),
-                    data=dict(
-                        type="array",
-                        description="values for each row in this electrodes column",
-                        default=[np.nan]*len(self.recording_extractor.get_channel_ids())
                     )
                 )
             )
         )
         return metadata_schema
+
+    def get_metadata(self):
+        metadata = super().get_metadata()
+        metadata['Ecephys'] = dict(
+            Device=[
+                dict(
+                    name='Device_ecephys',
+                    description='no description'
+                )
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name=str(group_id),
+                    description="no description",
+                    location="unknown",
+                    device='Device_ecephys'
+                )
+                for group_id in np.unique(self.recording_extractor.get_channel_groups())
+            ],
+        )
+        return metadata
 
     def subset_recording(self, stub_test: bool = False):
         """
