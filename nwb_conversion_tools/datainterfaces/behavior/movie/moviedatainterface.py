@@ -18,8 +18,10 @@ from ....utils.conversion_tools import check_regular_timestamps, get_module
 
 try:
     import cv2
+    HAVE_OPENCV = True
 except ImportError:
-    raise ImportError("Please install opencv to use this extractor (pip install opencv-python)!")
+    HAVE_OPENCV = False
+INSTALL_MESSAGE = "Please install opencv to use this extractor (pip install opencv-python)!"
 
 
 class MovieInterface(BaseDataInterface):
@@ -29,6 +31,10 @@ class MovieInterface(BaseDataInterface):
     Source data input argument should be a dictionary with key 'file_paths' and value as an array of PathTypes
     pointing to the video files.
     """
+
+    def __init__(self, *args, **kwargs):
+        assert HAVE_OPENCV, INSTALL_MESSAGE
+        super().__init__(*args, **kwargs)
 
     @classmethod
     def get_source_schema(cls):

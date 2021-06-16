@@ -312,7 +312,7 @@ def get_schema_for_NWBFile():
             "description": "Experimental protocol, if applicable. E.g., include IACUC protocol"
         },
         "related_publications": {
-            "type": "string",
+            "type": ["string", "array"],
             "description": "Publication information.PMID, DOI, URL, etc. If multiple, concatenate together and describe"
                            " which is which. such as PMID, DOI, URL, etc"
         },

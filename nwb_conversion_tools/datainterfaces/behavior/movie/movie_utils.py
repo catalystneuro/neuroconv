@@ -5,11 +5,6 @@ from typing import Union
 
 PathType = Union[str, Path]
 
-try:
-    import cv2
-except ImportError:
-    raise ImportError("Please install opencv to use this extractor (pip install opencv-python)!")
-
 
 def get_movie_timestamps(movie_file: PathType):
     """
