@@ -462,9 +462,6 @@ def add_electrodes(
                             Ecephys=dict(
                                 ElectrodeGroup=[dict(
                                     name=group_name,
-                                    description="no description",
-                                    location="unknown",
-                                    device="Device"
                                 )]
                             )
                         )
