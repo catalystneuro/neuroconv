@@ -483,5 +483,23 @@ class TestWriteElectrodes(unittest.TestCase):
                     assert np.isnan(nwb.electrodes['prop2'][i])
                     assert nwb.electrodes['prop_new'][i]==chan_id
 
+    def test_group_set_custom_description(self):
+        for i,grp_name in enumerate(['PMd','M1']):
+            self.metadata_list[i]['Ecephys'].update(ElectrodeGroup=[dict(name=grp_name,
+                                                                     description=grp_name+' description')])
+        write_recording(recording=self.RX, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key='es1')
+        write_recording(recording=self.RX2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key='es2')
+        with NWBHDF5IO(str(self.path1), 'w') as io:
+            io.write(self.nwbfile1)
+        with NWBHDF5IO(str(self.path1), 'r') as io:
+            nwb = io.read()
+            for i, chan_id in enumerate(nwb.electrodes.id.data):
+                if i<len(nwb.electrodes.id.data)/2:
+                    assert nwb.electrodes['group_name'][i]=='PMd'
+                    assert nwb.electrodes['group'][i].description == 'PMd description'
+                else:
+                    assert nwb.electrodes['group_name'][i] == 'M1'
+                    assert nwb.electrodes['group'][i].description == 'M1 description'
+
 if __name__ == '__main__':
     unittest.main()
