@@ -3,6 +3,12 @@ from pathlib import Path
 import numpy as np
 from typing import Union
 
+try:
+    import cv2
+    HAVE_OPENCV = True
+except ImportError:
+    HAVE_OPENCV = False
+
 PathType = Union[str, Path]
 
 
