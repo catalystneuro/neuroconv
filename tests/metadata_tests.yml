@@ -4,14 +4,14 @@ NWBFile:
   institution: My University
   lab: My lab
   session_description: testing conversion tools software
-  session_start_time: 2020-04-01 10:00:00
+  session_start_time: 2020-04-15T10:00:00+00:00
 Subject:
   description: ADDME
   sex: M
   species: ADDME
   subject_id: sid000
   weight: 10g
-  date_of_birth: 2020-04-07 00:15:00
+  date_of_birth: 2020-04-07T00:15:00+00:00
 Ecephys:
   Device:
     - name: device_ecephys
@@ -26,11 +26,3 @@ Ecephys:
       device: device_ecephys
       location: ADDME
       name: ElectrodeGroup
-Behavior:
-  BehavioralTimeSeries:
-    name: BehavioralTimeSeries
-    time_series:
-      - name: InterestingBehavior1
-        description: ADDME
-      - name: InterestingBehavior2
-        description: ADDME
