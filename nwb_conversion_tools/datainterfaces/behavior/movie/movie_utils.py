@@ -3,12 +3,13 @@ from pathlib import Path
 import numpy as np
 from typing import Union
 
-PathType = Union[str, Path]
-
 try:
     import cv2
+    HAVE_OPENCV = True
 except ImportError:
-    raise ImportError("Please install opencv to use this extractor (pip install opencv-python)!")
+    HAVE_OPENCV = False
+
+PathType = Union[str, Path]
 
 
 def get_movie_timestamps(movie_file: PathType):
