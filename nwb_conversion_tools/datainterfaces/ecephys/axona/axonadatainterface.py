@@ -76,20 +76,10 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
+        return get_schema_from_method_signature(cls.__init__)
 
-        source_schema = dict(
-            required=["filename"],
-            properties=dict(
-                filename=dict(
-                    type="string",
-                    format="file",
-                    description="Full path to Axona .set file.",
-                )
-            ),
-            type="object",
-            additionalProperties=True,
-        )
-        return source_schema
+    def __init__(self, filename: str):
+        super().__init__(filename=filename)
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -298,8 +288,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
         return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, filename: str):
-        super().__init__()
-        self.source_data = dict(filename=filename)
+        super().__init__(filename=filename)
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict, **conversion_options):
         """
