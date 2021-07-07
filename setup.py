@@ -26,7 +26,7 @@ setup(
     install_requires=[
         'pynwb', 'tqdm', 'natsort', 'numpy', 'scipy', 'pandas', 'h5py',
         'pyyaml', 'spikeextractors', 'spikesorters', 'spiketoolkit',
-        'roiextractors', 'jsonschema', 'lxml'],
+        'roiextractors', 'jsonschema', 'lxml', 'psutil'],
     entry_points={
         'console_scripts': ['nwb-gui=nwb_conversion_tools.gui.command_line:main'],
     }
