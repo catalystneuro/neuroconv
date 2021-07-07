@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md')) as f:
 
 setup(
     name='nwb-conversion-tools',
-    version='0.8.4',
+    version='0.8.5',
     description='Convert data to nwb',
     long_description=long_description,
     long_description_content_type='text/markdown',
