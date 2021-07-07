@@ -666,7 +666,7 @@ def add_electrical_series(
     eseries_kwargs.update(data=H5DataIO(ephys_data, compression="gzip"))
     if not use_times:
         eseries_kwargs.update(
-            starting_time=recording.frame_to_time(0),
+            starting_time=float(recording.frame_to_time(0)),
             rate=float(recording.get_sampling_frequency())
         )
     else:
