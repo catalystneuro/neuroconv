@@ -1,4 +1,6 @@
 # NWB conversion tools
+[![PyPI version](https://badge.fury.io/py/nwb-conversion-tools.svg)](https://badge.fury.io/py/nwb-conversion-tools)
+
 NWB Conversion Tools is a package for creating NWB files by converting and 
 combining neural data in proprietary formats and adding essential metadata.
 
