@@ -18,6 +18,7 @@ assignees: ''
 ## Environment
 
 <!--Please describe your environment according to the following bullet points.-->
+    nwb_converion_tools Version: ... (try installing the master branch to see if it fixes the issue)
 
     Python Executable: Conda or Python
     Python Version: Python 3.5, 3.6, or 3.7
