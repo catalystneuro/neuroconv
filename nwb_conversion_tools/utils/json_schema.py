@@ -119,7 +119,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     if arg in annotation_json_type_map:
                         param_type = annotation_json_type_map[arg]
                     else:
-                        raise ValueError("No valid arguments were found in the json type mapping!")
+                        raise ValueError(f"No valid arguments were found in the json type mapping {arg} for parameter {param}")
             else:
                 raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
                                           "is not implemented! Please request it to be added at github.com/"
