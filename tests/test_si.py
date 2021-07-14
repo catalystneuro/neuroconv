@@ -196,8 +196,7 @@ class TestExtractors(unittest.TestCase):
             times=times
         )
 
-        return (RX, RX2, RX3, SX, SX2, SX3, example_info)
-
+        return RX, RX2, RX3, SX, SX2, SX3, example_info
 
     def test_write_recording(self):
         path = self.test_dir + '/test.nwb'
@@ -215,7 +214,7 @@ class TestExtractors(unittest.TestCase):
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
 
-        # Writting multiple recordings using metadata
+        # Writing multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
         path_multi = self.test_dir + '/test_multiple.nwb'
         write_recording(
