@@ -21,6 +21,9 @@ remote_version = (
     .stdout.decode("utf-8")
     .strip()
 )
+print('-----------')
+print(remote_version)
+print('-----------')
 assert "." in remote_version
 
 setup(
