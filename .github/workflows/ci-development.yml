@@ -13,11 +13,12 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - name: Install pip, set ENV var to development
+    - name: Install pip
       run: |
         python -m pip install --upgrade pip
-        export NWB_CONVERSION_VAR="development"
-    - name: Install this package
+    - name: Install this package, on development mode
+      env:
+          NWB_CONVERSION_VAR: development
       run: |
         pip install .
     - name: Generate coverage report
