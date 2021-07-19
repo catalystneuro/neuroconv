@@ -2,17 +2,22 @@ from setuptools import setup, find_packages
 import subprocess
 # To use a consistent encoding
 from codecs import open
-from os import path
+import os
 
 
-here = path.abspath(path.dirname(__file__))
+here = os.path.abspath(os.path.dirname(__file__))
 
 # Get the long description from the README file
-with open(path.join(here, 'README.md')) as f:
+with open(os.path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 # Get requirements
-with open(path.join(here, 'requirements-test.txt')) as f:
+if os.environ.get('NWB_CONVERSION_VAR', None) == 'development':
+    req_file = 'requirements-dev.txt'
+else:
+    req_file = 'requirements.txt'
+
+with open(os.path.join(here, req_file)) as f:
     install_requires = f.read().strip().split('\n')
 
 # Get remote version
