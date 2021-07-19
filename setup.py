@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 # Get requirements
-with open(path.join(here, 'requirements.txt')) as f:
+with open(path.join(here, 'requirements-test.txt')) as f:
     install_requires = f.read().strip().split('\n')
 
 # Get remote version
