@@ -12,7 +12,7 @@ with open(os.path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 # Get requirements
-if os.environ.get('NWB_CONVERSION_VAR', None) == 'development':
+if os.environ.get('NWB_CONVERSION_INSTALL_MODE', None) == 'development':
     req_file = 'requirements-dev.txt'
     print("installing nwb_conversion_tools on development mode")
 else:

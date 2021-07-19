@@ -18,7 +18,7 @@ jobs:
         python -m pip install --upgrade pip
     - name: Install this package, on development mode
       env:
-          NWB_CONVERSION_VAR: development
+          NWB_CONVERSION_INSTALL_MODE: development
       run: |
         pip install .
     - name: Generate coverage report
