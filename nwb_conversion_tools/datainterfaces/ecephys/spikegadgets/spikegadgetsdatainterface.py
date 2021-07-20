@@ -26,6 +26,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         )
         return source_schema
 
-    def __init__(self, filename: PathType, probe_file_path: OptionalPathType):
+    def __init__(self, filename: PathType, probe_file_path: OptionalPathType = None):
         super().__init__(filename=filename)
-        self.recording_extractor = load_probe_file(recording=self.recording_extractor, probe_file=probe_file_path)
+        if probe_file_path is not None:
+            self.recording_extractor = load_probe_file(recording=self.recording_extractor, probe_file=probe_file_path)
