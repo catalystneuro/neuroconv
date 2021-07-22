@@ -6,6 +6,16 @@ import psutil
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
 
 
+def data_generator(data, full_shape, chunk_shape):
+    for curr_timestep in range(0, full_shape[0], chunk_shape[0]):
+        for curr_channel_idx in range(0, full_shape[1], chunk_shape[1]):
+            selection = np.s_[
+                curr_timestep:(curr_timestep+chunk_shape[0]),
+                curr_channel_idx:(curr_channel_idx+chunk_shape[1])
+            ]
+            yield DataChunk(data=data[selection], selection=selection)
+
+
 class SpecDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk shapes."""
 
@@ -25,6 +35,7 @@ class SpecDataChunkIterator(AbstractDataChunkIterator):
             f"Not enough memory in system handle buffer_mb of {buffer_mb}!"
         self.data = data
         self.full_shape = data.shape
+        self.next_chunk = DataChunk(None, None)
         self.__dtype = data.dtype
         self.__curr_timestep = 0
         self.__curr_channel_idx = 0
@@ -51,32 +62,14 @@ class SpecDataChunkIterator(AbstractDataChunkIterator):
             # TODO - check valid shape
             self.chunk_shape = chunk_shape
 
+        self.iterator = data_generator(data=self.data, full_shape=self.full_shape, chunk_shape=self.chunk_shape)
+
     def __iter__(self):
-        """Return the iterator object."""
         return self
 
     def __next__(self):
         """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved."""
-        end_timestep = self.__curr_timestep + self.chunk_shape[0]
-        if self.__curr_channel_idx >= self.full_shape[1]:
-            self.__curr_channel_idx = 0
-            self.__curr_timestep = end_timestep
-            end_timestep = self.__curr_timestep + self.chunk_shape[0]
-
-            if self.__curr_timestep >= self.full_shape[0]:
-                raise StopIteration
-
-        end_channel_idx = self.__curr_channel_idx + self.chunk_shape[1]
-        if end_timestep > self.full_shape[0]:
-            end_timestep = self.full_shape[0]
-        if end_channel_idx > self.full_shape[1]:
-            end_channel_idx = self.full_shape[1]
-
-        selection = np.s_[self.__curr_timestep:end_timestep, self.__curr_channel_idx:end_channel_idx]
-        data = self.data[selection]
-
-        self.__curr_channel_idx = end_channel_idx
-        return DataChunk(data=data, selection=selection)
+        return next(self.iterator)
 
     def recommended_data_shape(self):
         """Recommend the initial shape for the data array."""
