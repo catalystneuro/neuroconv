@@ -8,13 +8,13 @@ from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
 class SpecDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk shapes."""
 
-    def __init__(self, data: Iterable, full_shape: tuple, chunk_shape: tuple, dtype: str):
+    def __init__(self, data: Iterable, full_shape: tuple, chunk_shape: tuple):
         self.data = data
         self.full_shape = full_shape
         self.chunk_shape = chunk_shape
+        self.__dtype = data.dtype
         self.__curr_timestep = 0
         self.__curr_channel_idx = 0
-        self.__dtype = DataChunk(data=np.empty(shape=(0, 0), dtype=dtype))
 
     def __iter__(self):
         """Return the iterator object"""
@@ -64,7 +64,7 @@ class SpecDataChunkIterator(AbstractDataChunkIterator):
 
     @property
     def dtype(self):
-        return np.dtype("int16")
+        return self.__dtype
 
     @property
     def maxshape(self):
