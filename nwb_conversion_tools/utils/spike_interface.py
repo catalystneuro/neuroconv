@@ -5,6 +5,8 @@ import numpy as np
 import distutils.version
 from pathlib import Path
 from typing import Union, Optional, List
+from warnings import warn
+import psutil
 from collections import defaultdict
 
 import spikeextractors as se
@@ -500,7 +502,10 @@ def add_electrical_series(
     use_times: bool = False,
     write_as: str = 'raw',
     es_key: str = None,
-    write_scaled: bool = False
+    write_scaled: bool = False,
+    compression: Optional[str] = "gzip",
+    compression_opts: Optional[int] = None,
+    iterate: bool = True
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -524,7 +529,7 @@ def add_electrical_series(
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
     write_as: str (optional, defaults to 'raw')
-        How to save the traces data in the nwb file. Options: 
+        How to save the traces data in the nwb file. Options:
         - 'raw' will save it in acquisition
         - 'processed' will save it as FilteredEphys, in a processing module
         - 'lfp' will save it as LFP, in a processing module
@@ -532,20 +537,38 @@ def add_electrical_series(
         Key in metadata dictionary containing metadata info for the specific electrical series
     write_scaled: bool (optional, defaults to True)
         If True, writes the scaled traces (return_scaled=True)
+    compression: str (optional, defaults to "gzip")
+        Type of compression to use. Valid types are "gzip" and "lzf".
+        Set to None to disable all compression.
+    compression_opts: int (optional, defaults to 4)
+        Only applies to compression="gzip". Controls the level of the GZIP.
+    iterate: bool (optional, defaults to True)
+        Whether or not to use DataChunkIteration. Highly recommended for large (16+ GB) recordings.
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
-
     assert buffer_mb > 10, "'buffer_mb' should be at least 10MB to ensure data can be chunked!"
+    assert compression is None or compression in ["gzip", "lzf"], \
+        "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', or None."
 
     if not nwbfile.electrodes:
         add_electrodes(recording, nwbfile, metadata)
 
     assert write_as in ['raw', 'processed', 'lfp'], \
-        f"'write_as' should be 'raw', 'processed' or 'lfp', but intead received value {write_as}"
+        f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
+
+    if compression == "gzip":
+        if compression_opts is None:
+            compression_opts = 4
+        else:
+            assert compression_opts in range(10), \
+                "compression type is 'gzip', but specified compression_opts is not an integer between 0 and 9!"
+    elif compression == "lzf" and compression_opts is not None:
+        warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
+        compression_opts = None
 
     if write_as == 'raw':
         eseries_kwargs = dict(
@@ -633,37 +656,45 @@ def add_electrical_series(
             eseries_kwargs.update(conversion=1e-6)
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
-    if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) \
-            and np.all(channel_offset == 0):
-        n_bytes = np.dtype(recording.get_dtype()).itemsize
-        buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
-        ephys_data = DataChunkIterator(
-            data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
-            buffer_size=buffer_size
-        )
+    trace_dtype = recording.get_traces(channel_ids=[0], end_frame=1).dtype
+    estimated_memory = trace_dtype.itemsize * recording.get_num_channels() * recording.get_num_frames()
+    if not iterate and psutil.virtual_memory().available <= estimated_memory:
+        warn("iteration was disabled, but not enough memory to load traces! Forcing iterate=True.")
+        iterate = True
+    if iterate:
+        if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) \
+                and np.all(channel_offset == 0):
+            n_bytes = np.dtype(recording.get_dtype()).itemsize
+            buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
+            ephys_data = DataChunkIterator(
+                data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
+                buffer_size=buffer_size
+            )
+        else:
+            def data_generator(recording, channels_ids, unsigned_coercion, write_scaled):
+                for i, ch in enumerate(channels_ids):
+                    data = recording.get_traces(channel_ids=[ch], return_scaled=write_scaled)
+                    if not write_scaled:
+                        data_dtype_name = data.dtype.name
+                        if data_dtype_name.startswith("uint"):
+                            data_dtype_name = data_dtype_name[1:]  # Retain memory of signed data type
+                        data = data + unsigned_coercion[i]
+                        data = data.astype(data_dtype_name)
+                    yield data.flatten()
+            ephys_data = DataChunkIterator(
+                data=data_generator(
+                    recording=recording,
+                    channels_ids=channel_ids,
+                    unsigned_coercion=unsigned_coercion,
+                    write_scaled=write_scaled
+                ),
+                iter_axis=1,  # nwb standard is time as zero axis
+                maxshape=(recording.get_num_frames(), recording.get_num_channels())
+            )
     else:
-        def data_generator(recording, channels_ids, unsigned_coercion, write_scaled):
-            for i, ch in enumerate(channels_ids):
-                data = recording.get_traces(channel_ids=[ch], return_scaled=write_scaled)
-                if not write_scaled:
-                    data_dtype_name = data.dtype.name
-                    if data_dtype_name.startswith("uint"):
-                        data_dtype_name = data_dtype_name[1:]  # Retain memory of signed data type
-                    data = data + unsigned_coercion[i]
-                    data = data.astype(data_dtype_name)
-                yield data.flatten()
-        ephys_data = DataChunkIterator(
-            data=data_generator(
-                recording=recording,
-                channels_ids=channel_ids,
-                unsigned_coercion=unsigned_coercion,
-                write_scaled=write_scaled
-            ),
-            iter_axis=1,  # nwb standard is time as zero axis
-            maxshape=(recording.get_num_frames(), recording.get_num_channels())
-        )
+        ephys_data = recording.get_traces(return_scaled=write_scaled).T
 
-    eseries_kwargs.update(data=H5DataIO(ephys_data, compression="gzip"))
+    eseries_kwargs.update(data=H5DataIO(ephys_data, compression=compression, compression_opts=compression_opts))
     if not use_times:
         eseries_kwargs.update(
             starting_time=float(recording.frame_to_time(0)),
@@ -673,7 +704,8 @@ def add_electrical_series(
         eseries_kwargs.update(
             timestamps=H5DataIO(
                 recording.frame_to_time(np.arange(recording.get_num_frames())),
-                compression="gzip"
+                compression=compression,
+                compression_opts=compression_opts
             )
         )
 
@@ -685,15 +717,16 @@ def add_electrical_series(
         ecephys_mod.data_interfaces['Processed'].add_electrical_series(es)
     elif write_as == 'lfp':
         ecephys_mod.data_interfaces['LFP'].add_electrical_series(es)
-        
+
 
 def add_epochs(
-    recording: se.RecordingExtractor, 
+    recording: se.RecordingExtractor,
     nwbfile=None,
     metadata: dict = None
 ):
     """
     Auxiliary static method for nwbextractor.
+
     Adds epochs from recording object to nwbfile object.
 
     Parameters
@@ -737,7 +770,9 @@ def add_all_to_nwbfile(
     metadata: dict = None,
     write_as: str = 'raw',
     es_key: str = None,
-    write_scaled: bool = False
+    write_scaled: bool = False,
+    compression: Optional[str] = "gzip",
+    iterate: bool = True
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -760,7 +795,7 @@ def add_all_to_nwbfile(
         Check the auxiliary function docstrings for more information
         about metadata format.
     write_as: str (optional, defaults to 'raw')
-        How to save the traces data in the nwb file. Options: 
+        How to save the traces data in the nwb file. Options:
         - 'raw' will save it in acquisition
         - 'processed' will save it as FilteredEphys, in a processing module
         - 'lfp' will save it as LFP, in a processing module
@@ -768,6 +803,13 @@ def add_all_to_nwbfile(
         Key in metadata dictionary containing metadata info for the specific electrical series
     write_scaled: bool (optional, defaults to True)
         If True, writes the scaled traces (return_scaled=True)
+    compression: str (optional, defaults to "gzip")
+        Type of compression to use. Valid types are "gzip" and "lzf".
+        Set to None to disable all compression.
+    compression_opts: int (optional, defaults to 4)
+        Only applies to compression="gzip". Controls the level of the GZIP.
+    iterate: bool (optional, defaults to True)
+        Whether or not to use DataChunkIteration. Highly recommended for large (16+ GB) recordings.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -783,13 +825,13 @@ def add_all_to_nwbfile(
         nwbfile=nwbfile,
         metadata=metadata
     )
-    
+
     add_electrodes(
         recording=recording,
         nwbfile=nwbfile,
         metadata=metadata,
     )
-    
+
     add_electrical_series(
         recording=recording,
         nwbfile=nwbfile,
@@ -798,7 +840,9 @@ def add_all_to_nwbfile(
         metadata=metadata,
         write_as=write_as,
         es_key=es_key,
-        write_scaled=write_scaled
+        write_scaled=write_scaled,
+        compression=compression,
+        iterate=iterate
     )
 
     add_epochs(
@@ -818,7 +862,9 @@ def write_recording(
     metadata: dict = None,
     write_as: str = 'raw',
     es_key: str = None,
-    write_scaled: bool = False
+    write_scaled: bool = False,
+    compression: Optional[str] = "gzip",
+    iterate: bool = True
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -861,7 +907,7 @@ def write_recording(
             metadata['Ecephys']['ElectricalSeries'] = {'name': my_name,
                                                         'description': my_description}
     write_as: str (optional, defaults to 'raw')
-        How to save the traces data in the nwb file. Options: 
+        How to save the traces data in the nwb file. Options:
         - 'raw' will save it in acquisition
         - 'processed' will save it as FilteredEphys, in a processing module
         - 'lfp' will save it as LFP, in a processing module
@@ -869,8 +915,14 @@ def write_recording(
         Key in metadata dictionary containing metadata info for the specific electrical series
     write_scaled: bool (optional, defaults to True)
         If True, writes the scaled traces (return_scaled=True)
+    compression: str (optional, defaults to "gzip")
+        Type of compression to use. Valid types are "gzip" and "lzf".
+        Set to None to disable all compression.
+    compression_opts: int (optional, defaults to 4)
+        Only applies to compression="gzip". Controls the level of the GZIP.
+    iterate: bool (optional, defaults to True)
+        Whether or not to use DataChunkIteration. Highly recommended for large (16+ GB) recordings.
     """
-
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -915,7 +967,9 @@ def write_recording(
                 use_times=use_times,
                 write_as=write_as,
                 es_key=es_key,
-                write_scaled=write_scaled
+                write_scaled=write_scaled,
+                compression=compression,
+                iterate=iterate
             )
 
             # Write to file
@@ -929,7 +983,9 @@ def write_recording(
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
-            write_scaled=write_scaled
+            write_scaled=write_scaled,
+            compression=compression,
+            iterate=iterate
         )
 
 def get_nspikes(units_table, unit_id):

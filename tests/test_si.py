@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 import numpy as np
 from datetime import datetime
+from warnings import warn
 
 import spikeextractors as se
 from spikeextractors.testing import (
@@ -195,8 +196,8 @@ class TestExtractors(unittest.TestCase):
             geom=geom,
             times=times
         )
-
         return RX, RX2, RX3, SX, SX2, SX3, example_info
+
 
     def test_write_recording(self):
         path = self.test_dir + '/test.nwb'
@@ -240,6 +241,84 @@ class TestExtractors(unittest.TestCase):
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name='raw_traces')
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
+        del RX_nwb
+
+        write_recording(recording=self.RX, save_path=path, overwrite=True)  # Testing default compression, should be "gzip"
+        compression = "gzip"
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+        self.assertEqual(
+            compression_out,
+            compression,
+            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})"
+        )
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
+        del RX_nwb
+
+        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+        self.assertEqual(
+            compression_out,
+            compression,
+            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})"
+        )
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
+        del RX_nwb
+
+        compression = "lzf"
+        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+        self.assertEqual(
+            compression_out,
+            compression,
+            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})"
+        )
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
+        del RX_nwb
+
+        compression = None
+        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+        self.assertEqual(
+            compression_out,
+            compression,
+            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})"
+        )
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
+        del RX_nwb
+
+        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression, iterate=False)
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+        self.assertEqual(
+            compression_out,
+            compression,
+            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})"
+        )
+        RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)

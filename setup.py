@@ -31,7 +31,7 @@ assert "." in remote_version
 
 setup(
     name='nwb-conversion-tools',
-    version=remote_version,
+    version='0.8.8',
     description='Convert data to nwb',
     long_description=long_description,
     long_description_content_type='text/markdown',
