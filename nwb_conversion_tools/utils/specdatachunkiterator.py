@@ -9,8 +9,19 @@ from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
 class SpecDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk shapes."""
 
-    def __init__(self, data: Iterable, buffer_mb: int):
-        assert buffer_mb < psutil.virtual_memory().available / 1e6, \
+    def __init__(self, data: Iterable, chunk_shape: tuple = (), buffer_mb: int = 20):
+        """
+        Initialize the SpecDataChunkIterator object with specified chunk parameters.
+
+        data : Iterable
+            The data to be chunked. Recommended to be a np.memmap at this point in time.
+        chunk_shape : tuple, optional
+            The desired shape of the chunks. Defaults to empty.
+        buffer_mb : int, optional
+            If chunk_shape is not specified, it will be inferred as the smallest chunk below the buffer_mb threshold.
+            Defaults to 20 MB.
+        """
+        assert buffer_mb > 0 and buffer_mb < psutil.virtual_memory().available / 1e6, \
             f"Not enough memory in system handle buffer_mb of {buffer_mb}!"
         self.data = data
         self.full_shape = data.shape
@@ -30,11 +41,15 @@ class SpecDataChunkIterator(AbstractDataChunkIterator):
                 iter_idx += 1
             return tuple(int(x) for x in chunk_shape)
 
-        self.chunk_shape = set_chunk_shape(
-            chunk_shape=list(self.full_shape),
-            typesize=self.__dtype.itemsize,
-            buffer_mb=buffer_mb
-        )
+        if chunk_shape == ():
+            self.chunk_shape = set_chunk_shape(
+                chunk_shape=list(self.full_shape),
+                typesize=self.__dtype.itemsize,
+                buffer_mb=buffer_mb
+            )
+        else:
+            # TODO - check valid shape
+            self.chunk_shape = chunk_shape
 
     def __iter__(self):
         """Return the iterator object."""
