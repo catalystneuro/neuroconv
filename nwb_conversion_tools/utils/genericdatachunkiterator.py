@@ -86,8 +86,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def maxshape(self) -> tuple:
         return self._maxshape
     
-    @abstractmethod
     @maxshape.setter
+    @abstractmethod
     def maxshape(self):
         """Retrieve the maximum bounds of the data shape using absolute minimal I/O."""
         raise NotImplementedError("The setter for the maximum shape property has not been built for this DataChunkIterator!")
