@@ -27,10 +27,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         """
         Initialize the SpecDataChunkIterator object with specified chunk parameters.
 
-        data : Iterable
-            The data to be chunked. Recommended to be a np.memmap at this point in time.
         chunk_shape : tuple, optional
-            The desired shape of the chunks. Defaults to empty.
+            The desired shape of the chunks. Defaults to None.
         buffer_mb : int, optional
             If chunk_shape is not specified, it will be inferred as the smallest chunk below the buffer_mb threshold.
             Defaults to 20 MB.
