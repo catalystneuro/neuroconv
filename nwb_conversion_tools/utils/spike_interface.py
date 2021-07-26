@@ -697,12 +697,9 @@ def add_electrical_series(
     eseries_kwargs.update(data=H5DataIO(ephys_data, compression=compression, compression_opts=compression_opts))
     if not use_times:
         eseries_kwargs.update(
+            starting_time=float(recording.frame_to_time(0)),
             rate=float(recording.get_sampling_frequency())
         )
-        if 'starting_time' not in eseries_kwargs:
-            eseries_kwargs.update(
-                starting_time=float(recording.frame_to_time(0))
-            )
     else:
         eseries_kwargs.update(
             timestamps=H5DataIO(
