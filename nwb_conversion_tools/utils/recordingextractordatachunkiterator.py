@@ -1,9 +1,11 @@
+"""Authors: Cody Baker, Saksham Sharda."""
 from typing import Tuple, Iterable
 import numpy as np
 
 from spikeextractors import RecordingExtractor
 
 from .genericdatachunkiterator import GenericDataChunkIterator
+
 
 class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
 
@@ -13,23 +15,13 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording_extractor.get_traces(
-            channel_ids=list(range(selection[1], selection[1] + self.chunk_shape[1])),
-            start_frame=selection[0],
-            end_frame=selection[0] + self.chunk_shape[0]
-        )
+            channel_ids=list(range(selection[1].start, selection[1].stop)),
+            start_frame=selection[0].start,
+            end_frame=selection[0].stop
+        ).T
 
-    @property
-    def dtype(self) -> np.dtype:
-        return self._dtype
+    def _get_dtype(self):
+        return self.recording_extractor.get_dtype(return_scaled=False)
 
-    @dtype.setter
-    def dtype(self, value):
-        self._dtype = self.recording_extractor.get_dtype(return_scaled=False)
-
-    @property
-    def maxshape(self) -> tuple:
-        return self._maxshape
-
-    @maxshape.setter
-    def maxshape(self):
-        self._maxshape = (self.recording_extractor.get_num_frames(), self.recording_extractor.get_num_channels())
+    def _get_maxshape(self):
+        return (self.recording_extractor.get_num_frames(), self.recording_extractor.get_num_channels())
