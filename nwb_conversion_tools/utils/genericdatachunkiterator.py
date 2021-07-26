@@ -76,8 +76,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def dtype(self) -> np.dtype:
         return self._dtype
     
-    @abstractmethod
     @dtype.setter
+    @abstractmethod
     def dtype(self, value):
         """Retrieve the dtype of the data using absolute minimal I/O."""
         raise NotImplementedError("The setter for the internal data type has not been built for this DataChunkIterator!")
