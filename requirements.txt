@@ -9,8 +9,8 @@ PyYAML==5.4
 jsonschema==3.2.0
 psutil==5.8.0
 lxml==4.6.3
-spikeextractors==0.9.5
+spikeextractors @ git+https://github.com/SpikeInterface/spikeextractors.git@4d6d4f4746ba31d1d538cd21cae6964e08a88050
 spikesorters==0.4.4
-spiketoolkit==0.7.4
+spiketoolkit==0.7.5
 neo==0.9.0
 roiextractors==0.3.1

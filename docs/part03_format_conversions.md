@@ -8,11 +8,11 @@ Conversion to NWB presents some challenges that come up again and again:
    Converting to NWB requires understanding how data is stored in that format,
    what metadata is present in the file, and where that metadata is within the proprietary
    files, as well as where they should go within NWB.
-1. **Volume**. Neurophysiology data is large and the volume of individual session data
+1. **Volume**. Neurophysiology data is large and the typical volume of individual session data
    is growing every year. HDF5 is designed to handle data at this scale, and has several
    tools that can help, including iterative read/write, chunking of large datasets,
    and streamlined compression/decompression. To dig into these tools yourself,
-   see the PyNWB and MatNWB tutorials on advanced data I/O listed in the table above.
+   see the PyNWB and MatNWB tutorials on advanced data I/O listed in the previous section.
 
 In order to make converting to NWB faster and less laborious (for our own team and for others),
 we have developed an ecosystem of conversion tools that provide support for converting a
@@ -60,7 +60,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Intan</summary><blockquote>
@@ -74,7 +74,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>MEArec</summary><blockquote>
@@ -88,7 +88,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Neuralynx</summary><blockquote>
@@ -102,7 +102,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Neuroscope</summary><blockquote>
@@ -116,7 +116,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>OpenEphys (legacy)</summary><blockquote>
@@ -130,7 +130,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>OpenEphys binary (Neuropixels)</summary><blockquote>
@@ -144,7 +144,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Phy</summary><blockquote>
@@ -158,7 +158,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>SpikeGLX</summary><blockquote>
@@ -172,14 +172,14 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote></details>
-    
+
 <details>
 <summary><b>Spike-sorted data</b></summary><blockquote>
 <p>
-        
+
 
 <details>
 <summary>Blackrock</summary><blockquote>
@@ -193,7 +193,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Klusta</summary><blockquote>
@@ -207,7 +207,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>MEArec</summary><blockquote>
@@ -221,7 +221,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Phy</summary><blockquote>
@@ -235,61 +235,61 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Plexon</summary><blockquote>
 <p>
 
 ```python
-from spikeextractors import NwbSortingExtractor, 
+from spikeextractors import NwbSortingExtractor,
 
 rx = ("File_plexon_2.plx")
 NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Spyking Circus</summary><blockquote>
 <p>
 
 ```python
-from spikeextractors import NwbSortingExtractor, 
+from spikeextractors import NwbSortingExtractor,
 
 rx = ("file_or_folder_path")
 NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote>
 </details>
 
 <br>
 
-All of these conversions are tested against the 
+All of these conversions are tested against the
 [ephy_testing_data](https://gin.g-node.org/NeuralEnsemble/ephy_testing_data) GIN repository.
 
 Optical Neurophysiology
 ------------------------
 We also developed a sister-package, [RoiExtractors](https://github.com/catalystneuro/roiextractors), which does the same
 for common raw and processed data types in optical neurophysiology, image stacks and regions of interest (ROIs).
-Analogous to SpikeExtractors, RoiExtractors contains ImagingExtractors for reading image stacks and 
+Analogous to SpikeExtractors, RoiExtractors contains ImagingExtractors for reading image stacks and
 SegmentationExtractors for reading extracted ROIs saved from popular processing pipelines.
 
 To install, run
 
 ```bash
 $ pip install roiextractors
-``` 
+```
 
 <details>
 <summary><b>Imaging</b></summary><blockquote>
 <p>
-        
+
 
 <details>
 <summary>Tiff</summary><blockquote>
@@ -303,7 +303,7 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Hdf5</summary><blockquote>
@@ -317,7 +317,7 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>SBX</summary><blockquote>
@@ -331,14 +331,14 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote></details>
-    
+
 <details>
 <summary><b>ROI Segmentation</b></summary><blockquote>
 <p>
-        
+
 
 <details>
 <summary>CaImAn</summary><blockquote>
@@ -352,7 +352,7 @@ NwbSegmentationExtractor.write_segmentation(seg_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>Suite2p</summary><blockquote>
@@ -366,14 +366,14 @@ NwbSegmentationExtractor.write_segmentation(seg_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote></details>
 
 <br>
 
 
-All format conversions listed here are tested against the 
+All format conversions listed here are tested against the
 [ophys_testing_data](https://gin.g-node.org/CatalystNeuro/ophys_testing_data) GIN repository.
 
 
@@ -383,3 +383,4 @@ Conversion of common intracellular electrophysiology data types to NWB is
 supported by [IPFX](https://github.com/AllenInstitute/ipfx/blob/master/ipfx/x_to_nwb/Readme.md), developed by the Allen Institute.
 This package has not yet been integrated into NWB Conversion Tools.
 
+`previous section`: part02_nwb_apis.rst

@@ -1,7 +1,7 @@
 Part 2, NWB APIs: PyNWB & MatNWB
 ================================
 
-The development team of NWB develops and supports APIs in Python
+The NWB team develops and supports APIs in Python
 (`PyNWB <https://pynwb.readthedocs.io/en/stable/>`_)
 and MATLAB (`MatNWB <https://github.com/NeurodataWithoutBorders/matnwb>`_),
 which guide users in reading and writing NWB files.
@@ -49,7 +49,7 @@ modality:
 
 These tutorials walk you through the most common data types of each of the modalities.
 With the tutorials for domain-specific conversion, extensions, advanced I/O,
-and the documentation for your proprietary formats, you have all of the tools to
+and the documentation for proprietary formats, you have all of the tools to
 create your own conversion. However, writing a full-fledged conversion script from
 the ground up with MatNWB and PyNWB is time-intensive, error-prone, and requires
 detailed knowledge of the source format. That is why, in the next section, we
