@@ -17,10 +17,13 @@ from ...utils.spike_interface import add_devices, add_electrode_groups, add_elec
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):
+    """Primary class for all SortingExtractor intefaces."""
+
     SX = None
 
     @classmethod
     def get_source_schema(cls):
+        """Compile input schema for the SortingExtractor."""
         return get_schema_from_method_signature(cls.SX.__init__)
 
     def __init__(self, **source_data):
@@ -28,17 +31,37 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         self.sorting_extractor = self.SX(**source_data)
 
     def get_metadata_schema(self):
+        """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = get_base_schema(
             properties=dict(
                 SpikeEventSeries=get_schema_from_hdmf_class(SpikeEventSeries)
             )
         )
-        # fill_defaults(metadata_schema, self.get_metadata())
-
         return metadata_schema
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False, 
-                       write_ecephys_metadata: bool = False):
+    def run_conversion(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict,
+        stub_test: bool = False, 
+        write_ecephys_metadata: bool = False
+    ):
+        """
+        Primary function for converting the data in a SortingExtractor to the NWB standard.
+
+        Parameters
+        ----------
+        nwbfile: NWBFile
+            nwb file to which the recording information is to be added
+        metadata: dict
+            metadata info for constructing the nwb file (optional).
+            Should be of the format
+                metadata['Ecephys']['UnitProperties'] = dict(name=my_name, description=my_description)
+        stub_test: bool, optional (default False)
+            If True, will truncate the data to run the conversion faster and take up less memory.
+        write_ecephys_metadata: bool (optional, defaults to False)
+            Write electrode information contained in the metadata.
+        """
         if 'UnitProperties' not in metadata:
             metadata['UnitProperties'] = []
         if write_ecephys_metadata and 'Ecephys' in metadata:

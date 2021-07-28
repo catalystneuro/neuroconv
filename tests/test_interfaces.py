@@ -13,9 +13,7 @@ try:
 except ImportError:
     HAVE_OPENCV = False
 
-from nwb_conversion_tools import interface_list
-from nwb_conversion_tools import NWBConverter
-from nwb_conversion_tools import MovieInterface
+from nwb_conversion_tools import NWBConverter, MovieInterface, interface_list
 
 
 @pytest.mark.parametrize("data_interface", interface_list)

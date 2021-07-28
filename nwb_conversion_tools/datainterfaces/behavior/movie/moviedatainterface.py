@@ -1,11 +1,11 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
 import numpy as np
-import psutil
 from typing import Optional
 from tqdm import tqdm
 from warnings import warn
 
+import psutil
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from hdmf.backends.hdf5.h5_utils import H5DataIO

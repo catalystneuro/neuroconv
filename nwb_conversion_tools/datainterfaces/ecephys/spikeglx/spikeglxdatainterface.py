@@ -49,7 +49,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
         source_schema = get_schema_from_method_signature(
             class_method=cls.RX.__init__,
             exclude=["x_pitch", "y_pitch"]

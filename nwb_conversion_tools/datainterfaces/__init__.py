@@ -1,7 +1,5 @@
-from .ecephys.tutorial.ecephystutorialdatainterface import (
-    TutorialRecordingInterface,
-    TutorialSortingInterface
-)
+from .ecephys.tutorial.recordingtutorialdatainterface import RecordingTutorialInterface
+from .ecephys.tutorial.sortingtutorialdatainterface import SortingTutorialInterface
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
@@ -17,8 +15,14 @@ from .ecephys.spikeinterface.sipickledatainterfaces import (
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.ced.ceddatainterface import CEDRecordingInterface
 from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
-from .ecephys.blackrock.blackrockdatainterface import BlackrockRecordingExtractorInterface, BlackrockSortingExtractorInterface
-from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingExtractorInterface, OpenEphysSortingExtractorInterface
+from .ecephys.blackrock.blackrockdatainterface import (
+    BlackrockRecordingExtractorInterface,
+    BlackrockSortingExtractorInterface
+)
+from .ecephys.openephys.openephysdatainterface import (
+    OpenEphysRecordingExtractorInterface,
+    OpenEphysSortingExtractorInterface
+)
 from .ecephys.axona.axonadatainterface import (
     AxonaRecordingExtractorInterface,
     AxonaPositionDataInterface
@@ -38,8 +42,8 @@ from .behavior.movie.moviedatainterface import MovieInterface
 
 
 interface_list = [
-    TutorialRecordingInterface,
-    TutorialSortingInterface,
+    RecordingTutorialInterface,
+    SortingTutorialInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface,
