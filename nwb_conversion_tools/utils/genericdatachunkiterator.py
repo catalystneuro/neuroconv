@@ -23,9 +23,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             iter_idx += 1
         return tuple(int(x) for x in chunk_shape)
 
-    def __init__(self, chunk_shape: tuple = None, buffer_mb: float = 20.):
+    def __init__(self, chunk_shape: tuple = None, chunk_mb: float = 1., buffer_mb: float = 2e3):
         """
-        Initialize the SpecDataChunkIterator object with specified chunk parameters.
+        Set the chunking paramters of the iterator.
 
         chunk_shape : tuple, optional
             The desired shape of the chunks. Defaults to None.
