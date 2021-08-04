@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from typing import Optional, Union
 from pathlib import Path
-import numpy as np 
+import numpy as np
 
 from pynwb import NWBFile
 from pynwb.device import Device
@@ -9,10 +9,7 @@ from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...utils.spike_interface import write_recording
-from ...utils.json_schema import (
-    get_schema_from_hdmf_class,
-    get_base_schema
-)
+from ...utils.json_schema import get_schema_from_hdmf_class, get_base_schema
 
 OptionalPathType = Optional[Union[str, Path]]
 
@@ -22,23 +19,18 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata['Ecephys'].update(
-            ElectricalSeries_lfp=dict(
-                name="LFP",
-                description="Local field potential signal."
-            )
-        )
+        metadata["Ecephys"].update(ElectricalSeries_lfp=dict(name="LFP", description="Local field potential signal."))
         return metadata
 
     def run_conversion(
-      self,
-      nwbfile: NWBFile,
-      metadata: dict = None,
-      stub_test: bool = False,
-      use_times: bool = False,
-      save_path: OptionalPathType = None,
-      overwrite: bool = False,
-      buffer_mb: int = 500
+        self,
+        nwbfile: NWBFile,
+        metadata: dict = None,
+        stub_test: bool = False,
+        use_times: bool = False,
+        save_path: OptionalPathType = None,
+        overwrite: bool = False,
+        buffer_mb: int = 500,
     ):
         """
         Primary function for converting low-pass recording extractor data to nwb.
@@ -78,5 +70,5 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             es_key="ElectricalSeries_lfp",
             save_path=save_path,
             overwrite=overwrite,
-            buffer_mb=buffer_mb
+            buffer_mb=buffer_mb,
         )

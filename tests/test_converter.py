@@ -6,6 +6,7 @@ from pynwb import NWBFile
 
 try:
     from ndx_events import LabeledEvents
+
     HAVE_NDX_EVENTS = True
 except ImportError:
     HAVE_NDX_EVENTS = False
@@ -24,10 +25,10 @@ def test_converter():
                 events = LabeledEvents(
                     name="LabeledEvents",
                     description="events from my experiment",
-                    timestamps=[0., 0.5, 0.6, 2., 2.05, 3., 3.5, 3.6, 4.],
+                    timestamps=[0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0],
                     resolution=1e-5,
                     data=[0, 1, 2, 3, 5, 0, 1, 2, 4],
-                    labels=["trial_start", "cue_onset", "cue_offset", "response_left", "response_right", "reward"]
+                    labels=["trial_start", "cue_onset", "cue_offset", "response_left", "response_right", "reward"],
                 )
                 nwbfile.add_acquisition(events)
 

@@ -4,29 +4,26 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
     NeuroscopeMultiRecordingTimeInterface,
-    NeuroscopeSortingInterface
+    NeuroscopeSortingInterface,
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
 from .ecephys.spikeinterface.sipickledatainterfaces import (
     SIPickleRecordingExtractorInterface,
-    SIPickleSortingExtractorInterface
+    SIPickleSortingExtractorInterface,
 )
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.ced.ceddatainterface import CEDRecordingInterface
 from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
 from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface
+    BlackrockSortingExtractorInterface,
 )
 from .ecephys.openephys.openephysdatainterface import (
     OpenEphysRecordingExtractorInterface,
-    OpenEphysSortingExtractorInterface
+    OpenEphysSortingExtractorInterface,
 )
-from .ecephys.axona.axonadatainterface import (
-    AxonaRecordingExtractorInterface,
-    AxonaPositionDataInterface
-)
+from .ecephys.axona.axonadatainterface import AxonaRecordingExtractorInterface, AxonaPositionDataInterface
 
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
@@ -70,5 +67,5 @@ interface_list = [
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
-    MovieInterface
+    MovieInterface,
 ]

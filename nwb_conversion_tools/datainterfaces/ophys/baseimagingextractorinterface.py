@@ -9,7 +9,7 @@ from ...utils.json_schema import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     fill_defaults,
-    get_base_schema
+    get_base_schema,
 )
 
 
@@ -27,16 +27,15 @@ class BaseImagingExtractorInterface(BaseDataInterface):
     def get_metadata_schema(self):
         """Compile metadata schema for the ImageExtractor."""
         metadata_schema = super().get_metadata_schema()
-        metadata_schema['required'] = ['Ophys']
+        metadata_schema["required"] = ["Ophys"]
         # Initiate Ophys metadata
-        metadata_schema['properties']['Ophys'] = get_base_schema()
-        metadata_schema['properties']['Ophys']['properties'] = dict(
+        metadata_schema["properties"]["Ophys"] = get_base_schema()
+        metadata_schema["properties"]["Ophys"]["properties"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
-            TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries)
+            TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
-        metadata_schema['properties']['Ophys']['required'] = \
-            ['Device', 'ImagingPlane', 'TwoPhotonSeries']
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", "TwoPhotonSeries"]
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
@@ -45,13 +44,10 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         Must comply with metadata schema."""
         metadata = super().get_metadata()
         metadata.update(re.NwbImagingExtractor.get_nwb_metadata(self.imaging_extractor))
-        _ = metadata.pop('NWBFile')
+        _ = metadata.pop("NWBFile")
         return metadata
 
     def run_conversion(self, nwbfile: NWBFile, metadata_dict: dict, overwrite: bool = False):
         re.NwbImagingExtractor.write_imaging(
-            self.imaging_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata_dict,
-            overwrite=overwrite
+            self.imaging_extractor, nwbfile=nwbfile, metadata=metadata_dict, overwrite=overwrite
         )

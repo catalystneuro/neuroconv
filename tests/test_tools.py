@@ -6,7 +6,6 @@ from nwb_conversion_tools.utils.conversion_tools import check_regular_timestamps
 
 
 class TestConversionTools(TestCase):
-
     def test_check_regular_timestamps(self):
         assert check_regular_timestamps([1, 2, 3])
         assert not check_regular_timestamps([1, 2, 4])

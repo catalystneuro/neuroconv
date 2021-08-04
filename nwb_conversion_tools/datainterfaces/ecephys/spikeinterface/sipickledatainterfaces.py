@@ -12,12 +12,7 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Return partial json schema for expected input arguments."""
-        return get_base_schema(
-            required=['pkl_file'],
-            properties=dict(
-                pkl_file=dict(type='string')
-            )
-        )
+        return get_base_schema(required=["pkl_file"], properties=dict(pkl_file=dict(type="string")))
 
     def __init__(self, **source_data):
         self.source_data = source_data
@@ -31,12 +26,7 @@ class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Return partial json schema for expected input arguments."""
-        return get_base_schema(
-            required=['pkl_file'],
-            properties=dict(
-                pkl_file=dict(type='string')
-            )
-        )
+        return get_base_schema(required=["pkl_file"], properties=dict(pkl_file=dict(type="string")))
 
     def __init__(self, **source_data):
         self.source_data = source_data

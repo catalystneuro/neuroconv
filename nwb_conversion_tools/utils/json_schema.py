@@ -14,7 +14,7 @@ def exist_dict_in_list(d, l):
 def append_replace_dict_in_list(d, l, k):
     """
     Append a dictionary to a list of dictionaries.
-    If some dictionary already contains the same value as d[k], it gets 
+    If some dictionary already contains the same value as d[k], it gets
     replaced by the new dict.
     Returns the updated list.
     """
@@ -34,16 +34,14 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
     """Perform an update to all nested keys of dictionary d from dictionary u."""
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, {}), v,
-                                    append_list=append_list,
-                                    remove_repeats=remove_repeats)
+            d[k] = dict_deep_update(d.get(k, {}), v, append_list=append_list, remove_repeats=remove_repeats)
         elif append_list and isinstance(v, list):
             if len(v) > 0 and isinstance(v[0], dict):
                 for vv in v:
-                    d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k='name')
+                    d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k="name")
                     # add dict only if not repeated
                     # if not exist_dict_in_list(vv, d.get(k, [])):
-                        # d[k] = d.get(k, []) + [vv]
+                    # d[k] = d.get(k, []) + [vv]
             else:
                 d[k] = d.get(k, []) + v
                 # Remove repeated items if they exist
@@ -56,18 +54,11 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
 
 def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     """Return the base schema used for all other schemas."""
-    base_schema = dict(
-        required=[],
-        properties={},
-        type='object',
-        additionalProperties=False
-    )
+    base_schema = dict(required=[], properties={}, type="object", additionalProperties=False)
     if tag is not None:
         base_schema.update(tag=tag)
     if root:
-        base_schema.update({
-            "$schema": "http://json-schema.org/draft-07/schema#"
-        })
+        base_schema.update({"$schema": "http://json-schema.org/draft-07/schema#"})
     if id_:
         base_schema.update({"$id": id_})
     base_schema.update(**kwargs)
@@ -87,9 +78,9 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
     dict
     """
     if exclude is None:
-        exclude = ['self', 'kwargs']
+        exclude = ["self", "kwargs"]
     else:
-        exclude = exclude + ['self', 'kwargs']
+        exclude = exclude + ["self", "kwargs"]
     input_schema = get_base_schema()
     annotation_json_type_map = {
         bool: "boolean",
@@ -97,7 +88,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         int: "number",
         float: "number",
         dict: "object",
-        list: "array"
+        list: "array",
     }
 
     for param_name, param in inspect.signature(class_method).parameters.items():
@@ -111,31 +102,33 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     else:
                         raise ValueError("No valid arguments were found in the json type mapping!")
                     if len(set(param_types)) > 1:
-                        raise ValueError("Conflicting json parameter types were detected from the annotation! "
-                                         f"{param.annotation.__args__} found.")
+                        raise ValueError(
+                            "Conflicting json parameter types were detected from the annotation! "
+                            f"{param.annotation.__args__} found."
+                        )
                     param_type = param_types[0]
                 else:
                     arg = param.annotation
                     if arg in annotation_json_type_map:
                         param_type = annotation_json_type_map[arg]
                     else:
-                        raise ValueError(f"No valid arguments were found in the json type mapping {arg} for parameter {param}")
+                        raise ValueError(
+                            f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
+                        )
             else:
-                raise NotImplementedError(f"The annotation type of '{param}' in function '{class_method}' "
-                                          "is not implemented! Please request it to be added at github.com/"
-                                          "catalystneuro/nwb-conversion-tools/issues or create the json-schema"
-                                          "for this method manually.")
-            arg_spec = {
-                param_name: dict(
-                    type=param_type
+                raise NotImplementedError(
+                    f"The annotation type of '{param}' in function '{class_method}' "
+                    "is not implemented! Please request it to be added at github.com/"
+                    "catalystneuro/nwb-conversion-tools/issues or create the json-schema"
+                    "for this method manually."
                 )
-            }
+            arg_spec = {param_name: dict(type=param_type)}
             if param.default is param.empty:
-                input_schema['required'].append(param_name)
+                input_schema["required"].append(param_name)
             elif param.default is not None:
                 arg_spec[param_name].update(default=param.default)
-            input_schema['properties'].update(arg_spec)
-        input_schema['additionalProperties'] = param.kind == inspect.Parameter.VAR_KEYWORD
+            input_schema["properties"].update(arg_spec)
+        input_schema["additionalProperties"] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
 
 
@@ -149,13 +142,13 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     defaults: dict
     overwrite: bool
     """
-    for key, val in schema['properties'].items():
+    for key, val in schema["properties"].items():
         if key in defaults:
-            if val['type'] == 'object':
+            if val["type"] == "object":
                 fill_defaults(val, defaults[key], overwrite=overwrite)
             else:
-                if overwrite or ('default' not in val):
-                    val['default'] = defaults[key]
+                if overwrite or ("default" not in val):
+                    val["default"] = defaults[key]
 
 
 def unroot_schema(schema: dict):
@@ -166,189 +159,150 @@ def unroot_schema(schema: dict):
     ----------
     schema: dict
     """
-    terms = ('required', 'properties', 'type', 'additionalProperties',
-             'title', 'description')
+    terms = ("required", "properties", "type", "additionalProperties", "title", "description")
     return {k: v for k, v in schema.items() if k in terms}
-
 
 
 def get_schema_from_hdmf_class(hdmf_class):
     """Get metadata schema from hdmf class."""
     schema = get_base_schema()
-    schema['tag'] = hdmf_class.__module__ + '.' + hdmf_class.__name__
+    schema["tag"] = hdmf_class.__module__ + "." + hdmf_class.__name__
 
     # Detect child-like (as opposed to link) fields
-    pynwb_children_fields = [f['name'] for f in hdmf_class.get_fields_conf() if f.get('child', False)]
+    pynwb_children_fields = [f["name"] for f in hdmf_class.get_fields_conf() if f.get("child", False)]
     # For MultiContainerInterface
-    if hasattr(hdmf_class, '__clsconf__'):
-        pynwb_children_fields.append(hdmf_class.__clsconf__['attr'])
+    if hasattr(hdmf_class, "__clsconf__"):
+        pynwb_children_fields.append(hdmf_class.__clsconf__["attr"])
 
     # Temporary solution before this is solved: https://github.com/hdmf-dev/hdmf/issues/475
-    if 'device' in pynwb_children_fields:
-        pynwb_children_fields.remove('device')
+    if "device" in pynwb_children_fields:
+        pynwb_children_fields.remove("device")
 
     docval = hdmf_class.__init__.__docval__
-    for docval_arg in docval['args']:
-        schema_arg = {docval_arg['name']: dict(description=docval_arg['doc'])}
+    for docval_arg in docval["args"]:
+        schema_arg = {docval_arg["name"]: dict(description=docval_arg["doc"])}
 
         # type float
-        if docval_arg['type'] == 'float' \
-            or (isinstance(docval_arg['type'], tuple)
-                and any([it in docval_arg['type'] for it in [float, 'float']])):
-            schema_arg[docval_arg['name']].update(type='number')
+        if docval_arg["type"] == "float" or (
+            isinstance(docval_arg["type"], tuple) and any([it in docval_arg["type"] for it in [float, "float"]])
+        ):
+            schema_arg[docval_arg["name"]].update(type="number")
 
         # type string
-        elif docval_arg['type'] is str \
-            or (isinstance(docval_arg['type'], tuple)
-                and str in docval_arg['type']):
-            schema_arg[docval_arg['name']].update(type='string')
+        elif docval_arg["type"] is str or (isinstance(docval_arg["type"], tuple) and str in docval_arg["type"]):
+            schema_arg[docval_arg["name"]].update(type="string")
 
         # type datetime
-        elif docval_arg['type'] is datetime \
-            or (isinstance(docval_arg['type'], tuple)
-                and datetime in docval_arg['type']):
-            schema_arg[docval_arg['name']].update(type='string', format='date-time')
+        elif docval_arg["type"] is datetime or (
+            isinstance(docval_arg["type"], tuple) and datetime in docval_arg["type"]
+        ):
+            schema_arg[docval_arg["name"]].update(type="string", format="date-time")
 
         # if TimeSeries, skip it
-        elif docval_arg['type'] is pynwb.base.TimeSeries \
-            or (isinstance(docval_arg['type'], tuple)
-                and pynwb.base.TimeSeries in docval_arg['type']):
+        elif docval_arg["type"] is pynwb.base.TimeSeries or (
+            isinstance(docval_arg["type"], tuple) and pynwb.base.TimeSeries in docval_arg["type"]
+        ):
             continue
 
         # if PlaneSegmentation, skip it
-        elif docval_arg['type'] is pynwb.ophys.PlaneSegmentation or \
-                (isinstance(docval_arg['type'], tuple) and
-                 pynwb.ophys.PlaneSegmentation in docval_arg['type']):
+        elif docval_arg["type"] is pynwb.ophys.PlaneSegmentation or (
+            isinstance(docval_arg["type"], tuple) and pynwb.ophys.PlaneSegmentation in docval_arg["type"]
+        ):
             continue
 
         else:
-            if not isinstance(docval_arg['type'], tuple):
-                docval_arg_type = [docval_arg['type']]
+            if not isinstance(docval_arg["type"], tuple):
+                docval_arg_type = [docval_arg["type"]]
             else:
-                docval_arg_type = docval_arg['type']
+                docval_arg_type = docval_arg["type"]
 
             # if another nwb object (or list of nwb objects)
-            if any([hasattr(t, '__nwbfields__') for t in docval_arg_type]):
-                is_nwb = [hasattr(t, '__nwbfields__') for t in docval_arg_type]
+            if any([hasattr(t, "__nwbfields__") for t in docval_arg_type]):
+                is_nwb = [hasattr(t, "__nwbfields__") for t in docval_arg_type]
                 item = docval_arg_type[np.where(is_nwb)[0][0]]
                 # if it is child
-                if docval_arg['name'] in pynwb_children_fields:
+                if docval_arg["name"] in pynwb_children_fields:
                     items = [get_schema_from_hdmf_class(item)]
-                    schema_arg[docval_arg['name']].update(
-                        type='array', items=items, minItems=1, maxItems=1
-                    )
+                    schema_arg[docval_arg["name"]].update(type="array", items=items, minItems=1, maxItems=1)
                 # if it is link
                 else:
-                    target = item.__module__ + '.' + item.__name__
-                    schema_arg[docval_arg['name']].update(
-                        type='string',
-                        target=target
-                    )
+                    target = item.__module__ + "." + item.__name__
+                    schema_arg[docval_arg["name"]].update(type="string", target=target)
             else:
                 continue
 
         # Check for default arguments
-        if 'default' in docval_arg:
-            if docval_arg['default'] is not None:
-                schema_arg[docval_arg['name']].update(default=docval_arg['default'])
+        if "default" in docval_arg:
+            if docval_arg["default"] is not None:
+                schema_arg[docval_arg["name"]].update(default=docval_arg["default"])
         else:
-            schema['required'].append(docval_arg['name'])
+            schema["required"].append(docval_arg["name"])
 
-        schema['properties'].update(schema_arg)
+        schema["properties"].update(schema_arg)
 
-    if 'allow_extra' in docval:
-        schema['additionalProperties'] = docval['allow_extra']
+    if "allow_extra" in docval:
+        schema["additionalProperties"] = docval["allow_extra"]
 
     return schema
 
 
 def get_schema_for_NWBFile():
     schema = get_base_schema()
-    schema['tag'] = 'pynwb.file.NWBFile'
-    schema['required'] = ["session_description", "identifier", "session_start_time"]
-    schema['properties'] = {
+    schema["tag"] = "pynwb.file.NWBFile"
+    schema["required"] = ["session_description", "identifier", "session_start_time"]
+    schema["properties"] = {
         "session_description": {
             "type": "string",
             "format": "long",
-            "description": "a description of the session where this data was generated"
+            "description": "a description of the session where this data was generated",
         },
-        "identifier": {
-            "type": "string",
-            "description": "a unique text identifier for the file"
-        },
+        "identifier": {"type": "string", "description": "a unique text identifier for the file"},
         "session_start_time": {
             "type": "string",
             "description": "the start date and time of the recording session",
-            "format": "date-time"
+            "format": "date-time",
         },
         "experimenter": {
             "type": "array",
             "items": {"type": "string", "title": "experimenter"},
-            "description": "name of person who performed experiment"
+            "description": "name of person who performed experiment",
         },
-        "experiment_description": {
-            "type": "string",
-            "description": "general description of the experiment"
-        },
-        "session_id": {
-            "type": "string",
-            "description": "lab-specific ID for the session"
-        },
-        "institution": {
-            "type": "string",
-            "description": "institution(s) where experiment is performed"
-        },
-        "notes": {
-            "type": "string",
-            "description": "Notes about the experiment."
-        },
+        "experiment_description": {"type": "string", "description": "general description of the experiment"},
+        "session_id": {"type": "string", "description": "lab-specific ID for the session"},
+        "institution": {"type": "string", "description": "institution(s) where experiment is performed"},
+        "notes": {"type": "string", "description": "Notes about the experiment."},
         "pharmacology": {
             "type": "string",
             "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), "
-                           "painkiller(s), etc., plus dosage, concentration, etc."
+            "painkiller(s), etc., plus dosage, concentration, etc.",
         },
         "protocol": {
             "type": "string",
-            "description": "Experimental protocol, if applicable. E.g., include IACUC protocol"
+            "description": "Experimental protocol, if applicable. E.g., include IACUC protocol",
         },
         "related_publications": {
             "type": "string",
             "description": "Publication information.PMID, DOI, URL, etc. If multiple, concatenate together and describe"
-                           " which is which. such as PMID, DOI, URL, etc"
+            " which is which. such as PMID, DOI, URL, etc",
         },
         "slices": {
             "type": "string",
             "description": "Description of slices, including information about preparation thickness, orientation, "
-                           "temperature and bath solution"
+            "temperature and bath solution",
         },
-        "source_script": {
-            "type": "string",
-            "description": "Script file used to create this NWB file."
-        },
-        "source_script_file_name": {
-            "type": "string",
-            "description": "Name of the source_script file"
-        },
-        "data_collection": {
-            "type": "string",
-            "description": "Notes about data collection and analysis."
-        },
+        "source_script": {"type": "string", "description": "Script file used to create this NWB file."},
+        "source_script_file_name": {"type": "string", "description": "Name of the source_script file"},
+        "data_collection": {"type": "string", "description": "Notes about data collection and analysis."},
         "surgery": {
             "type": "string",
-            "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+            "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery.",
         },
         "virus": {
             "type": "string",
             "description": "Information about virus(es) used in experiments, including virus ID, source, date made, "
-                           "injection location, volume, etc."
+            "injection location, volume, etc.",
         },
-        "stimulus_notes": {
-            "type": "string",
-            "description": "Notes about stimuli, such as how and where presented."
-        },
-        "lab": {
-            "type": "string",
-            "description": "lab where experiment was performed"
-        }
+        "stimulus_notes": {"type": "string", "description": "Notes about stimuli, such as how and where presented."},
+        "lab": {"type": "string", "description": "lab where experiment was performed"},
     }
     return schema
