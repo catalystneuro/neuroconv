@@ -656,7 +656,7 @@ def add_electrical_series(
             eseries_kwargs.update(conversion=1e-6)
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
-    trace_dtype = recording.get_traces(channel_ids=[0], end_frame=1).dtype
+    trace_dtype = recording.get_traces(channel_ids=channel_ids[:1], end_frame=1).dtype
     estimated_memory = trace_dtype.itemsize * recording.get_num_channels() * recording.get_num_frames()
     if not iterate and psutil.virtual_memory().available <= estimated_memory:
         warn("iteration was disabled, but not enough memory to load traces! Forcing iterate=True.")
