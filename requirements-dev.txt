@@ -16,4 +16,3 @@ spiketoolkit @ git+https://github.com/SpikeInterface/spiketoolkit.git@master
 neo @ git+https://github.com/NeuralEnsemble/python-neo.git@master
 roiextractors==0.3.1
 ndx-events==0.2.0
-pre-commit==2.13.0

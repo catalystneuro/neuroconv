@@ -34,3 +34,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         yml: ./codecov.yml
+    - name: Format black
+      run: |
+        pip install pre-commit
+        pre-commit install
