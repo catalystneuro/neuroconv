@@ -13,7 +13,7 @@ from .utils.json_schema import (
     dict_deep_update,
     get_base_schema,
     fill_defaults,
-    unroot_schema
+    unroot_schema,
 )
 
 
@@ -27,14 +27,13 @@ class NWBConverter:
         """Compile input schemas from each of the data interface classes."""
         source_schema = get_base_schema(
             root=True,
-            id_='source.schema.json',
-            title='Source data schema',
-            description='Schema for the source data, files and directories',
-            version='0.1.0'
+            id_="source.schema.json",
+            title="Source data schema",
+            description="Schema for the source data, files and directories",
+            version="0.1.0",
         )
         for interface_name, data_interface in cls.data_interface_classes.items():
-            source_schema['properties'].update(
-                {interface_name: unroot_schema(data_interface.get_source_schema())})
+            source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
     @classmethod
@@ -42,22 +41,22 @@ class NWBConverter:
         """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(
             root=True,
-            id_='conversion_options.schema.json',
+            id_="conversion_options.schema.json",
             title="Conversion options schema",
             description="Schema for the conversion options",
-            version="0.1.0"
+            version="0.1.0",
         )
         for interface_name, data_interface in cls.data_interface_classes.items():
-            conversion_options_schema['properties'].update({
-                interface_name: unroot_schema(data_interface.get_conversion_options_schema())
-            })
+            conversion_options_schema["properties"].update(
+                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
+            )
         return conversion_options_schema
 
     @classmethod
     def validate_source(cls, source_data):
         """Validate source_data against Converter source_schema."""
         validate(instance=source_data, schema=cls.get_source_schema())
-        print('Source data is valid!')
+        print("Source data is valid!")
 
     def __init__(self, source_data):
         """Validate source_data against source_schema and initialize all data interfaces."""
@@ -74,16 +73,13 @@ class NWBConverter:
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
         metadata_schema = get_base_schema(
-            id_='metadata.schema.json',
+            id_="metadata.schema.json",
             root=True,
-            title='Metadata',
-            description='Schema for the metadata',
+            title="Metadata",
+            description="Schema for the metadata",
             version="0.1.0",
             required=["NWBFile"],
-            properties=dict(
-                NWBFile=get_schema_for_NWBFile(),
-                Subject=get_schema_from_hdmf_class(Subject)
-            )
+            properties=dict(NWBFile=get_schema_for_NWBFile(), Subject=get_schema_from_hdmf_class(Subject)),
         )
         for data_interface in self.data_interface_objects.values():
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
@@ -110,12 +106,12 @@ class NWBConverter:
     def validate_metadata(self, metadata):
         """Validate metadata against Converter metadata_schema."""
         validate(instance=metadata, schema=self.get_metadata_schema())
-        print('Metadata is valid!')
+        print("Metadata is valid!")
 
     def validate_conversion_options(self, conversion_options):
         """Validate conversion_options against Converter conversion_options_schema."""
         validate(instance=conversion_options, schema=self.get_conversion_options_schema())
-        print('conversion_options is valid!')
+        print("conversion_options is valid!")
 
     def run_conversion(
         self,
@@ -124,7 +120,7 @@ class NWBConverter:
         nwbfile_path: Optional[str] = None,
         overwrite: Optional[bool] = False,
         nwbfile: Optional[NWBFile] = None,
-        conversion_options: Optional[dict] = None
+        conversion_options: Optional[dict] = None,
     ):
         """
         Run the NWB conversion over all the instantiated data interfaces.
@@ -146,8 +142,11 @@ class NWBConverter:
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
-        assert (not save_to_file and nwbfile_path is None) or nwbfile is None, \
+        assert (
+            not save_to_file and nwbfile_path is None
+        ) or nwbfile is None, (
             "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
+        )
 
         # Validate metadata
         if metadata is None:

@@ -13,7 +13,7 @@ class SortingTutorialInterface(BaseSortingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(se.example_datasets.toy_example)
-        source_schema['additionalProperties'] = True
+        source_schema["additionalProperties"] = True
         return source_schema
 
     def __init__(self, **source_data):
@@ -26,7 +26,7 @@ class SortingTutorialInterface(BaseSortingExtractorInterface):
                 dict(
                     name="custom_unit_column",
                     description="Custom column in the spiking unit table for the NWB Conversion Tools tutorial.",
-                    data=[x for x in range(len(self.sorting_extractor.get_unit_ids()))]
+                    data=[x for x in range(len(self.sorting_extractor.get_unit_ids()))],
                 )
             ]
         )

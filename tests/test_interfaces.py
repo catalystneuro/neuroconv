@@ -9,6 +9,7 @@ import pytest
 
 try:
     import cv2
+
     HAVE_OPENCV = True
 except ImportError:
     HAVE_OPENCV = False
@@ -37,17 +38,18 @@ def test_movie_interface():
         writer = cv2.VideoWriter(
             filename=str(movie_file),
             apiPreference=None,
-            fourcc=cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'),
+            fourcc=cv2.VideoWriter_fourcc("M", "J", "P", "G"),
             fps=25,
             frameSize=(ny, nx),
-            params=None
+            params=None,
         )
         for k in range(nf):
-            writer.write(np.random.randint(0, 255, (nx, ny, 3)).astype('uint8'))
+            writer.write(np.random.randint(0, 255, (nx, ny, 3)).astype("uint8"))
         writer.release()
 
         class MovieTestNWBConverter(NWBConverter):
             data_interface_classes = dict(Movie=MovieInterface)
+
         source_data = dict(Movie=dict(file_paths=[movie_file]))
         converter = MovieTestNWBConverter(source_data)
         metadata = converter.get_metadata()
@@ -60,27 +62,22 @@ def test_movie_interface():
             metadata=metadata,
             nwbfile_path=nwbfile_path,
             overwrite=True,
-            conversion_options=dict(Movie=dict(starting_times=[123.]))
+            conversion_options=dict(Movie=dict(starting_times=[123.0])),
         )
 
         # These conversion options do not operate independently, so test them jointly
         conversion_options_testing_matrix = [
-            dict(Movie=dict(external_mode=False, stub_test=x, chunk_data=y)) for x, y in product([True, False], repeat=2)
+            dict(Movie=dict(external_mode=False, stub_test=x, chunk_data=y))
+            for x, y in product([True, False], repeat=2)
         ]
         for conversion_options in conversion_options_testing_matrix:
             converter.run_conversion(
-                metadata=metadata,
-                nwbfile_path=nwbfile_path,
-                overwrite=True,
-                conversion_options=conversion_options
+                metadata=metadata, nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_options
             )
 
         module_name = "TestModule"
         module_description = "This is a test module."
-        nwbfile = converter.run_conversion(
-            metadata=metadata,
-            save_to_file=False
-        )
+        nwbfile = converter.run_conversion(metadata=metadata, save_to_file=False)
         assert f"Video: {Path(movie_file).stem}" in nwbfile.acquisition
         nwbfile = converter.run_conversion(
             metadata=metadata,
