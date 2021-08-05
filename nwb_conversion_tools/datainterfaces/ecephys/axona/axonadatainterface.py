@@ -43,9 +43,7 @@ def parse_generic_header(filename, params):
         for bin_line in f:
             if b"data_start" in bin_line:
                 break
-            line = (
-                bin_line.decode("cp1252").replace("\r\n", "").replace("\r", "").strip()
-            )
+            line = bin_line.decode("cp1252").replace("\r\n", "").replace("\r", "").strip()
             parts = line.split(" ")
             key = parts[0]
             if key in params:
@@ -62,9 +60,9 @@ def read_axona_iso_datetime(set_file):
     with open(set_file, "r", encoding="cp1252") as f:
         for line in f:
             if line.startswith("trial_date"):
-                date_string = line[len("trial_date") + 1:].replace("\n", "")
+                date_string = line[len("trial_date") + 1 :].replace("\n", "")
             if line.startswith("trial_time"):
-                time_string = line[len("trial_time") + 1:].replace("\n", "")
+                time_string = line[len("trial_time") + 1 :].replace("\n", "")
 
     return dateutil.parser.parse(date_string + " " + time_string).isoformat()
 
@@ -112,9 +110,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             Device=[
                 dict(
                     name="Axona",
-                    description="Axona DacqUSB, sw_version={}".format(
-                        par["sw_version"]
-                    ),
+                    description="Axona DacqUSB, sw_version={}".format(par["sw_version"]),
                     manufacturer="Axona",
                 ),
             ],
@@ -135,9 +131,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
                     data=[f"Group{x}" for x in elec_group_names],
                 )
             ],
-            ElectricalSeries_raw=dict(
-                name="ElectricalSeries_raw", description="Raw acquisition traces."
-            ),
+            ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
         )
 
         return metadata
@@ -224,9 +218,7 @@ def read_bin_file_position_data(filename):
     flags = np.ndarray((num_packets,), "S4", mm, 0, bytes_packet)
     ADU2_idx = np.where(flags == b"ADU2")
 
-    pos = np.ndarray(
-        (num_packets,), (np.int16, (1, 8)), mm, 16, (bytes_packet,)
-    ).reshape((-1, 8))[ADU2_idx][:]
+    pos = np.ndarray((num_packets,), (np.int16, (1, 8)), mm, 16, (bytes_packet,)).reshape((-1, 8))[ADU2_idx][:]
 
     pos = np.hstack((ADU2_idx[0].reshape((-1, 1)), pos)).astype(float)
 
@@ -302,7 +294,5 @@ class AxonaPositionDataInterface(BaseDataInterface):
         filename = self.source_data["filename"]
 
         # Create or update processing module for behavioral data
-        behavior_module = get_module(
-            nwbfile=nwbfile, name="behavior", description="behavioral data"
-        )
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
         behavior_module.add(get_position_object(filename))

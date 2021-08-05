@@ -1,11 +1,11 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
 import numpy as np
-import psutil
 from typing import Optional
 from tqdm import tqdm
 from warnings import warn
 
+import psutil
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -18,6 +18,7 @@ from ....utils.conversion_tools import check_regular_timestamps, get_module
 
 try:
     import cv2
+
     HAVE_OPENCV = True
 except ImportError:
     HAVE_OPENCV = False
@@ -49,8 +50,8 @@ class MovieInterface(BaseDataInterface):
         starting_times: Optional[list] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
-        module_description: Optional[str] = None
-     ):
+        module_description: Optional[str] = None,
+    ):
         """
         Convert the movie data files to ImageSeries and write them in the NWBFile.
 
@@ -81,18 +82,20 @@ class MovieInterface(BaseDataInterface):
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
         """
-        file_paths = self.source_data['file_paths']
+        file_paths = self.source_data["file_paths"]
 
         if stub_test:
             count_max = 10
         else:
             count_max = np.inf
         if starting_times is not None:
-            assert isinstance(starting_times, list) and all([isinstance(x, float) for x in starting_times]) \
-                and len(starting_times) == len(file_paths), \
-                "Argument 'starting_times' must be a list of floats in one-to-one correspondence with 'file_paths'!"
+            assert (
+                isinstance(starting_times, list)
+                and all([isinstance(x, float) for x in starting_times])
+                and len(starting_times) == len(file_paths)
+            ), "Argument 'starting_times' must be a list of floats in one-to-one correspondence with 'file_paths'!"
         else:
-            starting_times = [0.]
+            starting_times = [0.0]
 
         for j, file in enumerate(file_paths):
             timestamps = starting_times[j] + get_movie_timestamps(movie_file=file)
@@ -101,9 +104,7 @@ class MovieInterface(BaseDataInterface):
                 starting_times.append(timestamps[-1])
 
             image_series_kwargs = dict(
-                name=f"Video: {Path(file).stem}",
-                description="Video recorded by camera.",
-                unit="Frames"
+                name=f"Video: {Path(file).stem}", description="Video recorded by camera.", unit="Frames"
             )
             if check_regular_timestamps(ts=timestamps):
                 fps = get_movie_fps(movie_file=file)
@@ -130,34 +131,34 @@ class MovieInterface(BaseDataInterface):
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
                 tqdm_pos, tqdm_mininterval = (0, 10)
                 if chunk_data:
+
                     def data_generator(file, count_max):
                         cap = cv2.VideoCapture(str(file))
                         for _ in range(min(count_max, total_frames)):
                             success, frame = cap.read()
                             yield frame
                         cap.release()
+
                     mov = DataChunkIterator(
                         data=tqdm(
                             iterable=data_generator(file=file, count_max=count_max),
                             desc=f"Copying movie data for {Path(file).name}",
                             position=tqdm_pos,
                             total=total_frames,
-                            mininterval=tqdm_mininterval
+                            mininterval=tqdm_mininterval,
                         ),
                         iter_axis=0,  # nwb standard is time as zero axis
-                        maxshape=tuple(maxshape)
+                        maxshape=tuple(maxshape),
                     )
-                    image_series_kwargs.update(
-                        data=H5DataIO(mov, compression="gzip", chunks=best_gzip_chunk)
-                    )
+                    image_series_kwargs.update(data=H5DataIO(mov, compression="gzip", chunks=best_gzip_chunk))
                 else:
                     cap = cv2.VideoCapture(str(file))
                     mov = []
                     with tqdm(
-                            desc=f"Reading movie data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval
+                        desc=f"Reading movie data for {Path(file).name}",
+                        position=tqdm_pos,
+                        total=total_frames,
+                        mininterval=tqdm_mininterval,
                     ) as pbar:
                         for _ in range(min(count_max, total_frames)):
                             success, frame = cap.read()
@@ -171,13 +172,13 @@ class MovieInterface(BaseDataInterface):
                                     iterable=np.array(mov),
                                     desc=f"Writing movie data for {Path(file).name}",
                                     position=tqdm_pos,
-                                    mininterval=tqdm_mininterval
+                                    mininterval=tqdm_mininterval,
                                 ),
                                 iter_axis=0,  # nwb standard is time as zero axis
-                                maxshape=tuple(maxshape)
+                                maxshape=tuple(maxshape),
                             ),
                             compression="gzip",
-                            chunks=best_gzip_chunk
+                            chunks=best_gzip_chunk,
                         )
                     )
             if module_name is None:

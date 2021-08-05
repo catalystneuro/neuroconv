@@ -1,5 +1,5 @@
 Welcome to the documentation for NWB-conversion-tools!
-==========================================
+======================================================
 
 ..
   :scale: 100 %
@@ -19,12 +19,18 @@ types of neural data to the Neurodata Without Borders (NWB) standard.
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-   
-   overview
-   installation
+
    user_guide
    developer_guide
-   authors
+
+
+.. toctree::
+    :maxdepth: 2
+    :caption: API Documentation
+
+    NWBConverter <api/nwbconverter>
+    Interfaces <api/interfaces>
+    
 
 For more information regarding the NWB Standard, please view
 

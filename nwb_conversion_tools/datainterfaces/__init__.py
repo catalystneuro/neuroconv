@@ -1,28 +1,29 @@
-from .ecephys.tutorial.ecephystutorialdatainterface import (
-    TutorialRecordingInterface,
-    TutorialSortingInterface
-)
+from .ecephys.tutorial.recordingtutorialdatainterface import RecordingTutorialInterface
+from .ecephys.tutorial.sortingtutorialdatainterface import SortingTutorialInterface
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
     NeuroscopeMultiRecordingTimeInterface,
-    NeuroscopeSortingInterface
+    NeuroscopeSortingInterface,
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
 from .ecephys.spikeinterface.sipickledatainterfaces import (
     SIPickleRecordingExtractorInterface,
-    SIPickleSortingExtractorInterface
+    SIPickleSortingExtractorInterface,
 )
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.ced.ceddatainterface import CEDRecordingInterface
 from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
-from .ecephys.blackrock.blackrockdatainterface import BlackrockRecordingExtractorInterface, BlackrockSortingExtractorInterface
-from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingExtractorInterface, OpenEphysSortingExtractorInterface
-from .ecephys.axona.axonadatainterface import (
-    AxonaRecordingExtractorInterface,
-    AxonaPositionDataInterface
+from .ecephys.blackrock.blackrockdatainterface import (
+    BlackrockRecordingExtractorInterface,
+    BlackrockSortingExtractorInterface,
 )
+from .ecephys.openephys.openephysdatainterface import (
+    OpenEphysRecordingExtractorInterface,
+    OpenEphysSortingExtractorInterface,
+)
+from .ecephys.axona.axonadatainterface import AxonaRecordingExtractorInterface, AxonaPositionDataInterface
 
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
@@ -38,8 +39,8 @@ from .behavior.movie.moviedatainterface import MovieInterface
 
 
 interface_list = [
-    TutorialRecordingInterface,
-    TutorialSortingInterface,
+    RecordingTutorialInterface,
+    SortingTutorialInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface,
@@ -66,5 +67,5 @@ interface_list = [
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
-    MovieInterface
+    MovieInterface,
 ]

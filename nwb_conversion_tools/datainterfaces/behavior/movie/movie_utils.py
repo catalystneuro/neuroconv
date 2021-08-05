@@ -5,6 +5,7 @@ from typing import Union
 
 try:
     import cv2
+
     HAVE_OPENCV = True
 except ImportError:
     HAVE_OPENCV = False
@@ -39,7 +40,7 @@ def get_movie_fps(movie_file: PathType):
     movie_file : PathType
     """
     cap = cv2.VideoCapture(str(movie_file))
-    if int((cv2.__version__).split('.')[0]) < 3:
+    if int((cv2.__version__).split(".")[0]) < 3:
         fps = cap.get(cv2.cv.CV_CAP_PROP_FPS)
     else:
         fps = cap.get(cv2.CAP_PROP_FPS)
