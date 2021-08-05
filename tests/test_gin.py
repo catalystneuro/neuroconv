@@ -21,8 +21,6 @@ from nwb_conversion_tools import (
 )
 
 run_local = False
-test_nwb = True
-test_caching = True
 
 if sys.platform == "linux" or run_local:
     class TestNwbConversions(unittest.TestCase):
