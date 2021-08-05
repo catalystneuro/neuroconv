@@ -23,7 +23,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             iter_idx += 1
         return tuple(int(x) for x in chunk_shape)
 
-    def __init__(self, chunk_shape: tuple = None, chunk_mb: float = 1., buffer_mb: float = 2e3):
+    def __init__(self, chunk_shape: tuple = None, chunk_mb: float = 1.0, buffer_mb: float = 2e3):
         """
         Set the chunking paramters of the iterator.
 
@@ -33,15 +33,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             If chunk_shape is not specified, it will be inferred as the smallest chunk below the buffer_mb threshold.
             Defaults to 20 MB.
         """
-        assert buffer_mb > 0 and buffer_mb < psutil.virtual_memory().available / 1e6, \
-            f"Not enough memory in system handle buffer_mb of {buffer_mb}!"
+        assert (
+            buffer_mb > 0 and buffer_mb < psutil.virtual_memory().available / 1e6
+        ), f"Not enough memory in system handle buffer_mb of {buffer_mb}!"
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is not None:
             self.chunk_shape = self._set_chunk_shape(
-                start_shape=self.maxshape,
-                typesize=self.dtype.itemsize,
-                buffer_mb=buffer_mb
+                start_shape=self.maxshape, typesize=self.dtype.itemsize, buffer_mb=buffer_mb
             )
         else:
             assert np.all(chunk_shape <= self.maxshape), "Some specified chunk shapes exceed the data dimensions!"

@@ -8,7 +8,6 @@ from .genericdatachunkiterator import GenericDataChunkIterator
 
 
 class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
-
     def __init__(self, recording_extractor: RecordingExtractor, chunk_shape: tuple = (), buffer_mb: int = 20):
         self.recording_extractor = recording_extractor
         self.channel_ids = recording_extractor.get_channel_ids()
@@ -16,9 +15,7 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording_extractor.get_traces(
-            channel_ids=self.channel_ids[selection[1]],
-            start_frame=selection[0].start,
-            end_frame=selection[0].stop
+            channel_ids=self.channel_ids[selection[1]], start_frame=selection[0].start, end_frame=selection[0].stop
         ).T
 
     def _get_dtype(self):

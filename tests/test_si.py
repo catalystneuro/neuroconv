@@ -250,7 +250,7 @@ class TestExtractors(unittest.TestCase):
         del RX_nwb
 
     def write_recording_compression(self):
-        path = self.test_dir + '/test.nwb'
+        path = self.test_dir + "/test.nwb"
         write_recording(
             recording=self.RX, save_path=path, overwrite=True
         )  # Testing default compression, should be "gzip"
@@ -313,7 +313,7 @@ class TestExtractors(unittest.TestCase):
         self.check_si_roundtrip(path=path)
 
     def test_write_recording_chunking(self):
-        path = self.test_dir + '/test.nwb'
+        path = self.test_dir + "/test.nwb"
 
         buffer_mb = 1e3
         write_recording(recording=self.RX, save_path=path, overwrite=True, buffer_mb=buffer_mb)
