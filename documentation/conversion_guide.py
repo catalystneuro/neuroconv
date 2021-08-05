@@ -19,46 +19,27 @@ from {{modality_value.repo}} import Nwb{{type_name}}Extractor, {{format_dict.ext
 """
 
 _dict = {
-    'Extracellular electrophysiology': dict(
-        repo='spikeextractors',
-        data=dict(
-            Recording=dict(
-                data=dict(
-
-                )
-            )
-        )
-    ),
-    'Optical physiology': dict(
-        repo='roiextractors',
+    "Extracellular electrophysiology": dict(repo="spikeextractors", data=dict(Recording=dict(data=dict()))),
+    "Optical physiology": dict(
+        repo="roiextractors",
         data=dict(
             Imaging=dict(
-                nwb_converter_class_name='NwbImagingExtractor',
+                nwb_converter_class_name="NwbImagingExtractor",
                 method_name="write_imaging",
                 object_name="imaging_ex",
-                data=dict(
-                    Tiff=dict(
-                        extractor='TiffImagingExtractor',
-                        dataset_path_arg='imaging.tiff'
-                    )
-                )
+                data=dict(Tiff=dict(extractor="TiffImagingExtractor", dataset_path_arg="imaging.tiff")),
             ),
             Segmentation=dict(
-                nwb_converter_class_name='NwbSegmentationExtractor',
+                nwb_converter_class_name="NwbSegmentationExtractor",
                 method_name="write_segmentation",
-                object_name='seg_ex',
+                object_name="seg_ex",
                 data=dict(
-                    CaImAn=dict(
-                        extractor='CaimanSegmentationExtractor',
-                        dataset_path_arg='caiman_analysis.hdf5'
-                    )
-                )
-            )
-        )
-    )
+                    CaImAn=dict(extractor="CaimanSegmentationExtractor", dataset_path_arg="caiman_analysis.hdf5")
+                ),
+            ),
+        ),
+    ),
 }
 
 template = Template(_str)
 print(template.render(_dict=_dict))
-
-

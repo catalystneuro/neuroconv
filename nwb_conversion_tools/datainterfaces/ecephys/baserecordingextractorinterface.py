@@ -14,7 +14,7 @@ from ...utils.json_schema import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     fill_defaults,
-    get_base_schema
+    get_base_schema,
 )
 from ...utils.spike_interface import write_recording
 
@@ -42,28 +42,22 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
-        metadata_schema['properties']['Ecephys'] = get_base_schema(tag='Ecephys')
-        metadata_schema['properties']['Ecephys']['required'] = ['Device', 'ElectrodeGroup']
-        metadata_schema['properties']['Ecephys']['properties'] = dict(
-            Device=dict(
-                type="array",
-                minItems=1,
-                items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}
-            ),
+        metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
+        metadata_schema["properties"]["Ecephys"]["required"] = ["Device", "ElectrodeGroup"]
+        metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}),
             ElectrodeGroup=dict(
-                type="array",
-                minItems=1,
-                items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
+                type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
             ),
             Electrodes=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
-                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"}
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"},
             ),
         )
         # Schema definition for arrays
-        metadata_schema['properties']['Ecephys']['properties']["definitions"] = dict(
+        metadata_schema["properties"]["Ecephys"]["properties"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
             Electrodes=dict(
@@ -71,35 +65,19 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                 additionalProperties=False,
                 required=["name"],
                 properties=dict(
-                    name=dict(
-                        type="string",
-                        description="name of this electrodes column"
-                    ),
-                    description=dict(
-                        type="string",
-                        description="description of this electrodes column"
-                    )
-                )
-            )
+                    name=dict(type="string", description="name of this electrodes column"),
+                    description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
         )
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata['Ecephys'] = dict(
-            Device=[
-                dict(
-                    name='Device_ecephys',
-                    description='no description'
-                )
-            ],
+        metadata["Ecephys"] = dict(
+            Device=[dict(name="Device_ecephys", description="no description")],
             ElectrodeGroup=[
-                dict(
-                    name=str(group_id),
-                    description="no description",
-                    location="unknown",
-                    device='Device_ecephys'
-                )
+                dict(name=str(group_id), description="no description", location="unknown", device="Device_ecephys")
                 for group_id in np.unique(self.recording_extractor.get_channel_groups())
             ],
         )
@@ -123,10 +101,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
 
-        recording_extractor = se.SubRecordingExtractor(
-            self.recording_extractor,
-            **kwargs
-        )
+        recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
         return recording_extractor
 
     def run_conversion(
@@ -138,7 +113,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         save_path: OptionalPathType = None,
         overwrite: bool = False,
         buffer_mb: int = 500,
-        write_as: str = 'raw',
+        write_as: str = "raw",
         es_key: str = None,
     ):
         """
@@ -184,5 +159,5 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             es_key=es_key,
             save_path=save_path,
             overwrite=overwrite,
-            buffer_mb=buffer_mb
+            buffer_mb=buffer_mb,
         )

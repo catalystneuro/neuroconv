@@ -3,10 +3,11 @@ from roiextractors import (
     ExtractSegmentationExtractor,
     CaimanSegmentationExtractor,
     Suite2pSegmentationExtractor,
-    SimaSegmentationExtractor
+    SimaSegmentationExtractor,
 )
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+
 
 class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for ExtractSegmentationExtractor"""
