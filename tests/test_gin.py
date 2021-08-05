@@ -3,9 +3,7 @@ import unittest
 from pathlib import Path
 import sys
 
-from datalad.api import install, Dataset
 from parameterized import parameterized
-
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from nwb_conversion_tools import (
@@ -20,9 +18,16 @@ from nwb_conversion_tools import (
     SpikeGLXRecordingInterface
 )
 
+try:
+    from datalad.api import install, Dataset
+
+    HAVE_DATALAD = True
+except ImportError:
+    HAVE_DATALAD = False
+
 run_local = False
 
-if sys.platform == "linux" or run_local:
+if HAVE_DATALAD and (sys.platform == "linux" or run_local):
     class TestNwbConversions(unittest.TestCase):
 
         def setUp(self):

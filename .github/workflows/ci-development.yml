@@ -21,6 +21,9 @@ jobs:
           NWB_CONVERSION_INSTALL_MODE: development
       run: |
         pip install .
+        # needed for correct operation of git/git-annex/DataLad
+        git config --global user.email "CI@example.com"
+        git config --global user.name "CI Almighty"
     - name: Run tests and generate coverage report
       run: |
         pip install pytest
