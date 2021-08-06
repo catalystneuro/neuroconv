@@ -89,10 +89,10 @@ def estimate_recording_conversion_time(
 
     Returns
     -------
-    speed : float
-        Speed of the conversion in MB/s.
     total_time : float
         Estimate of total time (in minutes) to write all data based on speed estimate and known total data size.
+    speed : float
+        Speed of the conversion in MB/s.
     """
     if write_kwargs is None:
         write_kwargs = dict()
@@ -118,4 +118,4 @@ def estimate_recording_conversion_time(
     total_time = (total_mb / speed) / 60
 
     rmtree(temp_dir)
-    return speed, total_time
+    return total_time, speed
