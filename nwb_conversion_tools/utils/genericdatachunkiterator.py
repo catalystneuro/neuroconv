@@ -1,4 +1,4 @@
-"""Authors: Cody Baker, Saksham Sharda, Oliver Ruebel."""
+"""Authors: Cody Baker, Saksham Sharda, and Oliver Ruebel."""
 from typing import Iterable, Tuple
 import numpy as np
 import psutil

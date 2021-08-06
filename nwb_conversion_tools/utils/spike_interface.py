@@ -323,7 +323,10 @@ def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dic
             isinstance(x, dict) and set(x.keys()) == set(["name", "description"])
             for x in metadata["Ecephys"]["Electrodes"]
         ]
-    ), "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, containing the keys 'name' and 'description'"
+    ), (
+        "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, "
+        "containing the keys 'name' and 'description'"
+    )
     assert all(
         [x["name"] != "group" for x in metadata["Ecephys"]["Electrodes"]]
     ), "Passing metadata field 'group' is deprecated; pass group_name instead!"
