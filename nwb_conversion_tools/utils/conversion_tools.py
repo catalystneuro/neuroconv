@@ -75,9 +75,7 @@ def check_regular_timestamps(ts):
 
 
 def estimate_recording_conversion_time(
-    recording: RecordingExtractor,
-    mb_threshold: float = 100.0,
-    write_kwargs: Optional[dict] = None
+    recording: RecordingExtractor, mb_threshold: float = 100.0, write_kwargs: Optional[dict] = None
 ) -> (float, float):
     """
     Test the write speed of recording data to NWB on this system.

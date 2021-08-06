@@ -38,6 +38,5 @@ class TestConversionTools(TestCase):
 
         estimated_write_time, estimated_write_speed = estimate_recording_conversion_time(recording=recording)
         estimated_write_time, estimated_write_speed = estimate_recording_conversion_time(
-            recording=recording,
-            write_kwargs=dict(iterate=False, compression=None)
+            recording=recording, write_kwargs=dict(iterate=False, compression=None)
         )
