@@ -78,7 +78,7 @@ def estimate_recording_conversion_time(
     recording: RecordingExtractor,
     mb_threshold: float = 100.0,
     write_kwargs: Optional[dict] = None
-) -> float:
+) -> (float, float):
     """
     Test the write speed of recording data to NWB on this system.
 
@@ -89,8 +89,10 @@ def estimate_recording_conversion_time(
 
     Returns
     -------
-    float
+    speed : float
         Speed of the conversion in MB/s.
+    total_time : float
+        Estimate of total time to write all data based on speed estimate and known total data size.
     """
     if write_kwargs is None:
         write_kwargs = dict()
@@ -100,18 +102,20 @@ def estimate_recording_conversion_time(
 
     num_channels = recording.get_num_channels()
     itemsize = recording.get_dtype().itemsize
-    if recording.get_num_frames() * num_channels * itemsize / 1e6 > mb_threshold:
+    total_mb = recording.get_num_frames() * num_channels * itemsize / 1e6
+    if total_mb > mb_threshold:
         truncation = np.floor(mb_threshold * 1e6 / (num_channels * itemsize))
         test_recording = SubRecordingExtractor(parent_recording=recording, end_frame=truncation)
     else:
         test_recording = recording
 
-    actual_mb = test_recording.get_num_frames() * num_channels * itemsize / 1e6
+    actual_test_mb = test_recording.get_num_frames() * num_channels * itemsize / 1e6
     start = perf_counter()
     write_recording(recording=test_recording, save_path=test_nwbfile_path, overwrite=True, **write_kwargs)
     end = perf_counter()
     delta = end - start
-    speed = actual_mb / delta
+    speed = actual_test_mb / delta
+    total_time = total_mb / speed
 
     rmtree(temp_dir)
-    return speed
+    return speed, total_time
