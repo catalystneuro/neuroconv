@@ -10,37 +10,47 @@ from itertools import product
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk shapes."""
 
-    def _get_chunksize_mb(self, chunk_shape: Iterable, typesize: int) -> float:
-        return np.product(chunk_shape) * typesize / 1e6
+    def _set_chunk_shape(self, chunk_mb: float):
+        min_shape = np.min(self.maxshape)
+        v = np.array([np.floor(x / min_shape) for x in self.maxshape])
+        k = np.floor((chunk_mb * 1e6 / (np.prod(v) * self.dtype.itemsize))**(1 / len(self.maxshape)))
+        self.chunk_shape = tuple(k * v)
 
-    def _set_chunk_shape(self, start_shape: Iterable, typesize: int, buffer_mb: float) -> tuple:
-        chunk_shape = list(start_shape)
-        n_dim = len(chunk_shape)
-        iter_idx = 0
-        while (self._get_chunksize_mb(chunk_shape, typesize) > buffer_mb) and np.product(chunk_shape) > 2:
-            dim = iter_idx % n_dim
-            chunk_shape[dim] = np.ceil(chunk_shape[dim] / 2.0)
-            iter_idx += 1
-        return tuple(int(x) for x in chunk_shape)
+    def _set_buffer_shape(self, buffer_gb: float):
+        pass
 
-    def __init__(self, chunk_shape: tuple = None, chunk_mb: float = 1.0, buffer_mb: float = 2e3):
+    def __init__(
+        self,
+        buffer_gb: float = 2.0,
+        buffer_shape: tuple = None,
+        chunk_mb: float = 1.0,
+        chunk_shape: tuple = None
+    ):
         """
-        Set the chunking paramters of the iterator.
+        Break a dataset into buffers containing chunks, with the chunk as they are written into the H5 dataset.
 
+        Basic users should set the buffer_gb argument to as much free RAM space as can be safely allowed.
+        Advanced users are offered full control over the shape paramters for the buffer and the chunks.
+
+        buffer_gb : float, optional
+            If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold.
+            Defaults to 2 GB.
+        buffer_shape : tuple, optional
+            Manually defined shape of the buffer. Defaults to None.
+        chunk_mb : float, optional
+            If chunk_shape is not specified, it will be inferred as the smallest chunk below the chunk_mb threshold.
+            H5 reccomends setting this to around 1 MB (our default) for optimal performance.
         chunk_shape : tuple, optional
-            The desired shape of the chunks. Defaults to None.
-        buffer_mb : int, optional
-            If chunk_shape is not specified, it will be inferred as the smallest chunk below the buffer_mb threshold.
-            Defaults to 20 MB.
+            Manually defined shape of the chunks. Defaults to None.
         """
         assert (
-            buffer_mb > 0 and buffer_mb < psutil.virtual_memory().available / 1e6
-        ), f"Not enough memory in system handle buffer_mb of {buffer_mb}!"
+            buffer_gb > 0 and buffer_gb < psutil.virtual_memory().available / 1e9
+        ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is not None:
             self.chunk_shape = self._set_chunk_shape(
-                start_shape=self.maxshape, typesize=self.dtype.itemsize, buffer_mb=buffer_mb
+                start_shape=self.maxshape, typesize=self.dtype.itemsize, buffer_gb=buffer_gb
             )
         else:
             assert np.all(chunk_shape <= self.maxshape), "Some specified chunk shapes exceed the data dimensions!"
