@@ -1,6 +1,8 @@
 """Authors: Cody Baker and Ben Dichter."""
 import spikeextractors as se
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from pynwb.ecephys import ElectricalSeries
+from ....utils.json_schema import get_schema_from_hdmf_class
 
 try:
     from pyintan.intan import read_rhd
@@ -19,6 +21,13 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(self, *args, **kwargs):
         assert HAVE_PYINTAN, INSTALL_MESSAGE
         super().__init__(*args, **kwargs)
+
+    def get_metadata_schema(self):
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema["properties"]["Ecephys"]["properties"].update(
+            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+        )
+        return metadata_schema
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Intan format."""
@@ -42,13 +51,26 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             ]
         ]
 
+        for channel_id, channel_group in zip(self.recording_extractor.get_channel_ids(), group_names):
+            self.recording_extractor.set_channel_property(
+                channel_id=channel_id, property_name="group_name", value=f"Group{channel_group}"
+            )
+
         ecephys_metadata = dict(
             Ecephys=dict(
-                Device=[dict()],
+                Device=[
+                    dict(
+                        name="Intan",
+                        description="Intan recording",
+                        manufacturer="Intan",
+                    ),
+                ],
                 ElectrodeGroup=[
                     dict(
                         name=f"Group{group_name}",
                         description=f"Group {group_name} electrodes.",
+                        device="Intan",
+                        location="",
                     )
                     for group_name in unique_group_names
                 ],
@@ -59,7 +81,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                         data=[f"Group{x}" for x in group_names],
                     )
                 ],
-                ElectricalSeries=dict(name="ElectricalSeries", description="Raw acquisition traces."),
+                ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
             )
         )
 
