@@ -20,7 +20,7 @@ jobs:
       env:
           NWB_CONVERSION_INSTALL_MODE: development
       run: |
-        conda install -c conda-forge datalad
+        conda install -c conda-forge datalad==0.14.5
         pip install -r requirements-dev.txt
         pip install -e .
         # needed for correct operation of git/git-annex/DataLad
