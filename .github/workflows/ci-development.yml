@@ -2,7 +2,7 @@ name: CI development environment
 on: [push]
 jobs:
   run:
-    name: Test on (${{ matrix.os }})
+    name: Full test on (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

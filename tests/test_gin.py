@@ -24,7 +24,6 @@ try:
     HAVE_DATALAD = True
 except ImportError:
     HAVE_DATALAD = False
-    raise NotImplementedError("Test")
 
 if HAVE_DATALAD and sys.platform == "linux":
 
