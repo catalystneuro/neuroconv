@@ -17,3 +17,4 @@ neo @ git+https://github.com/NeuralEnsemble/python-neo.git@master
 roiextractors==0.3.1
 ndx-events==0.2.0
 parameterized==0.8.1
+datalad==0.14.7
