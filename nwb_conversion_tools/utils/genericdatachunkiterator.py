@@ -13,18 +13,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def _set_chunk_shape(self, chunk_mb: float):
         min_shape = np.min(self.maxshape)
         v = np.array([np.floor(x / min_shape) for x in self.maxshape])
-        k = np.floor((chunk_mb * 1e6 / (np.prod(v) * self.dtype.itemsize))**(1 / len(self.maxshape)))
+        k = np.floor((chunk_mb * 1e6 / (np.prod(v) * self.dtype.itemsize)) ** (1 / len(self.maxshape)))
         self.chunk_shape = tuple(k * v)
 
     def _set_buffer_shape(self, buffer_gb: float):
         pass
 
     def __init__(
-        self,
-        buffer_gb: float = 2.0,
-        buffer_shape: tuple = None,
-        chunk_mb: float = 1.0,
-        chunk_shape: tuple = None
+        self, buffer_gb: float = 2.0, buffer_shape: tuple = None, chunk_mb: float = 1.0, chunk_shape: tuple = None
     ):
         """
         Break a dataset into buffers containing chunks, with the chunk as they are written into the H5 dataset.
