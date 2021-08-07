@@ -24,10 +24,9 @@ try:
     HAVE_DATALAD = True
 except ImportError:
     HAVE_DATALAD = False
+    raise NotImplementedError("Test")
 
-run_local = False
-
-if HAVE_DATALAD and (sys.platform == "linux" or run_local):
+if HAVE_DATALAD and sys.platform == "linux":
 
     class TestNwbConversions(unittest.TestCase):
         def setUp(self):
