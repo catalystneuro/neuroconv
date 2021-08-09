@@ -33,23 +33,15 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
         metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", "TwoPhotonSeries"]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=dict(
-                type="array", 
-                minItems=1, 
-                items={"$ref": "#/properties/Ophys/properties/definitions/Device"}
-            ),
+            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/Device"}),
             ImagingPlane=dict(
-                type="array", 
-                minItems=1, 
-                items={"$ref": "#/properties/Ophys/properties/definitions/ImagingPlane"}
+                type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/ImagingPlane"}
             ),
             TwoPhotonSeries=dict(
-                type="array", 
-                minItems=1, 
-                items={"$ref": "#/properties/Ophys/properties/definitions/TwoPhotonSeries"}
+                type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/TwoPhotonSeries"}
             ),
         )
-        
+
         # Schema definition for arrays
         metadata_schema["properties"]["Ophys"]["properties"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
