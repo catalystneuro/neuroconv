@@ -28,14 +28,35 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         """Compile metadata schema for the ImageExtractor."""
         metadata_schema = super().get_metadata_schema()
         metadata_schema["required"] = ["Ophys"]
+
         # Initiate Ophys metadata
-        metadata_schema["properties"]["Ophys"] = get_base_schema()
+        metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", "TwoPhotonSeries"]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
+            Device=dict(
+                type="array", 
+                minItems=1, 
+                items={"$ref": "#/properties/Ophys/properties/definitions/Device"}
+            ),
+            ImagingPlane=dict(
+                type="array", 
+                minItems=1, 
+                items={"$ref": "#/properties/Ophys/properties/definitions/ImagingPlane"}
+            ),
+            TwoPhotonSeries=dict(
+                type="array", 
+                minItems=1, 
+                items={"$ref": "#/properties/Ophys/properties/definitions/TwoPhotonSeries"}
+            ),
+        )
+        
+        # Schema definition for arrays
+        metadata_schema["properties"]["Ophys"]["properties"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", "TwoPhotonSeries"]
+
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
