@@ -1,6 +1,5 @@
 """Authors: Cody Baker and Saksham Sharda."""
 from typing import Tuple, Iterable
-import numpy as np
 
 from spikeextractors import RecordingExtractor
 
@@ -8,10 +7,19 @@ from .genericdatachunkiterator import GenericDataChunkIterator
 
 
 class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
-    def __init__(self, recording_extractor: RecordingExtractor, chunk_shape: tuple = (), buffer_mb: int = 20):
+    """DataChunkIterator specifically for use on RecordingExtractor objects."""
+
+    def __init__(
+        self,
+        recording_extractor: RecordingExtractor,
+        buffer_gb: float = 2.0,
+        buffer_shape: tuple = None,
+        chunk_mb: float = 1.0,
+        chunk_shape: tuple = None
+    ):
         self.recording_extractor = recording_extractor
         self.channel_ids = recording_extractor.get_channel_ids()
-        super().__init__(chunk_shape=chunk_shape, buffer_mb=buffer_mb)
+        super().__init__(buffer_gb=buffer_gb, buffer_shape=buffer_shape, chunk_mb=chunk_mb, chunk_shape=chunk_shape)
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording_extractor.get_traces(
