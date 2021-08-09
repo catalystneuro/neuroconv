@@ -8,16 +8,13 @@ from itertools import product
 
 
 class GenericDataChunkIterator(AbstractDataChunkIterator):
-    """DataChunkIterator that lets the user specify chunk shapes."""
-
-    def _set_chunk_shape(self, chunk_mb: float):
-        min_shape = np.min(self.maxshape)
-        v = np.array([np.floor(x / min_shape) for x in self.maxshape])
-        k = np.floor((chunk_mb * 1e6 / (np.prod(v) * self.dtype.itemsize)) ** (1 / len(self.maxshape)))
-        self.chunk_shape = tuple(k * v)
+    """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
     def _set_buffer_shape(self, buffer_gb: float):
-        pass
+        k = np.floor(
+            (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
+        )
+        self.buffer_shape = tuple([max(x, self.maxshape[j]) for j, x in enumerate(k * np.array(self.chunk_shape))])
 
     def __init__(
         self, buffer_gb: float = 2.0, buffer_shape: tuple = None, chunk_mb: float = 1.0, chunk_shape: tuple = None
@@ -44,21 +41,45 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
-        if chunk_shape is not None:
-            self.chunk_shape = self._set_chunk_shape(
-                start_shape=self.maxshape, typesize=self.dtype.itemsize, buffer_gb=buffer_gb
-            )
+        if chunk_shape is None:
+            self.chunk_shape = self.recommended_chunk_shape(chunk_mb=chunk_mb)
         else:
-            assert np.all(chunk_shape <= self.maxshape), "Some specified chunk shapes exceed the data dimensions!"
+            assert np.all(chunk_shape <= self.maxshape), (
+                f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
+            )
+            self.chunk_shape = chunk_shape
+        if buffer_shape is None:
+            self.buffer_shape = self._set_buffer_shape(buffer_gb=buffer_gb)
+        else:
+            assert np.all(buffer_shape <= self.maxshape), (
+                f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
+            )
             self.chunk_shape = chunk_shape
 
-        self.num_chunks = tuple(
-            [int(np.ceil(self.maxshape[j] / self.chunk_shape[j])) for j in range(len(self.maxshape))]
-        )
+        self.num_chunks = tuple(np.ceil(np.array(self.maxshape) / self.chunk_shape).astype(int))
         self.chunk_idx_generator = product(*[range(x) for x in self.num_chunks])
 
-    def recommended_chunk_shape(self) -> tuple:
-        return self.chunk_shape
+    def recommended_chunk_shape(self, chunk_mb: float = 1.0) -> tuple:
+        """
+        Selecting chunk size less than the threshold of chunk_mb, keeping the dimensional ratios of the original data.
+
+        Parameters
+        ----------
+        chunk_mb : float, optional
+            H5 reccomends setting this to around 1 MB (our default) for optimal performance.
+        """
+        itemsize = self.dtype.itemsize
+        chunk_bytes = chunk_mb * 1e6
+        v = np.floor(np.array(self.maxshape) / np.min(self.maxshape))
+        prod_v = np.prod(v)
+        while prod_v * itemsize > chunk_bytes and prod_v != 1:
+            v_ind = v != 1
+            next_v = v[v_ind]
+            v[v_ind] = np.floor(next_v / np.min(next_v))
+            prod_v = np.prod(v)
+        k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / len(self.maxshape)))
+        chunk_shape = tuple([max(x, self.maxshape[j]) for j, x in enumerate(k * v)])
+        return chunk_shape
 
     def recommended_data_shape(self) -> tuple:
         return self.maxshape
