@@ -16,6 +16,8 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update
 
+from .recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
+
 PathType = Union[str, Path, None]
 ArrayType = Union[list, np.ndarray]
 
@@ -474,6 +476,7 @@ def add_electrical_series(
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterate: bool = True,
+    iterator_type : Optional[str] = None
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -633,45 +636,48 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
     trace_dtype = recording.get_traces(channel_ids=channel_ids[:1], end_frame=1).dtype
-    estimated_memory = trace_dtype.itemsize * recording.get_num_channels() * recording.get_num_frames()
-    if not iterate and psutil.virtual_memory().available <= estimated_memory:
-        warn("iteration was disabled, but not enough memory to load traces! Forcing iterate=True.")
-        iterate = True
-    if iterate:
-        if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
-            channel_offset == 0
-        ):
-            n_bytes = np.dtype(recording.get_dtype()).itemsize
-            buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
-            ephys_data = DataChunkIterator(
-                data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
-                buffer_size=buffer_size,
-            )
+    if iterator_type == "new" or iterator_type is None:
+        ephys_data = RecordingExtractorDataChunkIterator(recording_extractor=recording)
+    elif iterator_type == "old":
+        estimated_memory = trace_dtype.itemsize * recording.get_num_channels() * recording.get_num_frames()
+        if not iterate and psutil.virtual_memory().available <= estimated_memory:
+            warn("iteration was disabled, but not enough memory to load traces! Forcing iterate=True.")
+            iterate = True
+        if iterate:
+            if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
+                channel_offset == 0
+            ):
+                n_bytes = np.dtype(recording.get_dtype()).itemsize
+                buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
+                ephys_data = DataChunkIterator(
+                    data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
+                    buffer_size=buffer_size,
+                )
+            else:
+
+                def data_generator(recording, channels_ids, unsigned_coercion, write_scaled):
+                    for i, ch in enumerate(channels_ids):
+                        data = recording.get_traces(channel_ids=[ch], return_scaled=write_scaled)
+                        if not write_scaled:
+                            data_dtype_name = data.dtype.name
+                            if data_dtype_name.startswith("uint"):
+                                data_dtype_name = data_dtype_name[1:]  # Retain memory of signed data type
+                            data = data + unsigned_coercion[i]
+                            data = data.astype(data_dtype_name)
+                        yield data.flatten()
+
+                ephys_data = DataChunkIterator(
+                    data=data_generator(
+                        recording=recording,
+                        channels_ids=channel_ids,
+                        unsigned_coercion=unsigned_coercion,
+                        write_scaled=write_scaled,
+                    ),
+                    iter_axis=1,  # nwb standard is time as zero axis
+                    maxshape=(recording.get_num_frames(), recording.get_num_channels()),
+                )
         else:
-
-            def data_generator(recording, channels_ids, unsigned_coercion, write_scaled):
-                for i, ch in enumerate(channels_ids):
-                    data = recording.get_traces(channel_ids=[ch], return_scaled=write_scaled)
-                    if not write_scaled:
-                        data_dtype_name = data.dtype.name
-                        if data_dtype_name.startswith("uint"):
-                            data_dtype_name = data_dtype_name[1:]  # Retain memory of signed data type
-                        data = data + unsigned_coercion[i]
-                        data = data.astype(data_dtype_name)
-                    yield data.flatten()
-
-            ephys_data = DataChunkIterator(
-                data=data_generator(
-                    recording=recording,
-                    channels_ids=channel_ids,
-                    unsigned_coercion=unsigned_coercion,
-                    write_scaled=write_scaled,
-                ),
-                iter_axis=1,  # nwb standard is time as zero axis
-                maxshape=(recording.get_num_frames(), recording.get_num_channels()),
-            )
-    else:
-        ephys_data = recording.get_traces(return_scaled=write_scaled).T
+            ephys_data = recording.get_traces(return_scaled=write_scaled).T
 
     eseries_kwargs.update(data=H5DataIO(ephys_data, compression=compression, compression_opts=compression_opts))
     if not use_times:
