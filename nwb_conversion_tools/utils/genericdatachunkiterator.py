@@ -44,16 +44,16 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         if chunk_shape is None:
             self.chunk_shape = self.recommended_chunk_shape(chunk_mb=chunk_mb)
         else:
-            assert np.all(chunk_shape <= self.maxshape), (
-                f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
-            )
+            assert np.all(
+                chunk_shape <= self.maxshape
+            ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
             self.chunk_shape = chunk_shape
         if buffer_shape is None:
             self.buffer_shape = self._set_buffer_shape(buffer_gb=buffer_gb)
         else:
-            assert np.all(buffer_shape <= self.maxshape), (
-                f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
-            )
+            assert np.all(
+                buffer_shape <= self.maxshape
+            ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
             self.chunk_shape = chunk_shape
 
         self.num_chunks = tuple(np.ceil(np.array(self.maxshape) / self.chunk_shape).astype(int))
