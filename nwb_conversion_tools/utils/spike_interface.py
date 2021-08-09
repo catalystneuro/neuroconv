@@ -468,7 +468,7 @@ def add_electrical_series(
     recording: se.RecordingExtractor,
     nwbfile=None,
     metadata: dict = None,
-    buffer_mb: int = 500,
+    buffer_mb: int = 1000,
     use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
@@ -493,7 +493,7 @@ def add_electrical_series(
         Should be of the format
             metadata['Ecephys']['ElectricalSeries'] = {'name': my_name,
                                                         'description': my_description}
-    buffer_mb: int (optional, defaults to 500MB)
+    buffer_mb: int (optional, defaults to 1000MB)
         maximum amount of memory (in MB) to use per iteration of the
         DataChunkIterator (requires traces to be memmap objects)
     use_times: bool (optional, defaults to False)
@@ -651,7 +651,7 @@ def add_electrical_series(
                 buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
                 ephys_data = DataChunkIterator(
                     data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
-                    buffer_size=buffer_size,
+                    buffer_size=int(buffer_size / n_bytes),
                 )
             else:
 
@@ -753,6 +753,7 @@ def add_all_to_nwbfile(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     iterate: bool = True,
+    iterator_type: Optional[str] = None
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -815,6 +816,7 @@ def add_all_to_nwbfile(
         write_scaled=write_scaled,
         compression=compression,
         iterate=iterate,
+        iterator_type=iterator_type
     )
 
     add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
@@ -833,6 +835,7 @@ def write_recording(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     iterate: bool = True,
+    iterator_type : Optional[str] = None
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -938,6 +941,7 @@ def write_recording(
                 write_scaled=write_scaled,
                 compression=compression,
                 iterate=iterate,
+                iterator_type=iterator_type
             )
 
             # Write to file
@@ -954,6 +958,7 @@ def write_recording(
             write_scaled=write_scaled,
             compression=compression,
             iterate=iterate,
+            iterator_type=iterator_type
         )
 
 
