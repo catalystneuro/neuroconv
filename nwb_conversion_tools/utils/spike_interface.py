@@ -753,7 +753,7 @@ def add_all_to_nwbfile(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     iterate: bool = True,
-    iterator_type: Optional[str] = None
+    iterator_type: Optional[str] = None,
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -816,7 +816,7 @@ def add_all_to_nwbfile(
         write_scaled=write_scaled,
         compression=compression,
         iterate=iterate,
-        iterator_type=iterator_type
+        iterator_type=iterator_type,
     )
 
     add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
@@ -835,7 +835,7 @@ def write_recording(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     iterate: bool = True,
-    iterator_type : Optional[str] = None
+    iterator_type: Optional[str] = None,
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -941,7 +941,7 @@ def write_recording(
                 write_scaled=write_scaled,
                 compression=compression,
                 iterate=iterate,
-                iterator_type=iterator_type
+                iterator_type=iterator_type,
             )
 
             # Write to file
@@ -958,7 +958,7 @@ def write_recording(
             write_scaled=write_scaled,
             compression=compression,
             iterate=iterate,
-            iterator_type=iterator_type
+            iterator_type=iterator_type,
         )
 
 
