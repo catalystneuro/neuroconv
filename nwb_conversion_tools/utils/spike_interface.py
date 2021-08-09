@@ -476,7 +476,7 @@ def add_electrical_series(
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterate: bool = True,
-    iterator_type : Optional[str] = None
+    iterator_type: Optional[str] = None,
 ):
     """
     Auxiliary static method for nwbextractor.
