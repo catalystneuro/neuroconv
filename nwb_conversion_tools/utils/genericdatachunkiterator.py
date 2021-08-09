@@ -99,10 +99,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         return self
 
     def _chunk_map(self, chunk_idx: tuple) -> tuple:
-        return tuple([
-            slice(n * self.chunk_shape[j], min((n + 1) * self.chunk_shape[j], self.maxshape[j]))
-            for j, n in enumerate(chunk_idx)
-        ])
+        return tuple(
+            [
+                slice(n * self.chunk_shape[j], min((n + 1) * self.chunk_shape[j], self.maxshape[j]))
+                for j, n in enumerate(chunk_idx)
+            ]
+        )
 
     def __next__(self) -> DataChunk:
         """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved."""

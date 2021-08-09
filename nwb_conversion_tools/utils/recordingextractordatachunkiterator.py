@@ -15,7 +15,7 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
         buffer_gb: float = 2.0,
         buffer_shape: tuple = None,
         chunk_mb: float = 1.0,
-        chunk_shape: tuple = None
+        chunk_shape: tuple = None,
     ):
         self.recording_extractor = recording_extractor
         self.channel_ids = recording_extractor.get_channel_ids()
