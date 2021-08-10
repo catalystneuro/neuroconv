@@ -264,7 +264,7 @@ class TestExtractors(unittest.TestCase):
             compression_out,
             compression,
             "Intended compression type does not match what was written! "
-            f"(Out: {compression_out}, should be: {compression})"
+            f"(Out: {compression_out}, should be: {compression})",
         )
         self.check_si_roundtrip(path=path)
 
@@ -276,7 +276,7 @@ class TestExtractors(unittest.TestCase):
             compression_out,
             compression,
             "Intended compression type does not match what was written! "
-            f"(Out: {compression_out}, should be: {compression})"
+            f"(Out: {compression_out}, should be: {compression})",
         )
         self.check_si_roundtrip(path=path)
 
@@ -318,7 +318,7 @@ class TestExtractors(unittest.TestCase):
             chunks_out,
             test_iterator.chunk_shape,
             "Intended chunk shape does not match what was written! "
-            f"(Out: {chunks_out}, should be: {test_iterator.chunk_shape})"
+            f"(Out: {chunks_out}, should be: {test_iterator.chunk_shape})",
         )
         self.check_si_roundtrip(path=path)
 

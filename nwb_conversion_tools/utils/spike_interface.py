@@ -476,7 +476,7 @@ def add_electrical_series(
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = None,
-    iterator_opts: Optional[dict] = None
+    iterator_opts: Optional[dict] = None,
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -645,9 +645,8 @@ def add_electrical_series(
             iterator_opts = dict()
         ephys_data = RecordingExtractorDataChunkIterator(recording=recording, **iterator_opts)
     elif iterator_type == "v1":
-        if (
-            isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap)
-            and np.all(channel_offset == 0)
+        if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
+            channel_offset == 0
         ):
             n_bytes = np.dtype(recording.get_dtype()).itemsize
             buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
@@ -732,7 +731,7 @@ def add_all_to_nwbfile(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     iterator_type: Optional[str] = None,
-    iterator_opts: Optional[dict] = None
+    iterator_opts: Optional[dict] = None,
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -802,7 +801,7 @@ def add_all_to_nwbfile(
         write_scaled=write_scaled,
         compression=compression,
         iterator_type=iterator_type,
-        iterator_opts=iterator_opts
+        iterator_opts=iterator_opts,
     )
     add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
@@ -820,7 +819,7 @@ def write_recording(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     iterator_type: Optional[str] = None,
-    iterator_opts: Optional[dict] = None
+    iterator_opts: Optional[dict] = None,
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -933,7 +932,7 @@ def write_recording(
                 write_scaled=write_scaled,
                 compression=compression,
                 iterator_type=iterator_type,
-                iterator_opts=iterator_opts
+                iterator_opts=iterator_opts,
             )
             io.write(nwbfile)
     else:
@@ -948,7 +947,7 @@ def write_recording(
             write_scaled=write_scaled,
             compression=compression,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts
+            iterator_opts=iterator_opts,
         )
 
 
