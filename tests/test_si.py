@@ -17,6 +17,7 @@ from spikeextractors.testing import (
 from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
+from nwb_conversion_tools.utils.recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
 
 PathType = Union[str, Path]
 
@@ -262,7 +263,8 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             compression_out,
             compression,
-            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})",
+            "Intended compression type does not match what was written! "
+            f"(Out: {compression_out}, should be: {compression})"
         )
         self.check_si_roundtrip(path=path)
 
@@ -273,7 +275,8 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             compression_out,
             compression,
-            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})",
+            "Intended compression type does not match what was written! "
+            f"(Out: {compression_out}, should be: {compression})"
         )
         self.check_si_roundtrip(path=path)
 
@@ -285,7 +288,8 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             compression_out,
             compression,
-            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})",
+            "Intended compression type does not match what was written! "
+            f"(Out: {compression_out}, should be: {compression})",
         )
         self.check_si_roundtrip(path=path)
 
@@ -297,34 +301,25 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             compression_out,
             compression,
-            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})",
-        )
-        self.check_si_roundtrip(path=path)
-
-        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression, iterate=False)
-        with NWBHDF5IO(path=path, mode="r") as io:
-            nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
-        self.assertEqual(
-            compression_out,
-            compression,
-            f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})",
+            "Intended compression type does not match what was written! "
+            f"(Out: {compression_out}, should be: {compression})",
         )
         self.check_si_roundtrip(path=path)
 
     def test_write_recording_chunking(self):
         path = self.test_dir + "/test.nwb"
 
-        buffer_mb = 1e3
-        write_recording(recording=self.RX, save_path=path, overwrite=True, buffer_mb=buffer_mb)
+        write_recording(recording=self.RX, save_path=path, overwrite=True)
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             chunks_out = nwbfile.acquisition["ElectricalSeries_raw"].data.chunks
-        # self.assertEqual(
-        #     chunks_out,
-        #     compression,
-        #     f"Intended compression type does not match what was written! (Out: {compression_out}, should be: {compression})"
-        # )
+        test_iterator = RecordingExtractorDataChunkIterator(recording=self.RX)
+        self.assertEqual(
+            chunks_out,
+            test_iterator.chunk_shape,
+            "Intended chunk shape does not match what was written! "
+            f"(Out: {chunks_out}, should be: {test_iterator.chunk_shape})"
+        )
         self.check_si_roundtrip(path=path)
 
     def test_write_sorting(self):
