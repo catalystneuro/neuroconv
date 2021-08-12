@@ -26,7 +26,7 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
             channel_ids=self.channel_ids[selection[1]],
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
-            return_scaled=False
+            return_scaled=False,
         ).T
 
     def _get_dtype(self):
