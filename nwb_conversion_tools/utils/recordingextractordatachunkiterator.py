@@ -23,7 +23,10 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording.get_traces(
-            channel_ids=self.channel_ids[selection[1]], start_frame=selection[0].start, end_frame=selection[0].stop
+            channel_ids=self.channel_ids[selection[1]],
+            start_frame=selection[0].start,
+            end_frame=selection[0].stop,
+            return_scaled=False
         ).T
 
     def _get_dtype(self):
