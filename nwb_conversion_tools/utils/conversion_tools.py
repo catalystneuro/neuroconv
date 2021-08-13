@@ -102,7 +102,7 @@ def estimate_recording_conversion_time(
     itemsize = recording.get_dtype().itemsize
     total_mb = recording.get_num_frames() * num_channels * itemsize / 1e6
     if total_mb > mb_threshold:
-        truncation = np.floor(mb_threshold * 1e6 / (num_channels * itemsize))
+        truncation = (mb_threshold * 1e6) // (num_channels * itemsize)
         test_recording = SubRecordingExtractor(parent_recording=recording, end_frame=truncation)
     else:
         test_recording = recording

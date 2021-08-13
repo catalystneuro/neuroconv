@@ -468,7 +468,6 @@ def add_electrical_series(
     recording: se.RecordingExtractor,
     nwbfile=None,
     metadata: dict = None,
-    buffer_mb: int = 1000,
     use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
@@ -531,7 +530,6 @@ def add_electrical_series(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
-    assert buffer_mb > 10, "'buffer_mb' should be at least 10MB to ensure data can be chunked!"
     assert compression is None or compression in [
         "gzip",
         "lzf",
@@ -649,10 +647,10 @@ def add_electrical_series(
             channel_offset == 0
         ):
             n_bytes = np.dtype(recording.get_dtype()).itemsize
-            buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
+            buffer_size = int(iterator_opts.get("buffer_gb", 1) * 1e9) // (recording.get_num_channels() * n_bytes)
             ephys_data = DataChunkIterator(
                 data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
-                buffer_size=int(buffer_size / n_bytes),
+                buffer_size=buffer_size,
             )
         else:
             raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
@@ -723,7 +721,6 @@ def add_epochs(recording: se.RecordingExtractor, nwbfile=None, metadata: dict = 
 def add_all_to_nwbfile(
     recording: se.RecordingExtractor,
     nwbfile=None,
-    buffer_mb: int = 500,
     use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
@@ -743,9 +740,6 @@ def add_all_to_nwbfile(
     recording: RecordingExtractor
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
-    buffer_mb: int (optional, defaults to 500MB)
-        maximum amount of memory (in MB) to use per iteration of the
-        DataChunkIterator (requires traces to be memmap objects)
     use_times: bool
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -772,11 +766,12 @@ def add_all_to_nwbfile(
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
     iterator_opts: dict (optional)
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
+        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2')
+        or DataChunkIterator (iterator_tpye='v1').
         Valid options are
-            buffer_gb : float (optional, defaults to 1 GB)
+            buffer_gb : float (optional, defaults to 1 GB, available for both 'v2' and 'v1')
                 Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-            chunk_mb : float (optional, defaults to 1 MB)
+            chunk_mb : float (optional, defaults to 1 MB, only available for 'v2')
                 Should be below 1 MB. Automatically calculates suitable chunk shape.
         If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
@@ -793,7 +788,6 @@ def add_all_to_nwbfile(
     add_electrical_series(
         recording=recording,
         nwbfile=nwbfile,
-        buffer_mb=buffer_mb,
         use_times=use_times,
         metadata=metadata,
         write_as=write_as,
@@ -811,7 +805,6 @@ def write_recording(
     save_path: PathType = None,
     overwrite: bool = False,
     nwbfile=None,
-    buffer_mb: int = 500,
     use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
@@ -924,7 +917,6 @@ def write_recording(
             add_all_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
-                buffer_mb=buffer_mb,
                 metadata=metadata,
                 use_times=use_times,
                 write_as=write_as,
@@ -939,7 +931,6 @@ def write_recording(
         add_all_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
-            buffer_mb=buffer_mb,
             use_times=use_times,
             metadata=metadata,
             write_as=write_as,
