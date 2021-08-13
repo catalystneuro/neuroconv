@@ -353,6 +353,35 @@ class TestExtractors(unittest.TestCase):
         assert "widths" not in SX_nwb.get_shared_unit_spike_feature_names()
         check_sortings_equal(self.SX2, SX_nwb)
         check_dumping(SX_nwb)
+        
+        # units_name = "test_name"
+        # write_sorting(sorting=self.SX, save_path=path, overwrite=True, units_name=units_name)
+        # SX_nwb = se.NwbSortingExtractor(path)
+        # check_sortings_equal(self.SX, SX_nwb)
+        # check_dumping(SX_nwb)
+        # with NWBHDF5IO(path=path, mode="r") as io:
+        #     nwbfile = io.read()
+        #     name_out = nwbfile.units.name
+        # self.assertEqual(
+        #     name_out,
+        #     units_name,
+        #     f"Intended units table name does not match what was written! (Out: {name_out}, should be: {units_name})",
+        # )
+        
+        units_description = "test_description"
+        write_sorting(sorting=self.SX, save_path=path, overwrite=False, units_description=units_description)
+        SX_nwb = se.NwbSortingExtractor(path)
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            description_out = nwbfile.units.description
+        self.assertEqual(
+            description_out,
+            units_description,
+            "Intended units table description does not match what was written! "
+            f"(Out: {name_out}, should be: {units_description})",
+        )
 
     def check_metadata_write(self, metadata: dict, nwbfile_path: Path, recording: se.RecordingExtractor):
         standard_metadata = get_nwb_metadata(recording=recording)

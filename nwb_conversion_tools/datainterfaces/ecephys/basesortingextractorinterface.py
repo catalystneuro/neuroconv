@@ -13,7 +13,7 @@ from ...utils.json_schema import (
     get_schema_from_method_signature,
     fill_defaults,
 )
-from ...utils.spike_interface import add_devices, add_electrode_groups, add_electrodes
+from ...utils.spike_interface import add_devices, add_electrode_groups, add_electrodes, write_sorting
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):
@@ -103,6 +103,6 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                     data = metadata_column["data"][unit_idx]
                     sorting_extractor.set_unit_property(unit_id, metadata_column["name"], data)
 
-        se.NwbSortingExtractor.write_sorting(
+        write_sorting(
             sorting_extractor, property_descriptions=property_descriptions, nwbfile=nwbfile
         )
