@@ -103,6 +103,4 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                     data = metadata_column["data"][unit_idx]
                     sorting_extractor.set_unit_property(unit_id, metadata_column["name"], data)
 
-        write_sorting(
-            sorting_extractor, property_descriptions=property_descriptions, nwbfile=nwbfile
-        )
+        write_sorting(sorting_extractor, property_descriptions=property_descriptions, nwbfile=nwbfile)
