@@ -1012,6 +1012,8 @@ def write_units(
         "units",
         "processing",
     ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
+    if write_as == "units":
+        assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
 
     all_properties = set()
     all_features = set()
@@ -1252,6 +1254,8 @@ def write_sorting(
         "units",
         "processing",
     ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
+    if write_as == "units":
+        assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
 
     if nwbfile is None:
         if Path(save_path).is_file() and not overwrite:
