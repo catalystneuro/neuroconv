@@ -48,6 +48,7 @@ if HAVE_DATALAD and sys.platform == "linux":
             ]
         )
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
+            print(recording_interface)
             print(f"\n\n\n TESTING {recording_interface.__name__}...")
             dataset_stem = Path(dataset_path).stem
             self.dataset.get(dataset_path)
