@@ -31,24 +31,23 @@ if HAVE_DATALAD and sys.platform == "linux":
 
         @parameterized.expand(
             [
-                dict(
-                    recording_interface=IntanRecordingInterface,
-                    dataset_path="intan",
-                    interface_kwargs=dict(
+                (
+                    IntanRecordingInterface,
+                    "intan",
+                    dict(
                         file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhd_test_1.rhd")
                     ),
                 ),
-                dict(
-                    recording_interface=IntanRecordingInterface,
-                    dataset_path="intan",
-                    interface_kwargs=dict(
+                (
+                    IntanRecordingInterface,
+                    "intan",
+                    dict(
                         file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhs_test_1.rhs")
                     ),
                 ),
             ]
         )
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
-            print(recording_interface)
             print(f"\n\n\n TESTING {recording_interface.__name__}...")
             dataset_stem = Path(dataset_path).stem
             self.dataset.get(dataset_path)
