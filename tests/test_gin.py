@@ -31,15 +31,19 @@ if HAVE_DATALAD and sys.platform == "linux":
 
         @parameterized.expand(
             [
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhd_test_1.rhd"),
+                dict(
+                    recording_interface=IntanRecordingInterface,
+                    dataset_path="intan",
+                    interface_kwargs=dict(
+                        file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhd_test_1.rhd")
+                    ),
                 ),
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhs_test_1.rhs"),
+                dict(
+                    recording_interface=IntanRecordingInterface,
+                    dataset_path="intan",
+                    interface_kwargs=dict(
+                        file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhs_test_1.rhs")
+                    ),
                 ),
             ]
         )
