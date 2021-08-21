@@ -34,16 +34,12 @@ if HAVE_DATALAD and sys.platform == "linux":
                 (
                     IntanRecordingInterface,
                     "intan",
-                    dict(
-                        file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhd_test_1.rhd")
-                    ),
+                    dict(file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhd_test_1.rhd")),
                 ),
                 (
                     IntanRecordingInterface,
                     "intan",
-                    dict(
-                        file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhs_test_1.rhs")
-                    ),
+                    dict(file_path=str(Path.cwd() / "ephy_testing_data" / "intan" / "intan_rhs_test_1.rhs")),
                 ),
             ]
         )
