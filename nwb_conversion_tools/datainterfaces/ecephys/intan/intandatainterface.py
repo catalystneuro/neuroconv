@@ -33,25 +33,21 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         """Retrieve Ecephys metadata specific to the Intan format."""
         intan_file_metadata = read_rhd(self.source_data["file_path"])[1]
         exclude_chan_types = ["AUX", "ADC", "VDD"]
-
-        group_names = [
-            x["native_channel_name"].split("-")[0]
-            for x in intan_file_metadata
-            if not any([y in x["native_channel_name"] for y in exclude_chan_types])
+        valid_channels = [
+            x for x in intan_file_metadata if not any([y in x["native_channel_name"] for y in exclude_chan_types])
         ]
+
+        native_names = [channel["native_channel_name"] for channel in valid_channels]
+        group_names = list()
+        group_electrode_numbers = list()
+        for native_name in native_names:
+            group_name, group_electrode_number = native_name.split("-")
+            group_names.append(group_name)
+            group_electrode_numbers.append(int(group_electrode_number))
         unique_group_names = set(group_names)
 
-        group_electrode_number = [
-            [
-                int(y[1])
-                for group_name in unique_group_names
-                for x in intan_file_metadata
-                for y in [x["native_channel_name"].split("-")]
-                if y[0] == group_name and not any([y in x["native_channel_name"] for y in exclude_chan_types])
-            ]
-        ]
-
-        for channel_id, channel_group in zip(self.recording_extractor.get_channel_ids(), group_names):
+        channel_ids = self.recording_extractor.get_channel_ids()
+        for channel_id, channel_group in zip(channel_ids, group_names):
             self.recording_extractor.set_channel_property(
                 channel_id=channel_id, property_name="group_name", value=f"Group{channel_group}"
             )
@@ -60,9 +56,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             Ecephys=dict(
                 Device=[
                     dict(
-                        name="Intan",
-                        description="Intan recording",
-                        manufacturer="Intan",
+                        name="Intan", description="Intan recording", manufacturer="Intan",
                     ),
                 ],
                 ElectrodeGroup=[
@@ -76,9 +70,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                 ],
                 Electrodes=[
                     dict(
-                        name="group_name",
-                        description="The name of the ElectrodeGroup this electrode is a part of.",
-                        data=[f"Group{x}" for x in group_names],
+                        name="group_name", description="The name of the ElectrodeGroup this electrode is a part of."
                     )
                 ],
                 ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
@@ -86,33 +78,22 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         )
 
         if len(unique_group_names) > 1:
-            ecephys_metadata["Ecephys"]["Electrodes"].append(
-                dict(
-                    name="group_electrode_number",
-                    description="0-indexed channel within a group.",
-                    data=group_electrode_number,
+            for channel_id, group_electrode_number in zip(channel_ids, group_electrode_numbers):
+                self.recording_extractor.set_channel_property(
+                    channel_id=channel_id, property_name="group_electrode_number", value=group_electrode_number
                 )
+            ecephys_metadata["Ecephys"]["Electrodes"].append(
+                dict(name="group_electrode_number", description="0-indexed channel within a group.")
             )
 
-        any_custom_names = any(
-            [
-                x["native_channel_name"] != x["custom_channel_name"]
-                for x in intan_file_metadata
-                if "custom_channel_name" in x and not any([y in x["native_channel_name"] for y in exclude_chan_types])
-            ]
-        )
-        if any_custom_names:
-            ecephys_metadata["Ecephys"]["Electrodes"].append(
-                dict(
-                    name="custom_channel_name",
-                    description="Custom channel name assigned in Intan.",
-                    data=[
-                        x["custom_channel_name"]
-                        for x in intan_file_metadata
-                        if "custom_channel_name" in x
-                        and not any([y in x["native_channel_name"] for y in exclude_chan_types])
-                    ],
+        custom_names = [channel["custom_channel_name"] for channel in valid_channels]
+        if any(custom_names):
+            for channel_id, custom_name in zip(channel_ids, custom_names):
+                self.recording_extractor.set_channel_property(
+                    channel_id=channel_id, property_name="custom_channel_name", value=custom_name
                 )
+            ecephys_metadata["Ecephys"]["Electrodes"].append(
+                dict(name="custom_channel_name", description="Custom channel name assigned in Intan.")
             )
 
         return ecephys_metadata
