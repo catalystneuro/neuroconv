@@ -354,6 +354,53 @@ class TestExtractors(unittest.TestCase):
         check_sortings_equal(self.SX2, SX_nwb)
         check_dumping(SX_nwb)
 
+        write_sorting(sorting=self.SX, save_path=path, overwrite=True)
+        write_sorting(sorting=self.SX, save_path=path, overwrite=False, write_as="processing")
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            units_1_id = nwbfile.units.id[:]
+            units_1_spike_times = nwbfile.units.spike_times[:]
+            units_2_id = nwbfile.processing["ecephys"]["units"].id[:]
+            units_2_spike_times = nwbfile.processing["ecephys"]["units"].spike_times[:]
+        np.testing.assert_array_equal(
+            x=units_1_id,
+            y=units_2_id,
+            err_msg=f"Processing unit ids do not match! (Out: {units_2_id}, should be: {units_1_id})",
+        )
+        np.testing.assert_array_equal(
+            x=units_1_spike_times,
+            y=units_2_spike_times,
+            err_msg=(
+                f"Processing unit ids do not match! (Out: {units_2_spike_times}, should be: {units_1_spike_times})"
+            ),
+        )
+
+        units_name = "test_name"
+        write_sorting(sorting=self.SX, save_path=path, overwrite=True, write_as="processing", units_name=units_name)
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            name_out = nwbfile.processing["ecephys"][units_name].name
+        self.assertEqual(
+            name_out,
+            units_name,
+            f"Intended units table name does not match what was written! (Out: {name_out}, should be: {units_name})",
+        )
+
+        units_description = "test_description"
+        write_sorting(sorting=self.SX, save_path=path, overwrite=False, units_description=units_description)
+        SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
+        with NWBHDF5IO(path=path, mode="r") as io:
+            nwbfile = io.read()
+            description_out = nwbfile.units.description
+        self.assertEqual(
+            description_out,
+            units_description,
+            "Intended units table description does not match what was written! "
+            f"(Out: {description_out}, should be: {units_description})",
+        )
+
     def check_metadata_write(self, metadata: dict, nwbfile_path: Path, recording: se.RecordingExtractor):
         standard_metadata = get_nwb_metadata(recording=recording)
         device_defaults = dict(name="Device", description="no description")  # from the individual add_devices function
