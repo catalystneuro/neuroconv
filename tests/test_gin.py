@@ -35,7 +35,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
         dataset = None
         savedir = Path(tempfile.mkdtemp())
 
-        if RUN_LOCAL:
+        if RUN_LOCAL and LOCAL_PATH.exists():
             data_path = LOCAL_PATH
         else:
             data_path = Path.cwd() / "ephy_testing_data"
