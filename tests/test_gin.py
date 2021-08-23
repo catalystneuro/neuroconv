@@ -70,7 +70,7 @@ if HAVE_DATALAD and sys.platform == "linux":
                 for j, x in enumerate(nwb_recording.get_channel_offsets()):
                     scaled_traces_2[j, :] -= x
                 np.testing.assert_almost_equal(traces_1, nwb_recording.get_traces(return_scaled=False))
-                np.testing.assert_almost_equal(recording.get_traces(return_scaled=True), scaled_traces_2)
+                np.testing.assert_almost_equal(recording.get_traces(return_scaled=True), scaled_traces_2, decimal=3)
 
 
 if __name__ == "__main__":
