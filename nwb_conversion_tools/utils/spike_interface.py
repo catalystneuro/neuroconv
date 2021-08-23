@@ -492,9 +492,6 @@ def add_electrical_series(
         Should be of the format
             metadata['Ecephys']['ElectricalSeries'] = {'name': my_name,
                                                         'description': my_description}
-    buffer_mb: int (optional, defaults to 1000MB)
-        maximum amount of memory (in MB) to use per iteration of the
-        DataChunkIterator (requires traces to be memmap objects)
     use_times: bool (optional, defaults to False)
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -647,7 +644,7 @@ def add_electrical_series(
             channel_offset == 0
         ):
             n_bytes = np.dtype(recording.get_dtype()).itemsize
-            buffer_size = int(iterator_opts.get("buffer_gb", 2) * 1e9) // n_bytes
+            buffer_size = int(iterator_opts.get("buffer_gb", 1) * 1e9) // n_bytes
             ephys_data = DataChunkIterator(
                 data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
                 buffer_size=buffer_size,
@@ -832,9 +829,6 @@ def write_recording(
             my_recording_extractor, my_nwbfile
         )
         will result in the appropriate changes to the my_nwbfile object.
-    buffer_mb: int (optional, defaults to 500MB)
-        maximum amount of memory (in MB) to use per iteration of the
-        DataChunkIterator (requires traces to be memmap objects)
     use_times: bool
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.

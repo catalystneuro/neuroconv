@@ -12,7 +12,7 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
     def __init__(
         self,
         recording: RecordingExtractor,
-        buffer_gb: float = 2.0,
+        buffer_gb: float = 1.0,
         buffer_shape: tuple = None,
         chunk_mb: float = 1.0,
         chunk_shape: tuple = None,
