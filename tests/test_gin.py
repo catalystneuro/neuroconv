@@ -25,22 +25,30 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-RUN_LOCAL = False
+RUN_LOCAL = True
 LOCAL_PATH = Path("D:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
 
     class TestNwbConversions(unittest.TestCase):
         dataset = None
-        data_path = LOCAL_PATH
         savedir = Path(tempfile.mkdtemp())
+
+        if RUN_LOCAL:
+            data_path = LOCAL_PATH
+        else:
+            data_path = Path.cwd() / "ephy_testing_data"
 
         def setUp(self):
             if RUN_LOCAL:
-                assert self.data_path.exists(), f"The manually specified data path ({self.data_path}) does not exist!"
-            elif HAVE_DATALAD:
+                if not self.data_path.exists():
+                    if HAVE_DATALAD:
+                        self.dataset = install("https://gin.g-node.org/NeuralEnsemble/ephy_testing_data")
+                    else:
+                        raise OSError(f"The manually specified data path ({self.data_path}) does not exist!")
+            else:
                 self.dataset = install("https://gin.g-node.org/NeuralEnsemble/ephy_testing_data")
-                self.data_path = Path.cwd() / "ephy_testing_data"
 
         @parameterized.expand(
             [
