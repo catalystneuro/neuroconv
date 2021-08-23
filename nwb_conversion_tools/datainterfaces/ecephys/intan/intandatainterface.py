@@ -82,10 +82,14 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                         device="Intan",
                         location="",
                     )
-                    for group_name in set([
-                        self.recording_extractor.get_channel_property(channel_id=channel_id, property_name="group_name")
-                        for channel_id in channel_ids
-                    ])
+                    for group_name in set(
+                        [
+                            self.recording_extractor.get_channel_property(
+                                channel_id=channel_id, property_name="group_name"
+                            )
+                            for channel_id in channel_ids
+                        ]
+                    )
                 ],
                 Electrodes=[
                     dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of.")
