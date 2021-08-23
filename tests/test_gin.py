@@ -65,15 +65,12 @@ if HAVE_DATALAD and sys.platform == "linux":
                 traces_1 = recording.get_traces(return_scaled=False).astype(new_dtype)
                 unsigned_coercion = (recording.get_channel_offsets() / recording.get_channel_gains()).astype(new_dtype)
                 for j, x in enumerate(unsigned_coercion):
-                    traces_1[:, j] -= x
+                    traces_1[j, :] -= x
                 scaled_traces_2 = nwb_recording.get_traces(return_scaled=True)
-                nwb_unsigned_coercion = (
-                    nwb_recording.get_channel_offsets() / nwb_recording.get_channel_gains()
-                ).astype(new_dtype)
                 for j, x in enumerate(nwb_recording.get_channel_offsets()):
-                    scaled_traces_2[:, j] -= x
-                self.assertAlmostEqual(traces_1, nwb_recording.get_traces(return_scaled=False))
-                self.assertAlmostEqual(recording.get_traces(return_scaled=True), scaled_traces_2)
+                    scaled_traces_2[j, :] -= x
+                np.testing.assert_almost_equal(traces_1, nwb_recording.get_traces(return_scaled=False))
+                np.testing.assert_almost_equal(recording.get_traces(return_scaled=True), scaled_traces_2)
 
 
 if __name__ == "__main__":

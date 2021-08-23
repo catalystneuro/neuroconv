@@ -43,14 +43,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             x for x in intan_file_metadata if not any([y in x["native_channel_name"] for y in exclude_chan_types])
         ]
 
-        native_names = [channel["native_channel_name"] for channel in valid_channels]
-        group_names = list()
-        group_electrode_numbers = list()
-        for native_name in native_names:
-            group_name, group_electrode_number = native_name.split("-")
-            group_names.append(group_name)
-            group_electrode_numbers.append(int(group_electrode_number))
+        group_names = [channel["native_channel_name"].split("-")[0] for channel in valid_channels]
         unique_group_names = set(group_names)
+        group_electrode_numbers = [channel["native_order"] for channel in valid_channels]
 
         channel_ids = self.recording_extractor.get_channel_ids()
         for channel_id, channel_group in zip(channel_ids, group_names):
