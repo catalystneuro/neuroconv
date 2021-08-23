@@ -20,7 +20,6 @@ INSTALL_MESSAGE = "Please install lxml to use this extractor!"
 def get_xml_file_path(data_file_path: str):
     """
     Infer the xml_file_path from the data_file_path (.dat or .eeg).
-
     Assumes the two are in the same folder and follow the session_id naming convention.
     """
     session_path = Path(data_file_path).parent
@@ -38,7 +37,6 @@ def get_xml(xml_file_path: str):
 def get_shank_channels(xml_file_path: str, sort: bool = False):
     """
     Auxiliary function for retrieving the list of structured shank-only channels.
-
     Attempts to retrieve these first from the spikeDetection sub-field in the event that spike sorting was performed on
     the raw data. In the event that spike sorting was not performed, it then retrieves only the anatomicalDescription.
     """

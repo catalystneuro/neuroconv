@@ -133,8 +133,13 @@ def add_devices(recording: se.RecordingExtractor, nwbfile=None, metadata: dict =
     metadata: dict
         metadata info for constructing the nwb file (optional).
         Should be of the format
-            metadata['Ecephys']['Device'] = [{'name': my_name,
-                                                'description': my_description}, ...]
+            metadata['Ecephys']['Device'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
 
     Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
@@ -174,10 +179,15 @@ def add_electrode_groups(recording: se.RecordingExtractor, nwbfile=None, metadat
     metadata: dict
         metadata info for constructing the nwb file (optional).
         Should be of the format
-            metadata['Ecephys']['ElectrodeGroup'] = [{'name': my_name,
-                                                        'description': my_description,
-                                                        'location': electrode_location,
-                                                        'device_name': my_device_name}, ...]
+            metadata['Ecephys']['ElectrodeGroup'] = [
+                {
+                    'name': my_name,
+                    'description': my_description,
+                    'location': electrode_location,
+                    'device_name': my_device_name
+                },
+                ...
+            ]
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults.
 
@@ -259,11 +269,16 @@ def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dic
     metadata: dict
         metadata info for constructing the nwb file (optional).
         Should be of the format
-            metadata['Ecephys']['Electrodes'] = [{'name': my_name,
-                                                    'description': my_description,
-                                                    'data': [my_electrode_data]}, ...]
-        where each dictionary corresponds to a column in the Electrodes table and [my_electrode_data] is a list in
-        one-to-one correspondence with the nwbfile electrode ids and RecordingExtractor channel ids.
+            metadata['Ecephys']['Electrodes'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+
+        Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
+        properties in the RecordingExtractor object.
     exclude: tuple
         An iterable containing the string names of channel properties in the RecordingExtractor
         object to ignore when writing to the NWBFile.
@@ -485,8 +500,10 @@ def add_electrical_series(
     metadata: dict
         metadata info for constructing the nwb file (optional).
         Should be of the format
-            metadata['Ecephys']['ElectricalSeries'] = {'name': my_name,
-                                                        'description': my_description}
+            metadata['Ecephys']['ElectricalSeries'] = {
+                'name': my_name,
+                'description': my_description
+            }
     buffer_mb: int (optional, defaults to 500MB)
         maximum amount of memory (in MB) to use per iteration of the
         DataChunkIterator (requires traces to be memmap objects)
@@ -854,17 +871,36 @@ def write_recording(
         of the format
             metadata['Ecephys'] = {}
         with keys of the forms
-            metadata['Ecephys']['Device'] = [{'name': my_name,
-                                                'description': my_description}, ...]
-            metadata['Ecephys']['ElectrodeGroup'] = [{'name': my_name,
-                                                        'description': my_description,
-                                                        'location': electrode_location,
-                                                        'device': my_device_name}, ...]
-            metadata['Ecephys']['Electrodes'] = [{'name': my_name,
-                                                    'description': my_description,
-                                                    'data': [my_electrode_data]}, ...]
-            metadata['Ecephys']['ElectricalSeries'] = {'name': my_name,
-                                                        'description': my_description}
+            metadata['Ecephys']['Device'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+            metadata['Ecephys']['ElectrodeGroup'] = [
+                {
+                    'name': my_name,
+                    'description': my_description,
+                    'location': electrode_location,
+                    'device': my_device_name
+                },
+                ...
+            ]
+            metadata['Ecephys']['Electrodes'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+            metadata['Ecephys']['ElectricalSeries'] = {
+                'name': my_name,
+                'description': my_description
+            }
+
+        Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
+        properties in the RecordingExtractor object.
     write_as: str (optional, defaults to 'raw')
         How to save the traces data in the nwb file. Options:
         - 'raw' will save it in acquisition
