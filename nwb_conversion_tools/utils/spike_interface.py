@@ -520,7 +520,7 @@ def add_electrical_series(
         Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
         Valid options are
             buffer_gb: float (optional, defaults to 1 GB)
-                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
+                Recommended to be as much free RAM as available. Automatically calculates suitable buffer shape.
             chunk_mb: float (optional, defaults to 1 MB)
                 Should be below 1 MB. Automatically calculates suitable chunk shape.
         If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
@@ -647,7 +647,7 @@ def add_electrical_series(
             channel_offset == 0
         ):
             n_bytes = np.dtype(recording.get_dtype()).itemsize
-            buffer_size = int(iterator_opts.get("buffer_gb", 1) * 1e9) // (recording.get_num_channels() * n_bytes)
+            buffer_size = int(iterator_opts.get("buffer_gb", 2) * 1e9) // n_bytes
             ephys_data = DataChunkIterator(
                 data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
                 buffer_size=buffer_size,
