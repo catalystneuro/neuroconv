@@ -62,7 +62,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             Ecephys=dict(
                 Device=[
                     dict(
-                        name="Intan", description="Intan recording", manufacturer="Intan",
+                        name="Intan",
+                        description="Intan recording",
+                        manufacturer="Intan",
                     ),
                 ],
                 ElectrodeGroup=[
@@ -75,9 +77,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                     for group_name in unique_group_names
                 ],
                 Electrodes=[
-                    dict(
-                        name="group_name", description="The name of the ElectrodeGroup this electrode is a part of."
-                    )
+                    dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of.")
                 ],
                 ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
             )
