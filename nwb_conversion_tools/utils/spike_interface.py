@@ -650,7 +650,7 @@ def add_electrical_series(
                 for i, ch in enumerate(channels_ids):
                     data = recording.get_traces(channel_ids=[ch], return_scaled=write_scaled)
                     if not write_scaled:
-                        data_dtype_name = data.dtype.name
+                        data_dtype_name = recording.get_dtype(return_scaled=False).name
                         if data_dtype_name.startswith("uint"):
                             data_dtype_name = data_dtype_name[1:]  # Retain memory of signed data type
                         data = data + unsigned_coercion[i]

@@ -1,11 +1,14 @@
 """Authors: Cody Baker and Ben Dichter."""
+from pathlib import Path
+
 import spikeextractors as se
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from pynwb.ecephys import ElectricalSeries
+
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.json_schema import get_schema_from_hdmf_class
 
 try:
-    from pyintan.intan import read_rhd
+    from pyintan.intan import read_rhd, read_rhs
 
     HAVE_PYINTAN = True
 except ImportError:
@@ -31,7 +34,10 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Intan format."""
-        intan_file_metadata = read_rhd(self.source_data["file_path"])[1]
+        if ".rhd" in Path(self.source_data["file_path"]).suffixes:
+            intan_file_metadata = read_rhd(self.source_data["file_path"])[1]
+        else:
+            intan_file_metadata = read_rhs(self.source_data["file_path"])[1]
         exclude_chan_types = ["AUX", "ADC", "VDD"]
         valid_channels = [
             x for x in intan_file_metadata if not any([y in x["native_channel_name"] for y in exclude_chan_types])
