@@ -59,18 +59,15 @@ if HAVE_DATALAD and sys.platform == "linux":
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             if np.all(recording.get_channel_offsets() == 0):
                 check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
-                check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
             else:
                 new_dtype = recording.get_dtype(return_scaled=False).name[1:]
                 traces_1 = recording.get_traces(return_scaled=False).astype(new_dtype)
                 unsigned_coercion = (recording.get_channel_offsets() / recording.get_channel_gains()).astype(new_dtype)
                 for j, x in enumerate(unsigned_coercion):
                     traces_1[j, :] -= x
-                scaled_traces_2 = nwb_recording.get_traces(return_scaled=True)
-                for j, x in enumerate(nwb_recording.get_channel_offsets()):
-                    scaled_traces_2[j, :] -= x
                 np.testing.assert_almost_equal(traces_1, nwb_recording.get_traces(return_scaled=False))
-                np.testing.assert_almost_equal(recording.get_traces(return_scaled=True), scaled_traces_2, decimal=3)
+                nwb_recording.clear_channel_offsets()
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 
 
 if __name__ == "__main__":
