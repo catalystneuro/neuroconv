@@ -74,12 +74,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         assert (
             buffer_gb > 0 and buffer_gb < psutil.virtual_memory().available / 1e9
         ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
-        assert buffer_gb is not None and buffer_shape is not None, (
-            "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
-        )
-        assert chunk_mb is not None and chunk_shape is not None, (
-            "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
-        )
+        assert (
+            buffer_gb is not None and buffer_shape is not None
+        ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        assert (
+            chunk_mb is not None and chunk_shape is not None
+        ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
 
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()

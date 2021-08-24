@@ -1,5 +1,5 @@
 from roiextractors import Suite2pSegmentationExtractor
-    
+
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
