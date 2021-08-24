@@ -17,4 +17,4 @@ neo @ git+https://github.com/NeuralEnsemble/python-neo.git@master
 roiextractors==0.3.1
 ndx-events==0.2.0
 parameterized==0.8.1
-pyintan @ git+https://github.com/alejoe91/pyintan.git@92ee10acad13bd2b5207a158a2e38ce222be716a
+pyintan==0.3.0
