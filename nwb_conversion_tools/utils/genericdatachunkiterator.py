@@ -11,14 +11,14 @@ from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
-    def _set_chunk_shape(self, chunk_mb: float = 1.0):
+    def _set_chunk_shape(self, chunk_mb):
         """
         Select chunk size less than the threshold of chunk_mb, keeping the dimensional ratios of the original data.
 
         Parameters
         ----------
-        chunk_mb : float, optional
-            H5 reccomends setting this to around 1 MB (our default) for optimal performance.
+        chunk_mb : float
+            H5 reccomends setting this to around 1 MB for optimal performance.
         """
         n_dims = len(self.maxshape)
         itemsize = self.dtype.itemsize
@@ -33,14 +33,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         self.chunk_shape = tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
-    def _set_buffer_shape(self, buffer_gb: float = 1.0):
+    def _set_buffer_shape(self, buffer_gb):
         """
         Select buffer size less than the threshold of buffer_gb, keeping the dimensional ratios of the original data.
 
         Parameters
         ----------
-        buffer_gb : float, optional
-            The maximum amount of RAM to use to buffer the chunks. Defaults to 2 GB.
+        buffer_gb : float
+            The maximum amount of RAM to use to buffer the chunks.
         """
         assert (
             buffer_gb > 0 and buffer_gb < psutil.virtual_memory().available / 1e9
@@ -74,10 +74,14 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         chunk_shape : tuple, optional
             Manually defined shape of the chunks. Defaults to None.
         """
-        assert buffer_gb is not None and buffer_shape is not None, (
+        if buffer_gb is None and buffer_shape is None:
+            buffer_gb = 1.0
+        if chunk_mb is None and chunk_shape is None:
+            chunk_mb = 1.0
+        assert (buffer_gb is not None) != (buffer_shape is not None), (
             "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
         )
-        assert chunk_mb is not None and chunk_shape is not None, (
+        assert (chunk_mb is not None) != (chunk_shape is not None), (
             "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
         )
 
