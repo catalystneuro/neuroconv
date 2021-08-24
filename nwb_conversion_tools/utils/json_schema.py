@@ -222,7 +222,7 @@ def get_schema_from_hdmf_class(hdmf_class):
                 item = docval_arg_type[np.where(is_nwb)[0][0]]
                 # if it is child
                 if docval_arg["name"] in pynwb_children_fields:
-                    items = [get_schema_from_hdmf_class(item)]
+                    items = get_schema_from_hdmf_class(item)
                     schema_arg[docval_arg["name"]].update(type="array", items=items, minItems=1, maxItems=1)
                 # if it is link
                 else:
