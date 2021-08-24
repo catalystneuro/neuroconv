@@ -74,12 +74,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         chunk_shape : tuple, optional
             Manually defined shape of the chunks. Defaults to None.
         """
-        assert buffer_gb is not None and buffer_shape is not None, (
-            "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
-        )
-        assert chunk_mb is not None and chunk_shape is not None, (
-            "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
-        )
+        assert (
+            buffer_gb is not None and buffer_shape is not None
+        ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        assert (
+            chunk_mb is not None and chunk_shape is not None
+        ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
 
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
