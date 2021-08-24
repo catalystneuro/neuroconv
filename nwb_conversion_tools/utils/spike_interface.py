@@ -741,6 +741,7 @@ def add_all_to_nwbfile(
     es_key: str = None,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
+    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = None,
     iterator_opts: Optional[dict] = None,
 ):
@@ -808,6 +809,7 @@ def add_all_to_nwbfile(
         es_key=es_key,
         write_scaled=write_scaled,
         compression=compression,
+        compression_opts=compression_opts,
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
@@ -825,6 +827,7 @@ def write_recording(
     es_key: str = None,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
+    compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = None,
     iterator_opts: Optional[dict] = None,
 ):
@@ -953,6 +956,7 @@ def write_recording(
                 es_key=es_key,
                 write_scaled=write_scaled,
                 compression=compression,
+                compression_opts=compression_opts,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
             )
@@ -967,6 +971,7 @@ def write_recording(
             es_key=es_key,
             write_scaled=write_scaled,
             compression=compression,
+            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
         )

@@ -26,7 +26,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 RUN_LOCAL = True
-LOCAL_PATH = Path("D:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
@@ -78,16 +78,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
             recording = converter.data_interface_objects["TestRecording"].recording_extractor
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-            if np.all(recording.get_channel_offsets() == 0):
-                check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
-            else:
-                new_dtype = recording.get_dtype(return_scaled=False).name[1:]
-                traces_1 = recording.get_traces(return_scaled=False).astype(new_dtype)
-                unsigned_coercion = (recording.get_channel_offsets() / recording.get_channel_gains()).astype(new_dtype)
-                for j, x in enumerate(unsigned_coercion):
-                    traces_1[j, :] -= x
-                np.testing.assert_almost_equal(traces_1, nwb_recording.get_traces(return_scaled=False))
-                nwb_recording.clear_channel_offsets()
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 
 
