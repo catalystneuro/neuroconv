@@ -5,7 +5,7 @@ import numpy as np
 
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup
+from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...utils.spike_interface import write_recording
@@ -16,6 +16,13 @@ OptionalPathType = Optional[Union[str, Path]]
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
+
+    def get_metadata_schema(self):
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema["properties"]["Ecephys"]["properties"].update(
+            ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
+        )
+        return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
