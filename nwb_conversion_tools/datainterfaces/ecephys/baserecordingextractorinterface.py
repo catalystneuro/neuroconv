@@ -115,6 +115,10 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         buffer_mb: int = 500,
         write_as: str = "raw",
         es_key: str = None,
+        compression: Optional[str] = "gzip",
+        compression_opts: Optional[int] = None,
+        iterator_type: Optional[str] = None,
+        iterator_opts: Optional[dict] = None,
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -137,13 +141,27 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             If using save_path, whether or not to overwrite the NWBFile if it already exists.
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
-        buffer_mb: int (optional, defaults to 500MB)
-            Maximum amount of memory (in MB) to use per iteration of the internal DataChunkIterator.
-            Requires trace data in the RecordingExtractor to be a memmap object.
         write_as: str (optional, defaults to 'raw')
             Options: 'raw', 'lfp' or 'processed'
         es_key: str (optional)
             Key in metadata dictionary containing metadata info for the specific electrical series
+        compression: str (optional, defaults to "gzip")
+            Type of compression to use. Valid types are "gzip" and "lzf".
+            Set to None to disable all compression.
+        compression_opts: int (optional, defaults to 4)
+            Only applies to compression="gzip". Controls the level of the GZIP.
+        iterator_type: str (optional, defaults to 'v2')
+            The type of DataChunkIterator to use.
+            'v1' is the original DataChunkIterator of the hdmf data_utils.
+            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+        iterator_opts: dict (optional)
+            Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
+            Valid options are
+                buffer_gb : float (optional, defaults to 1 GB)
+                    Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
+                chunk_mb : float (optional, defaults to 1 MB)
+                    Should be below 1 MB. Automatically calculates suitable chunk shape.
+            If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
         """
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
@@ -159,5 +177,8 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             es_key=es_key,
             save_path=save_path,
             overwrite=overwrite,
-            buffer_mb=buffer_mb,
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
         )

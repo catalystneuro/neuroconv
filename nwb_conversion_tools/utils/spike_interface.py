@@ -16,6 +16,8 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update
 
+from .recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
+
 PathType = Union[str, Path, None]
 ArrayType = Union[list, np.ndarray]
 
@@ -338,7 +340,10 @@ def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dic
             isinstance(x, dict) and set(x.keys()) == set(["name", "description"])
             for x in metadata["Ecephys"]["Electrodes"]
         ]
-    ), "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, containing the keys 'name' and 'description'"
+    ), (
+        "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, "
+        "containing the keys 'name' and 'description'"
+    )
     assert all(
         [x["name"] != "group" for x in metadata["Ecephys"]["Electrodes"]]
     ), "Passing metadata field 'group' is deprecated; pass group_name instead!"
@@ -478,14 +483,14 @@ def add_electrical_series(
     recording: se.RecordingExtractor,
     nwbfile=None,
     metadata: dict = None,
-    buffer_mb: int = 500,
     use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
-    iterate: bool = True,
+    iterator_type: Optional[str] = None,
+    iterator_opts: Optional[dict] = None,
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -500,13 +505,10 @@ def add_electrical_series(
     metadata: dict
         metadata info for constructing the nwb file (optional).
         Should be of the format
-            metadata['Ecephys']['ElectricalSeries'] = {
-                'name': my_name,
-                'description': my_description
-            }
-    buffer_mb: int (optional, defaults to 500MB)
-        maximum amount of memory (in MB) to use per iteration of the
-        DataChunkIterator (requires traces to be memmap objects)
+            metadata['Ecephys']['ElectricalSeries'] = dict(
+                name=my_name,
+                description=my_description
+            )
     use_times: bool (optional, defaults to False)
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -524,15 +526,24 @@ def add_electrical_series(
         Set to None to disable all compression.
     compression_opts: int (optional, defaults to 4)
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterate: bool (optional, defaults to True)
-        Whether or not to use DataChunkIteration. Highly recommended for large (16+ GB) recordings.
+    iterator_type: str (optional, defaults to 'v2')
+        The type of DataChunkIterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_opts: dict (optional)
+        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
+        Valid options are
+            buffer_gb: float (optional, defaults to 1 GB)
+                Recommended to be as much free RAM as available. Automatically calculates suitable buffer shape.
+            chunk_mb: float (optional, defaults to 1 MB)
+                Should be below 1 MB. Automatically calculates suitable chunk shape.
+        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
-    assert buffer_mb > 10, "'buffer_mb' should be at least 10MB to ensure data can be chunked!"
     assert compression is None or compression in [
         "gzip",
         "lzf",
@@ -570,7 +581,6 @@ def add_electrical_series(
             description="Processed data",
             comments="Generated from SpikeInterface::NwbRecordingExtractor",
         )
-        # Check for existing processing module and data interface
         ecephys_mod = check_module(
             nwbfile=nwbfile,
             name="ecephys",
@@ -584,7 +594,6 @@ def add_electrical_series(
             description="Processed data - LFP",
             comments="Generated from SpikeInterface::NwbRecordingExtractor",
         )
-        # Check for existing processing module and data interface
         ecephys_mod = check_module(
             nwbfile=nwbfile,
             name="ecephys",
@@ -593,12 +602,10 @@ def add_electrical_series(
         if "LFP" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.LFP(name="LFP"))
 
-    # If user passed metadata info, overwrite defaults
     if metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
-    # Check for existing names in nwbfile
     if write_as == "raw":
         assert (
             eseries_kwargs["name"] not in nwbfile.acquisition
@@ -612,7 +619,6 @@ def add_electrical_series(
             eseries_kwargs["name"] not in nwbfile.processing["ecephys"].data_interfaces["LFP"].electrical_series
         ), f"LFP ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
 
-    # Electrodes table region
     channel_ids = recording.get_channel_ids()
     table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_ids]
     electrode_table_region = nwbfile.create_electrode_table_region(
@@ -646,46 +652,24 @@ def add_electrical_series(
             eseries_kwargs.update(conversion=1e-6)
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
-    trace_dtype = recording.get_traces(channel_ids=channel_ids[:1], end_frame=1).dtype
-    estimated_memory = trace_dtype.itemsize * recording.get_num_channels() * recording.get_num_frames()
-    if not iterate and psutil.virtual_memory().available <= estimated_memory:
-        warn("iteration was disabled, but not enough memory to load traces! Forcing iterate=True.")
-        iterate = True
-    if iterate:
+    if iterator_type is None or iterator_type == "v2":
+        if iterator_opts is None:
+            iterator_opts = dict()
+        ephys_data = RecordingExtractorDataChunkIterator(recording=recording, **iterator_opts)
+    elif iterator_type == "v1":
         if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
             channel_offset == 0
         ):
             n_bytes = np.dtype(recording.get_dtype()).itemsize
-            buffer_size = int(buffer_mb * 1e6) // (recording.get_num_channels() * n_bytes)
+            buffer_size = int(iterator_opts.get("buffer_gb", 1) * 1e9) // n_bytes
             ephys_data = DataChunkIterator(
                 data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
                 buffer_size=buffer_size,
             )
         else:
-
-            def data_generator(recording, channels_ids, unsigned_coercion, write_scaled):
-                for i, ch in enumerate(channels_ids):
-                    data = recording.get_traces(channel_ids=[ch], return_scaled=write_scaled)
-                    if not write_scaled:
-                        data_dtype_name = data.dtype.name
-                        if data_dtype_name.startswith("uint"):
-                            data_dtype_name = data_dtype_name[1:]  # Retain memory of signed data type
-                        data = data + unsigned_coercion[i]
-                        data = data.astype(data_dtype_name)
-                    yield data.flatten()
-
-            ephys_data = DataChunkIterator(
-                data=data_generator(
-                    recording=recording,
-                    channels_ids=channel_ids,
-                    unsigned_coercion=unsigned_coercion,
-                    write_scaled=write_scaled,
-                ),
-                iter_axis=1,  # nwb standard is time as zero axis
-                maxshape=(recording.get_num_frames(), recording.get_num_channels()),
-            )
+            raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
     else:
-        ephys_data = recording.get_traces(return_scaled=write_scaled).T
+        raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
 
     eseries_kwargs.update(data=H5DataIO(ephys_data, compression=compression, compression_opts=compression_opts))
     if not use_times:
@@ -701,7 +685,6 @@ def add_electrical_series(
             )
         )
 
-    # Add ElectricalSeries to nwbfile object
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
     if write_as == "raw":
         nwbfile.add_acquisition(es)
@@ -728,7 +711,6 @@ def add_epochs(recording: se.RecordingExtractor, nwbfile=None, metadata: dict = 
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    # add/update epochs
     for epoch_name in recording.get_epoch_names():
         epoch = recording.get_epoch_info(epoch_name)
         if nwbfile.epochs is None:
@@ -753,14 +735,15 @@ def add_epochs(recording: se.RecordingExtractor, nwbfile=None, metadata: dict = 
 def add_all_to_nwbfile(
     recording: se.RecordingExtractor,
     nwbfile=None,
-    buffer_mb: int = 500,
     use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
-    iterate: bool = True,
+    compression_opts: Optional[int] = None,
+    iterator_type: Optional[str] = None,
+    iterator_opts: Optional[dict] = None,
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -772,9 +755,6 @@ def add_all_to_nwbfile(
     recording: RecordingExtractor
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
-    buffer_mb: int (optional, defaults to 500MB)
-        maximum amount of memory (in MB) to use per iteration of the
-        DataChunkIterator (requires traces to be memmap objects)
     use_times: bool
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -796,35 +776,43 @@ def add_all_to_nwbfile(
         Set to None to disable all compression.
     compression_opts: int (optional, defaults to 4)
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterate: bool (optional, defaults to True)
-        Whether or not to use DataChunkIteration. Highly recommended for large (16+ GB) recordings.
+    iterator_type: str (optional, defaults to 'v2')
+        The type of DataChunkIterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_opts: dict (optional)
+        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2')
+        or DataChunkIterator (iterator_tpye='v1').
+        Valid options are
+            buffer_gb : float (optional, defaults to 1 GB, available for both 'v2' and 'v1')
+                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
+            chunk_mb : float (optional, defaults to 1 MB, only available for 'v2')
+                Should be below 1 MB. Automatically calculates suitable chunk shape.
+        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
     add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
     add_electrodes(
         recording=recording,
         nwbfile=nwbfile,
         metadata=metadata,
     )
-
     add_electrical_series(
         recording=recording,
         nwbfile=nwbfile,
-        buffer_mb=buffer_mb,
         use_times=use_times,
         metadata=metadata,
         write_as=write_as,
         es_key=es_key,
         write_scaled=write_scaled,
         compression=compression,
-        iterate=iterate,
+        compression_opts=compression_opts,
+        iterator_type=iterator_type,
+        iterator_opts=iterator_opts,
     )
-
     add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
@@ -833,14 +821,15 @@ def write_recording(
     save_path: PathType = None,
     overwrite: bool = False,
     nwbfile=None,
-    buffer_mb: int = 500,
     use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
-    iterate: bool = True,
+    compression_opts: Optional[int] = None,
+    iterator_type: Optional[str] = None,
+    iterator_opts: Optional[dict] = None,
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -860,9 +849,6 @@ def write_recording(
             my_recording_extractor, my_nwbfile
         )
         will result in the appropriate changes to the my_nwbfile object.
-    buffer_mb: int (optional, defaults to 500MB)
-        maximum amount of memory (in MB) to use per iteration of the
-        DataChunkIterator (requires traces to be memmap objects)
     use_times: bool
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -915,8 +901,18 @@ def write_recording(
         Set to None to disable all compression.
     compression_opts: int (optional, defaults to 4)
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterate: bool (optional, defaults to True)
-        Whether or not to use DataChunkIteration. Highly recommended for large (16+ GB) recordings.
+    iterator_type: str (optional, defaults to 'v2')
+        The type of DataChunkIterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_opts: dict (optional)
+        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
+        Valid options are
+            buffer_gb : float (optional, defaults to 1 GB)
+                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
+            chunk_mb : float (optional, defaults to 1 MB)
+                Should be below 1 MB. Automatically calculates suitable chunk shape.
+        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -954,28 +950,30 @@ def write_recording(
             add_all_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
-                buffer_mb=buffer_mb,
                 metadata=metadata,
                 use_times=use_times,
                 write_as=write_as,
                 es_key=es_key,
                 write_scaled=write_scaled,
                 compression=compression,
-                iterate=iterate,
+                compression_opts=compression_opts,
+                iterator_type=iterator_type,
+                iterator_opts=iterator_opts,
             )
             io.write(nwbfile)
     else:
         add_all_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
-            buffer_mb=buffer_mb,
             use_times=use_times,
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
             write_scaled=write_scaled,
             compression=compression,
-            iterate=iterate,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
         )
 
 
