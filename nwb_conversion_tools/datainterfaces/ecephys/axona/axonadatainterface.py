@@ -1,9 +1,9 @@
 """Authors: Steffen Buergers"""
 import os
 import dateutil
-import contextlib
-import mmap
 import numpy as np
+from pathlib import Path
+from typing import Union, Optional
 
 import spikeextractors as se
 from pynwb import NWBFile
@@ -16,11 +16,17 @@ from ....utils.json_schema import (
 )
 from ....basedatainterface import BaseDataInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ....utils.conversion_tools import get_module
+from ....utils.spike_interface import write_recording
+
+
+PathType = Union[str, Path]
+OptionalPathType = Optional[PathType]
 
 
 # Helper functions for AxonaRecordingExtractorInterface
-def parse_generic_header(filename, params):
+def parse_generic_header(filename: PathType, params: Union[list, set]):
     """
     Given a binary file with phrases and line breaks, enters the
     first word of a phrase as dictionary key and the following
@@ -38,7 +44,8 @@ def parse_generic_header(filename, params):
     parse_generic_header('myset_file.set', ['experimenter', 'trial_time'])
     """
     header = dict()
-    params = set(params)
+    if params is not None:
+        params = set(params)
     with open(filename, "rb") as f:
         for bin_line in f:
             if b"data_start" in bin_line:
@@ -46,13 +53,13 @@ def parse_generic_header(filename, params):
             line = bin_line.decode("cp1252").replace("\r\n", "").replace("\r", "").strip()
             parts = line.split(" ")
             key = parts[0]
-            if key in params:
+            if params is None or key in params:
                 header[key] = " ".join(parts[1:])
 
     return header
 
 
-def read_axona_iso_datetime(set_file):
+def read_axona_iso_datetime(set_file: PathType):
     """
     Creates datetime object (y, m, d, h, m, s) from .set file header
     and converts it to ISO 8601 format
@@ -78,14 +85,6 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, filename: str):
         super().__init__(filename=filename)
-
-    def get_metadata_schema(self):
-        """Compile metadata schema for the RecordingExtractor."""
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
 
     def get_metadata(self):
 
@@ -116,129 +115,240 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
             ],
             ElectrodeGroup=[
                 dict(
-                    name=f"Group{group_name}",
+                    name=f"{group_name}",
                     location="",
                     device="Axona",
                     description=f"Group {group_name} electrodes.",
                 )
                 for group_name in unique_elec_group_names
             ],
-            Electrodes=[
-                dict(
-                    name="group_name",
-                    description="""The name of the ElectrodeGroup this electrode
-                                is a part of.""",
-                    data=[f"Group{x}" for x in elec_group_names],
-                )
-            ],
-            ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
         )
 
         return metadata
 
 
+class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
+    """Primary data interface class for converting a AxonaRecordingExtractor"""
+
+    RX = se.AxonaUnitRecordingExtractor
+
+    @classmethod
+    def get_source_schema(cls):
+        return dict(
+            required=["filename"],
+            properties=dict(
+                filename=dict(
+                    type="string",
+                    format="file",
+                    description="Path to Axona file",
+                ),
+                noise_std=dict(type="number"),
+            ),
+            type="object",
+        )
+
+    def __init__(self, filename: PathType, noise_std: float = 3.5):
+        super().__init__(filename=filename)
+        self.recording_extractor = se.AxonaUnitRecordingExtractor(filename=filename, noise_std=noise_std)
+
+
 # Helper functions for AxonaPositionDataInterface
-def establish_mmap_to_position_data(filename):
+def get_header_bstring(file: PathType):
     """
-    Generates a memory map (mmap) object connected to an Axona .bin
-    file, referencing only the animal position data (if present).
+    Scan file for the occurrence of 'data_start' and return the header
+    as byte string
 
-    When no .bin file is available or no position data is included,
-    returns None.
+    Parameters
+    ----------
+    file (str or path): file to be loaded
 
-    TODO: Also allow using .pos file (currently only support .bin)
+    Returns
+    -------
+    str: header byte content
+    """
+    header = b""
+    with open(file, "rb") as f:
+        for bin_line in f:
+            if b"data_start" in bin_line:
+                header += b"data_start"
+                break
+            else:
+                header += bin_line
+    return header
+
+
+def read_bin_file_position_data(bin_filename: PathType):
+    """
+    Read position data from Axona `.bin` file (if present).
 
     Parameters:
     -------
-    filename (Path or Str): Full filename of Axona file with any
-        extension.
-
-    Returns:
-    -------
-    mm (mmap or None): Memory map to .bin file position data
-    """
-    mmpos = None
-
-    bin_file = filename.split(".")[0] + ".bin"
-    set_file = filename.split(".")[0] + ".set"
-    par = parse_generic_header(set_file, ["rawRate", "duration"])
-    sr_ecephys = int(par["rawRate"])
-    sr_pos = 100
-    bytes_packet = 432
-
-    num_packets = int(os.path.getsize(bin_file) / bytes_packet)
-    num_ecephys_samples = num_packets * 3
-    dur_ecephys = num_ecephys_samples / sr_ecephys
-    assert dur_ecephys == float(par["duration"])
-
-    # Check if position data exists in .bin file
-    with open(bin_file, "rb") as f:
-        with contextlib.closing(
-            mmap.mmap(
-                f.fileno(),
-                sr_ecephys // 3 // sr_pos * bytes_packet,
-                access=mmap.ACCESS_READ,
-            )
-        ) as mmap_obj:
-            contains_pos_tracking = mmap_obj.find(b"ADU2") > -1
-
-    # Establish memory map to .bin file, considering only position data
-    if contains_pos_tracking:
-        fbin = open(bin_file, "rb")
-        mmpos = mmap.mmap(fbin.fileno(), 0, access=mmap.ACCESS_READ)
-
-    return mmpos
-
-
-def read_bin_file_position_data(filename):
-    """
-    Reads position data from Axona .bin file (if present in
-    recording) and returns it as a numpy.array.
-
-    Parameters:
-    -------
-    filename: path-like
+    bin_filename (Path or Str):
         Full filename of Axona file with any extension.
 
     Returns:
     -------
-    pos (np.array)
+    np.array
+        Columns are time (ms), X, Y, x, y, PX, px, tot_px, unused
+
+    Notes:
+    ------
+    To obtain the correct column order we pairwise flip the 8 int16 columns
+    described in the file format manual. In addition, note that `.bin` data is
+    little endian (read right to left), as opposed to `.pos` file data, which is
+    big endian.
     """
+    pos_dt_se = np.dtype(
+        [
+            ("t", "<i4"),
+            ("X", "<i2"),
+            ("Y", "<i2"),
+            ("x", "<i2"),
+            ("y", "<i2"),
+            ("PX", "<i2"),
+            ("px", "<i2"),
+            ("tot_px", "<i2"),
+            ("unused", "<i2"),
+        ]
+    )
 
-    bin_file = filename.split(".")[0] + ".bin"
-    mm = establish_mmap_to_position_data(bin_file)
+    bin_dt = np.dtype(
+        [
+            ("id", "S4"),
+            ("packet", "<i4"),
+            ("di", "<i2"),
+            ("si", "<i2"),
+            ("pos", pos_dt_se),
+            ("ephys", np.byte, 384),
+            ("trailer", np.byte, 16),
+        ]
+    )
 
-    bytes_packet = 432
-    num_packets = int(os.path.getsize(bin_file) / bytes_packet)
+    np_bin = np.memmap(
+        filename=bin_filename,
+        dtype=bin_dt,
+        mode="r",
+    )
 
-    set_file = filename.split(".")[0] + ".set"
-    par = parse_generic_header(set_file, ["rawRate", "duration"])
-    sr_ecephys = int(par["rawRate"])
+    # Only packets with the ADU2 flag contain position data
+    pos_mask = np.where([np_bin["id"] == b"ADU2"])[1]
+    pos_data = np_bin["pos"][pos_mask]
 
-    flags = np.ndarray((num_packets,), "S4", mm, 0, bytes_packet)
-    ADU2_idx = np.where(flags == b"ADU2")
+    # Rearrange columns of coordinates and pixels to conform with pos data
+    # description in file format manual
+    pos_data = np.vstack(
+        (
+            pos_data["Y"],
+            pos_data["X"],
+            pos_data["y"],
+            pos_data["x"],
+            pos_data["px"],
+            pos_data["PX"],
+            pos_data["unused"],
+            pos_data["tot_px"],
+        )
+    ).T
 
-    pos = np.ndarray((num_packets,), (np.int16, (1, 8)), mm, 16, (bytes_packet,)).reshape((-1, 8))[ADU2_idx][:]
+    # Add timestamp as first column
+    pos_data = np.hstack((pos_mask.reshape((-1, 1)), pos_data))
 
-    pos = np.hstack((ADU2_idx[0].reshape((-1, 1)), pos)).astype(float)
+    # Create timestamps from position of samples in `.bin` file to ensure
+    # alignment with ecephys data
+    set_file = bin_filename.split(".")[0] + ".set"
+    sr_ecephys = int(parse_generic_header(set_file, ["rawRate"])["rawRate"])
 
-    # The timestamp from the recording is dubious, create our own
     packets_per_ms = sr_ecephys / 3000
-    pos[:, 0] = pos[:, 0] / packets_per_ms
-    pos = np.delete(pos, 1, 1)
+    pos_data[:, 0] = pos_data[:, 0] / packets_per_ms
 
-    return pos
+    # Select only every second sample
+    # Note that we do not lowpass filter, since other processing steps done by
+    # TINT would no longer work properly.
+    pos_data = pos_data[::2]
+
+    return pos_data
 
 
-def get_position_object(filename):
+def read_pos_file_position_data(pos_filename: PathType):
     """
-    Read position data from .bin or .pos file and convert to
-    pynwb.behavior.SpatialSeries objects.
+    Read position data from Axona `.pos` file.
 
     Parameters:
     -------
-    filename (Path or Str): Full filename of Axona file with any
-        extension.
+    pos_filename (Path or Str):
+        Full filename of Axona file with any extension.
+
+    Returns:
+    -------
+    np.array
+        Columns are time (ms), X, Y, x, y, PX, px, tot_px, unused
+    """
+
+    pos_filename = pos_filename.split(".")[0] + ".pos"
+
+    bytes_packet = 20
+    footer_size = len("\r\ndata_end\r\n")
+    header_size = len(get_header_bstring(pos_filename))
+    num_bytes = os.path.getsize(pos_filename) - header_size - footer_size
+    num_packets = num_bytes // bytes_packet
+
+    pos_dt = np.dtype(
+        [
+            ("t", ">i4"),
+            ("X", ">i2"),
+            ("Y", ">i2"),
+            ("x", ">i2"),
+            ("y", ">i2"),
+            ("PX", ">i2"),
+            ("px", ">i2"),
+            ("tot_px", ">i2"),
+            ("unused", ">i2"),
+        ]
+    )
+
+    pos_data = np.memmap(
+        filename=pos_filename,
+        dtype=pos_dt,
+        mode="r",
+        offset=len(get_header_bstring(pos_filename)),
+        shape=(num_packets,),
+    )
+
+    # Convert structured memory mapped array to np array
+    pos_data = np.vstack(
+        (
+            pos_data["X"],
+            pos_data["Y"],
+            pos_data["x"],
+            pos_data["Y"],
+            pos_data["PX"],
+            pos_data["px"],
+            pos_data["tot_px"],
+            pos_data["unused"],
+        )
+    ).T
+
+    # Create time column in ms assuming regularly sampled data starting from 0
+    set_file = pos_filename.split(".")[0] + ".set"
+    dur_ecephys = float(parse_generic_header(set_file, ["duration"])["duration"])
+
+    pos_data = np.hstack(
+        (np.linspace(start=0, stop=dur_ecephys * 1000, num=pos_data.shape[0]).astype(int).reshape((-1, 1)), pos_data)
+    )
+
+    return pos_data
+
+
+def get_position_object(filename: PathType):
+    """
+    Read position data from .bin or .pos file and convert to
+    pynwb.behavior.SpatialSeries objects. If possible it should always
+    be preferred to read position data from the `.bin` file to ensure
+    samples are locked to ecephys time courses.
+
+    Parameters:
+    ----------
+    filename (Path or Str):
+        Full filename of Axona file with any extension.
 
     Returns:
     -------
@@ -247,16 +357,22 @@ def get_position_object(filename):
     position = Position()
 
     position_channel_names = [
-        "t",
-        "x1",
-        "y1",
-        "x2",
-        "y2",
-        "numpix1",
-        "numpix2",
+        "time(ms)",
+        "X",
+        "Y",
+        "x",
+        "y",
+        "PX",
+        "px",
+        "px_total",
         "unused",
     ]
-    position_data = read_bin_file_position_data(filename)
+
+    if Path(filename).suffix == ".bin":
+        position_data = read_bin_file_position_data(filename)
+    else:
+        position_data = read_pos_file_position_data(filename)
+
     position_timestamps = position_data[:, 0]
 
     for ichan in range(0, position_data.shape[1]):
@@ -296,3 +412,141 @@ class AxonaPositionDataInterface(BaseDataInterface):
         # Create or update processing module for behavioral data
         behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
         behavior_module.add(get_position_object(filename))
+
+
+# Helper functions for AxonaLFPDataInterface
+def get_eeg_sampling_frequency(filename: PathType):
+    """
+    Read sampling frequency from .eegX or .egfX file header.
+
+    Parameters:
+    -----------
+    filename : Path or str
+        Full filename of Axona `.eegX` or `.egfX` file.
+
+    Returns:
+    --------
+    Fs : int
+        Sampling frequency
+    """
+    Fs_entry = parse_generic_header(filename, ["sample_rate"])
+    Fs = int(float(Fs_entry.get("sample_rate").split(" ")[0]))
+
+    return Fs
+
+
+def read_eeg_file_lfp_data(filename: PathType):
+    """
+    Read LFP data from Axona `.eegX` or `.egfX` file.
+
+    Parameters:
+    -------
+    filename (Path or Str):
+        Full filename of Axona `.eegX` or `.egfX` file.
+
+    Returns:
+    -------
+    np.memmap (nobs x 1)
+    """
+
+    lfp_dtype = ">i1"
+    footer_size = len("\r\ndata_end\r\n")
+    header_size = len(get_header_bstring(filename))
+    num_bytes = os.path.getsize(filename) - header_size - footer_size
+
+    # .eeg files are int8, .egf files are int16
+    if str(filename).split(".")[1][0:3] == "egf":
+        lfp_dtype = ">i2"
+        num_bytes = num_bytes // 2
+
+    eeg_data = np.memmap(
+        filename=filename,
+        dtype=lfp_dtype,
+        mode="r",
+        offset=len(get_header_bstring(filename)),
+        shape=(1, num_bytes),
+    )
+
+    return eeg_data
+
+
+def get_all_filenames(filename: PathType):
+    """
+    Read LFP filenames of `.eeg` or `.egf` files in filename's directory.
+    E.g. if filename='/my/directory/my_file.eeg', all .eeg channels will be
+    appended to the output.
+
+    Parameters:
+    -----------
+    filename : path-like
+        Full filename of either .egg or .egf file
+
+    Returns:
+    --------
+    path_list : list
+        List of filenames
+    """
+
+    suffix = Path(filename).suffix[0:4]
+    current_path = Path(filename).parent
+
+    path_list = [cur_path.name for cur_path in Path(filename).parent.rglob("*" + suffix + "*")]
+
+    return path_list
+
+
+def read_all_eeg_file_lfp_data(filename: PathType):
+    """
+    Read LFP data from all Axona `.eeg` or `.egf` files in filename's directory.
+    E.g. if filename='/my/directory/my_file.eeg', all .eeg channels will be conactenated
+    to a single np.array (chans x nobs). For .egf files substitude the file suffix.
+
+    Parameters:
+    -------
+    filename (Path or Str):
+        Full filename of Axona `.eeg` or `.egf` file.
+
+    Returns:
+    -------
+    np.array (chans x obs)
+    """
+
+    filename_list = get_all_filenames(filename)
+    parent_path = Path(filename).parent
+
+    eeg_memmaps = list()
+    sampling_rates = set()
+    for fname in filename_list:
+
+        sampling_rates.add(get_eeg_sampling_frequency(parent_path / fname))
+
+        eeg_memmaps.append(read_eeg_file_lfp_data(parent_path / fname))
+
+    assert len(sampling_rates) < 2, "File headers specify different sampling rates. Cannot combine EEG data."
+
+    eeg_data = np.concatenate(eeg_memmaps, axis=0)
+
+    return eeg_data
+
+
+class AxonaLFPDataInterface(BaseLFPExtractorInterface):
+    """..."""
+
+    RX = se.AxonaRecordingExtractor
+
+    @classmethod
+    def get_source_schema(cls):
+        return dict(
+            required=["filename"],
+            properties=dict(filename=dict(type="string")),
+            type="object",
+            additionalProperties=False,
+        )
+
+    def __init__(self, filename: PathType):
+        self.recording_extractor = se.NumpyRecordingExtractor(
+            timeseries=read_all_eeg_file_lfp_data(filename),
+            sampling_frequency=get_eeg_sampling_frequency(filename),
+        )
+        self.subset_channels = None
+        self.source_data = dict(filename=filename)
