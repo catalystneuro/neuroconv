@@ -1,16 +1,17 @@
 """Authors: Cody Baker, Saksham Sharda, and Oliver Ruebel."""
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Optional
 import numpy as np
 import psutil
 from abc import abstractmethod
-from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
 from itertools import product
+
+from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
 
 
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
-    def _set_chunk_shape(self, chunk_mb: float = 1.0) -> tuple:
+    def _set_chunk_shape(self, chunk_mb: float = 1.0):
         """
         Select chunk size less than the threshold of chunk_mb, keeping the dimensional ratios of the original data.
 
@@ -32,7 +33,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         self.chunk_shape = tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
-    def _set_buffer_shape(self, buffer_gb: float = 2.0):
+    def _set_buffer_shape(self, buffer_gb: float = 1.0):
         """
         Select buffer size less than the threshold of buffer_gb, keeping the dimensional ratios of the original data.
 
@@ -47,7 +48,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         self.buffer_shape = tuple([min(int(x), self.maxshape[j]) for j, x in enumerate(k * np.array(self.chunk_shape))])
 
     def __init__(
-        self, buffer_gb: float = 2.0, buffer_shape: tuple = None, chunk_mb: float = 1.0, chunk_shape: tuple = None
+        self,
+        buffer_gb: Optional[float] = None,
+        buffer_shape: Optional[tuple] = None,
+        chunk_mb: Optional[float] = None,
+        chunk_shape: Optional[tuple] = None,
     ):
         """
         Break a dataset into buffers containing chunks, with the chunk as they are written into the H5 dataset.
@@ -57,7 +62,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
         buffer_gb : float, optional
             If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold.
-            Defaults to 2 GB.
+            Defaults to 1 GB.
         buffer_shape : tuple, optional
             Manually defined shape of the buffer. Defaults to None.
         chunk_mb : float, optional
@@ -69,6 +74,13 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         assert (
             buffer_gb > 0 and buffer_gb < psutil.virtual_memory().available / 1e9
         ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
+        assert buffer_gb is not None and buffer_shape is not None, (
+            "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        )
+        assert chunk_mb is not None and chunk_shape is not None, (
+            "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
+        )
+
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is None:
