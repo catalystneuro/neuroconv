@@ -78,12 +78,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             buffer_gb = 1.0
         if chunk_mb is None and chunk_shape is None:
             chunk_mb = 1.0
-        assert (buffer_gb is not None) != (buffer_shape is not None), (
-            "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
-        )
-        assert (chunk_mb is not None) != (chunk_shape is not None), (
-            "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
-        )
+        assert (buffer_gb is not None) != (
+            buffer_shape is not None
+        ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        assert (chunk_mb is not None) != (
+            chunk_shape is not None
+        ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
 
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
