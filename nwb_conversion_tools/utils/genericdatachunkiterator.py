@@ -42,6 +42,9 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         buffer_gb : float, optional
             The maximum amount of RAM to use to buffer the chunks. Defaults to 2 GB.
         """
+        assert (
+            buffer_gb > 0 and buffer_gb < psutil.virtual_memory().available / 1e9
+        ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
         k = np.floor(
             (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
         )
@@ -71,9 +74,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         chunk_shape : tuple, optional
             Manually defined shape of the chunks. Defaults to None.
         """
-        assert (
-            buffer_gb > 0 and buffer_gb < psutil.virtual_memory().available / 1e9
-        ), f"Not enough memory in system handle buffer_gb of {buffer_gb}!"
         assert buffer_gb is not None and buffer_shape is not None, (
             "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
         )
