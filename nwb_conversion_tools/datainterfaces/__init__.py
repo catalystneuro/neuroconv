@@ -29,6 +29,7 @@ from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
     AxonaUnitRecordingExtractorInterface,
 )
+from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface
 
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
