@@ -10,7 +10,10 @@ from .brpylib import NsxFile
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils.json_schema import (
-    get_schema_from_hdmf_class, get_schema_from_method_signature, FilePathType, OptionalFilePathType
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+    FilePathType,
+    OptionalFilePathType,
 )
 
 
@@ -143,6 +146,6 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
         return metadata_schema
 
     def __init__(
-            self, filename: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
+        self, filename: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
     ):
         super().__init__(filename=filename, nsx_to_load=nsx_to_load, nev_override=nev_override)

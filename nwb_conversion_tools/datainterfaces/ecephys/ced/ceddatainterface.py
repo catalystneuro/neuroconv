@@ -16,9 +16,7 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["smrx_channel_ids"])
         source_schema.update(additionalProperties=True)
         source_schema["properties"].update(
-            file_path=dict(
-                type=source_schema["properties"]["file_path"]["type"], description="path to data file"
-            )
+            file_path=dict(type=source_schema["properties"]["file_path"]["type"], description="path to data file")
         )
         return source_schema
 
