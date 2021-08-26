@@ -9,7 +9,7 @@ import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.behavior import Position, SpatialSeries
 
-from ....utils.json_schema import (get_schema_from_method_signature, FilePathType)
+from ....utils.json_schema import get_schema_from_method_signature, FilePathType
 from ....basedatainterface import BaseDataInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
