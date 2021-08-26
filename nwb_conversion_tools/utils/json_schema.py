@@ -119,8 +119,6 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     param_type = param_types[0]
                 else:
                     arg = param.annotation
-                    print(arg)
-                    print(param)
                     if arg in annotation_json_type_map:
                         param_type = annotation_json_type_map[arg]
                     else:
