@@ -4,6 +4,11 @@ import inspect
 from datetime import datetime
 import numpy as np
 import pynwb
+from typing import TypeVar
+from pathlib import Path
+
+FilePathType = TypeVar("FilePathType", str, Path)
+FolderPathType = TypeVar("FolderPathType", str, Path)
 
 
 def exist_dict_in_list(d, l):
@@ -89,6 +94,8 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         float: "number",
         dict: "object",
         list: "array",
+        FilePathType: "string",
+        FolderPathType: "string",
     }
 
     for param_name, param in inspect.signature(class_method).parameters.items():
@@ -109,12 +116,18 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     param_type = param_types[0]
                 else:
                     arg = param.annotation
+                    print(arg)
+                    print(annotation_json_type_map)
                     if arg in annotation_json_type_map:
                         param_type = annotation_json_type_map[arg]
                     else:
                         raise ValueError(
                             f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
                         )
+                    if arg == FilePathType:
+                        input_schema["properties"][param_name]["format"] = "file"
+                    if arg == FolderPathType:
+                        input_schema["properties"][param_name]["format"] = "directory"
             else:
                 raise NotImplementedError(
                     f"The annotation type of '{param}' in function '{class_method}' "
@@ -295,7 +308,9 @@ def get_schema_for_NWBFile():
         "data_collection": {"type": "string", "description": "Notes about data collection and analysis."},
         "surgery": {
             "type": "string",
-            "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery.",
+            "description": (
+                "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+            ),
         },
         "virus": {
             "type": "string",
