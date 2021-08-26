@@ -1,14 +1,17 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
-from datetime import datetime
 import numpy as np
-import pynwb
+from datetime import datetime
 from typing import TypeVar
 from pathlib import Path
+from typing import Optional
+
+import pynwb
 
 FilePathType = TypeVar("FilePathType", str, Path)
 FolderPathType = TypeVar("FolderPathType", str, Path)
+OptionalFilePathType = Optional[FilePathType]
 
 
 def exist_dict_in_list(d, l):

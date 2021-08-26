@@ -3,7 +3,7 @@ import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import get_base_schema
+from ....utils.json_schema import get_base_schema, FilePathType
 
 
 class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
@@ -14,10 +14,10 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
         """Return partial json schema for expected input arguments."""
         return get_base_schema(required=["pkl_file"], properties=dict(pkl_file=dict(type="string")))
 
-    def __init__(self, **source_data):
-        self.source_data = source_data
+    def __init__(self, pkl_file: FilePathType):
+        self.source_data = dict(pkl_file=pkl_file)
         self.subset_channels = None
-        self.recording_extractor = se.load_extractor_from_pickle(**source_data)
+        self.recording_extractor = se.load_extractor_from_pickle(pkl_file=pkl_file)
 
 
 class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
@@ -28,6 +28,6 @@ class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
         """Return partial json schema for expected input arguments."""
         return get_base_schema(required=["pkl_file"], properties=dict(pkl_file=dict(type="string")))
 
-    def __init__(self, **source_data):
-        self.source_data = source_data
-        self.sorting_extractor = se.load_extractor_from_pickle(**source_data)
+    def __init__(self, pkl_file: FilePathType):
+        self.source_data = dict(pkl_file=pkl_file)
+        self.sorting_extractor = se.load_extractor_from_pickle(pkl_file=pkl_file)

@@ -58,9 +58,9 @@ def read_axona_iso_datetime(set_file: FilePathType):
     with open(set_file, "r", encoding="cp1252") as f:
         for line in f:
             if line.startswith("trial_date"):
-                date_string = line[len("trial_date") + 1 :].replace("\n", "")
+                date_string = line[len("trial_date") + 1:].replace("\n", "")
             if line.startswith("trial_time"):
-                time_string = line[len("trial_time") + 1 :].replace("\n", "")
+                time_string = line[len("trial_time") + 1:].replace("\n", "")
 
     return dateutil.parser.parse(date_string + " " + time_string).isoformat()
 
