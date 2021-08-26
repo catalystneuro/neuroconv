@@ -101,7 +101,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
-                if hasattr(param.annotation, "__args__"):
+                if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                     args = param.annotation.__args__
                     valid_args = [x in annotation_json_type_map for x in args]
                     if any(valid_args):
@@ -117,7 +117,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                 else:
                     arg = param.annotation
                     print(arg)
-                    print(annotation_json_type_map)
+                    print(param)
                     if arg in annotation_json_type_map:
                         param_type = annotation_json_type_map[arg]
                     else:
@@ -125,15 +125,14 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                             f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
                         )
                     if arg == FilePathType:
-                        input_schema["properties"][param_name]["format"] = "file"
+                        input_schema["properties"].update({param_name: dict(format="file")})
                     if arg == FolderPathType:
-                        input_schema["properties"][param_name]["format"] = "directory"
+                        input_schema["properties"].update({param_name: dict(format="directory")})
             else:
                 raise NotImplementedError(
-                    f"The annotation type of '{param}' in function '{class_method}' "
-                    "is not implemented! Please request it to be added at github.com/"
-                    "catalystneuro/nwb-conversion-tools/issues or create the json-schema"
-                    "for this method manually."
+                    f"The annotation type of '{param}' in function '{class_method}' is not implemented! "
+                    "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
+                    "or create the json-schema for this method manually."
                 )
             arg_spec = {param_name: dict(type=param_type)}
             if param.default is param.empty:

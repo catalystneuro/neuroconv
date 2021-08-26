@@ -7,6 +7,7 @@ import spikeextractors as se
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils.json_schema import FilePathType, FolderPathType
 
 try:
     from lxml import etree as et
@@ -64,7 +65,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     RX = se.NeuroscopeRecordingExtractor
 
     @staticmethod
-    def get_ecephys_metadata(xml_file_path: str):
+    def get_ecephys_metadata(xml_file_path: FilePathType):
         """Auto-populates ecephys metadata from the xml_file_path inferred."""
         session_path = Path(xml_file_path).parent
         session_id = session_path.stem
@@ -94,8 +95,8 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
         return ecephys_metadata
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, file_path: FilePathType):
+        super().__init__(file_path=file_path)
         self.subset_channels = get_shank_channels(
             xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"]), sort=True
         )
@@ -117,8 +118,8 @@ class NeuroscopeMultiRecordingTimeInterface(BaseRecordingExtractorInterface):
 
     RX = se.NeuroscopeMultiRecordingTimeExtractor
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, folder_path: FolderPathType):
+        super().__init__(folder_path=folder_path)
         self.subset_channels = get_shank_channels(
             xml_file_path=get_xml_file_path(data_file_path=self.source_data["folder_path"]), sort=True
         )
@@ -140,8 +141,8 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 
     RX = se.NeuroscopeRecordingExtractor
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, file_path: FilePathType):
+        super().__init__(file_path=file_path)
         self.subset_channels = get_shank_channels(
             xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"]), sort=True
         )

@@ -70,11 +70,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     RX = se.AxonaRecordingExtractor
 
-    @classmethod
-    def get_source_schema(cls):
-        return get_schema_from_method_signature(cls.__init__)
-
-    def __init__(self, filename: str):
+    def __init__(self, filename: FilePathType):
         super().__init__(filename=filename)
 
     def get_metadata(self):
