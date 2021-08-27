@@ -1,8 +1,8 @@
-name: CI GIN environment
+name: CI GIN
 on: [pull_request]
 jobs:
   run:
-    name: Full test on (${{ matrix.os }})
+    name: Full tests on (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

@@ -1,8 +1,8 @@
-name: CI production environment
+name: CI production
 on: [pull_request]
 jobs:
   run:
-    name: Lazy test on (${{ matrix.os }})
+    name: Lazy tests on (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

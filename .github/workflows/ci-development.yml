@@ -1,8 +1,8 @@
-name: CI development environment
+name: CI development
 on: [pull_request]
 jobs:
   run:
-    name: Development test on (${{ matrix.os }})
+    name: Development tests on (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
