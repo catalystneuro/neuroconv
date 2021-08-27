@@ -1,0 +1,42 @@
+name: CI GIN environment
+on: [pull_request]
+jobs:
+  run:
+    name: Full test on (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: s-weigand/setup-conda@v1
+        with:
+          python-version: 3.8
+      - name: Which python
+        run: |
+          conda --version
+          which python
+      - run: git fetch --prune --unshallow --tags
+      - name: Install this package, on development mode
+        env:
+            NWB_CONVERSION_INSTALL_MODE: development
+        run: |
+          conda install -c conda-forge datalad==0.14.5
+          pip install -e .
+          # needed for correct operation of git/git-annex/DataLad
+          git config --global user.email "CI@example.com"
+          git config --global user.name "CI Almighty"
+      - name: Run tests and generate coverage report
+        run: |
+          pip install pytest
+          pip install pytest-cov
+          pytest --cov=./ --cov-report=xml
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          yml: ./codecov.yml
