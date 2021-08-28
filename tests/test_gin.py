@@ -5,7 +5,14 @@ from pathlib import Path
 
 from spikeextractors import NwbRecordingExtractor
 from spikeextractors.testing import check_recordings_equal
-from nwb_conversion_tools import NWBConverter, IntanRecordingInterface, NeuralynxRecordingInterface
+from nwb_conversion_tools import (
+    NWBConverter,
+    IntanRecordingInterface,
+    NeuralynxRecordingInterface,
+    NeuroscopeRecordingInterface,
+    SpikeGadgetsRecordingInterface,
+    SpikeGLXRecordingInterface
+)
 
 try:
     from datalad.api import install, Dataset
@@ -65,6 +72,30 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     NeuralynxRecordingInterface,
                     "neuralynx/Cheetah_v5.7.4/original_data",
                     dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+                ),
+                (
+                    NeuroscopeRecordingInterface,
+                    "neuroscope/test_1",
+                    dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
+                ),
+                (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
+                ),
+                (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")),
+                ),
+                (
+                    SpikeGLXRecordingInterface,
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin",
+                    dict(
+                        file_path=str(
+                            data_path / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
+                        )
+                    ),
                 ),
             ]
         )
