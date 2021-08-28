@@ -29,7 +29,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 RUN_LOCAL = True
-LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+LOCAL_PATH = Path("D:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
@@ -77,25 +77,6 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     NeuroscopeRecordingInterface,
                     "neuroscope/test_1",
                     dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")),
-                ),
-                (
-                    SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin",
-                    dict(
-                        file_path=str(
-                            data_path / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
-                        )
-                    ),
                 ),
             ]
         )
