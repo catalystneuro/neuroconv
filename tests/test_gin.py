@@ -9,8 +9,6 @@ from nwb_conversion_tools import (
     NWBConverter,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
-    NeuroscopeRecordingInterface,
-    SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface
 )
 
@@ -29,7 +27,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 RUN_LOCAL = True
-LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+LOCAL_PATH = Path("D:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
@@ -72,21 +70,6 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     NeuralynxRecordingInterface,
                     "neuralynx/Cheetah_v5.7.4/original_data",
                     dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
-                ),
-                (
-                    NeuroscopeRecordingInterface,
-                    "neuroscope/test_1",
-                    dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")),
                 ),
                 (
                     SpikeGLXRecordingInterface,
