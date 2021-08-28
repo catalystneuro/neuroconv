@@ -75,7 +75,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 ),
                 (
                     NeuroscopeRecordingInterface,
-                    "neuroscope/test_1",
+                    "neuroscope/test1",
                     dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
                 ),
             ]
