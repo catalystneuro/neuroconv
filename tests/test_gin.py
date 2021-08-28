@@ -90,7 +90,8 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     for file in Path(loc).iterdir():
                         self.dataset.get(f"{dataset_path}/{file.name}")
                 else:
-                    self.dataset.get(dataset_path)
+                    for dataset_file in Path(dataset_path).parent:
+                        self.dataset.get(dataset_file)
             dataset_stem = Path(dataset_path).stem
             nwbfile_path = self.savedir / f"{recording_interface.__name__}_test_{dataset_stem}.nwb"
 
