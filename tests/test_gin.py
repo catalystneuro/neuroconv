@@ -73,10 +73,21 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 ),
                 (
                     SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin",
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
                     dict(
                         file_path=str(
-                            data_path / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
+                            data_path / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+                            / "Noise4Sam_g0_t0.imec0.ap.bin"
+                        )
+                    ),
+                ),
+                (
+                    SpikeGLXRecordingInterface,
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    dict(
+                        file_path=str(
+                            data_path / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+                            / "Noise4Sam_g0_t0.imec0.lf.bin"
                         )
                     ),
                 ),
@@ -90,8 +101,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     for file in Path(loc).iterdir():
                         self.dataset.get(f"{dataset_path}/{file.name}")
                 else:
-                    for dataset_file in Path(dataset_path).parent.iterdir():
-                        self.dataset.get(dataset_file)
+                    self.dataset.get(dataset_path)
             dataset_stem = Path(dataset_path).stem
             nwbfile_path = self.savedir / f"{recording_interface.__name__}_test_{dataset_stem}.nwb"
 
