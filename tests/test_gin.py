@@ -9,7 +9,7 @@ from nwb_conversion_tools import (
     NWBConverter,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
-    SpikeGLXRecordingInterface
+    SpikeGLXRecordingInterface,
 )
 
 try:
@@ -76,7 +76,10 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
                     dict(
                         file_path=str(
-                            data_path / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+                            data_path
+                            / "spikeglx"
+                            / "Noise4Sam_g0"
+                            / "Noise4Sam_g0_imec0"
                             / "Noise4Sam_g0_t0.imec0.ap.bin"
                         )
                     ),
@@ -86,7 +89,10 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
                     dict(
                         file_path=str(
-                            data_path / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+                            data_path
+                            / "spikeglx"
+                            / "Noise4Sam_g0"
+                            / "Noise4Sam_g0_imec0"
                             / "Noise4Sam_g0_t0.imec0.lf.bin"
                         )
                     ),
