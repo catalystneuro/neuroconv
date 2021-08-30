@@ -10,10 +10,10 @@ jsonschema==3.2.0
 psutil==5.8.0
 lxml==4.6.3
 opencv-python==4.5.1.48
-spikeextractors @ git+https://github.com/SpikeInterface/spikeextractors.git@master
-spikesorters @ git+https://github.com/SpikeInterface/spikesorters.git@master
-spiketoolkit @ git+https://github.com/SpikeInterface/spiketoolkit.git@master
-neo @ git+https://github.com/NeuralEnsemble/python-neo.git@master
+spikeextractors==0.9.7
+spikesorters==0.4.4
+spiketoolkit==0.7.5
+neo==0.10.0
 roiextractors==0.3.1
 ndx-events==0.2.0
 parameterized==0.8.1
