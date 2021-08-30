@@ -2,7 +2,7 @@
 import roiextractors as re
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
+from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...basedatainterface import BaseDataInterface
 from ...utils.json_schema import (

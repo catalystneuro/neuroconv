@@ -1,10 +1,4 @@
-from roiextractors import (
-    CnmfeSegmentationExtractor,
-    ExtractSegmentationExtractor,
-    CaimanSegmentationExtractor,
-    Suite2pSegmentationExtractor,
-    SimaSegmentationExtractor,
-)
+from roiextractors import CaimanSegmentationExtractor
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
