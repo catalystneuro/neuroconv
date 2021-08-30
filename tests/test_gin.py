@@ -5,7 +5,14 @@ from pathlib import Path
 
 from spikeextractors import NwbRecordingExtractor
 from spikeextractors.testing import check_recordings_equal
-from nwb_conversion_tools import NWBConverter, IntanRecordingInterface, NeuralynxRecordingInterface
+from nwb_conversion_tools import (
+    NWBConverter,
+    IntanRecordingInterface,
+    NeuralynxRecordingInterface,
+    NeuroscopeRecordingInterface,
+    SpikeGadgetsRecordingInterface,
+    SpikeGLXRecordingInterface,
+)
 
 try:
     from datalad.api import install, Dataset
@@ -22,7 +29,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 RUN_LOCAL = True
-LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+LOCAL_PATH = Path("D:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
@@ -65,6 +72,11 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     NeuralynxRecordingInterface,
                     "neuralynx/Cheetah_v5.7.4/original_data",
                     dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+                ),
+                (
+                    NeuroscopeRecordingInterface,
+                    "neuroscope/test1",
+                    dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
                 ),
             ]
         )
