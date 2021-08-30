@@ -101,7 +101,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                             / "Noise4Sam_g0_imec0"
                             / "Noise4Sam_g0_t0.imec0.lf.bin"
                         )
-                    )
+                    ),
                 ),
             ]
         )
