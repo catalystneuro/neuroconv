@@ -29,7 +29,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
-        return get_schema_from_method_signature(cls.RX.__init__)
+        return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, **source_data):
         super().__init__(**source_data)

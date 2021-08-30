@@ -1,18 +1,11 @@
 """Authors: Luiz Tauffer"""
-import random
-import string
 import pytz
-import uuid
-from typing import Union, Optional
-from pathlib import Path
 import spikeextractors as se
-from pynwb import NWBFile
+from typing import Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature
-
-PathType = Union[str, Path, None]
+from ....utils.json_schema import get_schema_from_method_signature, FolderPathType
 
 
 class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
@@ -26,18 +19,17 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )
-        source_schema["properties"]["folder_path"]["format"] = "directory"
         source_schema["properties"]["folder_path"]["description"] = "Path to directory containing OpenEphys files."
         return source_schema
 
     def __init__(
         self,
-        folder_path: PathType,
+        folder_path: FolderPathType,
         experiment_id: Optional[int] = 0,
         recording_id: Optional[int] = 0,
         stub_test: Optional[bool] = False,
     ):
-        super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)
+        super().__init__(folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id)
         if stub_test:
             self.subset_channels = [0, 1]
 
@@ -67,10 +59,9 @@ class OpenEphysSortingExtractorInterface(BaseSortingExtractorInterface):
         metadata_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["recording_id", "experiment_id"]
         )
-        metadata_schema["properties"]["folder_path"]["format"] = "directory"
         metadata_schema["properties"]["folder_path"]["description"] = "Path to directory containing OpenEphys files."
         metadata_schema["additionalProperties"] = False
         return metadata_schema
 
-    def __init__(self, folder_path: PathType, experiment_id: Optional[int] = 0, recording_id: Optional[int] = 0):
+    def __init__(self, folder_path: FolderPathType, experiment_id: Optional[int] = 0, recording_id: Optional[int] = 0):
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)

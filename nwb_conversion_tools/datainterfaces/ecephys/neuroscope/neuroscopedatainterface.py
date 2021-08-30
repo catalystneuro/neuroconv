@@ -8,7 +8,7 @@ from pynwb.ecephys import ElectricalSeries
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import get_schema_from_hdmf_class, dict_deep_update
+from ....utils.json_schema import FilePathType, FolderPathType, get_schema_from_hdmf_class, dict_deep_update
 
 try:
     from lxml import etree as et
@@ -80,8 +80,8 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         )
         return ecephys_metadata
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, file_path: FilePathType):
+        super().__init__(file_path=file_path)
         xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
         self.subset_channels = get_shank_channels(xml_file_path=xml_file_path, sort=True)
         shank_channels = get_shank_channels(xml_file_path)
@@ -123,8 +123,8 @@ class NeuroscopeMultiRecordingTimeInterface(BaseRecordingExtractorInterface):
 
     RX = se.NeuroscopeMultiRecordingTimeExtractor
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, folder_path: FolderPathType):
+        super().__init__(folder_path=folder_path)
         xml_file_path = get_xml_file_path(data_file_path=self.source_data["folder_path"])
         self.subset_channels = get_shank_channels(xml_file_path=xml_file_path, sort=True)
         shank_channels = get_shank_channels(xml_file_path)
@@ -167,8 +167,8 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 
     RX = se.NeuroscopeRecordingExtractor
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, file_path: FilePathType):
+        super().__init__(file_path=file_path)
         self.subset_channels = get_shank_channels(
             xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"]), sort=True
         )

@@ -5,7 +5,7 @@ import spikeextractors as se
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import get_schema_from_hdmf_class
+from ....utils.json_schema import get_schema_from_hdmf_class, FilePathType
 
 try:
     from pyintan.intan import read_rhd, read_rhs
@@ -21,9 +21,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = se.IntanRecordingExtractor
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, file_path: FilePathType):
         assert HAVE_PYINTAN, INSTALL_MESSAGE
-        super().__init__(*args, **kwargs)
+        super().__init__(file_path=file_path)
         if ".rhd" in Path(self.source_data["file_path"]).suffixes:
             intan_file_metadata = read_rhd(self.source_data["file_path"])[1]
         else:

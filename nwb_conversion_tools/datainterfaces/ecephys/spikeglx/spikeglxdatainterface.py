@@ -2,17 +2,18 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Union, Optional
+
 from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor, RecordingExtractor
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature, get_schema_from_hdmf_class
+from ....utils.json_schema import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
 
 PathType = Union[str, Path, None]
 
 
-def fetch_spikeglx_metadata(file_path: str, recording: RecordingExtractor, metadata: dict):
+def fetch_spikeglx_metadata(file_path: FilePathType, recording: RecordingExtractor, metadata: dict):
     file_path = Path(file_path)
     session_id = file_path.parent.stem
 
@@ -41,12 +42,11 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(class_method=cls.RX.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["format"] = "file"
+        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
         return source_schema
 
-    def __init__(self, file_path: PathType, stub_test: Optional[bool] = False):
+    def __init__(self, file_path: FilePathType, stub_test: Optional[bool] = False):
         super().__init__(file_path=str(file_path))
         if stub_test:
             self.subset_channels = [0, 1]
@@ -90,12 +90,11 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
-        source_schema = get_schema_from_method_signature(class_method=cls.RX.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["format"] = "file"
+        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
         return source_schema
 
-    def __init__(self, file_path: PathType, stub_test: Optional[bool] = False):
+    def __init__(self, file_path: FilePathType, stub_test: Optional[bool] = False):
         super().__init__(file_path=str(file_path))
         if stub_test:
             self.subset_channels = [0, 1]

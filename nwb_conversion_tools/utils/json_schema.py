@@ -1,9 +1,17 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
-from datetime import datetime
 import numpy as np
+from datetime import datetime
+from typing import TypeVar
+from pathlib import Path
+from typing import Optional
+
 import pynwb
+
+FilePathType = TypeVar("FilePathType", str, Path)
+FolderPathType = TypeVar("FolderPathType", str, Path)
+OptionalFilePathType = Optional[FilePathType]
 
 
 def exist_dict_in_list(d, l):
@@ -89,12 +97,14 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         float: "number",
         dict: "object",
         list: "array",
+        FilePathType: "string",
+        FolderPathType: "string",
     }
 
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
-                if hasattr(param.annotation, "__args__"):
+                if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                     args = param.annotation.__args__
                     valid_args = [x in annotation_json_type_map for x in args]
                     if any(valid_args):
@@ -115,12 +125,15 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                         raise ValueError(
                             f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
                         )
+                    if arg == FilePathType:
+                        input_schema["properties"].update({param_name: dict(format="file")})
+                    if arg == FolderPathType:
+                        input_schema["properties"].update({param_name: dict(format="directory")})
             else:
                 raise NotImplementedError(
-                    f"The annotation type of '{param}' in function '{class_method}' "
-                    "is not implemented! Please request it to be added at github.com/"
-                    "catalystneuro/nwb-conversion-tools/issues or create the json-schema"
-                    "for this method manually."
+                    f"The annotation type of '{param}' in function '{class_method}' is not implemented! "
+                    "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
+                    "or create the json-schema for this method manually."
                 )
             arg_spec = {param_name: dict(type=param_type)}
             if param.default is param.empty:
@@ -295,7 +308,9 @@ def get_schema_for_NWBFile():
         "data_collection": {"type": "string", "description": "Notes about data collection and analysis."},
         "surgery": {
             "type": "string",
-            "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery.",
+            "description": (
+                "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+            ),
         },
         "virus": {
             "type": "string",
