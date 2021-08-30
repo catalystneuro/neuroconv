@@ -1,4 +1,4 @@
-from roiextractors import SbxImagingExtractor, Hdf5ImagingExtractor, TiffImagingExtractor
+from roiextractors import SbxImagingExtractor
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 

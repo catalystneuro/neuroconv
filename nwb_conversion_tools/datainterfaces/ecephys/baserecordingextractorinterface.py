@@ -112,7 +112,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         use_times: bool = False,
         save_path: OptionalPathType = None,
         overwrite: bool = False,
-        buffer_mb: int = 500,
         write_as: str = "raw",
         es_key: str = None,
         compression: Optional[str] = "gzip",
