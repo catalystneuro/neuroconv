@@ -88,7 +88,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         group_electrode_numbers = [x for channels in shank_channels for x, _ in enumerate(channels)]
         group_names = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
         for channel_id, group_electrode_number, group_name in zip(
-                self.recording_extractor.get_channel_ids(), group_electrode_numbers, group_names
+            self.recording_extractor.get_channel_ids(), group_electrode_numbers, group_names
         ):
             self.recording_extractor.set_channel_property(
                 channel_id=channel_id, property_name="shank_electrode_number", value=group_electrode_number
@@ -131,7 +131,7 @@ class NeuroscopeMultiRecordingTimeInterface(BaseRecordingExtractorInterface):
         group_electrode_numbers = [x for channels in shank_channels for x, _ in enumerate(channels)]
         group_names = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
         for channel_id, group_electrode_number, group_name in zip(
-                self.recording_extractor.get_channel_ids(), group_electrode_numbers, group_names
+            self.recording_extractor.get_channel_ids(), group_electrode_numbers, group_names
         ):
             self.recording_extractor.set_channel_property(
                 channel_id=channel_id, property_name="group_electrode_number", value=group_electrode_number
@@ -154,7 +154,7 @@ class NeuroscopeMultiRecordingTimeInterface(BaseRecordingExtractorInterface):
             metadata,
             NeuroscopeRecordingInterface.get_ecephys_metadata(
                 xml_file_path=get_xml_file_path(data_file_path=self.source_data["folder_path"])
-            )
+            ),
         )
         metadata["Ecephys"].update(
             ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
@@ -187,7 +187,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             metadata,
             NeuroscopeRecordingInterface.get_ecephys_metadata(
                 xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"])
-            )
+            ),
         )
         metadata["Ecephys"].update(
             ElectricalSeries_lfp=dict(name="ElectricalSeries_lfp", description="Local field potential signal.")

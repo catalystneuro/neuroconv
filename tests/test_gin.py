@@ -11,7 +11,7 @@ from nwb_conversion_tools import (
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
     SpikeGadgetsRecordingInterface,
-    SpikeGLXRecordingInterface
+    SpikeGLXRecordingInterface,
 )
 
 try:
