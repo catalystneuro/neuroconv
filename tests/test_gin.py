@@ -10,7 +10,6 @@ from nwb_conversion_tools import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
-    SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
 )
 
@@ -77,6 +76,32 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     NeuroscopeRecordingInterface,
                     "neuroscope/test1",
                     dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
+                ),
+                (
+                    SpikeGLXRecordingInterface,
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    dict(
+                        file_path=str(
+                            data_path
+                            / "spikeglx"
+                            / "Noise4Sam_g0"
+                            / "Noise4Sam_g0_imec0"
+                            / "Noise4Sam_g0_t0.imec0.ap.bin"
+                        )
+                    ),
+                ),
+                (
+                    SpikeGLXRecordingInterface,
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    dict(
+                        file_path=str(
+                            data_path
+                            / "spikeglx"
+                            / "Noise4Sam_g0"
+                            / "Noise4Sam_g0_imec0"
+                            / "Noise4Sam_g0_t0.imec0.lf.bin"
+                        )
+                    ),
                 ),
             ]
         )
