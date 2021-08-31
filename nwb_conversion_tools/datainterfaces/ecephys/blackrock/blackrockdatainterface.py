@@ -32,7 +32,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(self, filename: FilePathType, nsx_override: OptionalFilePathType = None):
-        nsx_to_load = int(str(filename).split('.')[-1][-1])
+        nsx_to_load = int(str(filename).split(".")[-1][-1])
         super().__init__(filename=filename, nsx_to_load=nsx_to_load)
         # super().__init__(filename=filename, nsx_override=nsx_override)
         # if self.source_data["nsx_override"] is not None:
@@ -56,7 +56,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
 
         # Open file and extract headers
-        nsx_file = NsxFile(datafile=self.source_data['filename'])
+        nsx_file = NsxFile(datafile=self.source_data["filename"])
         session_start_time = nsx_file.basic_header["TimeOrigin"]
         session_start_time_tzaware = pytz.timezone("EST").localize(session_start_time)
         comment = nsx_file.basic_header["Comment"]
@@ -68,7 +68,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         # Checks if data is raw or processed
-        if self.source_data['filename'].split(".")[-1][-1] == "6":
+        if self.source_data["filename"].split(".")[-1][-1] == "6":
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
@@ -110,7 +110,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if self.source_data['filename'].split(".")[-1][-1] == "6":
+        if self.source_data["filename"].split(".")[-1][-1] == "6":
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
