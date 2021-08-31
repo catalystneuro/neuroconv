@@ -140,7 +140,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                 input_schema["required"].append(param_name)
             elif param.default is not None:
                 arg_spec[param_name].update(default=param.default)
-            input_schema["properties"].update(arg_spec)
+            input_schema["properties"] = dict_deep_update(input_schema["properties"], arg_spec)
         input_schema["additionalProperties"] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
 
