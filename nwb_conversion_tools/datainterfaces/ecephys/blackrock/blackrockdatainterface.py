@@ -32,13 +32,15 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(self, filename: FilePathType, nsx_override: OptionalFilePathType = None):
-        super().__init__(filename=filename, nsx_override=nsx_override)
-        if self.source_data["nsx_override"] is not None:
-            # if 'nsx_override' is specified as a path, then the 'filename' argument is ignored
-            # This filename be used to extract the version of nsx: ns3/4/5/6 from the filepath
-            self.data_filename = self.source_data["nsx_override"]
-        else:
-            self.data_filename = self.source_data["filename"]
+        nsx_to_load = int(str(filename).split('.')[-1][-1])
+        super().__init__(filename=filename, nsx_to_load=nsx_to_load)
+        # super().__init__(filename=filename, nsx_override=nsx_override)
+        # if self.source_data["nsx_override"] is not None:
+        #     # if 'nsx_override' is specified as a path, then the 'filename' argument is ignored
+        #     # This filename be used to extract the version of nsx: ns3/4/5/6 from the filepath
+        #     self.data_filename = self.source_data["nsx_override"]
+        # else:
+        #     self.data_filename = self.source_data["filename"]
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -54,8 +56,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
 
         # Open file and extract headers
-
-        nsx_file = NsxFile(datafile=self.data_filename)
+        nsx_file = NsxFile(datafile=self.source_data['filename'])
         session_start_time = nsx_file.basic_header["TimeOrigin"]
         session_start_time_tzaware = pytz.timezone("EST").localize(session_start_time)
         comment = nsx_file.basic_header["Comment"]
@@ -67,7 +68,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         # Checks if data is raw or processed
-        if self.data_filename.split(".")[-1][-1] == "6":
+        if self.source_data['filename'].split(".")[-1][-1] == "6":
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
@@ -82,7 +83,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         use_times: bool = False,
         save_path: OptionalFilePathType = None,
         overwrite: bool = False,
-        buffer_mb: int = 500,
         write_as: str = "raw",
         es_key: str = None,
     ):
@@ -110,7 +110,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if self.data_filename.split(".")[-1][-1] == "6":
+        if self.source_data['filename'].split(".")[-1][-1] == "6":
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
@@ -126,7 +126,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             save_path=save_path,
             overwrite=overwrite,
             stub_test=stub_test,
-            buffer_mb=buffer_mb,
         )
 
 
