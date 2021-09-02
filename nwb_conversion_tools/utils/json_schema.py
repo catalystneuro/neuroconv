@@ -105,9 +105,9 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
             if param.annotation:
                 if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                     args = param.annotation.__args__
-                    valid_args = [x in annotation_json_type_map for x in args]
+                    valid_args = [x.__name__ in annotation_json_type_map for x in args]
                     if any(valid_args):
-                        param_types = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
+                        param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
                     else:
                         raise ValueError("No valid arguments were found in the json type mapping!")
                     if len(set(param_types)) > 1:
