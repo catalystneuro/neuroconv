@@ -90,25 +90,24 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
     else:
         exclude = exclude + ["self", "kwargs"]
     input_schema = get_base_schema()
-    annotation_json_type_map = {
-        bool: "boolean",
-        str: "string",
-        int: "number",
-        float: "number",
-        dict: "object",
-        list: "array",
-        FilePathType: "string",
-        FolderPathType: "string",
-    }
-
+    annotation_json_type_map = dict(
+        bool="boolean",
+        str="string",
+        int="number",
+        float="number",
+        dict="object",
+        list="array",
+        FilePathType="string",
+        FolderPathType="string",
+    )
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
                 if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                     args = param.annotation.__args__
-                    valid_args = [x in annotation_json_type_map for x in args]
+                    valid_args = [x.__name__ in annotation_json_type_map for x in args]
                     if any(valid_args):
-                        param_types = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
+                        param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
                     else:
                         raise ValueError("No valid arguments were found in the json type mapping!")
                     if len(set(param_types)) > 1:
@@ -119,8 +118,8 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     param_type = param_types[0]
                 else:
                     arg = param.annotation
-                    if arg in annotation_json_type_map:
-                        param_type = annotation_json_type_map[arg]
+                    if arg.__name__ in annotation_json_type_map:
+                        param_type = annotation_json_type_map[arg.__name__]
                     else:
                         raise ValueError(
                             f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
@@ -140,7 +139,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                 input_schema["required"].append(param_name)
             elif param.default is not None:
                 arg_spec[param_name].update(default=param.default)
-            input_schema["properties"].update(arg_spec)
+            input_schema["properties"] = dict_deep_update(input_schema["properties"], arg_spec)
         input_schema["additionalProperties"] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
 
