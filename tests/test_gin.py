@@ -1,6 +1,7 @@
 import sys
 import tempfile
 import unittest
+import numpy as np
 from pathlib import Path
 
 from spikeextractors import NwbRecordingExtractor
@@ -10,6 +11,7 @@ from nwb_conversion_tools import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
+    SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
 )
 
@@ -28,7 +30,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 RUN_LOCAL = True
-LOCAL_PATH = Path("D:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
@@ -91,6 +93,22 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     ),
                 ),
                 (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(
+                        filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec"),
+                        gains=[0.195]
+                    )
+                ),
+                (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(
+                        filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"),
+                        gains=[0.195]
+                    ),
+                ),
+                (
                     SpikeGLXRecordingInterface,
                     "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
                     dict(
@@ -102,7 +120,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                             / "Noise4Sam_g0_t0.imec0.lf.bin"
                         )
                     ),
-                ),
+                )
             ]
         )
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
@@ -124,6 +142,14 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
             recording = converter.data_interface_objects["TestRecording"].recording_extractor
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+
+            # sorted_ids = np.sort(recording.get_channel_ids())
+            # for return_scaled in [True, False]:
+            #     np.testing.assert_array_almost_equal(
+            #         x=recording.get_traces(return_scaled=return_scaled),
+            #         y=nwb_recording.get_traces(return_scaled=return_scaled),
+            #     )
+
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 

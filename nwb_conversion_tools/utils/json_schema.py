@@ -5,13 +5,14 @@ import numpy as np
 from datetime import datetime
 from typing import TypeVar
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import pynwb
 
 FilePathType = TypeVar("FilePathType", str, Path)
 FolderPathType = TypeVar("FolderPathType", str, Path)
 OptionalFilePathType = Optional[FilePathType]
+ArrayType = Union[list, np.ndarray]
 
 
 def exist_dict_in_list(d, l):
