@@ -60,8 +60,8 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 (
                     IntanRecordingInterface,
                     "intan",
-                    dict(file_path=str(data_path / "intan" / f"intan_{suffix}_test_1.{suffix}"))
-                 )
+                    dict(file_path=str(data_path / "intan" / f"intan_{suffix}_test_1.{suffix}")),
+                )
             )
         for suffix in ["ap", "lf"]:
             parameterized_expand_list.append(
@@ -77,20 +77,14 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                             / f"Noise4Sam_g0_t0.imec0.{suffix}.bin"
                         )
                     ),
-                 )
+                )
             )
         for file_name, num_channels in zip(["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"], [512, 128]):
-            for gains in [None, [.195], [0.385] * num_channels]:
+            for gains in [None, [0.195], [0.385] * num_channels]:
                 interface_kwargs = dict(filename=str(data_path / "spikegadgets" / f"{file_name}.rec"))
                 if gains is not None:
                     interface_kwargs.update(gains=gains)
-                parameterized_expand_list.append(
-                    (
-                        SpikeGadgetsRecordingInterface,
-                        "spikegadgets",
-                        interface_kwargs
-                     )
-                )
+                parameterized_expand_list.append((SpikeGadgetsRecordingInterface, "spikegadgets", interface_kwargs))
 
         def setUp(self):
             data_exists = self.data_path.exists()

@@ -20,10 +20,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(
-        self,
-        filename: FilePathType,
-        gains: OptionalArrayType = None,
-        probe_file_path: OptionalFilePathType = None
+        self, filename: FilePathType, gains: OptionalArrayType = None, probe_file_path: OptionalFilePathType = None
     ):
         """
         Recording Interface for the SpikeGadgets Format.
