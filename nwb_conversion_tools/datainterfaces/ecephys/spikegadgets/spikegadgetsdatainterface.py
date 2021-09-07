@@ -2,11 +2,7 @@
 from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import (
-    FilePathType,
-    OptionalFilePathType,
-    OptionalArrayType
-)
+from ....utils.json_schema import FilePathType, OptionalFilePathType, OptionalArrayType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
@@ -40,7 +36,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             The early versions of SpikeGadgest do not automatically record the conversion factor ('gain') of the
             acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
-        probe_file_path : OptionalFilePathType, optional
+        probe_file_path : FilePathType, optional
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
         """
