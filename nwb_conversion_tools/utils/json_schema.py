@@ -13,6 +13,7 @@ FilePathType = TypeVar("FilePathType", str, Path)
 FolderPathType = TypeVar("FolderPathType", str, Path)
 OptionalFilePathType = Optional[FilePathType]
 ArrayType = Union[list, np.ndarray]
+OptionalArrayType = Optional[ArrayType]
 
 
 def exist_dict_in_list(d, l):

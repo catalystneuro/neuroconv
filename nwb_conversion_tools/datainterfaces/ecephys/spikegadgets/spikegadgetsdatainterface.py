@@ -2,7 +2,11 @@
 from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature, FilePathType, OptionalFilePathType, ArrayType
+from ....utils.json_schema import (
+    FilePathType,
+    OptionalFilePathType,
+    OptionalArrayType
+)
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
@@ -12,14 +16,19 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(cls.__init__)
-        source_schema["properties"]["filename"].update(format="file", description="Path to SpikeGadgets (.rec) file.")
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["filename"].update(description="Path to SpikeGadgets (.rec) file.")
         source_schema["properties"]["probe_file_path"].update(
-            format="file", description="Optional path to a probe (.prb) file describing electrode features."
+            description="Optional path to a probe (.prb) file describing electrode features."
         )
         return source_schema
 
-    def __init__(self, filename: FilePathType, gains: ArrayType, probe_file_path: OptionalFilePathType = None):
+    def __init__(
+        self,
+        filename: FilePathType,
+        gains: OptionalArrayType = None,
+        probe_file_path: OptionalFilePathType = None
+    ):
         """
         Recording Interface for the SpikeGadgets Format.
 
@@ -27,7 +36,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         filename : FilePathType
             Path to the .rec file.
-        gains : ArrayType
+        gains : ArrayType, optional
             The early versions of SpikeGadgest do not automatically record the conversion factor ('gain') of the
             acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
@@ -36,8 +45,9 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             See https://github.com/SpikeInterface/probeinterface for more information.
         """
         super().__init__(filename=filename)
-        if len(gains) == 1:
-            gains = [gains[0]] * self.recording_extractor.get_num_channels()
-        self.recording_extractor.set_channel_gains(gains=gains)
+        if gains is not None:
+            if len(gains) == 1:
+                gains = [gains[0]] * self.recording_extractor.get_num_channels()
+            self.recording_extractor.set_channel_gains(gains=gains)
         if probe_file_path is not None:
             self.recording_extractor = load_probe_file(recording=self.recording_extractor, probe_file=probe_file_path)

@@ -96,8 +96,22 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     SpikeGadgetsRecordingInterface,
                     "spikegadgets",
                     dict(
+                        filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec")
+                    )
+                ),
+                (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(
+                        filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")
+                    ),
+                ),
+                (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(
                         filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec"),
-                        gains=[0.195]
+                        gains=[0.195]  # 0.195 is basic intan value
                     )
                 ),
                 (
@@ -105,7 +119,23 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     "spikegadgets",
                     dict(
                         filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"),
-                        gains=[0.195]
+                        gains=[.195]
+                    ),
+                ),
+                (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(
+                        filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec"),
+                        gains=[0.385] * 512  # 0.385 is basic ampliplex value
+                    )
+                ),
+                (
+                    SpikeGadgetsRecordingInterface,
+                    "spikegadgets",
+                    dict(
+                        filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"),
+                        gains=[.385] * 128
                     ),
                 ),
                 (
