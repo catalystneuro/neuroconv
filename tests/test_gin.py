@@ -1,7 +1,6 @@
 import sys
 import tempfile
 import unittest
-import numpy as np
 from pathlib import Path
 
 from spikeextractors import NwbRecordingExtractor
@@ -44,6 +43,55 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
         else:
             data_path = Path.cwd() / "ephy_testing_data"
 
+        parameterized_expand_list = [
+            (
+                NeuralynxRecordingInterface,
+                "neuralynx/Cheetah_v5.7.4/original_data",
+                dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+            ),
+            (
+                NeuroscopeRecordingInterface,
+                "neuroscope/test1",
+                dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
+            ),
+        ]
+        for suffix in ["rhd", "rhs"]:
+            parameterized_expand_list.append(
+                (
+                    IntanRecordingInterface,
+                    "intan",
+                    dict(file_path=str(data_path / "intan" / f"intan_{suffix}_test_1.{suffix}"))
+                 )
+            )
+        for suffix in ["ap", "lf"]:
+            parameterized_expand_list.append(
+                (
+                    SpikeGLXRecordingInterface,
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    dict(
+                        file_path=str(
+                            data_path
+                            / "spikeglx"
+                            / "Noise4Sam_g0"
+                            / "Noise4Sam_g0_imec0"
+                            / f"Noise4Sam_g0_t0.imec0.{suffix}.bin"
+                        )
+                    ),
+                 )
+            )
+        for file_name, num_channels in zip(["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"], [512, 128]):
+            for gains in [None, [.195], [0.385] * num_channels]:
+                interface_kwargs = dict(filename=str(data_path / "spikegadgets" / f"{file_name}.rec"))
+                if gains is not None:
+                    interface_kwargs.update(gains=gains)
+                parameterized_expand_list.append(
+                    (
+                        SpikeGadgetsRecordingInterface,
+                        "spikegadgets",
+                        interface_kwargs
+                     )
+                )
+
         def setUp(self):
             data_exists = self.data_path.exists()
             if HAVE_DATALAD and data_exists:
@@ -57,102 +105,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             elif not data_exists:
                 self.dataset = install("https://gin.g-node.org/NeuralEnsemble/ephy_testing_data")
 
-        @parameterized.expand(
-            [
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=str(data_path / "intan" / "intan_rhd_test_1.rhd")),
-                ),
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=str(data_path / "intan" / "intan_rhs_test_1.rhs")),
-                ),
-                (
-                    NeuralynxRecordingInterface,
-                    "neuralynx/Cheetah_v5.7.4/original_data",
-                    dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
-                ),
-                (
-                    NeuroscopeRecordingInterface,
-                    "neuroscope/test1",
-                    dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
-                ),
-                (
-                    SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
-                    dict(
-                        file_path=str(
-                            data_path
-                            / "spikeglx"
-                            / "Noise4Sam_g0"
-                            / "Noise4Sam_g0_imec0"
-                            / "Noise4Sam_g0_t0.imec0.ap.bin"
-                        )
-                    ),
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(
-                        filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec")
-                    )
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(
-                        filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")
-                    ),
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(
-                        filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec"),
-                        gains=[0.195]  # 0.195 is basic intan value
-                    )
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(
-                        filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"),
-                        gains=[.195]
-                    ),
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(
-                        filename=str(data_path / "spikegadgets" / "20210225_em8_minirec2_ac.rec"),
-                        gains=[0.385] * 512  # 0.385 is basic ampliplex value
-                    )
-                ),
-                (
-                    SpikeGadgetsRecordingInterface,
-                    "spikegadgets",
-                    dict(
-                        filename=str(data_path / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"),
-                        gains=[.385] * 128
-                    ),
-                ),
-                (
-                    SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
-                    dict(
-                        file_path=str(
-                            data_path
-                            / "spikeglx"
-                            / "Noise4Sam_g0"
-                            / "Noise4Sam_g0_imec0"
-                            / "Noise4Sam_g0_t0.imec0.lf.bin"
-                        )
-                    ),
-                )
-            ]
-        )
+        @parameterized.expand(parameterized_expand_list)
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
             print(f"\n\n\n TESTING {recording_interface.__name__}...")
             if HAVE_DATALAD:
