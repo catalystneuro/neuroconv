@@ -3,13 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from spikeextractors import NwbRecordingExtractor
-from spikeextractors.testing import check_recordings_equal
+from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor
+from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from nwb_conversion_tools import (
     NWBConverter,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
+    PhySortingInterface,
     SpikeGLXRecordingInterface,
 )
 
@@ -28,7 +29,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 RUN_LOCAL = True
-LOCAL_PATH = Path("D:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
@@ -127,6 +128,36 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 
+        @parameterized.expand(
+            [
+                (
+                    PhySortingInterface,
+                    "phy/phy_example_0",
+                    dict(folder_path=str(data_path / "phy" / "phy_example_0"))
+                )
+            ]
+        )
+        def test_convert_sorting_extractor_to_nwb(self, sorting_interface, dataset_path, interface_kwargs):
+            print(f"\n\n\n TESTING {sorting_interface.__name__}...")
+            if HAVE_DATALAD:
+                loc = list(interface_kwargs.values())[0]
+                if Path(loc).is_dir():
+                    for file in Path(loc).iterdir():
+                        self.dataset.get(f"{dataset_path}/{file.name}")
+                else:
+                    self.dataset.get(dataset_path)
+            dataset_stem = Path(dataset_path).stem
+            nwbfile_path = self.savedir / f"{sorting_interface.__name__}_test_{dataset_stem}.nwb"
+
+            class TestConverter(NWBConverter):
+                data_interface_classes = dict(TestSorting=sorting_interface)
+
+            converter = TestConverter(source_data=dict(TestSorting=dict(interface_kwargs)))
+            converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+            recording = converter.data_interface_objects["TestSorting"].sortinging_extractor
+            nwb_recording = NwbSortingExtractor(file_path=nwbfile_path)
+            check_sortings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
+            check_sortings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 
 if __name__ == "__main__":
     unittest.main()
