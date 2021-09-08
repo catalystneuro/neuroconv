@@ -154,10 +154,13 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
 
             converter = TestConverter(source_data=dict(TestSorting=dict(interface_kwargs)))
             converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
-            recording = converter.data_interface_objects["TestSorting"].sortinging_extractor
-            nwb_recording = NwbSortingExtractor(file_path=nwbfile_path)
-            check_sortings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
-            check_sortings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
+            sorting = converter.data_interface_objects["TestSorting"].sortinging_extractor
+            sf = sorting.get_sampling_frequency()
+            if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
+                sf = 30000
+                sorting.set_sampling_frequency(sf)
+            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
+            check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
 
 if __name__ == "__main__":
     unittest.main()
