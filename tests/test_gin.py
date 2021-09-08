@@ -129,13 +129,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 
         @parameterized.expand(
-            [
-                (
-                    PhySortingInterface,
-                    "phy/phy_example_0",
-                    dict(folder_path=str(data_path / "phy" / "phy_example_0"))
-                )
-            ]
+            [(PhySortingInterface, "phy/phy_example_0", dict(folder_path=str(data_path / "phy" / "phy_example_0")))]
         )
         def test_convert_sorting_extractor_to_nwb(self, sorting_interface, dataset_path, interface_kwargs):
             print(f"\n\n\n TESTING {sorting_interface.__name__}...")
@@ -161,6 +155,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 sorting.set_sampling_frequency(sf)
             nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
             check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
+
 
 if __name__ == "__main__":
     unittest.main()
