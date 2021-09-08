@@ -148,7 +148,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
 
             converter = TestConverter(source_data=dict(TestSorting=dict(interface_kwargs)))
             converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
-            sorting = converter.data_interface_objects["TestSorting"].sortinging_extractor
+            sorting = converter.data_interface_objects["TestSorting"].sorting_extractor
             sf = sorting.get_sampling_frequency()
             if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
                 sf = 30000
