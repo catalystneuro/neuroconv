@@ -31,16 +31,10 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["filename"]["description"] = "Path to Blackrock file."
         return source_schema
 
-    def __init__(self, filename: FilePathType, nsx_override: OptionalFilePathType = None):
-        nsx_to_load = int(str(filename).split(".")[-1][-1])
-        super().__init__(filename=filename, nsx_to_load=nsx_to_load)
-        # super().__init__(filename=filename, nsx_override=nsx_override)
-        # if self.source_data["nsx_override"] is not None:
-        #     # if 'nsx_override' is specified as a path, then the 'filename' argument is ignored
-        #     # This filename be used to extract the version of nsx: ns3/4/5/6 from the filepath
-        #     self.data_filename = self.source_data["nsx_override"]
-        # else:
-        #     self.data_filename = self.source_data["filename"]
+    def __init__(self, filename: FilePathType,
+                 nsx_override: OptionalFilePathType = None,
+                 nsx_to_load: OptionalFilePathType = None):
+        super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -110,7 +104,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if self.source_data["filename"].split(".")[-1][-1] == "6":
+        if 6 in self.RX.neo_reader.nsx_to_load:
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
