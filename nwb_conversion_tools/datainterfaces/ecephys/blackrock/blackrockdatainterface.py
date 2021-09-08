@@ -31,9 +31,12 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["filename"]["description"] = "Path to Blackrock file."
         return source_schema
 
-    def __init__(self, filename: FilePathType,
-                 nsx_override: OptionalFilePathType = None,
-                 nsx_to_load: OptionalFilePathType = None):
+    def __init__(
+        self,
+        filename: FilePathType,
+        nsx_override: OptionalFilePathType = None,
+        nsx_to_load: OptionalFilePathType = None,
+    ):
         super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
     def get_metadata_schema(self):
