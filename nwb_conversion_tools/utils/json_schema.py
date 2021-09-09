@@ -14,28 +14,29 @@ FolderPathType = TypeVar("FolderPathType", str, Path)
 OptionalFilePathType = Optional[FilePathType]
 
 
-def exist_dict_in_list(d, l):
-    """Returns True if an identical dictionary exists in the list, False otherwise"""
-    return any([d == i for i in l])
+def exist_dict_in_list(d, ls):
+    """Check if an identical dictionary exists in the list."""
+    return any([d == i for i in ls])
 
 
-def append_replace_dict_in_list(d, l, k):
+def append_replace_dict_in_list(d, ls, k):
     """
     Append a dictionary to a list of dictionaries.
+
     If some dictionary already contains the same value as d[k], it gets
     replaced by the new dict.
     Returns the updated list.
     """
-    if k in d and len(l) > 0:
+    if k in d and len(ls) > 0:
         # Index where the value dictionary[k] exists in the list of dicts
-        ind = np.where([d[k] == i[k] for i in l])[0]
+        ind = np.where([d[k] == i[k] for i in ls])[0]
         if len(ind) > 0:
-            l[ind[0]] = d
+            ls[ind[0]] = d
         else:
-            l.append(d)
+            ls.append(d)
     else:
-        l.append(d)
-    return l
+        ls.append(d)
+    return ls
 
 
 def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
@@ -46,7 +47,7 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
         elif append_list and isinstance(v, list):
             if len(v) > 0 and isinstance(v[0], dict):
                 for vv in v:
-                    d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k="name")
+                    d[k] = append_replace_dict_in_list(d=vv, ls=d.get(k, []), k="name")
                     # add dict only if not repeated
                     # if not exist_dict_in_list(vv, d.get(k, [])):
                     # d[k] = d.get(k, []) + [vv]
