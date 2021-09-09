@@ -22,7 +22,7 @@ except ImportError:
     HAVE_DATALAD = False
 
 try:
-    from parameterized import parameterized
+    from parameterized import parameterized, param
 
     HAVE_PARAMETERIZED = True
 except ImportError:
@@ -58,30 +58,30 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
 
         @parameterized.expand(
             [
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=str(data_path / "intan" / "intan_rhd_test_1.rhd")),
+                param(
+                    recording_interface=IntanRecordingInterface,
+                    dataset_path="intan",
+                    interface_kwargs=dict(file_path=str(data_path / "intan" / "intan_rhd_test_1.rhd")),
                 ),
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=str(data_path / "intan" / "intan_rhs_test_1.rhs")),
+                param(
+                    recording_interface=IntanRecordingInterface,
+                    dataset_path="intan",
+                    interface_kwargs=dict(file_path=str(data_path / "intan" / "intan_rhs_test_1.rhs"))
                 ),
-                (
-                    NeuralynxRecordingInterface,
-                    "neuralynx/Cheetah_v5.7.4/original_data",
-                    dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+                param(
+                    recording_interface=NeuralynxRecordingInterface,
+                    dataset_path="neuralynx/Cheetah_v5.7.4/original_data",
+                    interface_kwargs=dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
                 ),
-                (
-                    NeuroscopeRecordingInterface,
-                    "neuroscope/test1",
-                    dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
+                param(
+                    recording_interface=NeuroscopeRecordingInterface,
+                    dataset_path="neuroscope/test1",
+                    interface_kwargs=dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
                 ),
-                (
-                    SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
-                    dict(
+                param(
+                    recording_interface=SpikeGLXRecordingInterface,
+                    dataset_path="spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    interface_kwargs=dict(
                         file_path=str(
                             data_path
                             / "spikeglx"
@@ -91,10 +91,10 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                         )
                     ),
                 ),
-                (
-                    SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
-                    dict(
+                param(
+                    recording_interface=SpikeGLXRecordingInterface,
+                    dataset_path="spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    interface_kwargs=dict(
                         file_path=str(
                             data_path
                             / "spikeglx"
@@ -104,7 +104,8 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                         )
                     ),
                 ),
-            ]
+            ],
+            name_func=custom_name_func
         )
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
             print(f"\n\n\n TESTING {recording_interface.__name__}...")
@@ -129,7 +130,13 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 
         @parameterized.expand(
-            [(PhySortingInterface, "phy/phy_example_0", dict(folder_path=str(data_path / "phy" / "phy_example_0")))]
+            [
+                param(
+                    sorting_interface=PhySortingInterface,
+                    dataset_path="phy/phy_example_0",
+                    interface_kwargs=dict(folder_path=str(data_path / "phy" / "phy_example_0")),
+                )
+            ]
         )
         def test_convert_sorting_extractor_to_nwb(self, sorting_interface, dataset_path, interface_kwargs):
             print(f"\n\n\n TESTING {sorting_interface.__name__}...")
