@@ -84,7 +84,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     param(
                         recording_interface=SpikeGadgetsRecordingInterface,
                         dataset_path="spikegadgets",
-                        interface_kwargs=interface_kwargs
+                        interface_kwargs=interface_kwargs,
                     )
                 )
         for suffix in ["ap", "lf"]:
