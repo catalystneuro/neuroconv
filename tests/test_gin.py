@@ -66,12 +66,14 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 param(
                     recording_interface=IntanRecordingInterface,
                     dataset_path="intan",
-                    interface_kwargs=dict(file_path=str(data_path / "intan" / "intan_rhs_test_1.rhs"))
+                    interface_kwargs=dict(file_path=str(data_path / "intan" / "intan_rhs_test_1.rhs")),
                 ),
                 param(
                     recording_interface=NeuralynxRecordingInterface,
                     dataset_path="neuralynx/Cheetah_v5.7.4/original_data",
-                    interface_kwargs=dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+                    interface_kwargs=dict(
+                        folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")
+                    ),
                 ),
                 param(
                     recording_interface=NeuroscopeRecordingInterface,
@@ -105,7 +107,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     ),
                 ),
             ],
-            name_func=custom_name_func
+            name_func=custom_name_func,
         )
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
             print(f"\n\n\n TESTING {recording_interface.__name__}...")
