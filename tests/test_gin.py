@@ -80,7 +80,13 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 interface_kwargs = dict(filename=str(data_path / "spikegadgets" / f"{file_name}.rec"))
                 if gains is not None:
                     interface_kwargs.update(gains=gains)
-                parameterized_expand_list.append((SpikeGadgetsRecordingInterface, "spikegadgets", interface_kwargs))
+                parameterized_expand_list.append(
+                    param(
+                        recording_interface=SpikeGadgetsRecordingInterface,
+                        dataset_path="spikegadgets",
+                        interface_kwargs=interface_kwargs
+                    )
+                )
         for suffix in ["ap", "lf"]:
             sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
             parameterized_expand_list.append(
