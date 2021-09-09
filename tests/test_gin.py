@@ -10,7 +10,11 @@ from nwb_conversion_tools import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
+<<<<<<< HEAD
     PhySortingInterface,
+=======
+    OpenEphysRecordingExtractorInterface,
+>>>>>>> master
     SpikeGLXRecordingInterface,
 )
 
@@ -49,6 +53,41 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
         else:
             data_path = Path.cwd() / "ephy_testing_data"
 
+        parameterized_expand_list = [
+            param(
+                recording_interface=NeuralynxRecordingInterface,
+                dataset_path="neuralynx/Cheetah_v5.7.4/original_data",
+                interface_kwargs=dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+            ),
+            param(
+                recording_interface=NeuroscopeRecordingInterface,
+                dataset_path="neuroscope/test1",
+                interface_kwargs=dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
+            ),
+            param(
+                recording_interface=OpenEphysRecordingExtractorInterface,
+                dataset_path="openephysbinary/v0.4.4.1_with_video_tracking",
+                interface_kwargs=dict(folder_path=str(data_path / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
+            ),
+        ]
+        for suffix in ["rhd", "rhs"]:
+            parameterized_expand_list.append(
+                param(
+                    recording_interface=IntanRecordingInterface,
+                    dataset_path="intan",
+                    interface_kwargs=dict(file_path=str(data_path / "intan" / f"intan_{suffix}_test_1.{suffix}")),
+                )
+            )
+        for suffix in ["ap", "lf"]:
+            sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+            parameterized_expand_list.append(
+                param(
+                    recording_interface=SpikeGLXRecordingInterface,
+                    dataset_path=sub_path,
+                    interface_kwargs=dict(file_path=str(data_path / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
+                )
+            )
+
         def setUp(self):
             data_exists = self.data_path.exists()
             if HAVE_DATALAD and data_exists:
@@ -62,6 +101,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             elif not data_exists:
                 self.dataset = install("https://gin.g-node.org/NeuralEnsemble/ephy_testing_data")
 
+<<<<<<< HEAD
         @parameterized.expand(
             [
                 param(
@@ -115,6 +155,9 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             ],
             name_func=custom_name_func,
         )
+=======
+        @parameterized.expand(input=parameterized_expand_list, name_func=custom_name_func)
+>>>>>>> master
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
             print(f"\n\n\n TESTING {recording_interface.__name__}...")
             if HAVE_DATALAD:
