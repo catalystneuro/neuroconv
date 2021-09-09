@@ -205,7 +205,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: FolderPathType,
         keep_mua_units: bool = True,
-        exlude_shanks: Optional[List[int]] = None,
+        exlude_shanks: Optional[list] = None,
         load_waveforms: bool = False,
         gain: Optional[float] = None
     ):
