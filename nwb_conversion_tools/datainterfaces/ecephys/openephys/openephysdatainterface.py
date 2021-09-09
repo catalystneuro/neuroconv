@@ -1,4 +1,4 @@
-"""Authors: Luiz Tauffer"""
+"""Authors: Luiz Tauffer."""
 import pytz
 import spikeextractors as se
 from typing import Optional
@@ -63,5 +63,5 @@ class OpenEphysSortingExtractorInterface(BaseSortingExtractorInterface):
         metadata_schema["additionalProperties"] = False
         return metadata_schema
 
-    def __init__(self, folder_path: FolderPathType, experiment_id: Optional[int] = 0, recording_id: Optional[int] = 0):
+    def __init__(self, folder_path: FolderPathType, experiment_id: int = 0, recording_id: int = 0):
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)

@@ -209,7 +209,13 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         load_waveforms: bool = False,
         gain: Optional[float] = None
     ):
-        super().__init__(folder_path=folder_path)
+        super().__init__(
+            folder_path=folder_path,
+            keep_mua_units=keep_mua_units,
+            exlude_shanks=exlude_shanks,
+            load_waveforms=load_waveforms,
+            gain=gain
+        )
 
     def get_metadata(self):
         session_path = Path(self.source_data["folder_path"])
