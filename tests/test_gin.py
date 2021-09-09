@@ -35,8 +35,10 @@ LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-nod
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
 
     def custom_name_func(testcase_func, param_num, param):
-        return f"{testcase_func.__name__}_{param_num}_" \
-               f"{parameterized.to_safe_name(param.kwargs['recording_interface'].__name__)}"
+        return (
+            f"{testcase_func.__name__}_{param_num}_"
+            f"{parameterized.to_safe_name(param.kwargs['recording_interface'].__name__)}"
+        )
 
     class TestNwbConversions(unittest.TestCase):
         dataset = None
