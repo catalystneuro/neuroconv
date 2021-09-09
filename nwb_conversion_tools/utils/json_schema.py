@@ -47,7 +47,7 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
         elif append_list and isinstance(v, list):
             if len(v) > 0 and isinstance(v[0], dict):
                 for vv in v:
-                    d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k="name")
+                    d[k] = append_replace_dict_in_list(d=vv, ls=d.get(k, []), k="name")
                     # add dict only if not repeated
                     # if not exist_dict_in_list(vv, d.get(k, [])):
                     # d[k] = d.get(k, []) + [vv]
