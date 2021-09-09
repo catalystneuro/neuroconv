@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
+from typing import Optional, List
 
 import numpy as np
 import spikeextractors as se
@@ -200,8 +201,17 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
 
     SX = se.NeuroscopeMultiSortingExtractor
 
+    def __init__(
+        self,
+        folder_path: FolderPathType,
+        keep_mua_units: bool = True,
+        exlude_shanks: Optional[List[int]] = None,
+        load_waveforms: bool = False,
+        gain: Optional[float] = None
+    ):
+        super().__init__(folder_path=folder_path)
+
     def get_metadata(self):
-        """Auto-populates spiking unit metadata."""
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
         metadata = NeuroscopeRecordingInterface.get_ecephys_metadata(

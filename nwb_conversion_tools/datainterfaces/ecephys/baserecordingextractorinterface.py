@@ -25,6 +25,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     """Primary class for all RecordingExtractorInterfaces."""
 
     RX = None
+    subset_channels = None
 
     @classmethod
     def get_source_schema(cls):
@@ -34,8 +35,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     def __init__(self, **source_data):
         super().__init__(**source_data)
         self.recording_extractor = self.RX(**source_data)
-        self.subset_channels = None
-        self.source_data = source_data
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
