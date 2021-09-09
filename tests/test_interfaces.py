@@ -59,7 +59,7 @@ def test_tutorial_interfaces():
     metadata["NWBFile"]["experimenter"] = ["My name"]
     metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
     conversion_options = dict(
-        TutorialRecording=dict(stub_test=stub_test),
+        RecordingTutorial=dict(stub_test=stub_test),
         # TutorialSorting=dict()
     )
     converter.run_conversion(
