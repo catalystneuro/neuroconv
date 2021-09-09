@@ -34,6 +34,9 @@ LOCAL_PATH = Path("E:/GIN")  # Path to dataset downloaded from https://gin.g-nod
 
 if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
 
+    def custom_name_func(testcase_func, param_num, param):
+        return f"{testcase_func.__name__}_{param_num}_{parameterized.to_safe_name(str(param.args[0]))}"
+
     class TestNwbConversions(unittest.TestCase):
         dataset = None
         savedir = Path(tempfile.mkdtemp())
