@@ -30,6 +30,7 @@ from .ecephys.axona.axonadatainterface import (
     AxonaUnitRecordingExtractorInterface,
 )
 from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface
+from .ecephys.phy.phydatainterface import PhySortingInterface
 
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
@@ -47,6 +48,7 @@ from .behavior.movie.moviedatainterface import MovieInterface
 interface_list = [
     RecordingTutorialInterface,
     SortingTutorialInterface,
+    NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface,
@@ -63,6 +65,7 @@ interface_list = [
     BlackrockSortingExtractorInterface,
     OpenEphysRecordingExtractorInterface,
     OpenEphysSortingExtractorInterface,
+    PhySortingInterface,
     AxonaRecordingExtractorInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,
