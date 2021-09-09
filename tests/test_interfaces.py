@@ -14,7 +14,7 @@ try:
 except ImportError:
     HAVE_OPENCV = False
 
-from nwb_conversion_tools import NWBConverter, MovieInterface, interface_list
+from nwb_conversion_tools import NWBConverter, MovieInterface, RecordingTutorialInterface, interface_list
 
 
 @pytest.mark.parametrize("data_interface", interface_list)
@@ -27,6 +27,48 @@ def test_interface_source_schema(data_interface):
 def test_interface_conversion_options_schema(data_interface):
     schema = data_interface.get_conversion_options_schema()
     Draft7Validator.check_schema(schema)
+
+
+def test_tutorial_interfaces():
+    class TutorialNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            RecordingTutorial=RecordingTutorialInterface,
+            # SortingTutorial=SortingTutorialInterface
+        )
+    duration = 10.  # Seconds
+    num_channels = 4
+    sampling_frequency = 30000.  # Hz
+    stub_test = True
+    test_dir = Path(mkdtemp())
+    output_file = str(test_dir / "TestTutorial.nwb")
+    source_data = dict(
+        RecordingTutorial=dict(
+            duration=duration,
+            num_channels=num_channels,
+            sampling_frequency=sampling_frequency
+        ),
+        # SortingTutorial=dict(
+        #     duration=duration,
+        #     num_channels=num_channels,
+        #     sampling_frequency=sampling_frequency
+        # )
+    )
+    converter = TutorialNWBConverter(source_data=source_data)
+    metadata = converter.get_metadata()
+    metadata["NWBFile"]["session_description"] = "NWB Conversion Tools tutorial."
+    metadata["NWBFile"]["experimenter"] = ["My name"]
+    metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
+    conversion_options = dict(
+        TutorialRecording=dict(stub_test=stub_test),
+        # TutorialSorting=dict()
+    )
+    converter.run_conversion(
+        metadata=metadata,
+        nwbfile_path=output_file,
+        save_to_file=True,  # If False, this instead returns the NWBFile object in memory
+        overwrite=True,  # If False, this appends an existing file
+        conversion_options=conversion_options
+    )
 
 
 def test_movie_interface():
