@@ -10,9 +10,7 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 class TutorialRecordingExtractor(se.NumpyRecordingExtractor):
     """Tutorial extractor for the toy data."""
 
-    def __init__(
-        self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.
-    ):
+    def __init__(self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.):
         """
         Create tutorial recording extractor.
 
@@ -36,9 +34,7 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
 
     RX = TutorialRecordingExtractor
 
-    def __init__(
-        self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.,
-    ):
+    def __init__(self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.):
         """
         Initialize the internal properties of the recording interface.
 
@@ -52,7 +48,6 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
             Sampling frequency. Default is 30000 Hz.
         """
         super().__init__(duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency)
-        self.subset_channels = None
 
         # Set manual group names at the recording extractor level
         for channel_id in self.recording_extractor.get_channel_ids():
