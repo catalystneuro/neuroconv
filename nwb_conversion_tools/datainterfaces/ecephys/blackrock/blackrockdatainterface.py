@@ -33,11 +33,11 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        filename: FilePathType,
+        file_path: FilePathType,
         nsx_override: OptionalFilePathType = None,
         nsx_to_load: OptionalFilePathType = None,
     ):
-        super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
+        super().__init__(file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -53,7 +53,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
 
         # Open file and extract headers
-        nsx_file = NsxFile(datafile=self.source_data["filename"])
+        nsx_file = NsxFile(datafile=self.source_data["file_path"])
         session_start_time = nsx_file.basic_header["TimeOrigin"]
         session_start_time_tzaware = pytz.timezone("EST").localize(session_start_time)
         comment = nsx_file.basic_header["Comment"]
