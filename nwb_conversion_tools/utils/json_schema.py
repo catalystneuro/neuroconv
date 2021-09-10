@@ -77,7 +77,6 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
 def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
-
     Parameters
     ----------
     class_method: function
@@ -148,7 +147,6 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     """
     Insert the values of the defaults dict as default values in the schema in place.
-
     Parameters
     ----------
     schema: dict
@@ -167,7 +165,6 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 def unroot_schema(schema: dict):
     """
     Modify a json-schema dictionary to make it not root.
-
     Parameters
     ----------
     schema: dict
