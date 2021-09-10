@@ -135,7 +135,7 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
         metadata_schema = get_schema_from_method_signature(
-            class_method=cls.SX.__init__, exclude=["block_index", "seg_index", "nsx_to_load"]
+            class_method=cls.__init__, exclude=["block_index", "seg_index"]
         )
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
