@@ -18,7 +18,14 @@ class SortingTutorialInterface(BaseSortingExtractorInterface):
 
     def __init__(self, **source_data):
         self.sorting_extractor = se.example_datasets.toy_example(**source_data)[1]
-        self.source_data = source_data
+        
+        # Set manual group names at the recording extractor level
+        for channel_id in self.recording_extractor.get_channel_ids():
+            self.recording_extractor.set_channel_property(
+                channel_id=channel_id,
+                property_name="group_name",
+                value="ElectrodeGroup"
+            )
 
     def get_metadata(self):
         metadata = dict(

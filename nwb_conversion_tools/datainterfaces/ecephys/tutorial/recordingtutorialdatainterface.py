@@ -3,23 +3,55 @@ import spikeextractors as se
 
 from pynwb.ecephys import ElectricalSeries
 
-from ....utils.json_schema import get_schema_from_method_signature, get_schema_from_hdmf_class
+from ....utils.json_schema import get_schema_from_hdmf_class
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+
+
+class TutorialRecordingExtractor(se.NumpyRecordingExtractor):
+    """Tutorial extractor for the toy data."""
+
+    def __init__(
+        self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.
+    ):
+        """
+        Create tutorial recording extractor.
+
+        Parameters
+        ----------
+        duration: float, optional
+            Duration in seconds. Default 10 s.
+        num_channels: int, optional
+            Number of recording channels. Default is 4.
+        sampling_frequency: float, optional
+            Sampling frequency. Default is 30000 Hz.
+        """
+        recording = se.example_datasets.toy_example(
+            duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency
+        )[0]
+        super().__init__(timeseries=recording._timeseries, sampling_frequency=sampling_frequency)
 
 
 class RecordingTutorialInterface(BaseRecordingExtractorInterface):
     """High-pass recording data interface for demonstrating NWB Conversion Tools usage in tutorials."""
 
-    RX = se.NumpyRecordingExtractor
+    RX = TutorialRecordingExtractor
 
-    @classmethod
-    def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(se.example_datasets.toy_example)
-        source_schema["additionalProperties"] = True
-        return source_schema
+    def __init__(
+        self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.,
+    ):
+        """
+        Initialize the internal properties of the recording interface.
 
-    def __init__(self, **source_data):
-        self.recording_extractor = se.example_datasets.toy_example(**source_data)[0]
+        Parameters
+        ----------
+        duration: float, optional
+            Duration in seconds. Default 10 s.
+        num_channels: int, optional
+            Number of recording channels. Default is 4.
+        sampling_frequency: float, optional
+            Sampling frequency. Default is 30000 Hz.
+        """
+        super().__init__(duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency)
         self.subset_channels = None
 
         # Set manual group names at the recording extractor level
@@ -46,6 +78,8 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
+        # Set all automatically constructed metadata for the interface at this step
+        # The user can always manually override this prior to running the conversion
         metadata = dict(
             Ecephys=dict(
                 Device=[dict(name="TutorialDevice", description="Device for the NWB Conversion Tools tutorial.")],
@@ -77,5 +111,5 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeries_raw", stub_test=False)
+        conversion_options = dict(write_as="raw", es_key="ElectricalSeries_raw")
         return conversion_options

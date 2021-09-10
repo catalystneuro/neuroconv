@@ -14,7 +14,9 @@ try:
 except ImportError:
     HAVE_OPENCV = False
 
-from nwb_conversion_tools import NWBConverter, MovieInterface, RecordingTutorialInterface, interface_list
+from nwb_conversion_tools import (
+    NWBConverter, MovieInterface, RecordingTutorialInterface, SortingTutorialInterface, interface_list
+)
 
 
 @pytest.mark.parametrize("data_interface", interface_list)
@@ -33,7 +35,7 @@ def test_tutorial_interfaces():
     class TutorialNWBConverter(NWBConverter):
         data_interface_classes = dict(
             RecordingTutorial=RecordingTutorialInterface,
-            # SortingTutorial=SortingTutorialInterface
+            SortingTutorial=SortingTutorialInterface
         )
     duration = 10.  # Seconds
     num_channels = 4
@@ -47,11 +49,11 @@ def test_tutorial_interfaces():
             num_channels=num_channels,
             sampling_frequency=sampling_frequency
         ),
-        # SortingTutorial=dict(
-        #     duration=duration,
-        #     num_channels=num_channels,
-        #     sampling_frequency=sampling_frequency
-        # )
+        SortingTutorial=dict(
+            duration=duration,
+            num_channels=num_channels,
+            sampling_frequency=sampling_frequency
+        )
     )
     converter = TutorialNWBConverter(source_data=source_data)
     metadata = converter.get_metadata()
@@ -60,13 +62,13 @@ def test_tutorial_interfaces():
     metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
     conversion_options = dict(
         RecordingTutorial=dict(stub_test=stub_test),
-        # TutorialSorting=dict()
+        TutorialSorting=dict()
     )
     converter.run_conversion(
         metadata=metadata,
         nwbfile_path=output_file,
-        save_to_file=True,  # If False, this instead returns the NWBFile object in memory
-        overwrite=True,  # If False, this appends an existing file
+        save_to_file=True,
+        overwrite=True,
         conversion_options=conversion_options
     )
 
