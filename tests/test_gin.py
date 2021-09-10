@@ -13,7 +13,7 @@ from nwb_conversion_tools import (
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
     SpikeGLXRecordingInterface,
-    BlackrockRecordingExtractorInterface
+    BlackrockRecordingExtractorInterface,
 )
 
 try:
@@ -150,14 +150,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 (
                     BlackrockRecordingExtractorInterface,
                     "blackrock/blackrock_2_1",
-                    dict(
-                        file_path=str(
-                            data_path
-                            /"blackrock"
-                            /"blackrock_2_1"
-                        ),
-                        nsx_to_load=5
-                    ),
+                    dict(file_path=str(data_path / "blackrock" / "blackrock_2_1"), nsx_to_load=5),
                 ),
             ]
         )
