@@ -15,7 +15,11 @@ except ImportError:
     HAVE_OPENCV = False
 
 from nwb_conversion_tools import (
-    NWBConverter, MovieInterface, RecordingTutorialInterface, SortingTutorialInterface, interface_list
+    NWBConverter,
+    MovieInterface,
+    RecordingTutorialInterface,
+    SortingTutorialInterface,
+    interface_list,
 )
 
 
@@ -34,43 +38,32 @@ def test_interface_conversion_options_schema(data_interface):
 def test_tutorial_interfaces():
     class TutorialNWBConverter(NWBConverter):
         data_interface_classes = dict(
-            RecordingTutorial=RecordingTutorialInterface,
-            SortingTutorial=SortingTutorialInterface
+            RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
         )
-    duration = 10.  # Seconds
+
+    duration = 10.0  # Seconds
     num_channels = 4
     num_units = 10
-    sampling_frequency = 30000.  # Hz
+    sampling_frequency = 30000.0  # Hz
     stub_test = False
     test_dir = Path(mkdtemp())
     output_file = str(test_dir / "TestTutorial.nwb")
     source_data = dict(
-        RecordingTutorial=dict(
-            duration=duration,
-            num_channels=num_channels,
-            sampling_frequency=sampling_frequency
-        ),
-        SortingTutorial=dict(
-            duration=duration,
-            num_units=num_units,
-            sampling_frequency=sampling_frequency
-        )
+        RecordingTutorial=dict(duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency),
+        SortingTutorial=dict(duration=duration, num_units=num_units, sampling_frequency=sampling_frequency),
     )
     converter = TutorialNWBConverter(source_data=source_data)
     metadata = converter.get_metadata()
     metadata["NWBFile"]["session_description"] = "NWB Conversion Tools tutorial."
     metadata["NWBFile"]["experimenter"] = ["My name"]
     metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
-    conversion_options = dict(
-        RecordingTutorial=dict(stub_test=stub_test),
-        SortingTutorial=dict()
-    )
+    conversion_options = dict(RecordingTutorial=dict(stub_test=stub_test), SortingTutorial=dict())
     converter.run_conversion(
         metadata=metadata,
         nwbfile_path=output_file,
         save_to_file=True,
         overwrite=True,
-        conversion_options=conversion_options
+        conversion_options=conversion_options,
     )
 
 

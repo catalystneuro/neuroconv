@@ -10,7 +10,7 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 class TutorialRecordingExtractor(se.NumpyRecordingExtractor):
     """Tutorial extractor for the toy data."""
 
-    def __init__(self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.):
+    def __init__(self, duration: float = 10.0, num_channels: int = 4, sampling_frequency: float = 30000.0):
         """
         Create tutorial recording extractor.
 
@@ -34,7 +34,7 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
 
     RX = TutorialRecordingExtractor
 
-    def __init__(self, duration: float = 10., num_channels: int = 4, sampling_frequency: float = 30000.):
+    def __init__(self, duration: float = 10.0, num_channels: int = 4, sampling_frequency: float = 30000.0):
         """
         Initialize the internal properties of the recording interface.
 
@@ -52,17 +52,13 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
         # Set manual group names at the recording extractor level
         for channel_id in self.recording_extractor.get_channel_ids():
             self.recording_extractor.set_channel_property(
-                channel_id=channel_id,
-                property_name="group_name",
-                value="ElectrodeGroup"
+                channel_id=channel_id, property_name="group_name", value="ElectrodeGroup"
             )
 
         # Set any other type of value that is intended to be written as a column to the final electrodes table
         for channel_id in self.recording_extractor.get_channel_ids():
             self.recording_extractor.set_channel_property(
-                channel_id=channel_id,
-                property_name="custom_electrodes_column",
-                value="A custom value"
+                channel_id=channel_id, property_name="custom_electrodes_column", value="A custom value"
             )
 
     def get_metadata_schema(self):
@@ -99,7 +95,7 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
                 ],
                 ElectricalSeries_raw=dict(
                     name="ElectricalSeries_raw",
-                    description="Raw acquisition traces for the NWB Conversion Tools tutorial."
+                    description="Raw acquisition traces for the NWB Conversion Tools tutorial.",
                 ),
             )
         )

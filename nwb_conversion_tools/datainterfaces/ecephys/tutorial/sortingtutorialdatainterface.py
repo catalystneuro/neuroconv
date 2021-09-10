@@ -7,7 +7,7 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 class TutorialSortingExtractor(se.NumpySortingExtractor):
     """Tutorial extractor for the toy data."""
 
-    def __init__(self, duration: float = 10., K: int = 4, sampling_frequency: float = 30000.):
+    def __init__(self, duration: float = 10.0, K: int = 4, sampling_frequency: float = 30000.0):
         """
         Create tutorial recording extractor.
 
@@ -30,7 +30,7 @@ class SortingTutorialInterface(BaseSortingExtractorInterface):
 
     SX = TutorialSortingExtractor
 
-    def __init__(self, duration: float = 10., num_units: int = 10, sampling_frequency: float = 30000.):
+    def __init__(self, duration: float = 10.0, num_units: int = 10, sampling_frequency: float = 30000.0):
         """
         Initialize the internal properties of the recording interface.
 
@@ -46,15 +46,13 @@ class SortingTutorialInterface(BaseSortingExtractorInterface):
         super().__init__(
             duration=duration,
             K=num_units,  # You can handle spepcific argument renaming at this step of initializaiton
-            sampling_frequency=sampling_frequency
+            sampling_frequency=sampling_frequency,
         )
 
         # Set data for custom columns of the Units table
         for unit_id in self.sorting_extractor.get_unit_ids():
             self.sorting_extractor.set_unit_property(
-                unit_id=unit_id,
-                property_name="custom_unit_column",
-                value="A custom value"
+                unit_id=unit_id, property_name="custom_unit_column", value="A custom value"
             )
 
     def get_metadata(self):
