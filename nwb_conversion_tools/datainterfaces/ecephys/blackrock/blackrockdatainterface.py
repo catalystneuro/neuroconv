@@ -62,7 +62,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         # Checks if data is raw or processed
-        if self.source_data["filename"].split(".")[-1][-1] == "6":
+        if 6 in self.RX.neo_reader.nsx_to_load:
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
