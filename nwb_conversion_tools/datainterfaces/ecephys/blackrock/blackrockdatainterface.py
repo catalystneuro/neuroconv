@@ -35,7 +35,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         nsx_override: OptionalFilePathType = None,
-        nsx_to_load: OptionalFilePathType = None,
+        nsx_to_load: Optional[int] = None,
     ):
         super().__init__(file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
