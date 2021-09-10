@@ -28,16 +28,16 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["block_index", "seg_index"]
         )
-        source_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
+        source_schema["properties"]["filename"]["description"] = "Path to Blackrock file."
         return source_schema
 
     def __init__(
         self,
-        file_path: FilePathType,
+        filename: FilePathType,
         nsx_override: OptionalFilePathType = None,
         nsx_to_load: Optional[int] = None,
     ):
-        super().__init__(file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
+        super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -53,7 +53,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
 
         # Open file and extract headers
-        nsx_file = NsxFile(datafile=self.source_data["file_path"])
+        nsx_file = NsxFile(datafile=self.source_data["filename"])
         session_start_time = nsx_file.basic_header["TimeOrigin"]
         session_start_time_tzaware = pytz.timezone("EST").localize(session_start_time)
         comment = nsx_file.basic_header["Comment"]
@@ -138,10 +138,10 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
             class_method=cls.__init__, exclude=["block_index", "seg_index"]
         )
         metadata_schema["additionalProperties"] = True
-        metadata_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
+        metadata_schema["properties"]["filename"]["description"] = "Path to Blackrock file."
         return metadata_schema
 
     def __init__(
-        self, file_path: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
+        self, filename: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
     ):
-        super().__init__(file_path=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
+        super().__init__(filename=filename, nsx_to_load=nsx_to_load, nev_override=nev_override)
