@@ -39,8 +39,9 @@ def test_tutorial_interfaces():
         )
     duration = 10.  # Seconds
     num_channels = 4
+    num_units = 10
     sampling_frequency = 30000.  # Hz
-    stub_test = True
+    stub_test = False
     test_dir = Path(mkdtemp())
     output_file = str(test_dir / "TestTutorial.nwb")
     source_data = dict(
@@ -51,7 +52,7 @@ def test_tutorial_interfaces():
         ),
         SortingTutorial=dict(
             duration=duration,
-            num_channels=num_channels,
+            num_units=num_units,
             sampling_frequency=sampling_frequency
         )
     )
@@ -62,7 +63,7 @@ def test_tutorial_interfaces():
     metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
     conversion_options = dict(
         RecordingTutorial=dict(stub_test=stub_test),
-        TutorialSorting=dict()
+        SortingTutorial=dict()
     )
     converter.run_conversion(
         metadata=metadata,
