@@ -11,6 +11,7 @@ from nwb_conversion_tools import (
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
     SpikeGLXRecordingInterface,
+    BlackrockRecordingExtractorInterface
 )
 
 try:
@@ -101,6 +102,18 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                             / "Noise4Sam_g0_imec0"
                             / "Noise4Sam_g0_t0.imec0.lf.bin"
                         )
+                    ),
+                ),
+                (
+                    BlackrockRecordingExtractorInterface,
+                    "blackrock/blackrock_2_1",
+                    dict(
+                        file_path=str(
+                            data_path
+                            /"blackrock"
+                            /"blackrock_2_1"
+                        ),
+                        nsx_to_load=5
                     ),
                 ),
             ]
