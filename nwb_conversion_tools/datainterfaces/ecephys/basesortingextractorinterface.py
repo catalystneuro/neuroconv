@@ -57,7 +57,8 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False, write_ecephys_metadata: bool = False
     ):
         """
-        Primary function for converting the data in a SortingExtractor to the NWB standard.
+        Primary function for converting the data in a SortingExtractor to NWB format.
+
         Parameters
         ----------
         nwbfile: NWBFile
@@ -73,7 +74,10 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         """
         if write_ecephys_metadata and "Ecephys" in metadata:
             n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])
-            recording = se.NumpyRecordingExtractor(timeseries=np.array(range(n_channels)), sampling_frequency=1)
+            recording = se.NumpyRecordingExtractor(
+                timeseries=np.array(range(n_channels)),
+                sampling_frequency=self.sorting_extractor.getsampling_frequency()
+            )
             add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
