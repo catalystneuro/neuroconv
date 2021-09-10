@@ -76,7 +76,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])
             recording = se.NumpyRecordingExtractor(
                 timeseries=np.array(range(n_channels)),
-                sampling_frequency=self.sorting_extractor.getsampling_frequency()
+                sampling_frequency=self.sorting_extractor.get_sampling_frequency()
             )
             add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
