@@ -103,7 +103,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             sorting_extractor = self.sorting_extractor
 
         property_descriptions = dict()
-        for metadata_column in metadata["Ecephys"]["UnitProperties"]:
+        for metadata_column in metadata.get("Ecephys", dict()).get("UnitProperties"):
             property_descriptions.update({metadata_column["name"]: metadata_column["description"]})
             for unit_id in sorting_extractor.get_unit_ids():
                 # Special condition for wrapping electrode group pointers to actual object ids rather than string names
