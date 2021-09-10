@@ -34,4 +34,4 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         for extractor in extractors:
             extractor.clear_channel_gains()
         self.recording_extractor = self.RX(extractors)
-        self.recording_extractor.set_channel_gains(gains=[extractor.get_channel_gains()[0] for extractor in extractors])
+        self.recording_extractor.set_channel_gains(gains=gains)
