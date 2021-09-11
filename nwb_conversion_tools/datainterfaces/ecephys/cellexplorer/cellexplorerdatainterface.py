@@ -6,6 +6,7 @@ from scipy.io import loadmat
 import numpy as np
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....utils.json_schema import FilePathType
 
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
@@ -13,8 +14,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
     SX = se.CellExplorerSortingExtractor
 
+    def __init__(self, spikes_matfile_path: FilePathType):
+        super().__init__(spikes_matfile_path=spikes_matfile_path)
+
     def get_metadata(self):
-        """Auto-populates spiking unit metadata."""
         session_path = Path(self.source_data["spikes_matfile_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recoring or lfp are included in conversion
