@@ -7,13 +7,8 @@ from pynwb import NWBFile
 from pynwb.ecephys import SpikeEventSeries
 
 from ...basedatainterface import BaseDataInterface
-from ...utils.json_schema import (
-    get_schema_from_hdmf_class,
-    get_base_schema,
-    get_schema_from_method_signature,
-    fill_defaults,
-)
-from ...utils.spike_interface import add_devices, add_electrode_groups, add_electrodes
+from ...utils.json_schema import get_schema_from_hdmf_class, get_base_schema, get_schema_from_method_signature
+from ...utils.spike_interface import add_devices, add_electrode_groups, add_electrodes, write_sorting
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):
@@ -24,7 +19,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the SortingExtractor."""
-        return get_schema_from_method_signature(cls.SX.__init__)
+        return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, **source_data):
         super().__init__(**source_data)
@@ -103,6 +98,4 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                     data = metadata_column["data"][unit_idx]
                     sorting_extractor.set_unit_property(unit_id, metadata_column["name"], data)
 
-        se.NwbSortingExtractor.write_sorting(
-            sorting_extractor, property_descriptions=property_descriptions, nwbfile=nwbfile
-        )
+        write_sorting(sorting_extractor, property_descriptions=property_descriptions, nwbfile=nwbfile)

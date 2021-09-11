@@ -1,33 +1,42 @@
 """Authors: Luiz Tauffer, Cody Baker, and Ben Dichter."""
 import collections.abc
 import inspect
-from datetime import datetime
 import numpy as np
+from datetime import datetime
+from typing import TypeVar
+from pathlib import Path
+from typing import Optional
+
 import pynwb
 
+FilePathType = TypeVar("FilePathType", str, Path)
+FolderPathType = TypeVar("FolderPathType", str, Path)
+OptionalFilePathType = Optional[FilePathType]
 
-def exist_dict_in_list(d, l):
-    """Returns True if an identical dictionary exists in the list, False otherwise"""
-    return any([d == i for i in l])
+
+def exist_dict_in_list(d, ls):
+    """Check if an identical dictionary exists in the list."""
+    return any([d == i for i in ls])
 
 
-def append_replace_dict_in_list(d, l, k):
+def append_replace_dict_in_list(d, ls, k):
     """
     Append a dictionary to a list of dictionaries.
+
     If some dictionary already contains the same value as d[k], it gets
     replaced by the new dict.
     Returns the updated list.
     """
-    if k in d and len(l) > 0:
+    if k in d and len(ls) > 0:
         # Index where the value dictionary[k] exists in the list of dicts
-        ind = np.where([d[k] == i[k] for i in l])[0]
+        ind = np.where([d[k] == i[k] for i in ls])[0]
         if len(ind) > 0:
-            l[ind[0]] = d
+            ls[ind[0]] = d
         else:
-            l.append(d)
+            ls.append(d)
     else:
-        l.append(d)
-    return l
+        ls.append(d)
+    return ls
 
 
 def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats: bool = True) -> dict:
@@ -38,7 +47,7 @@ def dict_deep_update(d: dict, u: dict, append_list: bool = True, remove_repeats:
         elif append_list and isinstance(v, list):
             if len(v) > 0 and isinstance(v[0], dict):
                 for vv in v:
-                    d[k] = append_replace_dict_in_list(d=vv, l=d.get(k, []), k="name")
+                    d[k] = append_replace_dict_in_list(d=vv, ls=d.get(k, []), k="name")
                     # add dict only if not repeated
                     # if not exist_dict_in_list(vv, d.get(k, [])):
                     # d[k] = d.get(k, []) + [vv]
@@ -68,7 +77,6 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
 def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
-
     Parameters
     ----------
     class_method: function
@@ -82,23 +90,24 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
     else:
         exclude = exclude + ["self", "kwargs"]
     input_schema = get_base_schema()
-    annotation_json_type_map = {
-        bool: "boolean",
-        str: "string",
-        int: "number",
-        float: "number",
-        dict: "object",
-        list: "array",
-    }
-
+    annotation_json_type_map = dict(
+        bool="boolean",
+        str="string",
+        int="number",
+        float="number",
+        dict="object",
+        list="array",
+        FilePathType="string",
+        FolderPathType="string",
+    )
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
-                if hasattr(param.annotation, "__args__"):
+                if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                     args = param.annotation.__args__
-                    valid_args = [x in annotation_json_type_map for x in args]
+                    valid_args = [x.__name__ in annotation_json_type_map for x in args]
                     if any(valid_args):
-                        param_types = [annotation_json_type_map[x] for x in np.array(args)[valid_args]]
+                        param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
                     else:
                         raise ValueError("No valid arguments were found in the json type mapping!")
                     if len(set(param_types)) > 1:
@@ -109,25 +118,28 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     param_type = param_types[0]
                 else:
                     arg = param.annotation
-                    if arg in annotation_json_type_map:
-                        param_type = annotation_json_type_map[arg]
+                    if arg.__name__ in annotation_json_type_map:
+                        param_type = annotation_json_type_map[arg.__name__]
                     else:
                         raise ValueError(
                             f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
                         )
+                    if arg == FilePathType:
+                        input_schema["properties"].update({param_name: dict(format="file")})
+                    if arg == FolderPathType:
+                        input_schema["properties"].update({param_name: dict(format="directory")})
             else:
                 raise NotImplementedError(
-                    f"The annotation type of '{param}' in function '{class_method}' "
-                    "is not implemented! Please request it to be added at github.com/"
-                    "catalystneuro/nwb-conversion-tools/issues or create the json-schema"
-                    "for this method manually."
+                    f"The annotation type of '{param}' in function '{class_method}' is not implemented! "
+                    "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
+                    "or create the json-schema for this method manually."
                 )
             arg_spec = {param_name: dict(type=param_type)}
             if param.default is param.empty:
                 input_schema["required"].append(param_name)
             elif param.default is not None:
                 arg_spec[param_name].update(default=param.default)
-            input_schema["properties"].update(arg_spec)
+            input_schema["properties"] = dict_deep_update(input_schema["properties"], arg_spec)
         input_schema["additionalProperties"] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
 
@@ -135,7 +147,6 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     """
     Insert the values of the defaults dict as default values in the schema in place.
-
     Parameters
     ----------
     schema: dict
@@ -154,7 +165,6 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 def unroot_schema(schema: dict):
     """
     Modify a json-schema dictionary to make it not root.
-
     Parameters
     ----------
     schema: dict
@@ -222,7 +232,7 @@ def get_schema_from_hdmf_class(hdmf_class):
                 item = docval_arg_type[np.where(is_nwb)[0][0]]
                 # if it is child
                 if docval_arg["name"] in pynwb_children_fields:
-                    items = [get_schema_from_hdmf_class(item)]
+                    items = get_schema_from_hdmf_class(item)
                     schema_arg[docval_arg["name"]].update(type="array", items=items, minItems=1, maxItems=1)
                 # if it is link
                 else:
@@ -295,7 +305,9 @@ def get_schema_for_NWBFile():
         "data_collection": {"type": "string", "description": "Notes about data collection and analysis."},
         "surgery": {
             "type": "string",
-            "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery.",
+            "description": (
+                "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+            ),
         },
         "virus": {
             "type": "string",

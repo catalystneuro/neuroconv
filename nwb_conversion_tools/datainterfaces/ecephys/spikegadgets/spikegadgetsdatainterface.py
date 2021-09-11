@@ -1,14 +1,8 @@
 """Authors: Cody Baker."""
-from typing import Union, Optional
-from pathlib import Path
-
 from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature
-
-PathType = Union[str, Path]
-OptionalPathType = Optional[PathType]
+from ....utils.json_schema import get_schema_from_method_signature, FilePathType, OptionalFilePathType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
@@ -25,7 +19,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         )
         return source_schema
 
-    def __init__(self, filename: PathType, probe_file_path: OptionalPathType = None):
+    def __init__(self, filename: FilePathType, probe_file_path: OptionalFilePathType = None):
         super().__init__(filename=filename)
         if probe_file_path is not None:
             self.recording_extractor = load_probe_file(recording=self.recording_extractor, probe_file=probe_file_path)

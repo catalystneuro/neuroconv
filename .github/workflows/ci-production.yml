@@ -1,11 +1,13 @@
-name: CI production environment
-on: [push]
+name: CI production
+on: [pull_request]
 jobs:
   run:
+    name: Lazy tests on (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --prune --unshallow --tags
@@ -21,16 +23,6 @@ jobs:
           NWB_CONVERSION_INSTALL_MODE: production
       run: |
         pip install .
-    - name: Run tests and generate coverage report
+    - name: Run tests
       run: |
         pip install pytest
-        pip install pytest-cov
-        pytest --cov=./ --cov-report=xml
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        yml: ./codecov.yml

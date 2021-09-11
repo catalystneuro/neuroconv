@@ -1,20 +1,20 @@
 """Authors: Luiz Tauffer"""
-import random
-import string
 import pytz
-from typing import Union, Optional
-from pathlib import Path
+from typing import Optional
+
 import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
+from .brpylib import NsxFile
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import get_schema_from_hdmf_class, get_schema_from_method_signature
-from .brpylib import NsxFile
-
-PathType = Union[str, Path]
-OptionalPathType = Optional[PathType]
+from ....utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+    FilePathType,
+    OptionalFilePathType,
+)
 
 
 class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
@@ -28,11 +28,10 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["block_index", "seg_index"]
         )
-        source_schema["properties"]["filename"]["format"] = "file"
         source_schema["properties"]["filename"]["description"] = "Path to Blackrock file."
         return source_schema
 
-    def __init__(self, filename: PathType, nsx_override: PathType = None):
+    def __init__(self, filename: FilePathType, nsx_override: OptionalFilePathType = None):
         super().__init__(filename=filename, nsx_override=nsx_override)
         if self.source_data["nsx_override"] is not None:
             # if 'nsx_override' is specified as a path, then the 'filename' argument is ignored
@@ -81,7 +80,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata: dict = None,
         stub_test: bool = False,
         use_times: bool = False,
-        save_path: OptionalPathType = None,
+        save_path: OptionalFilePathType = None,
         overwrite: bool = False,
         buffer_mb: int = 500,
         write_as: str = "raw",
@@ -89,7 +88,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     ):
         """
         Primary function for converting recording extractor data to nwb.
-
         Parameters
         ----------
         nwbfile: NWBFile
@@ -139,14 +137,14 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
         metadata_schema = get_schema_from_method_signature(
-            class_method=cls.SX.__init__, exclude=["block_index", "seg_index", "nsx_to_load"]
+            class_method=cls.__init__, exclude=["nev_override", "nsx_to_load"]
         )
         metadata_schema["additionalProperties"] = True
-        metadata_schema["properties"]["filename"]["format"] = "file"
-        metadata_schema["properties"]["filename"]["description"] = "Path to Blackrock file."
+        metadata_schema["properties"]["filename"].update(description="Path to Blackrock file.")
         return metadata_schema
 
-    def __init__(self, filename: PathType, nsx_to_load: Optional[int] = None, nev_override: PathType = None):
+    def __init__(
+        self, filename: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
+    ):
         super().__init__(filename=filename, nsx_to_load=nsx_to_load, nev_override=nev_override)
