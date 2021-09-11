@@ -149,8 +149,8 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 ),
                 (
                     BlackrockRecordingExtractorInterface,
-                    "blackrock/blackrock_2_1",
-                    dict(filename=str(data_path / "blackrock" / "blackrock_2_1" / "l101210-001.ns5"), nsx_to_load=5),
+                    "blackrock",
+                    dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.ns5"), nsx_to_load=5),
                 ),
             ]
         )
