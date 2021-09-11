@@ -65,7 +65,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         # Checks if data is raw or processed
-        if 6 in self.RX.neo_reader.nsx_to_load:
+        if 6 in self.recording_extractor.neo_reader.nsx_to_load:
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
@@ -107,7 +107,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if 6 in self.RX.neo_reader.nsx_to_load:
+        if 6 in self.recording_extractor.neo_reader.nsx_to_load:
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
