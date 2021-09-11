@@ -7,15 +7,10 @@ import numpy as np
 import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
+from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
-from ...utils.json_schema import (
-    get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
-    fill_defaults,
-    get_base_schema,
-)
+from ...utils.json_schema import get_schema_from_hdmf_class, get_schema_from_method_signature, get_base_schema
 from ...utils.spike_interface import write_recording
 
 OptionalPathType = Optional[Union[str, Path]]
@@ -35,7 +30,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         super().__init__(**source_data)
         self.recording_extractor = self.RX(**source_data)
         self.subset_channels = None
-        self.source_data = source_data
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
