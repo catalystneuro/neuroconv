@@ -65,7 +65,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         # Checks if data is raw or processed
-        if max(self.recording_extractor.neo_reader.nsx_to_load) >=5:
+        if max(self.recording_extractor.neo_reader.nsx_to_load) >= 5:
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")

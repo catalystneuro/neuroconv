@@ -14,7 +14,7 @@ from nwb_conversion_tools import (
     PhySortingInterface,
     SpikeGLXRecordingInterface,
     BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface
+    BlackrockSortingExtractorInterface,
 )
 
 try:
@@ -187,8 +187,8 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                 (
                     BlackrockSortingExtractorInterface,
                     "blackrock",
-                    dict(filename=str(data_path/"blackrock"/"FileSpec2.3001.nev")),
-                )
+                    dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.nev")),
+                ),
             ]
         )
         def test_convert_sorting_extractor_to_nwb(self, sorting_interface, dataset_path, interface_kwargs):
