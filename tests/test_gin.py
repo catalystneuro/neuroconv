@@ -14,6 +14,7 @@ from nwb_conversion_tools import (
     PhySortingInterface,
     SpikeGLXRecordingInterface,
     BlackrockRecordingExtractorInterface,
+    BlackrockSortingExtractorInterface
 )
 
 try:
@@ -182,6 +183,11 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     sorting_interface=PhySortingInterface,
                     dataset_path="phy/phy_example_0",
                     interface_kwargs=dict(folder_path=str(data_path / "phy" / "phy_example_0")),
+                ),
+                (
+                    BlackrockSortingExtractorInterface,
+                    "blackrock",
+                    dict(filename=str(data_path/"blackrock"/"FileSpec2.3001.nev")),
                 )
             ]
         )
