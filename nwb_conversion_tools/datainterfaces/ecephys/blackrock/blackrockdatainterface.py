@@ -107,7 +107,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if 6 in self.recording_extractor.neo_reader.nsx_to_load:
+        if max(self.recording_extractor.neo_reader.nsx_to_load) >= 5:
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
