@@ -17,7 +17,11 @@ except ImportError:
     HAVE_OPENCV = False
 
 from nwb_conversion_tools import (
-    NWBConverter, MovieInterface, SIPickleRecordingExtractorInterface, SIPickleSortingExtractorInterface, interface_list
+    NWBConverter,
+    MovieInterface,
+    SIPickleRecordingExtractorInterface,
+    SIPickleSortingExtractorInterface,
+    interface_list,
 )
 
 
@@ -46,9 +50,10 @@ def test_pkl_interface():
         data_interface_classes = dict(
             Recording=SIPickleRecordingExtractorInterface, Sorting=SIPickleSortingExtractorInterface
         )
+
     source_data = dict(
         Recording=dict(pkl_file=str(test_dir / "test_pkl" / "test_recording.pkl")),
-        Sorting=dict(pkl_file=str(test_dir / "test_pkl" / "test_sorting.pkl"))
+        Sorting=dict(pkl_file=str(test_dir / "test_pkl" / "test_sorting.pkl")),
     )
     converter = SpikeInterfaceTestNWBConverter(source_data=source_data)
     converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
