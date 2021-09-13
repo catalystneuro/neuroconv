@@ -79,7 +79,10 @@ def test_tutorial_interfaces():
 
     test_dir = Path(mkdtemp())
     output_file = str(test_dir / "TestTutorial.nwb")
-    source_data = dict(RecordingTutorial=dict(), SortingTutorial=dict(),)
+    source_data = dict(
+        RecordingTutorial=dict(),
+        SortingTutorial=dict(),
+    )
     converter = TutorialNWBConverter(source_data=source_data)
     converter.run_conversion(nwbfile_path=output_file, overwrite=True)
 
