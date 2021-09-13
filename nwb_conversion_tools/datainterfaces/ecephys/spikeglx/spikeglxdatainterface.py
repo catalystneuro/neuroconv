@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from datetime import datetime
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional
 
 from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor, RecordingExtractor
 from pynwb.ecephys import ElectricalSeries
@@ -9,8 +9,6 @@ from pynwb.ecephys import ElectricalSeries
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ....utils.json_schema import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
-
-PathType = Union[str, Path, None]
 
 
 def fetch_spikeglx_metadata(file_path: FilePathType, recording: RecordingExtractor, metadata: dict):

@@ -1,15 +1,11 @@
 """Authors: Cody Baker."""
 from pathlib import Path
 from natsort import natsorted
-from typing import Union
 
 from spikeextractors import MultiRecordingChannelExtractor, NeuralynxRecordingExtractor
 
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature
-
-PathType = Union[str, Path]
+from ....utils.json_schema import FolderPathType
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
@@ -17,14 +13,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = MultiRecordingChannelExtractor
 
-    @classmethod
-    def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
-        source_schema = get_schema_from_method_signature(cls.__init__)
-        source_schema["properties"]["folder_path"]["format"] = "directory"
-        return source_schema
-
-    def __init__(self, folder_path: PathType):
+    def __init__(self, folder_path: FolderPathType):
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path)
         neuralynx_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])

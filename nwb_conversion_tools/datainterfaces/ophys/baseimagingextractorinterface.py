@@ -18,11 +18,11 @@ class BaseImagingExtractorInterface(BaseDataInterface):
 
     @classmethod
     def get_source_schema(cls):
-        return get_schema_from_method_signature(cls.IX.__init__)
+        return get_schema_from_method_signature(cls.__init__)
 
-    def __init__(self, **input_args):
-        super().__init__(**input_args)
-        self.imaging_extractor = self.IX(**input_args)
+    def __init__(self, **source_data):
+        super().__init__(**source_data)
+        self.imaging_extractor = self.IX(**source_data)
 
     def get_metadata_schema(self):
         """Compile metadata schema for the ImageExtractor."""
@@ -53,8 +53,7 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         return metadata_schema
 
     def get_metadata(self):
-        """Auto-fill metadata with values found from the corresponding imageextractor.
-        Must comply with metadata schema."""
+        """Auto-fill metadata with values found from the corresponding imageextractor."""
         metadata = super().get_metadata()
         metadata.update(re.NwbImagingExtractor.get_nwb_metadata(self.imaging_extractor))
         _ = metadata.pop("NWBFile")

@@ -14,6 +14,8 @@ from nwb_conversion_tools import (
     PhySortingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
+    BlackrockRecordingExtractorInterface,
+    BlackrockSortingExtractorInterface,
 )
 
 try:
@@ -111,7 +113,61 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             elif not data_exists:
                 self.dataset = install("https://gin.g-node.org/NeuralEnsemble/ephy_testing_data")
 
-        @parameterized.expand(input=parameterized_expand_list, name_func=custom_name_func)
+        @parameterized.expand(
+            [
+                (
+                    IntanRecordingInterface,
+                    "intan",
+                    dict(file_path=str(data_path / "intan" / "intan_rhd_test_1.rhd")),
+                ),
+                (
+                    IntanRecordingInterface,
+                    "intan",
+                    dict(file_path=str(data_path / "intan" / "intan_rhs_test_1.rhs")),
+                ),
+                (
+                    NeuralynxRecordingInterface,
+                    "neuralynx/Cheetah_v5.7.4/original_data",
+                    dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+                ),
+                (
+                    NeuroscopeRecordingInterface,
+                    "neuroscope/test1",
+                    dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
+                ),
+                (
+                    SpikeGLXRecordingInterface,
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    dict(
+                        file_path=str(
+                            data_path
+                            / "spikeglx"
+                            / "Noise4Sam_g0"
+                            / "Noise4Sam_g0_imec0"
+                            / "Noise4Sam_g0_t0.imec0.ap.bin"
+                        )
+                    ),
+                ),
+                (
+                    SpikeGLXRecordingInterface,
+                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
+                    dict(
+                        file_path=str(
+                            data_path
+                            / "spikeglx"
+                            / "Noise4Sam_g0"
+                            / "Noise4Sam_g0_imec0"
+                            / "Noise4Sam_g0_t0.imec0.lf.bin"
+                        )
+                    ),
+                ),
+                (
+                    BlackrockRecordingExtractorInterface,
+                    "blackrock",
+                    dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.ns5"), nsx_to_load=5),
+                ),
+            ]
+        )
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
             if HAVE_DATALAD:
                 loc = list(interface_kwargs.values())[0]
@@ -139,7 +195,12 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     sorting_interface=PhySortingInterface,
                     dataset_path="phy/phy_example_0",
                     interface_kwargs=dict(folder_path=str(data_path / "phy" / "phy_example_0")),
-                )
+                ),
+                (
+                    BlackrockSortingExtractorInterface,
+                    "blackrock",
+                    dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.nev")),
+                ),
             ]
         )
         def test_convert_sorting_extractor_to_nwb(self, sorting_interface, dataset_path, interface_kwargs):

@@ -12,8 +12,9 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 
 from ....basedatainterface import BaseDataInterface
-from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
 from ....utils.conversion_tools import check_regular_timestamps, get_module
+from ....utils.json_schema import get_schema_from_method_signature
+from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
 
 
 try:
@@ -26,20 +27,24 @@ INSTALL_MESSAGE = "Please install opencv to use this extractor (pip install open
 
 
 class MovieInterface(BaseDataInterface):
-    """
-    Data interface for writing movies as ImageSeries.
+    """Data interface for writing movies as ImageSeries."""
 
-    Source data input argument should be a dictionary with key 'file_paths' and value as an array of PathTypes
-    pointing to the video files.
-    """
+    def __init__(self, file_paths: list):
+        """
+        Create the interface for writing movies as ImageSeries.
 
-    def __init__(self, *args, **kwargs):
+        Parameters
+        ----------
+        file_paths : list of FilePathTypes
+            Many movie storage formats segment a sequence of movies over the course of the experiment.
+            Pass the file paths for this movies as a list in sorted, consecutive order.
+        """
         assert HAVE_OPENCV, INSTALL_MESSAGE
-        super().__init__(*args, **kwargs)
+        super().__init__(file_paths=file_paths)
 
     @classmethod
     def get_source_schema(cls):
-        return dict(properties=dict(file_paths=dict(type="array")))
+        return get_schema_from_method_signature(cls.__init__)
 
     def run_conversion(
         self,
