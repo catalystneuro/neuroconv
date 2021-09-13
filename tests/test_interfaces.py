@@ -7,6 +7,7 @@ from itertools import product
 
 import pytest
 import spikeextractors as se
+from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 
 try:
     import cv2
@@ -40,11 +41,10 @@ def test_pkl_interface():
 
     se.save_si_object(object_name="test_recording", si_object=toy_data[0], output_folder=output_folder)
     se.save_si_object(object_name="test_sorting", si_object=toy_data[1], output_folder=output_folder)
-    print([x for x in output_folder.iterdir()])
 
     class SpikeInterfaceTestNWBConverter(NWBConverter):
         data_interface_classes = dict(
-            Recording=SIPickleRecordingExtractorInterface, Sorting=SIPickleRecordingExtractorInterface
+            Recording=SIPickleRecordingExtractorInterface, Sorting=SIPickleSortingExtractorInterface
         )
     source_data = dict(
         Recording=dict(pkl_file=str(test_dir / "test_pkl" / "test_recording.pkl")),
@@ -55,9 +55,9 @@ def test_pkl_interface():
 
     nwb_recording = se.NwbRecordingExtractor(file_path=nwbfile_path)
     nwb_sorting = se.NwbSortingExtractor(file_path=nwbfile_path)
-    se.testing.check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording)
-    se.testing.check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording, return_scaled=False)
-    se.testing.check_sortings_equal(SX1=toy_data[1], SX2=nwb_sorting)
+    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording)
+    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording, return_scaled=False)
+    check_sortings_equal(SX1=toy_data[1], SX2=nwb_sorting)
 
 
 def test_movie_interface():
