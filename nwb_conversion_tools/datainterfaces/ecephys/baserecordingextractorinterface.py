@@ -1,7 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import ABC
-from typing import Union, Optional
-from pathlib import Path
+from typing import Optional
 import numpy as np
 
 import spikeextractors as se
@@ -10,10 +9,13 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
-from ...utils.json_schema import get_schema_from_hdmf_class, get_schema_from_method_signature, get_base_schema
+from ...utils.json_schema import (
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+    get_base_schema,
+    OptionalFilePathType,
+)
 from ...utils.spike_interface import write_recording
-
-OptionalPathType = Optional[Union[str, Path]]
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
@@ -104,7 +106,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         metadata: dict = None,
         stub_test: bool = False,
         use_times: bool = False,
-        save_path: OptionalPathType = None,
+        save_path: OptionalFilePathType = None,
         overwrite: bool = False,
         write_as: str = "raw",
         es_key: str = None,
@@ -127,7 +129,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         use_times: bool
             If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
             the sampling rate is used.
-        save_path: PathType
+        save_path: OptionalFilePathType
             Required if an nwbfile is not passed. Must be the path to the nwbfile
             being appended, otherwise one is created and written.
         overwrite: bool

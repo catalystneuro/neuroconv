@@ -9,7 +9,7 @@ from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...utils.spike_interface import write_recording
-from ...utils.json_schema import get_schema_from_hdmf_class, get_base_schema
+from ...utils.json_schema import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 OptionalPathType = Optional[Union[str, Path]]
 
@@ -35,7 +35,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         metadata: dict = None,
         stub_test: bool = False,
         use_times: bool = False,
-        save_path: OptionalPathType = None,
+        save_path: OptionalFilePathType = None,
         overwrite: bool = False,
         compression: Optional[str] = "gzip",
         compression_opts: Optional[int] = None,
@@ -56,7 +56,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         use_times: bool
             If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
             the sampling rate is used.
-        save_path: PathType
+        save_path: OptionalFilePathType
             Required if an nwbfile is not passed. Must be the path to the nwbfile
             being appended, otherwise one is created and written.
         overwrite: bool
