@@ -10,10 +10,7 @@ from .brpylib import NsxFile
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils.json_schema import (
-    get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
-    FilePathType,
-    OptionalFilePathType,
+    get_schema_from_hdmf_class, get_schema_from_method_signature, FilePathType, OptionalFilePathType
 )
 
 
@@ -32,10 +29,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(
-        self,
-        filename: FilePathType,
-        nsx_override: OptionalFilePathType = None,
-        nsx_to_load: Optional[int] = None,
+        self, filename: FilePathType, nsx_override: OptionalFilePathType = None, nsx_to_load: Optional[int] = None
     ):
         super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
@@ -85,6 +79,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     ):
         """
         Primary function for converting recording extractor data to nwb.
+
         Parameters
         ----------
         nwbfile: NWBFile
@@ -99,7 +94,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             the sampling rate is used.
         write_as_lfp: bool (optional, defaults to False)
             If True, writes the traces under a processing LFP module in the NWBFile instead of acquisition.
-        save_path: PathType
+        save_path: OptionalFilePathType
             Required if an nwbfile is not passed. Must be the path to the nwbfile
             being appended, otherwise one is created and written.
         overwrite: bool
