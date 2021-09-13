@@ -4,7 +4,6 @@ import unittest
 from pathlib import Path
 import numpy as np
 from datetime import datetime
-from typing import Union
 
 import spikeextractors as se
 from spikeextractors.testing import (
@@ -18,8 +17,7 @@ from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
 from nwb_conversion_tools.utils.recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
-
-PathType = Union[str, Path]
+from nwb_conversion_tools.utils.json_schema import FilePathType
 
 
 def _create_example(seed):
@@ -115,7 +113,7 @@ class TestExtractors(unittest.TestCase):
         del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
         shutil.rmtree(self.test_dir)
 
-    def check_si_roundtrip(self, path: PathType):
+    def check_si_roundtrip(self, path: FilePathType):
         RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
