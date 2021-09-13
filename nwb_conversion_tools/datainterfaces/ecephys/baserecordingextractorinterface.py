@@ -10,7 +10,10 @@ from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
 from ...utils.json_schema import (
-    get_schema_from_hdmf_class, get_schema_from_method_signature, get_base_schema, OptionalFilePathType
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+    get_base_schema,
+    OptionalFilePathType,
 )
 from ...utils.spike_interface import write_recording
 
