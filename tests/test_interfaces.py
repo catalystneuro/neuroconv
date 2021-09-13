@@ -6,6 +6,8 @@ from pathlib import Path
 from itertools import product
 
 import pytest
+import spikeextractors as se
+from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 
 try:
     import cv2
@@ -19,6 +21,8 @@ from nwb_conversion_tools import (
     MovieInterface,
     RecordingTutorialInterface,
     SortingTutorialInterface,
+    SIPickleRecordingExtractorInterface,
+    SIPickleSortingExtractorInterface,
     interface_list,
 )
 
@@ -35,7 +39,7 @@ def test_interface_conversion_options_schema(data_interface):
     Draft7Validator.check_schema(schema)
 
 
-def test_tutorial_interfaces():
+def test_tutorials():
     class TutorialNWBConverter(NWBConverter):
         data_interface_classes = dict(
             RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
@@ -65,6 +69,47 @@ def test_tutorial_interfaces():
         overwrite=True,
         conversion_options=conversion_options,
     )
+
+
+def test_tutorial_interfaces():
+    class TutorialNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
+        )
+
+    test_dir = Path(mkdtemp())
+    output_file = str(test_dir / "TestTutorial.nwb")
+    source_data = dict(RecordingTutorial=dict(), SortingTutorial=dict(),)
+    converter = TutorialNWBConverter(source_data=source_data)
+    converter.run_conversion(nwbfile_path=output_file, overwrite=True)
+
+
+def test_pkl_interface():
+    toy_data = se.example_datasets.toy_example()
+    test_dir = Path(mkdtemp())
+    output_folder = test_dir / "test_pkl"
+    nwbfile_path = str(test_dir / "test_pkl_files.nwb")
+
+    se.save_si_object(object_name="test_recording", si_object=toy_data[0], output_folder=output_folder)
+    se.save_si_object(object_name="test_sorting", si_object=toy_data[1], output_folder=output_folder)
+
+    class SpikeInterfaceTestNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            Recording=SIPickleRecordingExtractorInterface, Sorting=SIPickleSortingExtractorInterface
+        )
+
+    source_data = dict(
+        Recording=dict(pkl_file=str(test_dir / "test_pkl" / "test_recording.pkl")),
+        Sorting=dict(pkl_file=str(test_dir / "test_pkl" / "test_sorting.pkl")),
+    )
+    converter = SpikeInterfaceTestNWBConverter(source_data=source_data)
+    converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+    nwb_recording = se.NwbRecordingExtractor(file_path=nwbfile_path)
+    nwb_sorting = se.NwbSortingExtractor(file_path=nwbfile_path)
+    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording)
+    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording, return_scaled=False)
+    check_sortings_equal(SX1=toy_data[1], SX2=nwb_sorting)
 
 
 def test_movie_interface():
