@@ -37,13 +37,14 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         nsx_override: OptionalFilePathType = None,
     ):
         filename = Path(filename)
-        if filename.suffix == '':
-            assert nsx_override is not None, 'if filename is empty ' \
-                                             'provide a nsx file to load with "nsx_override" arg'
+        if filename.suffix == "":
+            assert nsx_override is not None, (
+                "if filename is empty " 'provide a nsx file to load with "nsx_override" arg'
+            )
             nsx_to_load = None
             self.filename = Path(nsx_override)
         else:
-            assert 'ns' in filename.suffix, 'filename should be an nsx file'
+            assert "ns" in filename.suffix, "filename should be an nsx file"
             nsx_to_load = int(filename.suffix[-1])
             self.filename = filename
         super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
@@ -74,7 +75,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
 
         # Checks if data is raw or processed
-        if int(self.filename.suffix[-1]) >=5:
+        if int(self.filename.suffix[-1]) >= 5:
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
