@@ -7,7 +7,7 @@ project = "NWB Conversion Tools"
 copyright = "2021, CatalystNeuro"
 author = "Cody Baker and Ben Dichter"
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.napoleon"]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.napoleon", "myst_parser"]
 templates_path = ["_templates"]
 master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
