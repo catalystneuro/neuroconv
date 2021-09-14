@@ -53,8 +53,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         nsx_file = NsxFile(datafile=self.source_data["filename"])
         if "TimeOrigin" in nsx_file.basic_header:
             session_start_time = nsx_file.basic_header["TimeOrigin"]
-            session_start_time_tzaware = pytz.timezone("EST").localize(session_start_time)
-            metadata["NWBFile"].update(session_start_time=session_start_time_tzaware.strftime("%Y-%m-%dT%H:%M:%S"))
+            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
         if "Comment" in nsx_file.basic_header:
             metadata["NWBFile"].update(session_description=nsx_file.basic_header["Comment"])
 
