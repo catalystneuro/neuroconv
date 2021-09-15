@@ -1,7 +1,7 @@
 """Authors: Luiz Tauffer"""
 import pytz
 from typing import Optional
-
+from pathlib import Path
 import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
@@ -32,8 +32,21 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(
-        self, filename: FilePathType, nsx_override: OptionalFilePathType = None, nsx_to_load: Optional[int] = None
+        self,
+        filename: FilePathType,
+        nsx_override: OptionalFilePathType = None,
     ):
+        filename = Path(filename)
+        if filename.suffix == "":
+            assert nsx_override is not None, (
+                "if filename is empty " 'provide a nsx file to load with "nsx_override" arg'
+            )
+            nsx_to_load = None
+            self.filename = Path(nsx_override)
+        else:
+            assert "ns" in filename.suffix, "filename should be an nsx file"
+            nsx_to_load = int(filename.suffix[-1])
+            self.filename = filename
         super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
     def get_metadata_schema(self):
@@ -58,7 +71,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"].update(session_description=nsx_file.basic_header["Comment"])
 
         # Checks if data is raw or processed
-        if max(self.recording_extractor.neo_reader.nsx_to_load) >= 5:
+        if int(self.filename.suffix[-1]) >= 5:
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
@@ -78,7 +91,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     ):
         """
         Primary function for converting recording extractor data to nwb.
-
         Parameters
         ----------
         nwbfile: NWBFile
@@ -93,7 +105,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             the sampling rate is used.
         write_as_lfp: bool (optional, defaults to False)
             If True, writes the traces under a processing LFP module in the NWBFile instead of acquisition.
-        save_path: OptionalFilePathType
+        save_path: PathType
             Required if an nwbfile is not passed. Must be the path to the nwbfile
             being appended, otherwise one is created and written.
         overwrite: bool
@@ -101,7 +113,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if max(self.recording_extractor.neo_reader.nsx_to_load) >= 5:
+        if int(self.filename.suffix[-1]) >= 5:
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
