@@ -61,18 +61,14 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
-
+        metadata["NWBFile"] = dict()
         # Open file and extract headers
         nsx_file = NsxFile(datafile=self.source_data["filename"])
-        session_start_time = nsx_file.basic_header["TimeOrigin"]
-        session_start_time_tzaware = pytz.timezone("EST").localize(session_start_time)
-        comment = nsx_file.basic_header["Comment"]
-
-        # Updates basic metadata from files
-        metadata["NWBFile"] = dict(
-            session_start_time=session_start_time_tzaware.strftime("%Y-%m-%dT%H:%M:%S"),
-            session_description=comment,
-        )
+        if "TimeOrigin" in nsx_file.basic_header:
+            session_start_time = nsx_file.basic_header["TimeOrigin"]
+            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+        if "Comment" in nsx_file.basic_header:
+            metadata["NWBFile"].update(session_description=nsx_file.basic_header["Comment"])
 
         # Checks if data is raw or processed
         if int(self.filename.suffix[-1]) >= 5:
