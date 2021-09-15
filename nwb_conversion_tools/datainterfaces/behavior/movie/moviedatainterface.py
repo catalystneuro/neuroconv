@@ -95,16 +95,16 @@ class MovieInterface(BaseDataInterface):
             count_max = np.inf
         if starting_time is None:
             starting_time = 0.0
-        
+
         timestamps = starting_time + get_movie_timestamps(movie_file=file_path)
-        nwb_module = 'acquisition' if module_name is None else module_name
-            
+        nwb_module = "acquisition" if module_name is None else module_name
+
         image_series_kwargs = dict(
             name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames"
         )
-        if nwb_module in metadata and 'ImageSeries' in metadata[nwb_module]:
-            image_series_kwargs.update(metadata[nwb_module]['ImageSeries'])
-            
+        if nwb_module in metadata and "ImageSeries" in metadata[nwb_module]:
+            image_series_kwargs.update(metadata[nwb_module]["ImageSeries"])
+
         if check_regular_timestamps(ts=timestamps):
             fps = get_movie_fps(movie_file=file_path)
             image_series_kwargs.update(starting_time=starting_time, rate=fps)
