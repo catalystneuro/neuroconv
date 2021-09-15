@@ -13,7 +13,8 @@ from hdmf.data_utils import DataChunkIterator
 
 from ....basedatainterface import BaseDataInterface
 from ....utils.conversion_tools import check_regular_timestamps, get_module
-from ....utils.json_schema import get_schema_from_method_signature, FilePathType
+from ....utils.json_schema import get_schema_from_method_signature, \
+    FilePathType, get_schema_from_hdmf_class, get_base_schema
 from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
 
 
@@ -45,6 +46,24 @@ class MovieInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls.__init__)
+
+    def get_metadata_schema(self):
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema["properties"]['acquisition'] = get_base_schema(tag="acquisition")
+        metadata_schema["properties"]["acquisition"]["required"] = ["ImageSeries"]
+        metadata_schema["properties"]["acquisition"]["properties"] = dict(
+            Imageseries=get_schema_from_hdmf_class(ImageSeries)
+        )
+        return metadata_schema
+
+    def get_metadata(self):
+        metadata = super().get_metadata()
+        metadata['acquisition'] = dict(ImageSeries=
+                                       dict(name=f"Video: {Path(self.source_data['file_path']).stem}",
+                                            description="Video recorded by camera.",
+                                            unit="Frames"
+        ))
+        return metadata
 
     def run_conversion(
         self,
@@ -99,9 +118,8 @@ class MovieInterface(BaseDataInterface):
         timestamps = starting_time + get_movie_timestamps(movie_file=file_path)
         nwb_module = 'acquisition' if module_name is None else module_name
             
-        image_series_kwargs = dict(
-            name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames"
-        )
+        image_series_kwargs = self.get_metadata()
+
         if nwb_module in metadata and 'ImageSeries' in metadata[nwb_module]:
             image_series_kwargs.update(metadata[nwb_module]['ImageSeries'])
             
