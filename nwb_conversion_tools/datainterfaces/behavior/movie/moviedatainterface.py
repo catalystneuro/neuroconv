@@ -13,8 +13,12 @@ from hdmf.data_utils import DataChunkIterator
 
 from ....basedatainterface import BaseDataInterface
 from ....utils.conversion_tools import check_regular_timestamps, get_module
-from ....utils.json_schema import get_schema_from_method_signature, \
-    FilePathType, get_schema_from_hdmf_class, get_base_schema
+from ....utils.json_schema import (
+    get_schema_from_method_signature,
+    FilePathType,
+    get_schema_from_hdmf_class,
+    get_base_schema,
+)
 from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
 
 
@@ -49,7 +53,7 @@ class MovieInterface(BaseDataInterface):
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]['acquisition'] = get_base_schema(tag="acquisition")
+        metadata_schema["properties"]["acquisition"] = get_base_schema(tag="acquisition")
         metadata_schema["properties"]["acquisition"]["required"] = ["ImageSeries"]
         metadata_schema["properties"]["acquisition"]["properties"] = dict(
             Imageseries=get_schema_from_hdmf_class(ImageSeries)
@@ -58,11 +62,13 @@ class MovieInterface(BaseDataInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata['acquisition'] = dict(ImageSeries=
-                                       dict(name=f"Video: {Path(self.source_data['file_path']).stem}",
-                                            description="Video recorded by camera.",
-                                            unit="Frames"
-        ))
+        metadata["acquisition"] = dict(
+            ImageSeries=dict(
+                name=f"Video: {Path(self.source_data['file_path']).stem}",
+                description="Video recorded by camera.",
+                unit="Frames",
+            )
+        )
         return metadata
 
     def run_conversion(
@@ -114,15 +120,15 @@ class MovieInterface(BaseDataInterface):
             count_max = np.inf
         if starting_time is None:
             starting_time = 0.0
-        
+
         timestamps = starting_time + get_movie_timestamps(movie_file=file_path)
-        nwb_module = 'acquisition' if module_name is None else module_name
-            
+        nwb_module = "acquisition" if module_name is None else module_name
+
         image_series_kwargs = self.get_metadata()
 
-        if nwb_module in metadata and 'ImageSeries' in metadata[nwb_module]:
-            image_series_kwargs.update(metadata[nwb_module]['ImageSeries'])
-            
+        if nwb_module in metadata and "ImageSeries" in metadata[nwb_module]:
+            image_series_kwargs.update(metadata[nwb_module]["ImageSeries"])
+
         if check_regular_timestamps(ts=timestamps):
             fps = get_movie_fps(movie_file=file_path)
             image_series_kwargs.update(starting_time=starting_time, rate=fps)
