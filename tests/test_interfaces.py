@@ -50,7 +50,7 @@ def test_movie_interface():
         class MovieTestNWBConverter(NWBConverter):
             data_interface_classes = dict(Movie=MovieInterface)
 
-        source_data = dict(Movie=dict(file_path=movie_file))
+        source_data = dict(Movie=dict(file_paths=[movie_file]))
         converter = MovieTestNWBConverter(source_data)
         metadata = converter.get_metadata()
 
@@ -62,7 +62,7 @@ def test_movie_interface():
             metadata=metadata,
             nwbfile_path=nwbfile_path,
             overwrite=True,
-            conversion_options=dict(Movie=dict(starting_time=123.0)),
+            conversion_options=dict(Movie=dict(starting_times=[123.0])),
         )
 
         # These conversion options do not operate independently, so test them jointly
