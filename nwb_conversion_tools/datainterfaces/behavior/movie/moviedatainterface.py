@@ -127,7 +127,7 @@ class MovieInterface(BaseDataInterface):
         if nwb_module in metadata and 'ImageSeries' in metadata[nwb_module]:
             image_series_kwargs_list = metadata[nwb_module]['ImageSeries']
         else:
-            image_series_kwargs_list = [dict() for i in range(len(self.source_data['file_paths']))]
+            image_series_kwargs_list = self.get_metadata()
         assert len(image_series_kwargs_list)==len(self.source_data['file_paths'])
 
         for j, file in enumerate(file_paths):
@@ -136,10 +136,7 @@ class MovieInterface(BaseDataInterface):
             if len(starting_times) != len(file_paths):
                 starting_times.append(timestamps[-1])
 
-            image_series_kwargs = dict(
-                name=f"Video: {Path(file).stem}", description="Video recorded by camera.", unit="Frames"
-            )
-            image_series_kwargs.update(image_series_kwargs_list[j])
+            image_series_kwargs = image_series_kwargs_list[j]
             if check_regular_timestamps(ts=timestamps):
                 fps = get_movie_fps(movie_file=file)
                 image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
