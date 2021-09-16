@@ -62,6 +62,7 @@ def get_frame_shape(movie_file: PathType):
     cap.release()
     return frame.shape
 
+
 def get_movie_frame_count(movie_file: PathType):
     """
     Return the total number of frames for a movie file.
@@ -78,6 +79,7 @@ def get_movie_frame_count(movie_file: PathType):
     cap.release()
     return count
 
+
 def get_movie_frame(movie_file: PathType, frame_no: int):
     """
     Return the specific frame from a movie.
@@ -86,7 +88,7 @@ def get_movie_frame(movie_file: PathType, frame_no: int):
     ----------
     movie_file : PathType
     """
-    assert frame_no<=get_movie_frame_count(movie_file)
+    assert frame_no <= get_movie_frame_count(movie_file)
     cap = cv2.VideoCapture(str(movie_file))
     if int((cv2.__version__).split(".")[0]) < 3:
         success = cap.set(cv2.cv.CV_CAP_PROP_POS_FRAMES, frame_no)
@@ -95,6 +97,7 @@ def get_movie_frame(movie_file: PathType, frame_no: int):
     _, frame = cap.read()
     cap.release()
     return frame
+
 
 def get_movie_frame_dtype(movie_file: PathType):
     """
@@ -130,7 +133,7 @@ class MovieDataChunkIterator(GenericDataChunkIterator):
         frames_return = []
         for frame_no in range(selection[0].start, selection[0].stop, selection[0].step):
             frames_return.append(get_movie_frame(self.movie_file, frame_no))
-        return np.concatenate(frames_return,axis=0)
+        return np.concatenate(frames_return, axis=0)
 
     def _get_dtype(self):
         return get_movie_frame_dtype(self.movie_file)
