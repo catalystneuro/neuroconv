@@ -1,4 +1,3 @@
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,7 +24,11 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-LOCAL_PATH = Path(".")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+# Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+#   ecephys: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+#   ophys: TODO
+#   icephys: TODO
+LOCAL_PATH = Path(".")  # Must be set to "." for CI - temporarily override for local testing
 
 
 if HAVE_PARAMETERIZED:
@@ -36,32 +39,31 @@ if HAVE_PARAMETERIZED:
         )
 
     class TestNwbConversions(unittest.TestCase):
-        dataset = None
         savedir = Path(tempfile.mkdtemp())
-        data_path = Path.cwd() / "ephy_testing_data"
+        data_path = LOCAL_PATH / "ephy_testing_data"
 
-        parameterized_expand_list = [
+        parameterized_recording_list = [
             param(
                 recording_interface=NeuralynxRecordingInterface,
-                dataset_path="neuralynx/Cheetah_v5.7.4/original_data",
                 interface_kwargs=dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
             ),
             param(
                 recording_interface=NeuroscopeRecordingInterface,
-                dataset_path="neuroscope/test1",
                 interface_kwargs=dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
             ),
             param(
                 recording_interface=OpenEphysRecordingExtractorInterface,
-                dataset_path="openephysbinary/v0.4.4.1_with_video_tracking",
                 interface_kwargs=dict(folder_path=str(data_path / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
+            ),
+            param(
+                recording_interface=BlackrockRecordingExtractorInterface,
+                interface_kwargs=dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.ns5")),
             ),
         ]
         for suffix in ["rhd", "rhs"]:
-            parameterized_expand_list.append(
+            parameterized_recording_list.append(
                 param(
                     recording_interface=IntanRecordingInterface,
-                    dataset_path="intan",
                     interface_kwargs=dict(file_path=str(data_path / "intan" / f"intan_{suffix}_test_1.{suffix}")),
                 )
             )
@@ -70,88 +72,24 @@ if HAVE_PARAMETERIZED:
                 interface_kwargs = dict(filename=str(data_path / "spikegadgets" / f"{file_name}.rec"))
                 if gains is not None:
                     interface_kwargs.update(gains=gains)
-                parameterized_expand_list.append(
+                parameterized_recording_list.append(
                     param(
                         recording_interface=SpikeGadgetsRecordingInterface,
-                        dataset_path="spikegadgets",
                         interface_kwargs=interface_kwargs,
                     )
                 )
         for suffix in ["ap", "lf"]:
             sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
-            parameterized_expand_list.append(
+            parameterized_recording_list.append(
                 param(
                     recording_interface=SpikeGLXRecordingInterface,
-                    dataset_path=sub_path,
                     interface_kwargs=dict(file_path=str(data_path / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
                 )
             )
 
-        @parameterized.expand(
-            [
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=str(data_path / "intan" / "intan_rhd_test_1.rhd")),
-                ),
-                (
-                    IntanRecordingInterface,
-                    "intan",
-                    dict(file_path=str(data_path / "intan" / "intan_rhs_test_1.rhs")),
-                ),
-                (
-                    NeuralynxRecordingInterface,
-                    "neuralynx/Cheetah_v5.7.4/original_data",
-                    dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
-                ),
-                (
-                    NeuroscopeRecordingInterface,
-                    "neuroscope/test1",
-                    dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
-                ),
-                (
-                    SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
-                    dict(
-                        file_path=str(
-                            data_path
-                            / "spikeglx"
-                            / "Noise4Sam_g0"
-                            / "Noise4Sam_g0_imec0"
-                            / "Noise4Sam_g0_t0.imec0.ap.bin"
-                        )
-                    ),
-                ),
-                (
-                    SpikeGLXRecordingInterface,
-                    "spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0",
-                    dict(
-                        file_path=str(
-                            data_path
-                            / "spikeglx"
-                            / "Noise4Sam_g0"
-                            / "Noise4Sam_g0_imec0"
-                            / "Noise4Sam_g0_t0.imec0.lf.bin"
-                        )
-                    ),
-                ),
-                (
-                    BlackrockRecordingExtractorInterface,
-                    "blackrock",
-                    dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.ns5")),
-                ),
-            ]
-        )
-        def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
-            if HAVE_DATALAD:
-                loc = list(interface_kwargs.values())[0]
-                if Path(loc).is_dir():
-                    for file in Path(loc).iterdir():
-                        self.dataset.get(f"{dataset_path}/{file.name}")
-                else:
-                    self.dataset.get(dataset_path)
-            dataset_stem = Path(dataset_path).stem
-            nwbfile_path = self.savedir / f"{recording_interface.__name__}_test_{dataset_stem}.nwb"
+        @parameterized.expand(parameterized_recording_list)
+        def test_convert_recording_extractor_to_nwb(self, recording_interface, interface_kwargs):
+            nwbfile_path = self.savedir / f"{recording_interface.__name__}.nwb"
 
             class TestConverter(NWBConverter):
                 data_interface_classes = dict(TestRecording=recording_interface)
@@ -167,27 +105,16 @@ if HAVE_PARAMETERIZED:
             [
                 param(
                     sorting_interface=PhySortingInterface,
-                    dataset_path="phy/phy_example_0",
                     interface_kwargs=dict(folder_path=str(data_path / "phy" / "phy_example_0")),
                 ),
                 (
                     BlackrockSortingExtractorInterface,
-                    "blackrock",
                     dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.nev")),
                 ),
             ]
         )
-        def test_convert_sorting_extractor_to_nwb(self, sorting_interface, dataset_path, interface_kwargs):
-            print(f"\n\n\n TESTING {sorting_interface.__name__}...")
-            if HAVE_DATALAD:
-                loc = list(interface_kwargs.values())[0]
-                if Path(loc).is_dir():
-                    for file in Path(loc).iterdir():
-                        self.dataset.get(f"{dataset_path}/{file.name}")
-                else:
-                    self.dataset.get(dataset_path)
-            dataset_stem = Path(dataset_path).stem
-            nwbfile_path = self.savedir / f"{sorting_interface.__name__}_test_{dataset_stem}.nwb"
+        def test_convert_sorting_extractor_to_nwb(self, sorting_interface, interface_kwargs):
+            nwbfile_path = self.savedir / f"{sorting_interface.__name__}.nwb"
 
             class TestConverter(NWBConverter):
                 data_interface_classes = dict(TestSorting=sorting_interface)
