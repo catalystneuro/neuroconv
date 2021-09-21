@@ -5,13 +5,17 @@ import numpy as np
 from datetime import datetime
 from typing import TypeVar
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import pynwb
 
 FilePathType = TypeVar("FilePathType", str, Path)
 FolderPathType = TypeVar("FolderPathType", str, Path)
 OptionalFilePathType = Optional[FilePathType]
+ArrayType = Union[list, np.ndarray]
+OptionalArrayType = Optional[ArrayType]
+FloatType = Union[float, np.float]
+IntType = Union[int, np.integer]
 
 
 def exist_dict_in_list(d, ls):
@@ -23,9 +27,7 @@ def append_replace_dict_in_list(d, ls, k):
     """
     Append a dictionary to a list of dictionaries.
 
-    If some dictionary already contains the same value as d[k], it gets
-    replaced by the new dict.
-    Returns the updated list.
+    If some dictionary already contains the same value as d[k], it gets replaced by the new dict.
     """
     if k in d and len(ls) > 0:
         # Index where the value dictionary[k] exists in the list of dicts
@@ -77,6 +79,7 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
 def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
+
     Parameters
     ----------
     class_method: function
@@ -147,6 +150,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     """
     Insert the values of the defaults dict as default values in the schema in place.
+
     Parameters
     ----------
     schema: dict
@@ -165,6 +169,7 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 def unroot_schema(schema: dict):
     """
     Modify a json-schema dictionary to make it not root.
+
     Parameters
     ----------
     schema: dict

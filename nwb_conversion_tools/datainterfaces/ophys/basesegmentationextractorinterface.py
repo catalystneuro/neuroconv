@@ -20,7 +20,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
 
     @classmethod
     def get_source_schema(cls):
-        return get_schema_from_method_signature(cls.SegX.__init__)
+        return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, **source_data):
         super().__init__(**source_data)

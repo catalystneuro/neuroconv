@@ -4,9 +4,8 @@ import warnings
 import numpy as np
 import distutils.version
 from pathlib import Path
-from typing import Union, Optional, List
+from typing import Optional, List
 from warnings import warn
-import psutil
 from collections import defaultdict
 
 import spikeextractors as se
@@ -14,12 +13,9 @@ import pynwb
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
-from .json_schema import dict_deep_update
+from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 
 from .recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
-
-PathType = Union[str, Path, None]
-ArrayType = Union[list, np.ndarray]
 
 
 def list_get(li: list, idx: int, default):
@@ -818,7 +814,7 @@ def add_all_to_nwbfile(
 
 def write_recording(
     recording: se.RecordingExtractor,
-    save_path: PathType = None,
+    save_path: OptionalFilePathType = None,
     overwrite: bool = False,
     nwbfile=None,
     use_times: bool = False,
@@ -837,7 +833,7 @@ def write_recording(
     Parameters
     ----------
     recording: RecordingExtractor
-    save_path: PathType
+    save_path: OptionalFilePathType
         Required if an nwbfile is not passed. Must be the path to the nwbfile
         being appended, otherwise one is created and written.
     overwrite: bool
@@ -1229,7 +1225,7 @@ def write_units(
 
 def write_sorting(
     sorting: se.SortingExtractor,
-    save_path: PathType = None,
+    save_path: OptionalFilePathType = None,
     overwrite: bool = False,
     nwbfile=None,
     property_descriptions: Optional[dict] = None,
@@ -1247,7 +1243,7 @@ def write_sorting(
     Parameters
     ----------
     sorting: SortingExtractor
-    save_path: PathType
+    save_path: OptionalFilePathType
         Required if an nwbfile is not passed. The location where the NWBFile either exists, or will be written.
     overwrite: bool
         If using save_path, whether or not to overwrite the NWBFile if it already exists.
