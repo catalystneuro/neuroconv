@@ -12,7 +12,8 @@ import pynwb
 FilePathType = TypeVar("FilePathType", str, Path)
 FolderPathType = TypeVar("FolderPathType", str, Path)
 OptionalFilePathType = Optional[FilePathType]
-ArrayType = Union[list, np.array]
+ArrayType = Union[list, np.ndarray]
+OptionalArrayType = Optional[ArrayType]
 FloatType = Union[float, np.float]
 IntType = Union[int, np.integer]
 
