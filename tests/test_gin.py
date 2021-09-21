@@ -19,25 +19,16 @@ from nwb_conversion_tools import (
 )
 
 try:
-    from datalad.api import install, Dataset
-
-    HAVE_DATALAD = True
-except ImportError:
-    HAVE_DATALAD = False
-
-try:
     from parameterized import parameterized, param
 
     HAVE_PARAMETERIZED = True
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-RUN_LOCAL = True
 LOCAL_PATH = Path(".")  # Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 
-if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL):
-
+if HAVE_PARAMETERIZED:
     def custom_name_func(testcase_func, param_num, param):
         return (
             f"{testcase_func.__name__}_{param_num}_"
@@ -47,11 +38,7 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
     class TestNwbConversions(unittest.TestCase):
         dataset = None
         savedir = Path(tempfile.mkdtemp())
-
-        if RUN_LOCAL and LOCAL_PATH.exists():
-            data_path = LOCAL_PATH
-        else:
-            data_path = Path.cwd() / "ephy_testing_data"
+        data_path = Path.cwd() / "ephy_testing_data"
 
         parameterized_expand_list = [
             param(
@@ -99,19 +86,6 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     interface_kwargs=dict(file_path=str(data_path / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
                 )
             )
-
-        def setUp(self):
-            data_exists = self.data_path.exists()
-            if HAVE_DATALAD and data_exists:
-                self.dataset = Dataset(self.data_path)
-            if RUN_LOCAL:
-                if not data_exists:
-                    if HAVE_DATALAD:
-                        self.dataset = install("https://gin.g-node.org/NeuralEnsemble/ephy_testing_data")
-                    else:
-                        raise FileNotFoundError(f"The manually specified data path ({self.data_path}) does not exist!")
-            elif not data_exists:
-                self.dataset = install("https://gin.g-node.org/NeuralEnsemble/ephy_testing_data")
 
         @parameterized.expand(
             [
