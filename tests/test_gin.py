@@ -32,6 +32,7 @@ LOCAL_PATH = Path(".")  # Must be set to "." for CI - temporarily override for l
 
 
 if HAVE_PARAMETERIZED:
+
     def custom_name_func(testcase_func, param_num, param):
         return (
             f"{testcase_func.__name__}_{param_num}_"
