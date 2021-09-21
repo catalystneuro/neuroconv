@@ -1,0 +1,35 @@
+name: Update GIN artifact
+on: 
+  schedule:
+    - cron: "0 0 * * 1"
+jobs:
+  run:
+    name: Upload GIN artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: s-weigand/setup-conda@v1
+        with:
+          python-version: 3.8
+      - name: Which python
+        run: |
+          conda --version
+          which python
+      - run: git fetch --prune --unshallow --tags
+      - name: Install this package, on development mode
+        env:
+            NWB_CONVERSION_INSTALL_MODE: development
+        run: |
+          conda install -c conda-forge datalad==0.14.5
+          pip install -e .
+          # needed for correct operation of git/git-annex/DataLad
+          git config --global user.email "CI@example.com"
+          git config --global user.name "CI Almighty"
+      - name: Download entire repo
+        run: |
+          datalad install -r -g https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ephy_testing_data
+          path: ./ephy_testing_data
