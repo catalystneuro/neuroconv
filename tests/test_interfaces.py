@@ -19,6 +19,8 @@ except ImportError:
 from nwb_conversion_tools import (
     NWBConverter,
     MovieInterface,
+    RecordingTutorialInterface,
+    SortingTutorialInterface,
     SIPickleRecordingExtractorInterface,
     SIPickleSortingExtractorInterface,
     interface_list,
@@ -35,6 +37,54 @@ def test_interface_source_schema(data_interface):
 def test_interface_conversion_options_schema(data_interface):
     schema = data_interface.get_conversion_options_schema()
     Draft7Validator.check_schema(schema)
+
+
+def test_tutorials():
+    class TutorialNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
+        )
+
+    duration = 10.0  # Seconds
+    num_channels = 4
+    num_units = 10
+    sampling_frequency = 30000.0  # Hz
+    stub_test = False
+    test_dir = Path(mkdtemp())
+    output_file = str(test_dir / "TestTutorial.nwb")
+    source_data = dict(
+        RecordingTutorial=dict(duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency),
+        SortingTutorial=dict(duration=duration, num_units=num_units, sampling_frequency=sampling_frequency),
+    )
+    converter = TutorialNWBConverter(source_data=source_data)
+    metadata = converter.get_metadata()
+    metadata["NWBFile"]["session_description"] = "NWB Conversion Tools tutorial."
+    metadata["NWBFile"]["experimenter"] = ["My name"]
+    metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
+    conversion_options = dict(RecordingTutorial=dict(stub_test=stub_test), SortingTutorial=dict())
+    converter.run_conversion(
+        metadata=metadata,
+        nwbfile_path=output_file,
+        save_to_file=True,
+        overwrite=True,
+        conversion_options=conversion_options,
+    )
+
+
+def test_tutorial_interfaces():
+    class TutorialNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
+        )
+
+    test_dir = Path(mkdtemp())
+    output_file = str(test_dir / "TestTutorial.nwb")
+    source_data = dict(
+        RecordingTutorial=dict(),
+        SortingTutorial=dict(),
+    )
+    converter = TutorialNWBConverter(source_data=source_data)
+    converter.run_conversion(nwbfile_path=output_file, overwrite=True)
 
 
 def test_pkl_interface():
