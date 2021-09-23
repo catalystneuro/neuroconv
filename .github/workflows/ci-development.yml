@@ -34,6 +34,7 @@ jobs:
           NWB_CONVERSION_INSTALL_MODE: development
       run: |
         pip install .
+        pip install pytest
     - name: Run tests
       run: |
-        pip install pytest
+        pytest
