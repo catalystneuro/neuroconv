@@ -29,9 +29,11 @@ except ImportError:
 #   ophys: TODO
 #   icephys: TODO
 LOCAL_PATH = Path(".")  # Must be set to "." for CI - temporarily override for local testing
+DATA_PATH = LOCAL_PATH / "ephy_testing_data"
+HAVE_DATA = DATA_PATH.exists()
 
 
-if HAVE_PARAMETERIZED:
+if HAVE_PARAMETERIZED and HAVE_DATA:
 
     def custom_name_func(testcase_func, param_num, param):
         return (
@@ -41,36 +43,35 @@ if HAVE_PARAMETERIZED:
 
     class TestNwbConversions(unittest.TestCase):
         savedir = Path(tempfile.mkdtemp())
-        data_path = LOCAL_PATH / "ephy_testing_data"
 
         parameterized_recording_list = [
             param(
                 recording_interface=NeuralynxRecordingInterface,
-                interface_kwargs=dict(folder_path=str(data_path / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
+                interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
             ),
             param(
                 recording_interface=NeuroscopeRecordingInterface,
-                interface_kwargs=dict(file_path=str(data_path / "neuroscope" / "test1" / "test1.dat")),
+                interface_kwargs=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")),
             ),
             param(
                 recording_interface=OpenEphysRecordingExtractorInterface,
-                interface_kwargs=dict(folder_path=str(data_path / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
+                interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
             ),
             param(
                 recording_interface=BlackrockRecordingExtractorInterface,
-                interface_kwargs=dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.ns5")),
+                interface_kwargs=dict(filename=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
             ),
         ]
         for suffix in ["rhd", "rhs"]:
             parameterized_recording_list.append(
                 param(
                     recording_interface=IntanRecordingInterface,
-                    interface_kwargs=dict(file_path=str(data_path / "intan" / f"intan_{suffix}_test_1.{suffix}")),
+                    interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / f"intan_{suffix}_test_1.{suffix}")),
                 )
             )
         for file_name, num_channels in zip(["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"], [512, 128]):
             for gains in [None, [0.195], [0.385] * num_channels]:
-                interface_kwargs = dict(filename=str(data_path / "spikegadgets" / f"{file_name}.rec"))
+                interface_kwargs = dict(filename=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"))
                 if gains is not None:
                     interface_kwargs.update(gains=gains)
                 parameterized_recording_list.append(
@@ -84,7 +85,7 @@ if HAVE_PARAMETERIZED:
             parameterized_recording_list.append(
                 param(
                     recording_interface=SpikeGLXRecordingInterface,
-                    interface_kwargs=dict(file_path=str(data_path / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
+                    interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
                 )
             )
 
@@ -106,11 +107,11 @@ if HAVE_PARAMETERIZED:
             [
                 param(
                     sorting_interface=PhySortingInterface,
-                    interface_kwargs=dict(folder_path=str(data_path / "phy" / "phy_example_0")),
+                    interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
                 ),
                 (
                     BlackrockSortingExtractorInterface,
-                    dict(filename=str(data_path / "blackrock" / "FileSpec2.3001.nev")),
+                    dict(filename=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
                 ),
             ]
         )
