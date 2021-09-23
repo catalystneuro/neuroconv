@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-latest", "windows-latest", "ubuntu-latest"]
+        os: ["ubuntu-latest"]
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --prune --unshallow --tags
@@ -19,8 +19,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
     - name: Download GIN artifact
-      uses: actions/download-artifact@v2
+      uses: dawidd6/action-download-artifact@v2
       with:
+        workflow: 1258102785
+        workflow_conclusion: success
+        run_id: 1258102785
         name: ephy_testing_data
         path: ./ephy_testing_data
     - name: Display structure of downloaded files
