@@ -6,7 +6,6 @@ from .utils.json_schema import get_base_schema, get_schema_from_method_signature
 
 
 class BaseDataInterface(ABC):
-
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls.__init__)
