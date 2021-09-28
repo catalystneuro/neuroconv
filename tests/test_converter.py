@@ -21,7 +21,6 @@ def test_converter():
         nwbfile_path = str(test_dir / "extension_test.nwb")
 
         class NdxEventsInterface(BaseDataInterface):
-
             def run_conversion(self, nwbfile: NWBFile, metadata: dict):
                 events = LabeledEvents(
                     name="LabeledEvents",
