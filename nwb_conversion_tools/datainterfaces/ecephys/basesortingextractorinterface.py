@@ -15,11 +15,6 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
 
     SX = None
 
-    @classmethod
-    def get_source_schema(cls):
-        """Compile input schema for the SortingExtractor."""
-        return get_schema_from_method_signature(cls.__init__)
-
     def __init__(self, **source_data):
         super().__init__(**source_data)
         self.sorting_extractor = self.SX(**source_data)
