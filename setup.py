@@ -28,11 +28,11 @@ assert "." in remote_version
 
 setup(
     name="nwb-conversion-tools",
-    version="0.9.1",
+    version="0.9.2",
     description="Convert data to nwb",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Ben Dichter and Luiz Tauffer",
+    author="Ben Dichter, Cody Baker, and Luiz Tauffer",
     author_email="ben.dichter@gmail.com",
     url="https://github.com/catalystneuro/nwb-conversion-tools",
     keywords="nwb",
