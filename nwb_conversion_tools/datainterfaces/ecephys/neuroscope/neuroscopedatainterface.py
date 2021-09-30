@@ -1,6 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
 
 import numpy as np
 import spikeextractors as se
@@ -9,7 +9,9 @@ from pynwb.ecephys import ElectricalSeries
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import FilePathType, FolderPathType, get_schema_from_hdmf_class, dict_deep_update
+from ....utils.json_schema import (
+    FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class, dict_deep_update
+)
 
 try:
     from lxml import etree as et
@@ -81,9 +83,12 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         )
         return ecephys_metadata
 
-    def __init__(self, file_path: FilePathType):
-        super().__init__(file_path=file_path)
-        xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
+    def __init__(
+        self, file_path: FilePathType, gain: Optional[float] = None, xml_file_path: OptionalFilePathType = None
+    ):
+        super(NeuroscopeRecordingInterface, self).__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
+        if xml_file_path is None:
+            xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
         self.subset_channels = get_shank_channels(xml_file_path=xml_file_path, sort=True)
         shank_channels = get_shank_channels(xml_file_path)
         group_electrode_numbers = [x for channels in shank_channels for x, _ in enumerate(channels)]
@@ -97,6 +102,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor.set_channel_property(
                 channel_id=channel_id, property_name="group_name", value=group_name
             )
+
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -151,11 +157,10 @@ class NeuroscopeMultiRecordingTimeInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
         metadata = super().get_metadata()
-        metadata(
-            metadata,
+        metadata["Ecephys"].update(
             NeuroscopeRecordingInterface.get_ecephys_metadata(
-                xml_file_path=get_xml_file_path(data_file_path=self.source_data["folder_path"])
-            ),
+                xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"])
+            )
         )
         metadata["Ecephys"].update(
             ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
@@ -168,8 +173,10 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 
     RX = se.NeuroscopeRecordingExtractor
 
-    def __init__(self, file_path: FilePathType):
-        super().__init__(file_path=file_path)
+    def __init__(
+        self, file_path: FilePathType, gain: Optional[float] = None, xml_file_path: OptionalFilePathType = None
+    ):
+        super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         self.subset_channels = get_shank_channels(
             xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"]), sort=True
         )
@@ -184,11 +191,10 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
     def get_metadata(self):
         """Retrieve Ecephys metadata specific to the Neuroscope format."""
         metadata = super().get_metadata()
-        dict_deep_update(
-            metadata,
+        metadata["Ecephys"].update(
             NeuroscopeRecordingInterface.get_ecephys_metadata(
                 xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"])
-            ),
+            )
         )
         metadata["Ecephys"].update(
             ElectricalSeries_lfp=dict(name="ElectricalSeries_lfp", description="Local field potential signal.")
