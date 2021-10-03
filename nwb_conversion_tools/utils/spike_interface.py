@@ -421,7 +421,6 @@ def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dic
             if nwbfile.electrodes is None:
                 nwbfile.add_electrode_column(name=name, description=des_args["description"], index=des_args["index"])
             else:
-                # build default junk values for data to force add columns later:
                 combine_data = [channel_property_defaults[found_property_types[name]]] * len(nwbfile.electrodes.id)
                 des_args["data"] = combine_data + des_args["data"]
                 elec_columns_append[name] = des_args
