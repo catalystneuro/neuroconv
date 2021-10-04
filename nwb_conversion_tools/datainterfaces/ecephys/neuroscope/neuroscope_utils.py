@@ -43,9 +43,7 @@ def get_shank_channels(xml_file_path: str):
     root = get_xml(xml_file_path)
     channel_groups = safe_find(safe_nested_find(root, ["spikeDetection", "channelGroups"]), "group", findall=True)
     if channel_groups and all([safe_find(group, "channels") is not None for group in channel_groups]):
-        shank_channels = [
-            [int(channel.text) for channel in group.find("channels")] for group in channel_groups
-        ]
+        shank_channels = [[int(channel.text) for channel in group.find("channels")] for group in channel_groups]
         return shank_channels
 
 
@@ -63,9 +61,8 @@ def add_recording_extractor_properties(recording_extractor: RecordingExtractor, 
     """Automatically add properties to RecordingExtractor object."""
     channel_groups = get_channel_groups(xml_file_path=xml_file_path)
     channel_map = {
-        channel_id: idx for idx, channel_id in enumerate(
-            [channel_id for group in channel_groups for channel_id in group]
-        )
+        channel_id: idx
+        for idx, channel_id in enumerate([channel_id for group in channel_groups for channel_id in group])
     }
     shank_channels = get_shank_channels(xml_file_path=xml_file_path)
     if shank_channels:
@@ -74,16 +71,14 @@ def add_recording_extractor_properties(recording_extractor: RecordingExtractor, 
     group_nums = [n + 1 for n, channels in enumerate(channel_groups) for _ in channels]
     group_names = [f"Group{n + 1}" for n in group_nums]
     for channel_id in recording_extractor.get_channel_ids():
-        recording_extractor.set_channel_groups(
-            channel_ids=[channel_id], groups=group_nums[channel_map[channel_id]]
-        )
+        recording_extractor.set_channel_groups(channel_ids=[channel_id], groups=group_nums[channel_map[channel_id]])
         recording_extractor.set_channel_property(
             channel_id=channel_id, property_name="group_name", value=group_names[channel_map[channel_id]]
         )
         recording_extractor.set_channel_property(
             channel_id=channel_id,
             property_name="shank_electrode_number",
-            value=group_electrode_numbers[channel_map[channel_id]]
+            value=group_electrode_numbers[channel_map[channel_id]],
         )
         if shank_channels is not None:
             recording_extractor.set_channel_property(

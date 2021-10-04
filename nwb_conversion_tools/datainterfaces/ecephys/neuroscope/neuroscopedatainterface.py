@@ -13,7 +13,10 @@ from ....utils.json_schema import FilePathType, FolderPathType, OptionalFilePath
 try:
     import lxml
     from .neuroscope_utils import (
-        get_xml_file_path, get_channel_groups, get_shank_channels, add_recording_extractor_properties
+        get_xml_file_path,
+        get_channel_groups,
+        get_shank_channels,
+        add_recording_extractor_properties,
     )
 
     HAVE_LXML = True
