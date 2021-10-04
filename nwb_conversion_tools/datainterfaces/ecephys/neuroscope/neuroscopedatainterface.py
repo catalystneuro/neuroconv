@@ -2,7 +2,6 @@
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
 import spikeextractors as se
 from pynwb.ecephys import ElectricalSeries
 
@@ -12,53 +11,15 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils.json_schema import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class
 
 try:
-    from lxml import etree as et
+    import lxml
+    from .neuroscope_utils import (
+        get_xml_file_path, get_channel_groups, get_shank_channels, add_recording_extractor_properties
+    )
 
     HAVE_LXML = True
 except ImportError:
     HAVE_LXML = False
 INSTALL_MESSAGE = "Please install lxml to use this extractor!"
-
-
-def get_xml_file_path(data_file_path: str):
-    """
-    Infer the xml_file_path from the data_file_path (.dat or .eeg).
-
-    Assumes the two are in the same folder and follow the session_id naming convention.
-    """
-    session_path = Path(data_file_path).parent
-    return str(session_path / f"{session_path.stem}.xml")
-
-
-def get_xml(xml_file_path: str):
-    """Auxiliary function for retrieving root of xml."""
-    return et.parse(xml_file_path).getroot()
-
-
-def get_shank_channels(xml_file_path: str, channel_key: str = "spikeDetection", sort: bool = False):
-    """
-    Auxiliary function for retrieving the list of structured shank-only channels.
-
-    Attempts to retrieve these first from the spikeDetection sub-field in the event that spike sorting was performed on
-    the raw data. In the event that spike sorting was not performed, it then retrieves only the anatomicalDescription.
-    """
-    assert channel_key in ["spikeDetection", "anatomicalDescription"], (
-        f"channel_key ({channel_key}) must be either 'spikeDetection' or 'anatomicalDescription'!"
-    )
-    root = get_xml(xml_file_path)
-    if channel_key == "spikeDetection":
-        shank_channels = [
-            [int(channel.text) for channel in group.find("channels")]
-            for group in root.find(channel_key).find("channelGroups").findall("group")
-        ]
-    else:
-        shank_channels = [
-            [int(channel.text) for channel in group.findall("channel")]
-            for group in root.find(channel_key).find("channelGroups").findall("group")
-        ]
-    if sort:
-        shank_channels = sorted(np.concatenate(shank_channels))
-    return shank_channels
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -67,19 +28,25 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     RX = se.NeuroscopeRecordingExtractor
 
     @staticmethod
-    def get_ecephys_metadata(xml_file_path: str, channel_key: str = "spikeDetection"):
+    def get_ecephys_metadata(xml_file_path: str):
         """Auto-populates ecephys metadata from the xml_file_path."""
-        shank_channels = get_shank_channels(xml_file_path=xml_file_path, channel_key=channel_key)
+        channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
-                dict(name=f"shank{n + 1}", description=f"shank{n + 1} electrodes", location="", device="Device_ecephys")
-                for n, _ in enumerate(shank_channels)
+                dict(
+                    name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="Device_ecephys"
+                )
+                for n, _ in enumerate(channel_groups)
             ],
             Electrodes=[
                 dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
                 dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
             ],
         )
+        if get_shank_channels(xml_file_path=xml_file_path) is not None:
+            ecephys_metadata["Electrodes"].append(
+                dict(name="spike_detection", description="If the channel was used for spike detection.")
+            )
         return ecephys_metadata
 
     def __init__(
@@ -87,7 +54,6 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        channel_key: str = "spikeDetection",
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -108,25 +74,12 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             Certain .xml files indicate shank structure via either "spikeDetection" or "anatomicalDescription" keys.
             The default is "spikeDetection".
         """
-        super(BaseRecordingExtractorInterface, self).__init__(
-            file_path=file_path, gain=gain, xml_file_path=xml_file_path, channel_key=channel_key
-        )
+        assert HAVE_LXML, INSTALL_MESSAGE
+
+        super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
-        self.recording_extractor = self.RX(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
-        self.subset_channels = get_shank_channels(xml_file_path=xml_file_path, channel_key=channel_key, sort=True)
-        shank_channels = get_shank_channels(xml_file_path=xml_file_path, channel_key=channel_key)
-        group_electrode_numbers = [x for channels in shank_channels for x, _ in enumerate(channels)]
-        group_names = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
-        for channel_id, group_electrode_number, group_name in zip(
-            self.recording_extractor.get_channel_ids(), group_electrode_numbers, group_names
-        ):
-            self.recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="shank_electrode_number", value=group_electrode_number
-            )
-            self.recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="group_name", value=group_name
-            )
+        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -156,7 +109,6 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         folder_path: FolderPathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        channel_key: str = "spikeDetection",
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -180,25 +132,14 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
             Certain .xml files indicate shank structure via either "spikeDetection" or "anatomicalDescription" keys.
             The default is "spikeDetection".
         """
-        self.source_data = dict(
-            folder_path=folder_path, gain=gain, xml_file_path=xml_file_path, channel_key=channel_key
+        assert HAVE_LXML, INSTALL_MESSAGE
+
+        super(NeuroscopeRecordingInterface, self).__init__(
+            folder_path=folder_path, gain=gain, xml_file_path=xml_file_path
         )
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=self.source_data["folder_path"])
-        self.recording_extractor = self.RX(folder_path=folder_path, gain=gain, xml_file_path=xml_file_path)
-        self.subset_channels = get_shank_channels(xml_file_path=xml_file_path, channel_key=channel_key, sort=True)
-        shank_channels = get_shank_channels(xml_file_path=xml_file_path, channel_key=channel_key)
-        group_electrode_numbers = [x for channels in shank_channels for x, _ in enumerate(channels)]
-        group_names = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
-        for channel_id, group_electrode_number, group_name in zip(
-            self.recording_extractor.get_channel_ids(), group_electrode_numbers, group_names
-        ):
-            self.recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="group_electrode_number", value=group_electrode_number
-            )
-            self.recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="group_name", value=group_name
-            )
+        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
@@ -211,7 +152,6 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        channel_key: str = "spikeDetection",
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -232,44 +172,15 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             Certain .xml files indicate shank structure via either "spikeDetection" or "anatomicalDescription" keys.
             The default is "spikeDetection".
         """
-        self.source_data = dict(file_path=file_path, gain=gain, xml_file_path=xml_file_path, channel_key=channel_key)
+        super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
-        self.recording_extractor = self.RX(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
-        self.subset_channels = get_shank_channels(xml_file_path=xml_file_path, channel_key=channel_key, sort=True)
-        shank_channels = get_shank_channels(xml_file_path, channel_key=channel_key)
-        group_electrode_numbers = [x for channels in shank_channels for x, _ in enumerate(channels)]
-        group_names = [f"shank{n + 1}" for n, channels in enumerate(shank_channels) for _ in channels]
-        for channel_id, group_electrode_number, group_name in zip(
-            self.recording_extractor.get_channel_ids(),
-            group_electrode_numbers,
-            group_names,
-        ):
-            self.recording_extractor.set_channel_property(
-                channel_id=channel_id,
-                property_name="shank_electrode_number",
-                value=group_electrode_number,
-            )
-            self.recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="group_name", value=group_name
-            )
-
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
+        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
 
     def get_metadata(self):
         metadata = super().get_metadata()
         metadata["Ecephys"].update(
-            NeuroscopeRecordingInterface.get_ecephys_metadata(
-                xml_file_path=get_xml_file_path(data_file_path=self.source_data["file_path"])
-            )
-        )
-        metadata["Ecephys"].update(
-            ElectricalSeries_lfp=dict(name="ElectricalSeries_lfp", description="Local field potential signal.")
+            NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=self.source_data["xml_file_path"])
         )
         return metadata
 
