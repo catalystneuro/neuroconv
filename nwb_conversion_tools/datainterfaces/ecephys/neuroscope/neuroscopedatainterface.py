@@ -70,9 +70,6 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        channel_key : str, optional
-            Certain .xml files indicate shank structure via either "spikeDetection" or "anatomicalDescription" keys.
-            The default is "spikeDetection".
         """
         assert HAVE_LXML, INSTALL_MESSAGE
 
@@ -128,9 +125,6 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        channel_key : str, optional
-            Certain .xml files indicate shank structure via either "spikeDetection" or "anatomicalDescription" keys.
-            The default is "spikeDetection".
         """
         assert HAVE_LXML, INSTALL_MESSAGE
 
@@ -168,9 +162,6 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        channel_key : str, optional
-            Certain .xml files indicate shank structure via either "spikeDetection" or "anatomicalDescription" keys.
-            The default is "spikeDetection".
         """
         super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         if xml_file_path is None:
