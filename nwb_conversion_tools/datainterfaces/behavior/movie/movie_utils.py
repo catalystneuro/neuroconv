@@ -123,8 +123,10 @@ class MovieDataChunkIterator(GenericDataChunkIterator):
         buffer_shape: tuple = None,
         chunk_mb: float = None,
         chunk_shape: tuple = None,
+        stub: bool = False
     ):
         self.movie_file = movie_file
+        self._stub = stub
         if chunk_shape is None:
             chunk_shape = (1, *get_frame_shape(self.movie_file))
         super().__init__(buffer_gb=buffer_gb, buffer_shape=buffer_shape, chunk_mb=chunk_mb, chunk_shape=chunk_shape)
@@ -132,11 +134,16 @@ class MovieDataChunkIterator(GenericDataChunkIterator):
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         frames_return = []
         for frame_no in range(selection[0].start, selection[0].stop, selection[0].step):
-            frames_return.append(get_movie_frame(self.movie_file, frame_no))
+            frame = get_movie_frame(self.movie_file, frame_no)
+            frames_return.append(frame[selection[1:]])
         return np.concatenate(frames_return, axis=0)
 
     def _get_dtype(self):
         return get_movie_frame_dtype(self.movie_file)
 
     def _get_maxshape(self):
-        return (get_movie_frame_count(self.movie_file), *get_frame_shape(self.movie_file))
+        # if stub the assume a max frame count of 10
+        if self._stub:
+            return (min(10, get_movie_frame_count(self.movie_file)), *get_frame_shape(self.movie_file))
+        else:
+            return (get_movie_frame_count(self.movie_file), *get_frame_shape(self.movie_file))
