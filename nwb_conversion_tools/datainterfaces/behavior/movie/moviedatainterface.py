@@ -53,17 +53,17 @@ class MovieInterface(BaseDataInterface):
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["acquisition"] = get_base_schema(tag="acquisition")
-        metadata_schema["properties"]["acquisition"]["required"] = ["ImageSeries"]
-        metadata_schema["properties"]["acquisition"]["properties"] = dict(
-            Imageseries=dict(type="array", items=get_schema_from_hdmf_class(ImageSeries))
+        metadata_schema["properties"]["behavior"] = get_base_schema(tag="behavior")
+        metadata_schema["properties"]["behavior"]["required"] = ["Movies"]
+        metadata_schema["properties"]["behavior"]["properties"] = dict(
+            Movies=dict(type="array", items=get_schema_from_hdmf_class(ImageSeries))
         )
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["acquisition"] = dict(
-            ImageSeries=[
+        metadata["behavior"] = dict(
+            Movies=[
                 dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
@@ -125,9 +125,9 @@ class MovieInterface(BaseDataInterface):
             ), "Argument 'starting_times' must be a list of floats in one-to-one correspondence with 'file_paths'!"
         else:
             starting_times = [0.0]
-        nwb_module = "acquisition" if module_name is None else module_name
-        if nwb_module in metadata and "ImageSeries" in metadata[nwb_module]:
-            image_series_kwargs_list = metadata[nwb_module]["ImageSeries"]
+
+        if "behavior" in metadata and "Movies" in metadata["behavior"]:
+            image_series_kwargs_list = metadata["behavior"]["behavior"]
         else:
             image_series_kwargs_list = self.get_metadata()
         assert len(image_series_kwargs_list) == len(self.source_data['file_paths'])
