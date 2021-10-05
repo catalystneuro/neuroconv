@@ -12,6 +12,7 @@ from nwb_conversion_tools import (
     NeuroscopeRecordingInterface,
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
+    SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     BlackrockRecordingExtractorInterface,
     BlackrockSortingExtractorInterface,
@@ -77,6 +78,18 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
                     interface_kwargs=dict(file_path=str(data_path / "intan" / f"intan_{suffix}_test_1.{suffix}")),
                 )
             )
+        for file_name, num_channels in zip(["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"], [512, 128]):
+            for gains in [None, [0.195], [0.385] * num_channels]:
+                interface_kwargs = dict(filename=str(data_path / "spikegadgets" / f"{file_name}.rec"))
+                if gains is not None:
+                    interface_kwargs.update(gains=gains)
+                parameterized_expand_list.append(
+                    param(
+                        recording_interface=SpikeGadgetsRecordingInterface,
+                        dataset_path="spikegadgets",
+                        interface_kwargs=interface_kwargs,
+                    )
+                )
         for suffix in ["ap", "lf"]:
             sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
             parameterized_expand_list.append(
@@ -156,7 +169,6 @@ if HAVE_PARAMETERIZED and (HAVE_DATALAD and sys.platform == "linux" or RUN_LOCAL
             ]
         )
         def test_convert_recording_extractor_to_nwb(self, recording_interface, dataset_path, interface_kwargs):
-            print(f"\n\n\n TESTING {recording_interface.__name__}...")
             if HAVE_DATALAD:
                 loc = list(interface_kwargs.values())[0]
                 if Path(loc).is_dir():

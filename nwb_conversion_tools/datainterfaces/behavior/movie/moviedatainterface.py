@@ -130,7 +130,7 @@ class MovieInterface(BaseDataInterface):
             image_series_kwargs_list = metadata["behavior"]["behavior"]
         else:
             image_series_kwargs_list = self.get_metadata()
-        assert len(image_series_kwargs_list) == len(self.source_data['file_paths'])
+        assert len(image_series_kwargs_list) == len(self.source_data["file_paths"])
 
         for j, file in enumerate(file_paths):
             timestamps = starting_times[j] + get_movie_timestamps(movie_file=file)
