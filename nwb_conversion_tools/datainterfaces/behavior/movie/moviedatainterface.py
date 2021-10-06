@@ -47,10 +47,6 @@ class MovieInterface(BaseDataInterface):
         assert HAVE_OPENCV, INSTALL_MESSAGE
         super().__init__(file_paths=file_paths)
 
-    @classmethod
-    def get_source_schema(cls):
-        return get_schema_from_method_signature(cls.__init__)
-
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["behavior"] = get_base_schema(tag="behavior")

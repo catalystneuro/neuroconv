@@ -18,10 +18,6 @@ from ...utils.json_schema import (
 class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
     SegX = None
 
-    @classmethod
-    def get_source_schema(cls):
-        return get_schema_from_method_signature(cls.__init__)
-
     def __init__(self, **source_data):
         super().__init__(**source_data)
         self.segmentation_extractor = self.SegX(**source_data)
