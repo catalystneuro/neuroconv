@@ -39,4 +39,5 @@ jobs:
       run: |
         source ~/test_env/bin/activate
         datalad install -r https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+        cd ephy_testing_data
         datalad get spikegadgets
