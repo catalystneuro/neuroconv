@@ -1,0 +1,49 @@
+name: Update testing data
+on: push  # initial setup
+# on:
+#   schedule:
+#     - cron:  '0 0 * * *'
+jobs:
+  run:
+    name: Update testing data
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v2
+    - uses: s-weigand/setup-conda@v1
+    - run: git fetch --prune --unshallow --tags
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Install pip
+      run: |
+        python -m pip install --upgrade pip
+    - uses: actions/cache@v2
+        id: cache-venv
+        with:
+          path: ~/test_env
+          key: ${{ runner.os }}-venv
+          restore-keys: |
+            ${{ runner.os }}-venv
+      - name: Install dependencies and dataset
+        run: |
+          conda install -c conda-forge datalad==0.14.5
+          # needed for correct operation of git/git-annex/DataLad
+          git config --global user.email "CI@example.com"
+          git config --global user.name "CI Almighty"
+          python -m venv ~/test_env
+          source ~/test_env/bin/activate
+          datalad install -r -g https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+      - name: Get ephy_testing_data current head hash
+        id: vars
+        run: |
+          echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
+      - uses: actions/cache@v2
+        id: cache-datasets
+        with:
+          path: ~/ephy_testing_data
+          key: ${{ runner.os }}-datasets-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
+          restore-keys: |
+            ${{ runner.os }}-datasets
