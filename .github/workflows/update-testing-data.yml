@@ -10,11 +10,8 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-    - uses: actions/checkout@v2
     - uses: s-weigand/setup-conda@v1
-    - run: git fetch --prune --unshallow --tags
-    - name: Setup Python
-      uses: actions/setup-python@v2
+    - uses: actions/setup-python@v2
       with:
         python-version: 3.7
     - uses: actions/cache@v2
@@ -23,7 +20,7 @@ jobs:
         path: ~/datalad_env
         key: ${{ runner.os }}-venv-datalad
         restore-keys: |
-          ${{ runner.os }}-venv-datalad
+          ${{ runner.os }}-venv
     - name: Install pip
       run: |
         python -m pip install --upgrade pip
