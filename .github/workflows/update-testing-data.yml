@@ -1,8 +1,8 @@
 name: Update testing data
-on: push  # initial setup
-# on:
-#   schedule:
-#     - cron:  '0 0 * * *'
+# on: push  # initial setup
+on:
+  schedule:
+    - cron:  '0 0 * * *'
 jobs:
   run:
     name: Update testing data
