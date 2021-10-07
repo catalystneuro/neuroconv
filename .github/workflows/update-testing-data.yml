@@ -26,11 +26,11 @@ jobs:
         python -m pip install --upgrade pip
     - name: Install datalad
       run: |
+        python -m venv ~/datalad_env
+        source ~/datalad_env/bin/activate
         conda install -c conda-forge datalad==0.14.5
         git config --global user.email "CI@example.com"
         git config --global user.name "CI Almighty"
-        python -m venv ~/test_env
-        source ~/test_env/bin/activate
     - name: Get ephy_testing_data current head hash
       id: vars
       run: |
@@ -44,7 +44,7 @@ jobs:
           ${{ runner.os }}-datasets
     - name: Update dataset
       run: |
-        source ~/test_env/bin/activate
+        source ~/datalad_env/bin/activate
         datalad install -r https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
         cd ephy_testing_data
         datalad get spikegadgets
