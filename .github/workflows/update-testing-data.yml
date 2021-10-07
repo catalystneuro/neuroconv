@@ -32,7 +32,7 @@ jobs:
       id: cache-datasets
       with:
         path: ~/ephy_testing_data
-        key: ${{ runner.os }}-datasets-${{ (git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1) }}
+        key: ${{ runner.os }}-datasets-${{ $(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1) }}
         restore-keys: |
           ${{ runner.os }}-datasets
     - name: Update dataset
