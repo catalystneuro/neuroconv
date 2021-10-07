@@ -21,9 +21,6 @@ jobs:
         key: ${{ runner.os }}-venv-datalad
         restore-keys: |
           ${{ runner.os }}-venv
-    - name: Install pip
-      run: |
-        python -m pip install --upgrade pip
     - name: Install datalad
       run: |
         python -m venv ~/datalad_env
