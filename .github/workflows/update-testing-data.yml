@@ -36,9 +36,9 @@ jobs:
       id: cache-datasets
       with:
         path: ~/ephy_testing_data
-        key: ${{ runner.os }}-dataset-test-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
+        key: ${{ runner.os }}-dataset-test1-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
         restore-keys: |
-          ${{ runner.os }}-dataset-test
+          ${{ runner.os }}-dataset-test1
     - name: Update dataset
       run: |
         source ~/datalad_env/bin/activate
