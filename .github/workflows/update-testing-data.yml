@@ -23,10 +23,11 @@ jobs:
     #       ${{ runner.os }}-venv-test
     - uses: syphar/restore-virtualenv@v1
       id: cache-datalad-env
-    - run: |
-      pip install -r requirements.txt
-      git config --global user.email "CI@example.com"
-      git config --global user.name "CI Almighty"
+    - name: Get cached environment, or install
+      run: |
+        conda install -c conda-forge datalad==0.14.5
+        git config --global user.email "CI@example.com"
+        git config --global user.name "CI Almighty"
       if: steps.cache-datalad-env.outputs.cache-hit != "true"
     # - name: Install datalad
     #   run: |
