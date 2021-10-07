@@ -48,3 +48,4 @@ jobs:
         datalad install -r https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
         cd ephy_testing_data
         datalad get spikegadgets
+        datalad get neuroscope
