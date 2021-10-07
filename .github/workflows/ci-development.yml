@@ -1,6 +1,5 @@
 name: CI development
-on: push
-# on: pull_request
+on: pull_request
 jobs:
   run:
     name: Full tests on (${{ matrix.os }})
@@ -23,12 +22,10 @@ jobs:
     - name: Install this package, on development mode
       env:
           NWB_CONVERSION_INSTALL_MODE: development
-      run: |
-        pip install .
+      run: pip install .
     - name: Get ephy_testing_data current head hash
       id: vars
-      run: |
-        echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
+      run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
     - uses: actions/cache@v2
       id: cache-datasets
       with:
@@ -37,5 +34,4 @@ jobs:
         restore-keys: |
           ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
     - name: Test with pytest
-      run: |
-        pytest
+      run: pytest
