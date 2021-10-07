@@ -28,7 +28,7 @@ jobs:
         conda install -c conda-forge datalad==0.14.5
         git config --global user.email "CI@example.com"
         git config --global user.name "CI Almighty"
-      if: steps.cache-datalad-env.outputs.cache-hit != "true"
+      if: steps.cache-datalad-env.outputs.cache-hit != true
     # - name: Install datalad
     #   run: |
     #     python -m venv ~/datalad_env
