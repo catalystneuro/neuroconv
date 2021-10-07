@@ -41,6 +41,7 @@ jobs:
           ${{ runner.os }}-dataset-test1
     - name: Update dataset
       run: |
+        python -m venv ~/datalad_env
         source ~/datalad_env/bin/activate
         datalad install -r https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
         cd ephy_testing_data
