@@ -45,10 +45,11 @@ jobs:
         source ~/datalad_env/bin/activate
         datalad install -r https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
         cd ephy_testing_data
-        datalad get spikegadgets
-        datalad get neuroscope
+        # datalad get spikegadgets
+        # datalad get neuroscope
         echo $(pwd)
         echo $(ls)
-        echo $(~/ephy_testing_data)
+        cd ~
+        echo $(ls)
         cd ~/ephy_testing_data
         echo $(ls)
