@@ -36,20 +36,13 @@ jobs:
       id: cache-datasets
       with:
         path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ephy_testing_data
-        key: ${{ runner.os }}-dataset-test1-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
+        key: ${{ runner.os }}-dataset-test2-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
         restore-keys: |
           ${{ runner.os }}-dataset-test1
     - name: Update dataset
       run: |
-        python -m venv /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/datalad_env
-        source /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/datalad_env/bin/activate
+        # python -m venv /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/datalad_env
+        # source /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/datalad_env/bin/activate
         datalad install -r https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
         cd ephy_testing_data
-        datalad get spikegadgets
         datalad get neuroscope
-        # echo $(pwd)
-        # echo $(ls)
-        # cd ~
-        # echo $(ls)
-        # cd ~/ephy_testing_data
-        # echo $(ls)
