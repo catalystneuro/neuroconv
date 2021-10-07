@@ -36,12 +36,11 @@ jobs:
       id: cache-datasets
       with:
         path: ~/ephy_testing_data
-        key: ${{ runner.os }}-datasets-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
+        key: ${{ runner.os }}-dataset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
         restore-keys: |
-          ${{ runner.os }}-datasets
+          ${{ runner.os }}-dataset
     - name: Update dataset
       run: |
-        source ~/datalad_env/bin/activate
         datalad install -r https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
         cd ephy_testing_data
         datalad get spikegadgets
