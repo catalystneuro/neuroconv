@@ -18,16 +18,16 @@ jobs:
       id: cache-venv
       with:
         path: ~/datalad_env
-        key: ${{ runner.os }}-venv-datalad
+        key: ${{ runner.os }}-venv-test-datalad
         restore-keys: |
-          ${{ runner.os }}-venv
-    # - name: Install datalad
-    #   run: |
-    #     python -m venv ~/datalad_env
-    #     source ~/datalad_env/bin/activate
-    #     conda install -c conda-forge datalad==0.14.5
-    #     git config --global user.email "CI@example.com"
-    #     git config --global user.name "CI Almighty"
+          ${{ runner.os }}-venv-test
+    - name: Install datalad
+      run: |
+        python -m venv ~/datalad_env
+        source ~/datalad_env/bin/activate
+        conda install -c conda-forge datalad==0.14.5
+        git config --global user.email "CI@example.com"
+        git config --global user.name "CI Almighty"
     - name: Get ephy_testing_data current head hash
       id: vars
       run: |
