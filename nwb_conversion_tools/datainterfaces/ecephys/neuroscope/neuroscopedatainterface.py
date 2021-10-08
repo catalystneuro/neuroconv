@@ -26,7 +26,7 @@ def subset_shank_channels(recording_extractor: se.RecordingExtractor, xml_file_p
     if shank_channels is not None:
         sub_recording = se.SubRecordingExtractor(
             parent_recording=recording_extractor,
-            channel_ids=[channel_id for group in shank_channels for channel_id in group]
+            channel_ids=[channel_id for group in shank_channels for channel_id in group],
         )
     else:
         sub_recording = recording_extractor
