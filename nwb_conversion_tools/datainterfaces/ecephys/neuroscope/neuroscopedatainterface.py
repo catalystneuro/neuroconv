@@ -102,9 +102,9 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         """
         assert HAVE_LXML, INSTALL_MESSAGE
 
-        super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
+        super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
@@ -160,11 +160,11 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         """
         assert HAVE_LXML, INSTALL_MESSAGE
 
+        if xml_file_path is None:
+            xml_file_path = get_xml_file_path(data_file_path=self.source_data["folder_path"])
         super(NeuroscopeRecordingInterface, self).__init__(
             folder_path=folder_path, gain=gain, xml_file_path=xml_file_path
         )
-        if xml_file_path is None:
-            xml_file_path = get_xml_file_path(data_file_path=self.source_data["folder_path"])
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
@@ -198,9 +198,11 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
         """
-        super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
+        assert HAVE_LXML, INSTALL_MESSAGE
+
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
+        super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
@@ -227,6 +229,8 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         load_waveforms: bool = False,
         gain: Optional[float] = None,
     ):
+        assert HAVE_LXML, INSTALL_MESSAGE
+
         super().__init__(
             folder_path=folder_path,
             keep_mua_units=keep_mua_units,
