@@ -42,10 +42,6 @@ class MovieInterface(BaseDataInterface):
         assert HAVE_OPENCV, INSTALL_MESSAGE
         super().__init__(file_paths=file_paths)
 
-    @classmethod
-    def get_source_schema(cls):
-        return get_schema_from_method_signature(cls.__init__)
-
     def run_conversion(
         self,
         nwbfile: NWBFile,
