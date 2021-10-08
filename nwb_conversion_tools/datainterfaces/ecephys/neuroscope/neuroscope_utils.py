@@ -1,9 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
 
-import numpy as np
 from lxml import etree as et
-from spikeextractors import RecordingExtractor
 
 
 def get_xml_file_path(data_file_path: str):
@@ -55,32 +53,3 @@ def get_channel_groups(xml_file_path: str):
         for group in root.find("anatomicalDescription").find("channelGroups").findall("group")
     ]
     return channel_groups
-
-
-def add_recording_extractor_properties(recording_extractor: RecordingExtractor, xml_file_path: str):
-    """Automatically add properties to RecordingExtractor object."""
-    channel_groups = get_channel_groups(xml_file_path=xml_file_path)
-    channel_map = {
-        channel_id: idx
-        for idx, channel_id in enumerate([channel_id for group in channel_groups for channel_id in group])
-    }
-    shank_channels = get_shank_channels(xml_file_path=xml_file_path)
-    if shank_channels:
-        shank_channels = [channel_id for group in shank_channels for channel_id in group]
-    group_electrode_numbers = [x for channels in channel_groups for x, _ in enumerate(channels)]
-    group_nums = [n + 1 for n, channels in enumerate(channel_groups) for _ in channels]
-    group_names = [f"Group{n + 1}" for n in group_nums]
-    for channel_id in recording_extractor.get_channel_ids():
-        recording_extractor.set_channel_groups(channel_ids=[channel_id], groups=group_nums[channel_map[channel_id]])
-        recording_extractor.set_channel_property(
-            channel_id=channel_id, property_name="group_name", value=group_names[channel_map[channel_id]]
-        )
-        recording_extractor.set_channel_property(
-            channel_id=channel_id,
-            property_name="shank_electrode_number",
-            value=group_electrode_numbers[channel_map[channel_id]],
-        )
-        if shank_channels is not None:
-            recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="spike_detection", value=channel_id in shank_channels
-            )
