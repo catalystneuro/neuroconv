@@ -103,7 +103,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         assert HAVE_LXML, INSTALL_MESSAGE
 
         if xml_file_path is None:
-            xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
+            xml_file_path = get_xml_file_path(data_file_path=file_path)
         super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
@@ -161,7 +161,7 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         assert HAVE_LXML, INSTALL_MESSAGE
 
         if xml_file_path is None:
-            xml_file_path = get_xml_file_path(data_file_path=self.source_data["folder_path"])
+            xml_file_path = get_xml_file_path(data_file_path=folder_path)
         super(NeuroscopeRecordingInterface, self).__init__(
             folder_path=folder_path, gain=gain, xml_file_path=xml_file_path
         )
@@ -201,7 +201,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         assert HAVE_LXML, INSTALL_MESSAGE
 
         if xml_file_path is None:
-            xml_file_path = get_xml_file_path(data_file_path=self.source_data["file_path"])
+            xml_file_path = get_xml_file_path(data_file_path=file_path)
         super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
