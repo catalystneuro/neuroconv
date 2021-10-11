@@ -63,6 +63,8 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         Basic users should set the buffer_gb argument to as much free RAM space as can be safely allowed.
         Advanced users are offered full control over the shape paramters for the buffer and the chunks.
 
+        Parameters
+        ----------
         buffer_gb : float, optional
             If buffer_shape is not specified, it will be inferred as the smallest chunk below the buffer_gb threshold.
             Defaults to 1 GB.
@@ -78,28 +80,35 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             buffer_gb = 1.0
         if chunk_mb is None and chunk_shape is None:
             chunk_mb = 1.0
-        assert (buffer_gb is not None) != (
-            buffer_shape is not None
-        ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
-        assert (chunk_mb is not None) != (
-            chunk_shape is not None
-        ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
+        assert (buffer_gb is not None) != (buffer_shape is not None), (
+            "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        )
+        assert (chunk_mb is not None) != (chunk_shape is not None), (
+            "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
+        )
 
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is None:
             self._set_chunk_shape(chunk_mb=chunk_mb)
         else:
-            assert np.all(
-                chunk_shape <= self.maxshape
-            ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
+            assert np.all(np.array(chunk_shape) <= np.array(self.maxshape)), (
+                f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
+            )
             self.chunk_shape = chunk_shape
         if buffer_shape is None:
             self._set_buffer_shape(buffer_gb=buffer_gb)
         else:
-            assert np.all(
-                buffer_shape <= self.maxshape
-            ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
+            assert np.all(np.array(buffer_shape) <= np.array(self.maxshape)), (
+                f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
+            )
+            assert np.all(np.array(self.chunk_shape) <= np.array(buffer_shape)), (
+                f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the manual buffer shape ({buffer_shape})!"
+            )
+            assert np.all(np.array(buffer_shape) % np.array(self.chunk_shape) == 0), (
+                f"Some dimensions of chunk_shape ({self.chunk_shape}) do not "
+                f"evenly divide the manual buffer shape ({buffer_shape})!"
+            )
             self.buffer_shape = buffer_shape
 
         self.num_chunks = tuple(np.ceil(np.array(self.maxshape) / self.chunk_shape).astype(int))
@@ -107,6 +116,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         self.chunk_index_generator = product(*[range(x) for x in self.num_chunks])
         self.buffer_index_generator = product(*[range(x) for x in self.num_buffers])
         self.buffer_data = None
+        self.chunks_per_buffer = tuple((np.array(self.buffer_shape) / self.chunk_shape).astype(int))
 
     def recommended_chunk_shape(self) -> tuple:
         return self.chunk_shape
@@ -118,6 +128,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         return self
 
     def _chunk_map(self, chunk_index: tuple) -> tuple:
+        """Map the chunk_index (permutations starting with all axes zero) to the slice selections of the full shape."""
         return tuple(
             [
                 slice(n * self.chunk_shape[j], min((n + 1) * self.chunk_shape[j], self.maxshape[j]))
@@ -126,6 +137,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         )
 
     def _buffer_map(self, buffer_index: tuple) -> tuple:
+        """Map the buffer_index (permutations starting with all axes zero) to the slice selections of the full shape."""
         return tuple(
             [
                 slice(n * self.buffer_shape[j], min((n + 1) * self.buffer_shape[j], self.maxshape[j]))
@@ -133,26 +145,51 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             ]
         )
 
-    def _get_chunk_from_buffer(self, chunk_index: tuple) -> np.ndarray:
-        assert self.buffer_data is not None, "Buffer has not been instantiated yet!"
+    def _get_chunk_from_buffer(self, chunk_index: tuple, chunk_selection: Tuple[slice]) -> np.ndarray:
+        """Retrieve the data from a chunk within a buffer."""
+        assert self.buffer_data is not None, "Buffer has not been filled yet!"
 
-        chunk_data = self.buffer_data
+        chunk_index_in_buffer = tuple(np.array(chunk_index) % np.array(self.chunks_per_buffer))
+
+        slices_in_buffer = tuple(
+            [
+                slice(chunk_axis.start - buffer_axis.start, chunk_axis.stop - buffer_axis.start)
+                for chunk_axis, buffer_axis in zip(chunk_selection, self.buffer_selection)
+            ]
+        )
+        chunk_data = self.buffer_data[slices_in_buffer]
+
+        self.chunks_written_from_buffer[chunk_index_in_buffer] = True
+        if np.all(self.chunks_written_from_buffer):
+            self.buffer_data = None
         return chunk_data
 
     def __next__(self) -> DataChunk:
-        """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved."""
+        """Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary."""
         chunk_index = next(self.chunk_index_generator)
         chunk_selection = self._chunk_map(chunk_index=chunk_index)
         if self.buffer_data is None:
-            self.buffer_data = self._get_data(
-                selection=self._buffer_map(buffer_index=next(self.buffer_index_generator))
-            )
-        chunk_data = self._get_chunk_from_buffer(chunk_index=chunk_index)
-        return DataChunk(data=chunk_data, selection=chunk_selection)
+            self.buffer_index = next(self.buffer_index_generator)
+            self.buffer_selection = self._buffer_map(buffer_index=self.buffer_index)
+            self.buffer_data = self._get_data(selection=self.buffer_selection)
+            self.chunks_written_from_buffer = np.zeros(shape=self.chunks_per_buffer, dtype=bool)
+        chunk_data = self._get_chunk_from_buffer(chunk_index=chunk_index, chunk_selection=chunk_selection)
+        data_chunk = DataChunk(data=chunk_data, selection=chunk_selection)
+        return data_chunk
 
     @abstractmethod
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
-        """Retrieve the data specified by the selection using absolute minimal I/O."""
+        """
+        Retrieve the data specified by the selection using minimal I/O.
+
+        The developer of a new implementation of the GenericDataChunkIterator must ensure the data is actually
+        loaded into memory, and not simply mapped.
+
+        Parameters
+        ----------
+        selection : tuple of slices
+            Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
+        """
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
         
     @abstractmethod
@@ -165,7 +202,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
     @abstractmethod
     def _get_dtype(self) -> np.dtype:
-        """Retrieve the dtype of the data using absolute minimal I/O."""
+        """Retrieve the dtype of the data using minimal I/O."""
         raise NotImplementedError("The setter for the internal dtype has not been built for this DataChunkIterator!")
 
     @property
@@ -174,5 +211,5 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
 
     @abstractmethod
     def _get_maxshape(self) -> tuple:
-        """Retrieve the maximum bounds of the data shape using absolute minimal I/O."""
+        """Retrieve the maximum bounds of the data shape using minimal I/O."""
         raise NotImplementedError("The setter for the maxshape property has not been built for this DataChunkIterator!")
