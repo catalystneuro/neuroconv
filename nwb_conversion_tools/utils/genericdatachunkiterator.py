@@ -103,7 +103,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             self.buffer_shape = buffer_shape
 
         self.num_chunks = tuple(np.ceil(np.array(self.maxshape) / self.chunk_shape).astype(int))
-        self.chunk_idx_generator = product(*[range(x) for x in self.num_chunks])
+        self.num_buffers = tuple(np.ceil(np.array(self.maxshape) / self.buffer_shape).astype(int))
+        self.chunk_index_generator = product(*[range(x) for x in self.num_chunks])
+        self.buffer_index_generator = product(*[range(x) for x in self.num_buffers])
+        self.buffer_data = None
 
     def recommended_chunk_shape(self) -> tuple:
         return self.chunk_shape
@@ -114,24 +117,47 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def __iter__(self):
         return self
 
-    def _chunk_map(self, chunk_idx: tuple) -> tuple:
+    def _chunk_map(self, chunk_index: tuple) -> tuple:
         return tuple(
             [
                 slice(n * self.chunk_shape[j], min((n + 1) * self.chunk_shape[j], self.maxshape[j]))
-                for j, n in enumerate(chunk_idx)
+                for j, n in enumerate(chunk_index)
             ]
         )
 
+    def _buffer_map(self, buffer_index: tuple) -> tuple:
+        return tuple(
+            [
+                slice(n * self.buffer_shape[j], min((n + 1) * self.buffer_shape[j], self.maxshape[j]))
+                for j, n in enumerate(buffer_index)
+            ]
+        )
+
+    def _get_chunk_from_buffer(self, chunk_index: tuple) -> np.ndarray:
+        assert self.buffer_data is not None, "Buffer has not been instantiated yet!"
+
+        chunk_data = self.buffer_data
+        return chunk_data
+
     def __next__(self) -> DataChunk:
         """Return the next data chunk or raise a StopIteration exception if all chunks have been retrieved."""
-        selection = self._chunk_map(chunk_idx=next(self.chunk_idx_generator))
-        data = self._get_data(selection=selection)
-        return DataChunk(data=data, selection=selection)
+        chunk_index = next(self.chunk_index_generator)
+        chunk_selection = self._chunk_map(chunk_index=chunk_index)
+        if self.buffer_data is None:
+            self.buffer_data = self._get_data(
+                selection=self._buffer_map(buffer_index=next(self.buffer_index_generator))
+            )
+        chunk_data = self._get_chunk_from_buffer(chunk_index=chunk_index)
+        return DataChunk(data=chunk_data, selection=chunk_selection)
 
     @abstractmethod
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         """Retrieve the data specified by the selection using absolute minimal I/O."""
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
+        
+    @abstractmethod
+    def _get_buffer(self, selection: Tuple[slice]):
+        raise NotImplementedError("The buffer fetching method has not been built for this DataChunkIterator!")
 
     @property
     def dtype(self):
