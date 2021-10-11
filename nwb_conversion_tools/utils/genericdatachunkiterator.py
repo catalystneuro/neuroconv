@@ -150,7 +150,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         assert self.buffer_data is not None, "Buffer has not been filled yet!"
 
         chunk_index_in_buffer = tuple(np.array(chunk_index) % np.array(self.chunks_per_buffer))
-
         slices_in_buffer = tuple(
             [
                 slice(chunk_axis.start - buffer_axis.start, chunk_axis.stop - buffer_axis.start)
@@ -158,7 +157,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             ]
         )
         chunk_data = self.buffer_data[slices_in_buffer]
-
         self.chunks_written_from_buffer[chunk_index_in_buffer] = True
         if np.all(self.chunks_written_from_buffer):
             self.buffer_data = None
