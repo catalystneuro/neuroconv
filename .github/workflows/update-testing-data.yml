@@ -1,0 +1,34 @@
+name: Update testing data
+on:
+  schedule:
+    - cron:  "0 0 * * *"
+jobs:
+  run:
+    name: Update testing data
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+    steps:
+    - uses: s-weigand/setup-conda@v1
+    - uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+    - name: Install datalad
+      run: |
+        conda install -c conda-forge datalad==0.14.5
+        git config --global user.email "CI@example.com"
+        git config --global user.name "CI Almighty"
+    - name: Get ephy_testing_data current head hash
+      id: vars
+      run: |
+        echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
+    - uses: actions/cache@v2
+      id: cache-datasets
+      with:
+        path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ephy_testing_data
+        key: ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
+        restore-keys: |
+          ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
+    - name: Update dataset
+      run: |
+        datalad install -r -g https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
