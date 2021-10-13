@@ -111,12 +111,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             )
             self.buffer_shape = buffer_shape
 
-        self.num_chunks = tuple(np.ceil(np.array(self.maxshape) / self.chunk_shape).astype(int))
-        self.num_buffers = tuple(np.ceil(np.array(self.maxshape) / self.buffer_shape).astype(int))
-        self.chunk_index_generator = product(*[range(x) for x in self.num_chunks])
+        # self.num_chunks = tuple(np.ceil(np.array(self.maxshape) / self.chunk_shape).astype(int))
+        self.num_buffers = np.ceil(np.array(self.maxshape) / self.buffer_shape).astype(int)
         self.buffer_index_generator = product(*[range(x) for x in self.num_buffers])
         self.buffer_data = None
-        self.chunks_per_buffer = tuple((np.array(self.buffer_shape) / self.chunk_shape).astype(int))
+        self.chunks_in_buffer = tuple((np.array(self.buffer_shape) / self.chunk_shape).astype(int))
 
     def recommended_chunk_shape(self) -> tuple:
         return self.chunk_shape
@@ -127,17 +126,20 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
     def __iter__(self):
         return self
 
-    def _chunk_map(self, chunk_index: tuple) -> tuple:
+    def _chunk_in_buffer_map(self, chunk_index: tuple) -> Tuple[slice]:
         """Map the chunk_index (permutations starting with all axes zero) to the slice selections of the full shape."""
         return tuple(
             [
-                slice(n * self.chunk_shape[j], min((n + 1) * self.chunk_shape[j], self.maxshape[j]))
+                slice(
+                    n * self.chunk_shape[j],
+                    min((n + 1) * self.chunk_shape[j], self.buffer_selection[j].stop - self.buffer_selection[j].start)
+                )
                 for j, n in enumerate(chunk_index)
             ]
         )
 
-    def _buffer_map(self, buffer_index: tuple) -> tuple:
-        """Map the buffer_index (permutations starting with all axes zero) to the slice selections of the full shape."""
+    def _buffer_map(self, buffer_index: tuple) -> Tuple[slice]:
+        """Map the buffer_index (permutations starting with all axes zero) to the slice selection of the full shape."""
         return tuple(
             [
                 slice(n * self.buffer_shape[j], min((n + 1) * self.buffer_shape[j], self.maxshape[j]))
@@ -145,33 +147,51 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             ]
         )
 
-    def _get_chunk_from_buffer(self, chunk_index: tuple, chunk_selection: Tuple[slice]) -> np.ndarray:
-        """Retrieve the data from a chunk within a buffer."""
-        assert self.buffer_data is not None, "Buffer has not been filled yet!"
-
-        chunk_index_in_buffer = tuple(np.array(chunk_index) % np.array(self.chunks_per_buffer))
-        slices_in_buffer = tuple(
+    def _chunk_map(self, chunk_selection_in_buffer: Tuple[slice], buffer_selection: Tuple[slice]) -> Tuple[slice]:
+        """Map the chunk selection within the buffer to the full shape by shifting by the current buffer selection."""
+        return tuple(
             [
-                slice(chunk_axis.start - buffer_axis.start, chunk_axis.stop - buffer_axis.start)
-                for chunk_axis, buffer_axis in zip(chunk_selection, self.buffer_selection)
+                slice(buffer_axis.start + chunk_axis.start, buffer_axis.start + chunk_axis.stop)
+                for chunk_axis, buffer_axis in zip(chunk_selection_in_buffer, buffer_selection)
             ]
         )
-        chunk_data = self.buffer_data[slices_in_buffer]
-        self.chunks_written_from_buffer[chunk_index_in_buffer] = True
-        if np.all(self.chunks_written_from_buffer):
-            self.buffer_data = None
-        return chunk_data
+
+    def _fill_buffer(self):
+        buffer_index = next(self.buffer_index_generator)
+        self.buffer_selection = self._buffer_map(buffer_index=buffer_index)
+        self.buffer_data = self._get_data(selection=self.buffer_selection)
+        if any(np.array(buffer_index) == self.num_buffers):
+            this_buffer_shape = np.array(
+                [buffer_axis.stop - buffer_axis.start for buffer_axis in self.buffer_selection]
+            )
+            chunks_in_this_buffer = np.ceil(this_buffer_shape / self.chunk_shape).astype(int)
+        else:
+            chunks_in_this_buffer = self.chunks_in_buffer
+        self.chunk_index_in_buffer_generator = product(*[range(x) for x in chunks_in_this_buffer])
+
+    def _get_chunk_from_buffer(self) -> (np.ndarray, tuple):
+        """Retrieve the data from a chunk within a buffer."""
+        try:
+            chunk_index_in_buffer = next(self.chunk_index_in_buffer_generator)
+        except StopIteration:
+            try:
+                self._fill_buffer()
+                chunk_index_in_buffer = next(self.chunk_index_in_buffer_generator)
+            except StopIteration:
+                self.buffer_selection = None
+                self.buffer_data = None
+                raise StopIteration
+        return self.buffer_data[self._chunk_in_buffer_map(chunk_index=chunk_index_in_buffer)], chunk_index_in_buffer
 
     def __next__(self) -> DataChunk:
         """Retrieve the next DataChunk object from the buffer, refilling the buffer if necessary."""
-        chunk_index = next(self.chunk_index_generator)
-        chunk_selection = self._chunk_map(chunk_index=chunk_index)
-        if self.buffer_data is None:
-            self.buffer_index = next(self.buffer_index_generator)
-            self.buffer_selection = self._buffer_map(buffer_index=self.buffer_index)
-            self.buffer_data = self._get_data(selection=self.buffer_selection)
-            self.chunks_written_from_buffer = np.zeros(shape=self.chunks_per_buffer, dtype=bool)
-        chunk_data = self._get_chunk_from_buffer(chunk_index=chunk_index, chunk_selection=chunk_selection)
+        if self.buffer_data is None:  # Very first time next() is called on this Iterator
+            self._fill_buffer()
+        chunk_data, chunk_index_in_buffer = self._get_chunk_from_buffer()
+        chunk_selection_in_buffer = self._chunk_in_buffer_map(chunk_index=chunk_index_in_buffer)
+        chunk_selection = self._chunk_map(
+            chunk_selection_in_buffer=chunk_selection_in_buffer, buffer_selection=self.buffer_selection
+        )
         data_chunk = DataChunk(data=chunk_data, selection=chunk_selection)
         return data_chunk
 
@@ -189,10 +209,6 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             Each axis of tuple is a slice of the full shape from which to pull data into the buffer.
         """
         raise NotImplementedError("The data fetching method has not been built for this DataChunkIterator!")
-        
-    @abstractmethod
-    def _get_buffer(self, selection: Tuple[slice]):
-        raise NotImplementedError("The buffer fetching method has not been built for this DataChunkIterator!")
 
     @property
     def dtype(self):
