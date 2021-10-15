@@ -153,10 +153,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         if any(np.array(buffer_index) + 1 == self.num_buffers):
             this_buffer_shape = [buffer_axis.stop - buffer_axis.start for buffer_axis in self.buffer_selection]
             self.chunk_selection_in_buffer_generator = (
-                [
+                tuple([
                     slice(start_axis, min(start_axis + chunk_axis, buffer_axis))
                     for start_axis, buffer_axis, chunk_axis in zip(slice_starts, this_buffer_shape, self.chunk_shape)
-                ]
+                ])
                 for slice_starts in product(*[
                     range(0, buffer_axis, chunk_axis)
                     for buffer_axis, chunk_axis in zip(this_buffer_shape, self.chunk_shape)
@@ -170,10 +170,10 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             # checking logical could be a slowdown. Would be faster to pre-compute with chains and zip together.
         else:
             self.chunk_selection_in_buffer_generator = (
-                [
+                tuple([
                     slice(start_axis, start_axis + chunk_axis)
                     for start_axis, chunk_axis in zip(slice_starts, self.chunk_shape)
-                ]
+                ])
                 for slice_starts in product(*[
                     range(0, buffer_axis, chunk_axis)
                     for buffer_axis, chunk_axis in zip(self.buffer_shape, self.chunk_shape)
