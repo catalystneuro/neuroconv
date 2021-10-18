@@ -563,6 +563,8 @@ def add_electrical_series(
     elif compression == "lzf" and compression_opts is not None:
         warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
         compression_opts = None
+    if iterator_opts is None:
+        iterator_opts = dict()
 
     if write_as == "raw":
         eseries_kwargs = dict(
@@ -648,25 +650,18 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
     if iterator_type is None or iterator_type == "v2":
-        if iterator_opts is None:
-            iterator_opts = dict()
         ephys_data = RecordingExtractorDataChunkIterator(recording=recording, **iterator_opts)
     elif iterator_type == "v1":
         if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
             channel_offset == 0
         ):
-            n_bytes = np.dtype(recording.get_dtype()).itemsize
-            buffer_size = int(iterator_opts.get("buffer_gb", 1) * 1e9) // n_bytes
-            ephys_data = DataChunkIterator(
-                data=recording.get_traces(return_scaled=write_scaled).T,  # nwb standard is time as zero axis
-                buffer_size=buffer_size,
-            )
+            ephys_data = DataChunkIterator(data=recording.get_traces(return_scaled=write_scaled).T, **iterator_opts)
         else:
             raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
     else:
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
 
-    eseries_kwargs.update(data=H5DataIO(ephys_data, compression=compression, compression_opts=compression_opts))
+    eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
     if not use_times:
         eseries_kwargs.update(
             starting_time=float(recording.frame_to_time(0)), rate=float(recording.get_sampling_frequency())
@@ -674,7 +669,7 @@ def add_electrical_series(
     else:
         eseries_kwargs.update(
             timestamps=H5DataIO(
-                recording.frame_to_time(np.arange(recording.get_num_frames())),
+                data=recording.frame_to_time(np.arange(recording.get_num_frames())),
                 compression=compression,
                 compression_opts=compression_opts,
             )
