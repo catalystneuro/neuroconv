@@ -80,32 +80,32 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             buffer_gb = 1.0
         if chunk_mb is None and chunk_shape is None:
             chunk_mb = 1.0
-        assert (buffer_gb is not None) != (buffer_shape is not None), (
-            "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
-        )
-        assert (chunk_mb is not None) != (chunk_shape is not None), (
-            "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
-        )
+        assert (buffer_gb is not None) != (
+            buffer_shape is not None
+        ), "Only one of 'buffer_gb' or 'buffer_shape' can be specified!"
+        assert (chunk_mb is not None) != (
+            chunk_shape is not None
+        ), "Only one of 'chunk_mb' or 'chunk_shape' can be specified!"
 
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is None:
             self._set_chunk_shape(chunk_mb=chunk_mb)
         else:
-            assert all(np.array(chunk_shape) <= self.maxshape), (
-                f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
-            )
+            assert all(
+                np.array(chunk_shape) <= self.maxshape
+            ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the data dimensions ({self.maxshape})!"
             self.chunk_shape = chunk_shape
         if buffer_shape is None:
             self._set_buffer_shape(buffer_gb=buffer_gb)
         else:
             array_buffer_shape = np.array(buffer_shape)
-            assert all(array_buffer_shape <= self.maxshape), (
-                f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
-            )
-            assert all(array_buffer_shape >= self.chunk_shape), (
-                f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the manual buffer shape ({buffer_shape})!"
-            )
+            assert all(
+                array_buffer_shape <= self.maxshape
+            ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
+            assert all(
+                array_buffer_shape >= self.chunk_shape
+            ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the manual buffer shape ({buffer_shape})!"
             assert all(array_buffer_shape % self.chunk_shape == 0), (
                 f"Some dimensions of chunk_shape ({self.chunk_shape}) do not "
                 f"evenly divide the manual buffer shape ({buffer_shape})!"
@@ -135,7 +135,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         )
 
     def _chunk_map(
-            self, chunk_selection_in_buffer: Iterable[slice], buffer_selection: Iterable[slice]
+        self, chunk_selection_in_buffer: Iterable[slice], buffer_selection: Iterable[slice]
     ) -> Iterable[slice]:
         """Map the chunk selection within the buffer to the full shape by shifting by the current buffer selection."""
         return tuple(
@@ -153,14 +153,20 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         if any(np.array(buffer_index) + 1 == self.num_buffers):
             this_buffer_shape = [buffer_axis.stop - buffer_axis.start for buffer_axis in self.buffer_selection]
             self.chunk_selection_in_buffer_generator = (
-                tuple([
-                    slice(start_axis, min(start_axis + chunk_axis, buffer_axis))
-                    for start_axis, buffer_axis, chunk_axis in zip(slice_starts, this_buffer_shape, self.chunk_shape)
-                ])
-                for slice_starts in product(*[
-                    range(0, buffer_axis, chunk_axis)
-                    for buffer_axis, chunk_axis in zip(this_buffer_shape, self.chunk_shape)
-                ])
+                tuple(
+                    [
+                        slice(start_axis, min(start_axis + chunk_axis, buffer_axis))
+                        for start_axis, buffer_axis, chunk_axis in zip(
+                            slice_starts, this_buffer_shape, self.chunk_shape
+                        )
+                    ]
+                )
+                for slice_starts in product(
+                    *[
+                        range(0, buffer_axis, chunk_axis)
+                        for buffer_axis, chunk_axis in zip(this_buffer_shape, self.chunk_shape)
+                    ]
+                )
             )
             # TODO - technically, even this reduction of the min call can be improved by using itertools.chain
             # to couple an efficient generator similar to below for all chunks not on the boundary with
@@ -170,14 +176,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
             # checking logical could be a slowdown. Would be faster to pre-compute with chains and zip together.
         else:
             self.chunk_selection_in_buffer_generator = (
-                tuple([
-                    slice(start_axis, start_axis + chunk_axis)
-                    for start_axis, chunk_axis in zip(slice_starts, self.chunk_shape)
-                ])
-                for slice_starts in product(*[
-                    range(0, buffer_axis, chunk_axis)
-                    for buffer_axis, chunk_axis in zip(self.buffer_shape, self.chunk_shape)
-                ])
+                tuple(
+                    [
+                        slice(start_axis, start_axis + chunk_axis)
+                        for start_axis, chunk_axis in zip(slice_starts, self.chunk_shape)
+                    ]
+                )
+                for slice_starts in product(
+                    *[
+                        range(0, buffer_axis, chunk_axis)
+                        for buffer_axis, chunk_axis in zip(self.buffer_shape, self.chunk_shape)
+                    ]
+                )
             )
 
     def _get_chunk_from_buffer(self) -> (np.ndarray, tuple):
