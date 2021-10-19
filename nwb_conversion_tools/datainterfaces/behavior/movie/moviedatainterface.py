@@ -49,16 +49,16 @@ class MovieInterface(BaseDataInterface):
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["behavior"] = get_base_schema(tag="behavior")
-        metadata_schema["properties"]["behavior"]["required"] = ["Movies"]
-        metadata_schema["properties"]["behavior"]["properties"] = dict(
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        metadata_schema["properties"]["Behavior"]["required"] = ["Movies"]
+        metadata_schema["properties"]["Behavior"]["properties"] = dict(
             Movies=dict(type="array", items=get_schema_from_hdmf_class(ImageSeries))
         )
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["behavior"] = dict(
+        metadata["Behavior"] = dict(
             Movies=[
                 dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
@@ -92,7 +92,7 @@ class MovieInterface(BaseDataInterface):
             data sharing, the video files must be contained in the same folder as the NWBFile. If the intention of this
             NWBFile involves an upload to DANDI, the non-NWBFile types are not allowed so this flag would have to be
             set to False. The default is True.
-        starting_time : list, optional
+        starting_times : list, optional
             List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
             sequential order and are contiguous.
         chunk_data : bool, optional
@@ -122,8 +122,8 @@ class MovieInterface(BaseDataInterface):
         else:
             starting_times = [0.0]
 
-        if "behavior" in metadata and "Movies" in metadata["behavior"]:
-            image_series_kwargs_list = metadata["behavior"]["behavior"]
+        if "Behavior" in metadata and "Movies" in metadata["Behavior"]:
+            image_series_kwargs_list = metadata["Behavior"]["behavior"]
         else:
             image_series_kwargs_list = self.get_metadata()
         assert len(image_series_kwargs_list) == len(self.source_data["file_paths"])
