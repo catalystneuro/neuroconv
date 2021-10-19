@@ -123,7 +123,7 @@ class MovieInterface(BaseDataInterface):
             starting_times = [0.0]
 
         if "Behavior" in metadata and "Movies" in metadata["Behavior"]:
-            image_series_kwargs_list = metadata["Behavior"]["behavior"]
+            image_series_kwargs_list = metadata["Behavior"]["Movies"]
         else:
             image_series_kwargs_list = self.get_metadata()
         assert len(image_series_kwargs_list) == len(self.source_data["file_paths"])
