@@ -105,8 +105,7 @@ def parse_nsx_basic_header(nsx_file):
 
 
 def parse_nev_basic_header(nev_file):
-    nev_basic_dict = (
-        [
+    nev_basic_dict = [
             FieldDef("FileTypeID", "8s", format_stripstring),  # 8 bytes   - 8 char array
             FieldDef("FileSpec", "2B", format_filespec),  # 2 bytes   - 2 unsigned char
             FieldDef("AddFlags", "H", format_none),  # 2 bytes   - uint16
@@ -118,7 +117,6 @@ def parse_nev_basic_header(nev_file):
             FieldDef("CreatingApplication", "32s", format_stripstring),  # 32 bytes  - 32 char array
             FieldDef("Comment", "256s", format_stripstring),  # 256 bytes - 256 char array
             FieldDef("NumExtendedHeaders", "I", format_none),
-        ],
-    )
+        ]
     datafile = openfilecheck("rb", file_name=nev_file, file_ext=".nev", file_type="Blackrock NEV Files")
     return processheaders(datafile, nev_basic_dict)
