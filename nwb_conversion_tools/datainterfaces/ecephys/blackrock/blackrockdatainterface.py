@@ -6,7 +6,7 @@ import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
-from .brpylib import NsxFile
+from .header_tools import parse_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils.json_schema import (
@@ -63,12 +63,12 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"] = dict()
         # Open file and extract headers
-        nsx_file = NsxFile(datafile=self.source_data["filename"])
-        if "TimeOrigin" in nsx_file.basic_header:
-            session_start_time = nsx_file.basic_header["TimeOrigin"]
+        basic_header = parse_basic_header(self.source_data["filename"])
+        if "TimeOrigin" in basic_header:
+            session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
-        if "Comment" in nsx_file.basic_header:
-            metadata["NWBFile"].update(session_description=nsx_file.basic_header["Comment"])
+        if "Comment" in basic_header:
+            metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
         # Checks if data is raw or processed
         if int(self.filename.suffix[-1]) >= 5:
