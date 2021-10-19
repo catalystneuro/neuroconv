@@ -69,7 +69,7 @@ def format_timeorigin(header_list):
     minute = next(header_list)
     second = next(header_list)
     millisecond = next(header_list)
-    return datetime(year, month, day, hour, minute, second, millisecond*1000)
+    return datetime(year, month, day, hour, minute, second, millisecond * 1000)
 
 
 def format_stripstring(header_list):
@@ -99,6 +99,6 @@ def parse_basic_header(nsx_file):
     datafile = openfilecheck("rb", file_name=nsx_file, file_ext=".ns*", file_type="Blackrock NSx Files")
     filetype_id = bytes.decode(datafile.read(8), "latin-1")
     if filetype_id == "NEURALSG":
-        #this wont contain fields that can be added to NWBFile metadata
+        # this wont contain fields that can be added to NWBFile metadata
         return dict()
     return processheaders(datafile, nsx_basic_dict)
