@@ -6,7 +6,7 @@ import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
-from .header_tools import parse_basic_header
+from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils.json_schema import (
@@ -63,7 +63,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"] = dict()
         # Open file and extract headers
-        basic_header = parse_basic_header(self.source_data["filename"])
+        basic_header = parse_nsx_basic_header(self.source_data["filename"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
@@ -150,3 +150,15 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
         self, filename: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
     ):
         super().__init__(filename=filename, nsx_to_load=nsx_to_load, nev_override=nev_override)
+
+    def get_metadata(self):
+        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        metadata = super().get_metadata()
+        metadata["NWBFile"] = dict()
+        # Open file and extract headers
+        basic_header = parse_nev_basic_header(self.source_data["filename"])
+        if "TimeOrigin" in basic_header:
+            session_start_time = basic_header["TimeOrigin"]
+            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+        if "Comment" in basic_header:
+            metadata["NWBFile"].update(session_description=basic_header["Comment"])

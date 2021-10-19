@@ -69,7 +69,7 @@ def format_timeorigin(header_list):
     minute = next(header_list)
     second = next(header_list)
     millisecond = next(header_list)
-    return datetime(year, month, day, hour, minute, second, millisecond*1000)
+    return datetime(year, month, day, hour, minute, second, millisecond * 1000)
 
 
 def format_stripstring(header_list):
@@ -85,7 +85,7 @@ FieldDef = namedtuple("FieldDef", ["name", "formatStr", "formatFnc"])
 STRING_TERMINUS = "\x00"
 
 
-def parse_basic_header(nsx_file):
+def parse_nsx_basic_header(nsx_file):
     nsx_basic_dict = [
         FieldDef("FileSpec", "2B", format_filespec),  # 2 bytes   - 2 unsigned char
         FieldDef("BytesInHeader", "I", format_none),  # 4 bytes   - uint32
@@ -99,6 +99,26 @@ def parse_basic_header(nsx_file):
     datafile = openfilecheck("rb", file_name=nsx_file, file_ext=".ns*", file_type="Blackrock NSx Files")
     filetype_id = bytes.decode(datafile.read(8), "latin-1")
     if filetype_id == "NEURALSG":
-        #this wont contain fields that can be added to NWBFile metadata
+        # this wont contain fields that can be added to NWBFile metadata
         return dict()
     return processheaders(datafile, nsx_basic_dict)
+
+
+def parse_nev_basic_header(nev_file):
+    nev_basic_dict = (
+        [
+            FieldDef("FileTypeID", "8s", format_stripstring),  # 8 bytes   - 8 char array
+            FieldDef("FileSpec", "2B", format_filespec),  # 2 bytes   - 2 unsigned char
+            FieldDef("AddFlags", "H", format_none),  # 2 bytes   - uint16
+            FieldDef("BytesInHeader", "I", format_none),  # 4 bytes   - uint32
+            FieldDef("BytesInDataPackets", "I", format_none),  # 4 bytes   - uint32
+            FieldDef("TimeStampResolution", "I", format_none),  # 4 bytes   - uint32
+            FieldDef("SampleTimeResolution", "I", format_none),  # 4 bytes   - uint32
+            FieldDef("TimeOrigin", "8H", format_timeorigin),  # 16 bytes  - 8 x uint16
+            FieldDef("CreatingApplication", "32s", format_stripstring),  # 32 bytes  - 32 char array
+            FieldDef("Comment", "256s", format_stripstring),  # 256 bytes - 256 char array
+            FieldDef("NumExtendedHeaders", "I", format_none),
+        ],
+    )
+    datafile = openfilecheck("rb", file_name=nev_file, file_ext=".nev", file_type="Blackrock NEV Files")
+    return processheaders(datafile, nev_basic_dict)
