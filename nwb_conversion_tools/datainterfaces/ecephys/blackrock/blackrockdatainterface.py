@@ -162,3 +162,4 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
+        return metadata
