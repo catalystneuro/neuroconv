@@ -11,9 +11,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --prune --unshallow --tags
-    - uses: s-weigand/setup-conda@v1
+    - name: Setup Python
+      uses: actions/setup-python@v2
       with:
-        python-version: 3.8
+        python-version: 3.7
     - name: Install this package, on development mode
       env:
           NWB_CONVERSION_INSTALL_MODE: development
