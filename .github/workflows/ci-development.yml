@@ -17,7 +17,7 @@ jobs:
     - name: Install this package, on development mode
       env:
           NWB_CONVERSION_INSTALL_MODE: development
-      run: pip install .
+      run: pip install -e .
     - name: Get ephy_testing_data current head hash
       id: vars
       run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
@@ -32,7 +32,7 @@ jobs:
       run: |
           pip install pytest
           pip install pytest-cov
-          pytest --cov=/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/tests --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
+          pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
