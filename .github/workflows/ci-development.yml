@@ -1,5 +1,5 @@
 name: CI development
-on: pull_request
+on: push
 jobs:
   run:
     name: Full tests on (${{ matrix.os }})
@@ -15,10 +15,13 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - name: Install this package, on development mode
+    - name: Install this package and pytest, on development mode
       env:
           NWB_CONVERSION_INSTALL_MODE: development
-      run: pip install -e .
+      run: |
+        pip install -e .
+        pip install pytest
+        pip install pytest-cov
     - name: Get ephy_testing_data current head hash
       id: vars
       run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
@@ -29,16 +32,8 @@ jobs:
         key: ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
         restore-keys: |
           ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
-    - name: Test with pytest
-      run: |
-          pip install pytest
-          pip install pytest-cov
-          pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: codecov_xml
-        path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
+    - name: Run pytest with coverage
+      run: pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
     - if: ${{ matrix.os }} == "ubuntu-latest"
       name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
