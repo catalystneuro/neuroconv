@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["ubuntu-latest"]
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --prune --unshallow --tags
@@ -35,12 +35,13 @@ jobs:
         restore-keys: |
           ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
     - name: Test with pytest
-      run: pytest --cov=./ --cov-report=xml
-    - name: Upload coverage to Codecov
+      run: pytest --cov=/home/runner/work/nwb-conversion-tools --cov-report=xml
+    - if: ${{ matrix.os }} == "ubuntu-latest"
+      name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
+        file: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
         flags: unittests
         name: codecov-umbrella 
-        yml: ./codecov.yml
+        yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
