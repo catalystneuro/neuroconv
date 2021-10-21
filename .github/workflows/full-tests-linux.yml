@@ -1,5 +1,5 @@
 name: Full tests on Linux
-on: push
+on: pull_request
 jobs:
   run:
     name: Full tests on Linux
