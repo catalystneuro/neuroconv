@@ -15,4 +15,5 @@ coverage:
     patch: off
 
 ignore:
-  - "/tests"
+  - "./tests/"
+  - "./setup.py"
