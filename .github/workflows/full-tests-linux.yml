@@ -1,13 +1,11 @@
-name: CI development
+name: Full tests on Linux
 on: pull_request
 jobs:
   run:
-    name: Full tests on (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Full tests on Linux
+    runs-on: "ubuntu-latest"
     strategy:
       fail-fast: false
-      matrix:
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --prune --unshallow --tags
@@ -15,15 +13,13 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.7
-    - name: Install pip and pytest
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest
-        pip install pytest-cov
-    - name: Install this package, on development mode
+    - name: Install this package and pytest, on development mode
       env:
           NWB_CONVERSION_INSTALL_MODE: development
-      run: pip install .
+      run: |
+        pip install -e .
+        pip install pytest
+        pip install pytest-cov
     - name: Get ephy_testing_data current head hash
       id: vars
       run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
@@ -32,12 +28,10 @@ jobs:
       with:
         path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ephy_testing_data
         key: ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
-        restore-keys: |
-          ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
-    - name: Test with pytest
-      run: pytest --cov=/home/runner/work/nwb-conversion-tools --cov-report=xml
-    - if: ${{ matrix.os }} == "ubuntu-latest"
-      name: Upload coverage to Codecov
+        restore-keys: ecephys-dset-${{ steps.vars.outputs.HASH_EPHY_DATASET }}
+    - name: Run pytest with coverage
+      run: pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
+    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
