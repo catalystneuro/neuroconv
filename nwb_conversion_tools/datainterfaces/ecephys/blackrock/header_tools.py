@@ -5,17 +5,6 @@ from datetime import datetime
 from struct import calcsize, unpack
 
 
-def openfilecheck(open_mode, file_name="", file_ext="", file_type=""):
-    """
-    :param open_mode: {str} method to open the file (e.g., 'rb' for binary read only)
-    :param file_name: [optional] {str} full path of file to open
-    :param file_ext:  [optional] {str} file extension (e.g., '.nev')
-    :param file_type: [optional] {str} file type for use when browsing for file (e.g., 'Blackrock NEV Files')
-    :return: {file} opened file
-    """
-    return open(file_name, open_mode)
-
-
 def processheaders(curr_file, packet_fields):
     """
     :param curr_file:      {file} the current BR datafile to be processed
@@ -52,7 +41,7 @@ def processheaders(curr_file, packet_fields):
     packet_formatted = dict.fromkeys([name for name, fmt, fun in packet_fields])
     for name, fmt, fun in packet_fields:
         packet_formatted[name] = fun(data_iter)
-
+    curr_file.close()
     return packet_formatted
 
 
@@ -96,7 +85,7 @@ def parse_nsx_basic_header(nsx_file):
         FieldDef("TimeOrigin", "8H", format_timeorigin),  # 16 bytes  - 8 uint16
         FieldDef("ChannelCount", "I", format_none),
     ]  # 4 bytes   - uint32
-    datafile = openfilecheck("rb", file_name=nsx_file, file_ext=".ns*", file_type="Blackrock NSx Files")
+    datafile = open(nsx_file, "rb")
     filetype_id = bytes.decode(datafile.read(8), "latin-1")
     if filetype_id == "NEURALSG":
         # this wont contain fields that can be added to NWBFile metadata
@@ -118,5 +107,5 @@ def parse_nev_basic_header(nev_file):
         FieldDef("Comment", "256s", format_stripstring),  # 256 bytes - 256 char array
         FieldDef("NumExtendedHeaders", "I", format_none),
     ]
-    datafile = openfilecheck("rb", file_name=nev_file, file_ext=".nev", file_type="Blackrock NEV Files")
+    datafile = open(nev_file, "rb")
     return processheaders(datafile, nev_basic_dict)
