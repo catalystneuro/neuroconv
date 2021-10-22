@@ -58,7 +58,7 @@ class MovieInterface(BaseDataInterface):
                     minItems=1,
                     items=image_series_metadata_schema,
                 )
-            )
+            ),
         )
         return metadata_schema
 

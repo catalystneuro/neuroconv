@@ -205,7 +205,7 @@ def test_movie_interface():
             metadata=metadata,
             nwbfile_path=nwbfile_path,
             overwrite=True,
-            conversion_options=dict(Movie=dict(external_mode=False, stub_test=True))
+            conversion_options=dict(Movie=dict(external_mode=False, stub_test=True)),
         )
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
