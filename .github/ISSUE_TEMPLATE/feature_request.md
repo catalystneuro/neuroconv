@@ -26,5 +26,4 @@ Add any other context or screenshots about the feature request here.
 - [ ] Have you ensured the feature or change was not already [reported](https://github.com/catalystneuro/nwb-conversion-tools/issues)?
 - [ ] Have you included a brief and descriptive title?
 - [ ] Have you included a clear description of the problem you are trying to solve?
-- [ ] Have you included a minimal code snippet that reproduces the issue you are encountering?
 - [ ] Have you checked our [Contributing](https://nwb-conversion-tools.readthedocs.io/en/master/developer_guide.html) document?
