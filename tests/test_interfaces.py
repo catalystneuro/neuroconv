@@ -1,5 +1,5 @@
-from jsonschema import Draft7Validator
 import numpy as np
+from jsonschema import Draft7Validator
 from tempfile import mkdtemp
 from shutil import rmtree
 from pathlib import Path
@@ -8,6 +8,7 @@ from itertools import product
 import pytest
 import spikeextractors as se
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
+from pynwb import NWBHDF5IO
 
 try:
     import cv2
@@ -178,4 +179,41 @@ def test_movie_interface():
             conversion_options=dict(Movie=dict(module_name=module_name, module_description=module_description)),
         )
         assert module_name in nwbfile.modules and nwbfile.modules[module_name].description == module_description
+
+        metadata.update(
+            Behavior=dict(
+                Movies=[
+                    dict(
+                        name="CustomName",
+                        description="CustomDescription",
+                        unit="CustomUnit",
+                        resolution=12.3,
+                        comments="CustomComments",
+                    )
+                ]
+            )
+        )
+        converter.run_conversion(metadata=metadata, nwbfile_path=nwbfile_path, overwrite=True)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            custom_name = metadata["Behavior"]["Movies"][0]["name"]
+            assert custom_name in nwbfile.acquisition
+            assert metadata["Behavior"]["Movies"][0]["description"] == nwbfile.acquisition[custom_name].description
+            assert metadata["Behavior"]["Movies"][0]["comments"] == nwbfile.acquisition[custom_name].comments
+
+        converter.run_conversion(
+            metadata=metadata,
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=dict(Movie=dict(external_mode=False, stub_test=True)),
+        )
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            custom_name = metadata["Behavior"]["Movies"][0]["name"]
+            assert custom_name in nwbfile.acquisition
+            assert metadata["Behavior"]["Movies"][0]["description"] == nwbfile.acquisition[custom_name].description
+            assert metadata["Behavior"]["Movies"][0]["unit"] == nwbfile.acquisition[custom_name].unit
+            assert metadata["Behavior"]["Movies"][0]["resolution"] == nwbfile.acquisition[custom_name].resolution
+            assert metadata["Behavior"]["Movies"][0]["comments"] == nwbfile.acquisition[custom_name].comments
+
         rmtree(test_dir)

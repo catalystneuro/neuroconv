@@ -11,10 +11,10 @@ from pynwb.image import ImageSeries
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 
+from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
 from ....basedatainterface import BaseDataInterface
 from ....utils.conversion_tools import check_regular_timestamps, get_module
-from ....utils.json_schema import get_schema_from_method_signature
-from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
+from ....utils.json_schema import get_schema_from_hdmf_class, get_base_schema
 
 
 try:
@@ -42,6 +42,37 @@ class MovieInterface(BaseDataInterface):
         assert HAVE_OPENCV, INSTALL_MESSAGE
         super().__init__(file_paths=file_paths)
 
+    def get_metadata_schema(self):
+        metadata_schema = super().get_metadata_schema()
+        image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
+        # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
+        exclude = ["format", "conversion", "starting_time", "rate"]
+        for key in exclude:
+            image_series_metadata_schema["properties"].pop(key)
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        metadata_schema["properties"]["Behavior"].update(
+            required=["Movies"],
+            properties=dict(
+                Movies=dict(
+                    type="array",
+                    minItems=1,
+                    items=image_series_metadata_schema,
+                )
+            ),
+        )
+        return metadata_schema
+
+    def get_metadata(self):
+        metadata = dict(
+            Behavior=dict(
+                Movies=[
+                    dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
+                    for file_path in self.source_data["file_paths"]
+                ]
+            )
+        )
+        return metadata
+
     def run_conversion(
         self,
         nwbfile: NWBFile,
@@ -60,6 +91,20 @@ class MovieInterface(BaseDataInterface):
         ----------
         nwbfile : NWBFile
         metadata : dict
+            Dictionary of metadata information such as names and description of each video.
+            Should be organized as follows:
+                metadata = dict(
+                    Behavior=dict(
+                        Movies=[
+                            dict(name="Video1", description="This is the first video.."),
+                            dict(name="SecondVideo", description="Video #2 details..."),
+                            ...
+                        ]
+                    )
+                )
+            and may contain most keywords normally accepted by an ImageSeries
+            (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
+             The list for the 'Movies' key should correspond one to one to the movie files in the file_paths list.
         stub_test : bool, optional
             If True, truncates the write operation for fast testing. The default is False.
         external_mode : bool, optional
@@ -98,15 +143,21 @@ class MovieInterface(BaseDataInterface):
         else:
             starting_times = [0.0]
 
+        image_series_kwargs_list = metadata.get("Behavior", dict()).get(
+            "Movies", self.get_metadata()["Behavior"]["Movies"]
+        )
+        assert len(image_series_kwargs_list) == len(self.source_data["file_paths"]), (
+            "Mismatch in metadata dimensions "
+            f"({len(image_series_kwargs_list)}) vs. file_paths ({len(self.source_data['file_paths'])})!"
+        )
+
         for j, file in enumerate(file_paths):
             timestamps = starting_times[j] + get_movie_timestamps(movie_file=file)
 
             if len(starting_times) != len(file_paths):
                 starting_times.append(timestamps[-1])
 
-            image_series_kwargs = dict(
-                name=f"Video: {Path(file).stem}", description="Video recorded by camera.", unit="Frames"
-            )
+            image_series_kwargs = dict(image_series_kwargs_list[j])
             if check_regular_timestamps(ts=timestamps):
                 fps = get_movie_fps(movie_file=file)
                 image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
