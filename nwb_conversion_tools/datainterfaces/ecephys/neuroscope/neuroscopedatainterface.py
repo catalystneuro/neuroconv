@@ -225,7 +225,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: FolderPathType,
         keep_mua_units: bool = True,
-        exlude_shanks: Optional[list] = None,
+        exclude_shanks: Optional[list] = None,
         load_waveforms: bool = False,
         gain: Optional[float] = None,
     ):
@@ -234,7 +234,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         super().__init__(
             folder_path=folder_path,
             keep_mua_units=keep_mua_units,
-            exlude_shanks=exlude_shanks,
+            exclude_shanks=exclude_shanks,
             load_waveforms=load_waveforms,
             gain=gain,
         )
