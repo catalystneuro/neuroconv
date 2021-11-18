@@ -1,5 +1,5 @@
 """Authors: Cody Baker, Saksham Sharda, and Oliver Ruebel."""
-from typing import Iterable, Optional
+from typing import Iterable, Tuple, Optional
 import numpy as np
 import psutil
 from abc import abstractmethod
@@ -153,7 +153,7 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         return DataChunk(data=self._get_data(selection=buffer_selection), selection=buffer_selection)
 
     @abstractmethod
-    def _get_data(self, selection: Iterable[slice]) -> np.ndarray:
+    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
         """
         Retrieve the data specified by the selection using minimal I/O.
 
