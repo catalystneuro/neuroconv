@@ -28,8 +28,8 @@ assert "." in remote_version
 
 setup(
     name="nwb-conversion-tools",
-    version="0.9.3",
-    description="Convert data to nwb",
+    version="0.9.4",
+    description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Ben Dichter, Cody Baker, and Luiz Tauffer",
