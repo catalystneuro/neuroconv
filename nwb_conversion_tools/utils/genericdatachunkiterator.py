@@ -11,7 +11,7 @@ from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
 class GenericDataChunkIterator(AbstractDataChunkIterator):
     """DataChunkIterator that lets the user specify chunk and buffer shapes."""
 
-    def _set_chunk_shape(self, chunk_mb):
+    def _get_default_chunk_shape(self, chunk_mb):
         """
         Select chunk size less than the threshold of chunk_mb, keeping the dimensional ratios of the original data.
 
@@ -33,9 +33,11 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         k = np.floor((chunk_bytes / (prod_v * itemsize)) ** (1 / n_dims))
         return tuple([min(int(x), self.maxshape[dim]) for dim, x in enumerate(k * v)])
 
-    def _set_buffer_shape(self, buffer_gb):
+    def _get_default_buffer_shape(self, buffer_gb):
         """
         Select buffer size less than the threshold of buffer_gb, keeping the dimensional ratios of the original data.
+
+        Assumes the chunk_shape has already been set.
 
         Parameters
         ----------
@@ -92,17 +94,18 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         self._maxshape = self._get_maxshape()
         self._dtype = self._get_dtype()
         if chunk_shape is None:
-            self.chunk_shape = self._set_chunk_shape(chunk_mb=chunk_mb)
+            self.chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
         else:
             self.chunk_shape = chunk_shape
         if buffer_shape is None:
-            self.buffer_shape = self._set_buffer_shape(buffer_gb=buffer_gb)
+            self.buffer_shape = self._get_default_buffer_shape(buffer_gb=buffer_gb)
         else:
             self.buffer_shape = buffer_shape
             buffer_gb = np.prod(self.buffer_shape) * np.dtype(self._dtype).itemsize / 1e9
 
         array_chunk_shape = np.array(self.chunk_shape)
         array_buffer_shape = np.array(self.buffer_shape)
+        array_maxshape = np.array(self.maxshape)
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert (
             buffer_gb < psutil.virtual_memory().available / 1e9
@@ -110,12 +113,12 @@ class GenericDataChunkIterator(AbstractDataChunkIterator):
         assert all(array_chunk_shape > 0), f"Some dimensions of chunk_shape ({self.chunk_shape}) are less than zero!"
         assert all(array_buffer_shape > 0), f"Some dimensions of buffer_shape ({self.buffer_shape}) are less than zero!"
         assert all(
-            array_buffer_shape <= self.maxshape
+            array_buffer_shape <= array_maxshape
         ), f"Some dimensions of buffer_shape ({self.buffer_shape}) exceed the data dimensions ({self.maxshape})!"
         assert all(
             array_chunk_shape <= array_buffer_shape
         ), f"Some dimensions of chunk_shape ({self.chunk_shape}) exceed the manual buffer shape ({self.buffer_shape})!"
-        assert all(array_buffer_shape % array_chunk_shape == 0), (
+        assert all((array_buffer_shape % array_chunk_shape == 0)[array_buffer_shape != array_maxshape]), (
             f"Some dimensions of chunk_shape ({self.chunk_shape}) do not "
             f"evenly divide the buffer shape ({self.buffer_shape})!"
         )
