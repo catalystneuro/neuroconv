@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+import numpy.testing as npt
 
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
@@ -102,6 +103,9 @@ if HAVE_PARAMETERIZED and HAVE_DATA:
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
+            # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
+            # For GIN test data, sizes should be OK to load all into RAM even on CI
+            npt.assert_array_equal(x=recording.get_traces(), y=nwb_recording.get_traces())
 
         @parameterized.expand(
             [
