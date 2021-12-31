@@ -1,5 +1,5 @@
 name: Partial (lazy) tests on all OS
-on: pull_request
+on: push
 jobs:
   run:
     name: Lazy tests on (${{ matrix.os }})
@@ -22,8 +22,7 @@ jobs:
       env:
           NWB_CONVERSION_INSTALL_MODE: production
       run: |
-        pip install -r requirements-minimal.txt
-        pip install .
+        pip install -e .
         pip install pytest
     - name: Run tests
       run: pytest tests/test_internals
