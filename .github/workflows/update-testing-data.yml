@@ -1,7 +1,5 @@
 name: Update testing data
-on:
-  schedule:
-    - cron: "0 0 * * *"
+on: push
 jobs:
   run:
     name: Update testing data
