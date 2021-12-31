@@ -1,5 +1,5 @@
 name: Full tests on Windows
-on: pull_request
+on: push
 jobs:
   run:
     name: Full tests on ${{ matrix.os }}
