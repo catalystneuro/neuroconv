@@ -1,20 +1,8 @@
 Part 3, Automated Format Conversions
 ====================================
 
-Conversion to NWB presents some challenges that come up again and again:
-
-1. **Variety**. There is a large variety of proprietary formats in neurophysiology.
-   Even within a single lab, you may have data from several different acquisition systems.
-   Converting to NWB requires understanding how data is stored in that format,
-   what metadata is present in the file, and where that metadata is within the proprietary
-   files, as well as where they should go within NWB.
-1. **Volume**. Neurophysiology data is large and the typical volume of individual session data
-   is growing every year. HDF5 is designed to handle data at this scale, and has several
-   tools that can help, including iterative read/write, chunking of large datasets,
-   and streamlined compression/decompression. To dig into these tools yourself,
-   see the PyNWB and MatNWB tutorials on advanced data I/O listed in the previous section.
-
 In order to make converting to NWB faster and less laborious (for our own team and for others),
+and manage the volume and variety of neurophysiology data,
 we have developed an ecosystem of conversion tools that provide support for converting a
 number of different proprietary formats to NWB. These tools handle the challenges of
 variety and volume for the most common of data types.

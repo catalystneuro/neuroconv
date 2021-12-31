@@ -1,4 +1,4 @@
-name: CI production
+name: Partial (lazy) tests on all OS
 on: pull_request
 jobs:
   run:
@@ -22,8 +22,8 @@ jobs:
       env:
           NWB_CONVERSION_INSTALL_MODE: production
       run: |
+        pip install -r requirements-minimal.txt
         pip install .
         pip install pytest
     - name: Run tests
-      run: |
-        pytest
+      run: pytest tests/test_internals
