@@ -8,7 +8,7 @@ h5py==2.10.0
 PyYAML==5.4
 jsonschema==3.2.0
 psutil==5.8.0
-lxml==4.6.3
+lxml==4.6.5
 opencv-python==4.5.1.48
 spikeextractors==0.9.8
 spikesorters==0.4.4
