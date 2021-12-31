@@ -128,12 +128,11 @@ class TestNwbConversions(unittest.TestCase):
                 sorting_interface=PhySortingInterface,
                 interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
             ),
-            (
-                BlackrockSortingExtractorInterface,
-                dict(filename=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
+            param(
+                sorting_interface=BlackrockSortingExtractorInterface,
+                interface_kwargs=dict(filename=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
             ),
         ],
-        name_func=custom_name_func,
     )
     def test_convert_sorting_extractor_to_nwb(self, sorting_interface, interface_kwargs):
         nwbfile_path = str(self.savedir / f"{sorting_interface.__name__}.nwb")
