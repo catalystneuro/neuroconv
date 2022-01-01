@@ -18,6 +18,7 @@ from nwb_conversion_tools import (
     SpikeGLXRecordingInterface,
     BlackrockRecordingExtractorInterface,
     BlackrockSortingExtractorInterface,
+    AxonaRecordingExtractorInterface,
 )
 
 try:
@@ -74,6 +75,10 @@ class TestNwbConversions(unittest.TestCase):
         param(
             recording_interface=BlackrockRecordingExtractorInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
+        ),
+        param(
+            recording_interface=AxonaRecordingExtractorInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
     for suffix in ["rhd", "rhs"]:
@@ -146,6 +151,11 @@ class TestNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestSorting=sorting_interface)
 
         converter = TestConverter(source_data=dict(TestSorting=dict(interface_kwargs)))
+        for interface_kwarg in interface_kwargs:
+            if interface_kwarg in ["file_path", "folder_path"]:
+                self.assertIn(
+                    member=interface_kwarg, container=converter.data_interface_objects["TestSorting"].source_data
+                )
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
         sorting = converter.data_interface_objects["TestSorting"].sorting_extractor
         sf = sorting.get_sampling_frequency()
@@ -154,3 +164,7 @@ class TestNwbConversions(unittest.TestCase):
             sorting.set_sampling_frequency(sf)
         nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
         check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
+
+
+if __name__ == "__main__":
+    unittest.main()
