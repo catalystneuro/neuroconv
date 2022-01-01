@@ -1,5 +1,5 @@
 name: Partial (lazy) tests on all OS
-on: push
+on: pull_request
 jobs:
   run:
     name: Lazy tests on (${{ matrix.os }})
