@@ -103,8 +103,8 @@ def test_pkl_interface():
         )
 
     source_data = dict(
-        Recording=dict(pkl_file=str(test_dir / "test_pkl" / "test_recording.pkl")),
-        Sorting=dict(pkl_file=str(test_dir / "test_pkl" / "test_sorting.pkl")),
+        Recording=dict(file_path=str(test_dir / "test_pkl" / "test_recording.pkl")),
+        Sorting=dict(file_path=str(test_dir / "test_pkl" / "test_sorting.pkl")),
     )
     converter = SpikeInterfaceTestNWBConverter(source_data=source_data)
     converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)

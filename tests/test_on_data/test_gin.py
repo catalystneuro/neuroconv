@@ -73,7 +73,7 @@ class TestNwbConversions(unittest.TestCase):
         ),
         param(
             recording_interface=BlackrockRecordingExtractorInterface,
-            interface_kwargs=dict(filename=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
+            interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
         ),
     ]
     for suffix in ["rhd", "rhs"]:
@@ -85,7 +85,7 @@ class TestNwbConversions(unittest.TestCase):
         )
     for file_name, num_channels in zip(["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"], [512, 128]):
         for gains in [None, [0.195], [0.385] * num_channels]:
-            interface_kwargs = dict(filename=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"))
+            interface_kwargs = dict(file_path=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"))
             if gains is not None:
                 interface_kwargs.update(gains=gains)
             parameterized_recording_list.append(
@@ -111,6 +111,11 @@ class TestNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestRecording=recording_interface)
 
         converter = TestConverter(source_data=dict(TestRecording=dict(interface_kwargs)))
+        for interface_kwarg in interface_kwargs:
+            if interface_kwarg in ["file_path", "folder_path"]:
+                self.assertIn(
+                    member=interface_kwarg, container=converter.data_interface_objects["TestRecording"].source_data
+                )
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
         nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
@@ -130,7 +135,7 @@ class TestNwbConversions(unittest.TestCase):
             ),
             param(
                 sorting_interface=BlackrockSortingExtractorInterface,
-                interface_kwargs=dict(filename=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
+                interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
             ),
         ],
     )
