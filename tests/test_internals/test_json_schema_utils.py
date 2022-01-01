@@ -2,17 +2,30 @@ import json
 from pathlib import Path
 from typing import Union
 import os
-
+from copy import deepcopy
 from nwb_conversion_tools.utils.json_schema import get_schema_from_method_signature, dict_deep_update, fill_defaults
 from nwb_conversion_tools.utils.metadata import load_metadata_from_file
 
 
 def compare_dicts(a: dict, b: dict):
-    assert json.dumps(a, sort_keys=True, indent=2) == json.dumps(b, sort_keys=True, indent=2)
+    a = sort_item(a)
+    b = sort_item(b)
+    assert json.dumps(a, indent=2) == json.dumps(b, indent=2)
 
 
 def compare_dicts_2(a: dict, b: dict):
-    assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
+    a = sort_item(a)
+    b = sort_item(b)
+    assert json.dumps(a) == json.dumps(b)
+
+
+def sort_item(item):
+    if isinstance(item, list):
+        return [sort_item(x) for x in sorted(item, key=str)]
+    elif isinstance(item, dict):
+        return {k: sort_item(item[k]) for k in sorted(item)}
+    else:
+        return item
 
 
 def test_get_schema_from_method_signature():
@@ -43,23 +56,75 @@ def test_get_schema_from_method_signature():
     compare_dicts(schema, correct_schema)
 
 
-def test_dict_deep_update():
+def test_dict_deep_update_1():
+    # 1. test the updating of two dicts with all keys and values as immutable elements
+    a1 = dict(a=1, b="hello", c=23)
+    b1 = dict(a=3, b="goodbye", d="compare")
+    result1 = dict_deep_update(a1, b1)
+    correct_result = dict(a=3, b="goodbye", c=23, d="compare")
+    compare_dicts(result1, correct_result)
 
-    a = dict(a=1, b="hello", c=dict(a=2), d=[1, 2, 3])
 
-    b = dict(a=3, b="goodbye", c=dict(b=1), d=[4, 5, 6])
+def test_dict_deep_update_2():
+    # 2. test dict update with values as dictionaries themselves
+    a1 = dict(a=1, b="hello", c=23)
+    b1 = dict(a=3, b="goodbye", d="compare")
 
-    result = dict_deep_update(a, b)
+    a2 = dict(a=1, c=a1)
+    b2 = dict(a=3, b="compare", c=b1)
+    result2 = dict_deep_update(a2, b2)
+    correct_result = dict(a=3, b="compare", c=dict_deep_update(a1, b1))
+    compare_dicts(result2, correct_result)
 
-    correct_result = {"a": 3, "b": "goodbye", "c": {"a": 2, "b": 1}, "d": [1, 2, 3, 4, 5, 6]}
 
-    compare_dicts(result, correct_result)
+def test_dict_deep_update_3():
+    # 3.1 test merge of dicts with a key's value as a list of int/str
+    a1 = dict(a=1, b="hello", c=23)
+    b1 = dict(a=3, b="goodbye", d="compare")
 
-    result2 = dict_deep_update(a, b, append_list=False)
+    a2 = dict(a=1, c=a1)
+    b2 = dict(a=3, b="compare", c=b1)
 
-    correct_result2 = {"a": 3, "b": "goodbye", "c": {"a": 2, "b": 1}, "d": [4, 5, 6]}
+    a3 = dict(a2, ls1=[1, 2, "test"])
+    b3 = dict(b2, ls1=[3, 1, "test2"], ls3=[2, 3, "test4"])
+    # test whether repeated values are not removed
+    result3_1 = dict_deep_update(a3, b3, remove_repeats=False)
+    correct_result = dict(dict_deep_update(a2, b2), ls1=[1, 1, 2, 3, "test", "test2"], ls3=[2, 3, "test4"])
+    compare_dicts(result3_1, correct_result)
+    # test removing repeats
+    result3_1 = dict_deep_update(a3, b3)
+    correct_result = dict(dict_deep_update(a2, b2), ls1=[1, 2, 3, "test", "test2"], ls3=[2, 3, "test4"])
+    compare_dicts(result3_1, correct_result)
 
-    compare_dicts(result2, correct_result2)
+    # 3.2 test without append: in this case ls1 would be overwritten
+    result3_2 = dict_deep_update(a3, b3, append_list=False)
+    correct_result = dict(dict_deep_update(a2, b2), ls1=b3["ls1"], ls3=[2, 3, "test4"])
+    compare_dicts(result3_2, correct_result)
+
+
+def test_dict_deep_update_4():
+    # 4. case of dicts with key's values as a list of dicts.
+    a1 = dict(a=1, b="hello", c=23)
+    b1 = dict(a=3, b="goodbye", d="compare")
+
+    a2 = dict(a=1, c=a1)
+    b2 = dict(a=3, b="compare", c=b1)
+
+    a3 = dict(a2, ls1=[1, 2, "test"])
+    b3 = dict(b2, ls1=[3, 1, "test2"])
+
+    c1 = dict(a1, b="world", e="string")
+    a4 = dict(deepcopy(a3), ls1=[a1, b1])
+    b4 = dict(b3, ls1=[c1])
+    # compare key is common in both: if the compare key is found in any of the dicts
+    #   in the list then those dicts are dict_deep_updated.
+    result4 = dict_deep_update(a4, b4, compare_key="a")
+    correct_result = dict(dict_deep_update(a3, b3), ls1=[dict_deep_update(a1, c1), b1])
+    compare_dicts(result4, correct_result)
+    # compare key missing: if compare key is missing then the list is appended always
+    result4 = dict_deep_update(a4, b4, compare_key="b")
+    correct_result = dict(dict_deep_update(a3, b3), ls1=[a1, c1, b1])
+    compare_dicts(result4, correct_result)
 
 
 def test_fill_defaults():
