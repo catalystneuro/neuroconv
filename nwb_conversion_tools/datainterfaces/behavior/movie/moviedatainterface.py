@@ -23,7 +23,7 @@ try:
     HAVE_OPENCV = True
 except ImportError:
     HAVE_OPENCV = False
-INSTALL_MESSAGE = "Please install opencv to use this extractor (pip install opencv-python)!"
+INSTALL_MESSAGE = "Please install opencv to use this interface! (pip install opencv-python)"
 
 
 class MovieInterface(BaseDataInterface):
