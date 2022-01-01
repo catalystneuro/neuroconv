@@ -2,7 +2,7 @@
 ![Partial (lazy) Tests](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/partial-tests.yml/badge.svg)
 ![Full Tests](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/full-tests-linux.yml/badge.svg)
 ![Auto-release](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/auto-publish.yml/badge.svg)
-[![codecov](https://codecov.io/github/catalystneuro/nwb-conversion-tools/coverage.svg?branch=master)](https://codecov.io/github/catalystneuro/nwb-conversion-tools?branch=master)
+[![codecov](https://codecov.io/github/catalystneuro/nwb-conversion-tools/coverage.svg?branch=main)](https://codecov.io/github/catalystneuro/nwb-conversion-tools?branch=master)
 [![documentation](https://readthedocs.org/projects/nwb-conversion-tools/badge/?version=master)](https://nwb-conversion-tools.readthedocs.io/en/master/)
 [![License](https://img.shields.io/pypi/l/pynwb.svg)](https://github.com/catalystneuro/nwb-conversion-tools/license.txt)
 
