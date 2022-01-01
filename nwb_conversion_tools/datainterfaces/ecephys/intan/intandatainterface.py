@@ -77,7 +77,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                 ],
                 ElectrodeGroup=[
                     dict(
-                        name=f"Group{group_name}",
+                        name="group_name",
                         description=f"Group {group_name} electrodes.",
                         device="Intan",
                         location="",
