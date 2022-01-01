@@ -88,6 +88,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     ):
         """
         Primary function for converting recording extractor data to nwb.
+
         Parameters
         ----------
         nwbfile: NWBFile
