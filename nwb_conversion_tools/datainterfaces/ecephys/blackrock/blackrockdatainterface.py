@@ -1,5 +1,4 @@
-"""Authors: Luiz Tauffer"""
-import pytz
+"""Authors: Luiz Tauffer."""
 from typing import Optional
 from pathlib import Path
 import spikeextractors as se
@@ -24,7 +23,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["block_index", "seg_index"]
         )
@@ -51,7 +49,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         self.source_data = dict(file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
     def get_metadata_schema(self):
-        """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries),
@@ -60,7 +57,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
         metadata["NWBFile"] = dict()
         # Open file and extract headers
@@ -154,7 +150,6 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
         self.source_data = dict(file_path=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
 
     def get_metadata(self):
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
         metadata["NWBFile"] = dict()
         # Open file and extract headers
