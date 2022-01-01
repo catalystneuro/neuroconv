@@ -118,8 +118,8 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
         fetch_spikeglx_metadata(
             file_path=self.source_data["file_path"], recording=self.recording_extractor, metadata=metadata
         )
-        metadata["Ecephys"]["ElectricalSeries_lfp"] = dict(
-            name="ElectricalSeries_lfp", description="LFP traces for the processed (lf) SpikeGLX data."
+        metadata["Ecephys"]["ElectricalSeries_lfp"].update(
+            description="LFP traces for the processed (lf) SpikeGLX data."
         )
         return metadata
 

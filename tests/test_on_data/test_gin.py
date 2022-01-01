@@ -7,6 +7,8 @@ import os
 import pytest
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
+from pynwb import NWBHDF5IO
+
 from nwb_conversion_tools import (
     NWBConverter,
     IntanRecordingInterface,
@@ -16,9 +18,11 @@ from nwb_conversion_tools import (
     PhySortingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
+    SpikeGLXLFPInterface,
     BlackrockRecordingExtractorInterface,
     BlackrockSortingExtractorInterface,
     AxonaRecordingExtractorInterface,
+    AxonaLFPDataInterface,
 )
 
 try:
@@ -52,39 +56,78 @@ if not HAVE_DATA:
 def custom_name_func(testcase_func, param_num, param):
     return (
         f"{testcase_func.__name__}_{param_num}_"
-        f"{parameterized.to_safe_name(param.kwargs['recording_interface'].__name__)}"
+        f"{parameterized.to_safe_name(param.kwargs['data_interface'].__name__)}"
     )
 
 
 class TestNwbConversions(unittest.TestCase):
     savedir = Path(tempfile.mkdtemp())
 
+    parameterized_lfp_list = [
+        param(
+            data_interface=AxonaLFPDataInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg")),
+        ),
+        param(
+            data_interface=SpikeGLXLFPInterface,
+            interface_kwargs=dict(
+                file_path=str(
+                    DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
+                )
+            ),
+        ),
+    ]
+
+    @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
+    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestLFP=data_interface)
+
+        converter = TestConverter(source_data=dict(TestLFP=interface_kwargs))
+        for interface_kwarg in interface_kwargs:
+            if interface_kwarg in ["file_path", "folder_path"]:
+                self.assertIn(member=interface_kwarg, container=converter.data_interface_objects["TestLFP"].source_data)
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        recording = converter.data_interface_objects["TestLFP"].recording_extractor
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            nwb_lfp_unscaled = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].data
+            nwb_lfp_conversion = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].conversion
+            # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
+            # For GIN test data, sizes should be OK to load all into RAM even on CI
+            npt.assert_array_equal(x=recording.get_traces(return_scaled=False).T, y=nwb_lfp_unscaled)
+            npt.assert_array_almost_equal(
+                x=recording.get_traces(return_scaled=True).T * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
+            )
+
     parameterized_recording_list = [
         param(
-            recording_interface=NeuralynxRecordingInterface,
+            data_interface=NeuralynxRecordingInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
         ),
         param(
-            recording_interface=NeuroscopeRecordingInterface,
+            data_interface=NeuroscopeRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")),
         ),
         param(
-            recording_interface=OpenEphysRecordingExtractorInterface,
+            data_interface=OpenEphysRecordingExtractorInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
         ),
         param(
-            recording_interface=BlackrockRecordingExtractorInterface,
+            data_interface=BlackrockRecordingExtractorInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
         ),
         param(
-            recording_interface=AxonaRecordingExtractorInterface,
+            data_interface=AxonaRecordingExtractorInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
             param(
-                recording_interface=IntanRecordingInterface,
+                data_interface=IntanRecordingInterface,
                 interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / f"intan_{suffix}_test_1.{suffix}")),
             )
         )
@@ -95,7 +138,7 @@ class TestNwbConversions(unittest.TestCase):
                 interface_kwargs.update(gains=gains)
             parameterized_recording_list.append(
                 param(
-                    recording_interface=SpikeGadgetsRecordingInterface,
+                    data_interface=SpikeGadgetsRecordingInterface,
                     interface_kwargs=interface_kwargs,
                 )
             )
@@ -103,19 +146,19 @@ class TestNwbConversions(unittest.TestCase):
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
         parameterized_recording_list.append(
             param(
-                recording_interface=SpikeGLXRecordingInterface,
+                data_interface=SpikeGLXRecordingInterface,
                 interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
             )
         )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
-    def test_convert_recording_extractor_to_nwb(self, recording_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{recording_interface.__name__}.nwb")
+    def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
         class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestRecording=recording_interface)
+            data_interface_classes = dict(TestRecording=data_interface)
 
-        converter = TestConverter(source_data=dict(TestRecording=dict(interface_kwargs)))
+        converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
                 self.assertIn(
@@ -133,24 +176,25 @@ class TestNwbConversions(unittest.TestCase):
         )
 
     @parameterized.expand(
-        [
+        input=[
             param(
-                sorting_interface=PhySortingInterface,
+                data_interface=PhySortingInterface,
                 interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
             ),
             param(
-                sorting_interface=BlackrockSortingExtractorInterface,
+                data_interface=BlackrockSortingExtractorInterface,
                 interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
             ),
         ],
+        name_func=custom_name_func,
     )
-    def test_convert_sorting_extractor_to_nwb(self, sorting_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{sorting_interface.__name__}.nwb")
+    def test_convert_sorting_extractor_to_nwb(self, data_interface, interface_kwargs):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
         class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestSorting=sorting_interface)
+            data_interface_classes = dict(TestSorting=data_interface)
 
-        converter = TestConverter(source_data=dict(TestSorting=dict(interface_kwargs)))
+        converter = TestConverter(source_data=dict(TestSorting=interface_kwargs))
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
                 self.assertIn(
