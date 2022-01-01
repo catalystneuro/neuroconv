@@ -1,3 +1,6 @@
+from platform import python_version
+from sys import platform
+from packaging import version
 import numpy as np
 from jsonschema import Draft7Validator
 from tempfile import mkdtemp
@@ -9,6 +12,7 @@ import pytest
 import spikeextractors as se
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from pynwb import NWBHDF5IO
+from hdmf.testing import TestCase
 
 try:
     import cv2
@@ -25,7 +29,20 @@ from nwb_conversion_tools import (
     SIPickleRecordingExtractorInterface,
     SIPickleSortingExtractorInterface,
     interface_list,
+    CEDRecordingInterface,
 )
+
+
+class TestAssertions(TestCase):
+    def test_import_assertions(self):
+        if platform == "darwin" and version.parse(python_version()) < version.parse("3.8"):
+            with self.assertRaisesWith(
+                exc_type=AssertionError,
+                exc_msg="The sonpy package (CED dependency) is not available on Mac for Python versions below 3.8!",
+            ):
+                CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+        else:
+            pytest.skip("Not testing on MacOSX with Python<3.8!")
 
 
 @pytest.mark.parametrize("data_interface", interface_list)
