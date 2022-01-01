@@ -13,21 +13,21 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         source_schema = super().get_source_schema()
-        source_schema["properties"]["filename"].update(description="Path to SpikeGadgets (.rec) file.")
+        source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
         source_schema["properties"]["probe_file_path"].update(
             description="Optional path to a probe (.prb) file describing electrode features."
         )
         return source_schema
 
     def __init__(
-        self, filename: FilePathType, gains: OptionalArrayType = None, probe_file_path: OptionalFilePathType = None
+        self, file_path: FilePathType, gains: OptionalArrayType = None, probe_file_path: OptionalFilePathType = None
     ):
         """
         Recording Interface for the SpikeGadgets Format.
 
         Parameters
         ----------
-        filename : FilePathType
+        file_path : FilePathType
             Path to the .rec file.
         gains : ArrayType, optional
             The early versions of SpikeGadgest do not automatically record the conversion factor ('gain') of the
@@ -37,7 +37,8 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
         """
-        super().__init__(filename=filename)
+        super().__init__(filename=file_path)
+        self.source_data = dict(file_path=file_path)
         if gains is not None:
             if len(gains) == 1:
                 gains = [gains[0]] * self.recording_extractor.get_num_channels()

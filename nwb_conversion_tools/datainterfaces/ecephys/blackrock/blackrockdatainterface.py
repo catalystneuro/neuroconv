@@ -28,26 +28,27 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["block_index", "seg_index"]
         )
-        source_schema["properties"]["filename"]["description"] = "Path to Blackrock file."
+        source_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
         return source_schema
 
     def __init__(
         self,
-        filename: FilePathType,
+        file_path: FilePathType,
         nsx_override: OptionalFilePathType = None,
     ):
-        filename = Path(filename)
-        if filename.suffix == "":
+        file_path = Path(file_path)
+        if file_path.suffix == "":
             assert nsx_override is not None, (
-                "if filename is empty " 'provide a nsx file to load with "nsx_override" arg'
+                "if file_path is empty " 'provide a nsx file to load with "nsx_override" arg'
             )
             nsx_to_load = None
-            self.filename = Path(nsx_override)
+            self.file_path = Path(nsx_override)
         else:
-            assert "ns" in filename.suffix, "filename should be an nsx file"
-            nsx_to_load = int(filename.suffix[-1])
-            self.filename = filename
-        super().__init__(filename=filename, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
+            assert "ns" in file_path.suffix, "file_path should be an nsx file"
+            nsx_to_load = int(file_path.suffix[-1])
+            self.file_path = file_path
+        super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
+        self.source_data = dict(file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load)
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -63,7 +64,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"] = dict()
         # Open file and extract headers
-        basic_header = parse_nsx_basic_header(self.source_data["filename"])
+        basic_header = parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
@@ -71,7 +72,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
         # Checks if data is raw or processed
-        if int(self.filename.suffix[-1]) >= 5:
+        if int(self.file_path.suffix[-1]) >= 5:
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
@@ -113,7 +114,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         """
-        if int(self.filename.suffix[-1]) >= 5:
+        if int(self.file_path.suffix[-1]) >= 5:
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
@@ -143,20 +144,21 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
             class_method=cls.__init__, exclude=["block_index", "seg_index"]
         )
         metadata_schema["additionalProperties"] = True
-        metadata_schema["properties"]["filename"].update(description="Path to Blackrock file.")
+        metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
         return metadata_schema
 
     def __init__(
-        self, filename: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
+        self, file_path: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
     ):
-        super().__init__(filename=filename, nsx_to_load=nsx_to_load, nev_override=nev_override)
+        super().__init__(filename=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
+        self.source_data = dict(file_path=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
         metadata["NWBFile"] = dict()
         # Open file and extract headers
-        basic_header = parse_nev_basic_header(self.source_data["filename"])
+        basic_header = parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
