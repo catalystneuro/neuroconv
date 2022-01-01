@@ -60,10 +60,7 @@ class NWBConverter:
 
     def __init__(self, source_data):
         """Validate source_data against source_schema and initialize all data interfaces."""
-        # Validate source_data against source_schema
         self.validate_source(source_data=source_data)
-
-        # If data is valid, proceed to instantiate DataInterface objects
         self.data_interface_objects = {
             name: data_interface(**source_data[name])
             for name, data_interface in self.data_interface_classes.items()
@@ -148,18 +145,13 @@ class NWBConverter:
             "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
         )
 
-        # Validate metadata
         if metadata is None:
             metadata = self.get_metadata()
-        self.validate_metadata(metadata=metadata)
-
-        # Validate conversion options
         if conversion_options is None:
             conversion_options = self.get_conversion_options()
-        else:
-            self.validate_conversion_options(conversion_options=conversion_options)
 
-        # Save data to file or to nwbfile object
+        self.validate_metadata(metadata=metadata)
+        self.validate_conversion_options(conversion_options=conversion_options)
         if save_to_file:
             load_kwargs = dict(path=nwbfile_path)
             if nwbfile_path is None:
