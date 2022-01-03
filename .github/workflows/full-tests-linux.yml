@@ -10,18 +10,29 @@ jobs:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
-      - name: Setup Python
+      - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7
-      - name: Install this package and pytest, on development mode
-        env:
-            NWB_CONVERSION_INSTALL_MODE: development
+          python-version: ${{ matrix.python-version }}
+      - name: Install pytest
         run: |
-          pip install -r requirements-full.txt
-          pip install -e .
           pip install pytest
           pip install pytest-cov
+      - name: Install nwb-conversion-tools with minimal requirements
+        run: pip install -e .
+      - name: Run minimal pytest with coverage
+        run: pytest tests/test_internals --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
+      - name: Upload minimal coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
+          flags: unittests
+          name: codecov-umbrella 
+          yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
+
+      - name: Install full requirements
+        run: pip install -r requirements-full.txt
       - name: Get ephy_testing_data current head hash
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
@@ -50,9 +61,9 @@ jobs:
           datalad get -r ./phy/phy_example_0/
           datalad get -r ./blackrock/
           datalad get -r ./axona/
-      - name: Run pytest with coverage  
+      - name: Run full pytest with coverage
         run: pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
-      - name: Upload coverage to Codecov
+      - name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
