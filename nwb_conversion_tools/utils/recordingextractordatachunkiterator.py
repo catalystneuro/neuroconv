@@ -38,7 +38,7 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
             The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
             The chunk_shape will be set implicitly by this argument.
             Cannot be set if `chunk_shape` is also specified.
-            The default is 1MB, which is highly recommended by the HDF5 group. For more details, see
+            The default is 1MB, as recommended by the HDF5 group. For more details, see
             https://support.hdfgroup.org/HDF5/doc/TechNotes/TechNote-HDF5-ImprovingIOPerformanceCompressedDatasets.pdf
         chunk_shape : tuple, optional
             Manual specification of the internal chunk shape for the HDF5 dataset.
