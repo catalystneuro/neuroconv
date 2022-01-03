@@ -36,7 +36,7 @@ class TestYAMLConversionSpecification(unittest.TestCase):
 
     def test_validate_example_specification(self):
         path_to_test_gin_file = Path(__file__)
-        yaml_file_path = path_to_test_gin_file.parent / "GIN_converter_specification.yml"
+        yaml_file_path = path_to_test_gin_file.parent / "GIN_conversion_specification.yml"
         schema_folder = path_to_test_gin_file.parent.parent.parent / "nwb_conversion_tools" / "schemas"
         specification_schema = load_dict_from_file(
             file_path=schema_folder / "yaml_conversion_specification_schema.json"

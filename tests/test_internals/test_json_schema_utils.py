@@ -10,7 +10,6 @@ from nwb_conversion_tools.utils.json_schema import (
     fill_defaults,
     load_dict_from_file,
 )
-from nwb_conversion_tools.utils.metadata import load_metadata_from_file
 
 
 def compare_dicts(a: dict, b: dict):
@@ -210,8 +209,8 @@ def test_load_metadata_from_file():
     yaml_file_path = os.path.join(os.path.dirname(__file__), "metadata_tests.yml")
     json_file_path = os.path.join(os.path.dirname(__file__), "metadata_tests.json")
 
-    m1 = load_dict_from_file(file=yaml_file_path)
+    m1 = load_dict_from_file(file_path=yaml_file_path)
     compare_dicts_2(m0, m1)
 
-    m2 = load_dict_from_file(file=json_file_path)
+    m2 = load_dict_from_file(file_path=json_file_path)
     compare_dicts_2(m0, m2)
