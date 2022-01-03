@@ -4,6 +4,8 @@ import inspect
 import warnings
 from copy import deepcopy
 from datetime import datetime
+import yaml
+import json
 from pathlib import Path
 from typing import Optional, Union
 from typing import TypeVar
@@ -14,10 +16,51 @@ import pynwb
 FilePathType = TypeVar("FilePathType", str, Path)
 FolderPathType = TypeVar("FolderPathType", str, Path)
 OptionalFilePathType = Optional[FilePathType]
+OptionalFolderPathType = Optional[FolderPathType]
 ArrayType = Union[list, np.ndarray]
 OptionalArrayType = Optional[ArrayType]
 FloatType = Union[float, np.float]
 IntType = Union[int, np.integer]
+
+
+class NoDatesSafeLoader(yaml.SafeLoader):
+    """Custom override of yaml Loader class for datetime considerations."""
+
+    @classmethod
+    def remove_implicit_resolver(cls, tag_to_remove):
+        """
+        Remove implicit resolvers for a particular tag.
+
+        Takes care not to modify resolvers in super classes.
+        Solution taken from https://stackoverflow.com/a/37958106/11483674
+        We want to load datetimes as strings, not dates, because we go on to serialise as jsonwhich doesn't have the
+        advanced types of yaml, and leads to incompatibilities down the track.
+        """
+        if "yaml_implicit_resolvers" not in cls.__dict__:
+            cls.yaml_implicit_resolvers = cls.yaml_implicit_resolvers.copy()
+
+        for first_letter, mappings in cls.yaml_implicit_resolvers.items():
+            cls.yaml_implicit_resolvers[first_letter] = [
+                (tag, regexp) for tag, regexp in mappings if tag != tag_to_remove
+            ]
+
+
+NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
+
+
+def load_dict_from_file(file_path: FilePathType) -> dict:
+    """Safely load metadata from .yml or .json files."""
+    file_path = Path(file_path)
+    assert file_path.is_file(), f"{file_path} is not a file."
+    assert file_path.suffix in [".yml", ".json"], f"{file_path} is not a valid .yml or .json file."
+
+    if file_path.suffix == ".yml":
+        with open(file=file_path, mode="r") as stream:
+            dictionary = yaml.load(stream=stream, Loader=NoDatesSafeLoader)
+    elif file_path.suffix == ".json":
+        with open(file=file_path, mode="r") as fp:
+            dictionary = json.load(fp=fp)
+    return dictionary
 
 
 def exist_dict_in_list(d, ls):
@@ -31,9 +74,9 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
 
     Cases:
     1.  If d is a dict and ls a list of dicts and ints/str, then for a given compare key, if for any element of ls
-        (which is a dict) say: ls[3][compare_key] == d[compare_key], then it will dict_deep_update these instead of
-        appending d to list ls.
-        Only if compare_key is not present in any of dicts in the list ls, then d is simply appended to ls.
+        (which is a dict) say: ls[3][compare_key] == d[compare_key], then it will dict_deep_update these instead of appending d
+        to list ls. Only if compare_key is not present in any of dicts in the list ls, then d is simply appended
+        to ls.
     2.  If d is of immutable types like str, int etc, the ls is either appended with d or not.
         This depends on the value of remove_repeats. If remove_repeats is False, then ls is always appended with d.
         If remove_repeats is True, then if value d is present then its not appended else it is.
@@ -50,7 +93,6 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
         whether to update a dict in ls with compare_key present OR simply replace it.
     remove_repeats: bool
         keep repeated values in the updated ls
-
     Returns
     -------
     ls: list
@@ -117,7 +159,6 @@ def dict_deep_update(
             >>> output = ['input': {'name':'timeseries1', 'desc':'desc2 of u', 'starting_time':0.0, 'unit':'n.a.'}, {'name':'timeseries2', 'desc':'desc2'}]
             >>> # if False:
             >>> output = ['input': {'name':'timeseries1', 'desc':'desc2 of u', 'starting_time':0.0}, {'name':'timeseries2', 'desc':'desc2'}]# unit key is absent since its a replacement
-
     Returns
     -------
     d: dict
@@ -155,6 +196,7 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
 def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
+
     Parameters
     ----------
     class_method: function
@@ -225,6 +267,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
 def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     """
     Insert the values of the defaults dict as default values in the schema in place.
+
     Parameters
     ----------
     schema: dict
@@ -243,6 +286,7 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
 def unroot_schema(schema: dict):
     """
     Modify a json-schema dictionary to make it not root.
+
     Parameters
     ----------
     schema: dict

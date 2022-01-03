@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "yaml_conversion_specification_schema.json",
+  "title": "YAML conversion specification schema",
+  "description": "Schema for a NWB conversion specified by a YAML file.",
+  "version": "0.1.0",
+  "type": "object",
+  "allOf": [{"$ref": "#/$defs/level"}],
+  "required": ["experiments"],
+  "properties": {
+    "experiments": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "allOf": [{"$ref": "#/$defs/level"}],
+        "required": ["sessions"],
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "title": "Single-session specification",
+              "type": "object",
+              "required": ["nwbfile_name", "source_data"],
+              "allOf": [{"$ref": "#/$defs/level"}],
+              "properties": {
+                "nwbfile_name": {"type": "string"},
+                "source_data": {"type": "object"}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "level": {
+      "type": "object",
+      "properties": {
+        "metadata": {"$ref": "./metadata_schema.json#"},
+        "conversion_options": {"type": "object"},
+        "data_interfaces": {
+          "type": "array",
+          "items": {
+            "title": "DataInterface",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+} 
