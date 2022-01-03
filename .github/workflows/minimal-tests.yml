@@ -1,15 +1,14 @@
-name: Partial (lazy) tests on all OS
+name: Minimal tests on all OS
 on: pull_request
 jobs:
   run:
-    name: Lazy tests on (${{ matrix.os }})
+    name: Minimal tests on (${{ matrix.os }}) with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8]
-      matrix:
         os: ["windows-latest", "macos-latest"]
+        python-version: [3.7, 3.8]
     steps:
     - uses: actions/checkout@v2
     - run: git fetch --prune --unshallow --tags

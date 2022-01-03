@@ -2,7 +2,7 @@ name: Full tests on Windows
 on: pull_request
 jobs:
   run:
-    name: Full tests on ${{ matrix.os }}
+    name: Full tests on Windows with Python ${{ matrix.python-version }}
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -18,7 +18,7 @@ jobs:
       - name: Install nwb-conversion-tools, full requirements, and pytest
         run: |
           pip install -e .
-          pip install -r requirements-full.txt
+          pip install -r requirements-full-windows.txt
           pip install pytest
       - name: Get ephy_testing_data current head hash
         id: ephys

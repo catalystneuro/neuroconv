@@ -1,13 +1,13 @@
-name: Full tests on Linux
+name: Minimal and full tests on Linux
 on: pull_request
 jobs:
   run:
-    name: Full tests on Linux
+    name: Minimal and full tests on Linux with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-    matrix:
-        python-version: [3.7, 3.8]
+      matrix:
+          python-version: [3.7, 3.8]
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
@@ -34,7 +34,7 @@ jobs:
           yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
 
       - name: Install full requirements
-        run: pip install -r requirements-full.txt
+        run: pip install -r requirements-full-linux.txt
       - name: Get ephy_testing_data current head hash
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
