@@ -1,8 +1,8 @@
-name: Full tests on Mac
+name: Minimal and full tests on Mac
 on: pull_request
 jobs:
   run:
-    name: Full tests on Mac with Python ${{ matrix.python-version }}
+    name: Minimal and full tests on Mac with Python ${{ matrix.python-version }}
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -15,14 +15,29 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install nwb-conversion-tools, full requirements, and pytest
+      - name: Install pytest
         run: |
-          pip install -e .
-          pip install -r requirements-full-mac.txt
           pip install pytest
-      - name: Get ephy_testing_data current head hash
-        id: ephys
-        run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
+          pip install pytest-cov
+
+      - name: Install nwb-conversion-tools with minimal requirements
+        run: pip install -e .
+      - name: Run minimal pytest with coverage
+        run: pytest tests/test_internals --cov=./ --cov-report xml: ~/nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
+      - name: Upload minimal coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ~/nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
+          flags: unittests
+          name: codecov-umbrella 
+          yml: ~/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
+
+      - name: Install full requirements
+        run: pip install -r requirements-full.txt
+      # - name: Get ephy_testing_data current head hash
+      #   id: ephys
+      #   run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
       # - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHYS_DATASET }}
       #   uses: actions/cache@v2
       #   id: cache-datasets
