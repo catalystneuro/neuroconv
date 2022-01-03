@@ -20,7 +20,7 @@
             "items": {
               "title": "Single-session specification",
               "type": "object",
-              "required": ["nwbfile_name", "source_data"],
+              "required": ["source_data"],
               "allOf": [{"$ref": "#/$defs/level"}],
               "properties": {
                 "nwbfile_name": {"type": "string"},
