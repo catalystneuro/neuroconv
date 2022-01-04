@@ -113,3 +113,6 @@ venv.bak/
 
 # Local History for Visual Studio Code
 .history/
+
+#Mac
+.DS_Store
