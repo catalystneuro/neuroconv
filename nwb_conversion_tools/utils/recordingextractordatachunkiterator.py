@@ -6,7 +6,7 @@ from spikeextractors import RecordingExtractor
 from .genericdatachunkiterator import GenericDataChunkIterator
 
 
-class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
+class SIRecordingDataChunkIterator(GenericDataChunkIterator):
     """DataChunkIterator specifically for use on RecordingExtractor objects."""
 
     def __init__(
@@ -55,7 +55,7 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
             return_scaled=False,
-        ).T
+        )
 
     def _get_dtype(self):
         return self.recording.get_dtype(return_scaled=False)

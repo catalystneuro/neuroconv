@@ -17,6 +17,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 
 from .recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
+from ..utils.conversion_tools import get_module
 
 
 def list_get(li: list, idx: int, default):
@@ -66,30 +67,10 @@ def set_dynamic_table_property(
             dynamic_table.add_column(name=property_name, description=description, data=values, index=index, table=table)
 
 
-def check_module(nwbfile, name: str, description: str = None):
-    """
-    Check if processing module exists. If not, create it. Then return module.
-    Parameters
-    ----------
-    nwbfile: pynwb.NWBFile
-    name: str
-    description: str | None (optional)
-    Returns
-    -------
-    pynwb.module
-    """
-    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    if name in nwbfile.modules:
-        return nwbfile.modules[name]
-    else:
-        if description is None:
-            description = name
-        return nwbfile.create_processing_module(name, description)
-
-
 def get_nwb_metadata(recording: se.RecordingExtractor, metadata: dict = None):
     """
     Return default metadata for all recording fields.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -116,9 +97,11 @@ def get_nwb_metadata(recording: se.RecordingExtractor, metadata: dict = None):
 def add_devices(recording: se.RecordingExtractor, nwbfile=None, metadata: dict = None):
     """
     Auxiliary static method for nwbextractor.
+
     Adds device information to nwbfile object.
     Will always ensure nwbfile has at least one device, but multiple
     devices within the metadata list will also be created.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -134,7 +117,7 @@ def add_devices(recording: se.RecordingExtractor, nwbfile=None, metadata: dict =
                 },
                 ...
             ]
-    Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+        Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -159,9 +142,11 @@ def add_devices(recording: se.RecordingExtractor, nwbfile=None, metadata: dict =
 def add_electrode_groups(recording: se.RecordingExtractor, nwbfile=None, metadata: dict = None):
     """
     Auxiliary static method for nwbextractor.
+
     Adds electrode group information to nwbfile object.
     Will always ensure nwbfile has at least one electrode group.
     Will auto-generate a linked device if the specified name does not exist in the nwbfile.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -179,9 +164,9 @@ def add_electrode_groups(recording: se.RecordingExtractor, nwbfile=None, metadat
                 },
                 ...
             ]
-    Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults.
-    Group names set by RecordingExtractor channel properties will also be included with passed metadata,
-    but will only use default description and location.
+        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults.
+        Group names set by RecordingExtractor channel properties will also be included with passed metadata,
+        but will only use default description and location.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -247,7 +232,9 @@ def add_electrode_groups(recording: se.RecordingExtractor, nwbfile=None, metadat
 def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dict = None, exclude: tuple = ()):
     """
     Auxiliary static method for nwbextractor.
+
     Adds channels from recording object as electrodes to nwbfile object.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -265,18 +252,18 @@ def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dic
             ]
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
+        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
+        whenever possible.
+        If 'my_name' is set to one of the required fields for nwbfile
+        electrodes (id, x, y, z, imp, loccation, filtering, group_name),
+        then the metadata will override their default values.
+        Setting 'my_name' to metadata field 'group' is not supported as the linking to
+        nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
+        If no group information is passed via metadata, automatic linking to existing electrode groups,
+        possibly including the default, will occur.
     exclude: tuple
         An iterable containing the string names of channel properties in the RecordingExtractor
         object to ignore when writing to the NWBFile.
-    Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
-    whenever possible.
-    If 'my_name' is set to one of the required fields for nwbfile
-    electrodes (id, x, y, z, imp, loccation, filtering, group_name),
-    then the metadata will override their default values.
-    Setting 'my_name' to metadata field 'group' is not supported as the linking to
-    nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
-    If no group information is passed via metadata, automatic linking to existing electrode groups,
-    possibly including the default, will occur.
     """
     if nwbfile.electrodes is not None:
         ids_absent = [id not in nwbfile.electrodes.id for id in recording.get_channel_ids()]
@@ -473,7 +460,9 @@ def add_electrical_series(
 ):
     """
     Auxiliary static method for nwbextractor.
+
     Adds traces from recording object as ElectricalSeries to nwbfile object.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -559,7 +548,7 @@ def add_electrical_series(
             description="Processed data",
             comments="Generated from SpikeInterface::NwbRecordingExtractor",
         )
-        ecephys_mod = check_module(
+        ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
@@ -572,7 +561,7 @@ def add_electrical_series(
             description="Processed data - LFP",
             comments="Generated from SpikeInterface::NwbRecordingExtractor",
         )
-        ecephys_mod = check_module(
+        ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
@@ -668,7 +657,9 @@ def add_electrical_series(
 def add_epochs(recording: se.RecordingExtractor, nwbfile=None, metadata: dict = None):
     """
     Auxiliary static method for nwbextractor.
+
     Adds epochs from recording object to nwbfile object.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -716,7 +707,9 @@ def add_all_to_nwbfile(
 ):
     """
     Auxiliary static method for nwbextractor.
+
     Adds all recording related information from recording object and metadata to the nwbfile object.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -800,6 +793,7 @@ def write_recording(
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
+
     Parameters
     ----------
     recording: RecordingExtractor
@@ -968,6 +962,7 @@ def write_units(
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
+
     Parameters
     ----------
     sorting: SortingExtractor
@@ -1183,7 +1178,7 @@ def write_units(
         else:
             warnings.warn("The nwbfile already contains units. These units will not be over-written.")
     elif write_as == "processing":
-        ecephys_mod = check_module(
+        ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
@@ -1207,6 +1202,7 @@ def write_sorting(
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
+
     Parameters
     ----------
     sorting: SortingExtractor
