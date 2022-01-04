@@ -16,7 +16,7 @@ from spikeextractors.testing import (
 from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
-from nwb_conversion_tools.utils.recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
+from nwb_conversion_tools.utils.spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from nwb_conversion_tools.utils.json_schema import FilePathType
 
 
@@ -311,7 +311,7 @@ class TestExtractors(unittest.TestCase):
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             chunks_out = nwbfile.acquisition["ElectricalSeries_raw"].data.chunks
-        test_iterator = RecordingExtractorDataChunkIterator(recording=self.RX)
+        test_iterator = SpikeInterfaceRecordingDataChunkIterator(recording=self.RX)
         self.assertEqual(
             chunks_out,
             test_iterator.chunk_shape,

@@ -18,7 +18,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 
-from .recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
+from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..utils.conversion_tools import get_module
 
 
@@ -628,7 +628,7 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
     if iterator_type is None or iterator_type == "v2":
-        ephys_data = RecordingExtractorDataChunkIterator(recording=recording, **iterator_opts)
+        ephys_data = SpikeInterfaceRecordingDataChunkIterator(recording=recording, **iterator_opts)
     elif iterator_type == "v1":
         if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
             channel_offset == 0
@@ -950,7 +950,7 @@ def write_recording(
         )
 
 
-def get_nspikes(units_table: pynwb.Units, unit_id: int):
+def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
     """Return the number of spikes for chosen unit."""
     ids = np.array(units_table.id[:])
     indexes = np.where(ids == unit_id)[0]
