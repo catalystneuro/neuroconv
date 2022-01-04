@@ -34,7 +34,6 @@ def subset_shank_channels(recording_extractor: se.RecordingExtractor, xml_file_p
 
 def add_recording_extractor_properties(recording_extractor: se.RecordingExtractor, xml_file_path: OptionalFilePathType = None, gain: Optional[float] = None):
     """Automatically add properties to RecordingExtractor object."""
-    print('gain inside', gain)
     channel_groups = get_channel_groups(xml_file_path=xml_file_path)
     channel_map = {
         channel_id: idx
