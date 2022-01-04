@@ -6,7 +6,7 @@ from spikeextractors import RecordingExtractor
 from .genericdatachunkiterator import GenericDataChunkIterator
 
 
-class SIRecordingDataChunkIterator(GenericDataChunkIterator):
+class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
     """DataChunkIterator specifically for use on RecordingExtractor objects."""
 
     def __init__(
