@@ -93,6 +93,10 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             kwargs.update(channel_ids=self.subset_channels)
 
         recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
+
+        # Here, the gains need to be added again.
+        # But shis is specific, the code coulc check for neuroscope, and then call the function to add gains again.
+
         return recording_extractor
 
     def run_conversion(
