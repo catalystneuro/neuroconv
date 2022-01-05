@@ -1,4 +1,4 @@
-pynwb==1.5.1
+pynwb==2.0.0
 tqdm==4.60.0
 natsort==7.1.1
 numpy==1.19.3
@@ -11,7 +11,6 @@ psutil==5.8.0
 lxml==4.6.5
 opencv-python==4.5.1.48
 spikeextractors @ git+https://github.com/SpikeInterface/spikeextractors.git
-spikeinterface @ git+https://github.com/alejoe91/spikeinterface.git@old_new_properties
 neo==0.10.0
 roiextractors==0.3.1
 ndx-events==0.2.0
