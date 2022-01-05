@@ -1083,19 +1083,33 @@ def write_units(
             unit_col_args.update(table=nwbfile.electrodes)
         units_table.add_column(**unit_col_args)
 
+    aggregated_unit_properties = defaultdict(list)
     for unit_id in unit_ids:
-        unit_kwargs = dict()
+
+        for pr in write_properties:
+            if pr in sorting.get_unit_property_names(unit_id):
+                aggregated_unit_properties[pr].append(sorting.get_unit_property(unit_id, pr))
+            else:  # Case of missing data for this unit and this property
+                aggregated_unit_properties[pr].append(None)
+
+    # handle missing data differently depending on type of data
+    for key, val in aggregated_unit_properties.items():
+        if all(isinstance(x, int) or x is None for x in val):
+            aggregated_unit_properties[key] = [np.nan if x is None else float(x) for x in val]
+        if all(isinstance(x, str) or x is None for x in val):
+            aggregated_unit_properties[key] = [x or '' for x in val]
+        if all(isinstance(x, float) or x is None for x in val):
+            aggregated_unit_properties[key] = [np.nan if x is None else x for x in val]
+
+    for i, unit_id in enumerate(unit_ids):
         if use_times:
             spkt = sorting.frame_to_time(sorting.get_unit_spike_train(unit_id=unit_id))
         else:
             spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
-        for pr in write_properties:
-            if pr in sorting.get_unit_property_names(unit_id):
-                prop_value = sorting.get_unit_property(unit_id, pr)
-                unit_kwargs.update({pr: prop_value})
-            else:  # Case of missing data for this unit and this property
-                unit_kwargs.update({pr: np.nan})
-        units_table.add_unit(id=int(unit_id), spike_times=spkt, **unit_kwargs)
+
+        kwargs = {key: val[i] for key, val in aggregated_unit_properties.items()}
+
+        units_table.add_unit(id=int(unit_id), spike_times=spkt, **kwargs)
 
         # TODO
         # # Stores average and std of spike traces
