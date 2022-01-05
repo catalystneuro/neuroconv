@@ -11,6 +11,7 @@ from pynwb import NWBHDF5IO
 
 from nwb_conversion_tools import (
     NWBConverter,
+    CellExplorerSortingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
@@ -184,6 +185,18 @@ class TestNwbConversions(unittest.TestCase):
             param(
                 data_interface=BlackrockSortingExtractorInterface,
                 interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
+            ),
+            param(
+                sorting_interface=CellExplorerSortingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_sessionInfo.mat")
+                ),  # We will find out about the location later
+            ),
+            param(
+                sorting_interface=CellExplorerSortingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_spikes.cellinfo.mat")
+                ),  # point to the matlab file in the other format
             ),
         ],
         name_func=custom_name_func,
