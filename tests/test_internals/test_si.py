@@ -6,7 +6,8 @@ import numpy as np
 from datetime import datetime
 
 import spikeextractors as se
-from spikeinterface.core.testing import check_sortings_equal, check_recordings_equal
+from spikeextractors.testing import check_sortings_equal, check_dumping
+from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.core import create_recording_from_old_extractor
 from spikeinterface.extractors import read_nwb_recording
 from pynwb import NWBHDF5IO, NWBFile
@@ -322,25 +323,29 @@ class TestExtractors(unittest.TestCase):
         write_sorting(sorting=self.SX, save_path=path, overwrite=False)
         SX_nwb = se.NwbSortingExtractor(path)
         check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
 
         # Test for handling unit property descriptions argument
         property_descriptions = dict(stability="This is a description of stability.")
         write_sorting(sorting=self.SX, save_path=path, property_descriptions=property_descriptions, overwrite=True)
         SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
 
         # Test for handling skip_properties argument
         write_sorting(sorting=self.SX, save_path=path, skip_properties=["stability"], overwrite=True)
         SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         assert "stability" not in SX_nwb.get_shared_unit_property_names()
         check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
 
         # Test for handling skip_features argument
         # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. Set use_times=False
-        write_sorting(sorting=self.SX2, save_path=path, use_times=False, overwrite=True)
+        write_sorting(sorting=self.SX2, save_path=path, skip_features=["widths"], use_times=False, overwrite=True)
         SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         assert "widths" not in SX_nwb.get_shared_unit_spike_feature_names()
         check_sortings_equal(self.SX2, SX_nwb)
+        check_dumping(SX_nwb)
 
         write_sorting(sorting=self.SX, save_path=path, overwrite=True)
         write_sorting(sorting=self.SX, save_path=path, overwrite=False, write_as="processing")
@@ -378,6 +383,7 @@ class TestExtractors(unittest.TestCase):
         write_sorting(sorting=self.SX, save_path=path, overwrite=False, units_description=units_description)
         SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             description_out = nwbfile.units.description
