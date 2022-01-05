@@ -358,7 +358,7 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
                             found_property_types[prop] = proptype[0]
                             # cast as float if any number:
                             if found_property_types[prop] == Real:
-                                chan_data = np.float(chan_data)
+                                chan_data = float(chan_data)
                             # update data if wrong datatype items filled prior:
                             if len(data) > 0 and not isinstance(data[-1], found_property_types[prop]):
                                 data = [channel_property_defaults[found_property_types[prop]]] * len(data)

@@ -1,4 +1,4 @@
-pynwb==1.5.1
+pynwb==2.0.0
 tqdm==4.60.0
 natsort==7.1.1
 numpy==1.19.3
