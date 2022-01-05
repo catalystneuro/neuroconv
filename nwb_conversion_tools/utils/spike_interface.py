@@ -16,7 +16,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 
-from .spikeinterfacerecordingdatachunkiterator import RecordingExtractorDataChunkIterator
+from .recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
 from ..utils.conversion_tools import get_module
 
 
