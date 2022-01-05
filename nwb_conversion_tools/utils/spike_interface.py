@@ -16,7 +16,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 
-from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
+from .spikeinterfacerecordingdatachunkiterator import RecordingExtractorDataChunkIterator
 from ..utils.conversion_tools import get_module
 
 
@@ -612,7 +612,7 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
     if iterator_type is None or iterator_type == "v2":
-        ephys_data = SpikeInterfaceRecordingDataChunkIterator(recording=recording, **iterator_opts)
+        ephys_data = RecordingExtractorDataChunkIterator(recording=recording, **iterator_opts)
     elif iterator_type == "v1":
         if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
             channel_offset == 0
