@@ -1085,7 +1085,7 @@ def write_units(
             if any(x is None for x in val):
                 aggregated_unit_properties[key] = [np.nan if x is None else float(x) for x in val]
         if all(isinstance(x, str) or x is None for x in val):
-            aggregated_unit_properties[key] = [x or '' for x in val]
+            aggregated_unit_properties[key] = [x or "" for x in val]
         if all(isinstance(x, float) or x is None for x in val):
             aggregated_unit_properties[key] = [np.nan if x is None else x for x in val]
 
