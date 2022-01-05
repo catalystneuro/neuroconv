@@ -342,9 +342,9 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
             prop_chan_count = 0
             # build data:
             for chan_id in recording.get_channel_ids():
-                if prop in recording.get_channel_property_names(channel_id=chan_id):
+                if prop in property_names:
                     prop_chan_count += 1
-                    chan_data = recording.get_channel_property(channel_id=chan_id, property_name=prop)
+                    chan_data = recording.get_channel_property(channel_id=chan_id, key=prop)
                     # find the type and store (only when the first channel with given property is found):
                     if prop_chan_count == 1:
                         proptype = [
