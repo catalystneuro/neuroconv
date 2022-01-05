@@ -295,10 +295,7 @@ def add_electrodes(recording: RecordingExtractor, nwbfile=None, metadata: dict =
         metadata["Ecephys"]["Electrodes"] = []
 
     assert all(
-        [
-            isinstance(x, dict) and set(x.keys()) == {"name", "description"}
-            for x in metadata["Ecephys"]["Electrodes"]
-        ]
+        [isinstance(x, dict) and set(x.keys()) == {"name", "description"} for x in metadata["Ecephys"]["Electrodes"]]
     ), (
         "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, "
         "containing the keys 'name' and 'description'"
@@ -410,7 +407,15 @@ def add_electrodes(recording: RecordingExtractor, nwbfile=None, metadata: dict =
                             f"Electrode group {group_name} for electrode {channel_id} was not "
                             "found in the nwbfile! Automatically adding."
                         )
-                        missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=[dict(name=group_name,)]))
+                        missing_group_metadata = dict(
+                            Ecephys=dict(
+                                ElectrodeGroup=[
+                                    dict(
+                                        name=group_name,
+                                    )
+                                ]
+                            )
+                        )
                         add_electrode_groups(recording, nwbfile, missing_group_metadata)
                     electrode_kwargs.update(dict(group=nwbfile.electrode_groups[group_name], group_name=group_name))
                 elif "data" in desc:
@@ -740,7 +745,9 @@ def add_all_to_nwbfile(
     add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes(
-        recording=recording, nwbfile=nwbfile, metadata=metadata,
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
     )
     add_electrical_series(
         recording=recording,
