@@ -327,10 +327,7 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
 
     elec_columns = defaultdict(dict)  # dict(name: dict(description='',data=data, index=False))
     elec_columns_append = defaultdict(dict)
-    property_names = set()
-    for chan_id in recording.get_channel_ids():
-        for i in recording.get_channel_property_names(channel_id=chan_id):
-            property_names.add(i)
+    property_names = recording.get_property_keys()
 
     # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
     exclude_names = set(["location", "group"] + list(exclude))
@@ -454,6 +451,7 @@ def add_electrical_series(
     recording: SpikeInterfaceRecording,
     nwbfile=None,
     metadata: dict = None,
+    segment_index: int = 0,
     use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
@@ -627,7 +625,9 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
 
     if iterator_type is None or iterator_type == "v2":
-        ephys_data = SpikeInterfaceRecordingDataChunkIterator(recording=recording, **iterator_opts)
+        ephys_data = SpikeInterfaceRecordingDataChunkIterator(
+            recording=recording, segment_index=segment_index, **iterator_opts
+        )
     elif iterator_type == "v1":
         if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
             channel_offset == 0
@@ -725,7 +725,7 @@ def add_all_to_nwbfile(
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
     use_times: bool
-        If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
+        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
         the sampling rate is used.
     metadata: dict
         metadata info for constructing the nwb file (optional).
@@ -821,7 +821,7 @@ def write_recording(
         )
         will result in the appropriate changes to the my_nwbfile object.
     use_times: bool
-        If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
+        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
         the sampling rate is used.
     metadata: dict
         metadata info for constructing the nwb file (optional). Should be
