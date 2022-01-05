@@ -21,7 +21,6 @@ from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..utils.conversion_tools import get_module
 
-
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 
 
