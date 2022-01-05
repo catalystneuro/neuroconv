@@ -53,7 +53,9 @@ def _create_example(seed):
     SX.add_unit(unit_id=1, times=train1)
     SX.add_unit(unit_id=2, times=np.sort(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times[1])))
     SX.add_unit(unit_id=3, times=np.sort(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times[2])))
-    SX.set_unit_property(unit_id=1, property_name="stability", value=80)
+    SX.set_unit_property(unit_id=1, property_name="int_prop", value=80)
+    SX.set_unit_property(unit_id=1, property_name="float_prop", value=80.)
+    SX.set_unit_property(unit_id=1, property_name="str_prop", value="test_val")
     SX.add_epoch("epoch1", 0, 10)
     SX.add_epoch("epoch2", 10, 20)
 

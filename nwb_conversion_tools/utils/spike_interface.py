@@ -317,7 +317,7 @@ def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dic
 
     assert all(
         [
-            isinstance(x, dict) and set(x.keys()) == set(["name", "description"])
+            isinstance(x, dict) and set(x.keys()) == {"name", "description"}
             for x in metadata["Ecephys"]["Electrodes"]
         ]
     ), (
@@ -431,15 +431,7 @@ def add_electrodes(recording: se.RecordingExtractor, nwbfile=None, metadata: dic
                             f"Electrode group {group_name} for electrode {channel_id} was not "
                             "found in the nwbfile! Automatically adding."
                         )
-                        missing_group_metadata = dict(
-                            Ecephys=dict(
-                                ElectrodeGroup=[
-                                    dict(
-                                        name=group_name,
-                                    )
-                                ]
-                            )
-                        )
+                        missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=[dict(name=group_name,)]))
                         add_electrode_groups(recording, nwbfile, missing_group_metadata)
                     electrode_kwargs.update(dict(group=nwbfile.electrode_groups[group_name], group_name=group_name))
                 elif "data" in desc:
@@ -763,9 +755,7 @@ def add_all_to_nwbfile(
     add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes(
-        recording=recording,
-        nwbfile=nwbfile,
-        metadata=metadata,
+        recording=recording, nwbfile=nwbfile, metadata=metadata,
     )
     add_electrical_series(
         recording=recording,
@@ -1094,11 +1084,10 @@ def write_units(
 
     # handle missing data differently depending on type of data
     for key, val in aggregated_unit_properties.items():
-        if all(isinstance(x, int) or x is None for x in val):
-            if any(x is None for x in val):
-                aggregated_unit_properties[key] = [np.nan if x is None else float(x) for x in val]
+        if all(isinstance(x, int) or x is None for x in val) and any(x is None for x in val):
+            aggregated_unit_properties[key] = [np.nan if x is None else float(x) for x in val]
         if all(isinstance(x, str) or x is None for x in val):
-            aggregated_unit_properties[key] = [x or '' for x in val]
+            aggregated_unit_properties[key] = [x or "" for x in val]
         if all(isinstance(x, float) or x is None for x in val):
             aggregated_unit_properties[key] = [np.nan if x is None else x for x in val]
 
