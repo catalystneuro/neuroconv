@@ -187,7 +187,7 @@ class TestNwbConversions(unittest.TestCase):
                 interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
             ),
             param(
-                sorting_interface=CellExplorerSortingInterface,
+                data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_sessionInfo.mat")
                 ),  # We will find out about the location later
