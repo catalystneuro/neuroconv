@@ -478,6 +478,8 @@ def add_electrical_series(
                 name=my_name,
                 description=my_description
             )
+    segment_index : int
+        The recording segment to add to the NWBFile.
     use_times: bool (optional, defaults to False)
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
