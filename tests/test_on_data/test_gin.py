@@ -193,7 +193,7 @@ class TestNwbConversions(unittest.TestCase):
                 ),  # We will find out about the location later
             ),
             param(
-                sorting_interface=CellExplorerSortingInterface,
+                data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_spikes.cellinfo.mat")
                 ),  # point to the matlab file in the other format
