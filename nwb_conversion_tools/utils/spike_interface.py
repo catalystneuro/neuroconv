@@ -74,7 +74,9 @@ def get_nwb_metadata(recording: SpikeInterfaceRecording, metadata: dict = None):
         metadata info for constructing the nwb file (optional).
     """
     if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+    else:
+        checked_recording = recording
 
     metadata = dict(
         NWBFile=dict(
@@ -86,7 +88,7 @@ def get_nwb_metadata(recording: SpikeInterfaceRecording, metadata: dict = None):
             Device=[dict(name="Device", description="no description")],
             ElectrodeGroup=[
                 dict(name=str(gn), description="no description", location="unknown", device="Device")
-                for gn in np.unique(recording.get_channel_groups())
+                for gn in np.unique(checked_recording.get_channel_groups())
             ],
         ),
     )
@@ -119,7 +121,9 @@ def add_devices(recording: SpikeInterfaceRecording, nwbfile=None, metadata: dict
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+    else:
+        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -170,13 +174,15 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile=None, metad
         but will only use default description and location.
     """
     if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+    else:
+        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     if len(nwbfile.devices) == 0:
         warnings.warn("When adding ElectrodeGroup, no Devices were found on nwbfile. Creating a Device now...")
-        add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+        add_devices(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
 
     if metadata is None:
         metadata = dict()
@@ -191,7 +197,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile=None, metad
             location="unknown",
             device=[i.name for i in nwbfile.devices.values()][0],
         )
-        for group_id in np.unique(recording.get_channel_groups())
+        for group_id in np.unique(checked_recording.get_channel_groups())
     ]
 
     if "ElectrodeGroup" not in metadata["Ecephys"]:
@@ -206,7 +212,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile=None, metad
             device_name = grp.get("device", defaults[0]["device"])
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
-                add_devices(recording, nwbfile, metadata=new_device_metadata)
+                add_devices(recording=checked_recording, nwbfile=nwbfile, metadata=new_device_metadata)
                 warnings.warn(
                     f"Device '{device_name}' not detected in "
                     "attempted link to electrode group! Automatically generating."
@@ -227,7 +233,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile=None, metad
 
         electrode_group_kwargs = dict(defaults[0])
         electrode_group_kwargs.update(device=device)
-        for grp_name in np.unique(recording.get_channel_groups()).tolist():
+        for grp_name in np.unique(checked_recording.get_channel_groups()).tolist():
             electrode_group_kwargs.update(name=str(grp_name))
             nwbfile.create_electrode_group(**electrode_group_kwargs)
 
@@ -269,9 +275,11 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
         object to ignore when writing to the NWBFile.
     """
     if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+    else:
+        checked_recording = recording
     if nwbfile.electrodes is not None:
-        ids_absent = [id not in nwbfile.electrodes.id for id in recording.get_channel_ids()]
+        ids_absent = [id not in nwbfile.electrodes.id for id in checked_recording.get_channel_ids()]
         if not all(ids_absent):
             warnings.warn("cannot create electrodes for this recording as ids already exist")
             return
@@ -279,7 +287,7 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
-        add_electrode_groups(recording, nwbfile, metadata)
+        add_electrode_groups(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
     # For older versions of pynwb, we need to manually add these columns
     if distutils.version.LooseVersion(pynwb.__version__) < "1.3.0":
         if nwbfile.electrodes is None or "rel_x" not in nwbfile.electrodes.colnames:
@@ -327,7 +335,7 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
 
     elec_columns = defaultdict(dict)  # dict(name: dict(description='',data=data, index=False))
     elec_columns_append = defaultdict(dict)
-    property_names = recording.get_property_keys()
+    property_names = checked_recording.get_property_keys()
 
     # property 'brain_area' of RX channels corresponds to 'location' of NWB electrodes
     exclude_names = set(["location", "group"] + list(exclude))
@@ -341,10 +349,10 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
             data = []
             prop_chan_count = 0
             # build data:
-            for chan_id in recording.get_channel_ids():
+            for chan_id in checked_recording.get_channel_ids():
                 if prop in property_names:
                     prop_chan_count += 1
-                    chan_data = recording.get_channel_property(channel_id=chan_id, key=prop)
+                    chan_data = checked_recording.get_channel_property(channel_id=chan_id, key=prop)
                     # find the type and store (only when the first channel with given property is found):
                     if prop_chan_count == 1:
                         proptype = [
@@ -401,13 +409,13 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
     for name in elec_columns_append:
         _ = elec_columns.pop(name)
 
-    for j, channel_id in enumerate(recording.get_channel_ids()):
+    for j, channel_id in enumerate(checked_recording.get_channel_ids()):
         if channel_id not in nwb_elec_ids:
             electrode_kwargs = dict(default_updated)
             electrode_kwargs.update(id=channel_id)
 
-            # recording.get_channel_locations defaults to np.nan if there are none
-            location = recording.get_channel_locations(channel_ids=channel_id)[0]
+            # checked_recording.get_channel_locations defaults to np.nan if there are none
+            location = checked_recording.get_channel_locations(channel_ids=[channel_id])[0]
             if all([not np.isnan(loc) for loc in location]):
                 # property 'location' of RX channels corresponds to rel_x and rel_ y of NWB electrodes
                 electrode_kwargs.update(dict(rel_x=float(location[0]), rel_y=float(location[1])))
@@ -429,13 +437,15 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
                                 ]
                             )
                         )
-                        add_electrode_groups(recording, nwbfile, missing_group_metadata)
+                        add_electrode_groups(
+                            recording=checked_recording, nwbfile=nwbfile, metadata=missing_group_metadata
+                        )
                     electrode_kwargs.update(dict(group=nwbfile.electrode_groups[group_name], group_name=group_name))
                 elif "data" in desc:
                     electrode_kwargs[name] = desc["data"][j]
 
             if "group_name" not in elec_columns:
-                group_id = recording.get_channel_groups(channel_ids=channel_id)[0]
+                group_id = checked_recording.get_channel_groups(channel_ids=[channel_id])[0]
                 electrode_kwargs.update(dict(group=nwbfile.electrode_groups[str(group_id)], group_name=str(group_id)))
 
             nwbfile.add_electrode(**electrode_kwargs)
@@ -513,7 +523,9 @@ def add_electrical_series(
     whenever possible.
     """
     if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+    else:
+        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
     assert compression is None or compression in [
@@ -593,7 +605,7 @@ def add_electrical_series(
             eseries_kwargs["name"] not in nwbfile.processing["ecephys"].data_interfaces["LFP"].electrical_series
         ), f"LFP ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
 
-    channel_ids = recording.get_channel_ids()
+    channel_ids = checked_recording.get_channel_ids()
     table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_ids]
     electrode_table_region = nwbfile.create_electrode_table_region(
         region=table_ids, description="electrode_table_region"
@@ -603,20 +615,8 @@ def add_electrical_series(
     # channels gains - for RecordingExtractor, these are values to cast traces to uV.
     # For nwb, the conversions (gains) cast the data to Volts.
     # To get traces in Volts we take data*channel_conversion*conversion.
-    channel_conversion = recording.get_channel_gains()
-    channel_offset = recording.get_channel_offsets()
-    unsigned_coercion = channel_offset / channel_conversion
-    if not np.all([x.is_integer() for x in unsigned_coercion]):
-        raise NotImplementedError(
-            "Unable to coerce underlying unsigned data type to signed type, which is currently required for NWB "
-            "Schema v2.2.5! Please specify 'write_scaled=True'."
-        )
-    elif np.any(unsigned_coercion != 0):
-        warnings.warn(
-            "NWB Schema v2.2.5 does not officially support channel offsets. The data will be converted to a signed "
-            "type that does not use offsets."
-        )
-        unsigned_coercion = unsigned_coercion.astype(int)
+    channel_conversion = checked_recording.get_channel_gains()
+    channel_offset = checked_recording.get_channel_offsets()
     if write_scaled:
         eseries_kwargs.update(conversion=1e-6)
     else:
@@ -628,27 +628,32 @@ def add_electrical_series(
 
     if iterator_type is None or iterator_type == "v2":
         ephys_data = SpikeInterfaceRecordingDataChunkIterator(
-            recording=recording, segment_index=segment_index, **iterator_opts
+            recording=checked_recording, segment_index=segment_index, **iterator_opts
         )
     elif iterator_type == "v1":
-        if isinstance(recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
+        if isinstance(checked_recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
             channel_offset == 0
         ):
-            ephys_data = DataChunkIterator(data=recording.get_traces(return_scaled=write_scaled), **iterator_opts)
+            ephys_data = DataChunkIterator(
+                data=checked_recording.get_traces(return_scaled=write_scaled), **iterator_opts
+            )
         else:
             raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
     else:
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
-
     eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
+
     if not use_times:
         eseries_kwargs.update(
-            starting_time=float(recording.frame_to_time(0)), rate=float(recording.get_sampling_frequency())
+            starting_time=float(checked_recording.get_times(segment_index=segment_index)[0]),
+            rate=float(checked_recording.get_sampling_frequency()),
         )
     else:
         eseries_kwargs.update(
             timestamps=H5DataIO(
-                data=recording.frame_to_time(np.arange(recording.get_num_frames())),
+                data=checked_recording.get_times()[
+                    np.arange(checked_recording.get_num_samples(segment_index=segment_index))
+                ],
                 compression=compression,
                 compression_opts=compression_opts,
             )
@@ -661,46 +666,6 @@ def add_electrical_series(
         ecephys_mod.data_interfaces["Processed"].add_electrical_series(es)
     elif write_as == "lfp":
         ecephys_mod.data_interfaces["LFP"].add_electrical_series(es)
-
-
-def add_epochs(recording: SpikeInterfaceRecording, nwbfile=None, metadata: dict = None):
-    """
-    Auxiliary static method for nwbextractor.
-
-    Adds epochs from recording object to nwbfile object.
-
-    Parameters
-    ----------
-    recording: SpikeInterfaceRecording
-    nwbfile: NWBFile
-        nwb file to which the recording information is to be added
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
-    """
-    if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-
-    for epoch_name in recording.get_epoch_names():
-        epoch = recording.get_epoch_info(epoch_name)
-        if nwbfile.epochs is None:
-            nwbfile.add_epoch(
-                start_time=recording.frame_to_time(epoch["start_frame"]),
-                stop_time=recording.frame_to_time(epoch["end_frame"] - 1),
-                tags=epoch_name,
-            )
-        else:
-            if [epoch_name] in nwbfile.epochs["tags"][:]:
-                ind = nwbfile.epochs["tags"][:].index([epoch_name])
-                nwbfile.epochs["start_time"].data[ind] = recording.frame_to_time(epoch["start_frame"])
-                nwbfile.epochs["stop_time"].data[ind] = recording.frame_to_time(epoch["end_frame"])
-            else:
-                nwbfile.add_epoch(
-                    start_time=recording.frame_to_time(epoch["start_frame"]),
-                    stop_time=recording.frame_to_time(epoch["end_frame"]),
-                    tags=epoch_name,
-                )
 
 
 def add_all_to_nwbfile(
@@ -762,19 +727,21 @@ def add_all_to_nwbfile(
         If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
     if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+    else:
+        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_devices(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrode_groups(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes(
-        recording=recording,
+        recording=checked_recording,
         nwbfile=nwbfile,
         metadata=metadata,
     )
     add_electrical_series(
-        recording=recording,
+        recording=checked_recording,
         nwbfile=nwbfile,
         use_times=use_times,
         metadata=metadata,
@@ -786,7 +753,6 @@ def add_all_to_nwbfile(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
 def write_recording(
@@ -887,7 +853,9 @@ def write_recording(
         If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
     if isinstance(recording, RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+    else:
+        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -897,10 +865,10 @@ def write_recording(
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
 
-    if hasattr(recording, "nwb_metadata"):
-        metadata = dict_deep_update(recording.nwb_metadata, metadata)
+    if hasattr(checked_recording, "nwb_metadata"):
+        metadata = dict_deep_update(checked_recording.nwb_metadata, metadata)
     elif metadata is None:
-        metadata = get_nwb_metadata(recording=recording)
+        metadata = get_nwb_metadata(recording=checked_recording)
 
     if nwbfile is None:
         if Path(save_path).is_file() and not overwrite:
@@ -922,7 +890,7 @@ def write_recording(
                 nwbfile = pynwb.NWBFile(**nwbfile_kwargs)
 
             add_all_to_nwbfile(
-                recording=recording,
+                recording=checked_recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
                 use_times=use_times,
@@ -937,7 +905,7 @@ def write_recording(
             io.write(nwbfile)
     else:
         add_all_to_nwbfile(
-            recording=recording,
+            recording=checked_recording,
             nwbfile=nwbfile,
             use_times=use_times,
             metadata=metadata,
