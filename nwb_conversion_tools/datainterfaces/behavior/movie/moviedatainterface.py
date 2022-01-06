@@ -1,17 +1,14 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
-import numpy as np
 from typing import Optional
-from tqdm import tqdm
 from warnings import warn
 
 import psutil
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from hdmf.backends.hdf5.h5_utils import H5DataIO
-from hdmf.data_utils import DataChunkIterator
 
-from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
+from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape, MovieDataChunkIterator
 from ....basedatainterface import BaseDataInterface
 from ....utils.conversion_tools import check_regular_timestamps, get_module
 from ....utils.json_schema import get_schema_from_hdmf_class, get_base_schema
@@ -130,10 +127,6 @@ class MovieInterface(BaseDataInterface):
         """
         file_paths = self.source_data["file_paths"]
 
-        if stub_test:
-            count_max = 10
-        else:
-            count_max = np.inf
         if starting_times is not None:
             assert (
                 isinstance(starting_times, list)
@@ -181,58 +174,10 @@ class MovieInterface(BaseDataInterface):
                 maxshape = [total_frames]
                 maxshape.extend(frame_shape)
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
-                tqdm_pos, tqdm_mininterval = (0, 10)
-                if chunk_data:
 
-                    def data_generator(file, count_max):
-                        cap = cv2.VideoCapture(str(file))
-                        for _ in range(min(count_max, total_frames)):
-                            success, frame = cap.read()
-                            yield frame
-                        cap.release()
+                image_series_kwargs.update(data=H5DataIO(MovieDataChunkIterator(movie_file=file, stub=stub_test),
+                                                         compression="gzip", chunks=best_gzip_chunk))
 
-                    mov = DataChunkIterator(
-                        data=tqdm(
-                            iterable=data_generator(file=file, count_max=count_max),
-                            desc=f"Copying movie data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval,
-                        ),
-                        iter_axis=0,  # nwb standard is time as zero axis
-                        maxshape=tuple(maxshape),
-                    )
-                    image_series_kwargs.update(data=H5DataIO(mov, compression="gzip", chunks=best_gzip_chunk))
-                else:
-                    cap = cv2.VideoCapture(str(file))
-                    mov = []
-                    with tqdm(
-                        desc=f"Reading movie data for {Path(file).name}",
-                        position=tqdm_pos,
-                        total=total_frames,
-                        mininterval=tqdm_mininterval,
-                    ) as pbar:
-                        for _ in range(min(count_max, total_frames)):
-                            success, frame = cap.read()
-                            mov.append(frame)
-                            pbar.update(1)
-                    cap.release()
-                    image_series_kwargs.update(
-                        data=H5DataIO(
-                            DataChunkIterator(
-                                tqdm(
-                                    iterable=np.array(mov),
-                                    desc=f"Writing movie data for {Path(file).name}",
-                                    position=tqdm_pos,
-                                    mininterval=tqdm_mininterval,
-                                ),
-                                iter_axis=0,  # nwb standard is time as zero axis
-                                maxshape=tuple(maxshape),
-                            ),
-                            compression="gzip",
-                            chunks=best_gzip_chunk,
-                        )
-                    )
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
             else:
