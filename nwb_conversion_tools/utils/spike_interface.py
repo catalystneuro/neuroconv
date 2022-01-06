@@ -617,7 +617,7 @@ def add_electrical_series(
     # To get traces in Volts we take data*channel_conversion*conversion.
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
-    if write_scaled:
+    if write_scaled or channel_conversion is None:
         eseries_kwargs.update(conversion=1e-6)
     else:
         if len(np.unique(channel_conversion)) == 1:  # if all gains are equal
@@ -628,7 +628,10 @@ def add_electrical_series(
 
     if iterator_type is None or iterator_type == "v2":
         ephys_data = SpikeInterfaceRecordingDataChunkIterator(
-            recording=checked_recording, segment_index=segment_index, **iterator_opts
+            recording=checked_recording,
+            segment_index=segment_index,
+            return_scaled=write_scaled,
+            **iterator_opts,
         )
     elif iterator_type == "v1":
         if isinstance(checked_recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
