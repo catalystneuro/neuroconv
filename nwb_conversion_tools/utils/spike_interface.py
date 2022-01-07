@@ -632,16 +632,6 @@ def add_electrical_series(
         else:
             temp_recording = parent_recording
 
-    # temp_recording = recording
-    # temp_parent = temp_recording._parent_recording
-    # channel_conversion = temp_parent.get_channel_gains()
-    # channel_offset = temp_parent.get_channel_offsets()
-    # while isinstance(temp_recording , se.SubRecordingExtractor) and channel_conversion != np.ones(len(channel_conversion)):
-    #     temp_parent = temp_recording._parent_recording
-    #     channel_conversion = temp_parent.get_channel_gains()
-    #     channel_offset = recording._parent_recording.get_channel_offsets()
-    #     temp_recording = temp_parent
-
     unsigned_coercion = channel_offset / channel_conversion
     if not np.all([x.is_integer() for x in unsigned_coercion]):
         raise NotImplementedError(
@@ -674,8 +664,6 @@ def add_electrical_series(
             raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
     else:
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
-
-    # Not sure if recovering the gains from the parent recording should be done here AFTER the data is extracted.
 
     eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
     if not use_times:
