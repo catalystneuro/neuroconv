@@ -615,24 +615,23 @@ def add_electrical_series(
     # else:
     #     channel_conversion = recording.get_channel_gains()
     #     channel_offset = recording.get_channel_offsets()
-        
-    
+
     channel_conversion = recording.get_channel_gains()
     channel_offset = recording.get_channel_offsets()
-    temp_recording = recording 
+    temp_recording = recording
     while isinstance(temp_recording, se.SubRecordingExtractor):
         # If SubRecordingExtractor instance then it has a parent ercording
         parent_recording = temp_recording._parent_recording
         channel_conversion = parent_recording.get_channel_gains()
         channel_offset = parent_recording.get_channel_offsets()
-        
+
         # If gains / conversion appears is non default then keep the last
         default_channel_conversion = np.ones_like(channel_conversion)
         if np.any(channel_conversion != default_channel_conversion):
             break
         else:
             temp_recording = parent_recording
-        
+
     # temp_recording = recording
     # temp_parent = temp_recording._parent_recording
     # channel_conversion = temp_parent.get_channel_gains()
@@ -641,7 +640,7 @@ def add_electrical_series(
     #     temp_parent = temp_recording._parent_recording
     #     channel_conversion = temp_parent.get_channel_gains()
     #     channel_offset = recording._parent_recording.get_channel_offsets()
-    #     temp_recording = temp_parent 
+    #     temp_recording = temp_parent
 
     unsigned_coercion = channel_offset / channel_conversion
     if not np.all([x.is_integer() for x in unsigned_coercion]):
