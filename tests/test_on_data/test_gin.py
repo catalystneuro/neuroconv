@@ -151,29 +151,36 @@ class TestNwbConversions(unittest.TestCase):
             )
         )
 
-    # @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
-    # def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs):
-    #     nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+    @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
+    def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
-    #     class TestConverter(NWBConverter):
-    #         data_interface_classes = dict(TestRecording=data_interface)
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestRecording=data_interface)
 
-    #     converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
-    #     for interface_kwarg in interface_kwargs:
-    #         if interface_kwarg in ["file_path", "folder_path"]:
-    #             self.assertIn(
-    #                 member=interface_kwarg, container=converter.data_interface_objects["TestRecording"].source_data
-    #             )
-    #     converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
-    #     recording = converter.data_interface_objects["TestRecording"].recording_extractor
-    #     nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-    #     check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
-    #     check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
-    #     # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
-    #     # For GIN test data, sizes should be OK to load all into RAM even on CI
-    #     npt.assert_array_equal(
-    #         x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
-    #     )
+        converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
+        for interface_kwarg in interface_kwargs:
+            if interface_kwarg in ["file_path", "folder_path"]:
+                self.assertIn(
+                    member=interface_kwarg, container=converter.data_interface_objects["TestRecording"].source_data
+                )
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        recording = converter.data_interface_objects["TestRecording"].recording_extractor
+        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+        if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
+            nwb_recording.set_channel_offsets(
+                offsets=[
+                    nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
+                    for channel_id in nwb_recording.get_channel_ids()
+                ]
+            )
+        check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
+        check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
+        # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
+        # For GIN test data, sizes should be OK to load all into RAM even on CI
+        npt.assert_array_equal(
+            x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
+        )
 
     @parameterized.expand(
         input=[

@@ -432,8 +432,8 @@ class TestWriteElectrodes(unittest.TestCase):
             self.RX2.set_channel_property(chan_id2, "group_name", "M1")
             self.RX.set_channel_property(chan_id1, "group_name", "PMd")
             if no % 2 == 0:
-                self.RX2.set_channel_property(chan_id2, "prop2", chan_id2)
-                self.RX.set_channel_property(chan_id1, "prop2", chan_id1)
+                self.RX2.set_channel_property(chan_id2, "prop2", float(chan_id2))
+                self.RX.set_channel_property(chan_id1, "prop2", float(chan_id1))
                 self.RX2.set_channel_property(chan_id2, "prop3", str(chan_id2))
                 self.RX.set_channel_property(chan_id1, "prop3", str(chan_id1))
 
