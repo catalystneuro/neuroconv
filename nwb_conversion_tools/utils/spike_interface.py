@@ -607,8 +607,15 @@ def add_electrical_series(
     # channels gains - for RecordingExtractor, these are values to cast traces to uV.
     # For nwb, the conversions (gains) cast the data to Volts.
     # To get traces in Volts we take data*channel_conversion*conversion.
-    channel_conversion = recording.get_channel_gains()
-    channel_offset = recording.get_channel_offsets()
+    # If the recording is a sub-recording we recover the gains from the parent recording
+
+    if isinstance(recording, se.SubRecordingExtractor):
+        channel_conversion = recording._parent_recording.get_channel_gains()
+        channel_offset = recording._parent_recording.get_channel_offsets()
+    else:
+        channel_conversion = recording.get_channel_gains()
+        channel_offset = recording.get_channel_offsets()
+
     unsigned_coercion = channel_offset / channel_conversion
     if not np.all([x.is_integer() for x in unsigned_coercion]):
         raise NotImplementedError(
