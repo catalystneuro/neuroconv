@@ -649,6 +649,8 @@ def add_electrical_series(
     else:
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
 
+    # Not sure if recovering the gains from the parent recording should be done here AFTER the data is extracted.
+    
     eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
     if not use_times:
         eseries_kwargs.update(
