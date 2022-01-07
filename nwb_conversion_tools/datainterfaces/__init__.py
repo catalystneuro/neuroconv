@@ -44,6 +44,8 @@ from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 
 from .behavior.movie.moviedatainterface import MovieInterface
 
+from .icephys.abf.abf_neo_datainterface import AbfNeoDataInterface
+
 
 interface_list = [
     RecordingTutorialInterface,
@@ -79,4 +81,5 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     MovieInterface,
+    AbfNeoDataInterface
 ]

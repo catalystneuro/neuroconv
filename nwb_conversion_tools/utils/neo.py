@@ -62,6 +62,7 @@ def get_number_of_electrodes(neo_reader) -> int:
     Returns:
         int: number of electrodes
     """
+    # TODO - take in account the case with multiple streams.
     return len(neo_reader.header["signal_channels"])
 
 
