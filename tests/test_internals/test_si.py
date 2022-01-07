@@ -6,14 +6,16 @@ import numpy as np
 from datetime import datetime
 
 import spikeextractors as se
-from spikeextractors.testing import check_sortings_equal, check_dumping
-from spikeinterface.core.testing import check_recordings_equal
-from spikeinterface.core import create_recording_from_old_extractor
-from spikeinterface.extractors import read_nwb_recording
+from spikeextractors.testing import (
+    check_sortings_equal,
+    check_recordings_equal,
+    check_dumping,
+    check_recording_return_types,
+    get_default_nwbfile_metadata,
+)
 from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
-from nwb_conversion_tools.utils.conversion_tools import get_default_nwbfile_ecephys_metadata
 from nwb_conversion_tools.utils.spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from nwb_conversion_tools.utils.json_schema import FilePathType
 
@@ -105,19 +107,17 @@ def _create_example(seed):
 class TestExtractors(unittest.TestCase):
     def setUp(self):
         self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3, self.example_info = _create_example(seed=0)
-        self.RX = create_recording_from_old_extractor(self.RX)
-        self.RX2 = create_recording_from_old_extractor(self.RX2)
-        self.RX3 = create_recording_from_old_extractor(self.RX3)
-
         self.test_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
         shutil.rmtree(self.test_dir)
 
-    def check_si_roundtrip(self, path: FilePathType, return_scaled=True):
-        RX_nwb = read_nwb_recording(path)
-        check_recordings_equal(self.RX, RX_nwb, return_scaled=return_scaled)
+    def check_si_roundtrip(self, path: FilePathType):
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
 
     def _create_example(self, seed):
         channel_ids = [0, 1, 2, 3]
@@ -205,16 +205,20 @@ class TestExtractors(unittest.TestCase):
         path = self.test_dir + "/test.nwb"
 
         write_recording(self.RX, path)
-        RX_nwb = read_nwb_recording(path)
-        check_recordings_equal(self.RX, RX_nwb, return_scaled=False)
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
         del RX_nwb
 
         write_recording(recording=self.RX, save_path=path, overwrite=True)
-        RX_nwb = read_nwb_recording(path)
-        check_recordings_equal(self.RX, RX_nwb, return_scaled=False)
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
 
         # Writing multiple recordings using metadata
-        metadata = get_default_nwbfile_ecephys_metadata()
+        metadata = get_default_nwbfile_metadata()
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
             recording=self.RX,
@@ -238,8 +242,10 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_lfp",
         )
 
-        RX_nwb = read_nwb_recording(file_path=path_multi, electrical_series_name="raw_traces")
-        check_recordings_equal(self.RX, RX_nwb, return_scaled=False)
+        RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
         del RX_nwb
 
     def write_recording_compression(self):
@@ -258,7 +264,7 @@ class TestExtractors(unittest.TestCase):
             "Intended compression type does not match what was written! "
             f"(Out: {compression_out}, should be: {compression})",
         )
-        self.check_si_roundtrip(path=path, return_scaled=False)
+        self.check_si_roundtrip(path=path)
 
         write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
         with NWBHDF5IO(path=path, mode="r") as io:
@@ -270,7 +276,7 @@ class TestExtractors(unittest.TestCase):
             "Intended compression type does not match what was written! "
             f"(Out: {compression_out}, should be: {compression})",
         )
-        self.check_si_roundtrip(path=path, return_scaled=False)
+        self.check_si_roundtrip(path=path)
 
         compression = "lzf"
         write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
@@ -296,7 +302,7 @@ class TestExtractors(unittest.TestCase):
             "Intended compression type does not match what was written! "
             f"(Out: {compression_out}, should be: {compression})",
         )
-        self.check_si_roundtrip(path=path, return_scaled=False)
+        self.check_si_roundtrip(path=path)
 
     def test_write_recording_chunking(self):
         path = self.test_dir + "/test.nwb"
@@ -312,7 +318,7 @@ class TestExtractors(unittest.TestCase):
             "Intended chunk shape does not match what was written! "
             f"(Out: {chunks_out}, should be: {test_iterator.chunk_shape})",
         )
-        self.check_si_roundtrip(path=path, return_scaled=False)
+        self.check_si_roundtrip(path=path)
 
     def test_write_sorting(self):
         path = self.test_dir + "/test.nwb"

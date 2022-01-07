@@ -45,23 +45,6 @@ def get_default_nwbfile_metadata():
     return metadata
 
 
-def get_default_nwbfile_ecephys_metadata():
-    """Return structure with defaulted metadata values required for a NWBFile witth Ecephys."""
-    metadata = dict(
-        NWBFile=dict(
-            session_description="no description", session_start_time=datetime(1970, 1, 1), identifier=str(uuid.uuid4())
-        ),
-        Ecephys=dict(
-            Device=[dict(name="Device_ecephys", description="no description")],
-            ElectrodeGroup=[],
-            ElectricalSeries_raw=dict(name="raw_traces", description="those are the raw traces"),
-            ElectricalSeries_processed=dict(name="processed_traces", description="those are the processed traces"),
-            ElectricalSeries_lfp=dict(name="lfp_traces", description="those are the lfp traces"),
-        ),
-    )
-    return metadata
-
-
 def make_nwbfile_from_metadata(metadata: dict):
     """Make NWBFile from available metadata."""
     metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
