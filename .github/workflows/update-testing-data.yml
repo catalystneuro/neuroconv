@@ -41,5 +41,4 @@ jobs:
           datalad get -r ./spikegadgets/
           datalad get -r ./spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/
           datalad get -r ./phy/phy_example_0/
-          datalad get -r ./blackrock/
           datalad get -r ./axona/
