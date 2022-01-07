@@ -214,13 +214,10 @@ class TestNwbConversions(unittest.TestCase):
     @parameterized.expand(
         input=[
             param(
-                name='complete',
+                name="complete",
                 conversion_options=None,
             ),
-            param(
-                name='stub',
-                conversion_options=dict(TestRecording=dict(stub_test=True))
-            ),
+            param(name="stub", conversion_options=dict(TestRecording=dict(stub_test=True))),
         ]
     )
     def test_neuroscope_gains(self, name, conversion_options):
@@ -242,7 +239,7 @@ class TestNwbConversions(unittest.TestCase):
         output_conversion = nwbfile_in.acquisition["ElectricalSeries_raw"].conversion
         output_gain = output_conversion * 1e6
         assert input_gain == pytest.approx(output_gain)
-        
+
         # round-trip test with nwb extractor
         nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
         nwb_recording_gains = nwb_recording.get_channel_gains()
