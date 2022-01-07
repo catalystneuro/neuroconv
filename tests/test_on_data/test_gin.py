@@ -225,7 +225,7 @@ class TestNwbConversions(unittest.TestCase):
         data_interface = NeuroscopeRecordingInterface
         interface_kwargs = dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"), gain=input_gain)
 
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}-{name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestRecording=data_interface)
