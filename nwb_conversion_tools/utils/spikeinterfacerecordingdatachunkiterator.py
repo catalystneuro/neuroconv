@@ -1,9 +1,13 @@
 """Authors: Cody Baker and Saksham Sharda."""
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Union
 
 from spikeinterface import BaseRecording
+from spikeinterface.core.old_api_utils import OldToNewRecording
+from spikeextractors import RecordingExtractor
 
 from .genericdatachunkiterator import GenericDataChunkIterator
+
+SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
@@ -11,7 +15,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
     def __init__(
         self,
-        recording: BaseRecording,
+        recording: SpikeInterfaceRecording,
         segment_index: int = 0,
         return_scaled: bool = False,
         buffer_gb: float = None,
@@ -24,8 +28,8 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
         Parameters
         ----------
-        recording : BaseRecording
-            The BaseRecording object (from new spikeinterface>=0.90) which handles the data access.
+        recording : SpikeInterfaceRecording
+            The SpikeInterfaceRecording object (RecordingExtractor or BaseRecording) which handles the data access.
         segment_index : int, optional
             The recording segment to iterate on.
             Defaults to 0.
@@ -53,7 +57,10 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             Cannot be set if `chunk_mb` is also specified.
             The default is None.
         """
-        self.recording = recording
+        if isinstance(recording, RecordingExtractor):
+            self.recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        else:
+            self.recording = recording
         self.segment_index = segment_index
         self.return_scaled = return_scaled
         self.channel_ids = recording.get_channel_ids()
