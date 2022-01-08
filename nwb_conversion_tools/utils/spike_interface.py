@@ -609,13 +609,6 @@ def add_electrical_series(
     # To get traces in Volts we take data*channel_conversion*conversion.
     # If the recording is a sub-recording we recover the gains from the parent recording
 
-    # if isinstance(recording, se.SubRecordingExtractor):
-    #     channel_conversion = recording._parent_recording.get_channel_gains()
-    #     channel_offset = recording._parent_recording.get_channel_offsets()
-    # else:
-    #     channel_conversion = recording.get_channel_gains()
-    #     channel_offset = recording.get_channel_offsets()
-
     channel_conversion = recording.get_channel_gains()
     channel_offset = recording.get_channel_offsets()
     temp_recording = recording
