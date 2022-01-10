@@ -631,7 +631,6 @@ def add_electrical_series(
         else:
             temp_recording = parent_recording
 
-        unsigned_coercion = unsigned_coercion.astype(int)
     if write_scaled or channel_conversion is None:
         eseries_kwargs.update(conversion=1e-6)
     else:
@@ -684,6 +683,49 @@ def add_electrical_series(
         ecephys_mod.data_interfaces["Processed"].add_electrical_series(es)
     elif write_as == "lfp":
         ecephys_mod.data_interfaces["LFP"].add_electrical_series(es)
+
+
+def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
+    """
+    Auxiliary static method for nwbextractor.
+
+    Adds epochs from recording object to nwbfile object.
+
+    Parameters
+    ----------
+    recording: RecordingExtractor
+        Epochs are supported only by spikeinterface/spikeextractors RecordingExtractor objects; does not support
+        spikeinterface/spikeinterface BaseRecording objects.
+    nwbfile: NWBFile
+        nwb file to which the recording information is to be added
+    metadata: dict
+        metadata info for constructing the nwb file (optional).
+    """
+    assert isinstance(
+        recording, RecordingExtractor
+    ), "'recording' should be a spikeinterface/spikeextractors RecordingExtractor object!"
+    if nwbfile is not None:
+        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    for epoch_name in recording.get_epoch_names():
+        epoch = recording.get_epoch_info(epoch_name)
+        if nwbfile.epochs is None:
+            nwbfile.add_epoch(
+                start_time=recording.frame_to_time(epoch["start_frame"]),
+                stop_time=recording.frame_to_time(epoch["end_frame"] - 1),
+                tags=epoch_name,
+            )
+        else:
+            if [epoch_name] in nwbfile.epochs["tags"][:]:
+                ind = nwbfile.epochs["tags"][:].index([epoch_name])
+                nwbfile.epochs["start_time"].data[ind] = recording.frame_to_time(epoch["start_frame"])
+                nwbfile.epochs["stop_time"].data[ind] = recording.frame_to_time(epoch["end_frame"])
+            else:
+                nwbfile.add_epoch(
+                    start_time=recording.frame_to_time(epoch["start_frame"]),
+                    stop_time=recording.frame_to_time(epoch["end_frame"]),
+                    tags=epoch_name,
+                )
 
 
 def add_all_to_nwbfile(
