@@ -10,7 +10,7 @@ from warnings import warn
 from collections import defaultdict
 
 import pynwb
-from spikeextractors import RecordingExtractor, SortingExtractor
+from spikeextractors import RecordingExtractor, SortingExtractor, SubRecordingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -585,8 +585,25 @@ def add_electrical_series(
     # channels gains - for RecordingExtractor, these are values to cast traces to uV.
     # For nwb, the conversions (gains) cast the data to Volts.
     # To get traces in Volts we take data*channel_conversion*conversion.
+    # If the object is a SubRecording, we recover the gains either the first parent with non-default gains, or the
+    # highest level parent.
+
     channel_conversion = recording.get_channel_gains()
     channel_offset = recording.get_channel_offsets()
+    temp_recording = recording
+    while isinstance(temp_recording, SubRecordingExtractor):
+        # If SubRecordingExtractor instance then it has a parent ercording
+        parent_recording = temp_recording._parent_recording
+        channel_conversion = parent_recording.get_channel_gains()
+        channel_offset = parent_recording.get_channel_offsets()
+
+        # If gains / conversion appears is non default then keep the last
+        default_channel_conversion = np.ones_like(channel_conversion)
+        if np.any(channel_conversion != default_channel_conversion):
+            break
+        else:
+            temp_recording = parent_recording
+
     unsigned_coercion = channel_offset / channel_conversion
     if not np.all([x.is_integer() for x in unsigned_coercion]):
         raise NotImplementedError(
