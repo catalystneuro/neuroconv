@@ -438,6 +438,7 @@ def add_electrical_series(
     recording: RecordingExtractor,
     nwbfile=None,
     metadata: dict = None,
+    starting_time: Optional[float] = None,
     use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
@@ -464,6 +465,9 @@ def add_electrical_series(
                 name=my_name,
                 description=my_description
             )
+    starting_time: float (optional)
+        Sets the starting time of the ElectricalSeries to a manually set value.
+        Increments timestamps if use_times is True.
     use_times: bool (optional, defaults to False)
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -638,11 +642,21 @@ def add_electrical_series(
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
 
     eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
+    if not use_times and starting_time is None:
+        eseries_kwargs.update(starting_time=float(recording.frame_to_time(0)))
+    elif not use_times and starting_time is not None:
+        eseries_kwargs.update(starting_time=starting_time)
     if not use_times:
+        eseries_kwargs.update(rate=float(recording.get_sampling_frequency()))
+    elif use_times and starting_time is not None:
         eseries_kwargs.update(
-            starting_time=float(recording.frame_to_time(0)), rate=float(recording.get_sampling_frequency())
+            timestamps=H5DataIO(
+                data=starting_time + recording.frame_to_time(np.arange(recording.get_num_frames())),
+                compression=compression,
+                compression_opts=compression_opts,
+            )
         )
-    else:
+    elif use_times and starting_time is None:
         eseries_kwargs.update(
             timestamps=H5DataIO(
                 data=recording.frame_to_time(np.arange(recording.get_num_frames())),
@@ -701,6 +715,7 @@ def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = Non
 def add_all_to_nwbfile(
     recording: RecordingExtractor,
     nwbfile=None,
+    starting_time: Optional[float] = None,
     use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
@@ -721,6 +736,9 @@ def add_all_to_nwbfile(
     recording: SpikeInterfaceRecording
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
+    starting_time: float (optional)
+        Sets the starting time of the ElectricalSeries to a manually set value.
+        Increments timestamps if use_times is True.
     use_times: bool
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -769,6 +787,7 @@ def add_all_to_nwbfile(
     add_electrical_series(
         recording=recording,
         nwbfile=nwbfile,
+        starting_time=starting_time,
         use_times=use_times,
         metadata=metadata,
         write_as=write_as,
@@ -787,6 +806,7 @@ def write_recording(
     save_path: OptionalFilePathType = None,
     overwrite: bool = False,
     nwbfile=None,
+    starting_time: Optional[float] = None,
     use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
@@ -815,6 +835,9 @@ def write_recording(
             my_recording_extractor, my_nwbfile
         )
         will result in the appropriate changes to the my_nwbfile object.
+    starting_time: float (optional)
+        Sets the starting time of the ElectricalSeries to a manually set value.
+        Increments timestamps if use_times is True.
     use_times: bool
         If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
         the sampling rate is used.
@@ -916,6 +939,7 @@ def write_recording(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
+                starting_time=starting_time,
                 use_times=use_times,
                 write_as=write_as,
                 es_key=es_key,
@@ -930,6 +954,7 @@ def write_recording(
         add_all_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
+            starting_time=starting_time,
             use_times=use_times,
             metadata=metadata,
             write_as=write_as,
