@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from warnings import warn
 
-from pynwb import NWBFile
+from pynwb import NWBFile, NWBHDF5IO
 from pynwb.file import Subject
 
 from .json_schema import dict_deep_update
@@ -65,3 +65,50 @@ def check_regular_timestamps(ts):
     time_tol_decimals = 9
     uniq_diff_ts = np.unique(np.diff(ts).round(decimals=time_tol_decimals))
     return len(uniq_diff_ts) == 1
+
+
+def check_sorted(data):
+    """Check whether the specified data is in sorted order."""
+    dd = data[:]
+    if not np.all(dd == np.sort(dd)):
+        print(data.name + " is not ordered")
+
+
+def check_binary(data):
+    """Check whether the data is binary."""
+    if len(np.unique(data[:])) == 2:
+        print(data.name + " is binary. Consider making it boolean.")
+
+
+def check_time_dim(time_series):
+    """Check whether the time series is properly oriented for NWB."""
+    if hasattr(time_series, "timestamps") and time_series.timestamps is not None:
+        if not len(time_series.data) == len(time_series.timestamps):
+            print(time_series.name + "data and timestamp length mismatch")
+    else:
+        shape = time_series.data.shape
+        if len(shape) > 1:
+            if not shape[0] == max(shape):
+                print(time_series.name + " time is not the longest dimension")
+
+
+def check_constant_rate(time_series):
+    """Check whether the time series has a constant rate."""
+    if hasattr(time_series, "timestamps") and time_series.timestamps is not None:
+        if check_regular_timestamps(ts=time_series):
+            print(time_series.name + " sampling rate is constant. " "Consider using rate instead of timestamps")
+
+
+def auto_qc(fpath):
+    """Perform an automatic quality check on the NWBFile."""
+    with NWBHDF5IO(path=fpath, mode="r", load_namespaces=True) as io:
+        nwb = io.read()
+
+        # trials
+        print("trials:")
+        check_sorted(nwb.trials["start_time"])
+        check_sorted(nwb.trials["stop_time"])
+
+        for col in nwb.trials.columns:
+            if col.data.dtype == np.dtype("O"):
+                check_binary(col)
