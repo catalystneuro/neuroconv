@@ -1,7 +1,7 @@
 pynwb==2.0.0
 tqdm==4.60.0
 natsort==7.1.1
-numpy==1.19.3
+numpy==1.21.0
 pandas==1.2.3
 scipy==1.4.1
 h5py==2.10.0
