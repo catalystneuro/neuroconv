@@ -671,19 +671,21 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=float(checked_recording.get_times(segment_index=segment_index)[0]))
     elif not use_times and starting_time is not None:
         eseries_kwargs.update(starting_time=starting_time)
-        
+
     if not use_times:
         eseries_kwargs.update(rate=float(recording.get_sampling_frequency()))
     elif not use_times and starting_time is not None:
         eseries_kwargs.update(rate=float(checked_recording.get_sampling_frequency()))
     elif use_times and starting_time is not None:
+        eseries_kwargs.update(
             timestamps=H5DataIO(
                 data=starting_time + checked_recording.get_times()[
                     np.arange(checked_recording.get_num_samples(segment_index=segment_index))
-                ]
+                ],
                 compression=compression,
                 compression_opts=compression_opts,
             )
+        )
     elif use_times and starting_time is None:
         eseries_kwargs.update(
             timestamps=H5DataIO(
