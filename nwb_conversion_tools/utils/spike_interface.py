@@ -10,7 +10,7 @@ from warnings import warn
 from collections import defaultdict
 
 import pynwb
-from spikeextractors import RecordingExtractor, SortingExtractor
+from spikeextractors import RecordingExtractor, SortingExtractor, SubRecordingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -588,12 +588,13 @@ def add_electrical_series(
     # channels gains - for RecordingExtractor, these are values to cast traces to uV.
     # For nwb, the conversions (gains) cast the data to Volts.
     # To get traces in Volts we take data*channel_conversion*conversion.
-    # If the recording is a sub-recording we recover the gains from the parent recording
+    # If the object is a SubRecording, we recover the gains either the first parent with non-default gains, or the
+    # highest level parent.
 
     channel_conversion = recording.get_channel_gains()
     channel_offset = recording.get_channel_offsets()
     temp_recording = recording
-    while isinstance(temp_recording, se.SubRecordingExtractor):
+    while isinstance(temp_recording, SubRecordingExtractor):
         # If SubRecordingExtractor instance then it has a parent ercording
         parent_recording = temp_recording._parent_recording
         channel_conversion = parent_recording.get_channel_gains()
