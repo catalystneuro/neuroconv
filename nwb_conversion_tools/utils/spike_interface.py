@@ -520,7 +520,27 @@ def add_electrical_series(
     whenever possible.
     """
     if isinstance(recording, RecordingExtractor):
+        # If the object is a SubRecording, we recover the gains either the first parent with non-default gains, or the
+        # highest level parent.
+        channel_conversion = recording.get_channel_gains()
+        default_channel_conversion = np.ones_like(channel_conversion)
+        channel_offset = recording.get_channel_offsets()
+        temp_recording = recording
+        while isinstance(temp_recording, SubRecordingExtractor):
+            parent_recording = temp_recording._parent_recording
+            channel_conversion = parent_recording.get_channel_gains()
+            channel_offset = parent_recording.get_channel_offsets()
+
+            default_channel_conversion = np.ones_like(channel_conversion)
+            if np.any(channel_conversion != default_channel_conversion):
+                break
+            else:
+                temp_recording = parent_recording
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        if np.any(channel_conversion != default_channel_conversion):
+            checked_recording.set_channel_gains(gains=channel_conversion)
+        if np.any(channel_offset != np.zeros_like(channel_offset)):
+            checked_recording.set_channel_offsets(offsets=channel_offset)
     else:
         checked_recording = recording
     if nwbfile is not None:
@@ -612,25 +632,8 @@ def add_electrical_series(
     # channels gains - for RecordingExtractor, these are values to cast traces to uV.
     # For nwb, the conversions (gains) cast the data to Volts.
     # To get traces in Volts we take data*channel_conversion*conversion.
-    # If the object is a SubRecording, we recover the gains either the first parent with non-default gains, or the
-    # highest level parent.
-
-    channel_conversion = recording.get_channel_gains()
-    channel_offset = recording.get_channel_offsets()
-    temp_recording = recording
-    while isinstance(temp_recording, SubRecordingExtractor):
-        # If SubRecordingExtractor instance then it has a parent ercording
-        parent_recording = temp_recording._parent_recording
-        channel_conversion = parent_recording.get_channel_gains()
-        channel_offset = parent_recording.get_channel_offsets()
-
-        # If gains / conversion appears is non default then keep the last
-        default_channel_conversion = np.ones_like(channel_conversion)
-        if np.any(channel_conversion != default_channel_conversion):
-            break
-        else:
-            temp_recording = parent_recording
-
+    channel_conversion = checked_recording.get_channel_gains()
+    channel_offset = checked_recording.get_channel_offsets()
     if write_scaled or channel_conversion is None:
         eseries_kwargs.update(conversion=1e-6)
     else:
@@ -786,22 +789,18 @@ def add_all_to_nwbfile(
                 Should be below 1 MB. Automatically calculates suitable chunk shape.
         If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
-    if isinstance(recording, RecordingExtractor):
-        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
-    else:
-        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    add_devices(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrode_groups(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
+    add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes(
-        recording=checked_recording,
+        recording=recording,
         nwbfile=nwbfile,
         metadata=metadata,
     )
     add_electrical_series(
-        recording=checked_recording,
+        recording=recording,
         nwbfile=nwbfile,
         use_times=use_times,
         metadata=metadata,
@@ -912,10 +911,6 @@ def write_recording(
                 Should be below 1 MB. Automatically calculates suitable chunk shape.
         If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
-    if isinstance(recording, RecordingExtractor):
-        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
-    else:
-        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -925,10 +920,10 @@ def write_recording(
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
 
-    if hasattr(checked_recording, "nwb_metadata"):
-        metadata = dict_deep_update(checked_recording.nwb_metadata, metadata)
+    if hasattr(recording, "nwb_metadata"):
+        metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
-        metadata = get_nwb_metadata(recording=checked_recording)
+        metadata = get_nwb_metadata(recording=recording)
 
     if nwbfile is None:
         if Path(save_path).is_file() and not overwrite:
@@ -950,7 +945,7 @@ def write_recording(
                 nwbfile = pynwb.NWBFile(**nwbfile_kwargs)
 
             add_all_to_nwbfile(
-                recording=checked_recording,
+                recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
                 use_times=use_times,
@@ -965,7 +960,7 @@ def write_recording(
             io.write(nwbfile)
     else:
         add_all_to_nwbfile(
-            recording=checked_recording,
+            recording=recording,
             nwbfile=nwbfile,
             use_times=use_times,
             metadata=metadata,
