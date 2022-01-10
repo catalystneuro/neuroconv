@@ -251,6 +251,26 @@ class TestNwbConversions(unittest.TestCase):
         # A subrecording extractor is a very simple class, input output (you can use the recorder above 'recording in 229')
         # [The two things that you can do is to subest time [that is frames] or channels so maybe a combination of those uses.
 
+    def test_neuroscope_starting_time(self):
+        nwbfile_path = str(self.savedir / "testing_start_time.nwb")
+
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
+
+        converter = TestConverter(
+            source_data=dict(TestRecording=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")))
+        )
+        starting_time = 123.0
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=dict(TestRecording=dict(starting_time=starting_time)),
+        )
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeries_raw"].starting_time)
+
 
 if __name__ == "__main__":
     unittest.main()
