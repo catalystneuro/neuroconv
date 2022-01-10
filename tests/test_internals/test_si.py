@@ -53,7 +53,9 @@ def _create_example(seed):
     SX.add_unit(unit_id=1, times=train1)
     SX.add_unit(unit_id=2, times=np.sort(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times[1])))
     SX.add_unit(unit_id=3, times=np.sort(np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times[2])))
-    SX.set_unit_property(unit_id=1, property_name="stability", value=80.0)
+    SX.set_unit_property(unit_id=1, property_name="int_prop", value=80)
+    SX.set_unit_property(unit_id=1, property_name="float_prop", value=80.0)
+    SX.set_unit_property(unit_id=1, property_name="str_prop", value="test_val")
     SX.add_epoch("epoch1", 0, 10)
     SX.add_epoch("epoch2", 10, 20)
 
@@ -64,7 +66,7 @@ def _create_example(seed):
     SX2.add_unit(unit_id=3, times=train2)
     SX2.add_unit(unit_id=4, times=np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times2[1]))
     SX2.add_unit(unit_id=5, times=np.random.RandomState(seed=seed).uniform(0, num_frames, spike_times2[2]))
-    SX2.set_unit_property(unit_id=4, property_name="stability", value=80.0)
+    SX2.set_unit_property(unit_id=4, property_name="stability", value=80)
     SX2.set_unit_spike_features(unit_id=3, feature_name="widths", value=np.asarray([3] * spike_times2[0]))
     SX2.copy_epochs(SX)
     SX2.copy_times(RX2)
@@ -93,7 +95,7 @@ def _create_example(seed):
         train2=train2,
         train3=train3,
         features3=features3,
-        unit_prop=80.0,
+        unit_prop=80,
         channel_prop=(0, 0),
         ttls=ttls,
         epochs_info=((0, 10), (10, 20)),
@@ -101,7 +103,7 @@ def _create_example(seed):
         times=times,
     )
 
-    return (RX, RX2, RX3, SX, SX2, SX3, example_info)
+    return RX, RX2, RX3, SX, SX2, SX3, example_info
 
 
 class TestExtractors(unittest.TestCase):
@@ -279,6 +281,12 @@ class TestExtractors(unittest.TestCase):
             units_1_spike_times = nwbfile.units.spike_times[:]
             units_2_id = nwbfile.processing["ecephys"]["units"].id[:]
             units_2_spike_times = nwbfile.processing["ecephys"]["units"].spike_times[:]
+
+            # check that missing props are filled correctly
+            np.testing.assert_array_equal(nwbfile.units["float_prop"][:], [80.0, np.nan, np.nan])
+            np.testing.assert_array_equal(nwbfile.units["int_prop"][:], [80.0, np.nan, np.nan])
+            np.testing.assert_array_equal(nwbfile.units["str_prop"][:], ["test_val", "", ""])
+
         np.testing.assert_array_equal(
             x=units_1_id,
             y=units_2_id,
