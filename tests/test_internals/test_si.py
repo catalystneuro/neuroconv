@@ -283,9 +283,9 @@ class TestExtractors(unittest.TestCase):
             units_2_spike_times = nwbfile.processing["ecephys"]["units"].spike_times[:]
 
             # check that missing props are filled correctly
-            np.testing.assert_array_equal(nwbfile.units["float_prop"], [80.0, np.nan, np.nan])
-            np.testing.assert_array_equal(nwbfile.units["int_prop"], [80.0, np.nan, np.nan])
-            np.testing.assert_array_equal(nwbfile.units["str_prop"], ["test_val", "", ""])
+            np.testing.assert_array_equal(nwbfile.units["float_prop"][:], [80.0, np.nan, np.nan])
+            np.testing.assert_array_equal(nwbfile.units["int_prop"][:], [80.0, np.nan, np.nan])
+            np.testing.assert_array_equal(nwbfile.units["str_prop"][:], ["test_val", "", ""])
 
         np.testing.assert_array_equal(
             x=units_1_id,
