@@ -100,6 +100,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         nwbfile: NWBFile,
         metadata: dict = None,
         stub_test: bool = False,
+        starting_time: Optional[float] = None,
         use_times: bool = False,
         save_path: OptionalFilePathType = None,
         overwrite: bool = False,
@@ -121,6 +122,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             metadata info for constructing the nwb file (optional).
             Should be of the format
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
+        starting_time: float (optional)
+            Sets the starting time of the ElectricalSeries to a manually set value.
+            Increments timestamps if use_times is True.
         use_times: bool
             If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
             the sampling rate is used.
@@ -162,6 +166,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
+            starting_time=starting_time,
             use_times=use_times,
             write_as=write_as,
             es_key=es_key,
