@@ -836,6 +836,8 @@ def add_all_to_nwbfile(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
+    if isinstance(recording, RecordingExtractor):
+        add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
 def write_recording(
