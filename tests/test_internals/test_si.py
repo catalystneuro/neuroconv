@@ -16,7 +16,7 @@ from spikeextractors.testing import (
 from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
-from nwb_conversion_tools.utils.recordingextractordatachunkiterator import RecordingExtractorDataChunkIterator
+from nwb_conversion_tools.utils.spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from nwb_conversion_tools.utils.json_schema import FilePathType
 
 
@@ -231,7 +231,7 @@ class TestExtractors(unittest.TestCase):
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             chunks_out = nwbfile.acquisition["ElectricalSeries_raw"].data.chunks
-        test_iterator = RecordingExtractorDataChunkIterator(recording=self.RX)
+        test_iterator = SpikeInterfaceRecordingDataChunkIterator(recording=self.RX)
         self.assertEqual(
             chunks_out,
             test_iterator.chunk_shape,
@@ -440,8 +440,8 @@ class TestWriteElectrodes(unittest.TestCase):
             self.RX2.set_channel_property(chan_id2, "group_name", "M1")
             self.RX.set_channel_property(chan_id1, "group_name", "PMd")
             if no % 2 == 0:
-                self.RX2.set_channel_property(chan_id2, "prop2", chan_id2)
-                self.RX.set_channel_property(chan_id1, "prop2", chan_id1)
+                self.RX2.set_channel_property(chan_id2, "prop2", float(chan_id2))
+                self.RX.set_channel_property(chan_id1, "prop2", float(chan_id1))
                 self.RX2.set_channel_property(chan_id2, "prop3", str(chan_id2))
                 self.RX.set_channel_property(chan_id1, "prop3", str(chan_id1))
 

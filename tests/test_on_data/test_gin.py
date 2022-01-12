@@ -169,6 +169,13 @@ class TestNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
         nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+        if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
+            nwb_recording.set_channel_offsets(
+                offsets=[
+                    nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
+                    for channel_id in nwb_recording.get_channel_ids()
+                ]
+            )
         check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
         check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
         # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
