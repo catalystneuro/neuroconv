@@ -136,6 +136,16 @@ class TestExtractors(unittest.TestCase):
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
+        
+        # Test write_electrical_series=False
+        write_recording(recording=self.RX, save_path=path, overwrite=True, write_electrical_series=False)
+        with NWBHDF5IO(path, "r") as io:
+            nwbfile = io.read()
+            assert len(nwbfile.acquisition) == 0
+            assert len(nwbfile.devices) == 1
+            assert len(nwbfile.electrode_groups) == 1
+            assert len(nwbfile.electrodes) == self.RX.get_num_channels()
+
 
         # Writing multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()

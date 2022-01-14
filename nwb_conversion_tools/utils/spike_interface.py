@@ -264,7 +264,7 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
         Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
         whenever possible.
         If 'my_name' is set to one of the required fields for nwbfile
-        electrodes (id, x, y, z, imp, loccation, filtering, group_name),
+        electrodes (id, x, y, z, imp, location, filtering, group_name),
         then the metadata will override their default values.
         Setting 'my_name' to metadata field 'group' is not supported as the linking to
         nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
@@ -748,6 +748,47 @@ def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = Non
                     stop_time=recording.frame_to_time(epoch["end_frame"]),
                     tags=epoch_name,
                 )
+                
+                
+def add_device_electrode_info(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
+    """
+    Adds device, electrode_groups, and electrodes info to the nwbfile
+
+    Parameters
+    ----------
+    recording: SpikeInterfaceRecording
+    nwbfile: NWBFile
+        nwb file to which the recording information is to be added
+    metadata: dict
+        metadata info for constructing the nwb file (optional).
+        Should be of the format
+            metadata['Ecephys']['Electrodes'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+        Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
+        properties in the RecordingExtractor object.
+        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
+        whenever possible.
+        If 'my_name' is set to one of the required fields for nwbfile
+        electrodes (id, x, y, z, imp, location, filtering, group_name),
+        then the metadata will override their default values.
+        Setting 'my_name' to metadata field 'group' is not supported as the linking to
+        nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
+        If no group information is passed via metadata, automatic linking to existing electrode groups,
+        possibly including the default, will occur.
+    """
+    add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrode_groups(recording=recording,
+                         nwbfile=nwbfile, metadata=metadata)
+    add_electrodes(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+    )
 
 
 def add_all_to_nwbfile(
@@ -819,13 +860,8 @@ def add_all_to_nwbfile(
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrodes(
-        recording=recording,
-        nwbfile=nwbfile,
-        metadata=metadata,
-    )
+    add_device_electrode_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    
     if write_electrical_series:
         add_electrical_series(
             recording=recording,
