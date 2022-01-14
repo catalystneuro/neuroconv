@@ -748,8 +748,8 @@ def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = Non
                     stop_time=recording.frame_to_time(epoch["end_frame"]),
                     tags=epoch_name,
                 )
-                
-                
+
+
 def add_device_electrode_info(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
     """
     Adds device, electrode_groups, and electrodes info to the nwbfile
@@ -782,8 +782,7 @@ def add_device_electrode_info(recording: RecordingExtractor, nwbfile=None, metad
         possibly including the default, will occur.
     """
     add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrode_groups(recording=recording,
-                         nwbfile=nwbfile, metadata=metadata)
+    add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes(
         recording=recording,
         nwbfile=nwbfile,
@@ -861,7 +860,7 @@ def add_all_to_nwbfile(
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     add_device_electrode_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    
+
     if write_electrical_series:
         add_electrical_series(
             recording=recording,
