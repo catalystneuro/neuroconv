@@ -1,8 +1,10 @@
 import tempfile
 import unittest
 from pathlib import Path
-import numpy.testing as npt
 import os
+
+import numpy as np
+import numpy.testing as npt
 
 import pytest
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor
@@ -167,6 +169,13 @@ class TestNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
         nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+        if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
+            nwb_recording.set_channel_offsets(
+                offsets=[
+                    nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
+                    for channel_id in nwb_recording.get_channel_ids()
+                ]
+            )
         check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
         check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
         # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
@@ -208,6 +217,66 @@ class TestNwbConversions(unittest.TestCase):
             sorting.set_sampling_frequency(sf)
         nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
         check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
+
+    @parameterized.expand(
+        input=[
+            param(
+                name="complete",
+                conversion_options=None,
+            ),
+            param(name="stub", conversion_options=dict(TestRecording=dict(stub_test=True))),
+        ]
+    )
+    def test_neuroscope_gains(self, name, conversion_options):
+        input_gain = 2.0
+        data_interface = NeuroscopeRecordingInterface
+        interface_kwargs = dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"), gain=input_gain)
+
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}-{name}.nwb")
+
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestRecording=data_interface)
+
+        converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_options)
+
+        # nwb file check-test
+        io = NWBHDF5IO(nwbfile_path, "r")
+        nwbfile_in = io.read()
+        output_conversion = nwbfile_in.acquisition["ElectricalSeries_raw"].conversion
+        output_gain = output_conversion * 1e6
+        assert input_gain == pytest.approx(output_gain)
+
+        # round-trip test with nwb extractor
+        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+        nwb_recording_gains = nwb_recording.get_channel_gains()
+        npt.assert_almost_equal(input_gain * np.ones_like(nwb_recording_gains), nwb_recording_gains)
+
+        # Other conditions, how this should interact with some intentional uses of subrecording extractor [we are not using stub_test]
+        # There should be a stub_test=True test.
+
+        # A subrecording extractor is a very simple class, input output (you can use the recorder above 'recording in 229')
+        # [The two things that you can do is to subest time [that is frames] or channels so maybe a combination of those uses.
+
+    def test_neuroscope_starting_time(self):
+        nwbfile_path = str(self.savedir / "testing_start_time.nwb")
+
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
+
+        converter = TestConverter(
+            source_data=dict(TestRecording=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")))
+        )
+        starting_time = 123.0
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=dict(TestRecording=dict(starting_time=starting_time)),
+        )
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeries_raw"].starting_time)
 
 
 if __name__ == "__main__":
