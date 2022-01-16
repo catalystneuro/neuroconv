@@ -1072,8 +1072,7 @@ def add_units(
     if isinstance(sorting, SortingExtractor):
         fs = sorting.get_sampling_frequency()
         if fs is None:
-            raise ValueError(
-                "Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
+            raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
     else:
         checked_sorting = sorting
@@ -1133,8 +1132,7 @@ def add_units(
     for i, unit_id in enumerate(unit_ids):
         if use_times:
             warnings.warn(
-                "'use_times' is not supported yet by the new SI API. "
-                "Computing spike times using sampling frequency"
+                "'use_times' is not supported yet by the new SI API. " "Computing spike times using sampling frequency"
             )
         spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
 
