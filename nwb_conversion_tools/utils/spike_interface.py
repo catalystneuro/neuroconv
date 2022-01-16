@@ -9,9 +9,11 @@ from typing import Union, Optional, List
 from warnings import warn
 from collections import defaultdict
 
+from numpy.core.fromnumeric import sort
+
 import pynwb
 from spikeinterface import BaseRecording
-from spikeinterface.core.old_api_utils import OldToNewRecording
+from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 from spikeextractors import RecordingExtractor, SortingExtractor, SubRecordingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
@@ -1019,7 +1021,7 @@ def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
         return units_table["spike_times_index"].data[index] - units_table["spike_times_index"].data[index - 1]
 
 
-def write_units(
+def add_units(
     sorting: SortingExtractor,
     nwbfile: pynwb.NWBFile,
     property_descriptions: Optional[dict] = None,
@@ -1067,8 +1069,16 @@ def write_units(
     units_description : str (optional)
         Text description of the sorting table; recommended to included parameters of sorting method, curation, etc.
     """
-    unit_ids = sorting.get_unit_ids()
-    fs = sorting.get_sampling_frequency()
+    if isinstance(sorting, SortingExtractor):
+        fs = sorting.get_sampling_frequency()
+        if fs is None:
+            raise ValueError(
+                "Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
+        checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
+    else:
+        checked_sorting = sorting
+    unit_ids = checked_sorting.get_unit_ids()
+    fs = checked_sorting.get_sampling_frequency()
     if fs is None:
         raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
     assert write_as in [
@@ -1079,10 +1089,8 @@ def write_units(
         assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
 
     all_properties = set()
-    all_features = set()
     for unit_id in unit_ids:
         all_properties.update(sorting.get_unit_property_names(unit_id))
-        all_features.update(sorting.get_unit_spike_feature_names(unit_id))
 
     default_descriptions = dict(
         isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
@@ -1102,39 +1110,11 @@ def write_units(
         property_descriptions = dict(default_descriptions, **property_descriptions)
     if skip_properties is None:
         skip_properties = []
-    if skip_features is None:
-        skip_features = []
 
     units_table = pynwb.misc.Units(name=units_name, description=units_description)
 
-    # Check that array properties have the same shape across units
-    property_shapes = dict()
-    for pr in all_properties:
-        shapes = []
-        for unit_id in unit_ids:
-            if pr in sorting.get_unit_property_names(unit_id):
-                prop_value = sorting.get_unit_property(unit_id, pr)
-                if isinstance(prop_value, (int, np.integer, float, str, bool)):
-                    shapes.append(1)
-                elif isinstance(prop_value, (list, np.ndarray)):
-                    if np.array(prop_value).ndim == 1:
-                        shapes.append(len(prop_value))
-                    else:
-                        shapes.append(np.array(prop_value).shape)
-                elif isinstance(prop_value, dict):
-                    print(f"Skipping property '{pr}' because dictionaries are not supported.")
-                    skip_properties.append(pr)
-                    break
-            else:
-                shapes.append(np.nan)
-        property_shapes[pr] = shapes
-
-    for pr in property_shapes.keys():
-        elems = [elem for elem in property_shapes[pr] if not np.any(np.isnan(elem))]
-        if not np.all([elem == elems[0] for elem in elems]):
-            print(f"Skipping property '{pr}' because it has variable size across units.")
-            skip_properties.append(pr)
-
+    # add properties
+    all_properties = checked_sorting.get_property_keys()
     write_properties = set(all_properties) - set(skip_properties)
     for pr in write_properties:
         if pr not in property_descriptions:
@@ -1142,119 +1122,25 @@ def write_units(
                 f"Description for property {pr} not found in property_descriptions. "
                 "Setting description to 'no description'"
             )
+    aggregated_unit_properties = defaultdict()
     for pr in write_properties:
         unit_col_args = dict(name=pr, description=property_descriptions.get(pr, "No description."))
         if pr in ["max_channel", "max_electrode"] and nwbfile.electrodes is not None:
             unit_col_args.update(table=nwbfile.electrodes)
         units_table.add_column(**unit_col_args)
-
-    aggregated_unit_properties = defaultdict(list)
-    for unit_id in unit_ids:
-
-        for pr in write_properties:
-            if pr in sorting.get_unit_property_names(unit_id):
-                aggregated_unit_properties[pr].append(sorting.get_unit_property(unit_id, pr))
-            else:  # Case of missing data for this unit and this property
-                aggregated_unit_properties[pr].append(None)
-
-    # handle missing data differently depending on type of data
-    for key, val in aggregated_unit_properties.items():
-        if all(isinstance(x, int) or x is None for x in val) and any(x is None for x in val):
-            aggregated_unit_properties[key] = [np.nan if x is None else float(x) for x in val]
-        if all(isinstance(x, str) or x is None for x in val):
-            aggregated_unit_properties[key] = [x or "" for x in val]
-        if all(isinstance(x, float) or x is None for x in val):
-            aggregated_unit_properties[key] = [np.nan if x is None else x for x in val]
+        aggregated_unit_properties[pr] = checked_sorting.get_property(pr)
 
     for i, unit_id in enumerate(unit_ids):
         if use_times:
-            spkt = sorting.frame_to_time(sorting.get_unit_spike_train(unit_id=unit_id))
-        else:
-            spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
+            warnings.warn(
+                "'use_times' is not supported yet by the new SI API. "
+                "Computing spike times using sampling frequency"
+            )
+        spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
 
         kwargs = {key: val[i] for key, val in aggregated_unit_properties.items()}
 
         units_table.add_unit(id=int(unit_id), spike_times=spkt, **kwargs)
-
-        # TODO
-        # # Stores average and std of spike traces
-        # This will soon be updated to the current NWB standard
-        # if 'waveforms' in sorting.get_unit_spike_feature_names(unit_id=id):
-        #     wf = sorting.get_unit_spike_features(unit_id=id,
-        #                                          feature_name='waveforms')
-        #     relevant_ch = most_relevant_ch(wf)
-        #     # Spike traces on the most relevant channel
-        #     traces = wf[:, relevant_ch, :]
-        #     traces_avg = np.mean(traces, axis=0)
-        #     traces_std = np.std(traces, axis=0)
-        #     nwbfile.add_unit(
-        #         id=id,
-        #         spike_times=spkt,
-        #         waveform_mean=traces_avg,
-        #         waveform_sd=traces_std
-        #     )
-
-    # Check that multidimensional features have the same shape across units
-    feature_shapes = dict()
-    for ft in all_features:
-        shapes = []
-        for unit_id in unit_ids:
-            if ft in sorting.get_unit_spike_feature_names(unit_id):
-                feat_value = sorting.get_unit_spike_features(unit_id, ft)
-                if isinstance(feat_value[0], (int, np.integer, float, str, bool)):
-                    break
-                elif isinstance(feat_value[0], (list, np.ndarray)):  # multidimensional features
-                    if np.array(feat_value).ndim > 1:
-                        shapes.append(np.array(feat_value).shape)
-                        feature_shapes[ft] = shapes
-                elif isinstance(feat_value[0], dict):
-                    print(f"Skipping feature '{ft}' because dictionaries are not supported.")
-                    skip_features.append(ft)
-                    break
-            else:
-                print(f"Skipping feature '{ft}' because not share across all units.")
-                skip_features.append(ft)
-                break
-
-    nspikes = {k: get_nspikes(units_table, int(k)) for k in unit_ids}
-
-    for ft in feature_shapes.keys():
-        # skip first dimension (num_spikes) when comparing feature shape
-        if not np.all([elem[1:] == feature_shapes[ft][0][1:] for elem in feature_shapes[ft]]):
-            print(f"Skipping feature '{ft}' because it has variable size across units.")
-            skip_features.append(ft)
-
-    for ft in set(all_features) - set(skip_features):
-        values = []
-        if not ft.endswith("_idxs"):
-            for unit_id in sorting.get_unit_ids():
-                feat_vals = sorting.get_unit_spike_features(unit_id, ft)
-
-                if len(feat_vals) < nspikes[unit_id]:
-                    skip_features.append(ft)
-                    print(f"Skipping feature '{ft}' because it is not defined for all spikes.")
-                    break
-                    # this means features are available for a subset of spikes
-                    # all_feat_vals = np.array([np.nan] * nspikes[unit_id])
-                    # feature_idxs = sorting.get_unit_spike_features(unit_id, feat_name + '_idxs')
-                    # all_feat_vals[feature_idxs] = feat_vals
-                else:
-                    all_feat_vals = feat_vals
-                values.append(all_feat_vals)
-
-            flatten_vals = [item for sublist in values for item in sublist]
-            nspks_list = [sp for sp in nspikes.values()]
-            spikes_index = np.cumsum(nspks_list).astype("int64")
-            if ft in units_table:  # If property already exists, skip it
-                warnings.warn(f"Feature {ft} already present in units table, skipping it")
-                continue
-            set_dynamic_table_property(
-                dynamic_table=units_table,
-                row_ids=[int(k) for k in unit_ids],
-                property_name=ft,
-                values=flatten_vals,
-                index=spikes_index,
-            )
 
     if write_as == "units":
         if nwbfile.units is None:
@@ -1352,7 +1238,7 @@ def write_sorting(
                 if metadata is not None and "NWBFile" in metadata:
                     nwbfile_kwargs.update(metadata["NWBFile"])
                 nwbfile = pynwb.NWBFile(**nwbfile_kwargs)
-            write_units(
+            add_units(
                 sorting=sorting,
                 nwbfile=nwbfile,
                 property_descriptions=property_descriptions,
@@ -1365,7 +1251,7 @@ def write_sorting(
             )
             io.write(nwbfile)
     else:
-        write_units(
+        add_units(
             sorting=sorting,
             nwbfile=nwbfile,
             property_descriptions=property_descriptions,
