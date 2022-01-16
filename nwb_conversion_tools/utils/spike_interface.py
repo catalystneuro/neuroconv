@@ -750,7 +750,7 @@ def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = Non
                 )
 
 
-def add_device_electrode_info(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
+def add_electrodes_info(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
     """
     Adds device, electrode_groups, and electrodes info to the nwbfile
 
@@ -859,7 +859,7 @@ def add_all_to_nwbfile(
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    add_device_electrode_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     if write_electrical_series:
         add_electrical_series(
