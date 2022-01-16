@@ -105,6 +105,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         save_path: OptionalFilePathType = None,
         overwrite: bool = False,
         write_as: str = "raw",
+        write_electrical_series: bool = True,
         es_key: str = None,
         compression: Optional[str] = "gzip",
         compression_opts: Optional[int] = None,
@@ -137,6 +138,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as: str (optional, defaults to 'raw')
             Options: 'raw', 'lfp' or 'processed'
+        write_electrical_series: bool (optional)
+            If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+            and electrodes are written to NWB.
         es_key: str (optional)
             Key in metadata dictionary containing metadata info for the specific electrical series
         compression: str (optional, defaults to "gzip")
@@ -169,6 +173,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             starting_time=starting_time,
             use_times=use_times,
             write_as=write_as,
+            write_electrical_series=write_electrical_series,
             es_key=es_key,
             save_path=save_path,
             overwrite=overwrite,
