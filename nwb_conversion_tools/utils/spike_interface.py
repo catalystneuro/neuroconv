@@ -19,7 +19,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from ..utils.conversion_tools import get_module
+from ..utils.nwbfile_tools import get_module
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 

@@ -47,7 +47,7 @@ def run_conversion_from_yaml(
 
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent / "schemas"
-    specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_specification_schema.json")
+    specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
     validate(
         instance=specification,
         schema=specification_schema,
@@ -89,8 +89,20 @@ def run_conversion_from_yaml(
             metadata = converter.get_metadata()
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
                 metadata = dict_deep_update(metadata, metadata_source)
+
+            print(metadata["NWBFile"])
+            if "nwbfile_name" not in session:
+                # 'subject_id' is required by schema validation if the 'Subject' is specified in metadata
+                assert "Subject" in metadata and "session_start_time" in metadata.get("NWBFile"), (
+                    "If not specifying an explicit name for the NWBFile ('nwbfile_name'), then both "
+                    "metadata['Subject']['subject_id'] and metadata['NWBFile']['session_start_time'] are required!"
+                )
+                subject_file_name = metadata["Subject"]["subject_id"].replace(" ", "_")
+                nwbfile_name = f"{subject_file_name}_{metadata['NWBFile']['session_start_time']}"
+            else:
+                nwbfile_name = session["nwbfile_name"]
             converter.run_conversion(
-                nwbfile_path=Path(output_folder) / f"{session['nwbfile_name']}.nwb",
+                nwbfile_path=Path(output_folder) / f"{nwbfile_name}.nwb",
                 metadata=metadata,
                 overwrite=overwrite,
                 conversion_options=session.get("conversion_options", dict()),
