@@ -260,7 +260,7 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
         Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
         whenever possible.
         If 'my_name' is set to one of the required fields for nwbfile
-        electrodes (id, x, y, z, imp, loccation, filtering, group_name),
+        electrodes (id, x, y, z, imp, location, filtering, group_name),
         then the metadata will override their default values.
         Setting 'my_name' to metadata field 'group' is not supported as the linking to
         nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
@@ -726,6 +726,46 @@ def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = Non
                 )
 
 
+def add_electrodes_info(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
+    """
+    Adds device, electrode_groups, and electrodes info to the nwbfile
+
+    Parameters
+    ----------
+    recording: SpikeInterfaceRecording
+    nwbfile: NWBFile
+        nwb file to which the recording information is to be added
+    metadata: dict
+        metadata info for constructing the nwb file (optional).
+        Should be of the format
+            metadata['Ecephys']['Electrodes'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+        Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
+        properties in the RecordingExtractor object.
+        Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
+        whenever possible.
+        If 'my_name' is set to one of the required fields for nwbfile
+        electrodes (id, x, y, z, imp, location, filtering, group_name),
+        then the metadata will override their default values.
+        Setting 'my_name' to metadata field 'group' is not supported as the linking to
+        nwbfile.electrode_groups is handled automatically; please specify the string 'group_name' in this case.
+        If no group information is passed via metadata, automatic linking to existing electrode groups,
+        possibly including the default, will occur.
+    """
+    add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_electrodes(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+    )
+
+
 def add_all_to_nwbfile(
     recording: SpikeInterfaceRecording,
     nwbfile=None,
@@ -734,6 +774,7 @@ def add_all_to_nwbfile(
     metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
+    write_electrical_series: bool = True,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
@@ -767,6 +808,9 @@ def add_all_to_nwbfile(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str (optional)
         Key in metadata dictionary containing metadata info for the specific electrical series
+    write_electrical_series: bool (optional)
+        If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+        and electrodes are written to NWB.
     write_scaled: bool (optional, defaults to True)
         If True, writes the scaled traces (return_scaled=True)
     compression: str (optional, defaults to "gzip")
@@ -791,27 +835,23 @@ def add_all_to_nwbfile(
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrodes(
-        recording=recording,
-        nwbfile=nwbfile,
-        metadata=metadata,
-    )
-    add_electrical_series(
-        recording=recording,
-        nwbfile=nwbfile,
-        starting_time=starting_time,
-        use_times=use_times,
-        metadata=metadata,
-        write_as=write_as,
-        es_key=es_key,
-        write_scaled=write_scaled,
-        compression=compression,
-        compression_opts=compression_opts,
-        iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
-    )
+    add_electrodes_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+    if write_electrical_series:
+        add_electrical_series(
+            recording=recording,
+            nwbfile=nwbfile,
+            starting_time=starting_time,
+            use_times=use_times,
+            metadata=metadata,
+            write_as=write_as,
+            es_key=es_key,
+            write_scaled=write_scaled,
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )
     if isinstance(recording, RecordingExtractor):
         add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
@@ -826,6 +866,7 @@ def write_recording(
     metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
+    write_electrical_series: bool = True,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
@@ -897,6 +938,9 @@ def write_recording(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str (optional)
         Key in metadata dictionary containing metadata info for the specific electrical series
+    write_electrical_series: bool (optional)
+        If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+        and electrodes are written to NWB.
     write_scaled: bool (optional, defaults to True)
         If True, writes the scaled traces (return_scaled=True)
     compression: str (optional, defaults to "gzip")
@@ -963,6 +1007,7 @@ def write_recording(
                 compression_opts=compression_opts,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
+                write_electrical_series=write_electrical_series,
             )
             io.write(nwbfile)
     else:
@@ -979,6 +1024,7 @@ def write_recording(
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            write_electrical_series=write_electrical_series,
         )
 
 
