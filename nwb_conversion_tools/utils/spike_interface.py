@@ -1133,10 +1133,6 @@ def add_units(
     if write_as == "units":
         assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
 
-    all_properties = set()
-    for unit_id in unit_ids:
-        all_properties.update(sorting.get_unit_property_names(unit_id))
-
     default_descriptions = dict(
         isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
         firing_rate="Number of spikes per unit of time.",
@@ -1177,9 +1173,11 @@ def add_units(
 
     for i, unit_id in enumerate(unit_ids):
         if use_times:
-            spkt = sorting.get_unit_spike_train(unit_id=unit_id, return_times=True)
+            spkt = checked_sorting.get_unit_spike_train(
+                unit_id=unit_id, return_times=True)
         else:
-            spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
+            spkt = checked_sorting.get_unit_spike_train(
+                unit_id=unit_id) / checked_sorting.get_sampling_frequency()
 
         kwargs = {key: val[i] for key, val in aggregated_unit_properties.items()}
 
