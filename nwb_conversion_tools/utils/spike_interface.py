@@ -1132,11 +1132,9 @@ def add_units(
 
     for i, unit_id in enumerate(unit_ids):
         if use_times:
-            warnings.warn(
-                "'use_times' is not supported yet by the new SI API. "
-                "Computing spike times using sampling frequency"
-            )
-        spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
+            spkt = sorting.get_unit_spike_train(unit_id=unit_id, return_times=True)
+        else:
+            spkt = sorting.get_unit_spike_train(unit_id=unit_id) / sorting.get_sampling_frequency()
 
         kwargs = {key: val[i] for key, val in aggregated_unit_properties.items()}
 
