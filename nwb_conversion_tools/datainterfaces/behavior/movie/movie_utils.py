@@ -99,7 +99,7 @@ class VideoCaptureContext(cv2.VideoCapture):
         if success:
             return frame
         elif frame_no > 0:
-            return np.nan*np.ones(self.get_frame_shape())
+            return np.nan * np.ones(self.get_frame_shape())
 
     def get_movie_frame_dtype(self):
         """
@@ -120,7 +120,7 @@ class VideoCaptureContext(cv2.VideoCapture):
                 if success:
                     return frame
                 else:
-                    return np.nan*np.ones(self.get_frame_shape())
+                    return np.nan * np.ones(self.get_frame_shape())
             else:
                 self.current_frame = 0
                 raise StopIteration
