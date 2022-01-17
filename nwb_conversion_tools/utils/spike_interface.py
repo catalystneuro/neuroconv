@@ -1173,11 +1173,9 @@ def add_units(
 
     for i, unit_id in enumerate(unit_ids):
         if use_times:
-            spkt = checked_sorting.get_unit_spike_train(
-                unit_id=unit_id, return_times=True)
+            spkt = checked_sorting.get_unit_spike_train(unit_id=unit_id, return_times=True)
         else:
-            spkt = checked_sorting.get_unit_spike_train(
-                unit_id=unit_id) / checked_sorting.get_sampling_frequency()
+            spkt = checked_sorting.get_unit_spike_train(unit_id=unit_id) / checked_sorting.get_sampling_frequency()
 
         kwargs = {key: val[i] for key, val in aggregated_unit_properties.items()}
 
