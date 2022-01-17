@@ -218,8 +218,8 @@ class MovieInterface(BaseDataInterface):
 
                     data = H5DataIO(iterable, compression=compression)
 
-                    # capture data in kwargs:
-                    image_series_kwargs.update(data=data)
+                # capture data in kwargs:
+                image_series_kwargs.update(data=data)
                 # capture time info in kwargs:
                 with VideoCaptureContext(str(file), stub=stub_test) as vc:
                     timestamps = starting_times[j] + vc.get_movie_timestamps()

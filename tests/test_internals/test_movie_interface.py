@@ -64,16 +64,14 @@ def assert_nwbfile_conversion(
     module_name: str = None,
     module_description: str = None,
     metadata: dict = None,
-    iterator_type: str = "v2",
     stub_test: bool = False,
     external_mode: bool = False,
-    chunk_data: bool = True,
+    chunk_data: bool = False,
 ):
     metadata = converter.get_metadata() if metadata is None else metadata
     custom_names = [metadata["Behavior"]["Movies"][i]["name"] for i in range(len(metadata["Behavior"]["Movies"]))]
     conversion_opts = dict(
         starting_times=starting_times,
-        iterator_type=iterator_type,
         stub_test=stub_test,
         external_mode=external_mode,
         chunk_data=chunk_data,
@@ -116,6 +114,7 @@ def test_conversion_default(movie_converter, create_movies, nwbfile_path):
 
 def test_conversion_custom(movie_converter, nwbfile_path):
     if HAVE_OPENCV:
+        starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
         module_name = "TestModule"
         module_description = "This is a test module."
         assert_nwbfile_conversion(
@@ -123,17 +122,22 @@ def test_conversion_custom(movie_converter, nwbfile_path):
             nwbfile_path=nwbfile_path,
             module_description=module_description,
             module_name=module_name,
+            starting_times=starting_times
         )
 
 
 def test_conversion_options(movie_converter, nwbfile_path):
     if HAVE_OPENCV:
+        starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
         conversion_options_testing_matrix = [
-            dict(external_mode=False, stub_test=True, chunk_data=i, iterator_type=j)
-            for i, j in product([True, False], ["v1", "v2"])
+            dict(external_mode=False, stub_test=True, chunk_data=i)
+            for i in [True, False]
         ]
         for conv_ops in conversion_options_testing_matrix:
-            assert_nwbfile_conversion(converter=movie_converter, nwbfile_path=nwbfile_path, **conv_ops)
+            assert_nwbfile_conversion(converter=movie_converter,
+                                      nwbfile_path=nwbfile_path,
+                                      starting_times=starting_times,
+                                      **conv_ops)
 
 
 def test_conversion_external_mode(movie_converter, nwbfile_path):
