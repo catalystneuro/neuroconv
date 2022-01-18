@@ -123,10 +123,6 @@ def add_devices(recording: SpikeInterfaceRecording, nwbfile=None, metadata: dict
             ]
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
-    if isinstance(recording, RecordingExtractor):
-        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
-    else:
-        checked_recording = recording
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -527,27 +523,7 @@ def add_electrical_series(
     whenever possible.
     """
     if isinstance(recording, RecordingExtractor):
-        # If the object is a SubRecording, we recover the gains either the first parent with non-default gains, or the
-        # highest level parent.
-        channel_conversion = recording.get_channel_gains()
-        default_channel_conversion = np.ones_like(channel_conversion)
-        channel_offset = recording.get_channel_offsets()
-        temp_recording = recording
-        while isinstance(temp_recording, SubRecordingExtractor):
-            parent_recording = temp_recording._parent_recording
-            channel_conversion = parent_recording.get_channel_gains()
-            channel_offset = parent_recording.get_channel_offsets()
-
-            default_channel_conversion = np.ones_like(channel_conversion)
-            if np.any(channel_conversion != default_channel_conversion):
-                break
-            else:
-                temp_recording = parent_recording
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
-        if np.any(channel_conversion != default_channel_conversion):
-            checked_recording.set_channel_gains(gains=channel_conversion)
-        if np.any(channel_offset != np.zeros_like(channel_offset)):
-            checked_recording.set_channel_offsets(offsets=channel_offset)
     else:
         checked_recording = recording
     if nwbfile is not None:
