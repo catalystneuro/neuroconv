@@ -1068,7 +1068,7 @@ def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
 
 
 def add_units(
-    sorting: SortingExtractor,
+    sorting: SpikeInterfaceSorting,
     nwbfile: pynwb.NWBFile,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
@@ -1083,7 +1083,7 @@ def add_units(
 
     Parameters
     ----------
-    sorting: SortingExtractor
+    sorting: SpikeInterfaceSorting
     save_path: PathType
         Required if an nwbfile is not passed. The location where the NWBFile either exists, or will be written.
     overwrite: bool
@@ -1116,8 +1116,8 @@ def add_units(
         Text description of the sorting table; recommended to included parameters of sorting method, curation, etc.
     """
     if isinstance(sorting, SortingExtractor):
-        fs = sorting.get_sampling_frequency()
-        if fs is None:
+        sampling_frequency = sorting.get_sampling_frequency()
+        if sampling_frequency is None:
             raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
     else:
