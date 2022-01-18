@@ -48,6 +48,13 @@ else:
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
+SAVE_OUTPUTS = True
+if SAVE_OUTPUTS:
+    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
+    OUTPUT_PATH.mkdir(exist_ok=True)
+else:
+    OUTPUT_PATH = Path(tempfile.mkdtemp())
+
 if not HAVE_PARAMETERIZED:
     pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
 
@@ -63,7 +70,7 @@ def custom_name_func(testcase_func, param_num, param):
 
 
 class TestNwbConversions(unittest.TestCase):
-    savedir = Path(tempfile.mkdtemp())
+    savedir = OUTPUT_PATH
 
     parameterized_lfp_list = [
         param(
