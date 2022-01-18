@@ -12,7 +12,7 @@ from collections import defaultdict
 from numpy.core.fromnumeric import sort
 
 import pynwb
-from spikeinterface import BaseRecording
+from spikeinterface import BaseRecording, BaseSorting
 from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 from spikeextractors import RecordingExtractor, SortingExtractor, SubRecordingExtractor
 from numbers import Real
@@ -24,6 +24,7 @@ from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDat
 from ..utils.conversion_tools import get_module
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
+SpikeInterfaceSorting = Union[BaseSorting, SortingExtractor]
 
 
 def set_dynamic_table_property(
