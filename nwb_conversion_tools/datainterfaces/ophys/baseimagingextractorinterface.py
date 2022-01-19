@@ -58,14 +58,14 @@ class BaseImagingExtractorInterface(BaseDataInterface):
 
         # fix troublesome data types
         if "TwoPhotonSeries" in metadata["Ophys"]:
-            for i in range(len(metadata["Ophys"]["TwoPhotonSeries"])):
-                if "dimension" in metadata["Ophys"]["TwoPhotonSeries"][i].keys():
-                    metadata["Ophys"]["TwoPhotonSeries"][i]["dimension"] = list(
-                        metadata["Ophys"]["TwoPhotonSeries"][i]["dimension"]
+            for two_photon_series in metadata["Ophys"]["TwoPhotonSeries"]:
+                if "dimension" in two_photon_series:
+                    two_photon_series["dimension"] = list(
+                        two_photon_series["dimension"]
                     )
-                if "rate" in metadata["Ophys"]["TwoPhotonSeries"][i].keys():
-                    metadata["Ophys"]["TwoPhotonSeries"][i]["rate"] = float(
-                        metadata["Ophys"]["TwoPhotonSeries"][i]["rate"]
+                if "rate" in two_photon_series:
+                    two_photon_series["rate"] = float(
+                        two_photon_series["rate"]
                     )
         return metadata
 
