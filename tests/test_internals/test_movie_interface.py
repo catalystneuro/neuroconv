@@ -124,7 +124,7 @@ def test_conversion_custom(movie_converter, nwbfile_path):
             nwbfile_path=nwbfile_path,
             module_description=module_description,
             module_name=module_name,
-            starting_times=starting_times
+            starting_times=starting_times,
         )
 
 
@@ -132,14 +132,12 @@ def test_conversion_options(movie_converter, nwbfile_path, create_movies):
     if HAVE_OPENCV:
         starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
         conversion_options_testing_matrix = [
-            dict(external_mode=False, stub_test=True, chunk_data=i)
-            for i in [True, False]
+            dict(external_mode=False, stub_test=True, chunk_data=i) for i in [True, False]
         ]
         for conv_ops in conversion_options_testing_matrix:
-            assert_nwbfile_conversion(converter=movie_converter,
-                                      nwbfile_path=nwbfile_path,
-                                      starting_times=starting_times,
-                                      **conv_ops)
+            assert_nwbfile_conversion(
+                converter=movie_converter, nwbfile_path=nwbfile_path, starting_times=starting_times, **conv_ops
+            )
 
 
 def test_conversion_external_mode(movie_converter, nwbfile_path):
