@@ -23,31 +23,39 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         self.segmentation_extractor = self.SegX(**source_data)
 
     def get_metadata_schema(self):
-        """Compile metadata schema for the RoiExtractor."""
         metadata_schema = super().get_metadata_schema()
         metadata_schema["required"] = ["Ophys"]
-        # Initiate Ophys metadata
         metadata_schema["properties"]["Ophys"] = get_base_schema()
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
-            Device=get_schema_from_hdmf_class(Device),
+            Device=dict(type="array", minItems=1, items=get_schema_from_hdmf_class(Device)),
+        )
+        metadata_schema["properties"]["Ophys"]["properties"].update(
             Fluorescence=get_schema_from_hdmf_class(Fluorescence),
             ImageSegmentation=get_schema_from_hdmf_class(ImageSegmentation),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
         metadata_schema["properties"]["Ophys"]["required"] = ["Device", "Fluorescence", "ImageSegmentation"]
+
+        # Temporary fixes until centralized definition of metadata schemas
+        metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"][
+            "items"
+        ]["required"] = list()
+        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"].pop(
+            "maxItems"
+        )
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
     def get_metadata(self):
-        """Auto-fill metadata with values found from the corresponding roiextractor.
-        Must comply with metadata schema."""
         metadata = super().get_metadata()
         metadata.update(re.NwbSegmentationExtractor.get_nwb_metadata(self.segmentation_extractor))
         _ = metadata.pop("NWBFile")
         return metadata
 
-    def run_conversion(self, nwbfile: NWBFile, metadata_dict: dict, overwrite: bool = False):
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict, overwrite: bool = False):
         re.NwbSegmentationExtractor.write_segmentation(
-            self.segmentation_extractor, nwbfile=nwbfile, metadata=metadata_dict, overwrite=overwrite
+            self.segmentation_extractor, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite
         )
