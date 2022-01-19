@@ -1026,6 +1026,7 @@ def write_recording(
             iterator_opts=iterator_opts,
             write_electrical_series=write_electrical_series,
         )
+    return nwbfile
 
 
 def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
@@ -1398,3 +1399,4 @@ def write_sorting(
             units_name=units_name,
             units_description=units_description,
         )
+    return nwbfile
