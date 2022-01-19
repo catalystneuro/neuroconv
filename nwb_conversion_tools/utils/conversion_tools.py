@@ -90,7 +90,6 @@ def run_conversion_from_yaml(
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
                 metadata = dict_deep_update(metadata, metadata_source)
 
-            print(metadata["NWBFile"])
             if "nwbfile_name" not in session:
                 # 'subject_id' is required by schema validation if the 'Subject' is specified in metadata
                 assert "Subject" in metadata and "session_start_time" in metadata.get("NWBFile"), (
