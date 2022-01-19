@@ -324,6 +324,12 @@ def get_schema_from_hdmf_class(hdmf_class):
         elif docval_arg["type"] is str or (isinstance(docval_arg["type"], tuple) and str in docval_arg["type"]):
             schema_arg[docval_arg["name"]].update(type="string")
 
+        # type array
+        elif docval_arg["type"] is collections.abc.Iterable or (
+            isinstance(docval_arg["type"], tuple) and collections.abc.Iterable in docval_arg["type"]
+        ):
+            schema_arg[docval_arg["name"]].update(type="array")
+
         # type datetime
         elif docval_arg["type"] is datetime or (
             isinstance(docval_arg["type"], tuple) and datetime in docval_arg["type"]
