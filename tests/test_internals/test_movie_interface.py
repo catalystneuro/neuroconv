@@ -83,13 +83,15 @@ def assert_nwbfile_conversion(
     converter.run_conversion(
         metadata=metadata, nwbfile_path=nwbfile_path, overwrite=True, conversion_options=dict(Movie=conversion_opts)
     )
-    module_name = module_name if module_name is not None else "acquisition"
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
-        mod = nwbfile.modules[module_name]
-        assert module_name in mod
-        if module_description:
-            assert module_description == mod.description
+        if module_name is None:
+            mod = nwbfile.acquisition
+        else:
+            assert module_name in nwbfile.processing
+            mod = nwbfile.processing[module_name]
+            if module_description:
+                assert module_description == mod.description
         for no, name in enumerate(custom_names):
             if external_mode:
                 for file_name in converter.data_interfaces["Movie"].source_data["file_paths"]:
@@ -126,7 +128,7 @@ def test_conversion_custom(movie_converter, nwbfile_path):
         )
 
 
-def test_conversion_options(movie_converter, nwbfile_path):
+def test_conversion_options(movie_converter, nwbfile_path, create_movies):
     if HAVE_OPENCV:
         starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
         conversion_options_testing_matrix = [
