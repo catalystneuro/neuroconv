@@ -57,7 +57,7 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         _ = metadata.pop("NWBFile")
 
         # fix troublesome data types
-        if "TwoPhotonSeries" in metadata["Ophys"].keys():
+        if "TwoPhotonSeries" in metadata["Ophys"]:
             for i in range(len(metadata["Ophys"]["TwoPhotonSeries"])):
                 if "dimension" in metadata["Ophys"]["TwoPhotonSeries"][i].keys():
                     metadata["Ophys"]["TwoPhotonSeries"][i]["dimension"] = list(
