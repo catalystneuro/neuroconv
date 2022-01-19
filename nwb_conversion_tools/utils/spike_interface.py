@@ -12,7 +12,7 @@ from collections import defaultdict
 import pynwb
 from spikeinterface import BaseRecording
 from spikeinterface.core.old_api_utils import OldToNewRecording
-from spikeextractors import RecordingExtractor, SortingExtractor, SubRecordingExtractor
+from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -95,17 +95,15 @@ def get_nwb_metadata(recording: SpikeInterfaceRecording, metadata: dict = None):
     return metadata
 
 
-def add_devices(recording: SpikeInterfaceRecording, nwbfile=None, metadata: dict = None):
+def add_devices(nwbfile: pynwb.NWBFile, metadata: dict = None):
     """
-    Auxiliary static method for nwbextractor.
+    Add device information to nwbfile object.
 
-    Adds device information to nwbfile object.
     Will always ensure nwbfile has at least one device, but multiple
     devices within the metadata list will also be created.
 
     Parameters
     ----------
-    recording: SpikeInterfaceRecording
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
     metadata: dict
@@ -140,11 +138,10 @@ def add_devices(recording: SpikeInterfaceRecording, nwbfile=None, metadata: dict
             nwbfile.create_device(**dict(defaults, **dev))
 
 
-def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile=None, metadata: dict = None):
+def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
     """
-    Auxiliary static method for nwbextractor.
+    Add electrode group information to nwbfile object.
 
-    Adds electrode group information to nwbfile object.
     Will always ensure nwbfile has at least one electrode group.
     Will auto-generate a linked device if the specified name does not exist in the nwbfile.
 
@@ -169,12 +166,11 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile=None, metad
         Group names set by RecordingExtractor channel properties will also be included with passed metadata,
         but will only use default description and location.
     """
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
     else:
         checked_recording = recording
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     if len(nwbfile.devices) == 0:
         warnings.warn("When adding ElectrodeGroup, no Devices were found on nwbfile. Creating a Device now...")
@@ -234,11 +230,11 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile=None, metad
             nwbfile.create_electrode_group(**electrode_group_kwargs)
 
 
-def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: dict = None, exclude: tuple = ()):
+def add_electrodes(
+    recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBFile, metadata: dict = None, exclude: tuple = ()
+):
     """
-    Auxiliary static method for nwbextractor.
-
-    Adds channels from recording object as electrodes to nwbfile object.
+    Add channels from recording object as electrodes to nwbfile object.
 
     Parameters
     ----------
@@ -270,6 +266,7 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
         An iterable containing the string names of channel properties in the RecordingExtractor
         object to ignore when writing to the NWBFile.
     """
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
     else:
@@ -280,8 +277,6 @@ def add_electrodes(recording: SpikeInterfaceRecording, nwbfile=None, metadata: d
             warnings.warn("cannot create electrodes for this recording as ids already exist")
             return
 
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
         add_electrode_groups(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
     # For older versions of pynwb, we need to manually add these columns
@@ -683,7 +678,7 @@ def add_electrical_series(
         ecephys_mod.data_interfaces["LFP"].add_electrical_series(es)
 
 
-def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
+def add_epochs(recording: RecordingExtractor, nwbfile: pynwb.NWBFile):
     """
     Auxiliary static method for nwbextractor.
 
@@ -696,14 +691,11 @@ def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = Non
         spikeinterface/spikeinterface BaseRecording objects.
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
     """
     assert isinstance(
         recording, RecordingExtractor
     ), "'recording' should be a spikeinterface/spikeextractors RecordingExtractor object!"
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     for epoch_name in recording.get_epoch_names():
         epoch = recording.get_epoch_info(epoch_name)
@@ -726,9 +718,9 @@ def add_epochs(recording: RecordingExtractor, nwbfile=None, metadata: dict = Non
                 )
 
 
-def add_electrodes_info(recording: RecordingExtractor, nwbfile=None, metadata: dict = None):
+def add_electrodes_info(recording: RecordingExtractor, nwbfile: pynwb.NWBFile, metadata: dict = None):
     """
-    Adds device, electrode_groups, and electrodes info to the nwbfile
+    Add device, electrode_groups, and electrodes info to the nwbfile.
 
     Parameters
     ----------
@@ -757,13 +749,9 @@ def add_electrodes_info(recording: RecordingExtractor, nwbfile=None, metadata: d
         If no group information is passed via metadata, automatic linking to existing electrode groups,
         possibly including the default, will occur.
     """
-    add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    add_devices(nwbfile=nwbfile, metadata=metadata)
     add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-    add_electrodes(
-        recording=recording,
-        nwbfile=nwbfile,
-        metadata=metadata,
-    )
+    add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
 def add_all_to_nwbfile(
@@ -853,14 +841,14 @@ def add_all_to_nwbfile(
             iterator_opts=iterator_opts,
         )
     if isinstance(recording, RecordingExtractor):
-        add_epochs(recording=recording, nwbfile=nwbfile, metadata=metadata)
+        add_epochs(recording=recording, nwbfile=nwbfile)
 
 
 def write_recording(
     recording: SpikeInterfaceRecording,
     save_path: OptionalFilePathType = None,
     overwrite: bool = False,
-    nwbfile=None,
+    nwbfile: Optional[pynwb.NWBFile] = None,
     starting_time: Optional[float] = None,
     use_times: bool = False,
     metadata: dict = None,
@@ -879,18 +867,18 @@ def write_recording(
     Parameters
     ----------
     recording: SpikeInterfaceRecording
-    save_path: OptionalFilePathType
+    save_path: FilePathType, optional
         Required if an nwbfile is not passed. Must be the path to the nwbfile
         being appended, otherwise one is created and written.
     overwrite: bool
         If using save_path, whether or not to overwrite the NWBFile if it already exists.
-    nwbfile: NWBFile
-        Required if a save_path is not specified. If passed, this function
-        will fill the relevant fields within the nwbfile. E.g., calling
-        spikeextractors.NwbRecordingExtractor.write_recording(
-            my_recording_extractor, my_nwbfile
-        )
+    nwbfile: NWBFile, optional
+        If passed, this function will fill the relevant fields within the NWBFile object.
+        E.g., calling
+            write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
+        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        and returned by the function.
     starting_time: float (optional)
         Sets the starting time of the ElectricalSeries to a manually set value.
         Increments timestamps if use_times is True.
@@ -1026,6 +1014,7 @@ def write_recording(
             iterator_opts=iterator_opts,
             write_electrical_series=write_electrical_series,
         )
+    return nwbfile
 
 
 def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
@@ -1296,7 +1285,7 @@ def write_sorting(
     sorting: SortingExtractor,
     save_path: OptionalFilePathType = None,
     overwrite: bool = False,
-    nwbfile=None,
+    nwbfile: Optional[pynwb.NWBFile] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     skip_features: Optional[List[str]] = None,
@@ -1317,12 +1306,12 @@ def write_sorting(
     overwrite: bool
         If using save_path, whether or not to overwrite the NWBFile if it already exists.
     nwbfile: NWBFile
-        Required if a save_path is not specified. If passed, this function
-        will fill the relevant fields within the nwbfile. E.g., calling
-        spikeextractors.NwbRecordingExtractor.write_recording(
-            my_recording_extractor, my_nwbfile
-        )
+        If passed, this function will fill the relevant fields within the NWBFile object.
+        E.g., calling
+            write_sorting(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
+        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        and returned by the function.
     property_descriptions: dict
         For each key in this dictionary which matches the name of a unit
         property in sorting, adds the value as a description to that
@@ -1398,3 +1387,4 @@ def write_sorting(
             units_name=units_name,
             units_description=units_description,
         )
+    return nwbfile
