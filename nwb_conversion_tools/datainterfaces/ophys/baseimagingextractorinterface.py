@@ -60,13 +60,9 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         if "TwoPhotonSeries" in metadata["Ophys"]:
             for two_photon_series in metadata["Ophys"]["TwoPhotonSeries"]:
                 if "dimension" in two_photon_series:
-                    two_photon_series["dimension"] = list(
-                        two_photon_series["dimension"]
-                    )
+                    two_photon_series["dimension"] = list(two_photon_series["dimension"])
                 if "rate" in two_photon_series:
-                    two_photon_series["rate"] = float(
-                        two_photon_series["rate"]
-                    )
+                    two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict, overwrite: bool = False):
