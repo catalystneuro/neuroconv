@@ -18,3 +18,4 @@ parameterized==0.8.1
 pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy
+tiffile==2018.10.18

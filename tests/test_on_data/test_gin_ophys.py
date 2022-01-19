@@ -25,10 +25,8 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-# Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-#   ecephys: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-#   ophys: TODO
-#   icephys: TODO
+# Path to GIN datasets
+#   ophys: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
@@ -139,7 +137,7 @@ class TestOphysNwbConversions(unittest.TestCase):
                 data_interface=Suite2pSegmentationInterface,
                 interface_kwargs=dict(
                     # TODO: argument name is 'file_path' on roiextractors, but it clearly refers to a folder_path
-                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p" / "plane0")
+                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p")
                 ),
             ),
         ],

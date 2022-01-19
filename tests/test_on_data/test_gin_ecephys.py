@@ -32,10 +32,8 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-# Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+# Path to GIN datasets
 #   ecephys: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-#   ophys: TODO
-#   icephys: TODO
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
