@@ -220,16 +220,14 @@ class MovieInterface(BaseDataInterface):
 
                 # capture data in kwargs:
                 image_series_kwargs.update(data=data)
-                # capture time info in kwargs:
-                with VideoCaptureContext(str(file), stub=stub_test) as vc:
-                    timestamps = starting_times[j] + vc.get_movie_timestamps()
-                    if len(starting_times) != len(file_paths):
-                        starting_times.append(timestamps[-1])
-                    if check_regular_timestamps(ts=timestamps):
-                        fps = vc.get_movie_fps()
-                        image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
-                    else:
-                        image_series_kwargs.update(timestamps=timestamps)
+                timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
+                if len(starting_times) != len(file_paths):
+                    starting_times.append(timestamps[-1])
+                if check_regular_timestamps(ts=timestamps):
+                    fps = video_capture_ob.get_movie_fps()
+                    image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
+                else:
+                    image_series_kwargs.update(timestamps=timestamps)
 
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
