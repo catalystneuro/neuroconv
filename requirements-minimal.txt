@@ -10,6 +10,6 @@ jsonschema>=3.2.0
 psutil>=5.8.0
 lxml>=4.6.5
 spikeextractors>=0.9.7
-spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@628f7fbad370d445d22aaaf126e3e75aaeab09e8
+spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git
 neo>=0.9.0
 roiextractors>=0.3.1
