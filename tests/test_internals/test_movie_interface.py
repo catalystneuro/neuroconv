@@ -24,8 +24,10 @@ def base_path(tmp_path_factory):
 def create_movies(base_path):
     movie_file1 = base_path / "test1.avi"
     movie_file2 = base_path / "test2.avi"
-    movie_file1.unlink(missing_ok=True)
-    movie_file2.unlink(missing_ok=True)
+    if movie_file1.exists():
+        movie_file1.unlink()
+    if movie_file2.exists():
+        movie_file2.unlink()
     (nf, nx, ny) = (50, 640, 480)
     writer1 = cv2.VideoWriter(
         filename=str(movie_file1),
