@@ -101,7 +101,8 @@ def test_movie_custom_module(movie_converter, nwbfile_path, create_movies):
 def test_movie_chunking(movie_converter, nwbfile_path, create_movies):
     starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
     conversion_options_testing_matrix = [
-        dict(Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=i)) for i in [True, False]
+        dict(Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=i))
+        for i in [True, False]
     ]
     for conv_ops in conversion_options_testing_matrix:
         movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conv_ops)
