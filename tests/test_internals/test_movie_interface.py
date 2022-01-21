@@ -13,8 +13,15 @@ except ImportError:
 
 
 @pytest.fixture(scope="module")
-def create_movies(tmp_path_factory):
-    base_path = tmp_path_factory.mktemp("movie_tests")
+def base_path(tmp_path_factory):
+    test_folder = tmp_path_factory.mktemp("movie_tests")
+    yield test_folder
+    print(f"removing {test_folder}")
+    shutil.rmtree(test_folder)
+
+
+@pytest.fixture(scope="module")
+def create_movies(base_path):
     movie_file1 = base_path / "test1.avi"
     movie_file2 = base_path / "test2.avi"
     (nf, nx, ny) = (50, 640, 480)
@@ -39,8 +46,7 @@ def create_movies(tmp_path_factory):
         writer2.write(np.random.randint(0, 255, (nx, ny, 3)).astype("uint8"))
     writer1.release()
     writer2.release()
-    yield [str(movie_file1), str(movie_file2)]
-    shutil.rmtree(base_path)
+    return [str(movie_file1), str(movie_file2)]
 
 
 @pytest.fixture
@@ -55,9 +61,8 @@ def movie_converter(create_movies):
 
 
 @pytest.fixture(scope="module")
-def nwbfile_path(tmp_path_factory):
-    nwbfile_path = str(tmp_path_factory.mktemp("movie_tests") / "test.nwb")
-    return nwbfile_path
+def nwbfile_path(base_path):
+    return str(base_path / "test.nwb")
 
 
 def test_movie_starting_times(movie_converter, nwbfile_path, create_movies):
@@ -96,7 +101,7 @@ def test_movie_custom_module(movie_converter, nwbfile_path, create_movies):
 def test_movie_chunking(movie_converter, nwbfile_path, create_movies):
     starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
     conversion_options_testing_matrix = [
-        dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=i) for i in [True, False]
+        dict(Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=i)) for i in [True, False]
     ]
     for conv_ops in conversion_options_testing_matrix:
         movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conv_ops)
@@ -106,7 +111,7 @@ def test_movie_chunking(movie_converter, nwbfile_path, create_movies):
             metadata = movie_converter.get_metadata()
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-                assert mod[movie_interface_name].data.chunks is not None  # TODO
+                assert mod[movie_interface_name].data.chunks is not None  # TODO retrive storage_layout of hdf5 dataset
 
 
 def test_movie_external_mode(movie_converter, nwbfile_path, create_movies):
