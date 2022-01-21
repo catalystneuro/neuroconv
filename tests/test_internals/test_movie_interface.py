@@ -103,7 +103,9 @@ def test_movie_custom_module(movie_converter, nwbfile_path, create_movies):
 @pytest.mark.parametrize("chunk_data", [True, False])
 def test_movie_chunking(chunk_data, movie_converter, nwbfile_path, create_movies):
     starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
-    conv_ops = dict(Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=chunk_data))
+    conv_ops = dict(
+        Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=chunk_data)
+    )
     movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conv_ops)
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
