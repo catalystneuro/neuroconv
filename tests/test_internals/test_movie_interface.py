@@ -20,10 +20,12 @@ def base_path(tmp_path_factory):
     shutil.rmtree(test_folder)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def create_movies(base_path):
     movie_file1 = base_path / "test1.avi"
     movie_file2 = base_path / "test2.avi"
+    movie_file1.unlink(missing_ok=True)
+    movie_file2.unlink(missing_ok=True)
     (nf, nx, ny) = (50, 640, 480)
     writer1 = cv2.VideoWriter(
         filename=str(movie_file1),
@@ -98,20 +100,21 @@ def test_movie_custom_module(movie_converter, nwbfile_path, create_movies):
         assert module_description == nwbfile.processing[module_name].description
 
 
-def test_movie_chunking(movie_converter, nwbfile_path, create_movies):
+@pytest.mark.parametrize("chunk_data", [True, False])
+def test_movie_chunking(chunk_data, movie_converter, nwbfile_path, create_movies):
     starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
-    conversion_options_testing_matrix = [
-        dict(Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=i)) for i in [True, False]
-    ]
-    for conv_ops in conversion_options_testing_matrix:
-        movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conv_ops)
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            mod = nwbfile.acquisition
-            metadata = movie_converter.get_metadata()
-            for no in range(len(metadata["Behavior"]["Movies"])):
-                movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
+    conv_ops = dict(Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=chunk_data))
+    movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conv_ops)
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        mod = nwbfile.acquisition
+        metadata = movie_converter.get_metadata()
+        for no in range(len(metadata["Behavior"]["Movies"])):
+            movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
+            if chunk_data:
                 assert mod[movie_interface_name].data.chunks is not None  # TODO retrive storage_layout of hdf5 dataset
+            else:
+                assert mod[movie_interface_name].data.chunks is not None
 
 
 def test_movie_external_mode(movie_converter, nwbfile_path, create_movies):
@@ -124,4 +127,4 @@ def test_movie_external_mode(movie_converter, nwbfile_path, create_movies):
         metadata = movie_converter.get_metadata()
         for no in range(len(metadata["Behavior"]["Movies"])):
             movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-            assert mod[movie_interface_name].external_file[0] == movie_converter[no]
+            assert mod[movie_interface_name].external_file[0] == create_movies[no]
