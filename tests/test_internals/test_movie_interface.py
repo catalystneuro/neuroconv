@@ -83,10 +83,14 @@ def test_movie_custom_module(movie_converter, nwbfile_path):
     starting_times = get_starting_times()
     module_name = "TestModule"
     module_description = "This is a test module."
-    conversion_opts = dict(Movie=dict(starting_times=starting_times,
-                                      external_mode=False,
-                                      module_name=module_name,
-                                      module_description=module_description))
+    conversion_opts = dict(
+        Movie=dict(
+            starting_times=starting_times,
+            external_mode=False,
+            module_name=module_name,
+            module_description=module_description,
+        )
+    )
     movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_opts)
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
@@ -97,19 +101,17 @@ def test_movie_custom_module(movie_converter, nwbfile_path):
 def test_movie_chunking(movie_converter, nwbfile_path):
     starting_times = get_starting_times()
     conversion_options_testing_matrix = [
-        dict(external_mode=False, stub_test=True,
-             starting_times=starting_times, chunk_data=i) for i in [True, False]
+        dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=i) for i in [True, False]
     ]
     for conv_ops in conversion_options_testing_matrix:
-        movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True,
-                                       conversion_options=conv_ops)
+        movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conv_ops)
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             mod = nwbfile.acquisition
             metadata = movie_converter.get_metadata()
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-                assert mod[movie_interface_name].data.chunks is not None # TODO
+                assert mod[movie_interface_name].data.chunks is not None  # TODO
 
 
 def test_movie_external_mode(movie_converter, nwbfile_path):
