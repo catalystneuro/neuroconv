@@ -54,19 +54,14 @@ def movie_converter(create_movies):
     del converter
 
 
-@pytest.fixture
-def get_starting_times(create_movies):
-    return [np.float(np.random.randint(200)) for i in range(len(create_movies))]
-
-
 @pytest.fixture(scope="module")
 def nwbfile_path(tmp_path_factory):
     nwbfile_path = str(tmp_path_factory.mktemp("movie_tests") / "test.nwb")
     return nwbfile_path
 
 
-def test_movie_starting_times(movie_converter, nwbfile_path):
-    starting_times = get_starting_times()
+def test_movie_starting_times(movie_converter, nwbfile_path, create_movies):
+    starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
     conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=False))
     movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_opts)
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
@@ -79,8 +74,8 @@ def test_movie_starting_times(movie_converter, nwbfile_path):
             assert starting_times[no] == mod[movie_interface_name].starting_time
 
 
-def test_movie_custom_module(movie_converter, nwbfile_path):
-    starting_times = get_starting_times()
+def test_movie_custom_module(movie_converter, nwbfile_path, create_movies):
+    starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
     module_name = "TestModule"
     module_description = "This is a test module."
     conversion_opts = dict(
@@ -98,8 +93,8 @@ def test_movie_custom_module(movie_converter, nwbfile_path):
         assert module_description == nwbfile.processing[module_name].description
 
 
-def test_movie_chunking(movie_converter, nwbfile_path):
-    starting_times = get_starting_times()
+def test_movie_chunking(movie_converter, nwbfile_path, create_movies):
+    starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
     conversion_options_testing_matrix = [
         dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=i) for i in [True, False]
     ]
@@ -114,8 +109,8 @@ def test_movie_chunking(movie_converter, nwbfile_path):
                 assert mod[movie_interface_name].data.chunks is not None  # TODO
 
 
-def test_movie_external_mode(movie_converter, nwbfile_path):
-    starting_times = get_starting_times()
+def test_movie_external_mode(movie_converter, nwbfile_path, create_movies):
+    starting_times = [np.float(np.random.randint(200)) for i in range(len(create_movies))]
     conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=True))
     movie_converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_opts)
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
