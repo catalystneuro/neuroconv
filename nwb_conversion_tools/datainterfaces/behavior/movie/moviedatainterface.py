@@ -178,7 +178,7 @@ class MovieInterface(BaseDataInterface):
                 image_series_kwargs.update(format="external", external_file=file_list)
                 with VideoCaptureContext(str(file_list[0]), stub=stub_test) as vc:
                     fps = vc.get_movie_fps()
-                    image_series_kwargs.update(starting_time=0.0, rate=fps)  # TODO manage custom starting_times
+                image_series_kwargs.update(starting_time=0.0, rate=fps)  # TODO manage custom starting_times
             else:
                 file = file_list[0]
                 uncompressed_estimate = Path(file).stat().st_size * 70
@@ -189,9 +189,10 @@ class MovieInterface(BaseDataInterface):
                         f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
                     )
                     chunk_data = True
-                video_capture_ob = VideoCaptureContext(str(file), stub=stub_test)
-                total_frames = video_capture_ob.get_movie_frame_count()
                 if chunk_data:
+                    video_capture_ob = VideoCaptureContext(str(file), stub=stub_test)
+                    total_frames = video_capture_ob.get_movie_frame_count()
+                    video_capture_ob.current_frame = 0
                     frame_shape = video_capture_ob.get_frame_shape()
                     maxshape = (total_frames, *frame_shape)
                     best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
@@ -202,29 +203,31 @@ class MovieInterface(BaseDataInterface):
                         dtype=video_capture_ob.get_movie_frame_dtype(),
                     )
                     data = H5DataIO(iterable, compression=compression, chunks=best_gzip_chunk)
+                    timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
+                    fps = video_capture_ob.get_movie_fps()
                 else:
-                    iterable = []
-                    tqdm_pos, tqdm_mininterval = (0, 10)
-                    with tqdm(
-                        desc=f"Reading movie data for {Path(file).name}",
-                        position=tqdm_pos,
-                        total=total_frames,
-                        mininterval=tqdm_mininterval,
-                    ) as pbar:
-                        for frame in video_capture_ob:
-                            iterable.append(frame)
-                            pbar.update(1)
-                    iterable = np.array(iterable)
-
-                    data = H5DataIO(iterable, compression=compression)
+                    with VideoCaptureContext(str(file), stub=stub_test) as video_capture_ob:
+                        iterable = []
+                        tqdm_pos, tqdm_mininterval = (0, 10)
+                        with tqdm(
+                            desc=f"Reading movie data for {Path(file).name}",
+                            position=tqdm_pos,
+                            total=total_frames,
+                            mininterval=tqdm_mininterval,
+                        ) as pbar:
+                            for frame in video_capture_ob:
+                                iterable.append(frame)
+                                pbar.update(1)
+                        iterable = np.array(iterable)
+                        timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
+                        fps = video_capture_ob.get_movie_fps()
+                        data = H5DataIO(iterable, compression=compression)
 
                 # capture data in kwargs:
                 image_series_kwargs.update(data=data)
-                timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
                 if len(starting_times) != len(file_paths):
                     starting_times.append(timestamps[-1])
                 if check_regular_timestamps(ts=timestamps):
-                    fps = video_capture_ob.get_movie_fps()
                     image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
                 else:
                     image_series_kwargs.update(timestamps=timestamps)
