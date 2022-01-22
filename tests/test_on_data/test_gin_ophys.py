@@ -38,6 +38,13 @@ else:
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 HAVE_OPHYS_DATA = OPHYS_DATA_PATH.exists()
 
+SAVE_OUTPUTS = False
+if SAVE_OUTPUTS:
+    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
+    OUTPUT_PATH.mkdir(exist_ok=True)
+else:
+    OUTPUT_PATH = Path(tempfile.mkdtemp())
+
 if not HAVE_PARAMETERIZED:
     pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
 
@@ -53,7 +60,7 @@ def custom_name_func(testcase_func, param_num, param):
 
 
 class TestOphysNwbConversions(unittest.TestCase):
-    savedir = Path(tempfile.mkdtemp())
+    savedir = OUTPUT_PATH
 
     imaging_interface_list = [
         param(
