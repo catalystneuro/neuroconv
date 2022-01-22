@@ -34,15 +34,14 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-# Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-#   ecephys: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-#   ophys: TODO
-#   icephys: TODO
+# GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
 else:
-    LOCAL_PATH = Path("/home/jovyan/")  # Override this on personal device for local testing
+    # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
+    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
+    LOCAL_PATH = Path("/shared/catalystneuro/")
     print("Running GIN tests locally!")
 
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
@@ -69,7 +68,7 @@ def custom_name_func(testcase_func, param_num, param):
     )
 
 
-class TestNwbConversions(unittest.TestCase):
+class TestEcephysNwbConversions(unittest.TestCase):
     savedir = OUTPUT_PATH
 
     parameterized_lfp_list = [

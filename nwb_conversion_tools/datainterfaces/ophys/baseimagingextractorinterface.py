@@ -23,6 +23,8 @@ class BaseImagingExtractorInterface(BaseDataInterface):
     def get_metadata_schema(self):
         """Compile metadata schema for the ImageExtractor."""
         metadata_schema = super().get_metadata_schema()
+        self.imaging_extractor._sampling_frequency = float(self.imaging_extractor._sampling_frequency)
+
         metadata_schema["required"] = ["Ophys"]
 
         # Initiate Ophys metadata
@@ -53,6 +55,14 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         metadata = super().get_metadata()
         metadata.update(re.NwbImagingExtractor.get_nwb_metadata(self.imaging_extractor))
         _ = metadata.pop("NWBFile")
+
+        # fix troublesome data types
+        if "TwoPhotonSeries" in metadata["Ophys"]:
+            for two_photon_series in metadata["Ophys"]["TwoPhotonSeries"]:
+                if "dimension" in two_photon_series:
+                    two_photon_series["dimension"] = list(two_photon_series["dimension"])
+                if "rate" in two_photon_series:
+                    two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict, overwrite: bool = False):
