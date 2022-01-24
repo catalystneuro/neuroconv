@@ -5,6 +5,9 @@ from importlib import import_module
 from itertools import chain
 from jsonschema import validate, RefResolver
 
+from dandi.organize import create_unique_filenames_from_metadata
+from dandi.metadata import _get_pynwb_metadata
+
 from .json_schema import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
 from ..nwbconverter import NWBConverter
 
@@ -44,6 +47,8 @@ def run_conversion_from_yaml(
         data_folder = Path(specification_file_path).parent
     if output_folder is None:
         output_folder = Path(specification_file_path).parent
+    else:
+        output_folder = Path(output_folder)
 
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent / "schemas"
@@ -60,10 +65,12 @@ def run_conversion_from_yaml(
         name=".",
         package="nwb_conversion_tools",  # relative import, but named and referenced as if it were absolute
     )
+    file_counter = 0
     for experiment in specification["experiments"].values():
         experiment_metadata = experiment.get("metadata", dict())
         experiment_data_interfaces = experiment.get("data_interfaces")
         for session in experiment["sessions"]:
+            file_counter += 1
             session_data_interfaces = session.get("data_interfaces")
             data_interface_classes = dict()
             data_interfaces_names_chain = chain(
@@ -90,19 +97,28 @@ def run_conversion_from_yaml(
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
                 metadata = dict_deep_update(metadata, metadata_source)
 
-            if "nwbfile_name" not in session:
-                # 'subject_id' is required by schema validation if the 'Subject' is specified in metadata
-                assert "Subject" in metadata and "session_start_time" in metadata.get("NWBFile"), (
-                    "If not specifying an explicit name for the NWBFile ('nwbfile_name'), then both "
-                    "metadata['Subject']['subject_id'] and metadata['NWBFile']['session_start_time'] are required!"
-                )
-                subject_file_name = metadata["Subject"]["subject_id"].replace(" ", "_")
-                nwbfile_name = f"{subject_file_name}_{metadata['NWBFile']['session_start_time']}"
-            else:
-                nwbfile_name = session["nwbfile_name"]
+            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
             converter.run_conversion(
-                nwbfile_path=Path(output_folder) / f"{nwbfile_name}.nwb",
+                nwbfile_path=output_folder / f"{nwbfile_name}.nwb",
                 metadata=metadata,
                 overwrite=overwrite,
                 conversion_options=session.get("conversion_options", dict()),
             )
+
+    # To properly mimic a true dandi organization, the full directory must be populated with NWBFiles.
+    all_nwbfile_paths = [nwbfile_path for nwbfile_path in output_folder.iterdir() if nwbfile_path.suffix == ".nwb"]
+    if any(["temp_nwbfile_name_" in nwbfile_path.stem for nwbfile_path in all_nwbfile_paths]):
+        dandi_metadata_list = []
+        for nwbfile_path in all_nwbfile_paths:
+            dandi_metadata = _get_pynwb_metadata(path=nwbfile_path)
+            dandi_metadata.update(path=nwbfile_path)
+            dandi_metadata_list.append(dandi_metadata)
+        named_dandi_metadata_list = create_unique_filenames_from_metadata(metadata=dandi_metadata_list)
+
+        for named_dandi_metadata in named_dandi_metadata_list:
+            if "temp_nwbfile_name_" in named_dandi_metadata["path"].stem:
+                dandi_filename = named_dandi_metadata["dandi_filename"].replace(" ", "_")
+                assert (
+                    dandi_filename != ".nwb"
+                ), f"Not enough metadata available to assign name to {str(named_dandi_metadata['path'])}!"
+                named_dandi_metadata["path"].rename(str(output_folder / dandi_filename))

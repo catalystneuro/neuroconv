@@ -26,7 +26,7 @@ experiments:
             session_start_time: "2020-10-09T21:19:09+00:00"
           Subject:
             subject_id: "1"
-      - nwbfile_name: example_converter_spec_2
+      - nwbfile_name: example_converter_spec_2.nwb
         metadata:
           NWBFile:
             session_start_time: "2020-10-10T21:19:09+00:00"

@@ -12,15 +12,25 @@ from pynwb import NWBHDF5IO
 from nwb_conversion_tools.utils.json_schema import load_dict_from_file
 from nwb_conversion_tools.utils.conversion_tools import run_conversion_from_yaml
 
-# Path to dataset downloaded from https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-#   ophys: TODO
-#   icephys: TODO
+# GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
 else:
-    LOCAL_PATH = Path("/home/jovyan/")  # Override this on personal device for local testing
+    # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
+    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
+    LOCAL_PATH = Path("/shared/catalystneuro/")
     print("Running GIN tests locally!")
+
+DATA_PATH = LOCAL_PATH / "ephy_testing_data"
+HAVE_DATA = DATA_PATH.exists()
+
+SAVE_OUTPUTS = True
+if SAVE_OUTPUTS:
+    OUTPUT_PATH = LOCAL_PATH / "example_yaml_output"
+    OUTPUT_PATH.mkdir(exist_ok=True)
+else:
+    OUTPUT_PATH = Path(mkdtemp())
 
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
@@ -31,10 +41,11 @@ if not HAVE_DATA:
 
 class TestYAMLConversionSpecification(TestCase):
     def setUp(self):
-        self.test_folder = Path(mkdtemp())
+        self.test_folder = OUTPUT_PATH
 
     def tearDown(self):
-        rmtree(path=self.test_folder)
+        if not SAVE_OUTPUTS:
+            rmtree(path=self.test_folder)
 
     def test_validate_example_specification(self):
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
@@ -84,8 +95,10 @@ class TestYAMLConversionSpecification(TestCase):
             assert "spike_times" in nwbfile.units
 
     def test_run_conversion_from_yaml_default_nwbfile_name(self):
+        self.test_folder = self.test_folder / "test_organize"
+        self.test_folder.mkdir(exist_ok=True)
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
-        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_no_nwbfile_name.yml"
+        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_missing_nwbfile_names.yml"
         run_conversion_from_yaml(
             specification_file_path=yaml_file_path,
             data_folder=DATA_PATH,
@@ -93,48 +106,42 @@ class TestYAMLConversionSpecification(TestCase):
             overwrite=True,
         )
 
-        subject_id = "Mouse 1"
-        subject_id_file_name = subject_id.replace(" ", "_")
-        session_start_time = "2020-10-09T21:19:09+00:00"
-        with NWBHDF5IO(path=self.test_folder / f"{subject_id_file_name}_{session_start_time}.nwb", mode="r") as io:
+        with NWBHDF5IO(path=self.test_folder / "sub-Mouse_1_ses-20201009T211909.nwb", mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat(session_start_time)
-            assert nwbfile.subject.subject_id == subject_id
+            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
+            assert nwbfile.subject.subject_id == "Mouse 1"
             assert "ElectricalSeries_raw" in nwbfile.acquisition
 
-        subject_id = "MyMouse002"
-        session_start_time = "2020-10-10T21:19:09+00:00"
-        with NWBHDF5IO(path=self.test_folder / f"{subject_id}_{session_start_time}.nwb", mode="r") as io:
+        with NWBHDF5IO(path=self.test_folder / "example_defined_name.nwb", mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat(session_start_time)
-            assert nwbfile.subject.subject_id == subject_id
+            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-10T21:19:09+00:00")
+            assert nwbfile.subject.subject_id == "MyMouse002"
 
-        subject_id = "Subject Name"
-        subject_id_file_name = subject_id.replace(" ", "_")
-        session_start_time = "2020-10-11T21:19:09+00:00"
-        with NWBHDF5IO(path=self.test_folder / f"{subject_id_file_name}_{session_start_time}.nwb", mode="r") as io:
+        with NWBHDF5IO(path=self.test_folder / "sub-Subject_Name_ses-20201011T211909.nwb", mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "no description"
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
-            assert nwbfile.session_start_time == datetime.fromisoformat(session_start_time)
-            assert nwbfile.subject.subject_id == subject_id
+            assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-11T21:19:09+00:00")
+            assert nwbfile.subject.subject_id == "Subject Name"
             assert "spike_times" in nwbfile.units
 
-    def test_run_conversion_from_yaml_default_nwbfile_name_assertion(self):
+    def test_run_conversion_from_yaml_no_nwbfile_name_or_other_metadata_assertion(self):
+        self.test_folder = self.test_folder / "test_organize_no_nwbfile_name_or_other_metadata"
+        self.test_folder.mkdir(exist_ok=True)
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
-        yaml_file_path = path_to_test_yml_files / f"GIN_conversion_specification_no_nwbfile_name_or_other_metadata.yml"
+        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_no_nwbfile_name_or_other_metadata.yml"
+
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg=(
-                "If not specifying an explicit name for the NWBFile ('nwbfile_name'), then both "
-                "metadata['Subject']['subject_id'] and metadata['NWBFile']['session_start_time'] are required!"
+                f"Not enough metadata available to assign name to {str(self.test_folder / 'temp_nwbfile_name_1.nwb')}!"
             ),
         ):
             run_conversion_from_yaml(
