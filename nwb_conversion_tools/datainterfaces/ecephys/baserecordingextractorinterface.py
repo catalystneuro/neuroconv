@@ -31,8 +31,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = super().get_metadata_schema()
-
-        # Initiate Ecephys metadata
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = ["Device", "ElectrodeGroup"]
         metadata_schema["properties"]["Ecephys"]["properties"] = dict(
