@@ -4,6 +4,8 @@ from typing import Optional
 import numpy as np
 
 import spikeextractors as se
+import spikeinterface as si
+
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
@@ -90,7 +92,15 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
 
-        recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
+        if isinstance(self.recording_extractor, se.RecordingExtractor):
+            recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
+        elif isinstance(self.recording_extractor, si.BaseRecording):
+            recording_extractor = si.FrameSliceRecording(self.recording_extractor, end_frame=end_frame)
+        else:
+            raise f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording"
+
+        print("Passing by here")
+
         return recording_extractor
 
     def run_conversion(
