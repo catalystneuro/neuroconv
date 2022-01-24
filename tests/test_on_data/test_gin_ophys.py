@@ -25,17 +25,25 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-# Path to GIN datasets
-#   ophys: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+#  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
 else:
-    LOCAL_PATH = Path("/home/jovyan/")  # Override this on personal device for local testing
+    # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
+    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
+    LOCAL_PATH = Path("/shared/catalystneuro/")
     print("Running GIN tests locally!")
 
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 HAVE_OPHYS_DATA = OPHYS_DATA_PATH.exists()
+
+SAVE_OUTPUTS = False
+if SAVE_OUTPUTS:
+    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
+    OUTPUT_PATH.mkdir(exist_ok=True)
+else:
+    OUTPUT_PATH = Path(tempfile.mkdtemp())
 
 if not HAVE_PARAMETERIZED:
     pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
@@ -52,7 +60,7 @@ def custom_name_func(testcase_func, param_num, param):
 
 
 class TestOphysNwbConversions(unittest.TestCase):
-    savedir = Path(tempfile.mkdtemp())
+    savedir = OUTPUT_PATH
 
     imaging_interface_list = [
         param(

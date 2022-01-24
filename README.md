@@ -94,5 +94,7 @@ for `ophys` data.
 
 Once the data is downloaded to your system, you must manually modify the `test_gin_{modality}.py` files ([line #43 for ecehys](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/tests/test_on_data/test_gin_ecephys.py#L43) and [line #34 for ophys](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/tests/test_on_data/test_gin_ophys.py#L34)) to point to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
 
+The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=True` and modify the local `OUTPUT_PATH` if necessary.
+
 ## Rebuilding on Read the Docs
 As a maintainer, once the changes to the documentation are on the master branch, go to [https://readthedocs.org/projects/nwb-conversion-tools/](https://readthedocs.org/projects/nwb-conversion-tools/) and click "Build version". Check the console output and its log for any errors.
