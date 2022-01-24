@@ -1136,7 +1136,7 @@ def add_units(
         if property_name in ["max_channel", "max_electrode"] and nwbfile.electrodes is not None:
             unit_col_args.update(table=nwbfile.electrodes)
         units_table.add_column(**unit_col_args)
-        aggregated_unit_properties[property_name] = checked_sorting.get_property(property_name=property_name)
+        aggregated_unit_properties[property_name] = checked_sorting.get_property(key=property_name)
 
     for i, unit_id in enumerate(unit_ids):
         if use_times:
