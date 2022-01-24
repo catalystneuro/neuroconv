@@ -1147,6 +1147,68 @@ def add_units(
 
         units_table.add_unit(id=int(unit_id), spike_times=spkt, **kwargs)
 
+    if isinstance(sorting, SortingExtractor):
+        all_features = set()
+        for unit_id in unit_ids:
+            all_features.update(sorting.get_unit_spike_feature_names(unit_id))
+        if skip_features is None:
+            skip_features = []
+
+        # Check that multidimensional features have the same shape across units
+        feature_shapes = dict()
+        for ft in all_features:
+            shapes = []
+            for unit_id in unit_ids:
+                if ft in sorting.get_unit_spike_feature_names(unit_id):
+                    feat_value = sorting.get_unit_spike_features(unit_id, ft)
+                    if isinstance(feat_value[0], (int, np.integer, float, str, bool)):
+                        break
+                    elif isinstance(feat_value[0], (list, np.ndarray)):  # multidimensional features
+                        if np.array(feat_value).ndim > 1:
+                            shapes.append(np.array(feat_value).shape)
+                            feature_shapes[ft] = shapes
+                    elif isinstance(feat_value[0], dict):
+                        print(f"Skipping feature '{ft}' because dictionaries are not supported.")
+                        skip_features.append(ft)
+                        break
+                else:
+                    print(f"Skipping feature '{ft}' because not share across all units.")
+                    skip_features.append(ft)
+                    break
+
+        nspikes = {k: get_nspikes(units_table, int(k)) for k in unit_ids}
+        for ft in feature_shapes.keys():
+            # skip first dimension (num_spikes) when comparing feature shape
+            if not np.all([elem[1:] == feature_shapes[ft][0][1:] for elem in feature_shapes[ft]]):
+                print(f"Skipping feature '{ft}' because it has variable size across units.")
+                skip_features.append(ft)
+
+        for ft in set(all_features) - set(skip_features):
+            values = []
+            if not ft.endswith("_idxs"):
+                for unit_id in sorting.get_unit_ids():
+                    feat_vals = sorting.get_unit_spike_features(unit_id, ft)
+                    if len(feat_vals) < nspikes[unit_id]:
+                        skip_features.append(ft)
+                        print(f"Skipping feature '{ft}' because it is not defined for all spikes.")
+                        break
+                    else:
+                        all_feat_vals = feat_vals
+                    values.append(all_feat_vals)
+                flatten_vals = [item for sublist in values for item in sublist]
+                nspks_list = [sp for sp in nspikes.values()]
+                spikes_index = np.cumsum(nspks_list).astype("int64")
+                if ft in units_table:  # If property already exists, skip it
+                    warnings.warn(f"Feature {ft} already present in units table, skipping it")
+                    continue
+                set_dynamic_table_property(
+                    dynamic_table=units_table,
+                    row_ids=[int(k) for k in unit_ids],
+                    property_name=ft,
+                    values=flatten_vals,
+                    index=spikes_index,
+                )
+
     if write_as == "units":
         if nwbfile.units is None:
             nwbfile.units = units_table
