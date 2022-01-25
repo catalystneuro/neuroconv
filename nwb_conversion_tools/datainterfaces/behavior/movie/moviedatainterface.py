@@ -207,6 +207,10 @@ class MovieInterface(BaseDataInterface):
                     fps = video_capture_ob.get_movie_fps()
                 else:
                     with VideoCaptureContext(str(file), stub=stub_test) as video_capture_ob:
+                        total_frames = video_capture_ob.get_movie_frame_count()
+                        frame_shape = video_capture_ob.get_frame_shape()
+                        maxshape = (total_frames, *frame_shape)
+                        best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
                         iterable = []
                         tqdm_pos, tqdm_mininterval = (0, 10)
                         with tqdm(
@@ -218,10 +222,22 @@ class MovieInterface(BaseDataInterface):
                             for frame in video_capture_ob:
                                 iterable.append(frame)
                                 pbar.update(1)
-                        iterable = np.array(iterable)
+                            data=H5DataIO(
+                                DataChunkIterator(
+                                    tqdm(
+                                        iterable=np.array(iterable),
+                                        desc=f"Writing movie data for {Path(file).name}",
+                                        position=tqdm_pos,
+                                        mininterval=tqdm_mininterval,
+                                    ),
+                                    iter_axis=0,  # nwb standard is time as zero axis
+                                    maxshape=tuple(maxshape),
+                                ),
+                                compression="gzip",
+                                chunks=best_gzip_chunk,
+                            )
                         timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
                         fps = video_capture_ob.get_movie_fps()
-                        data = H5DataIO(iterable, compression=compression)
 
                 # capture data in kwargs:
                 image_series_kwargs.update(data=data)
