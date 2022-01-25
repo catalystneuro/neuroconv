@@ -31,6 +31,7 @@ def subset_shank_channels(
     else:
         recording = recording_extractor
     shank_channels = get_shank_channels(xml_file_path=xml_file_path)
+    
     if shank_channels is not None:
         channel_ids = [channel_id for group in shank_channels for channel_id in group]
         sub_recording = recording.channel_slice(channel_ids)

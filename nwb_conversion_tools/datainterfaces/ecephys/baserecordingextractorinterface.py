@@ -99,8 +99,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         else:
             raise f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording"
 
-        print("Passing by here")
-
         return recording_extractor
 
     def run_conversion(
