@@ -112,17 +112,19 @@ class VideoCaptureContext(cv2.VideoCapture):
 
     def __next__(self):
         if not self.isOpened():
-            raise StopIteration
+            super().__init__(*self._args, **self._kwargs)
         try:
             if self.current_frame < self.frame_count:
                 success, frame = self.read()
                 self.current_frame += 1
+                self.release()
                 if success:
                     return frame
                 else:
                     return np.nan * np.ones(self.get_frame_shape())
             else:
                 self.current_frame = 0
+                self.release()
                 raise StopIteration
         except Exception:
             raise StopIteration
