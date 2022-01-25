@@ -222,7 +222,7 @@ class MovieInterface(BaseDataInterface):
                             for frame in video_capture_ob:
                                 iterable.append(frame)
                                 pbar.update(1)
-                            data=H5DataIO(
+                            data = H5DataIO(
                                 DataChunkIterator(
                                     tqdm(
                                         iterable=np.array(iterable),
