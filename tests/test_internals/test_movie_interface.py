@@ -7,6 +7,7 @@ from nwb_conversion_tools import NWBConverter, MovieInterface
 
 try:
     import cv2
+
     skip_test = False
 except ImportError:
     skip_test = True
@@ -14,7 +15,6 @@ except ImportError:
 
 @unittest.skipIf(skip_test, "cv2 not installed")
 class TestMovieInterface(unittest.TestCase):
-
     def setUp(self) -> None:
         self.test_dir = tempfile.mkdtemp()
         self.movie_files = self.create_movies()
@@ -59,9 +59,9 @@ class TestMovieInterface(unittest.TestCase):
     def test_movie_starting_times(self):
         starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=False))
-        self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path,
-                                          overwrite=True,
-                                          conversion_options=conversion_opts)
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conversion_opts
+        )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             mod = nwbfile.acquisition
@@ -83,9 +83,9 @@ class TestMovieInterface(unittest.TestCase):
                 module_description=module_description,
             )
         )
-        self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path,
-                                          overwrite=True,
-                                          conversion_options=conversion_opts)
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conversion_opts
+        )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert module_name in nwbfile.processing
@@ -96,9 +96,7 @@ class TestMovieInterface(unittest.TestCase):
         conv_ops = dict(
             Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=False)
         )
-        self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path,
-                                          overwrite=True,
-                                          conversion_options=conv_ops)
+        self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conv_ops)
 
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -111,8 +109,9 @@ class TestMovieInterface(unittest.TestCase):
     def test_movie_external_mode(self):
         starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=True))
-        self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, overwrite=True,
-                                          conversion_options=conversion_opts)
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conversion_opts
+        )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             mod = nwbfile.acquisition
