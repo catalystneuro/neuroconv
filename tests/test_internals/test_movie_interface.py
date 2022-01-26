@@ -1,3 +1,4 @@
+import shutil
 import unittest
 import tempfile
 import numpy as np
@@ -119,3 +120,7 @@ class TestMovieInterface(unittest.TestCase):
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].external_file[0] == self.movie_files[no]
+
+    def tearDown(self) -> None:
+        shutil.rmtree(self.test_dir)
+        del self.nwb_converter
