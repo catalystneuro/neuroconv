@@ -277,7 +277,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_dtype = nwbfile_in.acquisition["ElectricalSeries_raw"].data.dtype
+            output_dtype = nwbfile.acquisition["ElectricalSeries_raw"].data.dtype
             self.assertEqual(first=output_dtype, second=np.dtype("int16"))
 
     def test_neuroscope_starting_time(self):
