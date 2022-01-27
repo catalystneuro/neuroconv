@@ -276,7 +276,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_options)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile_in = io.read()
+            nwbfile = io.read()
             output_dtype = nwbfile_in.acquisition["ElectricalSeries_raw"].data.dtype
             self.assertEqual(first=output_dtype, second=np.dtype("int16"))
 
