@@ -247,7 +247,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_conversion = nwbfile_in.acquisition["ElectricalSeries_raw"].conversion
+            output_conversion = nwbfile.acquisition["ElectricalSeries_raw"].conversion
             output_gain = output_conversion * 1e6
             self.assertEqual(first=input_gain, second=output_gain)
 
