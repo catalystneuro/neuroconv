@@ -174,7 +174,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBF
 
     if len(nwbfile.devices) == 0:
         warnings.warn("When adding ElectrodeGroup, no Devices were found on nwbfile. Creating a Device now...")
-        add_devices(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
+        add_devices(nwbfile=nwbfile, metadata=metadata)
 
     if metadata is None:
         metadata = dict()
@@ -204,7 +204,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBF
             device_name = grp.get("device", defaults[0]["device"])
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
-                add_devices(recording=checked_recording, nwbfile=nwbfile, metadata=new_device_metadata)
+                add_devices(nwbfile=nwbfile, metadata=new_device_metadata)
                 warnings.warn(
                     f"Device '{device_name}' not detected in "
                     "attempted link to electrode group! Automatically generating."
