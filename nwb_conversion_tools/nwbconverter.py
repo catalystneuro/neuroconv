@@ -2,6 +2,7 @@
 from jsonschema import validate
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
@@ -113,6 +114,7 @@ class NWBConverter:
     def run_conversion(
         self,
         metadata: Optional[dict] = None,
+        session_start_time: Optional[datetime] = None,
         save_to_file: Optional[bool] = True,
         nwbfile_path: Optional[str] = None,
         overwrite: Optional[bool] = False,
@@ -125,6 +127,11 @@ class NWBConverter:
         Parameters
         ----------
         metadata : dict, optional
+        session_start_time : datetime, optional
+            If the session_start_time is not auto-populated in the metadata by some DataInterface,
+            then it must be specified explicitly. Must be a datetime object specifying the date and
+            time (we also recommend setting a timezone). If passed, this argument will always override
+        the value in the metadata.
         save_to_file : bool, optional
             If False, returns an NWBFile object instead of writing it to the nwbfile_path. The default is True.
         nwbfile_path : str, optional
@@ -147,6 +154,14 @@ class NWBConverter:
 
         if metadata is None:
             metadata = self.get_metadata()
+        assert "session_start_time" in metadata.get("NWBFile", dict()) or session_start_time is not None, (
+            "'session_start_time' was not found auto-populated in metadata['NWBFile']! "
+            "Please specify as an additional argument to run_conversion(...)"
+        )
+        if session_start_time is not None:
+            if "NWBFile" not in metadata:
+                metadata.update(NWBFile=dict())
+            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
         if conversion_options is None:
             conversion_options = self.get_conversion_options()
 
