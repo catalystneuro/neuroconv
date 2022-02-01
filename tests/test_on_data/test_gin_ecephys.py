@@ -203,7 +203,9 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         else:
             check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
-            check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=True)
+            # This can only be tested if both gain and offest are present
+            if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
+                check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
     @parameterized.expand(
         input=[
