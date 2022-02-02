@@ -15,11 +15,11 @@ except ImportError:
 PathType = Union[str, Path]
 
 
-class VideoCaptureContext(cv2.VideoCapture):
+class VideoCaptureContext:
     def __init__(self, *args, stub=False, **kwargs):
+        self.vc = cv2.VideoCapture(*args, **kwargs)
         self._args = args
         self._kwargs = kwargs
-        super().__init__(*args, **kwargs)
         self.stub = stub
         self._current_frame = 0
         self.frame_count = self.get_movie_frame_count()
@@ -32,12 +32,12 @@ class VideoCaptureContext(cv2.VideoCapture):
         Return numpy array of the timestamps for a movie file.
 
         """
-        if not self.isOpened():
+        if not self.vc.isOpened():
             raise ValueError("movie file is not open")
-        ts = [self.get(cv2.CAP_PROP_POS_MSEC)]
+        ts = [self.vc.get(cv2.CAP_PROP_POS_MSEC)]
         for i in tqdm(range(1, self.get_movie_frame_count()), desc="retrieving video timestamps"):
             self.current_frame = i
-            ts.append(self.get(cv2.CAP_PROP_POS_MSEC))
+            ts.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
         self.current_frame = 0
         return np.array(ts)
 
@@ -47,8 +47,8 @@ class VideoCaptureContext(cv2.VideoCapture):
 
         """
         if int(cv2.__version__.split(".")[0]) < 3:
-            return self.get(cv2.cv.CV_CAP_PROP_FPS)
-        return self.get(cv2.CAP_PROP_FPS)
+            return self.vc.get(cv2.cv.CV_CAP_PROP_FPS)
+        return self.vc.get(cv2.CAP_PROP_FPS)
 
     def get_frame_shape(self) -> Tuple:
         """
@@ -65,9 +65,9 @@ class VideoCaptureContext(cv2.VideoCapture):
             # if stub the assume a max frame count of 10
             return 10
         if int(cv2.__version__.split(".")[0]) < 3:
-            count = self.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
+            count = self.vc.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
         else:
-            count = self.get(cv2.CAP_PROP_FRAME_COUNT)
+            count = self.vc.get(cv2.CAP_PROP_FRAME_COUNT)
         return int(count)
 
     @property
@@ -80,7 +80,7 @@ class VideoCaptureContext(cv2.VideoCapture):
             set_arg = cv2.cv.CV_CAP_PROP_POS_FRAMES
         else:
             set_arg = cv2.CAP_PROP_POS_FRAMES
-        set_value = self.set(set_arg, frame_no)
+        set_value = self.vc.set(set_arg, frame_no)
         if set_value:
             self._current_frame = frame_no
         else:
@@ -90,11 +90,11 @@ class VideoCaptureContext(cv2.VideoCapture):
         """
         Return the specific frame from a movie.
         """
-        if not self.isOpened():
+        if not self.vc.isOpened():
             raise ValueError("movie file is not open")
         assert frame_no < self.get_movie_frame_count(), "frame number is greater than length of movie"
         self.current_frame = frame_no
-        success, frame = self.read()
+        success, frame = self.vc.read()
         self.current_frame = 0
         if success:
             return frame
@@ -111,32 +111,32 @@ class VideoCaptureContext(cv2.VideoCapture):
         return self
 
     def __next__(self):
-        if not self.isOpened():
-            super().__init__(*self._args, **self._kwargs)
+        if not self.vc.isOpened():
+            self.vc = cv2.VideoCapture(*self._args, **self._kwargs)
         try:
             if self._current_frame < self.frame_count:
                 self.current_frame = self._current_frame
-                success, frame = self.read()
+                success, frame = self.vc.read()
                 self._current_frame += 1
-                self.release()
+                self.vc.release()
                 if success:
                     return frame
                 else:
                     return np.nan * np.ones(self.get_frame_shape())
             else:
                 self._current_frame = 0
-                self.release()
+                self.vc.release()
                 raise StopIteration
         except Exception:
             raise StopIteration
 
     def __enter__(self):
-        if not self.isOpened():
-            super().__init__(*self._args, **self._kwargs)
+        if not self.vc.isOpened():
+            self.vc = cv2.VideoCapture(*self._args, **self._kwargs)
         return self
 
     def __exit__(self, *args):
-        self.release()
+        self.vc.release()
 
     def __del__(self):
-        self.release()
+        self.vc.release()
