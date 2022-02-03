@@ -5,16 +5,15 @@ import unittest
 import cv2
 import numpy as np
 
-from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import \
-    VideoCaptureContext
+from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import VideoCaptureContext
 
 
 class TestVideoContext(unittest.TestCase):
-    
+
     frame_shape = (640, 480, 3)
     no_frames = 20
     fps = 25
-    
+
     def setUp(self) -> None:
         self.test_dir = tempfile.mkdtemp()
         self.movie_frames = self.get_movie_frames()
@@ -37,7 +36,7 @@ class TestVideoContext(unittest.TestCase):
             params=None,
         )
         for k in range(self.no_frames):
-            writer.write(self.movie_frames[k,:,:,:])
+            writer.write(self.movie_frames[k, :, :, :])
         writer.release()
         return movie_file
 
@@ -58,7 +57,7 @@ class TestVideoContext(unittest.TestCase):
         with VideoCaptureContext(self.movie_loc, stub=True) as vcc:
             ts = vcc.get_movie_timestamps()
         self.assertEqual(len(ts), 10)
-    
+
     def test_fps(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
             fps = vcc.get_movie_fps()
