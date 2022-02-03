@@ -27,7 +27,7 @@ def subset_shank_channels(
 ) -> si.BaseRecording:
     """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
     if isinstance(recording_extractor, se.RecordingExtractor):
-        recording = si.core.old_api_utils.OldToNewRecording(recording_extractor)
+        recording = OldToNewRecording(oldapi_recording_extractor=recording_extractor)
     else:
         recording = recording_extractor
     shank_channels = get_shank_channels(xml_file_path=xml_file_path)
