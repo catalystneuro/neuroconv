@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import spikeextractors as se
+import spikeinterface as si
 from spikeinterface.core.old_api_utils import OldToNewRecording
 
 from pynwb.ecephys import ElectricalSeries
