@@ -97,7 +97,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         elif isinstance(self.recording_extractor, si.BaseRecording):
             recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         else:
-            raise f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording"
+            raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")
 
         return recording_extractor
 
