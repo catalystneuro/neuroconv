@@ -7,7 +7,7 @@ import numpy as np
 import numpy.testing as npt
 
 import pytest
-import spikeinterface as si
+from spikeinterface.core.old_api_utils import OldToNewRecording
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
