@@ -7,7 +7,7 @@ import numpy as np
 import numpy.testing as npt
 
 import pytest
-from spikeinterface.core.old_api_utils import OldToNewRecording
+from spikeinterface.core.old_api_utils import OldToNewRecording, BaseRecording
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
@@ -188,7 +188,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 ]
             )
 
-        if isinstance(recording, si.BaseRecording):
+        if isinstance(recording, BaseRecording):
             nwb_recording = OldToNewRecording(oldapi_recording_extractor=nwb_recording)
 
         if isinstance(recording, RecordingExtractor):
