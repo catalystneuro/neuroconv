@@ -1,5 +1,5 @@
 name: Minimal and full tests on Linux
-on: pull_request
+on: push
 jobs:
   run:
     name: Minimal and full tests on Linux with Python ${{ matrix.python-version }}
