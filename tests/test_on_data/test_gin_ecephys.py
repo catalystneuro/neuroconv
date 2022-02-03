@@ -189,7 +189,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             )
 
         if isinstance(recording, si.BaseRecording):
-            nwb_recording = si.core.old_api_utils.OldToNewRecording(nwb_recording)
+            nwb_recording = OldToNewRecording(oldapi_recording_extractor=nwb_recording)
 
         if isinstance(recording, RecordingExtractor):
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
