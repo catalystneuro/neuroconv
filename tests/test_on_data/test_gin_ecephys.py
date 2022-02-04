@@ -221,15 +221,22 @@ class TestEcephysNwbConversions(unittest.TestCase):
             param(
                 data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
-                    file_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_sessionInfo.mat")
-                ),  # We will find out about the location later
+                    file_path=str(DATA_PATH / "cellexplorer" / "dataset_1" / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat")
+                ), 
             ),
             param(
                 data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
-                    file_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_spikes.cellinfo.mat")
-                ),  # point to the matlab file in the other format
+                    file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")
+                ),  
             ),
+            param(
+                data_interface=CellExplorerSortingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170519_864um_900um_merge.spikes.cellinfo.mat")
+                ),  
+            ),
+            
         ],
         name_func=custom_name_func,
     )
