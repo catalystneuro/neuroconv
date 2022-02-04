@@ -4,5 +4,7 @@ channels:
 - anaconda
 - conda-forge
 dependencies:
-- python=3.7
+- python>=3.7
 - pip
+- pip:
+  - -e .  # This calls the setup and therefore requirements minimal
