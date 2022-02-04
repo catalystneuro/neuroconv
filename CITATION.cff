@@ -18,6 +18,6 @@ authors:
     given-names: Benjamin
     orcid: https://orcid.org/0000-0001-5725-6910
 title: "Nwb-conversion-tools"
-version: 0.9.4
+version: 0.9.9
 date-released: 2021-11-18
 url: "https://github.com/catalystneuro/nwb-conversion-tools.git"
