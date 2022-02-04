@@ -189,7 +189,7 @@ class TestNwbConversions(unittest.TestCase):
             param(
                 data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_sessionInfo.mat")
+                    file_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_sessionInfo.mat")
                 ),  # We will find out about the location later
             ),
             param(
