@@ -40,10 +40,6 @@ NWB Conversion Tools relies heavily on [SpikeExtractors](https://github.com/Spik
 You can use a graphical interface for your converter with [NWB Web GUI](https://github.com/catalystneuro/nwb-web-gui).
 
 
-## Rebuilding on Read the Docs
-As a maintainer, once the changes to the documentation are on the master branch, go to [https://readthedocs.org/projects/nwb-conversion-tools/](https://readthedocs.org/projects/nwb-conversion-tools/) and click "Build version". Check the console output and its log for any errors.
-
-
 ## Catalogue
 ### v0.9.3
 #### [Buzsáki Lab](https://buzsakilab.com/wp/): [buzsaki-lab-to-nwb](https://github.com/catalystneuro/buzsaki-lab-to-nwb)
@@ -82,3 +78,23 @@ Utilizing the CED recording interface, this project paired ecephys channels with
 * [Buffalo lab](https://buffalomemorylab.com/): [buffalo-lab-data-to-nwb](https://github.com/catalystneuro/buffalo-lab-data-to-nwb)
 * [Jaeger lab](https://scholarblogs.emory.edu/jaegerlab/): [jaeger-lab-to-nwb](https://github.com/catalystneuro/jaeger-lab-to-nwb)
 * [Tolias lab](https://toliaslab.org/): [tolias-lab-to-nwb](https://github.com/catalystneuro/tolias-lab-to-nwb)
+
+
+# For Developers
+## Running GIN tests locally
+`nwb-conversion-tools` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality. [Datalad](https://www.datalad.org/) (`conda install datalad`) is recommended for this; simply call
+
+```datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data```
+
+to install the `ecephys` data, and
+
+```datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data```
+
+for `ophys` data.
+
+Once the data is downloaded to your system, you must manually modify the `test_gin_{modality}.py` files ([line #43 for ecehys](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/tests/test_on_data/test_gin_ecephys.py#L43) and [line #34 for ophys](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/tests/test_on_data/test_gin_ophys.py#L34)) to point to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
+
+The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=True` and modify the local `OUTPUT_PATH` if necessary.
+
+## Rebuilding on Read the Docs
+As a maintainer, once the changes to the documentation are on the master branch, go to [https://readthedocs.org/projects/nwb-conversion-tools/](https://readthedocs.org/projects/nwb-conversion-tools/) and click "Build version". Check the console output and its log for any errors.

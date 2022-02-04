@@ -1,7 +1,7 @@
 pynwb==1.4.0
 tqdm==4.60.0
 natsort==7.1.1
-numpy==1.19.3
+numpy==1.21.0
 pandas==1.2.3
 scipy==1.4.1
 h5py==2.10.0
@@ -9,7 +9,8 @@ PyYAML==5.4
 jsonschema==3.2.0
 psutil==5.8.0
 lxml==4.6.5
-spikeextractors==0.9.7
+spikeextractors==0.9.9
+spikeinterface==0.92.0
 neo==0.9.0
 roiextractors==0.3.1
 myst_parser==0.13.5

@@ -4,6 +4,8 @@ from typing import Optional
 import numpy as np
 
 import spikeextractors as se
+import spikeinterface as si
+
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
@@ -31,8 +33,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = super().get_metadata_schema()
-
-        # Initiate Ecephys metadata
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = ["Device", "ElectrodeGroup"]
         metadata_schema["properties"]["Ecephys"]["properties"] = dict(
@@ -92,7 +92,13 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
 
-        recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
+        if isinstance(self.recording_extractor, se.RecordingExtractor):
+            recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
+        elif isinstance(self.recording_extractor, si.BaseRecording):
+            recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
+        else:
+            raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")
+
         return recording_extractor
 
     def run_conversion(
@@ -100,10 +106,12 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         nwbfile: NWBFile,
         metadata: dict = None,
         stub_test: bool = False,
+        starting_time: Optional[float] = None,
         use_times: bool = False,
         save_path: OptionalFilePathType = None,
         overwrite: bool = False,
         write_as: str = "raw",
+        write_electrical_series: bool = True,
         es_key: str = None,
         compression: Optional[str] = "gzip",
         compression_opts: Optional[int] = None,
@@ -121,6 +129,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             metadata info for constructing the nwb file (optional).
             Should be of the format
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
+        starting_time: float (optional)
+            Sets the starting time of the ElectricalSeries to a manually set value.
+            Increments timestamps if use_times is True.
         use_times: bool
             If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
             the sampling rate is used.
@@ -133,6 +144,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as: str (optional, defaults to 'raw')
             Options: 'raw', 'lfp' or 'processed'
+        write_electrical_series: bool (optional)
+            If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+            and electrodes are written to NWB.
         es_key: str (optional)
             Key in metadata dictionary containing metadata info for the specific electrical series
         compression: str (optional, defaults to "gzip")
@@ -162,8 +176,10 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
+            starting_time=starting_time,
             use_times=use_times,
             write_as=write_as,
+            write_electrical_series=write_electrical_series,
             es_key=es_key,
             save_path=save_path,
             overwrite=overwrite,
