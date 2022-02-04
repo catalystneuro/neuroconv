@@ -195,7 +195,7 @@ class TestNwbConversions(unittest.TestCase):
             param(
                 data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_spikes.cellinfo.mat")
+                    file_path=str(DATA_PATH / "cellexplorer" / "cell_explorer_example_spikes.cellinfo.mat")
                 ),  # point to the matlab file in the other format
             ),
         ],
