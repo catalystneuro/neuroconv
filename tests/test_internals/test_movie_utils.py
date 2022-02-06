@@ -4,19 +4,18 @@ import unittest
 import cv2
 import numpy as np
 from numpy.testing import assert_array_equal
-from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import \
-    VideoCaptureContext
+from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import VideoCaptureContext
 
 
 class TestVideoContext(unittest.TestCase):
-    
+
     frame_shape = (100, 200, 3)
     no_frames = 30
     fps = 25
-    
+
     def setUp(self) -> None:
         self.test_dir = tempfile.mkdtemp()
-        self.movie_frames = np.random.randint(0,255,size=[self.no_frames, *self.frame_shape], dtype="uint8")
+        self.movie_frames = np.random.randint(0, 255, size=[self.no_frames, *self.frame_shape], dtype="uint8")
         self.movie_loc = self.create_movie()
 
     def create_movie(self):
@@ -30,7 +29,7 @@ class TestVideoContext(unittest.TestCase):
             params=None,
         )
         for k in range(self.no_frames):
-            writer.write(self.movie_frames[k,:,:,:])
+            writer.write(self.movie_frames[k, :, :, :])
         writer.release()
         return movie_file
 
@@ -51,7 +50,7 @@ class TestVideoContext(unittest.TestCase):
         with VideoCaptureContext(self.movie_loc, stub=True) as vcc:
             ts = vcc.get_movie_timestamps()
         self.assertEqual(len(ts), 10)
-    
+
     def test_fps(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
             fps = vcc.get_movie_fps()
