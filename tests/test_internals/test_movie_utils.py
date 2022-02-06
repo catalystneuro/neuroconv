@@ -1,39 +1,32 @@
 import os
 import tempfile
 import unittest
-
 import cv2
 import numpy as np
-
+from numpy.testing import assert_array_equal
 from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import \
     VideoCaptureContext
 
 
 class TestVideoContext(unittest.TestCase):
     
-    frame_shape = (640, 480, 3)
-    no_frames = 20
+    frame_shape = (100, 200, 3)
+    no_frames = 30
     fps = 25
     
     def setUp(self) -> None:
         self.test_dir = tempfile.mkdtemp()
-        self.movie_frames = self.get_movie_frames()
+        self.movie_frames = np.random.randint(0,255,size=[self.no_frames, *self.frame_shape], dtype="uint8")
         self.movie_loc = self.create_movie()
-
-    def get_movie_frames(self):
-        frames = []
-        for no in range(self.no_frames):
-            frames.append(np.random.randint(0, 255, self.frame_shape).astype("uint8"))
-        return np.array(frames)
 
     def create_movie(self):
         movie_file = os.path.join(self.test_dir, "test.avi")
         writer = cv2.VideoWriter(
             filename=movie_file,
             apiPreference=None,
-            fourcc=cv2.VideoWriter_fourcc("M", "J", "P", "G"),
+            fourcc=cv2.VideoWriter_fourcc(*"HFYU"),
             fps=self.fps,
-            frameSize=self.frame_shape[:2],
+            frameSize=self.frame_shape[1::-1],
             params=None,
         )
         for k in range(self.no_frames):
@@ -44,10 +37,10 @@ class TestVideoContext(unittest.TestCase):
     def test_context(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
             pass
-        self.assertFalse(vcc.vc.isOpen)
+        self.assertFalse(vcc.vc.isOpened())
 
     def test_stub(self):
-        with VideoCaptureContext(self.movie_loc) as vcc:
+        with VideoCaptureContext(self.movie_loc, stub=True) as vcc:
             frame_count = vcc.get_movie_frame_count()
         self.assertEqual(frame_count, 10)
 
@@ -67,14 +60,14 @@ class TestVideoContext(unittest.TestCase):
     def test_frame_shape(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
             frame_shape = vcc.get_frame_shape()
-        self.assertEqual(frame_shape, self.frame_shape)
+        assert_array_equal(frame_shape, self.frame_shape)
 
     def test_frame_value(self):
         frames = []
         with VideoCaptureContext(self.movie_loc) as vcc:
             for no in range(self.no_frames):
                 frames.append(vcc.get_movie_frame(no))
-        self.assertEqual(np.array(frames), self.movie_frames)
+        assert_array_equal(frames, self.movie_frames)
 
     def test_iterable(self):
         frames = []
@@ -82,5 +75,5 @@ class TestVideoContext(unittest.TestCase):
             pass
         for frame in vcc:
             frames.append(frame)
-        self.assertEqual(np.array(frames), self.movie_frames)
-        self.assertFalse(vcc.vc.isOpen)
+        assert_array_equal(np.array(frames), self.movie_frames)
+        self.assertFalse(vcc.vc.isOpened())

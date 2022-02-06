@@ -23,6 +23,7 @@ class VideoCaptureContext:
         self.stub = stub
         self._current_frame = 0
         self.frame_count = self.get_movie_frame_count()
+        assert self.frame_count > 0, "movie contains no frames"
         self.fps = self.get_movie_fps()
         self.frame = self.get_movie_frame(0)
         assert self.frame is not None, "unable to read the movie file provided"
