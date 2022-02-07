@@ -77,8 +77,7 @@ class TestVideoContext(unittest.TestCase):
 
     def test_iterable(self):
         frames = []
-        with VideoCaptureContext(self.movie_loc) as vcc:
-            pass
+        vcc = VideoCaptureContext(file_path=self.movie_loc)
         for frame in vcc:
             frames.append(frame)
         assert_array_equal(np.array(frames), self.movie_frames)
