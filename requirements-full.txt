@@ -3,6 +3,7 @@ tqdm==4.60.0
 natsort==7.1.1
 numpy==1.21.0
 pandas==1.2.3
+hdf5storage==0.1.18
 scipy>=1.4.1
 h5py>=2.10.0
 PyYAML==5.4
