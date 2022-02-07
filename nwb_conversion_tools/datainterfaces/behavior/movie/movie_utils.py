@@ -17,7 +17,7 @@ PathType = Union[str, Path]
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager"""
 
-    def __init__(self, file_path: FilePathType , stub=False):
+    def __init__(self, file_path: FilePathType, stub=False):
         self.vc = cv2.VideoCapture(file_path)
         self.file_path = file_path
         self.stub = stub
@@ -31,7 +31,7 @@ class VideoCaptureContext:
 
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps for a movie file."""
-        return np.arange(self.get_movie_frame_count())/self.get_movie_fps()
+        return np.arange(self.get_movie_frame_count()) / self.get_movie_fps()
 
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file"""
