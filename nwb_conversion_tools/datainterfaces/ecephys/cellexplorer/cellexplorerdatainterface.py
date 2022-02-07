@@ -29,7 +29,9 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         session_path = Path(file_path).parent
         session_id = session_path.stem
 
-        assert spikes_matfile_path.is_file(), f"The file_path should point to an existing .spikes.cellinfo.mat file ({spikes_matfile_path})"
+        assert (
+            spikes_matfile_path.is_file()
+        ), f"The file_path should point to an existing .spikes.cellinfo.mat file ({spikes_matfile_path})"
 
         try:
             spikes_mat = scipy.io.loadmat(file_name=str(spikes_matfile_path))
