@@ -1,4 +1,4 @@
-"""Authors: Steffen Buergers"""
+"""Authors: Steffen Buergers."""
 import os
 import dateutil
 import numpy as np
@@ -9,11 +9,11 @@ import spikeextractors as se
 from pynwb import NWBFile
 from pynwb.behavior import Position, SpatialSeries
 
-from ....utils.json_schema import get_schema_from_method_signature, FilePathType
-from ....basedatainterface import BaseDataInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ....utils.conversion_tools import get_module
+from ....basedatainterface import BaseDataInterface
+from ....utils.json_schema import get_schema_from_method_signature, FilePathType
+from ....utils.nwbfile_tools import get_module
 
 
 # Helper functions for AxonaRecordingExtractorInterface
