@@ -8,12 +8,12 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils.json_schema import FilePathType
 
 try:
-    import scipy.io 
+    import scipy.io
     import hdf5storage
+
     HAVE_SCIPY_AND_HDF5STORAGE = True
 except ImportError:
     HAVE_SCIPY_AND_HDF5STORAGE = False
-
 
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
@@ -25,22 +25,19 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         super().__init__(spikes_matfile_path=file_path)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
-        
+
         session_path = Path(file_path).parent
         session_id = session_path.stem
-        
-        assert (
-            spikes_matfile_path.is_file()
-        ), f"The spikes_matfile_path ({spikes_matfile_path}) must exist!"
-        
-        
+
+        assert spikes_matfile_path.is_file(), f"The spikes_matfile_path ({spikes_matfile_path}) must exist!"
+
         try:
             spikes_mat = scipy.io.loadmat(file_name=str(spikes_matfile_path))
             self.read_spikes_info_with_scipy = True
-        except NotImplementedError: 
+        except NotImplementedError:
             spikes_mat = hdf5storage.loadmat(file_name=str(spikes_matfile_path))
             self.read_spikes_info_with_scipy = False
-        
+
         # Logic for scipy
         if self.read_spikes_info_with_scipy:
             cell_info = spikes_mat.get("spikes", np.empty(0))
@@ -69,8 +66,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "region" in self.cell_info_fields:
                 for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0]][0]):
                     self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
-        
-        # CellClass file 
+
+        # CellClass file
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
@@ -114,7 +111,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
 
-        # CellClass file 
+        # CellClass file
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
             celltype_info = scipy.io.loadmat(celltype_filepath).get("CellClass", np.empty(0))
