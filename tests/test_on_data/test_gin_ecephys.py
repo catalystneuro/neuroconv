@@ -241,7 +241,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
                     file_path=str(
-                        DATA_PATH / "cellexplorer" / "dataset_2" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
+                        DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
                     )
                 ),
             ),
