@@ -52,7 +52,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "region" in self.cell_info_fields:
                 for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0][0][0]]):
                     self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
-        else:  # Logic for hdf5
+        else:  # Logic for hdf5storage
             unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
                 for unit_id, value in zip(unit_ids, [int(x) for x in cell_info["cluID"][0][0]]):
