@@ -95,20 +95,17 @@ class VideoCaptureContext:
     def __next__(self):
         if not self.vc.isOpened():
             self.vc = cv2.VideoCapture(self.file_path)
-        try:
-            if self._current_frame < self.frame_count:
-                self.current_frame = self._current_frame
-                success, frame = self.vc.read()
-                self._current_frame += 1
-                self.vc.release()
-                if success:
-                    return frame
-                else:
-                    return np.nan * np.ones(self.get_frame_shape())
+        if self._current_frame < self.frame_count:
+            self.current_frame = self._current_frame
+            success, frame = self.vc.read()
+            self._current_frame += 1
+            self.vc.release()
+            if success:
+                return frame
             else:
-                self.vc.release()
-                raise StopIteration
-        except Exception:
+                return np.nan * np.ones(self.get_frame_shape())
+        else:
+            self.vc.release()
             raise StopIteration
 
     def __enter__(self):
