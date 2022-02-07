@@ -16,6 +16,8 @@ PathType = Union[str, Path]
 
 
 class VideoCaptureContext:
+    """Retrieving video metadata and frames using a context manager"""
+
     def __init__(self, *args, stub=False, **kwargs):
         self.vc = cv2.VideoCapture(*args, **kwargs)
         self._args = args
@@ -29,10 +31,7 @@ class VideoCaptureContext:
         assert self.frame is not None, "unable to read the movie file provided"
 
     def get_movie_timestamps(self):
-        """
-        Return numpy array of the timestamps for a movie file.
-
-        """
+        """Return numpy array of the timestamps for a movie file."""
         if not self.vc.isOpened():
             raise ValueError("movie file is not open")
         ts = [self.vc.get(cv2.CAP_PROP_POS_MSEC)]
@@ -43,25 +42,17 @@ class VideoCaptureContext:
         return np.array(ts)
 
     def get_movie_fps(self):
-        """
-        Return the internal frames per second (fps) for a movie file.
-
-        """
+        """Return the internal frames per second (fps) for a movie file"""
         if int(cv2.__version__.split(".")[0]) < 3:
             return self.vc.get(cv2.cv.CV_CAP_PROP_FPS)
         return self.vc.get(cv2.CAP_PROP_FPS)
 
     def get_frame_shape(self) -> Tuple:
-        """
-        Return the shape of frames from a movie file.
-        """
+        """Return the shape of frames from a movie file."""
         return self.frame.shape
 
     def get_movie_frame_count(self):
-        """
-        Return the total number of frames for a movie file.
-
-        """
+        """Return the total number of frames for a movie file."""
         if self.stub:
             # if stub the assume a max frame count of 10
             return 10
@@ -88,9 +79,7 @@ class VideoCaptureContext:
             raise ValueError(f"could not set frame no {frame_no}")
 
     def get_movie_frame(self, frame_no: int):
-        """
-        Return the specific frame from a movie.
-        """
+        """Return the specific frame from a movie."""
         if not self.vc.isOpened():
             raise ValueError("movie file is not open")
         assert frame_no < self.get_movie_frame_count(), "frame number is greater than length of movie"
@@ -103,9 +92,7 @@ class VideoCaptureContext:
             return np.nan * np.ones(self.get_frame_shape())
 
     def get_movie_frame_dtype(self):
-        """
-        Return the dtype for frame in a movie file.
-        """
+        """Return the dtype for frame in a movie file."""
         return self.frame.dtype
 
     def __iter__(self):
@@ -144,8 +131,7 @@ class VideoCaptureContext:
 
 
 def get_movie_timestamps(movie_file: PathType):
-    """
-    Return numpy array of the timestamps for a movie file.
+    """Return numpy array of the timestamps for a movie file.
 
     Parameters
     ----------
@@ -162,8 +148,7 @@ def get_movie_timestamps(movie_file: PathType):
 
 
 def get_movie_fps(movie_file: PathType):
-    """
-    Return the internal frames per second (fps) for a movie file.
+    """Return the internal frames per second (fps) for a movie file.
 
     Parameters
     ----------
@@ -179,8 +164,7 @@ def get_movie_fps(movie_file: PathType):
 
 
 def get_frame_shape(movie_file: PathType):
-    """
-    Return the shape of frames from a movie file.
+    """Return the shape of frames from a movie file.
 
     Parameters
     ----------
