@@ -13,7 +13,7 @@ except:
     CV2_INSTALLED = False
 
 
-@unittest.skipIf(CV2_INSTALLED, "cv2 not installed")
+@unittest.skipIf(not CV2_INSTALLED, "cv2 not installed")
 class TestVideoContext(unittest.TestCase):
 
     frame_shape = (100, 200, 3)
