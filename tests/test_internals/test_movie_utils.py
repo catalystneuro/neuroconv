@@ -4,14 +4,16 @@ import unittest
 import numpy as np
 from numpy.testing import assert_array_equal
 from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import VideoCaptureContext
+
 try:
     import cv2
+
     CV2_INSTALLED = True
 except:
     CV2_INSTALLED = False
 
 
-@unittest.skipIf(CV2_INSTALLED,"cv2 not installed")
+@unittest.skipIf(CV2_INSTALLED, "cv2 not installed")
 class TestVideoContext(unittest.TestCase):
 
     frame_shape = (100, 200, 3)
