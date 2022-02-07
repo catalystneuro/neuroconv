@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
@@ -25,14 +25,15 @@ jobs:
         run: pip install -e .
       - name: Run minimal pytest with coverage
         run: pytest tests/test_internals --cov=./ --cov-report xml:./nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
-      - name: Upload minimal coverage to Codecov
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
-          flags: unittests
-          name: codecov-umbrella 
-          yml: ./nwb-conversion-tools/nwb-conversion-tools/codecov.yml
+      # Disabling to reduce email spam, since no windows-specific tests yet exist
+      # - name: Upload minimal coverage to Codecov
+      #   uses: codecov/codecov-action@v1
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     file: ./nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
+      #     flags: unittests
+      #     name: codecov-umbrella 
+      #     yml: ./nwb-conversion-tools/nwb-conversion-tools/codecov.yml
 
       - name: Install full requirements
         run: pip install -r requirements-full.txt
