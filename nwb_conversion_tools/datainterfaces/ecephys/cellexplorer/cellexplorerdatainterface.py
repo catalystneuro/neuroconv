@@ -64,7 +64,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0]][0]):
                     self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
 
-        # CellClass file
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
