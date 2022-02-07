@@ -43,6 +43,7 @@ jobs:
           datalad get -r ./spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/
           datalad get -r ./phy/phy_example_0/
           datalad get -r ./axona/
+          datalad get -r ./cellexplorer/
           cd ..
 
       - name: Get ophys_testing_data current head hash
