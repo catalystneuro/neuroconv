@@ -29,11 +29,11 @@ class VideoCaptureContext:
         self.fps = self.get_movie_fps()
         self.frame = self.get_movie_frame(0)
         assert self.frame is not None, "unable to read the movie file provided"
+        self._movie_open_msg = "The Movie file is not open!"
 
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps for a movie file."""
-        if not self.vc.isOpened():
-            raise ValueError("movie file is not open")
+        assert self.vc.isOpened(), self._movie_open_msg
         ts = [self.vc.get(cv2.CAP_PROP_POS_MSEC)]
         for i in tqdm(range(1, self.get_movie_frame_count()), desc="retrieving video timestamps"):
             self.current_frame = i
@@ -43,6 +43,7 @@ class VideoCaptureContext:
 
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file"""
+        assert self.vc.isOpened(), self._movie_open_msg
         if int(cv2.__version__.split(".")[0]) < 3:
             return self.vc.get(cv2.cv.CV_CAP_PROP_FPS)
         return self.vc.get(cv2.CAP_PROP_FPS)
@@ -53,6 +54,7 @@ class VideoCaptureContext:
 
     def get_movie_frame_count(self):
         """Return the total number of frames for a movie file."""
+        assert self.vc.isOpened(), self._movie_open_msg
         if self.stub:
             # if stub the assume a max frame count of 10
             return 10
@@ -68,6 +70,7 @@ class VideoCaptureContext:
 
     @current_frame.setter
     def current_frame(self, frame_no):
+        assert self.vc.isOpened(), self._movie_open_msg
         if int(cv2.__version__.split(".")[0]) < 3:
             set_arg = cv2.cv.CV_CAP_PROP_POS_FRAMES
         else:
@@ -80,8 +83,7 @@ class VideoCaptureContext:
 
     def get_movie_frame(self, frame_no: int):
         """Return the specific frame from a movie."""
-        if not self.vc.isOpened():
-            raise ValueError("movie file is not open")
+        assert self.vc.isOpened(), self._movie_open_msg
         assert frame_no < self.get_movie_frame_count(), "frame number is greater than length of movie"
         self.current_frame = frame_no
         success, frame = self.vc.read()
