@@ -12,8 +12,7 @@ experiments:
         session_description: Subject navigating a Y-shaped maze.
 
     sessions:
-      - nwbfile_name: example_converter_spec_1
-        data_interfaces:
+      - data_interfaces:
           - SpikeGLXRecordingInterface
         source_data:
           SpikeGLXRecordingInterface:
@@ -25,13 +24,13 @@ experiments:
           NWBFile:
             session_start_time: "2020-10-09T21:19:09+00:00"
           Subject:
-            subject_id: "1"
-      - nwbfile_name: example_converter_spec_2
+            subject_id: Mouse 1
+      - nwbfile_name: example_defined_name
         metadata:
           NWBFile:
             session_start_time: "2020-10-10T21:19:09+00:00"
           Subject:
-            subject_id: "002"
+            subject_id: MyMouse002
         conversion_options:
           SpikeGLXLFPInterface:
             stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
@@ -41,8 +40,7 @@ experiments:
 
   open_explore:
     sessions:
-      - nwbfile_name: example_converter_spec_3
-        data_interfaces:
+      - data_interfaces:
           - PhySortingInterface
         source_data:
           SpikeGLXLFPInterface:
