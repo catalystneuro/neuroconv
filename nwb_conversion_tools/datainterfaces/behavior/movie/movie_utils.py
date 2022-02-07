@@ -94,11 +94,15 @@ class VideoCaptureContext:
 
     def __next__(self):
         assert self.vc.isOpened(), self._movie_open_msg
-        success, frame = self.vc.read()
-        if success:
+        if self._current_frame < self.frame_count:
             self.current_frame = self._current_frame
+            success, frame = self.vc.read()
             self._current_frame += 1
-            return frame
+            self.vc.release()
+            if success:
+                return frame
+            else:
+                raise StopIteration
         else:
             self.vc.release()
             raise StopIteration
