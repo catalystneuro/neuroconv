@@ -1,9 +1,8 @@
 """Authors: Saksham Sharda, Cody Baker."""
 from pathlib import Path
 from typing import Union, Tuple
-
+from ....utils.json_schema import FilePathType
 import numpy as np
-from tqdm import tqdm
 
 try:
     import cv2
@@ -18,10 +17,9 @@ PathType = Union[str, Path]
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager"""
 
-    def __init__(self, *args, stub=False, **kwargs):
-        self.vc = cv2.VideoCapture(*args, **kwargs)
-        self._args = args
-        self._kwargs = kwargs
+    def __init__(self, file_path: FilePathType , stub=False):
+        self.vc = cv2.VideoCapture(file_path)
+        self.file_path = file_path
         self.stub = stub
         self._current_frame = 0
         self.frame_count = self.get_movie_frame_count()
@@ -33,13 +31,7 @@ class VideoCaptureContext:
 
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps for a movie file."""
-        assert self.vc.isOpened(), self._movie_open_msg
-        ts = [self.vc.get(cv2.CAP_PROP_POS_MSEC)]
-        for i in tqdm(range(1, self.get_movie_frame_count()), desc="retrieving video timestamps"):
-            self.current_frame = i
-            ts.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
-        self.current_frame = 0
-        return np.array(ts)
+        return np.arange(self.get_movie_frame_count())/self.get_movie_fps()
 
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file"""
@@ -102,7 +94,7 @@ class VideoCaptureContext:
 
     def __next__(self):
         if not self.vc.isOpened():
-            self.vc = cv2.VideoCapture(*self._args, **self._kwargs)
+            self.vc = cv2.VideoCapture(self.file_path)
         try:
             if self._current_frame < self.frame_count:
                 self.current_frame = self._current_frame
@@ -114,15 +106,13 @@ class VideoCaptureContext:
                 else:
                     return np.nan * np.ones(self.get_frame_shape())
             else:
-                self._current_frame = 0
                 self.vc.release()
                 raise StopIteration
         except Exception:
             raise StopIteration
 
     def __enter__(self):
-        if not self.vc.isOpened():
-            self.vc = cv2.VideoCapture(*self._args, **self._kwargs)
+        self.vc = cv2.VideoCapture(self.file_path)
         return self
 
     def __exit__(self, *args):
