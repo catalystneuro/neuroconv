@@ -107,7 +107,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
 
-        # CellClass file
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
             celltype_info = scipy.io.loadmat(celltype_filepath).get("CellClass", np.empty(0))
