@@ -93,13 +93,11 @@ class VideoCaptureContext:
         return self
 
     def __next__(self):
-        if not self.vc.isOpened():
-            self.vc = cv2.VideoCapture(self.file_path)
+        assert self.vc.isOpened(), self._movie_open_msg
         success, frame = self.vc.read()
         if success:
             self.current_frame = self._current_frame
             self._current_frame += 1
-            self.vc.release()
             return frame
         else:
             self.vc.release()
