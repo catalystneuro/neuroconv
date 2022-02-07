@@ -38,10 +38,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             spikes_mat = hdf5storage.loadmat(file_name=str(spikes_matfile_path))
             self.read_spikes_info_with_scipy = False
 
-        # Logic for scipy
-        if self.read_spikes_info_with_scipy:
-            cell_info = spikes_mat.get("spikes", np.empty(0))
-            self.cell_info_fields = cell_info.dtype.names
+        cell_info = spikes_mat.get("spikes", np.empty(0))
+        self.cell_info_fields = cell_info.dtype.names
+
+        if self.read_spikes_info_with_scipy: # Logic for scipy
             unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
                 for unit_id, value in zip(unit_ids, [int(x) for x in cell_info["cluID"][0][0][0]]):
@@ -52,10 +52,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "region" in self.cell_info_fields:
                 for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0][0][0]]):
                     self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
-        else:
-            # Logic for hdf5
-            cell_info = spikes_mat.get("spikes", np.empty(0))
-            self.cell_info_fields = cell_info.dtype.names
+        else:  # Logic for hdf5
             unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
                 for unit_id, value in zip(unit_ids, [int(x) for x in cell_info["cluID"][0][0]]):
@@ -87,7 +84,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         unit_properties = []
         cellinfo_file_path = session_path / f"{session_id}.spikes.cellinfo.mat"
         if cellinfo_file_path.is_file():
-            cell_info = scipy.io.loadmat(cellinfo_file_path).get("spikes", np.empty(0))
             cell_info_fields = self.cell_info_fields
             if "cluID" in cell_info_fields:
                 unit_properties.append(
