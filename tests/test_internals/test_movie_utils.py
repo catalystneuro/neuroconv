@@ -71,7 +71,8 @@ class TestVideoContext(unittest.TestCase):
     def test_frame_value(self):
         frames = []
         with VideoCaptureContext(self.movie_loc) as vcc:
-            for no in range(self.no_frames):
+            no_frames = vcc.get_movie_frame_count()
+            for no in range(no_frames):
                 frames.append(vcc.get_movie_frame(no))
         assert_array_equal(frames, self.movie_frames)
 
