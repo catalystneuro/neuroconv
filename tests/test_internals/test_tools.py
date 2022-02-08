@@ -1,4 +1,5 @@
 from unittest import TestCase
+from datetime import datetime
 
 from pynwb.base import ProcessingModule
 
@@ -11,7 +12,9 @@ class TestConversionTools(TestCase):
         assert not check_regular_timestamps([1, 2, 4])
 
     def test_get_module(self):
-        nwbfile = make_nwbfile_from_metadata(metadata=dict())
+        nwbfile = make_nwbfile_from_metadata(
+            metadata=dict(NWBFile=dict(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))),
+        )
 
         name_1 = "test_1"
         name_2 = "test_2"
