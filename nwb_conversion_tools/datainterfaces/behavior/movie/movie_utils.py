@@ -28,10 +28,9 @@ class VideoCaptureContext:
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps(s) for a movie file."""
         ts2 = []
-        for no in tqdm(range(self.get_movie_frame_count()),
-                       desc="retrieving timestamps"):
+        for no in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
             success, frame = self.vc.read()
-            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC)/1000)
+            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC) / 1000)
             if not success:
                 break
         return np.array(ts2)
