@@ -36,7 +36,6 @@ def get_default_nwbfile_metadata():
     metadata = dict(
         NWBFile=dict(
             session_description="no description",
-            session_start_time=datetime(1970, 1, 1).isoformat(),
             identifier=str(uuid.uuid4()),
         )
     )
@@ -53,6 +52,10 @@ def make_nwbfile_from_metadata(metadata: dict):
             metadata["Subject"]["date_of_birth"] = datetime.fromisoformat(metadata["Subject"]["date_of_birth"])
         nwbfile_kwargs.update(subject=Subject(**metadata["Subject"]))
     # convert ISO 8601 string to datetime
+    assert "session_start_time" in nwbfile_kwargs, (
+        "'session_start_time' was not found in metadata['NWBFile']! Please add the correct start time of the "
+        "session in ISO8601 format (%Y-%m-%dT%H:%M:%S) to this key of the metadata."
+    )
     if isinstance(nwbfile_kwargs.get("session_start_time", None), str):
         nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
     return NWBFile(**nwbfile_kwargs)
