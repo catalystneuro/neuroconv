@@ -7,7 +7,7 @@ from datetime import datetime
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .utils.conversion_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from .utils.nwbfile_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
 from .utils.json_schema import (
     get_schema_from_hdmf_class,
     get_schema_for_NWBFile,
