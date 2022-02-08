@@ -1,7 +1,7 @@
-from unittest import TestCase
 from datetime import datetime
 
 from pynwb.base import ProcessingModule
+from hdmf.testing import TestCase
 
 from nwb_conversion_tools.utils.nwbfile_tools import get_module, make_nwbfile_from_metadata
 from nwb_conversion_tools.utils.conversion_tools import check_regular_timestamps
@@ -29,3 +29,13 @@ class TestConversionTools(TestCase):
         assert isinstance(mod_2, ProcessingModule)
         assert mod_2.description == description_2
         self.assertWarns(UserWarning, get_module, **dict(nwbfile=nwbfile, name=name_1, description=description_2))
+
+    def test_make_nwbfile_from_metadata(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "'session_start_time' was not found auto-populated in metadata['NWBFile']! "
+                "Please add the correct start time of the session in ISO8601 format to this key of the metadata."
+            ),
+        ):
+            make_nwbfile_from_metadata(metadata=dict())
