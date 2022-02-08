@@ -87,10 +87,7 @@ class VideoCaptureContext:
         self.current_frame = frame_no
         success, frame = self.vc.read()
         self.current_frame = 0
-        if success:
-            return frame
-        elif frame_no > 0:
-            return np.nan * np.ones(self.get_frame_shape())
+        return frame
 
     def get_movie_frame_dtype(self):
         """Return the dtype for frame in a movie file."""
