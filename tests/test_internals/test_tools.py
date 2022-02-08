@@ -34,7 +34,7 @@ class TestConversionTools(TestCase):
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg=(
-                "'session_start_time' was not found auto-populated in metadata['NWBFile']! "
+                "'session_start_time' was not found in metadata['NWBFile']! "
                 "Please add the correct start time of the session in ISO8601 format to this key of the metadata."
             ),
         ):
