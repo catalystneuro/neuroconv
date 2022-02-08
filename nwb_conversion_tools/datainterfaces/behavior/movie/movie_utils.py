@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union, Tuple
 from ....utils.json_schema import FilePathType
 import numpy as np
+from tqdm import tqdm
 
 try:
     import cv2
@@ -25,8 +26,15 @@ class VideoCaptureContext:
         self._movie_open_msg = "The Movie file is not open!"
 
     def get_movie_timestamps(self):
-        """Return numpy array of the timestamps for a movie file."""
-        return np.arange(self.get_movie_frame_count()) / self.get_movie_fps()
+        """Return numpy array of the timestamps(s) for a movie file."""
+        ts2 = []
+        for no in tqdm(range(self.get_movie_frame_count()),
+                       desc="retrieving timestamps"):
+            success, frame = self.vc.read()
+            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC)/1000)
+            if not success:
+                break
+        return np.array(ts2)
 
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file"""
