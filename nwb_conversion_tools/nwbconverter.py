@@ -2,7 +2,6 @@
 from jsonschema import validate
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
