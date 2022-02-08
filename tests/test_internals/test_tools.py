@@ -2,7 +2,8 @@ from unittest import TestCase
 
 from pynwb.base import ProcessingModule
 
-from nwb_conversion_tools.utils.conversion_tools import check_regular_timestamps, get_module, make_nwbfile_from_metadata
+from nwb_conversion_tools.utils.nwbfile_tools import get_module, make_nwbfile_from_metadata
+from nwb_conversion_tools.utils.conversion_tools import check_regular_timestamps
 
 
 class TestConversionTools(TestCase):
