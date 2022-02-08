@@ -19,7 +19,7 @@ class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager"""
 
     def __init__(self, file_path: FilePathType):
-        self.vc = cv2.VideoCapture(file_path)
+        self.vc = cv2.VideoCapture(filename=file_path)
         self.file_path = file_path
         self._current_frame = 0
         self._frame_count = None
