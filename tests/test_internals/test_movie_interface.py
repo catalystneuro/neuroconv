@@ -3,6 +3,7 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from pathlib import Path
 from itertools import product
+from datetime import datetime
 
 from pynwb import NWBHDF5IO
 from hdmf.testing import TestCase
@@ -50,8 +51,7 @@ class TestMovieInterface(TestCase):
             source_data = dict(Movie=dict(file_paths=[movie_file]))
             converter = MovieTestNWBConverter(source_data)
             metadata = converter.get_metadata()
-
-            # Default usage
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
             converter.run_conversion(metadata=metadata, nwbfile_path=nwbfile_path, overwrite=True)
 
             # This conversion option operates independently of all others
