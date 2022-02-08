@@ -45,18 +45,10 @@ class TestVideoContext(unittest.TestCase):
             pass
         self.assertFalse(vcc.vc.isOpened())
 
-    def test_stub(self):
-        with VideoCaptureContext(self.movie_loc, stub=True) as vcc:
-            frame_count = vcc.get_movie_frame_count()
-        self.assertEqual(frame_count, 10)
-
     def test_timestamps(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
             ts = vcc.get_movie_timestamps()
         self.assertEqual(len(ts), self.no_frames)
-        with VideoCaptureContext(self.movie_loc, stub=True) as vcc:
-            ts = vcc.get_movie_timestamps()
-        self.assertEqual(len(ts), 10)
 
     def test_fps(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
@@ -83,3 +75,39 @@ class TestVideoContext(unittest.TestCase):
             frames.append(frame)
         assert_array_equal(np.array(frames), self.movie_frames)
         self.assertFalse(vcc.vc.isOpened())
+        vcc.release()
+
+    def test_stub_iterable(self):
+        with VideoCaptureContext(self.movie_loc) as vcc:
+            vcc.frame_count = 3
+            frames = []
+            for frame in vcc:
+                frames.append(frame)
+        assert_array_equal(np.array(frames), self.movie_frames[:3,:,:])
+
+    def test_stub_frame(self):
+        with VideoCaptureContext(self.movie_loc) as vcc:
+            vcc.frame_count = 3
+            with self.assertRaises(AssertionError):
+                vcc.get_movie_frame(3)
+
+    def test_stub_timestamps(self):
+        with VideoCaptureContext(self.movie_loc) as vcc:
+            vcc.frame_count = 3
+            ts = vcc.get_movie_timestamps()
+        self.assertEqual(len(ts), 3)
+
+    def test_stub_framecount(self):
+        with VideoCaptureContext(self.movie_loc) as vcc:
+            vcc.frame_count = 4
+        self.assertEqual(vcc.get_movie_frame_count(), 4)
+
+    def test_isopened_assertions(self):
+        vcc = VideoCaptureContext(file_path=self.movie_loc)
+        vcc.release()
+        self.assertRaises(AssertionError, vcc.get_movie_timestamps)
+        self.assertRaises(AssertionError, vcc.get_movie_fps)
+        self.assertRaises(AssertionError, vcc.get_movie_frame_count)
+        self.assertRaises(AssertionError, vcc.get_movie_frame_dtype)
+        self.assertRaises(AssertionError, vcc.__next__)
+

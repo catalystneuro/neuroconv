@@ -17,16 +17,11 @@ PathType = Union[str, Path]
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager"""
 
-    def __init__(self, file_path: FilePathType, stub=False):
+    def __init__(self, file_path: FilePathType):
         self.vc = cv2.VideoCapture(file_path)
         self.file_path = file_path
-        self.stub = stub
         self._current_frame = 0
-        self.frame_count = self.get_movie_frame_count()
-        assert self.frame_count > 0, "movie contains no frames"
-        self.fps = self.get_movie_fps()
-        self.frame = self.get_movie_frame(0)
-        assert self.frame is not None, "unable to read the movie file provided"
+        self._frame_count = None
         self._movie_open_msg = "The Movie file is not open!"
 
     def get_movie_timestamps(self):
@@ -35,21 +30,33 @@ class VideoCaptureContext:
 
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file"""
-        assert self.vc.isOpened(), self._movie_open_msg
+        assert self.isOpened(), self._movie_open_msg
         if int(cv2.__version__.split(".")[0]) < 3:
             return self.vc.get(cv2.cv.CV_CAP_PROP_FPS)
         return self.vc.get(cv2.CAP_PROP_FPS)
 
     def get_frame_shape(self) -> Tuple:
         """Return the shape of frames from a movie file."""
-        return self.frame.shape
+        frame = self.get_movie_frame(0)
+        if frame is not None:
+            return frame.shape
+
+    @property
+    def frame_count(self):
+        if self._frame_count is None:
+            self._frame_count = self._movie_frame_count()
+        return self._frame_count
+
+    @frame_count.setter
+    def frame_count(self, val):
+        self._frame_count = val
 
     def get_movie_frame_count(self):
+        return self.frame_count
+
+    def _movie_frame_count(self):
         """Return the total number of frames for a movie file."""
-        assert self.vc.isOpened(), self._movie_open_msg
-        if self.stub:
-            # if stub the assume a max frame count of 10
-            return 10
+        assert self.isOpened(), self._movie_open_msg
         if int(cv2.__version__.split(".")[0]) < 3:
             count = self.vc.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
         else:
@@ -62,7 +69,7 @@ class VideoCaptureContext:
 
     @current_frame.setter
     def current_frame(self, frame_no):
-        assert self.vc.isOpened(), self._movie_open_msg
+        assert self.isOpened(), self._movie_open_msg
         if int(cv2.__version__.split(".")[0]) < 3:
             set_arg = cv2.cv.CV_CAP_PROP_POS_FRAMES
         else:
@@ -75,7 +82,7 @@ class VideoCaptureContext:
 
     def get_movie_frame(self, frame_no: int):
         """Return the specific frame from a movie."""
-        assert self.vc.isOpened(), self._movie_open_msg
+        assert self.isOpened(), self._movie_open_msg
         assert frame_no < self.get_movie_frame_count(), "frame number is greater than length of movie"
         self.current_frame = frame_no
         success, frame = self.vc.read()
@@ -87,18 +94,25 @@ class VideoCaptureContext:
 
     def get_movie_frame_dtype(self):
         """Return the dtype for frame in a movie file."""
-        return self.frame.dtype
+        frame = self.get_movie_frame(0)
+        if frame is not None:
+            return frame.dtype
+
+    def release(self):
+        self.vc.release()
+
+    def isOpened(self):
+        return self.vc.isOpened()
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        assert self.vc.isOpened(), self._movie_open_msg
+        assert self.isOpened(), self._movie_open_msg
         if self._current_frame < self.frame_count:
             self.current_frame = self._current_frame
             success, frame = self.vc.read()
             self._current_frame += 1
-            self.vc.release()
             if success:
                 return frame
             else:
