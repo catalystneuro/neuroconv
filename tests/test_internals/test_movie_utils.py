@@ -83,7 +83,7 @@ class TestVideoContext(unittest.TestCase):
             frames = []
             for frame in vcc:
                 frames.append(frame)
-        assert_array_equal(np.array(frames), self.movie_frames[:3,:,:])
+        assert_array_equal(np.array(frames), self.movie_frames[:3, :, :])
 
     def test_stub_frame(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
@@ -110,4 +110,3 @@ class TestVideoContext(unittest.TestCase):
         self.assertRaises(AssertionError, vcc.get_movie_frame_count)
         self.assertRaises(AssertionError, vcc.get_movie_frame_dtype)
         self.assertRaises(AssertionError, vcc.__next__)
-
