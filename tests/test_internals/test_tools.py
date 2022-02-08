@@ -35,7 +35,7 @@ class TestConversionTools(TestCase):
             exc_type=AssertionError,
             exc_msg=(
                 "'session_start_time' was not found in metadata['NWBFile']! "
-                "Please add the correct start time of the session in ISO8601 format to this key of the metadata."
+                "Please add the correct start time of the session in ISO8601 format (%Y-%m-%dT%H:%M:%S) to this key of the metadata."
             ),
         ):
             make_nwbfile_from_metadata(metadata=dict())
