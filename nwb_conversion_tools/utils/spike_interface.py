@@ -20,7 +20,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from .json_schema import dict_deep_update, OptionalFilePathType, ArrayType
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from ..utils.conversion_tools import get_module, make_nwbfile_from_metadata
+from ..utils.nwbfile_tools import get_module, make_nwbfile_from_metadata
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 SpikeInterfaceSorting = Union[BaseSorting, SortingExtractor]
