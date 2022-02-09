@@ -1,0 +1,4 @@
+[report]
+exclude_lines =
+    pragma: no cover
+    if int(cv2.__version__.split(".")[0]) < 3:
