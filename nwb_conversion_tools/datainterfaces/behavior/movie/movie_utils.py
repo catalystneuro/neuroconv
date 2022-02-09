@@ -75,23 +75,23 @@ class VideoCaptureContext:
         return self._current_frame
 
     @current_frame.setter
-    def current_frame(self, frame_no):
+    def current_frame(self, frame_number):
         assert self.isOpened(), self._movie_open_msg
         if int(cv2.__version__.split(".")[0]) < 3:
             set_arg = cv2.cv.CV_CAP_PROP_POS_FRAMES
         else:
             set_arg = cv2.CAP_PROP_POS_FRAMES
-        set_value = self.vc.set(set_arg, frame_no)
+        set_value = self.vc.set(set_arg, frame_number)
         if set_value:
-            self._current_frame = frame_no
+            self._current_frame = frame_number
         else:
-            raise ValueError(f"could not set frame no {frame_no}")
+            raise ValueError(f"could not set frame no {frame_number}")
 
-    def get_movie_frame(self, frame_no: int):
+    def get_movie_frame(self, frame_number: int):
         """Return the specific frame from a movie."""
         assert self.isOpened(), self._movie_open_msg
-        assert frame_no < self.get_movie_frame_count(), "frame number is greater than length of movie"
-        self.current_frame = frame_no
+        assert frame_number < self.get_movie_frame_count(), "frame number is greater than length of movie"
+        self.current_frame = frame_number
         success, frame = self.vc.read()
         self.current_frame = 0
         return frame
