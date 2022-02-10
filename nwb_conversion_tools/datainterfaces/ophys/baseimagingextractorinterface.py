@@ -5,6 +5,7 @@ from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...basedatainterface import BaseDataInterface
+from ...tools.roiextractors import write_imaging
 from ...utils.json_schema import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
@@ -66,6 +67,4 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         return metadata
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict, overwrite: bool = False):
-        re.NwbImagingExtractor.write_imaging(
-            self.imaging_extractor, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite
-        )
+        write_imaging(self.imaging_extractor, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite)
