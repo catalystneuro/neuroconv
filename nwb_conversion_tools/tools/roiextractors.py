@@ -15,17 +15,62 @@ from pynwb.ophys import (
     OpticalChannel,
     TwoPhotonSeries,
 )
+
+# from hdmf.commmon import VectorData
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
-from hdmf.commmon.table import VectorData
 
 from ..utils.json_schema import dict_deep_update, FilePathType
 from ..utils.nwbfile_tools import get_default_nwbfile_metadata
 
 
+def default_ophys_metadata():
+    """Fill default metadata for optical physiology."""
+    metadata = get_default_nwbfile_metadata()
+    metadata.update(
+        Ophys=dict(
+            Device=[dict(name="Microscope")],
+            Fluorescence=dict(
+                roi_response_series=[
+                    dict(
+                        name="RoiResponseSeries",
+                        description="array of raw fluorescence traces",
+                    )
+                ]
+            ),
+            ImageSegmentation=dict(plane_segmentations=[dict(description="Segmented ROIs", name="PlaneSegmentation")]),
+            ImagingPlane=[
+                dict(
+                    name="ImagingPlane",
+                    description="no description",
+                    excitation_lambda=np.nan,
+                    indicator="unknown",
+                    location="unknown",
+                    optical_channel=[
+                        dict(
+                            name="OpticalChannel",
+                            emission_lambda=np.nan,
+                            description="no description",
+                        )
+                    ],
+                )
+            ],
+            TwoPhotonSeries=[
+                dict(
+                    name="TwoPhotonSeries",
+                    description="no description",
+                    comments="Generalized from RoiInterface",
+                    unit="n.a.",
+                )
+            ],
+        ),
+    )
+    return metadata
+
+
 def add_devices(nwbfile: NWBFile, metadata: dict):
     """Add optical physiology devices from metadata."""
-    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
+    metadata = dict_deep_update(default_ophys_metadata(), metadata)
     for device in metadata.get("Ophys", dict()).get("Device", dict()):
         if "name" in device and device["name"] not in nwbfile.devices:
             nwbfile.create_device(name=device["name"])
@@ -38,7 +83,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10):
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
+    metadata = dict_deep_update(default_ophys_metadata(), metadata)
     metadata = dict_deep_update(metadata, get_nwb_imaging_metadata(imaging))
     # Tests if ElectricalSeries already exists in acquisition
     nwb_es_names = [ac for ac in nwbfile.acquisition]
@@ -113,7 +158,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     ----------
     imgextractor: ImagingExtractor
     """
-    metadata = get_default_nwbfile_metadata()
+    metadata = default_ophys_metadata()
     # Optical Channel name:
     for i in range(imgextractor.get_num_channels()):
         ch_name = imgextractor.get_channel_names()[i]
@@ -183,7 +228,6 @@ def write_imaging(
         metadata = dict()
     if hasattr(imaging, "nwb_metadata"):
         metadata = dict_deep_update(imaging.nwb_metadata, metadata)
-    # update with default arguments:
     metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
     if nwbfile is None:
         save_path = Path(save_path)
@@ -225,7 +269,7 @@ def get_nwb_segmentation_metadata(sgmextractor):
     ----------
     sgmextractor: SegmentationExtractor
     """
-    metadata = get_default_nwbfile_metadata()
+    metadata = default_ophys_metadata()
     # Optical Channel name:
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
@@ -391,6 +435,8 @@ def write_segmentation(
                 yield img_msks
 
         if not ps_exist:
+            from hdmf.common import VectorData
+
             input_kwargs.update(
                 **ps_metadata,
                 columns=[
