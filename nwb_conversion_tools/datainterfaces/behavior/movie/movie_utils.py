@@ -1,9 +1,11 @@
 """Authors: Saksham Sharda, Cody Baker."""
 from pathlib import Path
 from typing import Union, Tuple
-from ....utils.json_schema import FilePathType
+
 import numpy as np
 from tqdm import tqdm
+
+from ....utils.json_schema import FilePathType
 
 try:
     import cv2
@@ -30,7 +32,7 @@ class VideoCaptureContext:
         ts2 = []
         for no in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
             success, frame = self.vc.read()
-            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC)/1000)
             if not success:
                 break
         return np.array(ts2)
@@ -38,9 +40,8 @@ class VideoCaptureContext:
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file"""
         assert self.isOpened(), self._movie_open_msg
-        if int(cv2.__version__.split(".")[0]) < 3:
-            return self.vc.get(cv2.cv.CV_CAP_PROP_FPS)
-        return self.vc.get(cv2.CAP_PROP_FPS)
+        prop = self.get_cv_attribute("CAP_PROP_FPS")
+        return self.vc.get(prop)
 
     def get_frame_shape(self) -> Tuple:
         """Return the shape of frames from a movie file."""
@@ -61,14 +62,17 @@ class VideoCaptureContext:
     def get_movie_frame_count(self):
         return self.frame_count
 
+    @staticmethod
+    def get_cv_attribute(attribute_name):
+        if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
+            return getattr(cv2.cv, "CV_" + attribute_name)
+        return getattr(cv2, attribute_name)
+
     def _movie_frame_count(self):
         """Return the total number of frames for a movie file."""
         assert self.isOpened(), self._movie_open_msg
-        if int(cv2.__version__.split(".")[0]) < 3:
-            count = self.vc.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT)
-        else:
-            count = self.vc.get(cv2.CAP_PROP_FRAME_COUNT)
-        return int(count)
+        prop = self.get_cv_attribute("CAP_PROP_FRAME_COUNT")
+        return int(self.vc.get(prop))
 
     @property
     def current_frame(self):
@@ -77,10 +81,7 @@ class VideoCaptureContext:
     @current_frame.setter
     def current_frame(self, frame_number):
         assert self.isOpened(), self._movie_open_msg
-        if int(cv2.__version__.split(".")[0]) < 3:
-            set_arg = cv2.cv.CV_CAP_PROP_POS_FRAMES
-        else:
-            set_arg = cv2.CAP_PROP_POS_FRAMES
+        set_arg = self.get_cv_attribute("CAP_PROP_POS_FRAMES")
         set_value = self.vc.set(set_arg, frame_number)
         if set_value:
             self._current_frame = frame_number
