@@ -25,7 +25,6 @@ try:
     HAVE_PARAMETERIZED = True
 except ImportError:
     HAVE_PARAMETERIZED = False
-
 #  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
@@ -35,7 +34,6 @@ else:
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
     LOCAL_PATH = Path("/shared/catalystneuro/")
     print("Running GIN tests locally!")
-
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 HAVE_OPHYS_DATA = OPHYS_DATA_PATH.exists()
 
@@ -45,10 +43,8 @@ if SAVE_OUTPUTS:
     OUTPUT_PATH.mkdir(exist_ok=True)
 else:
     OUTPUT_PATH = Path(tempfile.mkdtemp())
-
 if not HAVE_PARAMETERIZED:
     pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
-
 if not OPHYS_DATA_PATH:
     pytest.fail(f"No oephys_testing_data folder found in location: {OPHYS_DATA_PATH}!")
 
@@ -110,7 +106,6 @@ class TestOphysNwbConversions(unittest.TestCase):
                 plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
                 if "imaging_plane" not in metadata["Ophys"]["TwoPhotonSeries"][0].keys():
                     metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
-
                 return metadata
 
         converter = TestConverter(source_data=dict(TestImaging=dict(interface_kwargs)))
@@ -162,18 +157,18 @@ class TestOphysNwbConversions(unittest.TestCase):
         name_func=custom_name_func,
     )
     def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs):
-    nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
-    class TestConverter(NWBConverter):
-        data_interface_classes = dict(TestSegmentation=data_interface)
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestSegmentation=data_interface)
 
-    converter = TestConverter(source_data=dict(TestSegmentation=dict(interface_kwargs)))
-    metadata = converter.get_metadata()
-    metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
-    converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-    segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
-    nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
-    check_segmentations_equal(seg1=segmentation, seg2=nwb_segmentation)
+        converter = TestConverter(source_data=dict(TestSegmentation=dict(interface_kwargs)))
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
+        nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
+        check_segmentations_equal(seg1=segmentation, seg2=nwb_segmentation)
 
 
 if __name__ == "__main__":
