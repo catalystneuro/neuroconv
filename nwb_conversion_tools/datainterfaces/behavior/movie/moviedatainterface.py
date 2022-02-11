@@ -12,17 +12,9 @@ from pynwb.image import ImageSeries
 from tqdm import tqdm
 
 from ....basedatainterface import BaseDataInterface
-from ....utils.nwbfile_tools import get_module
 from ....utils.conversion_tools import check_regular_timestamps
 from ....utils.json_schema import get_schema_from_hdmf_class, get_base_schema
-
-try:
-    import cv2
-
-    HAVE_OPENCV = True
-except ImportError:
-    HAVE_OPENCV = False
-INSTALL_MESSAGE = "Please install opencv to use this interface! (pip install opencv-python)"
+from ....utils.nwbfile_tools import get_module
 
 
 class MovieInterface(BaseDataInterface):
@@ -72,16 +64,16 @@ class MovieInterface(BaseDataInterface):
         return metadata
 
     def run_conversion(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict,
-        stub_test: bool = False,
-        external_mode: bool = True,
-        starting_times: Optional[list] = None,
-        chunk_data: bool = True,
-        module_name: Optional[str] = None,
-        module_description: Optional[str] = None,
-        compression: str = "gzip",
+            self,
+            nwbfile: NWBFile,
+            metadata: dict,
+            stub_test: bool = False,
+            external_mode: bool = True,
+            starting_times: Optional[list] = None,
+            chunk_data: bool = True,
+            module_name: Optional[str] = None,
+            module_description: Optional[str] = None,
+            compression: str = "gzip",
     ):
         """
         Convert the movie data files to ImageSeries and write them in the NWBFile.
@@ -135,9 +127,9 @@ class MovieInterface(BaseDataInterface):
 
         if starting_times is not None:
             assert (
-                isinstance(starting_times, list)
-                and all([isinstance(x, float) for x in starting_times])
-                and len(starting_times) == len(file_paths)
+                    isinstance(starting_times, list)
+                    and all([isinstance(x, float) for x in starting_times])
+                    and len(starting_times) == len(file_paths)
             ), "Argument 'starting_times' must be a list of floats in one-to-one correspondence with 'file_paths'!"
         else:
             starting_times = [0.0]
@@ -177,7 +169,7 @@ class MovieInterface(BaseDataInterface):
                 image_series_kwargs.update(starting_time=0.0, rate=fps)  # TODO manage custom starting_times
             else:
                 file = file_list[0]
-                uncompressed_estimate = Path(file).stat().st_size * 70
+                uncompressed_estimate = Path(file).stat().st_size*70
                 available_memory = psutil.virtual_memory().available
                 if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
                     warn(
@@ -195,7 +187,7 @@ class MovieInterface(BaseDataInterface):
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
                 tqdm_pos, tqdm_mininterval = (0, 10)
                 if chunk_data:
-                    video_capture_ob.vc = cv2.VideoCapture(str(file))
+                    _ = video_capture_ob.__enter__()
                     iterable = DataChunkIterator(
                         data=tqdm(
                             iterable=video_capture_ob,
@@ -212,10 +204,10 @@ class MovieInterface(BaseDataInterface):
                     iterable = []
                     with VideoCaptureContext(str(file)) as video_capture_ob:
                         with tqdm(
-                            desc=f"Reading movie data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval,
+                                desc=f"Reading movie data for {Path(file).name}",
+                                position=tqdm_pos,
+                                total=total_frames,
+                                mininterval=tqdm_mininterval,
                         ) as pbar:
                             for frame in video_capture_ob:
                                 iterable.append(frame)
