@@ -38,7 +38,6 @@ class MovieInterface(BaseDataInterface):
             Many movie storage formats segment a sequence of movies over the course of the experiment.
             Pass the file paths for this movies as a list in sorted, consecutive order.
         """
-        assert HAVE_OPENCV, INSTALL_MESSAGE
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -173,7 +172,7 @@ class MovieInterface(BaseDataInterface):
             file_list = image_series_kwargs.pop("data")
             if external_mode:
                 image_series_kwargs.update(format="external", external_file=file_list)
-                with VideoCaptureContext(str(file_list[0]), stub=stub_test) as vc:
+                with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
                 image_series_kwargs.update(starting_time=0.0, rate=fps)  # TODO manage custom starting_times
             else:
@@ -187,7 +186,7 @@ class MovieInterface(BaseDataInterface):
                     )
                     chunk_data = True
 
-                with VideoCaptureContext(str(file), stub=stub_test) as video_capture_ob:
+                with VideoCaptureContext(str(file)) as video_capture_ob:
                     total_frames = video_capture_ob.get_movie_frame_count()
                     frame_shape = video_capture_ob.get_frame_shape()
                     timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
@@ -196,6 +195,7 @@ class MovieInterface(BaseDataInterface):
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
                 tqdm_pos, tqdm_mininterval = (0, 10)
                 if chunk_data:
+                    video_capture_ob.vc = cv2.VideoCapture(str(file))
                     iterable = DataChunkIterator(
                         data=tqdm(
                             iterable=video_capture_ob,
@@ -210,15 +210,16 @@ class MovieInterface(BaseDataInterface):
                     data = H5DataIO(iterable, compression=compression, chunks=best_gzip_chunk)
                 else:
                     iterable = []
-                    with tqdm(
-                        desc=f"Reading movie data for {Path(file).name}",
-                        position=tqdm_pos,
-                        total=total_frames,
-                        mininterval=tqdm_mininterval,
-                    ) as pbar:
-                        for frame in video_capture_ob:
-                            iterable.append(frame)
-                            pbar.update(1)
+                    with VideoCaptureContext(str(file)) as video_capture_ob:
+                        with tqdm(
+                            desc=f"Reading movie data for {Path(file).name}",
+                            position=tqdm_pos,
+                            total=total_frames,
+                            mininterval=tqdm_mininterval,
+                        ) as pbar:
+                            for frame in video_capture_ob:
+                                iterable.append(frame)
+                                pbar.update(1)
                     data = H5DataIO(
                         DataChunkIterator(
                             tqdm(
