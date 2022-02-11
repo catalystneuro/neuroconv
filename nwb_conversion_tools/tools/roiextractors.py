@@ -84,7 +84,7 @@ def add_devices(nwbfile: NWBFile, metadata: dict):
     metadata = dict_deep_update(default_ophys_metadata(), metadata)
     for device in metadata.get("Ophys", dict()).get("Device", dict()):
         if "name" in device and device["name"] not in nwbfile.devices:
-            nwbfile.create_device(name=device["name"])
+            nwbfile.create_device(**device)
     return nwbfile
 
 
