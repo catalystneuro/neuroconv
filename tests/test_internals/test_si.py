@@ -110,6 +110,9 @@ class TestExtractors(unittest.TestCase):
     def setUp(self):
         self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3, self.example_info = _create_example(seed=0)
         self.test_dir = tempfile.mkdtemp()
+        self.placeholder_metadata = dict(
+            NWBFile=dict(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        )
 
     def tearDown(self):
         del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
@@ -124,21 +127,27 @@ class TestExtractors(unittest.TestCase):
     def test_write_recording(self):
         path = self.test_dir + "/test.nwb"
 
-        write_recording(self.RX, path)
+        write_recording(self.RX, path, metadata=self.placeholder_metadata)
         RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
         del RX_nwb
 
-        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        write_recording(recording=self.RX, save_path=path, overwrite=True, metadata=self.placeholder_metadata)
         RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
         check_dumping(RX_nwb)
 
         # Test write_electrical_series=False
-        write_recording(recording=self.RX, save_path=path, overwrite=True, write_electrical_series=False)
+        write_recording(
+            recording=self.RX,
+            save_path=path,
+            overwrite=True,
+            write_electrical_series=False,
+            metadata=self.placeholder_metadata,
+        )
         with NWBHDF5IO(path, "r") as io:
             nwbfile = io.read()
             assert len(nwbfile.acquisition) == 0
@@ -148,6 +157,7 @@ class TestExtractors(unittest.TestCase):
 
         # Writing multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
+        metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
             recording=self.RX,
@@ -180,7 +190,7 @@ class TestExtractors(unittest.TestCase):
     def write_recording_compression(self):
         path = self.test_dir + "/test.nwb"
         write_recording(
-            recording=self.RX, save_path=path, overwrite=True
+            recording=self.RX, save_path=path, overwrite=True, metadata=self.placeholder_metadata
         )  # Testing default compression, should be "gzip"
 
         compression = "gzip"
@@ -195,7 +205,13 @@ class TestExtractors(unittest.TestCase):
         )
         self.check_si_roundtrip(path=path)
 
-        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
+        write_recording(
+            recording=self.RX,
+            save_path=path,
+            overwrite=True,
+            compression=compression,
+            metadata=self.placeholder_metadata,
+        )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
@@ -208,7 +224,13 @@ class TestExtractors(unittest.TestCase):
         self.check_si_roundtrip(path=path)
 
         compression = "lzf"
-        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
+        write_recording(
+            recording=self.RX,
+            save_path=path,
+            overwrite=True,
+            compression=compression,
+            metadata=self.placeholder_metadata,
+        )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
@@ -221,7 +243,13 @@ class TestExtractors(unittest.TestCase):
         self.check_si_roundtrip(path=path)
 
         compression = None
-        write_recording(recording=self.RX, save_path=path, overwrite=True, compression=compression)
+        write_recording(
+            recording=self.RX,
+            save_path=path,
+            overwrite=True,
+            compression=compression,
+            metadata=self.placeholder_metadata,
+        )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
@@ -236,7 +264,7 @@ class TestExtractors(unittest.TestCase):
     def test_write_recording_chunking(self):
         path = self.test_dir + "/test.nwb"
 
-        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        write_recording(recording=self.RX, save_path=path, overwrite=True, metadata=self.placeholder_metadata)
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             chunks_out = nwbfile.acquisition["ElectricalSeries_raw"].data.chunks
@@ -254,7 +282,7 @@ class TestExtractors(unittest.TestCase):
         sf = self.RX.get_sampling_frequency()
 
         # Append sorting to existing file
-        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        write_recording(recording=self.RX, save_path=path, overwrite=True, metadata=self.placeholder_metadata)
         write_sorting(sorting=self.SX, save_path=path, overwrite=False)
         SX_nwb = se.NwbSortingExtractor(path)
         check_sortings_equal(self.SX, SX_nwb)
@@ -262,13 +290,25 @@ class TestExtractors(unittest.TestCase):
 
         # Test for handling unit property descriptions argument
         property_descriptions = dict(stability="This is a description of stability.")
-        write_sorting(sorting=self.SX, save_path=path, property_descriptions=property_descriptions, overwrite=True)
+        write_sorting(
+            sorting=self.SX,
+            save_path=path,
+            property_descriptions=property_descriptions,
+            overwrite=True,
+            metadata=self.placeholder_metadata,
+        )
         SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         check_sortings_equal(self.SX, SX_nwb)
         check_dumping(SX_nwb)
 
         # Test for handling skip_properties argument
-        write_sorting(sorting=self.SX, save_path=path, skip_properties=["stability"], overwrite=True)
+        write_sorting(
+            sorting=self.SX,
+            save_path=path,
+            skip_properties=["stability"],
+            overwrite=True,
+            metadata=self.placeholder_metadata,
+        )
         SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         assert "stability" not in SX_nwb.get_shared_unit_property_names()
         check_sortings_equal(self.SX, SX_nwb)
@@ -276,13 +316,20 @@ class TestExtractors(unittest.TestCase):
 
         # Test for handling skip_features argument
         # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. Set use_times=False
-        write_sorting(sorting=self.SX2, save_path=path, skip_features=["widths"], use_times=False, overwrite=True)
+        write_sorting(
+            sorting=self.SX2,
+            save_path=path,
+            skip_features=["widths"],
+            use_times=False,
+            overwrite=True,
+            metadata=self.placeholder_metadata,
+        )
         SX_nwb = se.NwbSortingExtractor(path, sampling_frequency=sf)
         assert "widths" not in SX_nwb.get_shared_unit_spike_feature_names()
         check_sortings_equal(self.SX2, SX_nwb)
         check_dumping(SX_nwb)
 
-        write_sorting(sorting=self.SX, save_path=path, overwrite=True)
+        write_sorting(sorting=self.SX, save_path=path, overwrite=True, metadata=self.placeholder_metadata)
         write_sorting(sorting=self.SX, save_path=path, overwrite=False, write_as="processing")
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
@@ -309,7 +356,14 @@ class TestExtractors(unittest.TestCase):
         )
 
         units_name = "test_name"
-        write_sorting(sorting=self.SX, save_path=path, overwrite=True, write_as="processing", units_name=units_name)
+        write_sorting(
+            sorting=self.SX,
+            save_path=path,
+            overwrite=True,
+            write_as="processing",
+            units_name=units_name,
+            metadata=self.placeholder_metadata,
+        )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
             name_out = nwbfile.processing["ecephys"][units_name].name
@@ -336,7 +390,9 @@ class TestExtractors(unittest.TestCase):
 
     def check_metadata_write(self, metadata: dict, nwbfile_path: Path, recording: se.RecordingExtractor):
         standard_metadata = get_nwb_metadata(recording=recording)
-        device_defaults = dict(name="Device", description="no description")  # from the individual add_devices function
+        device_defaults = dict(
+            name="Device", description="Ecephys probe. Automatically generated."
+        )  # from the individual add_devices function
         electrode_group_defaults = dict(  # from the individual add_electrode_groups function
             name="Electrode Group", description="no description", location="unknown", device="Device"
         )
@@ -396,13 +452,14 @@ class TestExtractors(unittest.TestCase):
     def test_nwb_metadata(self):
         path = self.test_dir + "/test_metadata.nwb"
 
-        write_recording(recording=self.RX, save_path=path, overwrite=True)
+        write_recording(recording=self.RX, save_path=path, overwrite=True, metadata=self.placeholder_metadata)
         self.check_metadata_write(metadata=get_nwb_metadata(recording=self.RX), nwbfile_path=path, recording=self.RX)
 
         # Manually adjusted device name - must properly adjust electrode_group reference
         metadata2 = get_nwb_metadata(recording=self.RX)
         metadata2["Ecephys"]["Device"] = [dict(name="TestDevice", description="A test device.", manufacturer="unknown")]
         metadata2["Ecephys"]["ElectrodeGroup"][0]["device"] = "TestDevice"
+        metadata2["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         write_recording(recording=self.RX, metadata=metadata2, save_path=path, overwrite=True)
         self.check_metadata_write(metadata=metadata2, nwbfile_path=path, recording=self.RX)
 
@@ -411,6 +468,7 @@ class TestExtractors(unittest.TestCase):
         metadata3["Ecephys"]["Device"].append(
             dict(name="Device2", description="A second device.", manufacturer="unknown")
         )
+        metadata3["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         write_recording(recording=self.RX, metadata=metadata3, save_path=path, overwrite=True)
         self.check_metadata_write(metadata=metadata3, nwbfile_path=path, recording=self.RX)
 
@@ -418,6 +476,7 @@ class TestExtractors(unittest.TestCase):
         metadata4 = get_nwb_metadata(recording=self.RX)
         metadata4["Ecephys"]["Device"] = [dict(name="TestDevice", description="A test device.", manufacturer="unknown")]
         metadata4["Ecephys"].pop("ElectrodeGroup")
+        metadata4["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         write_recording(recording=self.RX, metadata=metadata4, save_path=path, overwrite=True)
         self.check_metadata_write(metadata=metadata4, nwbfile_path=path, recording=self.RX)
 

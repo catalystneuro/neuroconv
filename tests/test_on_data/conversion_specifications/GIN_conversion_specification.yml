@@ -1,0 +1,59 @@
+metadata:
+  NWBFile:
+    lab: My Lab
+    institution: My Institution
+data_interfaces:
+  - SpikeGLXLFPInterface
+
+experiments:
+  ymaze:
+    metadata:
+      NWBFile:
+        session_description: Subject navigating a Y-shaped maze.
+
+    sessions:
+      - nwbfile_name: example_converter_spec_1
+        data_interfaces:
+          - SpikeGLXRecordingInterface
+        source_data:
+          SpikeGLXRecordingInterface:
+            file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
+        conversion_options:
+          SpikeGLXRecordingInterface:
+            stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
+        metadata:
+          NWBFile:
+            session_start_time: "2020-10-09T21:19:09+00:00"
+          Subject:
+            subject_id: "1"
+      - nwbfile_name: example_converter_spec_2.nwb
+        metadata:
+          NWBFile:
+            session_start_time: "2020-10-10T21:19:09+00:00"
+          Subject:
+            subject_id: "002"
+        conversion_options:
+          SpikeGLXLFPInterface:
+            stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
+        source_data:
+          SpikeGLXLFPInterface:
+            file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.lf.bin
+
+  open_explore:
+    sessions:
+      - nwbfile_name: example_converter_spec_3
+        data_interfaces:
+          - PhySortingInterface
+        source_data:
+          SpikeGLXLFPInterface:
+            file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.lf.bin
+          PhySortingInterface:
+            folder_path: phy/phy_example_0/
+        metadata:
+          NWBFile:
+            session_start_time: "2020-10-11T21:19:09+00:00"
+          Subject:
+            subject_id: Subject Name
+        conversion_options:
+          SpikeGLXLFPInterface:
+            stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge

@@ -1,7 +1,8 @@
 import tempfile
 import unittest
-from pathlib import Path
 import os
+from pathlib import Path
+from datetime import datetime
 
 import pytest
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
@@ -106,7 +107,9 @@ class TestOphysNwbConversions(unittest.TestCase):
                 return metadata
 
         converter = TestConverter(source_data=dict(TestImaging=dict(interface_kwargs)))
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         imaging = converter.data_interface_objects["TestImaging"].imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
         check_imaging_equal(img1=imaging, img2=nwb_imaging)
@@ -158,7 +161,9 @@ class TestOphysNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestSegmentation=data_interface)
 
         converter = TestConverter(source_data=dict(TestSegmentation=dict(interface_kwargs)))
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
         nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
         check_segmentations_equal(seg1=segmentation, seg2=nwb_segmentation)
