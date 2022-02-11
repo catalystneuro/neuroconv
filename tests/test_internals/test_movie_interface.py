@@ -70,7 +70,7 @@ class TestMovieInterface(unittest.TestCase):
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
             conversion_options=conversion_opts,
-            metadata=self.get_metadata()
+            metadata=self.get_metadata(),
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -97,7 +97,7 @@ class TestMovieInterface(unittest.TestCase):
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
             conversion_options=conversion_opts,
-            metadata = self.get_metadata()
+            metadata=self.get_metadata(),
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -110,10 +110,7 @@ class TestMovieInterface(unittest.TestCase):
             Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=False)
         )
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path,
-            overwrite=True,
-            conversion_options=conv_ops,
-            metadata=self.get_metadata()
+            nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conv_ops, metadata=self.get_metadata()
         )
 
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
@@ -131,7 +128,7 @@ class TestMovieInterface(unittest.TestCase):
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
             conversion_options=conversion_opts,
-            metadata=self.get_metadata()
+            metadata=self.get_metadata(),
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
