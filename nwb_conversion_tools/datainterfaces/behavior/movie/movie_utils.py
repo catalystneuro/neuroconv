@@ -13,6 +13,7 @@ try:
     HAVE_OPENCV = True
 except ImportError:
     HAVE_OPENCV = False
+INSTALL_MESSAGE = "Please install opencv to use this interface! (pip install opencv-python)"
 
 PathType = Union[str, Path]
 
@@ -21,6 +22,7 @@ class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager"""
 
     def __init__(self, file_path: FilePathType):
+        assert HAVE_OPENCV, INSTALL_MESSAGE
         self.vc = cv2.VideoCapture(filename=file_path)
         self.file_path = file_path
         self._current_frame = 0
@@ -32,7 +34,7 @@ class VideoCaptureContext:
         ts2 = []
         for no in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
             success, frame = self.vc.read()
-            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC)/1000)
             if not success:
                 break
         return np.array(ts2)
