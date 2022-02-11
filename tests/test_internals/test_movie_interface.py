@@ -5,6 +5,7 @@ import numpy as np
 from pynwb import NWBHDF5IO
 import os
 from nwb_conversion_tools import NWBConverter, MovieInterface
+from datetime import datetime
 
 try:
     import cv2
@@ -57,11 +58,19 @@ class TestMovieInterface(unittest.TestCase):
         source_data = dict(Movie=dict(file_paths=self.movie_files))
         return MovieTestNWBConverter(source_data)
 
+    def get_metadata(self):
+        metadata = self.nwb_converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        return metadata
+
     def test_movie_starting_times(self):
         starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=False))
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conversion_opts
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_opts,
+            metadata=self.get_metadata()
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -85,7 +94,10 @@ class TestMovieInterface(unittest.TestCase):
             )
         )
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conversion_opts
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_opts,
+            metadata = self.get_metadata()
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -97,7 +109,12 @@ class TestMovieInterface(unittest.TestCase):
         conv_ops = dict(
             Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=False)
         )
-        self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conv_ops)
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conv_ops,
+            metadata=self.get_metadata()
+        )
 
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -111,7 +128,10 @@ class TestMovieInterface(unittest.TestCase):
         starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=True))
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conversion_opts
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_opts,
+            metadata=self.get_metadata()
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
