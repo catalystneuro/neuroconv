@@ -20,7 +20,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.commmon.table import VectorData
 
 from ..utils.json_schema import dict_deep_update, FilePathType
-from ..utils.nwbfile_tools import get_default_nwbfile_metadata
+from ..utils.nwbfile_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
 
 
 def add_devices(nwbfile: NWBFile, metadata: dict):
@@ -32,7 +32,7 @@ def add_devices(nwbfile: NWBFile, metadata: dict):
     return nwbfile
 
 
-def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10):
+def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=False):
     """
     Auxiliary static method for nwbextractor.
 
@@ -69,6 +69,22 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10):
             metadata["Ophys"]["TwoPhotonSeries"][0],
             dict(data=data, imaging_plane=imaging_plane),
         )
+
+        if not use_times:
+            two_p_series_kwargs.update(
+                starting_time=imaging.frame_to_time(0),
+                rate=float(imaging.get_sampling_frequency()),
+            )
+        else:
+            two_p_series_kwargs.update(
+                timestamps=H5DataIO(
+                    imaging.frame_to_time(np.arange(imaging.get_num_frames())),
+                    compression="gzip",
+                )
+            )
+            if "rate" in two_p_series_kwargs:
+                del two_p_series_kwargs["rate"]
+
         ophys_ts = TwoPhotonSeries(**two_p_series_kwargs)
 
         nwbfile.add_acquisition(ophys_ts)
@@ -129,14 +145,15 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
             )
 
     # set imaging plane rate:
-    rate = np.float("NaN") if imgextractor.get_sampling_frequency() is None else imgextractor.get_sampling_frequency()
+    rate = (
+        np.float("NaN")
+        if imgextractor.get_sampling_frequency() is None
+        else float(imgextractor.get_sampling_frequency())
+    )
     # adding imaging_rate:
     metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(
-        dimension=imgextractor.get_image_size(),
-        rate=imgextractor.get_sampling_frequency(),
-    )
+    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=imgextractor.get_image_size(), rate=rate)
     # remove what Segmentation extractor will input:
     _ = metadata["Ophys"].pop("ImageSegmentation")
     _ = metadata["Ophys"].pop("Fluorescence")
@@ -150,6 +167,7 @@ def write_imaging(
     metadata: dict = None,
     overwrite: bool = False,
     buffer_size: int = 10,
+    use_times=False,
 ):
     """
     Parameters
@@ -172,6 +190,9 @@ def write_imaging(
         If True and save_path is existing, it is overwritten
     num_chunks: int
         Number of chunks for writing data to file
+    use_times: bool (optional, defaults to False)
+        If True, the times are saved to the nwb file using imaging.frame_to_time(). If False (defualt),
+        the sampling rate is used.
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
 
@@ -202,7 +223,7 @@ def write_imaging(
             if read_mode == "r+":
                 nwbfile = io.read()
             else:
-                nwbfile = NWBFile(**metadata["NWBFile"])
+                nwbfile = make_nwbfile_from_metadata(metadata=metadata)
                 add_devices(nwbfile=nwbfile, metadata=metadata)
                 add_two_photon_series(
                     imaging=imaging,
@@ -214,7 +235,7 @@ def write_imaging(
             io.write(nwbfile)
     else:
         add_devices(nwbfile=nwbfile, metadata=metadata)
-        add_two_photon_series(imaging=imaging, nwbfile=nwbfile, metadata=metadata)
+        add_two_photon_series(imaging=imaging, nwbfile=nwbfile, metadata=metadata, use_times=use_times)
         add_epochs(imaging=imaging, nwbfile=nwbfile)
 
 
@@ -319,7 +340,7 @@ def write_segmentation(
         if nwbfile_exist:
             nwbfile = io.read()
         else:
-            nwbfile = NWBFile(**metadata_base_common["NWBFile"])
+            nwbfile = make_nwbfile_from_metadata(metadata=metadata_base_common)
 
     # Subject:
     if metadata_base_common.get("Subject") and nwbfile.subject is None:
