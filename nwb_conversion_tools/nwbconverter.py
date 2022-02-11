@@ -162,6 +162,7 @@ class NWBConverter:
             else:
                 load_kwargs.update(mode="w")
 
+            print(load_kwargs)
             with NWBHDF5IO(**load_kwargs) as io:
                 if load_kwargs["mode"] == "r+":
                     nwbfile = io.read()

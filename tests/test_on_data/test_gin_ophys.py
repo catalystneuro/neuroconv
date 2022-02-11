@@ -88,7 +88,14 @@ class TestOphysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(imaging_interface_list, name_func=custom_name_func)
     def test_convert_imaging_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+        nwbfile_path = self.savedir / f"{data_interface.__name__}.nwb"
+
+        # TODO: Temporary hack around a strange issue where if the first SBX file fails due to an error
+        # during check_imaging_equal, it leaves the NWBFile open and second test fails because of that.
+        # Try to determine true source of error; is context failing to close through pynwb or is it the
+        # NWBImagingExtractor that fails to close?
+        if nwbfile_path.exists():
+            nwbfile_path = self.savedir / f"{data_interface.__name__}_2.nwb"
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestImaging=data_interface)
@@ -112,61 +119,63 @@ class TestOphysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         imaging = converter.data_interface_objects["TestImaging"].imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
+        print(imaging.get_num_channels())
+        print(nwb_imaging.get_num_channels())
         check_imaging_equal(img1=imaging, img2=nwb_imaging)
 
-    @parameterized.expand(
-        [
-            param(
-                data_interface=CaimanSegmentationInterface,
-                interface_kwargs=dict(
-                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5")
-                ),
-            ),
-            param(
-                data_interface=CnmfeSegmentationInterface,
-                interface_kwargs=dict(
-                    file_path=str(
-                        OPHYS_DATA_PATH
-                        / "segmentation_datasets"
-                        / "cnmfe"
-                        / "2014_04_01_p203_m19_check01_cnmfeAnalysis.mat"
-                    )
-                ),
-            ),
-            param(
-                data_interface=ExtractSegmentationInterface,
-                interface_kwargs=dict(
-                    file_path=str(
-                        OPHYS_DATA_PATH
-                        / "segmentation_datasets"
-                        / "extract"
-                        / "2014_04_01_p203_m19_check01_extractAnalysis.mat"
-                    )
-                ),
-            ),
-            param(
-                data_interface=Suite2pSegmentationInterface,
-                interface_kwargs=dict(
-                    # TODO: argument name is 'file_path' on roiextractors, but it clearly refers to a folder_path
-                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p")
-                ),
-            ),
-        ],
-        name_func=custom_name_func,
-    )
-    def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+    # @parameterized.expand(
+    #     [
+    #         param(
+    #             data_interface=CaimanSegmentationInterface,
+    #             interface_kwargs=dict(
+    #                 file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5")
+    #             ),
+    #         ),
+    #         param(
+    #             data_interface=CnmfeSegmentationInterface,
+    #             interface_kwargs=dict(
+    #                 file_path=str(
+    #                     OPHYS_DATA_PATH
+    #                     / "segmentation_datasets"
+    #                     / "cnmfe"
+    #                     / "2014_04_01_p203_m19_check01_cnmfeAnalysis.mat"
+    #                 )
+    #             ),
+    #         ),
+    #         param(
+    #             data_interface=ExtractSegmentationInterface,
+    #             interface_kwargs=dict(
+    #                 file_path=str(
+    #                     OPHYS_DATA_PATH
+    #                     / "segmentation_datasets"
+    #                     / "extract"
+    #                     / "2014_04_01_p203_m19_check01_extractAnalysis.mat"
+    #                 )
+    #             ),
+    #         ),
+    #         param(
+    #             data_interface=Suite2pSegmentationInterface,
+    #             interface_kwargs=dict(
+    #                 # TODO: argument name is 'file_path' on roiextractors, but it clearly refers to a folder_path
+    #                 file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p")
+    #             ),
+    #         ),
+    #     ],
+    #     name_func=custom_name_func,
+    # )
+    # def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs):
+    # nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
-        class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestSegmentation=data_interface)
+    # class TestConverter(NWBConverter):
+    #     data_interface_classes = dict(TestSegmentation=data_interface)
 
-        converter = TestConverter(source_data=dict(TestSegmentation=dict(interface_kwargs)))
-        metadata = converter.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-        segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
-        nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
-        check_segmentations_equal(seg1=segmentation, seg2=nwb_segmentation)
+    # converter = TestConverter(source_data=dict(TestSegmentation=dict(interface_kwargs)))
+    # metadata = converter.get_metadata()
+    # metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+    # converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+    # segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
+    # nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
+    # check_segmentations_equal(seg1=segmentation, seg2=nwb_segmentation)
 
 
 if __name__ == "__main__":

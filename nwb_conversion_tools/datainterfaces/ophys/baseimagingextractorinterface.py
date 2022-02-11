@@ -11,6 +11,7 @@ from ...utils.json_schema import (
     get_schema_from_method_signature,
     fill_defaults,
     get_base_schema,
+    OptionalFilePathType,
 )
 
 
@@ -66,5 +67,13 @@ class BaseImagingExtractorInterface(BaseDataInterface):
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict, overwrite: bool = False):
-        write_imaging(self.imaging_extractor, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite)
+    def run_conversion(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict,
+        overwrite: bool = False,
+        save_path: OptionalFilePathType = None,
+    ):
+        write_imaging(
+            imaging=self.imaging_extractor, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, save_path=save_path
+        )

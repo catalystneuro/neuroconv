@@ -3,6 +3,7 @@ import os
 import numpy as np
 from pathlib import Path
 from warnings import warn
+from collections import abc
 
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile, NWBHDF5IO
@@ -22,6 +23,16 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from ..utils.json_schema import dict_deep_update, FilePathType
 from ..utils.nwbfile_tools import get_default_nwbfile_metadata
+
+
+# TODO: This function should be refactored, but for now seems necessary to avoid errors in tests
+def safe_update(d, u):
+    for k, v in u.items():
+        if isinstance(v, abc.Mapping):
+            d[k] = safe_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
 
 
 def default_ophys_metadata():
@@ -84,7 +95,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10):
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
     metadata = dict_deep_update(default_ophys_metadata(), metadata)
-    metadata = dict_deep_update(metadata, get_nwb_imaging_metadata(imaging))
+    metadata = safe_update(metadata, get_nwb_imaging_metadata(imaging))
     # Tests if ElectricalSeries already exists in acquisition
     nwb_es_names = [ac for ac in nwbfile.acquisition]
     opts = metadata["Ophys"]["TwoPhotonSeries"][0]
@@ -94,9 +105,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10):
         metadata["Ophys"]["ImagingPlane"][0]["optical_channel"] = [
             OpticalChannel(**i) for i in metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]
         ]
-        metadata["Ophys"]["ImagingPlane"][0] = dict_deep_update(
-            metadata["Ophys"]["ImagingPlane"][0], {"device": device}
-        )
+        metadata["Ophys"]["ImagingPlane"][0] = safe_update(metadata["Ophys"]["ImagingPlane"][0], {"device": device})
 
         imaging_plane = nwbfile.create_imaging_plane(**metadata["Ophys"]["ImagingPlane"][0])
 
@@ -152,7 +161,7 @@ def add_epochs(imaging, nwbfile):
 
 def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     """
-    Converts metadata from the segmentation into nwb specific metadata.
+    Convert metadata from the segmentation into nwb specific metadata.
 
     Parameters
     ----------
@@ -237,7 +246,7 @@ def write_imaging(
             if not overwrite:
                 read_mode = "r+"
             else:
-                save_path.unlink()
+                # save_path.unlink()
                 read_mode = "w"
         else:
             read_mode = "w"
@@ -264,7 +273,8 @@ def write_imaging(
 
 def get_nwb_segmentation_metadata(sgmextractor):
     """
-    Converts metadata from the segmentation into nwb specific metadata
+    Convert metadata from the segmentation into nwb specific metadata.
+
     Parameters
     ----------
     sgmextractor: SegmentationExtractor
