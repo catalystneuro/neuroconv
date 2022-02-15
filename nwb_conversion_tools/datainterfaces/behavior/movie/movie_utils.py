@@ -94,9 +94,10 @@ class VideoCaptureContext:
         """Return the specific frame from a movie."""
         assert self.isOpened(), self._movie_open_msg
         assert frame_number < self.get_movie_frame_count(), "frame number is greater than length of movie"
+        initial_frame_number = self.current_frame
         self.current_frame = frame_number
         success, frame = self.vc.read()
-        self.current_frame = 0
+        self.current_frame = initial_frame_number 
         return frame
 
     def get_movie_frame_dtype(self):
