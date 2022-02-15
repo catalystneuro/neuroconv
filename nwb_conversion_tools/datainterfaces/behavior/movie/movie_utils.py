@@ -13,13 +13,13 @@ try:
     HAVE_OPENCV = True
 except ImportError:
     HAVE_OPENCV = False
-INSTALL_MESSAGE = "Please install opencv to use this interface! (pip install opencv-python)"
+INSTALL_MESSAGE = "Please install opencv to use the VideoCaptureContext class! (pip install opencv-python)"
 
 PathType = Union[str, Path]
 
 
 class VideoCaptureContext:
-    """Retrieving video metadata and frames using a context manager"""
+    """Retrieving video metadata and frames using a context manager."""
 
     def __init__(self, file_path: FilePathType):
         assert HAVE_OPENCV, INSTALL_MESSAGE
@@ -40,7 +40,7 @@ class VideoCaptureContext:
         return np.array(timestamps) / 1000
 
     def get_movie_fps(self):
-        """Return the internal frames per second (fps) for a movie file"""
+        """Return the internal frames per second (fps) for a movie file."""
         assert self.isOpened(), self._movie_open_msg
         prop = self.get_cv_attribute("CAP_PROP_FPS")
         return self.vc.get(prop)
@@ -65,7 +65,7 @@ class VideoCaptureContext:
         return self.frame_count
 
     @staticmethod
-    def get_cv_attribute(attribute_name):
+    def get_cv_attribute(attribute_name: str):
         if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
             return getattr(cv2.cv, "CV_" + attribute_name)
         return getattr(cv2, attribute_name)
@@ -81,14 +81,14 @@ class VideoCaptureContext:
         return self._current_frame
 
     @current_frame.setter
-    def current_frame(self, frame_number):
+    def current_frame(self, frame_number: int):
         assert self.isOpened(), self._movie_open_msg
         set_arg = self.get_cv_attribute("CAP_PROP_POS_FRAMES")
         set_value = self.vc.set(set_arg, frame_number)
         if set_value:
             self._current_frame = frame_number
         else:
-            raise ValueError(f"could not set frame no {frame_number}")
+            raise ValueError(f"Could not set frame number (received {frame_number}).")
 
     def get_movie_frame(self, frame_number: int):
         """Return the specific frame from a movie."""
