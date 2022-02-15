@@ -13,13 +13,13 @@ try:
     HAVE_OPENCV = True
 except ImportError:
     HAVE_OPENCV = False
-INSTALL_MESSAGE = "Please install opencv to use this interface! (pip install opencv-python)"
+INSTALL_MESSAGE = "Please install opencv to use the VideoCaptureContext class! (pip install opencv-python)"
 
 PathType = Union[str, Path]
 
 
 class VideoCaptureContext:
-    """Retrieving video metadata and frames using a context manager"""
+    """Retrieving video metadata and frames using a context manager."""
 
     def __init__(self, file_path: FilePathType):
         assert HAVE_OPENCV, INSTALL_MESSAGE
@@ -31,16 +31,16 @@ class VideoCaptureContext:
 
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps(s) for a movie file."""
-        ts2 = []
-        for no in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
-            success, frame = self.vc.read()
-            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+        timestamps = []
+        for _ in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
+            success, _ = self.vc.read()
             if not success:
                 break
-        return np.array(ts2)
+            timestamps.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
+        return np.array(timestamps) / 1000
 
     def get_movie_fps(self):
-        """Return the internal frames per second (fps) for a movie file"""
+        """Return the internal frames per second (fps) for a movie file."""
         assert self.isOpened(), self._movie_open_msg
         prop = self.get_cv_attribute("CAP_PROP_FPS")
         return self.vc.get(prop)
@@ -58,17 +58,15 @@ class VideoCaptureContext:
         return self._frame_count
 
     @frame_count.setter
-    def frame_count(self, val):
+    def frame_count(self, val: int):
+        assert val > 0, "You must set a positive frame_count (received {val})."
+        assert (
+            val <= self._movie_frame_count()
+        ), "Cannot set manual frame_count beyond length of video (received {val})."
         self._frame_count = val
 
     def get_movie_frame_count(self):
         return self.frame_count
-
-    @staticmethod
-    def get_cv_attribute(attribute_name):
-        if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
-            return getattr(cv2.cv, "CV_" + attribute_name)
-        return getattr(cv2, attribute_name)
 
     def _movie_frame_count(self):
         """Return the total number of frames for a movie file."""
@@ -76,27 +74,34 @@ class VideoCaptureContext:
         prop = self.get_cv_attribute("CAP_PROP_FRAME_COUNT")
         return int(self.vc.get(prop))
 
+    @staticmethod
+    def get_cv_attribute(attribute_name: str):
+        if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
+            return getattr(cv2.cv, "CV_" + attribute_name)
+        return getattr(cv2, attribute_name)
+
     @property
     def current_frame(self):
         return self._current_frame
 
     @current_frame.setter
-    def current_frame(self, frame_number):
+    def current_frame(self, frame_number: int):
         assert self.isOpened(), self._movie_open_msg
         set_arg = self.get_cv_attribute("CAP_PROP_POS_FRAMES")
         set_value = self.vc.set(set_arg, frame_number)
         if set_value:
             self._current_frame = frame_number
         else:
-            raise ValueError(f"could not set frame no {frame_number}")
+            raise ValueError(f"Could not set frame number (received {frame_number}).")
 
     def get_movie_frame(self, frame_number: int):
         """Return the specific frame from a movie."""
         assert self.isOpened(), self._movie_open_msg
         assert frame_number < self.get_movie_frame_count(), "frame number is greater than length of movie"
+        initial_frame_number = self.current_frame
         self.current_frame = frame_number
         success, frame = self.vc.read()
-        self.current_frame = 0
+        self.current_frame = initial_frame_number
         return frame
 
     def get_movie_frame_dtype(self):
@@ -117,7 +122,6 @@ class VideoCaptureContext:
     def __next__(self):
         assert self.isOpened(), self._movie_open_msg
         if self._current_frame < self.frame_count:
-            self.current_frame = self._current_frame
             success, frame = self.vc.read()
             self._current_frame += 1
             if success:

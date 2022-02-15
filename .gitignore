@@ -116,3 +116,6 @@ venv.bak/
 
 #Mac
 .DS_Store
+
+# NWB
+.nwb
