@@ -58,7 +58,10 @@ class VideoCaptureContext:
         return self._frame_count
 
     @frame_count.setter
-    def frame_count(self, val):
+    def frame_count(self, val: int):
+        assert val > 0, "You must set a positive frame_count (received {val})."
+        assert val <= self._movie_frame_count(), "Cannot set manual frame_count beyond length of video (received 
+ {val})."
         self._frame_count = val
 
     def get_movie_frame_count(self):
