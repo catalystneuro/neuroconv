@@ -64,17 +64,17 @@ class VideoCaptureContext:
     def get_movie_frame_count(self):
         return self.frame_count
 
-    @staticmethod
-    def get_cv_attribute(attribute_name: str):
-        if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
-            return getattr(cv2.cv, "CV_" + attribute_name)
-        return getattr(cv2, attribute_name)
-
     def _movie_frame_count(self):
         """Return the total number of frames for a movie file."""
         assert self.isOpened(), self._movie_open_msg
         prop = self.get_cv_attribute("CAP_PROP_FRAME_COUNT")
         return int(self.vc.get(prop))
+
+    @staticmethod
+    def get_cv_attribute(attribute_name: str):
+        if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
+            return getattr(cv2.cv, "CV_" + attribute_name)
+        return getattr(cv2, attribute_name)
 
     @property
     def current_frame(self):
@@ -118,7 +118,6 @@ class VideoCaptureContext:
     def __next__(self):
         assert self.isOpened(), self._movie_open_msg
         if self._current_frame < self.frame_count:
-            self.current_frame = self._current_frame
             success, frame = self.vc.read()
             self._current_frame += 1
             if success:
