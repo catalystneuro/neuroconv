@@ -45,8 +45,10 @@ You can use a graphical interface for your converter with [NWB Web GUI](https://
 #### [Buzsáki Lab](https://buzsakilab.com/wp/): [buzsaki-lab-to-nwb](https://github.com/catalystneuro/buzsaki-lab-to-nwb)
 This project is an ongoing effort for the Ripple U19 conversion of extracellular electrophysiology data to NWB format, including final publishing of each dataset on DANDI. Currently spans 7 major publications and over 14 TB of data on the [DANDI Archive](https://www.dandiarchive.org/). Most of the data consists of raw recordings, LFP, spike sorted units, and behavior with can consist of a mix of mental state tracking, position tracking through mazes, and trial stimulus events.
 
-#### Shenoy Lab: [shenoy-lab-to-nwb](https://github.com/catalystneuro/shenoy-lab-to-nwb):
-
+#### [Shenoy lab](https://npsl.sites.stanford.edu): [shenoy-lab-to-nwb](https://github.com/catalystneuro/shenoy-lab-to-nwb):
+The Shenoy lab is one of the pioneers in developing BCIs for people with paralysis. They are part of the [BrainGate](https://www.braingate.org) team 
+and were the winners of the 2019 [BCI award](https://www.bci-award.com/2019).
+They use extracellular recordings from Utah arrays and Neuropixels(for which they customized the regular mouse version to be used in primates).
 
 ### v0.9.2
 #### [Brody Lab](http://brodylab.org/): [brody-lab-to-nwb](https://github.com/catalystneuro/brody-lab-to-nwb)
@@ -78,7 +80,6 @@ Utilizing the CED recording interface, this project paired ecephys channels with
 * [Buffalo lab](https://buffalomemorylab.com/): [buffalo-lab-data-to-nwb](https://github.com/catalystneuro/buffalo-lab-data-to-nwb)
 * [Jaeger lab](https://scholarblogs.emory.edu/jaegerlab/): [jaeger-lab-to-nwb](https://github.com/catalystneuro/jaeger-lab-to-nwb)
 * [Tolias lab](https://toliaslab.org/): [tolias-lab-to-nwb](https://github.com/catalystneuro/tolias-lab-to-nwb)
-* [Shenoy lab](https://npsl.sites.stanford.edu): [shenoy-lab-to-nwb](https://github.com/catalystneuro/shenoy-lab-to-nwb)
 
 
 # For Developers
