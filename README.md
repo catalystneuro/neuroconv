@@ -48,7 +48,7 @@ This project is an ongoing effort for the Ripple U19 conversion of extracellular
 #### [Shenoy lab](https://npsl.sites.stanford.edu): [shenoy-lab-to-nwb](https://github.com/catalystneuro/shenoy-lab-to-nwb):
 The Shenoy lab is one of the pioneers in developing BCIs for people with paralysis. They are part of the [BrainGate](https://www.braingate.org) team 
 and were the winners of the 2019 [BCI award](https://www.bci-award.com/2019).
-They use extracellular recordings from Utah arrays and Neuropixels(for which they customized the regular mouse version to be used in primates).
+They use extracellular recordings from Utah arrays and Neuropixels in primates.
 
 ### v0.9.2
 #### [Brody Lab](http://brodylab.org/): [brody-lab-to-nwb](https://github.com/catalystneuro/brody-lab-to-nwb)
