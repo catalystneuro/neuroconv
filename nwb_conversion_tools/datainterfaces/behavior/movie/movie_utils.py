@@ -31,7 +31,7 @@ class VideoCaptureContext:
 
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps(s) for a movie file."""
-        timestamps= []
+        timestamps = []
         for _ in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
             success, _ = self.vc.read()
             if not success:
