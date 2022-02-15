@@ -25,7 +25,7 @@ else:
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
-SAVE_OUTPUTS = True
+SAVE_OUTPUTS = False
 if SAVE_OUTPUTS:
     OUTPUT_PATH = LOCAL_PATH / "example_yaml_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
@@ -40,12 +40,7 @@ if not HAVE_DATA:
 
 
 class TestYAMLConversionSpecification(TestCase):
-    def setUp(self):
-        self.test_folder = OUTPUT_PATH
-
-    def tearDown(self):
-        if not SAVE_OUTPUTS:
-            rmtree(path=self.test_folder)
+    test_folder = OUTPUT_PATH
 
     def test_validate_example_specification(self):
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
