@@ -97,7 +97,7 @@ class VideoCaptureContext:
         initial_frame_number = self.current_frame
         self.current_frame = frame_number
         success, frame = self.vc.read()
-        self.current_frame = initial_frame_number 
+        self.current_frame = initial_frame_number
         return frame
 
     def get_movie_frame_dtype(self):
