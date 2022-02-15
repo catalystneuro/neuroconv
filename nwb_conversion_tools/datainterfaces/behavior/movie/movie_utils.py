@@ -31,13 +31,13 @@ class VideoCaptureContext:
 
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps(s) for a movie file."""
-        ts2 = []
-        for no in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
-            success, frame = self.vc.read()
-            ts2.append(self.vc.get(cv2.CAP_PROP_POS_MSEC) / 1000)
+        timestamps= []
+        for _ in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
+            success, _ = self.vc.read()
             if not success:
                 break
-        return np.array(ts2)
+            timestamps.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
+        return np.array(timestamps) / 1000
 
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file"""
