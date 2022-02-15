@@ -25,7 +25,7 @@ else:
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
-SAVE_OUTPUTS = True
+SAVE_OUTPUTS = False
 if SAVE_OUTPUTS:
     OUTPUT_PATH = LOCAL_PATH / "example_yaml_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
