@@ -40,12 +40,12 @@ if not HAVE_DATA:
 
 
 class TestYAMLConversionSpecification(TestCase):
-    def setUp(self):
-        self.test_folder = OUTPUT_PATH
+    def setUpClass(cls):
+        cls.test_folder = OUTPUT_PATH
 
     def tearDown(self):
         if not SAVE_OUTPUTS:
-            rmtree(path=self.test_folder)
+            rmtree(self.test_folder)
 
     def test_validate_example_specification(self):
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
