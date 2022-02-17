@@ -116,17 +116,17 @@ def get_gain_from_unit(unit: str) -> float:
         float: gain to Ampere or Volt
     """
     if unit in ["pA", "pV"]:
-        gain = 10 ** -12
+        gain = 10**-12
     elif unit in ["nA", "nV"]:
-        gain = 10 ** -9
+        gain = 10**-9
     elif unit in ["uA", "uV"]:
-        gain = 10 ** -6
+        gain = 10**-6
     elif unit in ["mA", "mV"]:
-        gain = 10 ** -3
+        gain = 10**-3
     elif unit in ["A", "V"]:
-        gain = 10 ** 0
+        gain = 10**0
     else:
-        gain = 10 ** 0
+        gain = 10**0
         warnings.warn("No valid units found for traces in the current file. Gain is set to 1, but this might be wrong.")
     return float(gain)
 

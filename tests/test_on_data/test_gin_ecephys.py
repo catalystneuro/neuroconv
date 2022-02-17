@@ -235,34 +235,50 @@ class TestEcephysNwbConversions(unittest.TestCase):
     )
     def test_neuroscope_gains(self, name, conversion_options):
         input_gain = 2.0
-        data_interface = NeuroscopeRecordingInterface
         interface_kwargs = dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"), gain=input_gain)
 
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}-{name}.nwb")
+        nwbfile_path = str(self.savedir / f"test_neuroscope_gains_{name}.nwb")
 
         class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestRecording=data_interface)
+            data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_options)
 
-        # nwb file check-test
-        io = NWBHDF5IO(nwbfile_path, "r")
-        nwbfile_in = io.read()
-        output_conversion = nwbfile_in.acquisition["ElectricalSeries_raw"].conversion
-        output_gain = output_conversion * 1e6
-        assert input_gain == pytest.approx(output_gain)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            output_conversion = nwbfile.acquisition["ElectricalSeries_raw"].conversion
+            output_gain = output_conversion * 1e6
+            self.assertEqual(first=input_gain, second=output_gain)
 
-        # round-trip test with nwb extractor
-        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-        nwb_recording_gains = nwb_recording.get_channel_gains()
-        npt.assert_almost_equal(input_gain * np.ones_like(nwb_recording_gains), nwb_recording_gains)
+            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+            nwb_recording_gains = nwb_recording.get_channel_gains()
+            npt.assert_almost_equal(input_gain * np.ones_like(nwb_recording_gains), nwb_recording_gains)
 
-        # Other conditions, how this should interact with some intentional uses of subrecording extractor [we are not using stub_test]
-        # There should be a stub_test=True test.
+    @parameterized.expand(
+        input=[
+            param(
+                name="complete",
+                conversion_options=None,
+            ),
+            param(name="stub", conversion_options=dict(TestRecording=dict(stub_test=True))),
+        ]
+    )
+    def test_neuroscope_dtype(self, name, conversion_options):
+        interface_kwargs = dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"), gain=2.0)
 
-        # A subrecording extractor is a very simple class, input output (you can use the recorder above 'recording in 229')
-        # [The two things that you can do is to subest time [that is frames] or channels so maybe a combination of those uses.
+        nwbfile_path = str(self.savedir / f"test_neuroscope_dtype_{name}.nwb")
+
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
+
+        converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_options)
+
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            output_dtype = nwbfile.acquisition["ElectricalSeries_raw"].data.dtype
+            self.assertEqual(first=output_dtype, second=np.dtype("int16"))
 
     def test_neuroscope_starting_time(self):
         nwbfile_path = str(self.savedir / "testing_start_time.nwb")
