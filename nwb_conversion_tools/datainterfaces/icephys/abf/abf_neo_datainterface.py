@@ -84,8 +84,9 @@ class AbfNeoDataInterface(BaseIcephysNeoInterface):
             subject_id=metafile_data.get("subject_id", ""),
             species=metafile_data.get("species", ""),
             sex=metafile_data.get("sex", "U"),
-            date_of_birth=metafile_data.get("dob", ""),
         )
+        if metafile_data.get("dob", None):
+            metadata["Subject"].update(date_of_birth=metafile_data.get("dob"))
 
         # LabMetadata
         metadata["ndx-dandi-icephys"] = dict(
