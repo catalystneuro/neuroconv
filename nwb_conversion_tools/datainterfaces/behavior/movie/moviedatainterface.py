@@ -42,13 +42,7 @@ class MovieInterface(BaseDataInterface):
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"].update(
             required=["Movies"],
-            properties=dict(
-                Movies=dict(
-                    type="array",
-                    minItems=1,
-                    items=image_series_metadata_schema,
-                )
-            ),
+            properties=dict(Movies=dict(type="array", minItems=1, items=image_series_metadata_schema,)),
         )
         return metadata_schema
 
