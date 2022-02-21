@@ -132,9 +132,8 @@ class MovieInterface(BaseDataInterface):
         file_paths = self.source_data["file_paths"]
 
         if starting_times is not None:
-            assert (
-                isinstance(starting_times, list)
-                and all([isinstance(x, float) for x in starting_times])
+            assert isinstance(starting_times, list) and all(
+                [isinstance(x, float) for x in starting_times]
             ), "Argument 'starting_times' must be a list of floats."
 
         image_series_kwargs_list = metadata.get("Behavior", dict()).get(
@@ -162,13 +161,12 @@ class MovieInterface(BaseDataInterface):
 
         image_series_kwargs_list_updated = _check_duplicates(image_series_kwargs_list)
         if starting_times is not None:
-            assert (
-                    isinstance(starting_times, list)
-                    and all([isinstance(x, float) for x in starting_times])
+            assert isinstance(starting_times, list) and all(
+                [isinstance(x, float) for x in starting_times]
             ), "Argument 'starting_times' must be a list of floats."
-            assert len(starting_times) == len(image_series_kwargs_list_updated),\
-                "starting times list length must be equal number of unique ImageSeries " \
-                "containers to write to nwb"
+            assert len(starting_times) == len(image_series_kwargs_list_updated), (
+                "starting times list length must be equal number of unique ImageSeries " "containers to write to nwb"
+            )
         else:
             starting_times = [0.0] * len(image_series_kwargs_list_updated)
 
