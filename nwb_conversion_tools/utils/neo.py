@@ -254,7 +254,7 @@ def add_icephys_recordings(
         stimulus_type = "not described"
 
     # Check for protocol data (only ABF2), necessary for stimuli data
-    if neo_reader._axon_info['fFileVersionNumber'] < 2:
+    if neo_reader._axon_info["fFileVersionNumber"] < 2:
         n_commands = 0
         warnings.warn(
             f"Protocol section is only present in ABF2 files. {neo_reader.filename} has version {neo_reader._axon_info['fFileVersionNumber']}. Saving experiment as 'i_zero'..."
