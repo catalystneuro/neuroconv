@@ -135,10 +135,7 @@ class MovieInterface(BaseDataInterface):
             assert (
                 isinstance(starting_times, list)
                 and all([isinstance(x, float) for x in starting_times])
-                and len(starting_times) == len(file_paths)
-            ), "Argument 'starting_times' must be a list of floats in one-to-one correspondence with 'file_paths'!"
-        else:
-            starting_times = [0.0]
+            ), "Argument 'starting_times' must be a list of floats."
 
         image_series_kwargs_list = metadata.get("Behavior", dict()).get(
             "Movies", self.get_metadata()["Behavior"]["Movies"]
@@ -164,6 +161,16 @@ class MovieInterface(BaseDataInterface):
             return image_series_kwargs_list_unique
 
         image_series_kwargs_list_updated = _check_duplicates(image_series_kwargs_list)
+        if starting_times is not None:
+            assert (
+                    isinstance(starting_times, list)
+                    and all([isinstance(x, float) for x in starting_times])
+            ), "Argument 'starting_times' must be a list of floats."
+            assert len(starting_times) == len(image_series_kwargs_list_updated),\
+                "starting times list length must be equal number of unique ImageSeries " \
+                "containers to write to nwb"
+        else:
+            starting_times = [0.0] * len(image_series_kwargs_list_updated)
 
         for j, image_series_kwargs in enumerate(image_series_kwargs_list_updated):
             file_list = image_series_kwargs.pop("data")
@@ -171,7 +178,7 @@ class MovieInterface(BaseDataInterface):
                 image_series_kwargs.update(format="external", external_file=file_list)
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
-                image_series_kwargs.update(starting_time=0.0, rate=fps)  # TODO manage custom starting_times
+                image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
             else:
                 file = file_list[0]
                 uncompressed_estimate = Path(file).stat().st_size * 70
