@@ -3,6 +3,7 @@ from sys import platform
 from packaging import version
 from tempfile import mkdtemp
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 import spikeextractors as se
@@ -51,6 +52,7 @@ def test_tutorials():
     converter = TutorialNWBConverter(source_data=source_data)
     metadata = converter.get_metadata()
     metadata["NWBFile"]["session_description"] = "NWB Conversion Tools tutorial."
+    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
     metadata["NWBFile"]["experimenter"] = ["My name"]
     metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
     conversion_options = dict(RecordingTutorial=dict(stub_test=stub_test), SortingTutorial=dict())
@@ -76,7 +78,9 @@ def test_tutorial_interfaces():
         SortingTutorial=dict(),
     )
     converter = TutorialNWBConverter(source_data=source_data)
-    converter.run_conversion(nwbfile_path=output_file, overwrite=True)
+    metadata = converter.get_metadata()
+    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+    converter.run_conversion(nwbfile_path=output_file, overwrite=True, metadata=metadata)
 
 
 def test_pkl_interface():
@@ -98,7 +102,9 @@ def test_pkl_interface():
         Sorting=dict(file_path=str(test_dir / "test_pkl" / "test_sorting.pkl")),
     )
     converter = SpikeInterfaceTestNWBConverter(source_data=source_data)
-    converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+    metadata = converter.get_metadata()
+    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+    converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
     nwb_recording = se.NwbRecordingExtractor(file_path=nwbfile_path)
     nwb_sorting = se.NwbSortingExtractor(file_path=nwbfile_path)

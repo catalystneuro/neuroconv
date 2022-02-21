@@ -1,18 +1,24 @@
 import tempfile
 import unittest
-from pathlib import Path
 import os
+from pathlib import Path
+from datetime import datetime
 
 import numpy as np
 import numpy.testing as npt
 
 import pytest
-from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor
+from spikeinterface.core.old_api_utils import OldToNewRecording, BaseRecording
+from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
+from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
+
+
 from pynwb import NWBHDF5IO
 
 from nwb_conversion_tools import (
     NWBConverter,
+    CellExplorerSortingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
@@ -97,7 +103,9 @@ class TestEcephysNwbConversions(unittest.TestCase):
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
                 self.assertIn(member=interface_kwarg, container=converter.data_interface_objects["TestLFP"].source_data)
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -172,9 +180,12 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 self.assertIn(
                     member=interface_kwarg, container=converter.data_interface_objects["TestRecording"].source_data
                 )
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
         nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+
         if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
             nwb_recording.set_channel_offsets(
                 offsets=[
@@ -182,13 +193,25 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     for channel_id in nwb_recording.get_channel_ids()
                 ]
             )
-        check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
-        check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
-        # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
-        # For GIN test data, sizes should be OK to load all into RAM even on CI
-        npt.assert_array_equal(
-            x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
-        )
+
+        if isinstance(recording, BaseRecording):
+            nwb_recording = OldToNewRecording(oldapi_recording_extractor=nwb_recording)
+
+        if isinstance(recording, RecordingExtractor):
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
+
+            # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
+            # For GIN test data, sizes should be OK to load all into RAM even on CI
+            npt.assert_array_equal(
+                x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
+            )
+
+        else:
+            check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
+            # This can only be tested if both gain and offest are present
+            if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
+                check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
     @parameterized.expand(
         input=[
@@ -199,6 +222,33 @@ class TestEcephysNwbConversions(unittest.TestCase):
             param(
                 data_interface=BlackrockSortingExtractorInterface,
                 interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
+            ),
+            param(
+                data_interface=CellExplorerSortingInterface,
+                interface_kwargs=dict(
+                    file_path=str(
+                        DATA_PATH
+                        / "cellexplorer"
+                        / "dataset_1"
+                        / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
+                    )
+                ),
+            ),
+            param(
+                data_interface=CellExplorerSortingInterface,
+                interface_kwargs=dict(
+                    file_path=str(
+                        DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat"
+                    )
+                ),
+            ),
+            param(
+                data_interface=CellExplorerSortingInterface,
+                interface_kwargs=dict(
+                    file_path=str(
+                        DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
+                    )
+                ),
             ),
         ],
         name_func=custom_name_func,
@@ -215,7 +265,9 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 self.assertIn(
                     member=interface_kwarg, container=converter.data_interface_objects["TestSorting"].source_data
                 )
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         sorting = converter.data_interface_objects["TestSorting"].sorting_extractor
         sf = sorting.get_sampling_frequency()
         if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
@@ -243,7 +295,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_options)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
+        )
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -273,7 +329,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, conversion_options=conversion_options)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        converter.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, conversion_options=conversion_options
+        )
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -289,10 +349,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
         converter = TestConverter(
             source_data=dict(TestRecording=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")))
         )
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
         starting_time = 123.0
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
+            metadata=metadata,
             conversion_options=dict(TestRecording=dict(starting_time=starting_time)),
         )
 
