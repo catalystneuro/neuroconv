@@ -173,10 +173,10 @@ class MovieInterface(BaseDataInterface):
         for j, image_series_kwargs in enumerate(image_series_kwargs_list_updated):
             file_list = image_series_kwargs.pop("data")
             if external_mode:
-                image_series_kwargs.update(format="external", external_file=file_list)
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
-                image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
+                image_series_kwargs.update(starting_time=starting_times[j], rate=fps,
+                                           format="external", external_file=file_list)
             else:
                 file = file_list[0]
                 uncompressed_estimate = Path(file).stat().st_size * 70
@@ -207,16 +207,13 @@ class MovieInterface(BaseDataInterface):
                             mininterval=tqdm_mininterval,
                         ),
                         iter_axis=0,  # nwb standard is time as zero axis
-                        maxshape=tuple(maxshape),
+                        maxshape=maxshape,
                     )
                     data = H5DataIO(
                         iterable,
                         compression=compression,
                         compression_options=compression_options,
                         chunks=best_gzip_chunk,
-                    )
-                    data = H5DataIO(
-                        iterable, compression=compression, compression_opts=compression_options, chunks=best_gzip_chunk
                     )
                 else:
                     iterable = np.zeros(shape=maxshape, dtype="uint8")
@@ -239,7 +236,7 @@ class MovieInterface(BaseDataInterface):
                                 mininterval=tqdm_mininterval,
                             ),
                             iter_axis=0,  # nwb standard is time as zero axis
-                            maxshape=tuple(maxshape),
+                            maxshape=maxshape,
                         ),
                         compression="gzip",
                         compression_opts=compression_options,
