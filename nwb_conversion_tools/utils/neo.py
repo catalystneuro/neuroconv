@@ -257,7 +257,9 @@ def add_icephys_recordings(
     n_commands = len(protocol[0])
     if n_commands == 0:
         icephys_experiment_type = "izero"
-        warnings.warn(f"No command data found by neo reader in file {neo_reader.filename}. Saving experiment as 'i_zero'...")
+        warnings.warn(
+            f"No command data found by neo reader in file {neo_reader.filename}. Saving experiment as 'i_zero'..."
+        )
     else:
         assert (
             n_commands == n_segments
