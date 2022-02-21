@@ -25,7 +25,8 @@ jobs:
         run: pip install -e .
       - name: Run minimal pytest with coverage
         run: pytest tests/test_internals --cov=./ --cov-report xml:./nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
-      - name: Upload minimal coverage to Codecov
+      - if: ${{ matrix.python-version == '3.7' || matrix.python-version == '3.9' }}
+        name: Upload minimal coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
