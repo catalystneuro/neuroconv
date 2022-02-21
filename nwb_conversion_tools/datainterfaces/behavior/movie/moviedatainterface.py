@@ -217,10 +217,9 @@ class MovieInterface(BaseDataInterface):
                         compression_options=compression_options,
                         chunks=best_gzip_chunk,
                     )
-                    data = H5DataIO(iterable,
-                                    compression=compression,
-                                    compression_opts=compression_options,
-                                    chunks=best_gzip_chunk)
+                    data = H5DataIO(
+                        iterable, compression=compression, compression_opts=compression_options, chunks=best_gzip_chunk
+                    )
                 else:
                     iterable = []
                     with VideoCaptureContext(str(file)) as video_capture_ob:
