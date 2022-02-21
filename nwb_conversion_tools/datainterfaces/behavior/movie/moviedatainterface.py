@@ -175,8 +175,9 @@ class MovieInterface(BaseDataInterface):
             if external_mode:
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
-                image_series_kwargs.update(starting_time=starting_times[j], rate=fps,
-                                           format="external", external_file=file_list)
+                image_series_kwargs.update(
+                    starting_time=starting_times[j], rate=fps, format="external", external_file=file_list
+                )
             else:
                 file = file_list[0]
                 uncompressed_estimate = Path(file).stat().st_size * 70
