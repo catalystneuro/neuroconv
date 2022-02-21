@@ -5,6 +5,7 @@ from importlib import import_module
 from itertools import chain
 from jsonschema import validate, RefResolver
 
+from pynwb import NWBFile
 from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
@@ -122,3 +123,57 @@ def run_conversion_from_yaml(
                     dandi_filename != ".nwb"
                 ), f"Not enough metadata available to assign name to {str(named_dandi_metadata['path'])}!"
                 named_dandi_metadata["path"].rename(str(output_folder / dandi_filename))
+
+
+def add_devices(nwbfile=None, data_type: str = "Ecephys", metadata: dict = None):
+    """
+    Adds device information to nwbfile object.
+    Will always ensure nwbfile has at least one device, but multiple
+    devices within the metadata list will also be created.
+    Parameters
+    ----------
+    nwbfile: NWBFile
+        nwb file to which the new device information is to be added
+    data_type: str
+        Type of data recorded by device. Options:
+        - Ecephys (default)
+        - Icephys
+        - Ophys
+        - Behavior
+    metadata: dict
+        metadata info for constructing the nwb file (optional).
+        Should be of the format
+            metadata['Ecephys']['Device'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+    Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+    """
+    if nwbfile is not None:
+        assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    assert data_type in [
+        "Ecephys",
+        "Icephys",
+        "Ophys",
+        "Behavior",
+    ], f"Invalid data_type {data_type} when creating device"
+
+    # Default Device metadata
+    defaults = dict(name="Device", description=f"{data_type}. Automatically generated.")
+
+    if metadata is None:
+        metadata = dict()
+
+    if data_type not in metadata:
+        metadata[data_type] = dict()
+
+    if "Device" not in metadata[data_type]:
+        metadata[data_type]["Device"] = [defaults]
+
+    for dev in metadata[data_type]["Device"]:
+        if dev.get("name", defaults["name"]) not in nwbfile.devices:
+            nwbfile.create_device(**dict(defaults, **dev))
