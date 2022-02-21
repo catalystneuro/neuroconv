@@ -160,7 +160,7 @@ class MovieInterface(BaseDataInterface):
                     image_series_kwargs_list_unique.append(dict(image_series_kwargs, data=[file_paths[n]]))
                 else:
                     idx = keys_set.index(image_series_kwargs["name"])
-                    image_series_kwargs_list_unique[idx]["data"].append(file_paths[no])
+                    image_series_kwargs_list_unique[idx]["data"].append(file_paths[n])
             return image_series_kwargs_list_unique
 
         image_series_kwargs_list_updated = _check_duplicates(image_series_kwargs_list)
