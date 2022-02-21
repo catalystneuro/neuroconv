@@ -6,14 +6,8 @@ import os
 from pathlib import Path
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools import (
-    NWBConverter,
-    AbfNeoDataInterface
-)
-from nwb_conversion_tools.utils.neo import (
-    get_number_of_electrodes,
-    get_number_of_segments
-)
+from nwb_conversion_tools import NWBConverter, AbfNeoDataInterface
+from nwb_conversion_tools.utils.neo import get_number_of_electrodes, get_number_of_segments
 
 try:
     from parameterized import parameterized, param
@@ -70,10 +64,11 @@ class TestIcephysNwbConversions(unittest.TestCase):
     def test_convert_abf_to_nwb(self, data_interface, interface_kwargs):
         # NEO reader is the ground truth
         from neo import AxonIO
+
         neo_reader = AxonIO(filename=interface_kwargs["files_paths"][0])
         n_segments = get_number_of_segments(neo_reader, block=0)
         n_electrodes = get_number_of_electrodes(neo_reader)
-        
+
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
         class TestConverter(NWBConverter):
@@ -88,7 +83,7 @@ class TestIcephysNwbConversions(unittest.TestCase):
         metadata = converter.get_metadata()
         # metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-        
+
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             # Test number of traces = n_electrodes * n_segments
