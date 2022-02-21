@@ -75,7 +75,7 @@ class MovieInterface(BaseDataInterface):
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
         compression: Optional[str] = "gzip",
-        compression_options: Optional[dict] = None,
+        compression_options: Optional[int] = None,
     ):
         """
         Convert the movie data files to ImageSeries and write them in the NWBFile.
@@ -123,11 +123,11 @@ class MovieInterface(BaseDataInterface):
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
         compression: str, optional
-            compression strategy to use for HFDataIO.
-            https://hdmf.readthedocs.io/en/latest/hdmf.backends.hdf5.h5_utils.html#hdmf.backends.hdf5.h5_utils.H5DataIO
+            Compression strategy to use for HFDataIO. For full list of currently supported filters, see
+            https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
         compression_options: int, optional
-            parameter for compression filter. See HFDataIO doc.
-            https://hdmf.readthedocs.io/en/latest/hdmf.backends.hdf5.h5_utils.html#hdmf.backends.hdf5.h5_utils.H5DataIO
+            Parameter(s) for compression filter. Currently only supports the compression level (integer from 0 to 9) of
+            compression="gzip".
         """
         file_paths = self.source_data["file_paths"]
 
@@ -203,6 +203,12 @@ class MovieInterface(BaseDataInterface):
                         ),
                         iter_axis=0,  # nwb standard is time as zero axis
                         maxshape=tuple(maxshape),
+                    )
+                    data = H5DataIO(
+                        iterable,
+                        compression=compression,
+                        compression_options=compression_options,
+                        chunks=best_gzip_chunk,
                     )
                     data = H5DataIO(iterable,
                                     compression=compression,
