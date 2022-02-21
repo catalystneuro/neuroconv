@@ -15,6 +15,7 @@ from ....basedatainterface import BaseDataInterface
 from ....utils.conversion_tools import check_regular_timestamps
 from ....utils.json_schema import get_schema_from_hdmf_class, get_base_schema
 from ....utils.nwbfile_tools import get_module
+from .movie_utils import VideoCaptureContext
 
 
 class MovieInterface(BaseDataInterface):
@@ -128,8 +129,6 @@ class MovieInterface(BaseDataInterface):
             parameter for compression filter. See HFDataIO doc.
             https://hdmf.readthedocs.io/en/latest/hdmf.backends.hdf5.h5_utils.html#hdmf.backends.hdf5.h5_utils.H5DataIO
         """
-        from .movie_utils import VideoCaptureContext
-
         file_paths = self.source_data["file_paths"]
 
         if starting_times is not None:
