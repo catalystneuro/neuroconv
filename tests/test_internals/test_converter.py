@@ -1,6 +1,7 @@
 from tempfile import mkdtemp
 from shutil import rmtree
 from pathlib import Path
+from datetime import datetime
 
 from pynwb import NWBFile
 
@@ -36,6 +37,8 @@ def test_converter():
             data_interface_classes = dict(NdxEvents=NdxEventsInterface)
 
         converter = ExtensionTestNWBConverter(source_data=dict(NdxEvents=dict()))
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        metadata = converter.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         rmtree(test_dir)

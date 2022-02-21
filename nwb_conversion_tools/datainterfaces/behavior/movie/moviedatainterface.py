@@ -13,7 +13,8 @@ from hdmf.data_utils import DataChunkIterator
 
 from .movie_utils import get_movie_timestamps, get_movie_fps, get_frame_shape
 from ....basedatainterface import BaseDataInterface
-from ....utils.conversion_tools import check_regular_timestamps, get_module
+from ....utils.nwbfile_tools import get_module
+from ....utils.conversion_tools import check_regular_timestamps
 from ....utils.json_schema import get_schema_from_hdmf_class, get_base_schema
 
 

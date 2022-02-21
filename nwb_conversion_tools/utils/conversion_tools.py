@@ -1,63 +1,15 @@
 """Authors: Cody Baker, Alessio Buccino."""
+from pathlib import Path
+from importlib import import_module
+from itertools import chain
+from jsonschema import validate, RefResolver
+
 import numpy as np
-import uuid
-from datetime import datetime
-from warnings import warn
+from dandi.organize import create_unique_filenames_from_metadata
+from dandi.metadata import _get_pynwb_metadata
 
-from pynwb import NWBFile, NWBHDF5IO
-from pynwb.file import Subject
-
-from .json_schema import dict_deep_update
-
-
-def get_module(nwbfile: NWBFile, name: str, description: str = None):
-    """Check if processing module exists. If not, create it. Then return module."""
-    if name in nwbfile.processing:
-        if description is not None and nwbfile.modules[name].description != description:
-            warn(
-                "Custom description given to get_module does not match existing module description! "
-                "Ignoring custom description."
-            )
-        return nwbfile.processing[name]
-    else:
-        if description is None:
-            description = "No description."
-        return nwbfile.create_processing_module(name=name, description=description)
-
-
-def get_default_nwbfile_metadata():
-    """
-    Return structure with defaulted metadata values required for a NWBFile.
-
-    These standard defaults are
-        metadata["NWBFile"]["session_description"] = "no description"
-        metadata["NWBFile"]["session_description"] = datetime(1970, 1, 1)
-
-    Proper conversions should override these fields prior to calling NWBConverter.run_conversion()
-    """
-    metadata = dict(
-        NWBFile=dict(
-            session_description="no description",
-            session_start_time=datetime(1970, 1, 1).isoformat(),
-            identifier=str(uuid.uuid4()),
-        )
-    )
-    return metadata
-
-
-def make_nwbfile_from_metadata(metadata: dict):
-    """Make NWBFile from available metadata."""
-    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
-    nwbfile_kwargs = metadata["NWBFile"]
-    if "Subject" in metadata:
-        # convert ISO 8601 string to datetime
-        if "date_of_birth" in metadata["Subject"] and isinstance(metadata["Subject"]["date_of_birth"], str):
-            metadata["Subject"]["date_of_birth"] = datetime.fromisoformat(metadata["Subject"]["date_of_birth"])
-        nwbfile_kwargs.update(subject=Subject(**metadata["Subject"]))
-    # convert ISO 8601 string to datetime
-    if isinstance(nwbfile_kwargs.get("session_start_time", None), str):
-        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
-    return NWBFile(**nwbfile_kwargs)
+from .json_schema import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
+from ..nwbconverter import NWBConverter
 
 
 def check_regular_timestamps(ts):
@@ -65,3 +17,108 @@ def check_regular_timestamps(ts):
     time_tol_decimals = 9
     uniq_diff_ts = np.unique(np.diff(ts).round(decimals=time_tol_decimals))
     return len(uniq_diff_ts) == 1
+
+
+def run_conversion_from_yaml(
+    specification_file_path: FilePathType,
+    data_folder: OptionalFolderPathType = None,
+    output_folder: OptionalFolderPathType = None,
+    overwrite: bool = False,
+):
+    """
+    Run conversion to NWB given a yaml specification file.
+
+    Parameters
+    ----------
+    specification_file_path : FilePathType
+        File path leading to .yml specification file for NWB conversion.
+    data_folder : FolderPathType, optional
+        Folder path leading to root location of the data files.
+        The default is the parent directory of the specification_file_path.
+    output_folder : FolderPathType, optional
+        Folder path leading to the desired output location of the .nwb files.
+        The default is the parent directory of the specification_file_path.
+    overwrite : bool, optional
+        If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
+        If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
+        The default is False.
+    """
+    if data_folder is None:
+        data_folder = Path(specification_file_path).parent
+    if output_folder is None:
+        output_folder = Path(specification_file_path).parent
+    else:
+        output_folder = Path(output_folder)
+
+    specification = load_dict_from_file(file_path=specification_file_path)
+    schema_folder = Path(__file__).parent.parent / "schemas"
+    specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
+    validate(
+        instance=specification,
+        schema=specification_schema,
+        resolver=RefResolver(base_uri="file://" + str(schema_folder) + "/", referrer=specification_schema),
+    )
+
+    global_metadata = specification.get("metadata", dict())
+    global_data_interfaces = specification.get("data_interfaces")
+    nwb_conversion_tools = import_module(
+        name=".",
+        package="nwb_conversion_tools",  # relative import, but named and referenced as if it were absolute
+    )
+    file_counter = 0
+    for experiment in specification["experiments"].values():
+        experiment_metadata = experiment.get("metadata", dict())
+        experiment_data_interfaces = experiment.get("data_interfaces")
+        for session in experiment["sessions"]:
+            file_counter += 1
+            session_data_interfaces = session.get("data_interfaces")
+            data_interface_classes = dict()
+            data_interfaces_names_chain = chain(
+                *[
+                    data_interfaces
+                    for data_interfaces in [global_data_interfaces, experiment_data_interfaces, session_data_interfaces]
+                    if data_interfaces is not None
+                ]
+            )
+            for data_interface_name in data_interfaces_names_chain:
+                data_interface_classes.update({data_interface_name: getattr(nwb_conversion_tools, data_interface_name)})
+
+            CustomNWBConverter = type(
+                "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
+            )
+
+            source_data = session["source_data"]
+            for interface_name, interface_source_data in session["source_data"].items():
+                for key, value in interface_source_data.items():
+                    source_data[interface_name].update({key: str(Path(data_folder) / value)})
+
+            converter = CustomNWBConverter(source_data=source_data)
+            metadata = converter.get_metadata()
+            for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
+                metadata = dict_deep_update(metadata, metadata_source)
+
+            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
+            converter.run_conversion(
+                nwbfile_path=output_folder / f"{nwbfile_name}.nwb",
+                metadata=metadata,
+                overwrite=overwrite,
+                conversion_options=session.get("conversion_options", dict()),
+            )
+
+    # To properly mimic a true dandi organization, the full directory must be populated with NWBFiles.
+    all_nwbfile_paths = [nwbfile_path for nwbfile_path in output_folder.iterdir() if nwbfile_path.suffix == ".nwb"]
+    if any(["temp_nwbfile_name_" in nwbfile_path.stem for nwbfile_path in all_nwbfile_paths]):
+        dandi_metadata_list = []
+        for nwbfile_path in all_nwbfile_paths:
+            dandi_metadata = _get_pynwb_metadata(path=nwbfile_path)
+            dandi_metadata.update(path=nwbfile_path)
+            dandi_metadata_list.append(dandi_metadata)
+        named_dandi_metadata_list = create_unique_filenames_from_metadata(metadata=dandi_metadata_list)
+
+        for named_dandi_metadata in named_dandi_metadata_list:
+            if "temp_nwbfile_name_" in named_dandi_metadata["path"].stem:
+                dandi_filename = named_dandi_metadata["dandi_filename"].replace(" ", "_")
+                assert (
+                    dandi_filename != ".nwb"
+                ), f"Not enough metadata available to assign name to {str(named_dandi_metadata['path'])}!"
+                named_dandi_metadata["path"].rename(str(output_folder / dandi_filename))

@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.7, 3.8, 3.9]
     steps:
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
@@ -17,6 +17,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install pytest
         run: |
+          pip install --upgrade pip
           pip install pytest
           pip install pytest-cov
 
@@ -24,7 +25,8 @@ jobs:
         run: pip install -e .
       - name: Run minimal pytest with coverage
         run: pytest tests/test_internals --cov=./ --cov-report xml:./nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
-      - name: Upload minimal coverage to Codecov
+      - if: ${{ matrix.python-version == '3.7' || matrix.python-version == '3.9' }}
+        name: Upload minimal coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

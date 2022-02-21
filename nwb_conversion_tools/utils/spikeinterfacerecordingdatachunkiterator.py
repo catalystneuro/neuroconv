@@ -1,17 +1,23 @@
 """Authors: Cody Baker and Saksham Sharda."""
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Union
 
+from spikeinterface import BaseRecording
+from spikeinterface.core.old_api_utils import OldToNewRecording
 from spikeextractors import RecordingExtractor
 
 from .genericdatachunkiterator import GenericDataChunkIterator
 
+SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 
-class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
+
+class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
     """DataChunkIterator specifically for use on RecordingExtractor objects."""
 
     def __init__(
         self,
-        recording: RecordingExtractor,
+        recording: SpikeInterfaceRecording,
+        segment_index: int = 0,
+        return_scaled: bool = False,
         buffer_gb: float = None,
         buffer_shape: tuple = None,
         chunk_mb: float = None,
@@ -22,8 +28,14 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         Parameters
         ----------
-        recording : RecordingExtractor
-            The RecordingExtractor object (from legacy spikeinterface/spikeextractors) which handles the data access.
+        recording : SpikeInterfaceRecording
+            The SpikeInterfaceRecording object (RecordingExtractor or BaseRecording) which handles the data access.
+        segment_index : int, optional
+            The recording segment to iterate on.
+            Defaults to 0.
+        return_scaled : bool, optional
+            Whether to return the trace data in scaled units (uV, if True) or in the raw data type (if False).
+            Defaults to False.
         buffer_gb : float, optional
             The upper bound on size in gigabytes (GB) of each selection from the iteration.
             The buffer_shape will be set implicitly by this argument.
@@ -45,20 +57,26 @@ class RecordingExtractorDataChunkIterator(GenericDataChunkIterator):
             Cannot be set if `chunk_mb` is also specified.
             The default is None.
         """
-        self.recording = recording
+        if isinstance(recording, RecordingExtractor):
+            self.recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        else:
+            self.recording = recording
+        self.segment_index = segment_index
+        self.return_scaled = return_scaled
         self.channel_ids = recording.get_channel_ids()
         super().__init__(buffer_gb=buffer_gb, buffer_shape=buffer_shape, chunk_mb=chunk_mb, chunk_shape=chunk_shape)
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording.get_traces(
+            segment_index=self.segment_index,
             channel_ids=self.channel_ids[selection[1]],
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
-            return_scaled=False,
-        ).T
+            return_scaled=self.return_scaled,
+        )
 
     def _get_dtype(self):
-        return self.recording.get_dtype(return_scaled=False)
+        return self.recording.get_dtype()
 
     def _get_maxshape(self):
-        return (self.recording.get_num_frames(), self.recording.get_num_channels())
+        return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
