@@ -97,7 +97,7 @@ class MovieInterface(BaseDataInterface):
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
              The list for the 'Movies' key should correspond one to one to the movie files in the file_paths list.
              If multiple movies need to be in the same ImageSeries, then supply the same value for "name" key.
-             Multiple movies in same ImageSeries is only supported if 'external_mode'=True.
+             Storing multiple movies in the same ImageSeries is only supported if 'external_mode'=True.
         stub_test : bool, optional
             If True, truncates the write operation for fast testing. The default is False.
         external_mode : bool, optional
@@ -142,17 +142,16 @@ class MovieInterface(BaseDataInterface):
             f"({len(image_series_kwargs_list)}) vs. file_paths ({len(self.source_data['file_paths'])})!"
         )
 
-        # check for duplicates in image_series_kwargs list keys:
         def _check_duplicates(image_series_kwargs_list):
             image_series_kwargs_list_keys = [i["name"] for i in image_series_kwargs_list]
             if len(set(image_series_kwargs_list_keys)) < len(image_series_kwargs_list_keys):
-                assert external_mode, "for multiple video files under the same ImageSeries name, use exernal_mode=True"
+                assert external_mode, "For multiple video files under the same ImageSeries name, use exernal_mode=True."
             keys_set = []
             image_series_kwargs_list_unique = []
-            for no, image_series_kwargs in enumerate(image_series_kwargs_list):
+            for n, image_series_kwargs in enumerate(image_series_kwargs_list):
                 if image_series_kwargs["name"] not in keys_set:
                     keys_set.append(image_series_kwargs["name"])
-                    image_series_kwargs_list_unique.append(dict(image_series_kwargs, data=[file_paths[no]]))
+                    image_series_kwargs_list_unique.append(dict(image_series_kwargs, data=[file_paths[n]]))
                 else:
                     idx = keys_set.index(image_series_kwargs["name"])
                     image_series_kwargs_list_unique[idx]["data"].append(file_paths[no])
