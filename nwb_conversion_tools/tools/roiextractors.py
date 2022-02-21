@@ -358,7 +358,6 @@ def write_segmentation(
         if metadata is not None and not isinstance(metadata, list):
             metadata = [metadata]
     metadata_base_list = [get_nwb_segmentation_metadata(sgobj) for sgobj in segext_objs]
-    print(f"writing nwb for {segext_obj.extractor_name}\n")
     # updating base metadata with new:
     for num, data in enumerate(metadata_base_list):
         metadata_input = metadata[num] if metadata else {}
