@@ -204,10 +204,12 @@ class MovieInterface(BaseDataInterface):
                         iter_axis=0,  # nwb standard is time as zero axis
                         maxshape=tuple(maxshape),
                     )
-                    data = H5DataIO(iterable,
-                                    compression=compression,
-                                    compression_options=compression_options,
-                                    chunks=best_gzip_chunk)
+                    data = H5DataIO(
+                        iterable,
+                        compression=compression,
+                        compression_options=compression_options,
+                        chunks=best_gzip_chunk,
+                    )
                 else:
                     iterable = []
                     with VideoCaptureContext(str(file)) as video_capture_ob:
