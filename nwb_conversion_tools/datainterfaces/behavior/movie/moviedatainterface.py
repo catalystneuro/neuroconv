@@ -243,10 +243,7 @@ class MovieInterface(BaseDataInterface):
                         chunks=best_gzip_chunk,
                     )
 
-                # capture data in kwargs:
                 image_series_kwargs.update(data=data)
-                if len(starting_times) != len(file_paths):
-                    starting_times.append(timestamps[-1])
                 if check_regular_timestamps(ts=timestamps):
                     image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
                 else:
