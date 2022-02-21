@@ -206,7 +206,7 @@ class MovieInterface(BaseDataInterface):
                     )
                     data = H5DataIO(iterable,
                                     compression=compression,
-                                    compression_options=compression_options,
+                                    compression_opts=compression_options,
                                     chunks=best_gzip_chunk)
                 else:
                     iterable = []
@@ -232,7 +232,7 @@ class MovieInterface(BaseDataInterface):
                             maxshape=tuple(maxshape),
                         ),
                         compression="gzip",
-                        compression_options=compression_options,
+                        compression_opts=compression_options,
                         chunks=best_gzip_chunk,
                     )
 
