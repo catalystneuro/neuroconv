@@ -219,7 +219,7 @@ class MovieInterface(BaseDataInterface):
                         iterable, compression=compression, compression_opts=compression_options, chunks=best_gzip_chunk
                     )
                 else:
-                    iterable = []
+                    iterable = np.zeros(shape=maxshape, dtype="uint8")
                     with VideoCaptureContext(str(file)) as video_capture_ob:
                         with tqdm(
                             desc=f"Reading movie data for {Path(file).name}",
@@ -227,13 +227,13 @@ class MovieInterface(BaseDataInterface):
                             total=total_frames,
                             mininterval=tqdm_mininterval,
                         ) as pbar:
-                            for frame in video_capture_ob:
-                                iterable.append(frame)
+                            for n, frame in enumerate(video_capture_ob):
+                                iterable[n, :, :, :] = frame
                                 pbar.update(1)
                     data = H5DataIO(
                         DataChunkIterator(
                             tqdm(
-                                iterable=np.array(iterable),
+                                iterable=iterable,
                                 desc=f"Writing movie data for {Path(file).name}",
                                 position=tqdm_pos,
                                 mininterval=tqdm_mininterval,
