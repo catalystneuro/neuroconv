@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9]
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
@@ -32,7 +32,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
           flags: unittests
-          name: codecov-umbrella 
+          name: codecov-umbrella
           yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
 
       - name: Install full requirements
@@ -65,6 +65,7 @@ jobs:
           datalad get -r ./phy/phy_example_0/
           datalad get -r ./axona/
           datalad get -r ./cellexplorer/
+          datalad get -r ./axon/
           cd ..
       - name: Get ophys_testing_data current head hash
         id: ophys
@@ -96,5 +97,5 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
           flags: unittests
-          name: codecov-umbrella 
+          name: codecov-umbrella
           yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml

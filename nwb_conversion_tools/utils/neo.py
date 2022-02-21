@@ -246,7 +246,6 @@ def add_icephys_recordings(
 
     n_segments = get_number_of_segments(neo_reader, block=0)
     n_electrodes = get_number_of_electrodes(neo_reader)
-    protocol = neo_reader.read_raw_protocol()
 
     if icephys_experiment_type is None:
         icephys_experiment_type = "voltage_clamp"
@@ -254,7 +253,16 @@ def add_icephys_recordings(
     if stimulus_type is None:
         stimulus_type = "not described"
 
-    n_commands = len(protocol[0])
+    # Check for protocol data (only ABF2), necessary for stimuli data
+    if neo_reader._axon_info['fFileVersionNumber'] < 2:
+        n_commands = 0
+        warnings.warn(
+            f"Protocol section is only present in ABF2 files. {neo_reader.filename} has version {neo_reader._axon_info['fFileVersionNumber']}. Saving experiment as 'i_zero'..."
+        )
+    else:
+        protocol = neo_reader.read_raw_protocol()
+        n_commands = len(protocol[0])
+
     if n_commands == 0:
         icephys_experiment_type = "izero"
         warnings.warn(
