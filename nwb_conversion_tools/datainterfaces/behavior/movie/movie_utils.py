@@ -37,7 +37,7 @@ class VideoCaptureContext:
             if not success:
                 break
             timestamps.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
-        return np.array(timestamps) / 1000
+        return np.array(timestamps)/1000
 
     def get_movie_fps(self):
         """Return the internal frames per second (fps) for a movie file."""
@@ -61,7 +61,7 @@ class VideoCaptureContext:
     def frame_count(self, val: int):
         assert val > 0, "You must set a positive frame_count (received {val})."
         assert (
-            val <= self._movie_frame_count()
+                val <= self._movie_frame_count()
         ), "Cannot set manual frame_count beyond length of video (received {val})."
         self._frame_count = val
 

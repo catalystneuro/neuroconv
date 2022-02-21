@@ -42,7 +42,7 @@ class MovieInterface(BaseDataInterface):
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"].update(
             required=["Movies"],
-            properties=dict(Movies=dict(type="array", minItems=1, items=image_series_metadata_schema,)),
+            properties=dict(Movies=dict(type="array", minItems=1, items=image_series_metadata_schema, )),
         )
         return metadata_schema
 
@@ -58,16 +58,16 @@ class MovieInterface(BaseDataInterface):
         return metadata
 
     def run_conversion(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict,
-        stub_test: bool = False,
-        external_mode: bool = True,
-        starting_times: Optional[list] = None,
-        chunk_data: bool = True,
-        module_name: Optional[str] = None,
-        module_description: Optional[str] = None,
-        compression: str = "gzip",
+            self,
+            nwbfile: NWBFile,
+            metadata: dict,
+            stub_test: bool = False,
+            external_mode: bool = True,
+            starting_times: Optional[list] = None,
+            chunk_data: bool = True,
+            module_name: Optional[str] = None,
+            module_description: Optional[str] = None,
+            compression: str = "gzip",
     ):
         """
         Convert the movie data files to ImageSeries and write them in the NWBFile.
@@ -121,9 +121,9 @@ class MovieInterface(BaseDataInterface):
 
         if starting_times is not None:
             assert (
-                isinstance(starting_times, list)
-                and all([isinstance(x, float) for x in starting_times])
-                and len(starting_times) == len(file_paths)
+                    isinstance(starting_times, list)
+                    and all([isinstance(x, float) for x in starting_times])
+                    and len(starting_times) == len(file_paths)
             ), "Argument 'starting_times' must be a list of floats in one-to-one correspondence with 'file_paths'!"
         else:
             starting_times = [0.0]
@@ -163,7 +163,7 @@ class MovieInterface(BaseDataInterface):
                 image_series_kwargs.update(starting_time=0.0, rate=fps)  # TODO manage custom starting_times
             else:
                 file = file_list[0]
-                uncompressed_estimate = Path(file).stat().st_size * 70
+                uncompressed_estimate = Path(file).stat().st_size*70
                 available_memory = psutil.virtual_memory().available
                 if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
                     warn(
@@ -198,10 +198,10 @@ class MovieInterface(BaseDataInterface):
                     iterable = []
                     with VideoCaptureContext(str(file)) as video_capture_ob:
                         with tqdm(
-                            desc=f"Reading movie data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval,
+                                desc=f"Reading movie data for {Path(file).name}",
+                                position=tqdm_pos,
+                                total=total_frames,
+                                mininterval=tqdm_mininterval,
                         ) as pbar:
                             for frame in video_capture_ob:
                                 iterable.append(frame)
