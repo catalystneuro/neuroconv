@@ -37,16 +37,19 @@ jobs:
 
       - name: Install full requirements
         run: pip install -r requirements-full.txt
+
       - name: Get ephy_testing_data current head hash
         id: ecephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
+
       - name: Cache ephys dataset - ${{ steps.ecephys.outputs.HASH_EPHYS_DATASET }}
         uses: actions/cache@v2
         id: cache-ecephys-datasets
         with:
           path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ephy_testing_data
-          key: ecephys-datasets-9-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
-          restore-keys: ecephys-datasets-9-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ecephys-datasets-10-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          restore-keys: ecephys-datasets-10-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+
       - name: Force GIN ecephys download
         if: steps.cache-ecephys-datasets.outputs.cache-hit == false
         run: |
@@ -67,9 +70,11 @@ jobs:
           datalad get -r ./cellexplorer/
           datalad get -r ./axon/
           cd ..
+
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
+
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
         uses: actions/cache@v2
         id: cache-ophys-datasets
@@ -77,6 +82,7 @@ jobs:
           path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ophys_testing_data
           key: ophys-datasets-8-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
           restore-keys: ophys-datasets-8-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+
       - name: Force GIN ophys download
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         run: |
@@ -91,6 +97,7 @@ jobs:
 
       - name: Run full pytest with coverage
         run: pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
+
       - name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
