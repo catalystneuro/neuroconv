@@ -104,31 +104,31 @@ def get_command_traces(neo_reader, block: int = 0, segment: int = 0, cmd_channel
         return e
 
 
-# Get gain (to Volt or Ampere) from unit in string format
-def get_gain_from_unit(unit: str) -> float:
+# Get conversion (to Volt or Ampere) from unit in string format
+def get_conversion_from_unit(unit: str) -> float:
     """
-    Get gain (to Volt or Ampere) from unit in string format.
+    Get conversion (to Volt or Ampere) from unit in string format.
 
     Args:
         unit (str): Unit as string. E.g. pA, mV, uV, etc...
 
     Returns:
-        float: gain to Ampere or Volt
+        float: conversion to Ampere or Volt
     """
     if unit in ["pA", "pV"]:
-        gain = 10**-12
+        conversion = 10**-12
     elif unit in ["nA", "nV"]:
-        gain = 10**-9
+        conversion = 10**-9
     elif unit in ["uA", "uV"]:
-        gain = 10**-6
+        conversion = 10**-6
     elif unit in ["mA", "mV"]:
-        gain = 10**-3
+        conversion = 10**-3
     elif unit in ["A", "V"]:
-        gain = 10**0
+        conversion = 10**0
     else:
-        gain = 10**0
+        conversion = 10**0
         warnings.warn("No valid units found for traces in the current file. Gain is set to 1, but this might be wrong.")
-    return float(gain)
+    return float(conversion)
 
 
 # Get basic NWB metadata for Icephys
@@ -317,7 +317,8 @@ def add_icephys_recordings(
 
             sampling_rate = neo_reader.get_signal_sampling_rate()
             response_unit = neo_reader.header["signal_channels"]["units"][ei]
-            response_gain = get_gain_from_unit(unit=response_unit)
+            response_conversion = get_conversion_from_unit(unit=response_unit)
+            response_gain = neo_reader.header["signal_channels"]["gain"][ei]
             response_name = f"{icephys_experiment_type}-response-{si + 1 + simultaneous_recordings_offset}-ch-{ei}"
 
             response = response_classes[icephys_experiment_type](
@@ -327,12 +328,12 @@ def add_icephys_recordings(
                 data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
                 starting_time=starting_time,
                 rate=sampling_rate,
-                conversion=response_gain,
-                gain=1.0,
+                conversion=response_conversion,
+                gain=response_gain
             )
             if icephys_experiment_type != "izero":
                 stim_unit = protocol[2][ei]
-                stim_gain = get_gain_from_unit(unit=stim_unit)
+                stim_conversion = get_conversion_from_unit(unit=stim_unit)
                 stimulus = stim_classes[icephys_experiment_type](
                     name=f"stimulus-{si + 1 + simultaneous_recordings_offset}-ch-{ei}",
                     description=f"Stim type: {session_stimulus_type}",
@@ -340,7 +341,7 @@ def add_icephys_recordings(
                     data=protocol[0][si][ei],
                     rate=sampling_rate,
                     starting_time=starting_time,
-                    conversion=stim_gain,
+                    conversion=stim_conversion,
                     gain=1.0,
                 )
                 icephys_recording = nwbfile.add_intracellular_recording(
