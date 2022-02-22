@@ -172,7 +172,8 @@ class MovieInterface(BaseDataInterface):
         else:
             starting_times = [0.0] * len(image_series_kwargs_list_updated)
 
-        for j, image_series_kwargs, file_list in enumerate(zip(image_series_kwargs_list_updated, file_paths_list)):
+        for j, (image_series_kwargs, file_list) in enumerate(zip(image_series_kwargs_list_updated,
+                                                               file_paths_list)):
             if external_mode:
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
@@ -199,7 +200,7 @@ class MovieInterface(BaseDataInterface):
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
                 tqdm_pos, tqdm_mininterval = (0, 10)
                 if chunk_data:
-                    _ = video_capture_ob.__enter__()
+                    video_capture_ob = VideoCaptureContext(str(file))
                     iterable = DataChunkIterator(
                         data=tqdm(
                             iterable=video_capture_ob,
