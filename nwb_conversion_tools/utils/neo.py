@@ -328,8 +328,8 @@ def add_icephys_recordings(
                 data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
                 starting_time=starting_time,
                 rate=sampling_rate,
-                conversion=response_conversion,
-                gain=response_gain
+                conversion=response_conversion * response_gain,
+                gain=1.0
             )
             if icephys_experiment_type != "izero":
                 stim_unit = protocol[2][ei]
