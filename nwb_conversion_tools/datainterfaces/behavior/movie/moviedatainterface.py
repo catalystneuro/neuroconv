@@ -191,6 +191,8 @@ class MovieInterface(BaseDataInterface):
                     chunk_data = True
 
                 with VideoCaptureContext(str(file)) as video_capture_ob:
+                    if stub_test:
+                        video_capture_ob.frame_count = 10
                     total_frames = video_capture_ob.get_movie_frame_count()
                     frame_shape = video_capture_ob.get_frame_shape()
                     timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
@@ -200,6 +202,8 @@ class MovieInterface(BaseDataInterface):
                 tqdm_pos, tqdm_mininterval = (0, 10)
                 if chunk_data:
                     video_capture_ob = VideoCaptureContext(str(file))
+                    if stub_test:
+                        video_capture_ob.frame_count = 10
                     iterable = DataChunkIterator(
                         data=tqdm(
                             iterable=video_capture_ob,
@@ -220,6 +224,8 @@ class MovieInterface(BaseDataInterface):
                 else:
                     iterable = np.zeros(shape=maxshape, dtype="uint8")
                     with VideoCaptureContext(str(file)) as video_capture_ob:
+                        if stub_test:
+                            video_capture_ob.frame_count = 10
                         with tqdm(
                             desc=f"Reading movie data for {Path(file).name}",
                             position=tqdm_pos,
