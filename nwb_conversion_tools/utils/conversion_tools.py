@@ -1,10 +1,10 @@
 """Authors: Cody Baker, Alessio Buccino."""
-import numpy as np
 from pathlib import Path
 from importlib import import_module
 from itertools import chain
 from jsonschema import validate, RefResolver
 
+import numpy as np
 from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
