@@ -150,16 +150,18 @@ class MovieInterface(BaseDataInterface):
                 assert external_mode, "For multiple video files under the same ImageSeries name, use exernal_mode=True."
             keys_set = []
             image_series_kwargs_list_unique = []
+            file_paths_list = []
             for n, image_series_kwargs in enumerate(image_series_kwargs_list):
                 if image_series_kwargs["name"] not in keys_set:
                     keys_set.append(image_series_kwargs["name"])
-                    image_series_kwargs_list_unique.append(dict(image_series_kwargs, data=[file_paths[n]]))
+                    file_paths_list.append([file_paths[n]])
+                    image_series_kwargs_list_unique.append(dict(image_series_kwargs))
                 else:
                     idx = keys_set.index(image_series_kwargs["name"])
-                    image_series_kwargs_list_unique[idx]["data"].append(file_paths[n])
-            return image_series_kwargs_list_unique
+                    file_paths_list[idx].append(file_paths[n])
+            return image_series_kwargs_list_unique, file_paths_list
 
-        image_series_kwargs_list_updated = _check_duplicates(image_series_kwargs_list)
+        image_series_kwargs_list_updated, file_paths_list = _check_duplicates(image_series_kwargs_list)
         if starting_times is not None:
             assert isinstance(starting_times, list) and all(
                 [isinstance(x, float) for x in starting_times]
@@ -170,8 +172,8 @@ class MovieInterface(BaseDataInterface):
         else:
             starting_times = [0.0] * len(image_series_kwargs_list_updated)
 
-        for j, image_series_kwargs in enumerate(image_series_kwargs_list_updated):
-            file_list = image_series_kwargs.pop("data")
+        for j, image_series_kwargs, file_list in enumerate(zip(image_series_kwargs_list_updated,
+                                                               file_paths_list)):
             if external_mode:
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
