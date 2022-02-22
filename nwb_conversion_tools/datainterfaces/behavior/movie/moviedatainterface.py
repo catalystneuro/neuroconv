@@ -172,8 +172,7 @@ class MovieInterface(BaseDataInterface):
         else:
             starting_times = [0.0] * len(image_series_kwargs_list_updated)
 
-        for j, (image_series_kwargs, file_list) in enumerate(zip(image_series_kwargs_list_updated,
-                                                               file_paths_list)):
+        for j, (image_series_kwargs, file_list) in enumerate(zip(image_series_kwargs_list_updated, file_paths_list)):
             if external_mode:
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
