@@ -171,8 +171,7 @@ class MovieInterface(BaseDataInterface):
                 warn("starting_times not provided, setting to 0.0")
                 starting_times = [0.0]
             else:
-                raise ValueError("provide starting times as a list of len "
-                                 f"{len(image_series_kwargs_list_updated)}")
+                raise ValueError("provide starting times as a list of len " f"{len(image_series_kwargs_list_updated)}")
 
         for j, (image_series_kwargs, file_list) in enumerate(zip(image_series_kwargs_list_updated, file_paths_list)):
             if external_mode:
