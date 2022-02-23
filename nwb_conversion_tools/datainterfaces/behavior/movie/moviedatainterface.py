@@ -261,8 +261,8 @@ class MovieInterface(BaseDataInterface):
                     if starting_times[j] is None:
                         current_description = image_series_kwargs.get("description", "")
                         image_series_kwargs.update(
-                            description=current_description +
-                                        "Start time not provided. Timestamps may not be accurate.")
+                            description=current_description + "Start time not provided. Timestamps may not be accurate."
+                        )
 
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
