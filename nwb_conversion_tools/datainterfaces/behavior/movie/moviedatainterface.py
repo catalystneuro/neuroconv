@@ -170,6 +170,7 @@ class MovieInterface(BaseDataInterface):
                 "starting times list length must be equal number of unique ImageSeries " "containers to write to nwb"
             )
         else:
+            warn("starting_times not provided, setting to 'None'")
             starting_times = [None] * len(image_series_kwargs_list_updated)
 
         for j, (image_series_kwargs, file_list) in enumerate(zip(image_series_kwargs_list_updated, file_paths_list)):
@@ -195,7 +196,8 @@ class MovieInterface(BaseDataInterface):
                         video_capture_ob.frame_count = 10
                     total_frames = video_capture_ob.get_movie_frame_count()
                     frame_shape = video_capture_ob.get_frame_shape()
-                    timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
+                    start_time = starting_times[j] if starting_times[j] is not None else 0.0
+                    timestamps = start_time + video_capture_ob.get_movie_timestamps()
                     fps = video_capture_ob.get_movie_fps()
                 maxshape = (total_frames, *frame_shape)
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
@@ -256,6 +258,11 @@ class MovieInterface(BaseDataInterface):
                     image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
                 else:
                     image_series_kwargs.update(timestamps=timestamps)
+                    if starting_times[j] is None:
+                        current_description = image_series_kwargs.get("description", "")
+                        image_series_kwargs.update(
+                            description=current_description +
+                                        "Start time not provided. Timestamps may not be accurate.")
 
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
