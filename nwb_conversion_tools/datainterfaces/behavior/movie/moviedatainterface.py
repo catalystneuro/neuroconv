@@ -163,15 +163,16 @@ class MovieInterface(BaseDataInterface):
 
         image_series_kwargs_list_updated, file_paths_list = _check_duplicates(image_series_kwargs_list)
         if starting_times is not None:
-            assert isinstance(starting_times, list) and all(
-                [isinstance(x, float) for x in starting_times]
-            ), "Argument 'starting_times' must be a list of floats."
             assert len(starting_times) == len(image_series_kwargs_list_updated), (
                 "starting times list length must be equal number of unique ImageSeries " "containers to write to nwb"
             )
         else:
-            warn("starting_times not provided, setting to 'None'")
-            starting_times = [None] * len(image_series_kwargs_list_updated)
+            if len(image_series_kwargs_list_updated) == 1:
+                warn("starting_times not provided, setting to 0.0")
+                starting_times = [0.0]
+            else:
+                raise ValueError("provide starting times as a list of len "
+                                 f"{len(image_series_kwargs_list_updated)}")
 
         for j, (image_series_kwargs, file_list) in enumerate(zip(image_series_kwargs_list_updated, file_paths_list)):
             if external_mode:
@@ -196,8 +197,7 @@ class MovieInterface(BaseDataInterface):
                         video_capture_ob.frame_count = 10
                     total_frames = video_capture_ob.get_movie_frame_count()
                     frame_shape = video_capture_ob.get_frame_shape()
-                    start_time = starting_times[j] if starting_times[j] is not None else 0.0
-                    timestamps = start_time + video_capture_ob.get_movie_timestamps()
+                    timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
                     fps = video_capture_ob.get_movie_fps()
                 maxshape = (total_frames, *frame_shape)
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
@@ -258,11 +258,6 @@ class MovieInterface(BaseDataInterface):
                     image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
                 else:
                     image_series_kwargs.update(timestamps=timestamps)
-                    if starting_times[j] is None:
-                        current_description = image_series_kwargs.get("description", "")
-                        image_series_kwargs.update(
-                            description=current_description + "Start time not provided. Timestamps may not be accurate."
-                        )
 
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
