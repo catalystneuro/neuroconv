@@ -83,20 +83,30 @@ class TestMovieInterface(unittest.TestCase):
 
     def test_movie_starting_times_none(self):
         conversion_opts = dict(Movie=dict(external_mode=False))
+        with self.assertRaises(ValueError):
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                overwrite=True,
+                conversion_options=conversion_opts,
+                metadata=self.get_metadata(),
+            )
+
+    def test_movie_starting_times_none_duplicate(self):
+        conversion_opts = dict(Movie=dict(external_mode=True))
+        metadata = self.get_metadata()
+        movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
+        metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
             conversion_options=conversion_opts,
-            metadata=self.get_metadata(),
+            metadata=metadata,
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             mod = nwbfile.acquisition
-            metadata = self.nwb_converter.get_metadata()
-            for no in range(len(metadata["Behavior"]["Movies"])):
-                movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-                assert movie_interface_name in mod
-                assert mod[movie_interface_name].starting_time == 0.0
+            assert movie_interface_name in mod
+            assert mod[movie_interface_name].starting_time == 0.0
 
     def test_movie_custom_module(self):
         starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
