@@ -329,7 +329,7 @@ def add_icephys_recordings(
                 starting_time=starting_time,
                 rate=sampling_rate,
                 conversion=response_conversion * response_gain,
-                gain=1.0
+                gain=1.0,
             )
             if icephys_experiment_type != "izero":
                 stim_unit = protocol[2][ei]
