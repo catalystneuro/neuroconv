@@ -198,9 +198,7 @@ class TestMovieInterface(unittest.TestCase):
 
     def test_movie_stub(self):
         starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
-        conversion_opts = dict(Movie=dict(starting_times=starting_times,
-                                          external_mode=False,
-                                          stub_test=True))
+        conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=False, stub_test=True))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
