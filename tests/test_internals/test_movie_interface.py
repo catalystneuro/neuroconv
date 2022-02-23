@@ -26,7 +26,7 @@ class TestMovieInterface(unittest.TestCase):
     def create_movies(self):
         movie_file1 = os.path.join(self.test_dir, "test1.avi")
         movie_file2 = os.path.join(self.test_dir, "test2.avi")
-        (nf, nx, ny) = (10, 640, 480)
+        (nf, nx, ny) = (30, 640, 480)
         writer1 = cv2.VideoWriter(
             filename=movie_file1,
             apiPreference=None,
@@ -195,6 +195,25 @@ class TestMovieInterface(unittest.TestCase):
                 conversion_options=conversion_opts,
                 metadata=metadata,
             )
+
+    def test_movie_stub(self):
+        starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
+        conversion_opts = dict(Movie=dict(starting_times=starting_times,
+                                          external_mode=False,
+                                          stub_test=True))
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_opts,
+            metadata=self.get_metadata(),
+        )
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            mod = nwbfile.acquisition
+            metadata = self.nwb_converter.get_metadata()
+            for no in range(len(metadata["Behavior"]["Movies"])):
+                movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
+                assert mod[movie_interface_name].data.shape[0] == 10
 
     def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
