@@ -181,6 +181,7 @@ class TestMovieInterface(unittest.TestCase):
             mod = nwbfile.acquisition
             assert len(mod) == 1
             assert movie_interface_name in mod
+            assert len(mod[movie_interface_name].external_file) == 2
 
     def test_movie_duplicate_kwargs(self):
         conversion_opts = dict(Movie=dict(external_mode=False))
