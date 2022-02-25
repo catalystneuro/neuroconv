@@ -375,15 +375,15 @@ def add_electrodes(
                 nwbfile.add_electrode_column(name=name, description=des_args["description"], index=des_args["index"])
             else:
                 samp_data = des_dict["data"][0]
-                data_type_found = [
-                    proptype for proptype in property_default_types if isinstance(samp_data, proptype)
-                ][0]
+                data_type_found = [proptype for proptype in property_default_types if isinstance(samp_data, proptype)][
+                    0
+                ]
                 extended_data = [property_default_types[data_type_found]] * len(nwbfile.electrodes.id)
                 previous_data = des_args["data"].tolist()
                 # Cast data to float
                 if data_type_found == Real:
                     previous_data = [float(x) for x in previous_data]
-                des_args["data"] = extended_data + previous_data 
+                des_args["data"] = extended_data + previous_data
                 elec_columns_append[name] = des_args
 
     for name in elec_columns_append:
