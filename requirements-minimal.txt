@@ -1,4 +1,5 @@
 pynwb>=1.4.0
+hdmf>=3.2.1
 tqdm>=4.60.0
 natsort>=7.1.1
 numpy>=1.21.0
@@ -12,5 +13,5 @@ lxml>=4.6.5
 spikeextractors>=0.9.9
 spikeinterface>=0.93.0
 neo>=0.9.0
-roiextractors>=0.3.1
+roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@875edc50e4cc392974c21e687199eb5349456af7
 dandi>=0.34.1

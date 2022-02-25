@@ -1,11 +1,10 @@
 """Authors: Cody Baker and Saksham Sharda."""
-from typing import Tuple, Iterable, Union
+from typing import Tuple, Iterable, Union, Optional
 
 from spikeinterface import BaseRecording
 from spikeinterface.core.old_api_utils import OldToNewRecording
 from spikeextractors import RecordingExtractor
-
-from .genericdatachunkiterator import GenericDataChunkIterator
+from hdmf.data_utils import GenericDataChunkIterator
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 
@@ -18,10 +17,10 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         recording: SpikeInterfaceRecording,
         segment_index: int = 0,
         return_scaled: bool = False,
-        buffer_gb: float = None,
-        buffer_shape: tuple = None,
-        chunk_mb: float = None,
-        chunk_shape: tuple = None,
+        buffer_gb: Optional[float] = None,
+        buffer_shape: Optional[tuple] = None,
+        chunk_mb: Optional[float] = None,
+        chunk_shape: Optional[tuple] = None,
     ):
         """
         Initialize an Iterable object which returns DataChunks with data and their selections on each iteration.
