@@ -378,7 +378,7 @@ def add_electrodes(
                     proptype for proptype in property_default_types if isinstance(des_dict["data"][0], proptype)
                 ][0]
                 extended_data = [property_default_types[data_type_found]] * len(nwbfile.electrodes.id)
-                
+
                 previous_data = des_args["data"].tolist()
                 # Cast data to float
                 if data_type_found == Real:
