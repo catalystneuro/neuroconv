@@ -367,7 +367,7 @@ def add_electrodes(
                 default_updated.update({colname: property_default_types[default_datatype]})
     default_updated.update(defaults)
 
-    # Remove properties here
+    # Re-shape data to have as many entries as channels are available in the table
     for name, des_dict in elec_columns.items():
         des_args = dict(des_dict)
         if name not in default_updated:
