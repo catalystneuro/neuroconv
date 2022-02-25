@@ -326,7 +326,7 @@ def add_electrodes(
     elec_columns = defaultdict(dict)
     elec_columns_append = defaultdict(dict)
 
-    property_names = checked_recording.get_property_keys()    
+    property_names = checked_recording.get_property_keys()
     property_default_types = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
 
     exclude_names = list(exclude) + ["contact_vector"]
@@ -348,7 +348,7 @@ def add_electrodes(
                         continue
                 index = isinstance(data[0], (list, np.ndarray))
                 elec_columns[prop].update(description=prop, data=data, index=index)
-                
+
     # Fill with provided custom descriptions
     for x in metadata["Ecephys"]["Electrodes"]:
         if x["name"] not in list(elec_columns):
@@ -361,13 +361,13 @@ def add_electrodes(
         for colname in nwbfile.electrodes.colnames:
             if colname != "group":
                 samp_data = nwbfile.electrodes[colname].data[0]
-                default_datatype = [
-                    proptype for proptype in property_default_types if isinstance(samp_data, proptype)
-                ][0]
+                default_datatype = [proptype for proptype in property_default_types if isinstance(samp_data, proptype)][
+                    0
+                ]
                 default_updated.update({colname: property_default_types[default_datatype]})
     default_updated.update(defaults)
 
-    # 
+    #
     for name, des_dict in elec_columns.items():
         des_args = dict(des_dict)
         if name not in default_updated:
@@ -375,10 +375,10 @@ def add_electrodes(
                 nwbfile.add_electrode_column(name=name, description=des_args["description"], index=des_args["index"])
             else:
                 data_type_found = [
-                proptype for proptype in property_default_types if isinstance(des_dict["data"][0], proptype)
-            ][0]
-                #combine_data = [property_default_types[data_type_found]] * len(nwbfile.electrodes.id)
-                #des_args["data"] = combine_data + des_args["data"]
+                    proptype for proptype in property_default_types if isinstance(des_dict["data"][0], proptype)
+                ][0]
+                # combine_data = [property_default_types[data_type_found]] * len(nwbfile.electrodes.id)
+                # des_args["data"] = combine_data + des_args["data"]
                 elec_columns_append[name] = des_args
 
     for name in elec_columns_append:
@@ -424,7 +424,7 @@ def add_electrodes(
                 electrode_kwargs.update(dict(group=nwbfile.electrode_groups[str(group_id)], group_name=str(group_id)))
 
             nwbfile.add_electrode(**electrode_kwargs)
-    
+
     # add columns for existing electrodes:
     for col_name, cols_args in elec_columns_append.items():
         nwbfile.add_electrode_column(col_name, **cols_args)
