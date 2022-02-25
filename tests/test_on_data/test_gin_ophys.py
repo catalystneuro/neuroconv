@@ -25,7 +25,6 @@ try:
     HAVE_PARAMETERIZED = True
 except ImportError:
     HAVE_PARAMETERIZED = False
-
 #  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
@@ -35,7 +34,6 @@ else:
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
     LOCAL_PATH = Path("/shared/catalystneuro/")
     print("Running GIN tests locally!")
-
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 HAVE_OPHYS_DATA = OPHYS_DATA_PATH.exists()
 
@@ -45,10 +43,8 @@ if SAVE_OUTPUTS:
     OUTPUT_PATH.mkdir(exist_ok=True)
 else:
     OUTPUT_PATH = Path(tempfile.mkdtemp())
-
 if not HAVE_PARAMETERIZED:
     pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
-
 if not OPHYS_DATA_PATH:
     pytest.fail(f"No oephys_testing_data folder found in location: {OPHYS_DATA_PATH}!")
 
@@ -88,7 +84,14 @@ class TestOphysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(imaging_interface_list, name_func=custom_name_func)
     def test_convert_imaging_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+        nwbfile_path = self.savedir / f"{data_interface.__name__}.nwb"
+
+        # TODO: Temporary hack around a strange issue where if the first SBX file fails due to an error
+        # during check_imaging_equal, it leaves the NWBFile open and second test fails because of that.
+        # Try to determine true source of error; is context failing to close through pynwb or is it the
+        # NWBImagingExtractor that fails to close?
+        if nwbfile_path.exists():
+            nwbfile_path = self.savedir / f"{data_interface.__name__}_2.nwb"
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestImaging=data_interface)
@@ -103,7 +106,6 @@ class TestOphysNwbConversions(unittest.TestCase):
                 plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
                 if "imaging_plane" not in metadata["Ophys"]["TwoPhotonSeries"][0].keys():
                     metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
-
                 return metadata
 
         converter = TestConverter(source_data=dict(TestImaging=dict(interface_kwargs)))
