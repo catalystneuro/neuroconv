@@ -377,8 +377,13 @@ def add_electrodes(
                 data_type_found = [
                     proptype for proptype in property_default_types if isinstance(des_dict["data"][0], proptype)
                 ][0]
-                # combine_data = [property_default_types[data_type_found]] * len(nwbfile.electrodes.id)
-                # des_args["data"] = combine_data + des_args["data"]
+                extended_data = [property_default_types[data_type_found]] * len(nwbfile.electrodes.id)
+                
+                previous_data = des_args["data"].tolist()
+                # Cast data to float
+                if data_type_found == Real:
+                    data = [float(x) for x in data]
+                des_args["data"] = previous_data + extended_data
                 elec_columns_append[name] = des_args
 
     for name in elec_columns_append:
@@ -388,12 +393,6 @@ def add_electrodes(
         if channel_id not in nwb_elec_ids:
             electrode_kwargs = dict(default_updated)
             electrode_kwargs.update(id=channel_id)
-
-            # checked_recording.get_channel_locations defaults to np.nan if there are none
-            location = checked_recording.get_channel_locations(channel_ids=[channel_id])[0]
-            # if all([not np.isnan(loc) for loc in location]):
-            #     # property 'location' of RX channels corresponds to rel_x and rel_ y of NWB electrodes
-            #     electrode_kwargs.update(dict(rel_x=float(location[0]), rel_y=float(location[1])))
 
             for name, desc in elec_columns.items():
                 if name == "group_name":
