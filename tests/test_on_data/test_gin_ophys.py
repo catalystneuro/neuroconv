@@ -28,8 +28,6 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 # Load data test configuration
-from nwb_conversion_tools.utils.json_schema import load_dict_from_file
-
 test_config_dic = load_dict_from_file("./tests/test_on_data/gin_test_config.json")
 
 #  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
