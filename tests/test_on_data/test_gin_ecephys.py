@@ -157,7 +157,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
             if gains is not None:
                 interface_kwargs.update(gains=gains)
             parameterized_recording_list.append(
-                param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs,)
+                param(
+                    data_interface=SpikeGadgetsRecordingInterface,
+                    interface_kwargs=interface_kwargs,
+                )
             )
     for suffix in ["ap", "lf"]:
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
@@ -279,7 +282,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(
         input=[
-            param(name="complete", conversion_options=None,),
+            param(
+                name="complete",
+                conversion_options=None,
+            ),
             param(name="stub", conversion_options=dict(TestRecording=dict(stub_test=True))),
         ]
     )
@@ -311,7 +317,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(
         input=[
-            param(name="complete", conversion_options=None,),
+            param(
+                name="complete",
+                conversion_options=None,
+            ),
             param(name="stub", conversion_options=dict(TestRecording=dict(stub_test=True))),
         ]
     )
