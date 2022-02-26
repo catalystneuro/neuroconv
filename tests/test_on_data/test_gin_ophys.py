@@ -27,7 +27,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 import config
-    
+
 #  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI

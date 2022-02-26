@@ -1,2 +1,2 @@
-LOCAL_PATH = "/home/heberto/"
+LOCAL_PATH = "/shared/catalystneuro/"
 SAVE_OUTPUTS = False
