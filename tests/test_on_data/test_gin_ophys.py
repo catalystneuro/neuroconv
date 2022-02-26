@@ -25,6 +25,9 @@ try:
     HAVE_PARAMETERIZED = True
 except ImportError:
     HAVE_PARAMETERIZED = False
+
+import config
+    
 #  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
@@ -32,12 +35,12 @@ if os.getenv("CI"):
 else:
     # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path("/shared/catalystneuro/")
+    LOCAL_PATH = Path(config.LOCAL_PATH)
     print("Running GIN tests locally!")
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 HAVE_OPHYS_DATA = OPHYS_DATA_PATH.exists()
 
-SAVE_OUTPUTS = False
+SAVE_OUTPUTS = config.SAVE_OUTPUTS
 if SAVE_OUTPUTS:
     OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
