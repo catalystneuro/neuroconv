@@ -32,6 +32,7 @@ from nwb_conversion_tools import (
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
 )
+from nwb_conversion_tools.utils.json_schema import load_dict_from_file
 
 try:
     from parameterized import parameterized, param
@@ -40,7 +41,8 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-import config
+# Load data test configuration
+test_config_dic = load_dict_from_file("./tests/test_on_data/gin_test_config.json")
 
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
@@ -49,13 +51,13 @@ if os.getenv("CI"):
 else:
     # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(config.LOCAL_PATH)
+    LOCAL_PATH = Path(test_config_dic["LOCAL_PATH"])
     print("Running GIN tests locally!")
 
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
-SAVE_OUTPUTS = config.SAVE_OUTPUTS
+SAVE_OUTPUTS = test_config_dic["SAVE_OUTPUTS"]
 if SAVE_OUTPUTS:
     OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
@@ -155,10 +157,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             if gains is not None:
                 interface_kwargs.update(gains=gains)
             parameterized_recording_list.append(
-                param(
-                    data_interface=SpikeGadgetsRecordingInterface,
-                    interface_kwargs=interface_kwargs,
-                )
+                param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs,)
             )
     for suffix in ["ap", "lf"]:
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
@@ -280,10 +279,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(
         input=[
-            param(
-                name="complete",
-                conversion_options=None,
-            ),
+            param(name="complete", conversion_options=None,),
             param(name="stub", conversion_options=dict(TestRecording=dict(stub_test=True))),
         ]
     )
@@ -315,10 +311,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(
         input=[
-            param(
-                name="complete",
-                conversion_options=None,
-            ),
+            param(name="complete", conversion_options=None,),
             param(name="stub", conversion_options=dict(TestRecording=dict(stub_test=True))),
         ]
     )

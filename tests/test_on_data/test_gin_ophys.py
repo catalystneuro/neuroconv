@@ -18,6 +18,7 @@ from nwb_conversion_tools import (
     ExtractSegmentationInterface,
     Suite2pSegmentationInterface,
 )
+from nwb_conversion_tools.utils.json_schema import load_dict_from_file
 
 try:
     from parameterized import parameterized, param
@@ -26,7 +27,10 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
-import config
+# Load data test configuration
+from nwb_conversion_tools.utils.json_schema import load_dict_from_file
+
+test_config_dic = load_dict_from_file("./tests/test_on_data/gin_test_config.json")
 
 #  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
@@ -35,12 +39,12 @@ if os.getenv("CI"):
 else:
     # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(config.LOCAL_PATH)
+    LOCAL_PATH = Path(test_config_dic["LOCAL_PATH"])
     print("Running GIN tests locally!")
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 HAVE_OPHYS_DATA = OPHYS_DATA_PATH.exists()
 
-SAVE_OUTPUTS = config.SAVE_OUTPUTS
+SAVE_OUTPUTS = test_config_dic["SAVE_OUTPUTS"]
 if SAVE_OUTPUTS:
     OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
     OUTPUT_PATH.mkdir(exist_ok=True)

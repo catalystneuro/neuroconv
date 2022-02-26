@@ -12,7 +12,8 @@ from pynwb import NWBHDF5IO
 from nwb_conversion_tools.utils.json_schema import load_dict_from_file
 from nwb_conversion_tools.utils.conversion_tools import run_conversion_from_yaml
 
-import config
+# Load data test configuration
+test_config_dic = load_dict_from_file("./tests/test_on_data/gin_test_config.json")
 
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
@@ -21,13 +22,13 @@ if os.getenv("CI"):
 else:
     # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(config.LOCAL_PATH)
+    LOCAL_PATH = Path(test_config_dic["LOCAL_PATH"])
     print("Running GIN tests locally!")
 
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
-SAVE_OUTPUTS = config.SAVE_OUTPUTS
+SAVE_OUTPUTS = test_config_dic["SAVE_OUTPUTS"]
 if SAVE_OUTPUTS:
     OUTPUT_PATH = LOCAL_PATH / "example_yaml_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
