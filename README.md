@@ -94,7 +94,7 @@ to install the `ecephys` data, and
 
 for `ophys` data.
 
-Once the data is downloaded to your system, you must manually modify the [config file](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/tests/test_on_data/gin_test_config.json) `gin_test_config.json` so the `LOCAL_PATH` key points to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
+Once the data is downloaded to your system, you must manually modify the [config file](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/tests/test_on_data/gin_test_config.json) located in `"./tests/test_on_data/gin_test_config.json"` so its corresponding `LOCAL_PATH` key points to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
 
 The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=true` in the same `gin_test_config.json` file mentioned in the last paragraph and modify the variable `OUTPUT_PATH` in the respective test if necessary.
 
