@@ -28,7 +28,7 @@ except ImportError:
     HAVE_PARAMETERIZED = False
 
 # Load data test configuration
-test_config_dic = load_dict_from_file("./tests/test_on_data/gin_test_config.json")
+test_config_dict = load_dict_from_file("./tests/test_on_data/gin_test_config.json")
 
 #  GIN dataset: https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 if os.getenv("CI"):
