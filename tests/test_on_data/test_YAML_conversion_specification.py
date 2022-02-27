@@ -22,7 +22,7 @@ if os.getenv("CI"):
 else:
     # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(test_config_dic["LOCAL_PATH"])
+    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")
 
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
