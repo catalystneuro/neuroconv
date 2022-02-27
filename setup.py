@@ -8,6 +8,12 @@ with open(os.path.join(path, "README.md")) as f:
     long_description = f.read()
 with open(os.path.join(path, "requirements-minimal.txt")) as f:
     install_requires = f.read().strip().split("\n")
+with open(os.path.join(path, "requirements-full.txt")) as f:
+    test_dependencies = f.read().strip().split("\n")    
+test_dependencies += ['pytest', 'pytest-cov']
+extras_requires = {
+    'test_full': test_dependencies,
+}
 setup(
     name="nwb-conversion-tools",
     version="0.11.0",
@@ -22,7 +28,8 @@ setup(
     package_data={"": ["template_metafile.yml"]},
     include_package_data=True,
     python_requires=">=3.7",
-    install_requires=install_requires,
+    install_requires=test_dependencies,
+    extras_requires=extras_requires,
     entry_points={
         "console_scripts": ["nwb-gui=nwb_conversion_tools.gui.command_line:main"],
     },
