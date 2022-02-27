@@ -57,8 +57,7 @@ else:
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
-SAVE_OUTPUTS = test_config_dic["SAVE_OUTPUTS"]
-if SAVE_OUTPUTS:
+if test_config_dic["SAVE_OUTPUTS"]:
     OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
 else:
