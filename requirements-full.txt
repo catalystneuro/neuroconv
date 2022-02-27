@@ -21,5 +21,5 @@ ndx-events==0.2.0
 parameterized==0.8.1
 pyintan==0.3.0
 pyopenephys==1.1.2
-sonpy
+sonpy==1.9.5
 tiffile==2018.10.18
