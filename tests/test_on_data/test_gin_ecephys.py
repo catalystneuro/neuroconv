@@ -32,6 +32,7 @@ from nwb_conversion_tools import (
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
 )
+from nwb_conversion_tools.utils.json_schema import load_dict_from_file
 
 try:
     from parameterized import parameterized, param
@@ -40,21 +41,23 @@ try:
 except ImportError:
     HAVE_PARAMETERIZED = False
 
+# Load the configuration for the data tests
+test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
+
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
 else:
-    # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
+    # Override the LOCAL_PATH in the `gin_test_config.json` file to a point on your local system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path("/shared/catalystneuro/")
+    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")
 
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
-SAVE_OUTPUTS = False
-if SAVE_OUTPUTS:
+if test_config_dict["SAVE_OUTPUTS"]:
     OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
 else:
