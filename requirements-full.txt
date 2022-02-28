@@ -1,3 +1,4 @@
+dandi==0.36.0
 pynwb==2.0.0
 hdmf==3.2.1
 tqdm==4.60.0
@@ -20,5 +21,5 @@ ndx-events==0.2.0
 parameterized==0.8.1
 pyintan==0.3.0
 pyopenephys==1.1.2
-sonpy
+sonpy>=1.7.1
 tiffile==2018.10.18
