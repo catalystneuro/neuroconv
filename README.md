@@ -21,12 +21,12 @@ Features:
 
 ## Installation
 To install the latest stable release of **nwb-conversion-tools** though PyPI, type:
-```
+```shell
 pip install nwb-conversion-tools
 ```
 
 For more flexibility we recommend installing the latest version directly from GitHub. The following commands will create an environment with all the required dependencies and the latest updates.
-```
+```shell
 git clone https://github.com/catalystneuro/nwb-conversion-tools
 cd nwb-conversion-tools
 conda env create -f make_env.yml
@@ -34,8 +34,8 @@ conda activate nwb_conversion_env
 ```
 Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs). 
 
-Finally, if you prefer to avoid conda altogether the following will provide a clean installation using only pip.
-```
+Finally, if you prefer to avoid conda altogether the following will provide a clean installation in the current environment.
+```shell
 git clone https://github.com/catalystneuro/nwb-conversion-tools
 pip install . 
 ```
