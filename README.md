@@ -33,7 +33,6 @@ $ conda env create -f make_env.yml
 $ conda activate nwb_conversion_env
 $ pip install .
 ```
-Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs) 
 
 ## Dependencies
 NWB Conversion Tools relies heavily on [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
