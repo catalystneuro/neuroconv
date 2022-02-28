@@ -13,7 +13,8 @@ from nwb_conversion_tools.utils.json_schema import load_dict_from_file
 from nwb_conversion_tools.utils.conversion_tools import run_conversion_from_yaml
 
 # Load the configuration for the data tests
-test_config_dict = load_dict_from_file("./tests/test_on_data/gin_test_config.json")
+test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
+print(test_config_dict)
 
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
