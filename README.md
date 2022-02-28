@@ -20,7 +20,7 @@ Features:
 * Leverages SpikeExtractor to support conversion from a number or proprietary formats.
 
 ## Installation
-Fore easy of use we recommend to install **nwb-conversion-tools** latest stable release in an existing environment with the following command:
+To install the latest stable release of **nwb-conversion-tools** though PyPI, type:
 ```
 $ pip install nwb-conversion-tools
 ```
