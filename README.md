@@ -20,19 +20,19 @@ Features:
 * Leverages SpikeExtractor to support conversion from a number or proprietary formats.
 
 ## Installation
-To install **nwb-conversion-tools** directly in an existing environment:
+Fore easy of use we recommend to install **nwb-conversion-tools** latest stable release in an existing environment with the following command:
 ```
 $ pip install nwb-conversion-tools
 ```
 
-Alternatively, to clone the repository and set up a conda environment, do:
+For more flexibility we recommend installing the latest version directly from github. The following commands will create an environment with all the requiered dependencies and the latest updates.
 ```
 $ git clone https://github.com/catalystneuro/nwb-conversion-tools
 $ cd nwb-conversion-tools
 $ conda env create -f make_env.yml
 $ conda activate nwb_conversion_env
-$ pip install .
 ```
+Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs). 
 
 ## Dependencies
 NWB Conversion Tools relies heavily on [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
