@@ -25,7 +25,7 @@ Fore easy of use we recommend to install **nwb-conversion-tools** latest stable 
 $ pip install nwb-conversion-tools
 ```
 
-For more flexibility we recommend installing the latest version directly from github. The following commands will create an environment with all the requiered dependencies and the latest updates.
+For more flexibility we recommend installing the latest version directly from GitHub. The following commands will create an environment with all the required dependencies and the latest updates.
 ```
 $ git clone https://github.com/catalystneuro/nwb-conversion-tools
 $ cd nwb-conversion-tools
