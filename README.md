@@ -31,6 +31,7 @@ $ git clone https://github.com/catalystneuro/nwb-conversion-tools
 $ cd nwb-conversion-tools
 $ conda env create -f make_env.yml
 $ conda activate nwb_conversion_env
+$ pip install .
 ```
 Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs) 
 
