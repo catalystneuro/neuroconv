@@ -12,7 +12,7 @@ from pynwb.behavior import Position, SpatialSeries
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ....basedatainterface import BaseDataInterface
-from ....tools.nwbfile import get_module
+from ....tools.nwb_helpers import get_module
 from ....utils import get_schema_from_method_signature, FilePathType
 
 

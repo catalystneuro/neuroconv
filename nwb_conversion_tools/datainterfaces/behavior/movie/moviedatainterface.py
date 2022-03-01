@@ -14,7 +14,7 @@ from nwbinspector.utils import check_regular_series
 
 from .movie_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
-from ....tools.nwbfile import get_module
+from ....tools.nwb_helpers import get_module
 from ....utils import get_schema_from_hdmf_class, get_base_schema
 
 

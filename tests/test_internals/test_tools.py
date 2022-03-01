@@ -3,7 +3,7 @@ from datetime import datetime
 from pynwb.base import ProcessingModule
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.tools.nwbfile import get_module, make_nwbfile_from_metadata
+from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 
 
 class TestConversionTools(TestCase):

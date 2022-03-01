@@ -17,7 +17,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from ..nwbfile import get_module, make_nwbfile_from_metadata
+from ..nwb_helpers import get_module, make_nwbfile_from_metadata
 from ...utils import dict_deep_update, OptionalFilePathType
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]

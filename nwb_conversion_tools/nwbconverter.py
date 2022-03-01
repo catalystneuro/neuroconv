@@ -6,7 +6,7 @@ from typing import Optional
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .tools.nwbfile import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from .tools.nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata
 from .utils import (
     get_schema_from_hdmf_class,
     get_schema_for_NWBFile,
