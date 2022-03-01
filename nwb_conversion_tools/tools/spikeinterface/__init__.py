@@ -1,4 +1,5 @@
 from .spikeinterface import (
+    get_nwb_metadata,
     add_devices,
     add_electrode_groups,
     add_electrodes,
