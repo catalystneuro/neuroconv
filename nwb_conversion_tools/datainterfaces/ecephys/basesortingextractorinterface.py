@@ -6,8 +6,8 @@ import numpy as np
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
-from ...utils.json_schema import get_base_schema, get_schema_from_method_signature
-from ...utils.spike_interface import add_devices, add_electrode_groups, add_electrodes, write_sorting
+from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
+from ...utils import get_base_schema
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):
@@ -76,7 +76,6 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
         if stub_test:
             max_min_spike_time = max(
                 [
@@ -96,7 +95,6 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             sorting_extractor = stub_sorting_extractor
         else:
             sorting_extractor = self.sorting_extractor
-
         property_descriptions = dict()
         for metadata_column in metadata.get("Ecephys", dict()).get("UnitProperties", []):
             property_descriptions.update({metadata_column["name"]: metadata_column["description"]})

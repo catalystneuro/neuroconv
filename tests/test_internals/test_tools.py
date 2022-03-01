@@ -3,15 +3,10 @@ from datetime import datetime
 from pynwb.base import ProcessingModule
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.utils.nwbfile_tools import get_module, make_nwbfile_from_metadata
-from nwb_conversion_tools.utils.conversion_tools import check_regular_timestamps
+from nwb_conversion_tools.tools.nwbfile import get_module, make_nwbfile_from_metadata
 
 
 class TestConversionTools(TestCase):
-    def test_check_regular_timestamps(self):
-        assert check_regular_timestamps([1, 2, 3])
-        assert not check_regular_timestamps([1, 2, 4])
-
     def test_get_module(self):
         nwbfile = make_nwbfile_from_metadata(
             metadata=dict(NWBFile=dict(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))),

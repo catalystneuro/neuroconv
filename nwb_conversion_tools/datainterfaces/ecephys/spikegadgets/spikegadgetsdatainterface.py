@@ -2,7 +2,7 @@
 from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import FilePathType, OptionalFilePathType, OptionalArrayType
+from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):

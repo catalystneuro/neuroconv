@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+
 import numpy as np
 from numpy.testing import assert_array_equal
 from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import VideoCaptureContext

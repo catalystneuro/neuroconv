@@ -18,7 +18,7 @@ from nwb_conversion_tools import (
     ExtractSegmentationInterface,
     Suite2pSegmentationInterface,
 )
-from nwb_conversion_tools.utils.json_schema import load_dict_from_file
+from nwb_conversion_tools.utils import load_dict_from_file
 
 try:
     from parameterized import parameterized, param
@@ -26,7 +26,6 @@ try:
     HAVE_PARAMETERIZED = True
 except ImportError:
     HAVE_PARAMETERIZED = False
-
 # Load the configuration for the data tests
 test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
 
@@ -35,7 +34,7 @@ if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
 else:
-    # Override the LOCAL_PATH in the `gin_test_config.json` file to a point on your local system that contains the dataset folder
+    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
     LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")

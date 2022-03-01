@@ -4,7 +4,7 @@ from typing import Optional
 import spikeextractors as se
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import FolderPathType
+from ....utils import FolderPathType
 
 
 class PhySortingInterface(BaseSortingExtractorInterface):

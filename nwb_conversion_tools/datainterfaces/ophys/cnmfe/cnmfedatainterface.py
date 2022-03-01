@@ -1,7 +1,7 @@
 from roiextractors import CnmfeSegmentationExtractor
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils.json_schema import FilePathType
+from ....utils import FilePathType
 
 
 class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):

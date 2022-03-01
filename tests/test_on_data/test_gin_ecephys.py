@@ -32,7 +32,7 @@ from nwb_conversion_tools import (
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
 )
-from nwb_conversion_tools.utils.json_schema import load_dict_from_file
+from nwb_conversion_tools.utils import load_dict_from_file
 
 try:
     from parameterized import parameterized, param
@@ -40,7 +40,6 @@ try:
     HAVE_PARAMETERIZED = True
 except ImportError:
     HAVE_PARAMETERIZED = False
-
 # Load the configuration for the data tests
 test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
 
@@ -49,11 +48,10 @@ if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
 else:
-    # Override the LOCAL_PATH in the `gin_test_config.json` file to a point on your local system that contains the dataset folder
+    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
     LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")
-
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
@@ -62,10 +60,8 @@ if test_config_dict["SAVE_OUTPUTS"]:
     OUTPUT_PATH.mkdir(exist_ok=True)
 else:
     OUTPUT_PATH = Path(tempfile.mkdtemp())
-
 if not HAVE_PARAMETERIZED:
     pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
-
 if not HAVE_DATA:
     pytest.fail(f"No ephy_testing_data folder found in location: {DATA_PATH}!")
 
@@ -196,10 +192,8 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     for channel_id in nwb_recording.get_channel_ids()
                 ]
             )
-
         if isinstance(recording, BaseRecording):
             nwb_recording = OldToNewRecording(oldapi_recording_extractor=nwb_recording)
-
         if isinstance(recording, RecordingExtractor):
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
@@ -209,7 +203,6 @@ class TestEcephysNwbConversions(unittest.TestCase):
             npt.assert_array_equal(
                 x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
             )
-
         else:
             check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
             # This can only be tested if both gain and offest are present

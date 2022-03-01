@@ -3,8 +3,8 @@ import spikeextractors as se
 
 from pynwb.ecephys import ElectricalSeries
 
-from ....utils.json_schema import get_schema_from_hdmf_class
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils import get_schema_from_hdmf_class
 
 
 class TutorialRecordingExtractor(se.NumpyRecordingExtractor):
@@ -54,7 +54,6 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
             self.recording_extractor.set_channel_property(
                 channel_id=channel_id, property_name="group_name", value="ElectrodeGroup"
             )
-
         # Set any other type of value that is intended to be written as a column to the final electrodes table
         for channel_id in self.recording_extractor.get_channel_ids():
             self.recording_extractor.set_channel_property(

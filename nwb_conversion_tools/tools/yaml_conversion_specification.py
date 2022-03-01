@@ -4,19 +4,11 @@ from importlib import import_module
 from itertools import chain
 from jsonschema import validate, RefResolver
 
-import numpy as np
 from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
-from .json_schema import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
 from ..nwbconverter import NWBConverter
-
-
-def check_regular_timestamps(ts):
-    """Check whether rate should be used instead of timestamps."""
-    time_tol_decimals = 9
-    uniq_diff_ts = np.unique(np.diff(ts).round(decimals=time_tol_decimals))
-    return len(uniq_diff_ts) == 1
+from ..utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
 
 
 def run_conversion_from_yaml(
@@ -49,7 +41,6 @@ def run_conversion_from_yaml(
         output_folder = Path(specification_file_path).parent
     else:
         output_folder = Path(output_folder)
-
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
@@ -82,7 +73,6 @@ def run_conversion_from_yaml(
             )
             for data_interface_name in data_interfaces_names_chain:
                 data_interface_classes.update({data_interface_name: getattr(nwb_conversion_tools, data_interface_name)})
-
             CustomNWBConverter = type(
                 "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
             )
@@ -91,12 +81,10 @@ def run_conversion_from_yaml(
             for interface_name, interface_source_data in session["source_data"].items():
                 for key, value in interface_source_data.items():
                     source_data[interface_name].update({key: str(Path(data_folder) / value)})
-
             converter = CustomNWBConverter(source_data=source_data)
             metadata = converter.get_metadata()
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
                 metadata = dict_deep_update(metadata, metadata_source)
-
             nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
             converter.run_conversion(
                 nwbfile_path=output_folder / f"{nwbfile_name}.nwb",
@@ -104,7 +92,6 @@ def run_conversion_from_yaml(
                 overwrite=overwrite,
                 conversion_options=session.get("conversion_options", dict()),
             )
-
     # To properly mimic a true dandi organization, the full directory must be populated with NWBFiles.
     all_nwbfile_paths = [nwbfile_path for nwbfile_path in output_folder.iterdir() if nwbfile_path.suffix == ".nwb"]
     if any(["temp_nwbfile_name_" in nwbfile_path.stem for nwbfile_path in all_nwbfile_paths]):

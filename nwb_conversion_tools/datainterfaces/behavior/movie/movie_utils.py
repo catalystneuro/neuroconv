@@ -5,7 +5,7 @@ from typing import Union, Tuple
 import numpy as np
 from tqdm import tqdm
 
-from ....utils.json_schema import FilePathType
+from ....utils import FilePathType
 
 try:
     import cv2

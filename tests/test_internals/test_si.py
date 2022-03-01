@@ -15,9 +15,12 @@ from spikeextractors.testing import (
 )
 from pynwb import NWBHDF5IO, NWBFile
 
-from nwb_conversion_tools.utils.spike_interface import get_nwb_metadata, write_recording, write_sorting
-from nwb_conversion_tools.utils.spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from nwb_conversion_tools.utils.json_schema import FilePathType
+from nwb_conversion_tools import spikeinterface  # testing aliased import
+from nwb_conversion_tools.tools.spikeinterface import get_nwb_metadata, write_recording, write_sorting
+from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
+    SpikeInterfaceRecordingDataChunkIterator,
+)
+from nwb_conversion_tools.utils import FilePathType
 
 
 def _create_example(seed):
@@ -38,7 +41,6 @@ def _create_example(seed):
     RX.add_epoch("epoch2", 10, 20)
     for i, channel_id in enumerate(RX.get_channel_ids()):
         RX.set_channel_property(channel_id=channel_id, property_name="shared_channel_prop", value=i)
-
     RX2 = se.NumpyRecordingExtractor(timeseries=X, sampling_frequency=sampling_frequency, geom=geom)
     RX2.copy_epochs(RX)
     times = np.arange(RX.get_num_frames()) / RX.get_sampling_frequency() + 5
@@ -75,7 +77,6 @@ def _create_example(seed):
         SX2.set_unit_spike_features(
             unit_id=unit_id, feature_name="shared_unit_feature", value=np.asarray([i] * spike_times2[i])
         )
-
     SX3 = se.NumpySortingExtractor()
     train3 = np.asarray([1, 20, 21, 35, 38, 45, 46, 47])
     SX3.add_unit(unit_id=0, times=train3)
@@ -127,7 +128,7 @@ class TestExtractors(unittest.TestCase):
     def test_write_recording(self):
         path = self.test_dir + "/test.nwb"
 
-        write_recording(self.RX, path, metadata=self.placeholder_metadata)
+        spikeinterface.write_recording(self.RX, path, metadata=self.placeholder_metadata)  # testing aliased import
         RX_nwb = se.NwbRecordingExtractor(path)
         check_recording_return_types(RX_nwb)
         check_recordings_equal(self.RX, RX_nwb)
@@ -154,7 +155,6 @@ class TestExtractors(unittest.TestCase):
             assert len(nwbfile.devices) == 1
             assert len(nwbfile.electrode_groups) == 1
             assert len(nwbfile.electrodes) == self.RX.get_num_channels()
-
         # Writing multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
@@ -283,7 +283,7 @@ class TestExtractors(unittest.TestCase):
 
         # Append sorting to existing file
         write_recording(recording=self.RX, save_path=path, overwrite=True, metadata=self.placeholder_metadata)
-        write_sorting(sorting=self.SX, save_path=path, overwrite=False)
+        spikeinterface.write_sorting(sorting=self.SX, save_path=path, overwrite=False)  # testing aliased import
         SX_nwb = se.NwbSortingExtractor(path)
         check_sortings_equal(self.SX, SX_nwb)
         check_dumping(SX_nwb)
@@ -341,7 +341,6 @@ class TestExtractors(unittest.TestCase):
             np.testing.assert_array_equal(nwbfile.units["float_prop"][:], [80.0, np.nan, np.nan])
             np.testing.assert_array_equal(nwbfile.units["int_prop"][:], [80.0, np.nan, np.nan])
             np.testing.assert_array_equal(nwbfile.units["str_prop"][:], ["test_val", "", ""])
-
         np.testing.assert_array_equal(
             x=units_1_id,
             y=units_2_id,
@@ -409,7 +408,6 @@ class TestExtractors(unittest.TestCase):
                     device.get("description", device_defaults["description"]), nwbfile.devices[device_name].description
                 )
                 self.assertEqual(device.get("manufacturer"), nwbfile.devices[device["name"]].manufacturer)
-
             electrode_group_source = metadata["Ecephys"].get(
                 "ElectrodeGroup", standard_metadata["Ecephys"]["ElectrodeGroup"]
             )
@@ -428,7 +426,6 @@ class TestExtractors(unittest.TestCase):
                 device_name = group.get("device", electrode_group_defaults["device"])
                 self.assertIn(device_name, nwbfile.devices)
                 self.assertEqual(nwbfile.electrode_groups[group_name].device, nwbfile.devices[device_name])
-
             n_channels = len(recording.get_channel_ids())
             electrode_source = metadata["Ecephys"].get("Electrodes", [])
             self.assertEqual(n_channels, len(nwbfile.electrodes))

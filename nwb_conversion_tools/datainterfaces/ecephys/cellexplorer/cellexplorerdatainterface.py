@@ -5,7 +5,7 @@ import spikeextractors as se
 import numpy as np
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import FilePathType
+from ....utils import FilePathType
 
 try:
     import scipy.io
@@ -39,7 +39,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         except NotImplementedError:
             spikes_mat = hdf5storage.loadmat(file_name=str(spikes_matfile_path))
             self.read_spikes_info_with_scipy = False
-
         cell_info = spikes_mat.get("spikes", np.empty(0))
         self.cell_info_fields = cell_info.dtype.names
 
@@ -65,7 +64,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "region" in self.cell_info_fields:
                 for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0]][0]):
                     self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
-
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
@@ -107,7 +105,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                         description="Brain region where each unit was detected.",
                     )
                 )
-
         celltype_filepath = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_filepath.is_file():
             celltype_info = scipy.io.loadmat(celltype_filepath).get("CellClass", np.empty(0))

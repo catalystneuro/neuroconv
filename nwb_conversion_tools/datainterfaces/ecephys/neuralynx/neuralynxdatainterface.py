@@ -5,7 +5,7 @@ from natsort import natsorted
 from spikeextractors import MultiRecordingChannelExtractor, NeuralynxRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import FolderPathType
+from ....utils import FolderPathType
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
