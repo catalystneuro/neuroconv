@@ -273,8 +273,8 @@ def add_electrodes(
     else:
         checked_recording = recording
     if nwbfile.electrodes is not None:
-        ids_absent = [id not in nwbfile.electrodes.id for id in checked_recording.get_channel_ids()]
-        if not all(ids_absent):
+        ids_already_in_electrode_table = [id in nwbfile.electrodes.id for id in checked_recording.get_channel_ids()]
+        if all(ids_already_in_electrode_table):
             warnings.warn("cannot create electrodes for this recording as ids already exist")
             return
 
