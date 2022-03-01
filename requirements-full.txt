@@ -1,5 +1,4 @@
 dandi==0.36.0
-# pynwb==2.0.0
 pynwb @ git+https://github.com/NeurodataWithoutBorders/pynwb@dev
 hdmf==3.2.1
 tqdm==4.60.0
