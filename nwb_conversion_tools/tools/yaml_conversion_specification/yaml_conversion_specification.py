@@ -7,8 +7,8 @@ from jsonschema import validate, RefResolver
 from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
-from ..nwbconverter import NWBConverter
-from ..utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
+from ...nwbconverter import NWBConverter
+from ...utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
 
 
 def run_conversion_from_yaml(
@@ -42,7 +42,7 @@ def run_conversion_from_yaml(
     else:
         output_folder = Path(output_folder)
     specification = load_dict_from_file(file_path=specification_file_path)
-    schema_folder = Path(__file__).parent.parent / "schemas"
+    schema_folder = Path(__file__).parent.parent.parent / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
     validate(
         instance=specification,
