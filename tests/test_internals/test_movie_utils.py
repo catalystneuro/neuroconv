@@ -10,7 +10,7 @@ from datetime import datetime
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from nwb_conversion_tools.datainterfaces.behavior.movie.movie_utils import VideoCaptureContext, MovieDataChunkIterator
-from nwb_conversion_tools.utils import make_nwbfile_from_metadata
+from nwb_conversion_tools.tools.nwb_helpers import make_nwbfile_from_metadata
 
 try:
     import cv2
