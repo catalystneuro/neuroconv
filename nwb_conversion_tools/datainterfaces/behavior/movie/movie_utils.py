@@ -1,11 +1,12 @@
 """Authors: Saksham Sharda, Cody Baker."""
-from pathlib import Path
-from typing import Union, Tuple
+from typing import Tuple, Iterable
 
 import numpy as np
 from tqdm import tqdm
+from hdmf.data_utils import GenericDataChunkIterator
 
-from ....utils import FilePathType
+from ....utils.json_schema import FilePathType
+
 
 try:
     import cv2
@@ -14,8 +15,6 @@ try:
 except ImportError:
     HAVE_OPENCV = False
 INSTALL_MESSAGE = "Please install opencv to use the VideoCaptureContext class! (pip install opencv-python)"
-
-PathType = Union[str, Path]
 
 
 class VideoCaptureContext:
@@ -141,3 +140,69 @@ class VideoCaptureContext:
 
     def __del__(self):
         self.vc.release()
+
+
+class MovieDataChunkIterator(GenericDataChunkIterator):
+    """DataChunkIterator specifically for use on RecordingExtractor objects."""
+
+    def __init__(
+        self,
+        movie_file: FilePathType,
+        buffer_gb: float = None,
+        chunk_shape: tuple = None,
+        stub_test: bool = False,
+    ):
+        self.video_capture_ob = VideoCaptureContext(movie_file)
+        self._full_frame_size_mb, self._full_frame_shape = self._get_frame_details()
+        if stub_test:
+            self.video_capture_ob.frame_count = 10
+        super().__init__(
+            buffer_gb=buffer_gb,
+            chunk_shape=chunk_shape,
+            display_progress=True,
+        )
+
+    def _get_default_chunk_shape(self, chunk_mb):
+        """Shape is either one frame or a subset: scaled frame size but with all pixel colors"""
+        return self._fit_frames_to_size(chunk_mb)
+
+    def _get_default_buffer_shape(self, buffer_gb):
+        """Buffer shape is a multiple of frame shape along the frame dimension."""
+        assert buffer_gb >= self._full_frame_size_mb / 1e3, f"provide buffer size >= {self._full_frame_size_mb/1e3} GB"
+        return self._fit_frames_to_size(buffer_gb * 1e3)
+
+    def _fit_frames_to_size(self, size_mb):
+        """Finds the number of frames which fit size_mb and returns the full frame shape."""
+        frames_count = self._scale_shape_to_size(
+            size_mb=size_mb,
+            shape=self._full_frame_shape[:1],
+            size=self._full_frame_size_mb,
+            max_shape=self._maxshape[:1],
+        )
+        return frames_count + tuple(self._maxshape[1:])
+
+    @staticmethod
+    def _scale_shape_to_size(size_mb, shape, size, max_shape):
+        """Given the shape and size of array, return shape that will fit size_mb."""
+        k = np.floor((size_mb / size) ** (1 / len(shape)))
+        return tuple([min(max(int(x), shape[j]), max_shape[j]) for j, x in enumerate(k * np.array(shape))])
+
+    def _get_frame_details(self):
+        """Get frame shape and size in MB"""
+        frame_shape = (1, *self.video_capture_ob.get_frame_shape())
+        min_frame_size_mb = (np.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
+        return min_frame_size_mb, frame_shape
+
+    def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+        start_frame = selection[0].start
+        end_frame = selection[0].stop
+        frames = np.empty(shape=[end_frame - start_frame, *self._maxshape[1:]])
+        for frame_number in range(end_frame - start_frame):
+            frames[frame_number] = next(self.video_capture_ob)
+        return frames
+
+    def _get_dtype(self):
+        return self.video_capture_ob.get_movie_frame_dtype()
+
+    def _get_maxshape(self):
+        return (self.video_capture_ob.get_movie_frame_count(), *self.video_capture_ob.get_frame_shape())
