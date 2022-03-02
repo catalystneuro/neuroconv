@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from hdmf.data_utils import GenericDataChunkIterator
 
-from ....utils.json_schema import FilePathType
+from ....utils import FilePathType
 
 
 try:
