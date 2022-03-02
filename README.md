@@ -25,7 +25,8 @@ To install the latest stable release of **nwb-conversion-tools** though PyPI, ty
 pip install nwb-conversion-tools
 ```
 
-For more flexibility we recommend installing the latest version directly from GitHub. The following commands will create an environment with all the required dependencies and the latest updates.
+For more flexibility we recommend installing the latest version directly from GitHub. The following commands create an environment with all the required dependencies and the latest updates:
+
 ```shell
 git clone https://github.com/catalystneuro/nwb-conversion-tools
 cd nwb-conversion-tools
@@ -34,7 +35,7 @@ conda activate nwb_conversion_env
 ```
 Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs). 
 
-Finally, if you prefer to avoid conda altogether the following will provide a clean installation in the current environment.
+Finally, if you prefer to avoid `conda` altogether, the following commands provide a clean installation within the current environment:
 ```shell
 git clone https://github.com/catalystneuro/nwb-conversion-tools
 pip install . 
@@ -90,16 +91,46 @@ Utilizing the CED recording interface, this project paired ecephys channels with
 
 # For Developers
 ## Running GIN tests locally
-`nwb-conversion-tools` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality. [Datalad](https://www.datalad.org/) (`conda install datalad`) is recommended for this; simply call
+`nwb-conversion-tools` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality. 
 
-```datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data```
+### Install testing dependencies
+We provide two easy ways of install all the dependencies required for testing:
 
+1) The first is a `conda` based solution that creates an environment with all the dependencies already installed.
+
+```shell
+git clone https://github.com/catalystneuro/nwb-conversion-tools
+cd nwb-conversion-tools
+conda env create -f make_env_testing.yml
+conda activate nwb_conversion_testing_env
+```
+
+Note that this will also install `datalad` which is the endorsed way of downloading the testing data plus `pytest` and `pytest-cov` which are the tools that we use on our continuous integration suit. 
+
+2) The same can be accomplished by using `pip`. In a clean environment run:
+
+```shell
+git clone https://github.com/catalystneuro/nwb-conversion-tools
+cd nwb-conversion-tools
+pip install .[test_full]]
+```
+
+Notice that this method does not install `datalad`.
+### Downloading the data
+[Datalad](https://www.datalad.org/) (`conda install datalad`) is the recommended way for downloading the data. To do this; simply call:
+
+```shell
+datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+```
 to install the `ecephys` data, and
 
-```datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data```
-
+```shell
+datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+```
 for `ophys` data.
 
+
+### Test configuration file
 Once the data is downloaded to your system, you must manually modify the [config file](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/tests/test_on_data/gin_test_config.json) located in `./tests/test_on_data/gin_test_config.json` so its corresponding `LOCAL_PATH` key points to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
 
 The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=true` in the same `gin_test_config.json` file mentioned in the last paragraph and modify the variable `OUTPUT_PATH` in the respective test if necessary.
