@@ -15,8 +15,8 @@ lxml==4.6.5
 opencv-python==4.5.1.48
 spikeextractors==0.9.9
 spikeinterface==0.93.0
-neo @ git+https://github.com/neuralensemble/python-neo.git@13ee22ffe5c9131a504b8bfa0f6a2c68fd4f6423
-roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@875edc50e4cc392974c21e687199eb5349456af7
+neo==0.10.0
+roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@1281b0da545d22ba7e8e8eb2ed0b3d119a529cc5
 ndx-events==0.2.0
 parameterized==0.8.1
 pyintan==0.3.0

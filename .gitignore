@@ -46,7 +46,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
-tests/test_on_data/gin_test_config.json
+*.json
 
 # Translations
 *.mo
