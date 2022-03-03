@@ -112,7 +112,7 @@ Note that this will also install `datalad` which is the endorsed way of download
 ```shell
 git clone https://github.com/catalystneuro/nwb-conversion-tools
 cd nwb-conversion-tools
-pip install .[test_full]]
+pip install .[test_full]
 ```
 
 Notice that this method does not install `datalad`.
