@@ -6,7 +6,7 @@ from warnings import warn
 from pynwb import NWBFile
 from pynwb.file import Subject
 
-from .json_schema import dict_deep_update
+from ..utils import dict_deep_update
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):

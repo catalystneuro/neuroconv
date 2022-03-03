@@ -21,8 +21,8 @@ from pynwb.ophys import (
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..utils.json_schema import dict_deep_update, FilePathType
-from ..utils.nwbfile_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from ...utils import FilePathType, dict_deep_update
 
 
 # TODO: This function should be refactored, but for now seems necessary to avoid errors in tests

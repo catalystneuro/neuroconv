@@ -6,14 +6,14 @@ from typing import Optional
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from .utils.nwbfile_tools import get_default_nwbfile_metadata, make_nwbfile_from_metadata
-from .utils.json_schema import (
+from .tools.nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata
+from .utils import (
     get_schema_from_hdmf_class,
     get_schema_for_NWBFile,
     dict_deep_update,
     get_base_schema,
-    fill_defaults,
     unroot_schema,
+    fill_defaults,
 )
 
 
@@ -81,7 +81,6 @@ class NWBConverter:
         for data_interface in self.data_interface_objects.values():
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
-
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
@@ -149,28 +148,23 @@ class NWBConverter:
             metadata = self.get_metadata()
         if conversion_options is None:
             conversion_options = self.get_conversion_options()
-
         self.validate_metadata(metadata=metadata)
         self.validate_conversion_options(conversion_options=conversion_options)
         if save_to_file:
             load_kwargs = dict(path=nwbfile_path)
             if nwbfile_path is None:
                 raise TypeError("A path to the output file must be provided, but nwbfile_path got value None")
-
             if Path(nwbfile_path).is_file() and not overwrite:
                 load_kwargs.update(mode="r+", load_namespaces=True)
             else:
                 load_kwargs.update(mode="w")
-
             with NWBHDF5IO(**load_kwargs) as io:
                 if load_kwargs["mode"] == "r+":
                     nwbfile = io.read()
                 elif nwbfile is None:
                     nwbfile = make_nwbfile_from_metadata(metadata=metadata)
-
                 for interface_name, data_interface in self.data_interface_objects.items():
                     data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
-
                 io.write(nwbfile)
             print(f"NWB file saved at {nwbfile_path}!")
         else:

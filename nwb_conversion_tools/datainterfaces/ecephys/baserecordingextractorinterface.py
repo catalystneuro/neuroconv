@@ -11,13 +11,12 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
-from ...utils.json_schema import (
+from ...tools.spikeinterface import write_recording
+from ...utils import (
     get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
     get_base_schema,
     OptionalFilePathType,
 )
-from ...utils.spike_interface import write_recording
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
@@ -88,17 +87,14 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             num_frames = 100
             end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
             kwargs.update(end_frame=end_frame)
-
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
-
         if isinstance(self.recording_extractor, se.RecordingExtractor):
             recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
         elif isinstance(self.recording_extractor, si.BaseRecording):
             recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         else:
             raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")
-
         return recording_extractor
 
     def run_conversion(
@@ -171,7 +167,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
-
         write_recording(
             recording=recording,
             nwbfile=nwbfile,

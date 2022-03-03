@@ -12,8 +12,8 @@ from pynwb.behavior import Position, SpatialSeries
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ....basedatainterface import BaseDataInterface
-from ....utils.json_schema import get_schema_from_method_signature, FilePathType
-from ....utils.nwbfile_tools import get_module
+from ....tools.nwb_helpers import get_module
+from ....utils import get_schema_from_method_signature, FilePathType
 
 
 # Helper functions for AxonaRecordingExtractorInterface
@@ -46,7 +46,6 @@ def parse_generic_header(file_path: FilePathType, params: Union[list, set]):
             key = parts[0]
             if params is None or key in params:
                 header[key] = " ".join(parts[1:])
-
     return header
 
 
@@ -61,7 +60,6 @@ def read_axona_iso_datetime(set_file: FilePathType):
                 date_string = line[len("trial_date") + 1 :].replace("\n", "")
             if line.startswith("trial_time"):
                 time_string = line[len("trial_time") + 1 :].replace("\n", "")
-
     return dateutil.parser.parse(date_string + " " + time_string).isoformat()
 
 
@@ -360,7 +358,6 @@ def get_position_object(file_path: FilePathType):
         position_data = read_bin_file_position_data(file_path)
     else:
         position_data = read_pos_file_position_data(file_path)
-
     position_timestamps = position_data[:, 0]
 
     for ichan in range(0, position_data.shape[1]):
@@ -372,7 +369,6 @@ def get_position_object(file_path: FilePathType):
             reference_frame="start of raw acquisition (.bin file)",
         )
         position.add_spatial_series(spatial_series)
-
     return position
 
 
@@ -447,7 +443,6 @@ def read_eeg_file_lfp_data(file_path: FilePathType):
     if str(file_path).split(".")[1][0:3] == "egf":
         lfp_dtype = ">i2"
         num_bytes = num_bytes // 2
-
     eeg_data = np.memmap(
         filename=file_path,
         dtype=lfp_dtype,
@@ -510,7 +505,6 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType):
         sampling_rates.add(get_eeg_sampling_frequency(parent_path / fname))
 
         eeg_memmaps.append(read_eeg_file_lfp_data(parent_path / fname))
-
     assert len(sampling_rates) < 2, "File headers specify different sampling rates. Cannot combine EEG data."
 
     eeg_data = np.concatenate(eeg_memmaps, axis=0)

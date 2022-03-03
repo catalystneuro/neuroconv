@@ -1,7 +1,7 @@
 from roiextractors import Hdf5ImagingExtractor
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils.json_schema import FilePathType, FloatType, ArrayType
+from ....utils import FilePathType, FloatType, ArrayType
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):

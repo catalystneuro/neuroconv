@@ -1,11 +1,13 @@
+import os
 import shutil
 import unittest
 import tempfile
+from datetime import datetime
+
 import numpy as np
 from pynwb import NWBHDF5IO
-import os
+
 from nwb_conversion_tools import NWBConverter, MovieInterface
-from datetime import datetime
 
 try:
     import cv2

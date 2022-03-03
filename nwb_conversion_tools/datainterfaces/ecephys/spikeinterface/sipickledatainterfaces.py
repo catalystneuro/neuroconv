@@ -3,7 +3,7 @@ from spikeextractors import load_extractor_from_pickle
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import FilePathType
+from ....utils import FilePathType
 
 
 class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):

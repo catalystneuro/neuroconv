@@ -5,7 +5,7 @@ import spikeextractors as se
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import get_schema_from_hdmf_class, FilePathType
+from ....utils import get_schema_from_hdmf_class, FilePathType
 
 try:
     from pyintan.intan import read_rhd, read_rhs
@@ -42,13 +42,11 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor.set_channel_property(
                 channel_id=channel_id, property_name="group_name", value=f"Group{channel_group}"
             )
-
         if len(unique_group_names) > 1:
             for channel_id, group_electrode_number in zip(channel_ids, group_electrode_numbers):
                 self.recording_extractor.set_channel_property(
                     channel_id=channel_id, property_name="group_electrode_number", value=group_electrode_number
                 )
-
         custom_names = [channel["custom_channel_name"] for channel in valid_channels]
         if any(custom_names):
             for channel_id, custom_name in zip(channel_ids, custom_names):

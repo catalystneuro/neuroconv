@@ -6,7 +6,7 @@ from packaging import version
 from spikeextractors import CEDRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature, FilePathType
+from ....utils import get_schema_from_method_signature, FilePathType
 
 HAVE_SONPY = True
 try:

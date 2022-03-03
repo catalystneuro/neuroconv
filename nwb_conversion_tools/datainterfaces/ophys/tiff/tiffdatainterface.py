@@ -1,7 +1,7 @@
 from roiextractors import TiffImagingExtractor
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils.json_schema import FilePathType, FloatType, ArrayType
+from ....utils import FilePathType, FloatType, ArrayType
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):

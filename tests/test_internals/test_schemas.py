@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from nwb_conversion_tools import interface_list
-from nwb_conversion_tools.utils.json_schema import load_dict_from_file
+from nwb_conversion_tools.utils import load_dict_from_file
 
 
 @pytest.mark.parametrize("data_interface", interface_list)
