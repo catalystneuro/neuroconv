@@ -37,8 +37,7 @@ Note that this will install the package in [editable mode](https://pip.pypa.io/e
 
 Finally, if you prefer to avoid `conda` altogether, the following commands provide a clean installation within the current environment:
 ```shell
-git clone https://github.com/catalystneuro/nwb-conversion-tools
-pip install . 
+pip install git+https://github.com/catalystneuro/nwb-conversion-tools.git@master
 ```
 
 ## Dependencies
