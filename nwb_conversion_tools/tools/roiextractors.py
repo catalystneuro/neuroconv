@@ -230,9 +230,7 @@ def write_imaging(
     nwbfile: NWBFile
         Required if a save_path is not specified. If passed, this function
         will fill the relevant fields within the nwbfile. E.g., calling
-        roiextractors.NwbImagingExtractor.write_imaging(
-            my_imaging_extractor, my_nwbfile
-        )
+        write_imaging(my_imaging_extractor, my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
     metadata: dict
         metadata info for constructing the nwb file (optional).
