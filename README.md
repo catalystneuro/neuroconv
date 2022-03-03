@@ -94,7 +94,7 @@ Utilizing the CED recording interface, this project paired ecephys channels with
 `nwb-conversion-tools` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality. 
 
 ### Install testing dependencies
-We provide two easy ways of install all the dependencies required for testing:
+We provide two easy ways of installing all the dependencies required for testing:
 
 1) The first is a `conda` based solution that creates an environment with all the dependencies already installed.
 
