@@ -9,10 +9,12 @@ with open(os.path.join(path, "README.md")) as f:
 with open(os.path.join(path, "requirements-minimal.txt")) as f:
     install_requires = f.read().strip().split("\n")
 with open(os.path.join(path, "requirements-full.txt")) as f:
-    test_requires = f.read().strip().split("\n")
-test_requires += ["pytest", "pytest-cov"]
+    full_dependencies = f.read().strip().split("\n")
+
+testing_suite_dependencies = ["pytest", "pytest-cov", "parameterized"]
+testing_requires = full_dependencies + testing_suite_dependencies
 extras_require = {
-    "test_full": test_requires,
+    "test_full": testing_requires,
 }
 setup(
     name="nwb-conversion-tools",
