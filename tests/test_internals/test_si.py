@@ -638,12 +638,13 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
                 assert nwb.electrodes["channel_name"][id] == expected_channel_names[id]
 
 
-            # The re writing of the nwbfile works as expected
+            # Test extension of the same property for the new channels
             for id in [0, 1, 2, 3]:
                 assert nwb.electrodes["property"][id] == "value_before_rewrite"
             for id in [4, 5]:
                 assert nwb.electrodes["property"][id] == "value_after_rewrite"
                 
+            # Test property addition for the for the second recording
             for id in nwb.electrodes.id[:]:
                 assert nwb.electrodes["property2"][id] == "second_recoder_property" 
                 
