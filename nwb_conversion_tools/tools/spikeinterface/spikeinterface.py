@@ -375,9 +375,9 @@ def add_electrodes(
 
     for data_index, channel_name in enumerate(channel_name_array):
         if channel_name not in channel_names_in_electrodes_table:
-            # id = data_index + len(channel_names_in_electrodes_table)
             electrode_kwargs = dict(default_updated)
             # electrode_kwargs.update(id=id)
+            # id = data_index + len(channel_names_in_electrodes_table)
 
             for name, desc in elec_columns.items():
                 if name == "group_name":
@@ -423,6 +423,7 @@ def add_electrodes(
         if data_type_found == Real:
             extended_data = [float(_) for _ in extended_data]
         cols_args["data"] = extended_data
+        
         nwbfile.add_electrode_column(col_name, **cols_args)
 
     assert (
