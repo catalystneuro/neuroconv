@@ -614,6 +614,10 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
         values_after_rewrite = ["value_after_rewrite" for _ in range(num_channels)]
         self.RX_non_int_channels2.set_property("property", values=values_after_rewrite)
 
+        # Add a property only for two
+        property_value = ["second_recoder_property" for _ in range(num_channels)]
+        self.RX_non_int_channels2.set_property("property2", values=property_value)
+
         # Write
         write_recording(
             recording=self.RX_non_int_channels1, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1"
@@ -633,12 +637,15 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
             for id in nwb.electrodes.id[:]:
                 assert nwb.electrodes["channel_name"][id] == expected_channel_names[id]
 
+
             # The re writing of the nwbfile works as expected
             for id in [0, 1, 2, 3]:
                 assert nwb.electrodes["property"][id] == "value_before_rewrite"
             for id in [4, 5]:
                 assert nwb.electrodes["property"][id] == "value_after_rewrite"
-
-
+                
+            for id in nwb.electrodes.id[:]:
+                assert nwb.electrodes["property2"][id] == "second_recoder_property" 
+                
 if __name__ == "__main__":
     unittest.main()
