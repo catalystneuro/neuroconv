@@ -583,7 +583,7 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
         self.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
 
     def tearDown(self):
-        del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
+        del self.RX
         shutil.rmtree(self.test_dir)
 
     def test_non_ints_as_channel_ids(self):
