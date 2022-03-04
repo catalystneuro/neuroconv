@@ -642,7 +642,7 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
                 assert nwb.electrodes["property"][id] == "value_before_rewrite"
             for id in [4, 5]:
                 assert nwb.electrodes["property"][id] == "value_after_rewrite"
-                
+
             # Test addition of new property for the second recording
             for id in nwb.electrodes.id[:]:
                 assert nwb.electrodes["property2"][id] == "second_recoder_property"
