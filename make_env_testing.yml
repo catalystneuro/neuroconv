@@ -6,4 +6,4 @@ dependencies:
 - datalad
 - pip
 - pip:
-  - -e .[test_full]
+  - -e .[test, full]
