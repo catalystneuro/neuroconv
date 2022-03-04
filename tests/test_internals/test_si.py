@@ -6,6 +6,9 @@ import numpy as np
 from datetime import datetime
 
 import spikeextractors as se
+from spikeinterface.core.testing_tools import generate_recording
+
+
 from spikeextractors.testing import (
     check_sortings_equal,
     check_recordings_equal,
@@ -160,11 +163,7 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="raw",
-            es_key="ElectricalSeries_raw",
+            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -174,11 +173,7 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -574,6 +569,62 @@ class TestWriteElectrodes(unittest.TestCase):
                 else:
                     assert nwb.electrodes["group_name"][i] == "M1"
                     assert nwb.electrodes["group"][i].description == "M1 description"
+
+
+class TestSpikeInterfaceRecorders(unittest.TestCase):
+    def setUp(self):
+
+        self.test_dir = tempfile.mkdtemp()
+        self.path1 = self.test_dir + "/test_electrodes1.nwb"
+
+        self.nwbfile1 = NWBFile("session_description1", "file_id1", datetime.now())
+
+        self.RX1 = generate_recording(num_channels=4, durations=[3])
+        self.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
+
+    def tearDown(self):
+        del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
+        shutil.rmtree(self.test_dir)
+
+    def test_non_ints_as_channel_ids(self):
+
+        channel_ids = self.RX1.get_channel_ids()
+        num_channels = self.RX1.get_num_channels()
+        non_int_channel_ids1 = ["a", "b", "c", "d"]
+        non_int_channel_ids2 = ["c", "d", "e", "f"]
+
+        self.RX_non_int_channels1 = self.RX1.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=non_int_channel_ids1
+        )
+        self.RX_non_int_channels2 = self.RX1.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=non_int_channel_ids2
+        )
+
+        values_before_rewrite = ["value_before_rewrite" for _ in range(num_channels)]
+        self.RX_non_int_channels1.set_property("property", values=values_before_rewrite)
+
+        values_after_rewrite = ["value_after_rewrite" for _ in range(num_channels)]
+        self.RX_non_int_channels2.set_property("property", values=values_after_rewrite)
+
+        # Write
+        write_recording(
+            recording=self.RX_non_int_channels1, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1"
+        )
+        # Re-write
+        write_recording(
+            recording=self.RX_non_int_channels2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
+        )
+
+        with NWBHDF5IO(str(self.path1), "w") as io:
+            io.write(self.nwbfile1)
+        with NWBHDF5IO(str(self.path1), "r") as io:
+            nwb = io.read()
+
+            # First we test the channel names are assigned in the written order
+            expected_channel_names = ["a", "b", "c", "d", "e", "f"]
+            electrode_table_ids = nwb.electrodes.id[:]
+            for id in electrode_table_ids:
+                assert nwb.electrodes["channel_names"][id] == expected_channel_names[id]
 
 
 if __name__ == "__main__":
