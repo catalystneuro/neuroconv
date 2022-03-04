@@ -622,8 +622,7 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
 
             # First we test the channel names are assigned in the written order
             expected_channel_names = ["a", "b", "c", "d", "e", "f"]
-            electrode_table_ids = nwb.electrodes.id[:]
-            for id in electrode_table_ids:
+            for id in nwb.electrodes.id[:]:
                 assert nwb.electrodes["channel_names"][id] == expected_channel_names[id]
                 
             # The re writing of the nwbfile works as expected
