@@ -379,7 +379,7 @@ def add_electrodes(
             # electrode_kwargs.update(id=id)
             # id = data_index + len(channel_names_in_electrodes_table)
             # Trigger
-            
+
             for name, desc in elec_columns.items():
                 if name == "group_name":
                     group_name = str(desc["data"][data_index])
