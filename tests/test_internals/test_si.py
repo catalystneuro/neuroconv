@@ -163,7 +163,11 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
+            recording=self.RX,
+            save_path=path_multi,
+            metadata=metadata,
+            write_as="raw",
+            es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -173,7 +177,11 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
+            recording=self.RX3,
+            save_path=path_multi,
+            metadata=metadata,
+            write_as="lfp",
+            es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -624,12 +632,12 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
             expected_channel_names = ["a", "b", "c", "d", "e", "f"]
             for id in nwb.electrodes.id[:]:
                 assert nwb.electrodes["channel_name"][id] == expected_channel_names[id]
-                
+
             # The re writing of the nwbfile works as expected
             for id in [0, 1, 2, 3]:
                 assert nwb.electrodes["property"][id] == "value_before_rewrite"
             for id in [4, 5]:
-                assert nwb.electrodes["property"][id] == 'value_after_rewrite'
+                assert nwb.electrodes["property"][id] == "value_after_rewrite"
 
 
 if __name__ == "__main__":
