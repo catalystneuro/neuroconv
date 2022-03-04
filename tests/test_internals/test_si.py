@@ -637,15 +637,15 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
             for id in nwb.electrodes.id[:]:
                 assert nwb.electrodes["channel_name"][id] == expected_channel_names[id]
 
-
             # The re writing of the nwbfile works as expected
             for id in [0, 1, 2, 3]:
                 assert nwb.electrodes["property"][id] == "value_before_rewrite"
             for id in [4, 5]:
                 assert nwb.electrodes["property"][id] == "value_after_rewrite"
-                
+
             for id in nwb.electrodes.id[:]:
-                assert nwb.electrodes["property2"][id] == "second_recoder_property" 
-                
+                assert nwb.electrodes["property2"][id] == "second_recoder_property"
+
+
 if __name__ == "__main__":
     unittest.main()
