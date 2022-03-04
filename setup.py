@@ -10,7 +10,7 @@ with open(os.path.join(path, "requirements-minimal.txt")) as f:
     install_requires = f.readlines()
 with open(os.path.join(path, "requirements-full.txt")) as f:
     full_dependencies = f.readlines()
-testing_suite_dependencies = ["pytest", "pytest-cov", "parameterized"]
+testing_suite_dependencies = ["pytest", "pytest-cov", "parameterized", "ndx-events"]
 extras_require = dict(full=full_dependencies, test=testing_suite_dependencies)
 setup(
     name="nwb-conversion-tools",
