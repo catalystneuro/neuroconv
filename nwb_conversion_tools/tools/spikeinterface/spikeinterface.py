@@ -376,9 +376,6 @@ def add_electrodes(
     for data_index, channel_name in enumerate(channel_name_array):
         if channel_name not in channel_names_in_electrodes_table:
             electrode_kwargs = dict(default_updated)
-            # electrode_kwargs.update(id=id)
-            # id = data_index + len(channel_names_in_electrodes_table)
-            # Trigger
             
             for name, desc in elec_columns.items():
                 if name == "group_name":
