@@ -333,7 +333,9 @@ def add_electrodes(
     # Add the property of channel name
     channel_name_array = checked_recording.get_channel_ids()
     elec_columns["channel_name"].update(
-        description="a string named referencefor the channel", data=channel_name_array, index=False,
+        description="a string named referencefor the channel",
+        data=channel_name_array,
+        index=False,
     )
 
     # Fill with provided custom descriptions
@@ -387,7 +389,15 @@ def add_electrodes(
                             f"Electrode group {group_name} for electrode {channel_name} was not "
                             "found in the nwbfile! Automatically adding."
                         )
-                        missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=[dict(name=group_name,)]))
+                        missing_group_metadata = dict(
+                            Ecephys=dict(
+                                ElectrodeGroup=[
+                                    dict(
+                                        name=group_name,
+                                    )
+                                ]
+                            )
+                        )
                         add_electrode_groups(
                             recording=checked_recording, nwbfile=nwbfile, metadata=missing_group_metadata
                         )
@@ -600,7 +610,10 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
     if iterator_type is None or iterator_type == "v2":
         ephys_data = SpikeInterfaceRecordingDataChunkIterator(
-            recording=checked_recording, segment_index=segment_index, return_scaled=write_scaled, **iterator_opts,
+            recording=checked_recording,
+            segment_index=segment_index,
+            return_scaled=write_scaled,
+            **iterator_opts,
         )
     elif iterator_type == "v1":
         if isinstance(checked_recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
