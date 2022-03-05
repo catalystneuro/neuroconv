@@ -1,7 +1,6 @@
 """Author: Cody Baker."""
 import uuid
 import warnings
-from matplotlib.pyplot import fill
 import numpy as np
 import distutils.version
 from pathlib import Path
