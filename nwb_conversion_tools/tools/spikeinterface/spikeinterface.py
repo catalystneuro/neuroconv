@@ -367,6 +367,10 @@ def add_electrodes(
         _ = elec_columns.pop(name)
 
     channel_name_array = checked_recording.get_channel_ids()
+    # If the channel ids are integer keep the old behavior of asigning electrodes.ids equal to channel_ids
+    if np.issubdtype(channel_name_array.dtype, np.integer):
+        elec_columns["id"].update(data=channel_name_array)
+
     channel_names_in_electrodes_table = []
     if "channel_name" in nwbfile.electrodes.colnames:
         channel_names_in_electrodes_table += np.array(nwbfile.electrodes["channel_name"].data).tolist()
@@ -374,7 +378,6 @@ def add_electrodes(
     for data_index, channel_name in enumerate(channel_name_array):
         if channel_name not in channel_names_in_electrodes_table:
             electrode_kwargs = dict(default_updated)
-            # removed update of id
 
             for name, desc in elec_columns.items():
                 if name == "group_name":
@@ -568,7 +571,13 @@ def add_electrical_series(
             eseries_kwargs["name"] not in nwbfile.processing["ecephys"].data_interfaces["LFP"].electrical_series
         ), f"LFP ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
 
-    channel_indices = checked_recording.ids_to_indices(checked_recording.get_channel_ids())
+    # Indexes by channel ids if they are integer or by indices otherwise.
+    channel_name_array = checked_recording.get_channel_ids()
+    if np.issubdtype(channel_name_array.dtype, np.integer):
+        channel_indices = channel_name_array
+    else:
+        channel_indices = checked_recording.ids_to_indices()
+
     table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_indices]
 
     electrode_table_region = nwbfile.create_electrode_table_region(
