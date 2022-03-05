@@ -586,7 +586,7 @@ def add_electrical_series(
     if np.issubdtype(channel_name_array.dtype, np.integer):
         channel_indices = channel_name_array
     else:
-        channel_indices = checked_recording.ids_to_indices()
+        channel_indices = checked_recording.ids_to_indices(channel_name_array)
 
     table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_indices]
 
