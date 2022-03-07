@@ -635,17 +635,17 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
             # First we test the channel names are assigned in the written order
             expected_channel_names = ["a", "b", "c", "d", "e", "f"]
             for id in nwb.electrodes.id[:]:
-                assert nwb.electrodes["channel_name"][id] == expected_channel_names[id]
+                self.assertEqual(nwb.electrodes["channel_name"][id], expected_channel_names[id])
 
             # Test extension of the same property for the new channels
             for id in [0, 1, 2, 3]:
-                assert nwb.electrodes["property"][id] == "value_before_rewrite"
+                self.assertEqual(nwb.electrodes["property"][id], "value_before_rewrite")
             for id in [4, 5]:
-                assert nwb.electrodes["property"][id] == "value_after_rewrite"
+                self.assertEqual(nwb.electrodes["property"][id], "value_after_rewrite")
 
             # Test addition of new property for the second recording
             for id in [2, 3, 4, 5]:
-                assert nwb.electrodes["property2"][id] == "second_recoder_property"
+                self.assertEqual(nwb.electrodes["property2"][id], "second_recoder_property")
 
 
 if __name__ == "__main__":
