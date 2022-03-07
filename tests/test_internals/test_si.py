@@ -163,11 +163,7 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="raw",
-            es_key="ElectricalSeries_raw",
+            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -177,11 +173,7 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -627,25 +619,23 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
             recording=self.RX_non_int_channels2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
         )
 
-        with NWBHDF5IO(str(self.path1), "w") as io:
-            io.write(self.nwbfile1)
-        with NWBHDF5IO(str(self.path1), "r") as io:
-            nwb = io.read()
+        nwb = self.nwbfile1
+        # First we test the channel names are assigned in the written order
+        expected_channel_names = ["a", "b", "c", "d", "e", "f"]
+        for id in nwb.electrodes.id[:]:
+            self.assertEqual(nwb.electrodes["channel_name"][id], expected_channel_names[id])
 
-            # First we test the channel names are assigned in the written order
-            expected_channel_names = ["a", "b", "c", "d", "e", "f"]
-            for id in nwb.electrodes.id[:]:
-                self.assertEqual(nwb.electrodes["channel_name"][id], expected_channel_names[id])
+        # Test extension of the same property for the new channels
+        for id in [0, 1, 2, 3]:
+            self.assertEqual(nwb.electrodes["property"][id], "value_before_rewrite")
+        for id in [4, 5]:
+            self.assertEqual(nwb.electrodes["property"][id], "value_after_rewrite")
 
-            # Test extension of the same property for the new channels
-            for id in [0, 1, 2, 3]:
-                self.assertEqual(nwb.electrodes["property"][id], "value_before_rewrite")
-            for id in [4, 5]:
-                self.assertEqual(nwb.electrodes["property"][id], "value_after_rewrite")
-
-            # Test addition of new property for the second recording
-            for id in [2, 3, 4, 5]:
-                self.assertEqual(nwb.electrodes["property2"][id], "second_recoder_property")
+        # Test addition of new property for the second recording
+        for id in [0, 1]:
+            self.assertEqual(nwb.electrodes["property2"][id], "")
+        for id in [2, 3, 4, 5]:
+            self.assertEqual(nwb.electrodes["property2"][id], "second_recoder_property")
 
 
 if __name__ == "__main__":
