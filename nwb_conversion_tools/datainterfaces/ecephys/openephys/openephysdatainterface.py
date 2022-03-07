@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature, FolderPathType
+from ....utils import get_schema_from_method_signature, FolderPathType
 
 
 class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):

@@ -4,20 +4,11 @@ from importlib import import_module
 from itertools import chain
 from jsonschema import validate, RefResolver
 
-from pynwb import NWBFile
-import numpy as np
 from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
-from .json_schema import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
-from ..nwbconverter import NWBConverter
-
-
-def check_regular_timestamps(ts):
-    """Check whether rate should be used instead of timestamps."""
-    time_tol_decimals = 9
-    uniq_diff_ts = np.unique(np.diff(ts).round(decimals=time_tol_decimals))
-    return len(uniq_diff_ts) == 1
+from ...nwbconverter import NWBConverter
+from ...utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
 
 
 def run_conversion_from_yaml(
@@ -50,9 +41,8 @@ def run_conversion_from_yaml(
         output_folder = Path(specification_file_path).parent
     else:
         output_folder = Path(output_folder)
-
     specification = load_dict_from_file(file_path=specification_file_path)
-    schema_folder = Path(__file__).parent.parent / "schemas"
+    schema_folder = Path(__file__).parent.parent.parent / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
     validate(
         instance=specification,
@@ -83,7 +73,6 @@ def run_conversion_from_yaml(
             )
             for data_interface_name in data_interfaces_names_chain:
                 data_interface_classes.update({data_interface_name: getattr(nwb_conversion_tools, data_interface_name)})
-
             CustomNWBConverter = type(
                 "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
             )
@@ -92,12 +81,10 @@ def run_conversion_from_yaml(
             for interface_name, interface_source_data in session["source_data"].items():
                 for key, value in interface_source_data.items():
                     source_data[interface_name].update({key: str(Path(data_folder) / value)})
-
             converter = CustomNWBConverter(source_data=source_data)
             metadata = converter.get_metadata()
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
                 metadata = dict_deep_update(metadata, metadata_source)
-
             nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
             converter.run_conversion(
                 nwbfile_path=output_folder / f"{nwbfile_name}.nwb",
@@ -105,7 +92,6 @@ def run_conversion_from_yaml(
                 overwrite=overwrite,
                 conversion_options=session.get("conversion_options", dict()),
             )
-
     # To properly mimic a true dandi organization, the full directory must be populated with NWBFiles.
     all_nwbfile_paths = [nwbfile_path for nwbfile_path in output_folder.iterdir() if nwbfile_path.suffix == ".nwb"]
     if any(["temp_nwbfile_name_" in nwbfile_path.stem for nwbfile_path in all_nwbfile_paths]):
@@ -123,57 +109,3 @@ def run_conversion_from_yaml(
                     dandi_filename != ".nwb"
                 ), f"Not enough metadata available to assign name to {str(named_dandi_metadata['path'])}!"
                 named_dandi_metadata["path"].rename(str(output_folder / dandi_filename))
-
-
-def add_devices(nwbfile=None, data_type: str = "Ecephys", metadata: dict = None):
-    """
-    Adds device information to nwbfile object.
-    Will always ensure nwbfile has at least one device, but multiple
-    devices within the metadata list will also be created.
-    Parameters
-    ----------
-    nwbfile: NWBFile
-        nwb file to which the new device information is to be added
-    data_type: str
-        Type of data recorded by device. Options:
-        - Ecephys (default)
-        - Icephys
-        - Ophys
-        - Behavior
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
-        Should be of the format
-            metadata['Ecephys']['Device'] = [
-                {
-                    'name': my_name,
-                    'description': my_description
-                },
-                ...
-            ]
-    Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
-    """
-    if nwbfile is not None:
-        assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-
-    assert data_type in [
-        "Ecephys",
-        "Icephys",
-        "Ophys",
-        "Behavior",
-    ], f"Invalid data_type {data_type} when creating device"
-
-    # Default Device metadata
-    defaults = dict(name="Device", description=f"{data_type}. Automatically generated.")
-
-    if metadata is None:
-        metadata = dict()
-
-    if data_type not in metadata:
-        metadata[data_type] = dict()
-
-    if "Device" not in metadata[data_type]:
-        metadata[data_type]["Device"] = [defaults]
-
-    for dev in metadata[data_type]["Device"]:
-        if dev.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **dev))

@@ -23,3 +23,4 @@ pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy>=1.7.1
 tiffile==2018.10.18
+nwbinspector==0.2.3

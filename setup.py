@@ -16,7 +16,7 @@ extras_require = {
 }
 setup(
     name="nwb-conversion-tools",
-    version="0.11.0",
+    version="0.11.1",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",

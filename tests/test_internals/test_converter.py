@@ -11,9 +11,8 @@ try:
     HAVE_NDX_EVENTS = True
 except ImportError:
     HAVE_NDX_EVENTS = False
-
-from nwb_conversion_tools.basedatainterface import BaseDataInterface
 from nwb_conversion_tools import NWBConverter
+from nwb_conversion_tools.basedatainterface import BaseDataInterface
 
 
 def test_converter():

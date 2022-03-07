@@ -2,7 +2,7 @@ from roiextractors import Suite2pSegmentationExtractor
 
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils.json_schema import FilePathType, IntType
+from ....utils import FilePathType, IntType
 
 
 class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):

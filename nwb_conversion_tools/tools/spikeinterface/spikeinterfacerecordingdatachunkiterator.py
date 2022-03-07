@@ -1,10 +1,10 @@
 """Authors: Cody Baker and Saksham Sharda."""
-from typing import Tuple, Iterable, Union, Optional
+from typing import Tuple, Iterable, Optional, Union
 
-from spikeinterface import BaseRecording
 from spikeinterface.core.old_api_utils import OldToNewRecording
 from spikeextractors import RecordingExtractor
 from hdmf.data_utils import GenericDataChunkIterator
+from spikeinterface import BaseRecording
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 

@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod, ABC
 
-from .utils.json_schema import get_base_schema, get_schema_from_method_signature
+from .utils import get_base_schema, get_schema_from_method_signature
 
 
 class BaseDataInterface(ABC):

@@ -8,7 +8,7 @@ from pynwb.ecephys import ElectricalSeries
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import (
+from ....utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     FilePathType,
@@ -66,13 +66,11 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
-
         # Checks if data is raw or processed
         if int(self.file_path.suffix[-1]) >= 5:
             metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
         else:
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
-
         return metadata
 
     def run_conversion(
@@ -115,7 +113,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             write_as = "raw"
         elif write_as not in ["processed", "lfp"]:
             write_as = "processed"
-
         print(f"Converting Blackrock {write_as} traces...")
 
         super().run_conversion(

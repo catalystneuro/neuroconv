@@ -3,19 +3,19 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-import numpy as np
 import psutil
+import numpy as np
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
+from nwbinspector.utils import check_regular_series
 
-from ....basedatainterface import BaseDataInterface
-from ....utils.conversion_tools import check_regular_timestamps
-from ....utils.json_schema import get_schema_from_hdmf_class, get_base_schema
-from ....utils.nwbfile_tools import get_module
 from .movie_utils import VideoCaptureContext
+from ....basedatainterface import BaseDataInterface
+from ....tools.nwb_helpers import get_module
+from ....utils import get_schema_from_hdmf_class, get_base_schema
 
 
 class MovieInterface(BaseDataInterface):
@@ -135,7 +135,6 @@ class MovieInterface(BaseDataInterface):
             assert isinstance(starting_times, list) and all(
                 [isinstance(x, float) for x in starting_times]
             ), "Argument 'starting_times' must be a list of floats."
-
         image_series_kwargs_list = metadata.get("Behavior", dict()).get(
             "Movies", self.get_metadata()["Behavior"]["Movies"]
         )
@@ -172,7 +171,6 @@ class MovieInterface(BaseDataInterface):
                 starting_times = [0.0]
             else:
                 raise ValueError("provide starting times as a list of len " f"{len(image_series_kwargs_list_updated)}")
-
         for j, (image_series_kwargs, file_list) in enumerate(zip(image_series_kwargs_list_updated, file_paths_list)):
             if external_mode:
                 with VideoCaptureContext(str(file_list[0])) as vc:
@@ -190,7 +188,6 @@ class MovieInterface(BaseDataInterface):
                         f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
                     )
                     chunk_data = True
-
                 with VideoCaptureContext(str(file)) as video_capture_ob:
                     if stub_test:
                         video_capture_ob.frame_count = 10
@@ -251,13 +248,11 @@ class MovieInterface(BaseDataInterface):
                         compression_opts=compression_options,
                         chunks=best_gzip_chunk,
                     )
-
                 image_series_kwargs.update(data=data)
-                if check_regular_timestamps(ts=timestamps):
+                if check_regular_series(series=timestamps):
                     image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
                 else:
                     image_series_kwargs.update(timestamps=timestamps)
-
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
             else:

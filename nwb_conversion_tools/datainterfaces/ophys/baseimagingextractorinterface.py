@@ -5,7 +5,7 @@ from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.roiextractors import write_imaging, get_nwb_imaging_metadata
-from ...utils.json_schema import (
+from ...utils import (
     get_schema_from_hdmf_class,
     fill_defaults,
     get_base_schema,

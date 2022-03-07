@@ -8,7 +8,7 @@ from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ....utils.json_schema import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
+from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
 
 
 def fetch_spikeglx_metadata(file_path: FilePathType, recording: RecordingExtractor, metadata: dict):
@@ -23,7 +23,6 @@ def fetch_spikeglx_metadata(file_path: FilePathType, recording: RecordingExtract
         session_start_time = datetime.fromisoformat(recording._meta["fileCreateTime"]).astimezone()
     if n_shanks > 1:
         raise NotImplementedError("SpikeGLX metadata for more than a single shank is not yet supported.")
-
     metadata["NWBFile"] = dict(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
 
     # Electrodes columns descriptions
@@ -48,7 +47,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=str(file_path))
         if stub_test:
             self.subset_channels = [0, 1]
-
         # Set electrodes properties
         for ch in self.recording_extractor.get_channel_ids():
             self.recording_extractor.set_channel_property(
@@ -96,7 +94,6 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
         super().__init__(file_path=str(file_path))
         if stub_test:
             self.subset_channels = [0, 1]
-
         # Set electrodes properties
         for ch in self.recording_extractor.get_channel_ids():
             self.recording_extractor.set_channel_property(

@@ -1,7 +1,7 @@
 from roiextractors import SbxImagingExtractor
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils.json_schema import FilePathType, FloatType
+from ....utils import FilePathType, FloatType
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):

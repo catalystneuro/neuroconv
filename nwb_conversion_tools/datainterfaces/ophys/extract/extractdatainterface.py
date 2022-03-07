@@ -1,7 +1,7 @@
 from roiextractors import ExtractSegmentationExtractor
 
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils.json_schema import FilePathType
+from ....utils import FilePathType
 
 
 class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):

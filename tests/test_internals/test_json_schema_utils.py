@@ -1,10 +1,10 @@
+import os
 import json
 from pathlib import Path
 from typing import Union
-import os
 from copy import deepcopy
 
-from nwb_conversion_tools.utils.json_schema import (
+from nwb_conversion_tools.utils import (
     get_schema_from_method_signature,
     dict_deep_update,
     fill_defaults,

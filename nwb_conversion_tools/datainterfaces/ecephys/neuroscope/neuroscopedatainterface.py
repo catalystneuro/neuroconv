@@ -11,7 +11,7 @@ from pynwb.ecephys import ElectricalSeries
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils.json_schema import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class
+from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class
 
 try:
     import lxml

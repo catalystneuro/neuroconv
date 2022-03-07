@@ -3,9 +3,10 @@ from typing import Tuple, Iterable
 
 import numpy as np
 from tqdm import tqdm
-
-from ....utils.json_schema import FilePathType
 from hdmf.data_utils import GenericDataChunkIterator
+
+from ....utils import FilePathType
+
 
 try:
     import cv2
