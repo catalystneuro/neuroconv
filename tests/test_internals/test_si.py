@@ -580,21 +580,23 @@ class TestWriteElectrodes(unittest.TestCase):
 
 
 class TestSpikeInterfaceRecorders(unittest.TestCase):
-    def setUpClass(self):
+    @classmethod
+    def setUpClass(cls):
 
-        self.test_dir = tempfile.mkdtemp()
-        self.path1 = self.test_dir + "/test_electrodes1.nwb"
+        cls.test_dir = tempfile.mkdtemp()
+        cls.path1 = cls.test_dir + "/test_electrodes1.nwb"
 
-        self.nwbfile1 = NWBFile("session_description1", "file_id1", datetime.now())
+        cls.nwbfile1 = NWBFile("session_description1", "file_id1", datetime.now())
 
-        self.RX1 = generate_recording(num_channels=4, durations=[3])
-        self.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
+        cls.RX1 = generate_recording(num_channels=4, durations=[3])
+        cls.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
+    
+    @classmethod
+    def tearDownClass(cls):
+        del cls.RX1
+        shutil.rmtree(cls.test_dir)
 
-    def tearDown(self):
-        del self.RX1
-        shutil.rmtree(self.test_dir)
-
-    def test_non_ints_as_channel_ids(self):
+    def test_non_ints_as_channel_ids_in_electrode_table(self):
 
         channel_ids = self.RX1.get_channel_ids()
         num_channels = self.RX1.get_num_channels()
