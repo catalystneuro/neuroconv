@@ -627,7 +627,6 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        del cls.RX1, cls.RX_non_int_channels1, cls.RX_non_int_channels2
         shutil.rmtree(cls.test_dir)
 
     def test_electrodes_channel_name_property_for_non_int_channel_ids(self):
