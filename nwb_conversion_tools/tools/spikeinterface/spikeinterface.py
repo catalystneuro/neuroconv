@@ -332,7 +332,7 @@ def add_electrodes(
     # Add channel names to properties.
     channel_name_array = checked_recording.get_channel_ids()
     elec_columns["channel_name"].update(
-        description="a string named referencefor the channel",
+        description="a string reference for the channel",
         data=channel_name_array,
         index=False,
     )
