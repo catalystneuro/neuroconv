@@ -329,7 +329,7 @@ def add_electrodes(
                 index = isinstance(data[0], (list, np.ndarray))
                 elec_columns[prop].update(description=prop, data=data, index=index)
 
-    # Add the property of channel name
+    # Add channel names to properties.
     channel_name_array = checked_recording.get_channel_ids()
     elec_columns["channel_name"].update(
         description="a string named referencefor the channel",
@@ -349,12 +349,13 @@ def add_electrodes(
         for colname in nwbfile.electrodes.colnames:
             if colname != "group":
                 sample_data = nwbfile.electrodes[colname].data[0]
+                # Find first matching data-type
                 matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
                 default_value = type_to_default_value[matching_type]
                 default_updated.update({colname: default_value})
     default_updated.update(defaults)
 
-    # Re-shape data to have as many entries as channels are available in the table
+    # Separate previously available properties from new properties.
     for name, des_dict in elec_columns.items():
         des_args = dict(des_dict)
         if name not in default_updated:
@@ -409,7 +410,7 @@ def add_electrodes(
 
             nwbfile.add_electrode(**electrode_kwargs)
 
-    # add columns for existing electrodes:
+    # Extended the table with columns for properties that were not previously in the table.
     channels_not_available_in_recorder = set(channel_names_in_electrodes_table).difference(set(channel_name_array))
     for col_name, cols_args in elec_columns_append.items():
         data = cols_args["data"]
@@ -421,10 +422,10 @@ def add_electrodes(
         default_value_extension = np.full(shape=len(channels_not_available_in_recorder), fill_value=default_value)
         extended_data = np.hstack([default_value_extension, data])
 
-        if matching_type == Real:
-            extended_data = extended_data.astype("float", copy=False)
+        # if matching_type == Real:
+        #     extended_data = extended_data.astype("float", copy=False)
+        
         cols_args["data"] = extended_data
-
         nwbfile.add_electrode_column(col_name, **cols_args)
 
     assert (
