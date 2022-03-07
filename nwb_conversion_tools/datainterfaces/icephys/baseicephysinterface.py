@@ -1,42 +1,48 @@
+"""Author: Luiz Tauffer."""
 from abc import ABC
-from typing import Union, Optional
-from pathlib import Path
+from typing import Optional
 
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
 from ...basedatainterface import BaseDataInterface
-from ...utils.json_schema import (
-    get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
-    get_base_schema,
-)
-from ...utils.neo import (
+from ...tools.neo import (
     get_number_of_electrodes,
     get_number_of_segments,
     write_neo_to_nwb,
 )
+from ...utils import (
+    OptionalFilePathType,
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+    get_base_schema,
+)
 
-OptionalPathType = Optional[Union[str, Path]]
+
+try:
+    from ndx_dandi_icephys import DandiIcephysMetadata
+
+    HAVE_NDX_DANDI_ICEPHYS = True
+except ImportError:
+    HAVE_NDX_DANDI_ICEPHYS = False
 
 
-class BaseIcephysNeoInterface(BaseDataInterface, ABC):
-    """Primary class for all NeoInterfaces."""
+class BaseIcephysInterface(BaseDataInterface, ABC):
+    """Primary class for all intracellular NeoInterfaces."""
 
     neo_class = None
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the Neo class"""
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=[])
         return source_schema
 
-    def __init__(self, files_paths: list):
-        super().__init__(files_paths=files_paths)
+    def __init__(self, file_paths: list):
+        super().__init__(file_paths=file_paths)
 
         self.readers_list = list()
-        for f in files_paths:
+        for f in file_paths:
             self.readers_list.append(self.neo_class(filename=f))
 
         self.subset_channels = None
@@ -44,10 +50,8 @@ class BaseIcephysNeoInterface(BaseDataInterface, ABC):
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
 
     def get_metadata_schema(self):
-        """Compile metadata schema for the Neo interface"""
         metadata_schema = super().get_metadata_schema()
 
-        # Initiate Icephys metadata
         metadata_schema["properties"]["Icephys"] = get_base_schema(tag="Icephys")
         metadata_schema["properties"]["Icephys"]["required"] = ["Device", "IntracellularElectrode"]
         metadata_schema["properties"]["Icephys"]["properties"] = dict(
@@ -58,7 +62,6 @@ class BaseIcephysNeoInterface(BaseDataInterface, ABC):
                 items={"$ref": "#/properties/Icephys/properties/definitions/IntracellularElectrode"},
             ),
         )
-        # Schema definition for arrays
         metadata_schema["properties"]["Icephys"]["properties"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             IntracellularElectrode=get_schema_from_hdmf_class(IntracellularElectrode),
@@ -82,7 +85,7 @@ class BaseIcephysNeoInterface(BaseDataInterface, ABC):
         metadata: dict = None,
         stub_test: bool = False,
         use_times: bool = False,
-        save_path: OptionalPathType = None,
+        save_path: OptionalFilePathType = None,
         overwrite: bool = False,
         write_as: str = "raw",
         es_key: str = None,
@@ -126,9 +129,11 @@ class BaseIcephysNeoInterface(BaseDataInterface, ABC):
         # else:
         #     recording = self.recording_extractor
 
-        if "ndx-dandi-icephys" in metadata and "DandiIcephysMetadata" not in nwbfile.lab_meta_data:
-            from ndx_dandi_icephys import DandiIcephysMetadata
-
+        if (
+            HAVE_NDX_DANDI_ICEPHYS
+            and "ndx-dandi-icephys" in metadata
+            and "DandiIcephysMetadata" not in nwbfile.lab_meta_data
+        ):
             nwbfile.add_lab_meta_data(DandiIcephysMetadata(**metadata["ndx-dandi-icephys"]))
 
         for i, reader in enumerate(self.readers_list):

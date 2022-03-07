@@ -1,4 +1,5 @@
-from typing import Union, Optional, Tuple
+"""Author: Luiz Tauffer."""
+from typing import Optional, Tuple
 import distutils.version
 import uuid
 from datetime import datetime
@@ -8,92 +9,76 @@ import warnings
 import neo.io.baseio
 import pynwb
 
-from .conversion_tools import add_devices
+from ..nwb_helpers import add_device_from_metadata
+from ...utils import OptionalFilePathType
 
-PathType = Union[str, Path, None]
 
+response_classes = dict(
+    voltage_clamp=pynwb.icephys.VoltageClampSeries,
+    current_clamp=pynwb.icephys.CurrentClampSeries,
+    izero=pynwb.icephys.IZeroClampSeries,
+)
 
-response_classes = {
-    "voltage_clamp": pynwb.icephys.VoltageClampSeries,
-    "current_clamp": pynwb.icephys.CurrentClampSeries,
-    "izero": pynwb.icephys.IZeroClampSeries,
-}
-
-stim_classes = {
-    "voltage_clamp": pynwb.icephys.VoltageClampStimulusSeries,
-    "current_clamp": pynwb.icephys.CurrentClampStimulusSeries,
-}
+stim_classes = dict(
+    voltage_clamp=pynwb.icephys.VoltageClampStimulusSeries,
+    current_clamp=pynwb.icephys.CurrentClampStimulusSeries,
+)
 
 
 # TODO - get electrodes metadata
 def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) -> list:
     """
-    Get electrodes metadata from Neo reader. The typical information we look for is the information
-    accepted by pynwb.icephys.IntracellularElectrode:
-    - name – the name of this electrode
-    - device – the device that was used to record from this electrode
-    - description – Recording description, description of electrode (e.g., whole-cell, sharp, etc) COMMENT: Free-form text (can be from Methods)
-    - slice – Information about slice used for recording.
-    - seal – Information about seal used for recording.
-    - location – Area, layer, comments on estimation, stereotaxis coordinates (if in vivo, etc).
-    - resistance – Electrode resistance COMMENT: unit: Ohm.
-    - filtering – Electrode specific filtering.
-    - initial_access_resistance – Initial access resistance.
+    Get electrodes metadata from Neo reader.
 
-    Args:
-        neo_reader ([type]): Neo reader
-        electrodes_ids (list): List of electrodes ids.
-        block (int, optional): Block id. Defaults to 0.
+    The typical information we look for is the information accepted by pynwb.icephys.IntracellularElectrode:
+      - name – the name of this electrode
+      - device – the device that was used to record from this electrode
+      - description – Recording description, description of electrode (e.g., whole-cell, sharp, etc)
+      - comment: Free-form text (can be from Methods)
+      - slice – Information about slice used for recording.
+      - seal – Information about seal used for recording.
+      - location – Area, layer, comments on estimation, stereotaxis coordinates (if in vivo, etc).
+      - resistance – Electrode resistance COMMENT: unit: Ohm.
+      - filtering – Electrode specific filtering.
+      - initial_access_resistance – Initial access resistance.
 
-    Returns:
-        list: List of dictionaries containing electrodes metadata
+    Parameters
+    ----------
+    neo_reader ([type]): Neo reader
+    electrodes_ids (list): List of electrodes ids.
+    block (int, optional): Block id. Defaults to 0.
+
+    Returns
+    -------
+    list: List of dictionaries containing electrodes metadata.
     """
     return []
 
 
-# Get number of electrodes
 def get_number_of_electrodes(neo_reader) -> int:
-    """
-    Get number of electrodes from Neo reader
-
-    Args:
-        neo_reader ([type]): Neo reader
-
-    Returns:
-        int: number of electrodes
-    """
+    """Get number of electrodes from Neo reader."""
     # TODO - take in account the case with multiple streams.
     return len(neo_reader.header["signal_channels"])
 
 
-# Get number of segments
 def get_number_of_segments(neo_reader, block: int = 0) -> int:
-    """
-    Get number of segments from Neo reader
-
-    Args:
-        neo_reader ([type]): Neo reader
-        block (int, optional): Block id. Defaults to 0.
-
-    Returns:
-        int: number of electrodes
-    """
+    """Get number of segments from Neo reader."""
     return neo_reader.header["nb_segment"][block]
 
 
-# Get command traces (e.g. voltage clamp command traces)
 def get_command_traces(neo_reader, block: int = 0, segment: int = 0, cmd_channel: int = 0) -> Tuple[list, str, str]:
     """
     Get command traces (e.g. voltage clamp command traces).
 
-    Args:
-        neo_reader ([type]): [description]
-        block (int, optional): [description]. Defaults to 0.
-        segment (int, optional): [description]. Defaults to 0.
-        cmd_channel (int, optional): ABF command channel (0 to 7). Defaults to 0.
-
-    Returns:
-        list: [description]
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+    block : int, optional.
+        Defaults to 0.
+    segment : int, optional
+        Defaults to 0.
+    cmd_channel : int, optional
+        ABF command channel (0 to 7). Defaults to 0.
     """
     try:
         traces, titles, units = neo_reader.read_raw_protocol()
@@ -104,16 +89,17 @@ def get_command_traces(neo_reader, block: int = 0, segment: int = 0, cmd_channel
         return e
 
 
-# Get conversion (to Volt or Ampere) from unit in string format
 def get_conversion_from_unit(unit: str) -> float:
     """
     Get conversion (to Volt or Ampere) from unit in string format.
 
-    Args:
-        unit (str): Unit as string. E.g. pA, mV, uV, etc...
+    Parameters
+    ----------
+    unit (str): Unit as string. E.g. pA, mV, uV, etc...
 
-    Returns:
-        float: conversion to Ampere or Volt
+    Returns
+    -------
+    float: conversion to Ampere or Volt
     """
     if unit in ["pA", "pV"]:
         conversion = 10**-12
@@ -131,7 +117,6 @@ def get_conversion_from_unit(unit: str) -> float:
     return float(conversion)
 
 
-# Get basic NWB metadata for Icephys
 def get_nwb_metadata(neo_reader, metadata: dict = None):
     """
     Return default metadata for all recording fields.
@@ -139,49 +124,48 @@ def get_nwb_metadata(neo_reader, metadata: dict = None):
     Parameters
     ----------
     neo_reader: Neo reader object
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
+    metadata: dict, optional
+        Metadata info for constructing the nwb file.
     """
     metadata = dict(
         NWBFile=dict(
             session_description="Auto-generated by NwbRecordingExtractor without description.",
             identifier=str(uuid.uuid4()),
-            session_start_time=datetime(1970, 1, 1),
         ),
         Icephys=dict(Device=[dict(name="Device", description="no description")]),
     )
     return metadata
 
 
-# Add Icephys electrode
-def add_icephys_electrode(neo_reader, nwbfile=None, metadata: dict = None):
+def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
     """
-    Adds icephys electrodes to nwbfile object.
+    Add icephys electrodes to nwbfile object.
+
     Will always ensure nwbfile has at least one icephys electrode.
     Will auto-generate a linked device if the specified name does not exist in the nwbfile.
 
-    Args:
-        neo_reader ([type]): [description]
-        nwbfile: NWBFile
-            nwb file to which the icephys electrode is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
-            Should be of the format
-                metadata['Icephys']['Electrodes'] = [
-                    {
-                        'name': my_name,
-                        'description': my_description,
-                        'device_name': my_device_name
-                    },
-                    ...
-                ]
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+    nwbfile : NWBFile
+        NWBFile object to add the icephys electrode to.
+    metadata : dict, optional
+        Metadata info for constructing the nwb file.
+        Should be of the format
+            metadata['Icephys']['Electrodes'] = [
+                {
+                    'name': my_name,
+                    'description': my_description,
+                    'device_name': my_device_name
+                },
+                ...
+            ]
     """
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     if len(nwbfile.devices) == 0:
         warnings.warn("When adding Icephys Electrode, no Devices were found on nwbfile. Creating a Device now...")
-        add_devices(nwbfile=nwbfile, metadata=metadata)
+        add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
     if metadata is None:
         metadata = dict()
@@ -211,7 +195,7 @@ def add_icephys_electrode(neo_reader, nwbfile=None, metadata: dict = None):
             device_name = elec.get("device_name", defaults[0]["device_name"])
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
-                add_devices(nwbfile, metadata=new_device_metadata)
+                add_device_from_metadata(nwbfile, modality="Icephys", metadata=new_device_metadata)
                 warnings.warn(
                     f"Device '{device_name}' not detected in "
                     "attempted link to icephys electrode! Automatically generating."
@@ -224,28 +208,26 @@ def add_icephys_electrode(neo_reader, nwbfile=None, metadata: dict = None):
             nwbfile.create_icephys_electrode(**electrode_kwargs)
 
 
-# Add Icephys recordings: stimulus/response pair
 def add_icephys_recordings(
     neo_reader,
-    nwbfile=None,
+    nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
 ):
     """
-    Adds icephys recordings (stimulus/response pairs) to nwbfile object.
+    Add icephys recordings (stimulus/response pairs) to nwbfile object.
 
-    Args:
-        neo_reader ([type]): [description]
-        nwbfile ([type], optional): [description]. Defaults to None.
-        metadata (dict, optional): [description]. Defaults to None.
-        icephys_experiment_type (str, optional):
-            Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
-            If no value is passed, 'voltage_clamp' is used as default.
+    Parameters
+    ----------
+    neo_reader : neo.io.baseio
+    nwbfile : NWBFile
+    metadata : dict, optional
+    icephys_experiment_type : str, optional
+        Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
+        The default is 'voltage_clamp'.
     """
-
     n_segments = get_number_of_segments(neo_reader, block=0)
-    n_electrodes = get_number_of_electrodes(neo_reader)
 
     if icephys_experiment_type is None:
         icephys_experiment_type = "voltage_clamp"
@@ -257,7 +239,8 @@ def add_icephys_recordings(
     if neo_reader._axon_info["fFileVersionNumber"] < 2:
         n_commands = 0
         warnings.warn(
-            f"Protocol section is only present in ABF2 files. {neo_reader.filename} has version {neo_reader._axon_info['fFileVersionNumber']}. Saving experiment as 'i_zero'..."
+            f"Protocol section is only present in ABF2 files. {neo_reader.filename} has version "
+            f"{neo_reader._axon_info['fFileVersionNumber']}. Saving experiment as 'i_zero'..."
         )
     else:
         protocol = neo_reader.read_raw_protocol()
@@ -273,27 +256,22 @@ def add_icephys_recordings(
             n_commands == n_segments
         ), f"File contains inconsistent number of segments ({n_segments}) and commands ({n_commands})"
 
-    assert icephys_experiment_type in [
-        "voltage_clamp",
-        "current_clamp",
-        "izero",
-    ], f"'icephys_experiment_type' should be 'voltage_clamp', 'current_clamp' or 'izero', but received value {icephys_experiment_type}"
+    assert icephys_experiment_type in ["voltage_clamp", "current_clamp", "izero"], (
+        f"'icephys_experiment_type' should be 'voltage_clamp', 'current_clamp' or 'izero', but received value "
+        f"{icephys_experiment_type}"
+    )
 
     # TODO - check and auto-create devices and electrodes, in case those items don't existe yet on nwbfile
 
-    # Check for offset of existing recordings
     if getattr(nwbfile, "intracellular_recordings", None):
         ri = max(nwbfile.intracellular_recordings["responses"].index)
     else:
         ri = -1
-
-    # Check for offset of existing segments
     if getattr(nwbfile, "icephys_simultaneous_recordings", None):
         simultaneous_recordings_offset = len(nwbfile.icephys_simultaneous_recordings)
     else:
         simultaneous_recordings_offset = 0
 
-    # Check for offset of existing sessions
     if getattr(nwbfile, "icephys_sequential_recordings", None):
         sessions_offset = len(nwbfile.icephys_sequential_recordings)
     else:
@@ -302,15 +280,16 @@ def add_icephys_recordings(
     relative_session_start_time = metadata["Icephys"]["Sessions"][sessions_offset]["relative_session_start_time"]
     session_stimulus_type = metadata["Icephys"]["Sessions"][sessions_offset]["stimulus_type"]
 
-    # Loop through segments - sequential icephys recordings
+    # Sequential icephys recordings
     simultaneous_recordings = list()
     for si in range(n_segments):
-        # Loop through electrodes - parallel icephys recordings
+        # Parallel icephys recordings
         recordings = list()
         for ei, electrode in enumerate(
             list(nwbfile.icephys_electrodes.values())[: len(neo_reader.header["signal_channels"]["units"])]
         ):
-            # Starting time is the signal starting time within .abf file + time relative to first session (first .abf file)
+            # Starting time is the signal starting time within .abf file + time
+            # relative to first session (first .abf file)
             ri += 1
             starting_time = neo_reader.get_signal_t_start(block_index=0, seg_index=si)
             starting_time = starting_time + relative_session_start_time
@@ -350,15 +329,12 @@ def add_icephys_recordings(
             else:
                 icephys_recording = nwbfile.add_intracellular_recording(electrode=electrode, response=response)
 
-            # Add channel sweep to list
             recordings.append(icephys_recording)
 
-        # Add a list of sweeps to the simultaneous recordings table
         sim_rec = nwbfile.add_icephys_simultaneous_recording(recordings=recordings)
         simultaneous_recordings.append(sim_rec)
 
-    # Add a list of simultaneous recordings table indices as a sequential recording
-    seq_rec = nwbfile.add_icephys_sequential_recording(
+    nwbfile.add_icephys_sequential_recording(
         simultaneous_recordings=simultaneous_recordings, stimulus_type=stimulus_type
     )
 
@@ -444,7 +420,7 @@ def add_all_to_nwbfile(
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    add_devices(nwbfile=nwbfile, data_type="Icephys", metadata=metadata)
+    add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
     add_icephys_electrode(
         neo_reader=neo_reader,
@@ -463,7 +439,7 @@ def add_all_to_nwbfile(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: PathType = None,
+    save_path: OptionalFilePathType = None,
     overwrite: bool = False,
     nwbfile=None,
     use_times: bool = False,

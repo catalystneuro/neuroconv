@@ -1,23 +1,16 @@
+"""Author: Luiz Tauffer."""
 from datetime import datetime, timedelta
 from pathlib import Path
 from warnings import warn
 import json
 from neo import AxonIO
 
-from ..base_interface_icephys_neo import BaseIcephysNeoInterface
-from ....utils.neo import get_number_of_electrodes, get_number_of_segments
+from ..baseicephysinterface import BaseIcephysInterface
+from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
 
 def get_start_datetime(neo_reader):
-    """
-    Get start datetime for .abf file
-
-    Args:
-        neo_reader ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
+    """Get start datetime for .abf file."""
     if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
         startDate = str(neo_reader._axon_info["uFileStartDate"])
         startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
@@ -26,21 +19,21 @@ def get_start_datetime(neo_reader):
         return startDate + startTime
     else:
         warn(
-            f"uFileStartDate or uFileStartTimeMS not found in {neo_reader.filename.split('/')[-1]}, datetime for recordings might be wrongly stored."
+            f"uFileStartDate or uFileStartTimeMS not found in {neo_reader.filename.split('/')[-1]}, datetime for "
+            "recordings might be wrongly stored."
         )
         return neo_reader._axon_info["rec_datetime"]
 
 
-class AbfNeoDataInterface(BaseIcephysNeoInterface):
-    """ABF DataInterface based on Neo AxonIO"""
+class AbfInterface(BaseIcephysInterface):
+    """ABF IcephysInterface based on Neo AxonIO."""
 
     neo_class = AxonIO
 
     @classmethod
     def get_source_schema(cls):
-        """Compile input schema for the Neo class"""
         source_schema = super().get_source_schema()
-        source_schema["properties"]["files_paths"] = dict(
+        source_schema["properties"]["file_paths"] = dict(
             type="array",
             minItems=1,
             items={"type": "string", "format": "file"},
@@ -51,16 +44,14 @@ class AbfNeoDataInterface(BaseIcephysNeoInterface):
         )
         return source_schema
 
-    def __init__(self, files_paths: list, metadata_file_path: str = None):
-        super().__init__(files_paths=files_paths)
+    def __init__(self, file_paths: list, metadata_file_path: str = None):
+        # TODO: add docstring for init
+        super().__init__(file_paths=file_paths)
         self.source_data["metadata_file_path"] = metadata_file_path
 
     def get_metadata(self):
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
 
-        # Load metafile, if present in data_source. This is Optional
-        # This metafile can carry extra information such as: Subject, LabMetadata and stimulus_type for recording sessions
         metafile_data = dict()
         metafile = self.source_data["metadata_file_path"]
         if metafile is not None and Path(metafile).is_file():

@@ -61,7 +61,7 @@ def make_nwbfile_from_metadata(metadata: dict):
     return NWBFile(**nwbfile_kwargs)
 
 
-def add_device_from_metadata(nwbfile: NWBFile, data_type: str = "Ecephys", metadata: dict = None):
+def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict = None):
     """
     Add device information from metadata to NWBFile object.
 
@@ -72,7 +72,7 @@ def add_device_from_metadata(nwbfile: NWBFile, data_type: str = "Ecephys", metad
     ----------
     nwbfile: NWBFile
         nwb file to which the new device information is to be added
-    data_type: str
+    modality: str
         Type of data recorded by device. Options:
         - Ecephys (default)
         - Icephys
@@ -81,7 +81,7 @@ def add_device_from_metadata(nwbfile: NWBFile, data_type: str = "Ecephys", metad
     metadata: dict
         Metadata info for constructing the NWBFile (optional).
         Should be of the format
-            metadata[data_type]['Device'] = [
+            metadata[modality]['Device'] = [
                 {
                     'name': my_name,
                     'description': my_description
@@ -91,22 +91,22 @@ def add_device_from_metadata(nwbfile: NWBFile, data_type: str = "Ecephys", metad
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    assert data_type in [
+    assert modality in [
         "Ecephys",
         "Icephys",
         "Ophys",
         "Behavior",
-    ], f"Invalid data_type {data_type} when creating device."
+    ], f"Invalid modality {modality} when creating device."
 
-    defaults = dict(name="Device", description=f"{data_type} device. Automatically generated.")
+    defaults = dict(name="Device", description=f"{modality} device. Automatically generated.")
 
     if metadata is None:
         metadata = dict()
-    if data_type not in metadata:
-        metadata[data_type] = dict()
-    if "Device" not in metadata[data_type]:
-        metadata[data_type]["Device"] = [defaults]
+    if modality not in metadata:
+        metadata[modality] = dict()
+    if "Device" not in metadata[modality]:
+        metadata[modality]["Device"] = [defaults]
 
-    for dev in metadata[data_type]["Device"]:
+    for dev in metadata[modality]["Device"]:
         if dev.get("name", defaults["name"]) not in nwbfile.devices:
             nwbfile.create_device(**dict(defaults, **dev))

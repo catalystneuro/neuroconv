@@ -1,13 +1,16 @@
+import os
 import tempfile
 import unittest
+from pathlib import Path
+from datetime import datetime
+
 import pytest
 import numpy.testing as npt
-import os
-from pathlib import Path
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools import NWBConverter, AbfNeoDataInterface
-from nwb_conversion_tools.utils.neo import get_number_of_electrodes, get_number_of_segments
+from nwb_conversion_tools import NWBConverter, AbfInterface
+from nwb_conversion_tools import neo
+from nwb_conversion_tools.utils import load_dict_from_file
 
 try:
     from parameterized import parameterized, param
@@ -15,30 +18,28 @@ try:
     HAVE_PARAMETERIZED = True
 except ImportError:
     HAVE_PARAMETERIZED = False
+# Load the configuration for the data tests
+test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
 
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
     LOCAL_PATH = Path(".")  # Must be set to "." for CI
     print("Running GIN tests on Github CI!")
 else:
-    # Override the LOCAL_PATH to a point on your local system that contains the dataset folder
+    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path("/shared/catalystneuro/")
+    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")
-
 DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 HAVE_DATA = DATA_PATH.exists()
 
-SAVE_OUTPUTS = False
-if SAVE_OUTPUTS:
+if test_config_dict["SAVE_OUTPUTS"]:
     OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
 else:
     OUTPUT_PATH = Path(tempfile.mkdtemp())
-
 if not HAVE_PARAMETERIZED:
     pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
-
 if not HAVE_DATA:
     pytest.fail(f"No ephy_testing_data folder found in location: {DATA_PATH}!")
 
@@ -55,8 +56,8 @@ class TestIcephysNwbConversions(unittest.TestCase):
 
     parameterized_recording_list = [
         param(
-            data_interface=AbfNeoDataInterface,
-            interface_kwargs=dict(files_paths=[str(DATA_PATH / "axon" / "File_axon_1.abf")]),
+            data_interface=AbfInterface,
+            interface_kwargs=dict(file_paths=[str(DATA_PATH / "axon" / "File_axon_1.abf")]),
         )
     ]
 
@@ -65,9 +66,9 @@ class TestIcephysNwbConversions(unittest.TestCase):
         # NEO reader is the ground truth
         from neo import AxonIO
 
-        neo_reader = AxonIO(filename=interface_kwargs["files_paths"][0])
-        n_segments = get_number_of_segments(neo_reader, block=0)
-        n_electrodes = get_number_of_electrodes(neo_reader)
+        neo_reader = AxonIO(filename=interface_kwargs["file_paths"][0])
+        n_segments = neo.get_number_of_segments(neo_reader, block=0)
+        n_electrodes = neo.get_number_of_electrodes(neo_reader)
 
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
@@ -81,7 +82,7 @@ class TestIcephysNwbConversions(unittest.TestCase):
                     member=interface_kwarg, container=converter.data_interface_objects["TestRecording"].source_data
                 )
         metadata = converter.get_metadata()
-        # metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
