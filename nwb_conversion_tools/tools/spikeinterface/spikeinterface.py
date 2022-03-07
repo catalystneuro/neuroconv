@@ -332,7 +332,7 @@ def add_electrodes(
     # Add the property of channel name
     channel_name_array = checked_recording.get_channel_ids()
     elec_columns["channel_name"].update(
-        description="Text-based reference of the electrode ID.",
+        description="a string named referencefor the channel",
         data=channel_name_array,
         index=False,
     )
@@ -416,13 +416,13 @@ def add_electrodes(
         data = cols_args["data"]
         samp_data = data[0]
         data_type_found = [proptype for proptype in property_default_types if isinstance(samp_data, proptype)][0]
-
         default_value = property_default_types[data_type_found]
-        column_size = len(nwbfile.electrodes.id[:])
-        extended_data = [default_value for _ in range(column_size)]
-        extended_data[len(channels_not_available_in_recorder) :] = data
+        
+        default_value_extension = np.full(shape=len(channels_not_available_in_recorder), fill_value=default_value)
+        extended_data = np.hstack([default_value_extension, data])
+        
         if data_type_found == Real:
-            extended_data = [float(_) for _ in extended_data]
+            extended_data = extended_data.astype('float', copy=False)
         cols_args["data"] = extended_data
 
         nwbfile.add_electrode_column(col_name, **cols_args)
