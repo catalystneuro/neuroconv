@@ -631,22 +631,17 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
         shutil.rmtree(cls.test_dir)
 
     def test_electrodes_channel_name_property_for_non_int_channel_ids(self):
-
-        # First we test that the channel names are assigned in the written order
         expected_channel_names = ["a", "b", "c", "d", "e", "f"]
         for id in self.nwbfile1.electrodes.id[:]:
             self.assertEqual(self.nwbfile1.electrodes["channel_name"][id], expected_channel_names[id])
 
     def test_electrode_common_property_extension_for_non_int_channel_ids(self):
-
-        # Test extension of already existing property in the table
         for id in [0, 1, 2, 3]:
             self.assertEqual(self.nwbfile1.electrodes["property"][id], "value_before_rewrite")
         for id in [4, 5]:
             self.assertEqual(self.nwbfile1.electrodes["property"][id], "value_after_rewrite")
 
     def test_electrode_new_property_addition_for_non_int_channel_ids(self):
-        # Test addition of new property in the table
         for id in [0, 1]:
             self.assertEqual(self.nwbfile1.electrodes["property2"][id], "")
         for id in [2, 3, 4, 5]:
