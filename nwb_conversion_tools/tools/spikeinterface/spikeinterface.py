@@ -424,7 +424,7 @@ def add_electrodes(
 
         # if matching_type == Real:
         #     extended_data = extended_data.astype("float", copy=False)
-        
+
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(col_name, **cols_args)
 
