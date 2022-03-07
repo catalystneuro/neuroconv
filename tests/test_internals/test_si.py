@@ -572,7 +572,7 @@ class TestWriteElectrodes(unittest.TestCase):
 
 
 class TestSpikeInterfaceRecorders(unittest.TestCase):
-    def setUp(self):
+    def setUpClass(self):
 
         self.test_dir = tempfile.mkdtemp()
         self.path1 = self.test_dir + "/test_electrodes1.nwb"
@@ -619,23 +619,22 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
             recording=self.RX_non_int_channels2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
         )
 
-        nwb = self.nwbfile1
         # First we test the channel names are assigned in the written order
         expected_channel_names = ["a", "b", "c", "d", "e", "f"]
-        for id in nwb.electrodes.id[:]:
-            self.assertEqual(nwb.electrodes["channel_name"][id], expected_channel_names[id])
+        for id in self.nwbfile1.electrodes.id[:]:
+            self.assertEqual(self.nwbfile1.electrodes["channel_name"][id], expected_channel_names[id])
 
         # Test extension of the same property for the new channels
         for id in [0, 1, 2, 3]:
-            self.assertEqual(nwb.electrodes["property"][id], "value_before_rewrite")
+            self.assertEqual(self.nwbfile1.electrodes["property"][id], "value_before_rewrite")
         for id in [4, 5]:
-            self.assertEqual(nwb.electrodes["property"][id], "value_after_rewrite")
+            self.assertEqual(self.nwbfile1.electrodes["property"][id], "value_after_rewrite")
 
         # Test addition of new property for the second recording
         for id in [0, 1]:
-            self.assertEqual(nwb.electrodes["property2"][id], "")
+            self.assertEqual(self.nwbfile1.electrodes["property2"][id], "")
         for id in [2, 3, 4, 5]:
-            self.assertEqual(nwb.electrodes["property2"][id], "second_recoder_property")
+            self.assertEqual(self.nwbfile1.electrodes["property2"][id], "second_recoder_property")
 
 
 if __name__ == "__main__":
