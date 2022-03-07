@@ -629,18 +629,18 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
             recording=self.RX_non_int_channels2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
         )
 
-        # First we test the channel names are assigned in the written order
+        # First we test that the channel names are assigned in the written order
         expected_channel_names = ["a", "b", "c", "d", "e", "f"]
         for id in self.nwbfile1.electrodes.id[:]:
             self.assertEqual(self.nwbfile1.electrodes["channel_name"][id], expected_channel_names[id])
 
-        # Test extension of the same property for the new channels
+        # Test extension of already existing property in the table
         for id in [0, 1, 2, 3]:
             self.assertEqual(self.nwbfile1.electrodes["property"][id], "value_before_rewrite")
         for id in [4, 5]:
             self.assertEqual(self.nwbfile1.electrodes["property"][id], "value_after_rewrite")
 
-        # Test addition of new property for the second recording
+        # Test addition of new property in the table
         for id in [0, 1]:
             self.assertEqual(self.nwbfile1.electrodes["property2"][id], "")
         for id in [2, 3, 4, 5]:
