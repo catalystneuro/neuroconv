@@ -71,11 +71,7 @@ jobs:
           conda install -c conda-forge datalad==0.14.5
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-          datalad install https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-          cd ophys_testing_data
-          datalad get -r ./imaging_datasets/
-          datalad get -r ./segmentation_datasets/
-          cd ..
+          datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 
       - name: Run full pytest with coverage
         run: pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
