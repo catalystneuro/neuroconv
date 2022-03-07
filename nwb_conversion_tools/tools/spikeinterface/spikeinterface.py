@@ -332,9 +332,7 @@ def add_electrodes(
     # Add channel names to properties.
     channel_name_array = checked_recording.get_channel_ids()
     elec_columns["channel_name"].update(
-        description="a string named referencefor the channel",
-        data=channel_name_array,
-        index=False,
+        description="a string named referencefor the channel", data=channel_name_array, index=False,
     )
 
     # Fill with provided custom descriptions
@@ -348,8 +346,8 @@ def add_electrodes(
     if nwbfile.electrodes is not None:
         for colname in nwbfile.electrodes.colnames:
             if colname != "group":
-                sample_data = nwbfile.electrodes[colname].data[0]
                 # Find first matching data-type
+                sample_data = nwbfile.electrodes[colname].data[0]
                 matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
                 default_value = type_to_default_value[matching_type]
                 default_updated.update({colname: default_value})
@@ -388,15 +386,7 @@ def add_electrodes(
                             f"Electrode group {group_name} for electrode {channel_name} was not "
                             "found in the nwbfile! Automatically adding."
                         )
-                        missing_group_metadata = dict(
-                            Ecephys=dict(
-                                ElectrodeGroup=[
-                                    dict(
-                                        name=group_name,
-                                    )
-                                ]
-                            )
-                        )
+                        missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=[dict(name=group_name,)]))
                         add_electrode_groups(
                             recording=checked_recording, nwbfile=nwbfile, metadata=missing_group_metadata
                         )
@@ -414,16 +404,14 @@ def add_electrodes(
     channels_not_available_in_recorder = set(channel_names_in_electrodes_table).difference(set(channel_name_array))
     for col_name, cols_args in elec_columns_append.items():
         data = cols_args["data"]
-        sample_data = data[0]
+
         # Find first matching data-type
+        sample_data = data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
 
         default_value_extension = np.full(shape=len(channels_not_available_in_recorder), fill_value=default_value)
         extended_data = np.hstack([default_value_extension, data])
-
-        # if matching_type == Real:
-        #     extended_data = extended_data.astype("float", copy=False)
 
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(col_name, **cols_args)
@@ -610,10 +598,7 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
     if iterator_type is None or iterator_type == "v2":
         ephys_data = SpikeInterfaceRecordingDataChunkIterator(
-            recording=checked_recording,
-            segment_index=segment_index,
-            return_scaled=write_scaled,
-            **iterator_opts,
+            recording=checked_recording, segment_index=segment_index, return_scaled=write_scaled, **iterator_opts,
         )
     elif iterator_type == "v1":
         if isinstance(checked_recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(

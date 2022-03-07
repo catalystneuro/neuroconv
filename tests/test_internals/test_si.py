@@ -19,7 +19,13 @@ from spikeextractors.testing import (
 from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools import spikeinterface  # testing aliased import
-from nwb_conversion_tools.tools.spikeinterface import get_nwb_metadata, write_recording, write_sorting
+from nwb_conversion_tools.tools.spikeinterface import (
+    get_nwb_metadata,
+    write_recording,
+    write_sorting,
+    add_electrodes,
+    add_electrical_series,
+)
 from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
@@ -163,11 +169,7 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="raw",
-            es_key="ElectricalSeries_raw",
+            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -177,11 +179,7 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -591,48 +589,47 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
         cls.RX1 = generate_recording(num_channels=4, durations=[3])
         cls.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
 
-    @classmethod
-    def tearDownClass(cls):
-        del cls.RX1
-        shutil.rmtree(cls.test_dir)
-
-    def test_non_ints_as_channel_ids_in_electrode_table(self):
-
-        channel_ids = self.RX1.get_channel_ids()
-        num_channels = self.RX1.get_num_channels()
+        channel_ids = cls.RX1.get_channel_ids()
+        num_channels = cls.RX1.get_num_channels()
         non_int_channel_ids1 = ["a", "b", "c", "d"]
         non_int_channel_ids2 = ["c", "d", "e", "f"]
 
-        self.RX_non_int_channels1 = self.RX1.channel_slice(
+        cls.RX_non_int_channels1 = cls.RX1.channel_slice(
             channel_ids=channel_ids, renamed_channel_ids=non_int_channel_ids1
         )
-        self.RX_non_int_channels2 = self.RX1.channel_slice(
+        cls.RX_non_int_channels2 = cls.RX1.channel_slice(
             channel_ids=channel_ids, renamed_channel_ids=non_int_channel_ids2
         )
 
+        # Property for the first recorder
         values_before_rewrite = ["value_before_rewrite" for _ in range(num_channels)]
-        self.RX_non_int_channels1.set_property("property", values=values_before_rewrite)
+        cls.RX_non_int_channels1.set_property("property", values=values_before_rewrite)
 
+        # Property in the second recorder that extends the one above
         values_after_rewrite = ["value_after_rewrite" for _ in range(num_channels)]
-        self.RX_non_int_channels2.set_property("property", values=values_after_rewrite)
+        cls.RX_non_int_channels2.set_property("property", values=values_after_rewrite)
 
-        # Add a property only for two
-        property_value = ["second_recoder_property" for _ in range(num_channels)]
-        self.RX_non_int_channels2.set_property("property2", values=property_value)
+        # Add a property only available in the second recorder
+        property_value = ["second_recorder_property" for _ in range(num_channels)]
+        cls.RX_non_int_channels2.set_property("property2", values=property_value)
 
-        # Write
-        write_recording(
-            recording=self.RX_non_int_channels1, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1"
-        )
-        # Re-write
-        write_recording(
-            recording=self.RX_non_int_channels2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
-        )
+        # Write the two electrodes to a file
+        add_electrodes(recording=cls.RX_non_int_channels1, nwbfile=cls.nwbfile1)
+        add_electrodes(recording=cls.RX_non_int_channels2, nwbfile=cls.nwbfile1)
+
+    @classmethod
+    def tearDownClass(cls):
+        del cls.RX1, cls.RX_non_int_channels1, cls.RX_non_int_channels2
+        shutil.rmtree(cls.test_dir)
+
+    def test_electrodes_channel_name_property_for_non_int_channel_ids(self):
 
         # First we test that the channel names are assigned in the written order
         expected_channel_names = ["a", "b", "c", "d", "e", "f"]
         for id in self.nwbfile1.electrodes.id[:]:
             self.assertEqual(self.nwbfile1.electrodes["channel_name"][id], expected_channel_names[id])
+
+    def test_electrode_common_property_extension_for_non_int_channel_ids(self):
 
         # Test extension of already existing property in the table
         for id in [0, 1, 2, 3]:
@@ -640,11 +637,12 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
         for id in [4, 5]:
             self.assertEqual(self.nwbfile1.electrodes["property"][id], "value_after_rewrite")
 
+    def test_electrode_new_property_addition_for_non_int_channel_ids(self):
         # Test addition of new property in the table
         for id in [0, 1]:
             self.assertEqual(self.nwbfile1.electrodes["property2"][id], "")
         for id in [2, 3, 4, 5]:
-            self.assertEqual(self.nwbfile1.electrodes["property2"][id], "second_recoder_property")
+            self.assertEqual(self.nwbfile1.electrodes["property2"][id], "second_recorder_property")
 
 
 if __name__ == "__main__":
