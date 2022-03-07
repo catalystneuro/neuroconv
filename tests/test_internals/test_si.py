@@ -590,7 +590,7 @@ class TestSpikeInterfaceRecorders(unittest.TestCase):
 
         cls.RX1 = generate_recording(num_channels=4, durations=[3])
         cls.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
-    
+
     @classmethod
     def tearDownClass(cls):
         del cls.RX1
