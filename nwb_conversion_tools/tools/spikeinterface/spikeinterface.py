@@ -417,12 +417,12 @@ def add_electrodes(
         samp_data = data[0]
         data_type_found = [proptype for proptype in property_default_types if isinstance(samp_data, proptype)][0]
         default_value = property_default_types[data_type_found]
-        
+
         default_value_extension = np.full(shape=len(channels_not_available_in_recorder), fill_value=default_value)
         extended_data = np.hstack([default_value_extension, data])
-        
+
         if data_type_found == Real:
-            extended_data = extended_data.astype('float', copy=False)
+            extended_data = extended_data.astype("float", copy=False)
         cols_args["data"] = extended_data
 
         nwbfile.add_electrode_column(col_name, **cols_args)
