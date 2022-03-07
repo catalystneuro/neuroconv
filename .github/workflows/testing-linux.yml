@@ -31,9 +31,6 @@ jobs:
       - name: Install full requirements
         run: pip install -r requirements-full.txt
 
-      - name: Install tests requirements
-        run: pip install -r requirements-tests.txt
-
       - name: Get ephy_testing_data current head hash
         id: ecephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
