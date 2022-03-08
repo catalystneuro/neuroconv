@@ -261,7 +261,14 @@ def add_icephys_recordings(
         f"{icephys_experiment_type}"
     )
 
-    # TODO - check and auto-create devices and electrodes, in case those items don't existe yet on nwbfile
+    # Check and auto-create electrodes, in case they don't existe yet on nwbfile
+    if len(nwbfile.ic_electrodes) == 0:
+        warnings.warn("When adding Icephys Recording, no Icephys Electrodes were found on nwbfile. Creating Electrodes now...")
+        add_icephys_electrode(
+            neo_reader=neo_reader,
+            nwbfile=nwbfile,
+            metadata=metadata,
+        )
 
     if getattr(nwbfile, "intracellular_recordings", None):
         ri = max(nwbfile.intracellular_recordings["responses"].index)
