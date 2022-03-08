@@ -123,12 +123,6 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
             Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
             If no value is passed, 'voltage_clamp' is used as default.
         """
-        # TODO - stub test
-        # if stub_test or self.subset_channels is not None:
-        #     recording = self.subset_recording(stub_test=stub_test)
-        # else:
-        #     recording = self.recording_extractor
-
         if (
             HAVE_NDX_DANDI_ICEPHYS
             and "ndx-dandi-icephys" in metadata
