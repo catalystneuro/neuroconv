@@ -263,7 +263,9 @@ def add_icephys_recordings(
 
     # Check and auto-create electrodes, in case they don't existe yet on nwbfile
     if len(nwbfile.ic_electrodes) == 0:
-        warnings.warn("When adding Icephys Recording, no Icephys Electrodes were found on nwbfile. Creating Electrodes now...")
+        warnings.warn(
+            "When adding Icephys Recording, no Icephys Electrodes were found on nwbfile. Creating Electrodes now..."
+        )
         add_icephys_electrode(
             neo_reader=neo_reader,
             nwbfile=nwbfile,
