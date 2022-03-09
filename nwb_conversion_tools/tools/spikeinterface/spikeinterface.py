@@ -372,11 +372,11 @@ def add_electrodes(
     channel_names_in_electrodes_table = []
     if "channel_name" in nwbfile.electrodes.colnames:
         channel_names_in_electrodes_table += np.array(nwbfile.electrodes["channel_name"].data).tolist()
-        
+
     # If the channel ids are integer keep the old behavior of asigning electrodes.ids equal to channel_ids
     if np.issubdtype(channel_ids.dtype, np.integer):
         elec_columns["id"].update(data=channel_ids)
-        
+
     for data_index, channel_name in enumerate(channel_name_array):
         if channel_name not in channel_names_in_electrodes_table:
             electrode_kwargs = dict(default_updated)
