@@ -588,21 +588,21 @@ class TestWriteElectrodes(unittest.TestCase):
 class TestAddElectrodes(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.nwbfile = NWBFile(
+        """Use common recording objects and values."""
+        cls.num_channels = 4
+        cls.base_recording = generate_recording(num_channels=cls.num_channels, durations=[3])
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+        self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=datetime.now()
         )
-
-        cls.num_channels = 4
-        base_recording = generate_recording(num_channels=cls.num_channels, durations=[3])
-        channel_ids = base_recording.get_channel_ids()
-
-        non_int_channel_ids_1 = ["a", "b", "c", "d"]
-        non_int_channel_ids_2 = ["c", "d", "e", "f"]
-        cls.recording_1 = base_recording.channel_slice(
-            channel_ids=channel_ids, renamed_channel_ids=non_int_channel_ids_1
+        channel_ids = self.base_recording.get_channel_ids()
+        self.recording_1 = self.base_recording.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=["a", "b", "c", "d"]
         )
-        cls.recording_2 = base_recording.channel_slice(
-            channel_ids=channel_ids, renamed_channel_ids=non_int_channel_ids_2
+        self.recording_2 = self.base_recording.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=["c", "d", "e", "f"]
         )
 
     def test_channel_names(self):
@@ -614,38 +614,26 @@ class TestAddElectrodes(unittest.TestCase):
 
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
-        values_1 = ["value_1"] * self.num_channels
-        self.recording_1.set_property("property", values=values_1)
-
-        values_2 = ["value_2"] * self.num_channels
-        self.recording_2.set_property("property", values=values_2)
+        self.recording_1.set_property(key="property", values=["value_1"] * self.num_channels)
+        self.recording_2.set_property(key="property", values=["value_2"] * self.num_channels)
 
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
 
         self.assertListEqual(
             list(self.nwbfile.electrodes["property"].data),
-            ["value_1", "value_1", "value_2", "value_2", "value_2", "value_2"],
+            ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"],
         )
 
     def test_new_property_addition(self):
         """Add a property only available in a second recording."""
-        values = ["second_recorder_property"] * self.num_channels
-        self.recording_2.set_property("property2", values=values)
+        self.recording_2.set_property(key="property2", values=["value_3"] * self.num_channels)
 
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
 
         self.assertListEqual(
-            list(self.nwbfile.electrodes["property2"].data),
-            [
-                ""
-                ""
-                "second_recorder_property"
-                "second_recorder_property"
-                "second_recorder_property"
-                "second_recorder_property"
-            ],
+            list(self.nwbfile.electrodes["property2"].data), ["", "", "value_3", "value_3", "value_3", "value_3"]
         )
 
 
