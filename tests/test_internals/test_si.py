@@ -169,11 +169,7 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="raw",
-            es_key="ElectricalSeries_raw",
+            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -183,11 +179,7 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -614,27 +606,26 @@ class TestAddElectrodes(unittest.TestCase):
 
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
-        self.recording_1.set_property(key="property", values=["value_1"] * self.num_channels)
-        self.recording_2.set_property(key="property", values=["value_2"] * self.num_channels)
+        self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
 
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
 
-        self.assertListEqual(
-            list(self.nwbfile.electrodes["property"].data),
-            ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"],
-        )
+        actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["common_property"].data)
+        expected_properties_in_electrodes_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
+        self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
 
     def test_new_property_addition(self):
         """Add a property only available in a second recording."""
-        self.recording_2.set_property(key="property2", values=["value_3"] * self.num_channels)
+        self.recording_2.set_property(key="added_property", values=["added_value"] * self.num_channels)
 
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
 
-        self.assertListEqual(
-            list(self.nwbfile.electrodes["property2"].data), ["", "", "value_3", "value_3", "value_3", "value_3"]
-        )
+        actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["added_property"].data)
+        expected_properties_in_electrodes_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
+        self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
 
 
 if __name__ == "__main__":
