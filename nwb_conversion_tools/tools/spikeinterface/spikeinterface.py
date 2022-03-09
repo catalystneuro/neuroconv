@@ -329,8 +329,10 @@ def add_electrodes(
                 index = isinstance(data[0], (list, np.ndarray))
                 elec_columns[prop].update(description=prop, data=data, index=index)
 
-    # Add channel names to properties.
-    channel_name_array = checked_recording.get_channel_ids()
+    # If the channel ids are integer keep the old behavior of asigning electrodes.ids equal to channel_ids
+    channel_ids = checked_recording.get_channel_ids()
+    channel_name_array = channel_ids.astype("str", copy=False)
+
     elec_columns["channel_name"].update(
         description="a string reference for the channel",
         data=channel_name_array,
@@ -367,15 +369,14 @@ def add_electrodes(
     for name in elec_columns_append:
         _ = elec_columns.pop(name)
 
-    channel_name_array = checked_recording.get_channel_ids()
-    # If the channel ids are integer keep the old behavior of asigning electrodes.ids equal to channel_ids
-    if np.issubdtype(channel_name_array.dtype, np.integer):
-        elec_columns["id"].update(data=channel_name_array)
-
     channel_names_in_electrodes_table = []
     if "channel_name" in nwbfile.electrodes.colnames:
         channel_names_in_electrodes_table += np.array(nwbfile.electrodes["channel_name"].data).tolist()
-
+        
+    # If the channel ids are integer keep the old behavior of asigning electrodes.ids equal to channel_ids
+    if np.issubdtype(channel_ids.dtype, np.integer):
+        elec_columns["id"].update(data=channel_ids)
+        
     for data_index, channel_name in enumerate(channel_name_array):
         if channel_name not in channel_names_in_electrodes_table:
             electrode_kwargs = dict(default_updated)
