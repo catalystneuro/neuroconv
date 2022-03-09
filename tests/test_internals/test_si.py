@@ -606,10 +606,11 @@ class TestAddElectrodes(unittest.TestCase):
         )
 
     def test_channel_names(self):
+        """Ensure channel names merge correctly after appending."""
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
-        print(self.nwbfile.electrodes["channel_name"].data)
-        self.assertEqual(self.nwbfile.electrodes["channel_name"].data, ["a", "b", "c", "d", "e", "f"])
+
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), ["a", "b", "c", "d", "e", "f"])
 
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
@@ -622,8 +623,10 @@ class TestAddElectrodes(unittest.TestCase):
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
 
-        print(self.nwbfile.electrodes["property"].data)
-        self.assertEqual(self.nwbfile.electrodes["property"].data, ['' '' 'value_1' 'value_1' 'value_1' 'value_1'])
+        self.assertListEqual(
+            list(self.nwbfile.electrodes["property"].data),
+            ["value_1", "value_1", "value_2", "value_2", "value_2", "value_2"],
+        )
 
     def test_new_property_addition(self):
         """Add a property only available in a second recording."""
@@ -633,8 +636,17 @@ class TestAddElectrodes(unittest.TestCase):
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
 
-        self.assertEqual(self.nwbfile.electrodes["property2"].data, ['' '' 'second_recorder_property' 'second_recorder_property'
-         'second_recorder_property' 'second_recorder_property'])
+        self.assertListEqual(
+            list(self.nwbfile.electrodes["property2"].data),
+            [
+                ""
+                ""
+                "second_recorder_property"
+                "second_recorder_property"
+                "second_recorder_property"
+                "second_recorder_property"
+            ],
+        )
 
 
 if __name__ == "__main__":
