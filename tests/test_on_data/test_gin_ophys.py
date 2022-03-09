@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 import pytest
+from parameterized import parameterized, param
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
@@ -20,12 +21,7 @@ from nwb_conversion_tools import (
 )
 from nwb_conversion_tools.utils import load_dict_from_file
 
-try:
-    from parameterized import parameterized, param
 
-    HAVE_PARAMETERIZED = True
-except ImportError:
-    HAVE_PARAMETERIZED = False
 # Load the configuration for the data tests
 test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
 
@@ -46,8 +42,7 @@ if test_config_dict["SAVE_OUTPUTS"]:
     OUTPUT_PATH.mkdir(exist_ok=True)
 else:
     OUTPUT_PATH = Path(tempfile.mkdtemp())
-if not HAVE_PARAMETERIZED:
-    pytest.fail("parameterized module is not installed! Please install (`pip install parameterized`).")
+
 if not OPHYS_DATA_PATH:
     pytest.fail(f"No oephys_testing_data folder found in location: {OPHYS_DATA_PATH}!")
 
