@@ -169,11 +169,7 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="raw",
-            es_key="ElectricalSeries_raw",
+            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -183,11 +179,7 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3,
-            save_path=path_multi,
-            metadata=metadata,
-            write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -605,12 +597,29 @@ class TestAddElectrodes(unittest.TestCase):
             channel_ids=channel_ids, renamed_channel_ids=["c", "d", "e", "f"]
         )
 
-    def test_channel_names(self):
-        """Ensure channel names merge correctly after appending."""
+    def test_integer_channel_names(self):
+        """Ensure channel names merge correctly after appending when channel names are integers."""
+        channel_ids = self.base_recording.get_channel_ids()
+        offest_channels_ids = channel_ids + 2
+        recorder_with_offset_channels = self.base_recording.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=offest_channels_ids
+        )
+
+        add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+        add_electrodes(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
+
+        expected_channel_names_in_electrodes_table = ["0", "1", "2", "3", "4", "5"]
+        actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+
+    def test_string_channel_names(self):
+        """Ensure channel names merge correctly after appending when channel names are strings."""
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
         add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
 
-        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), ["a", "b", "c", "d", "e", "f"])
+        expected_channel_names_in_electrodes_table = ["a", "b", "c", "d", "e", "f"]
+        actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
