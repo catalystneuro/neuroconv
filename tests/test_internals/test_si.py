@@ -652,6 +652,48 @@ class TestAddElectrodes(unittest.TestCase):
         expected_properties_in_electrodes_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
         self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
 
+    def test_manually_added_before_recording(self):
+        """."""
+        # TODO, fill in any other required values to add_electrode
+        self.nwbfile.add_electrode(id=123)
+        self.nwbfile.add_electrode(id=124)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_ids = []
+        expected_names = []
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
+    def test_manually_added_after_recording(self):
+        """."""
+        # TODO, fill in any other required values to add_electrode
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        self.nwbfile.add_electrode(id=123)
+        self.nwbfile.add_electrode(id=124)
+        self.nwbfile.add_electrode(x=1, y=2, z=3)  # automatic ID set
+
+        expected_ids = []
+        expected_names = []
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
+    def test_manually_added_before_recording_id_collision(self):
+        """."""
+        # TODO, fill in any other required values to add_electrode
+        self.nwbfile.add_electrode(id=0)
+        self.nwbfile.add_electrode(id=1)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        # or use self.assertRaisesWith from hdmf.testing TestCase to catch whatever error happens
+
+        expected_ids = []
+        expected_names = []
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
 
 if __name__ == "__main__":
     unittest.main()
