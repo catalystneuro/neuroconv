@@ -6,6 +6,9 @@ import numpy as np
 from datetime import datetime
 
 import spikeextractors as se
+from spikeinterface.core.testing_tools import generate_recording
+from hdmf.testing import TestCase
+
 from spikeextractors.testing import (
     check_sortings_equal,
     check_recordings_equal,
@@ -16,7 +19,13 @@ from spikeextractors.testing import (
 from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools import spikeinterface  # testing aliased import
-from nwb_conversion_tools.tools.spikeinterface import get_nwb_metadata, write_recording, write_sorting
+from nwb_conversion_tools.tools.spikeinterface import (
+    get_nwb_metadata,
+    write_recording,
+    write_sorting,
+    add_electrodes,
+    add_electrical_series,
+)
 from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
@@ -574,6 +583,175 @@ class TestWriteElectrodes(unittest.TestCase):
                 else:
                     assert nwb.electrodes["group_name"][i] == "M1"
                     assert nwb.electrodes["group"][i].description == "M1 description"
+
+
+class TestAddElectrodes(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_channels = 4
+        cls.base_recording = generate_recording(num_channels=cls.num_channels, durations=[3])
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=datetime.now()
+        )
+        channel_ids = self.base_recording.get_channel_ids()
+        self.recording_1 = self.base_recording.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=["a", "b", "c", "d"]
+        )
+        self.recording_2 = self.base_recording.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=["c", "d", "e", "f"]
+        )
+
+        self.device = self.nwbfile.create_device(name="extra_device")
+        self.electrode_group = self.nwbfile.create_electrode_group(
+            name="extra_group", description="description", location="location", device=self.device
+        )
+        self.defaults = dict(
+            x=np.nan,
+            y=np.nan,
+            z=np.nan,
+            imp=-1.0,
+            location="unknown",
+            filtering="none",
+            group_name="0",
+        )
+        self.defaults.update(group=self.electrode_group)
+
+    def test_integer_channel_names(self):
+        """Ensure channel names merge correctly after appending when channel names are integers."""
+        channel_ids = self.base_recording.get_channel_ids()
+        offest_channels_ids = channel_ids + 2
+        recorder_with_offset_channels = self.base_recording.channel_slice(
+            channel_ids=channel_ids, renamed_channel_ids=offest_channels_ids
+        )
+
+        add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+        add_electrodes(recording=recorder_with_offset_channels, nwbfile=self.nwbfile)
+
+        expected_channel_names_in_electrodes_table = ["0", "1", "2", "3", "4", "5"]
+        actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+
+    def test_string_channel_names(self):
+        """Ensure channel names merge correctly after appending when channel names are strings."""
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        expected_channel_names_in_electrodes_table = ["a", "b", "c", "d", "e", "f"]
+        actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+
+    def test_common_property_extension(self):
+        """Add a property for a first recording that is then extended by a second recording."""
+        self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["common_property"].data)
+        expected_properties_in_electrodes_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
+        self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
+
+    def test_new_property_addition(self):
+        """Add a property only available in a second recording."""
+        self.recording_2.set_property(key="added_property", values=["added_value"] * self.num_channels)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["added_property"].data)
+        expected_properties_in_electrodes_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
+        self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
+
+    def test_manual_row_adition_before_add_electrodes_function(self):
+        """Add some rows to the electrode tables before using the add_electrodes function"""
+        values_dic = self.defaults
+
+        values_dic.update(id=123)
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=124)
+        self.nwbfile.add_electrode(**values_dic)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_ids = [123, 124, 2, 3, 4, 5]
+        expected_names = ["123", "124", "a", "b", "c", "d"]
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
+    def test_manual_row_adition_after_add_electrodes_function(self):
+        """Add some rows to the electrode table after using the add_electrodes function"""
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        values_dic = self.defaults
+
+        # Previous properties
+        values_dic.update(rel_x=0.0, rel_y=0.0, id=123, channel_name=str(123))
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(rel_x=0.0, rel_y=0.0, id=124, channel_name=str(124))
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(rel_x=0.0, rel_y=0.0, id=None, channel_name="6")  # automatic ID set
+        self.nwbfile.add_electrode(**values_dic)
+
+        expected_ids = [0, 1, 2, 3, 123, 124, 6]
+        expected_names = ["a", "b", "c", "d", "123", "124", "6"]
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
+    def test_manual_row_adition_before_add_electrodes_function_and_channel_name_collision(self):
+        """
+        Add some rows to the electrode tables before using the add_electrodes function.
+        In this case there is with some common channel names between the previously added rows and the recroder
+        which causes collisions.
+        """
+
+        values_dic = self.defaults
+        self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
+        self.nwbfile.add_electrode_column(name="property1", description="property_added_before")
+
+        values_dic.update(id=20, channel_name="c", property1="value1_c")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=21, channel_name="d", property1="value1_d")
+        self.nwbfile.add_electrode(**values_dic)
+
+        property_values = ["value2_a", "value2_b", "value2_c", "value2_d"]
+        self.recording_1.set_property(key="property2", values=property_values)
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_ids = [20, 21, 2, 3]
+        expected_names = ["c", "d", "a", "b"]
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
+        expected_property_values1 = ["value1_c", "value1_d", "", ""]
+        expected_property_values2 = ["value2_c", "value2_d", "value2_a", "value2_b"]
+        self.assertListEqual(list(self.nwbfile.electrodes["property1"].data), expected_property_values1)
+        self.assertListEqual(list(self.nwbfile.electrodes["property2"].data), expected_property_values2)
+
+    def test_manually_added_before_recording_id_collision(self):
+        """
+        Add some rows to the electrode tables before using the add_electrodes function.
+        In this case there is with some common ids between the manually added rows and the recorder which causes collisions.
+        """
+
+        values_dic = self.defaults
+
+        values_dic.update(id=0)
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=1)
+        self.nwbfile.add_electrode(**values_dic)
+        # The self.base_recording channel_ids are [0, 1, 2, 3]
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
+            add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
 
 
 if __name__ == "__main__":
