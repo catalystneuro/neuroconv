@@ -384,7 +384,7 @@ def add_electrodes(
             for name, desc in elec_columns.items():
                 if name == "group_name":
                     group_name = str(desc["data"][data_index])
-                    group_name_is_not_empty = (group_name != "")
+                    group_name_is_not_empty = group_name != ""
                     group_name_does_not_exists = group_name not in nwbfile.electrode_groups
                     if group_name_is_not_empty and group_name_does_not_exists:
                         warnings.warn(
@@ -413,10 +413,10 @@ def add_electrodes(
 
             nwbfile.add_electrode(**electrode_kwargs)
 
-    # Extended the table with columns for properties that were not previously in the table. 
-    # For channel_name fill with previous available ids 
+    # Extended the table with columns for properties that were not previously in the table.
+    # For channel_name fill with previous available ids
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
-    
+
     for col_name, cols_args in elec_columns_append.items():
         data = cols_args["data"]
 
