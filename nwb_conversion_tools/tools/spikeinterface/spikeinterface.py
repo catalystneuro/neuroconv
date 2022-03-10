@@ -440,7 +440,7 @@ def add_electrodes(
     ]
     data_indexes_of_data_to_add = [channel_name_to_data_index[channel_name] for channel_name in channel_name_array]
     indexes_to_fill_with_default = electrodes_df.index.difference(electrode_indexes_of_data_to_add).values
-    
+
     # Extended the table with columns for properties that were not previously in the table.
     for col_name, cols_args in elec_columns_append.items():
         data = cols_args["data"]
