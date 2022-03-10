@@ -169,7 +169,11 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
+            recording=self.RX,
+            save_path=path_multi,
+            metadata=metadata,
+            write_as="raw",
+            es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -179,7 +183,11 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
+            recording=self.RX3,
+            save_path=path_multi,
+            metadata=metadata,
+            write_as="lfp",
+            es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -584,8 +592,6 @@ class TestAddElectrodes(unittest.TestCase):
         cls.num_channels = 4
         cls.base_recording = generate_recording(num_channels=cls.num_channels, durations=[3])
 
-
-
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
         self.nwbfile = NWBFile(
@@ -604,7 +610,13 @@ class TestAddElectrodes(unittest.TestCase):
             name="extra_group", description="description", location="location", device=self.device
         )
         self.defaults = dict(
-            x=np.nan, y=np.nan, z=np.nan, imp=-1.0, location="unknown", filtering="none", group_name="0",
+            x=np.nan,
+            y=np.nan,
+            z=np.nan,
+            imp=-1.0,
+            location="unknown",
+            filtering="none",
+            group_name="0",
         )
         self.defaults.update(group=self.electrode_group)
 
@@ -696,7 +708,7 @@ class TestAddElectrodes(unittest.TestCase):
     def test_manual_row_adition_before_add_electrodes_function_and_channel_name_collision(self):
         """
         Add some rows to the electrode tables before using the add_electrodes function.
-        In this case there is with some common channel names between the previously added rows and the recroder 
+        In this case there is with some common channel names between the previously added rows and the recroder
         which causes collisions.
         """
 
@@ -739,7 +751,6 @@ class TestAddElectrodes(unittest.TestCase):
         self.nwbfile.add_electrode(**values_dic)
 
         self.assertRaises(ValueError, add_electrodes, recording=self.base_recording, nwbfile=self.nwbfile)
-
 
 
 if __name__ == "__main__":
