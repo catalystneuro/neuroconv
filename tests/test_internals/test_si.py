@@ -169,7 +169,11 @@ class TestExtractors(unittest.TestCase):
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
-            recording=self.RX, save_path=path_multi, metadata=metadata, write_as="raw", es_key="ElectricalSeries_raw",
+            recording=self.RX,
+            save_path=path_multi,
+            metadata=metadata,
+            write_as="raw",
+            es_key="ElectricalSeries_raw",
         )
         write_recording(
             recording=self.RX2,
@@ -179,7 +183,11 @@ class TestExtractors(unittest.TestCase):
             es_key="ElectricalSeries_processed",
         )
         write_recording(
-            recording=self.RX3, save_path=path_multi, metadata=metadata, write_as="lfp", es_key="ElectricalSeries_lfp",
+            recording=self.RX3,
+            save_path=path_multi,
+            metadata=metadata,
+            write_as="lfp",
+            es_key="ElectricalSeries_lfp",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -585,7 +593,13 @@ class TestAddElectrodes(unittest.TestCase):
         cls.base_recording = generate_recording(num_channels=cls.num_channels, durations=[3])
 
         cls.defaults = dict(
-            x=np.nan, y=np.nan, z=np.nan, imp=-1.0, location="unknown", filtering="none", group_name="0",
+            x=np.nan,
+            y=np.nan,
+            z=np.nan,
+            imp=-1.0,
+            location="unknown",
+            filtering="none",
+            group_name="0",
         )
 
     def setUp(self):
@@ -600,12 +614,12 @@ class TestAddElectrodes(unittest.TestCase):
         self.recording_2 = self.base_recording.channel_slice(
             channel_ids=channel_ids, renamed_channel_ids=["c", "d", "e", "f"]
         )
-        
+
         self.device = self.nwbfile.create_device(name="extra_device")
         self.electrode_group = self.nwbfile.create_electrode_group(
             name="extra_group", description="description", location="location", device=self.device
         )
-        
+
         self.defaults.update(group=self.electrode_group)
 
     def test_integer_channel_names(self):
@@ -658,13 +672,13 @@ class TestAddElectrodes(unittest.TestCase):
     def test_manually_added_before_recording(self):
         """."""
         values_dic = self.defaults
-        
+
         values_dic.update(id=123)
         self.nwbfile.add_electrode(**values_dic)
-        
+
         values_dic.update(id=124)
         self.nwbfile.add_electrode(**values_dic)
-        
+
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_ids = [123, 124, 2, 3, 4, 5]
@@ -677,14 +691,14 @@ class TestAddElectrodes(unittest.TestCase):
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
 
         values_dic = self.defaults
-        
+
         # Previous properties
         values_dic.update(rel_x=0.0, rel_y=0.0, id=123, channel_name=str(123))
         self.nwbfile.add_electrode(**values_dic)
-        
+
         values_dic.update(rel_x=0.0, rel_y=0.0, id=124, channel_name=str(124))
         self.nwbfile.add_electrode(**values_dic)
-        
+
         values_dic.update(rel_x=0.0, rel_y=0.0, id=None, channel_name="6")
         self.nwbfile.add_electrode(**values_dic)  # automatic ID set
 
@@ -699,13 +713,12 @@ class TestAddElectrodes(unittest.TestCase):
 
         values_dic.update(id=0)
         self.nwbfile.add_electrode(**values_dic)
-        
+
         values_dic.update(id=1)
         self.nwbfile.add_electrode(**values_dic)
-        
+
         with self.assertRaises(ValueError):
             add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
-        
 
     def test_manually_added_before_recording_channel_name_collision(self):
         """."""
@@ -713,16 +726,17 @@ class TestAddElectrodes(unittest.TestCase):
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
         values_dic.update(id=20, channel_name="a")
         self.nwbfile.add_electrode(**values_dic)
-        
+
         values_dic.update(id=21, channel_name="b")
         self.nwbfile.add_electrode(**values_dic)
-                
+
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
 
         expected_ids = [20, 21, 2, 3]
         expected_names = ["a", "b", "c", "d"]
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
 
 if __name__ == "__main__":
     unittest.main()
