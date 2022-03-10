@@ -413,7 +413,7 @@ def add_electrodes(
 
             nwbfile.add_electrode(**electrode_kwargs)
 
-    # Add channel_name as a column and fill previously existing rows equal channel_name to str(ids)
+    # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
     col_name = "channel_name"
     if col_name in elec_columns_append:
