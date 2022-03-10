@@ -384,7 +384,9 @@ def add_electrodes(
             for name, desc in elec_columns.items():
                 if name == "group_name":
                     group_name = str(desc["data"][data_index])
-                    if group_name != "" and group_name not in nwbfile.electrode_groups:
+                    group_name_is_not_empty = (group_name != "")
+                    group_name_does_not_exists = group_name not in nwbfile.electrode_groups
+                    if group_name_is_not_empty and group_name_does_not_exists:
                         warnings.warn(
                             f"Electrode group {group_name} for electrode {channel_name} was not "
                             "found in the nwbfile! Automatically adding."
@@ -411,8 +413,10 @@ def add_electrodes(
 
             nwbfile.add_electrode(**electrode_kwargs)
 
-    # Extended the table with columns for properties that were not previously in the table.
-    channels_not_available_in_recorder = set(channel_names_in_electrodes_table).difference(set(channel_name_array))
+    # Extended the table with columns for properties that were not previously in the table. 
+    # For channel_name fill with previous available ids 
+    previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
+    
     for col_name, cols_args in elec_columns_append.items():
         data = cols_args["data"]
 
@@ -421,8 +425,12 @@ def add_electrodes(
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
 
-        default_value_extension = np.full(shape=len(channels_not_available_in_recorder), fill_value=default_value)
-        extended_data = np.hstack([default_value_extension, data])
+        if col_name == "channel_name":
+            previous_ids = nwbfile.electrodes.id[:previous_table_size]
+            extended_data = np.hstack([np.array(previous_ids).astype("str"), data])
+        else:
+            default_value_extension = np.full(shape=previous_table_size, fill_value=default_value)
+            extended_data = np.hstack([default_value_extension, data])
 
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(col_name, **cols_args)
