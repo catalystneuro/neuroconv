@@ -2,6 +2,7 @@
 from abc import ABC
 
 import spikeinterface as si
+import spikeextractors as se
 import numpy as np
 from pynwb import NWBFile
 
@@ -48,6 +49,29 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         )
         return metadata_schema
 
+    def subset_sorting(self):
+        max_min_spike_time = max(
+            [
+                min(x)
+                for y in self.sorting_extractor.get_unit_ids()
+                for x in [self.sorting_extractor.get_unit_spike_train(y)]
+                if any(x)
+            ]
+        )
+        end_frame = 1.1*max_min_spike_time
+        if isinstance(self.sorting_extractor, se.SortingExtractor):
+            stub_sorting_extractor = se.SubSortingExtractor(
+                self.sorting_extractor,
+                unit_ids=self.sorting_extractor.get_unit_ids(),
+                start_frame=0,
+                end_frame=end_frame,
+            )
+        elif isinstance(self.sorting_extractor, si.BaseSorting):
+            stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
+        else:
+            raise TypeError(f"{self.sorting_extractor} should be either se.SortingExtractor or si.BaseSorting")
+        return stub_sorting_extractor
+
     def run_conversion(
         self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False, write_ecephys_metadata: bool = False
     ):
@@ -77,20 +101,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
         if stub_test:
-            max_min_spike_time = max(
-                [
-                    min(x)
-                    for y in self.sorting_extractor.get_unit_ids()
-                    for x in [self.sorting_extractor.get_unit_spike_train(y)]
-                    if any(x)
-                ]
-            )
-            stub_sorting_extractor = self.sorting_extractor.frame_slice(
-                start_frame=0,
-                end_frame=1.1*max_min_spike_time
-            )
-            # TODO: copy over unit properties (SubRecording and SubSorting do not carry these automatically)
-            sorting_extractor = stub_sorting_extractor
+            sorting_extractor = self.subset_sorting()
         else:
             sorting_extractor = self.sorting_extractor
         property_descriptions = dict()
