@@ -413,7 +413,7 @@ def add_electrodes(
 
             nwbfile.add_electrode(**electrode_kwargs)
 
-    # For channel_name fill with previous available ids and
+    # Add channel_name as a column and fill previously existing rows equal channel_name to str(ids)
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
     col_name = "channel_name"
     if col_name in elec_columns_append:
@@ -427,7 +427,7 @@ def add_electrodes(
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(col_name, **cols_args)
 
-    # Extended the table with columns for properties that were not previously in the table.
+    # Build indexes to electrodes and to data
     electrodes_df = nwbfile.electrodes.to_dataframe().reset_index()
     channel_name_to_data_index = {channel_name: index for index, channel_name in enumerate(channel_name_array)}
     channel_name_to_electrode_table_index = {
@@ -440,7 +440,8 @@ def add_electrodes(
     ]
     data_indexes_of_data_to_add = [channel_name_to_data_index[channel_name] for channel_name in channel_name_array]
     indexes_to_fill_with_default = electrodes_df.index.difference(electrode_indexes_of_data_to_add).values
-
+    
+    # Extended the table with columns for properties that were not previously in the table.
     for col_name, cols_args in elec_columns_append.items():
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
