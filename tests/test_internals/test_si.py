@@ -749,6 +749,7 @@ class TestAddElectrodes(TestCase):
 
         values_dic.update(id=1)
         self.nwbfile.add_electrode(**values_dic)
+        # The self.base_recording channel_ids are [0, 1, 2, 3]
         with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
             add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
 
