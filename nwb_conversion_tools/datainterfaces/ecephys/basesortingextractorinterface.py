@@ -86,8 +86,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                 ]
             )
             stub_sorting_extractor = self.sorting_extractor.frame_slice(
-                start_frame=0,
-                end_frame=1.1*max_min_spike_time
+                start_frame=0, end_frame=1.1 * max_min_spike_time
             )
             # TODO: copy over unit properties (SubRecording and SubSorting do not carry these automatically)
             sorting_extractor = stub_sorting_extractor
