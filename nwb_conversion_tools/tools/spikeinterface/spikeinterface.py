@@ -334,7 +334,9 @@ def add_electrodes(
     channel_name_array = channel_ids.astype("str", copy=False)
 
     elec_columns["channel_name"].update(
-        description="a string reference for the channel", data=channel_name_array, index=False,
+        description="a string reference for the channel",
+        data=channel_name_array,
+        index=False,
     )
 
     # Fill with provided custom descriptions
@@ -389,7 +391,15 @@ def add_electrodes(
                             f"Electrode group {group_name} for electrode {channel_name} was not "
                             "found in the nwbfile! Automatically adding."
                         )
-                        missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=[dict(name=group_name,)]))
+                        missing_group_metadata = dict(
+                            Ecephys=dict(
+                                ElectrodeGroup=[
+                                    dict(
+                                        name=group_name,
+                                    )
+                                ]
+                            )
+                        )
                         add_electrode_groups(
                             recording=checked_recording, nwbfile=nwbfile, metadata=missing_group_metadata
                         )
@@ -403,20 +413,20 @@ def add_electrodes(
 
             nwbfile.add_electrode(**electrode_kwargs)
 
-    # For channel_name fill with previous available ids and 
+    # For channel_name fill with previous available ids and
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
-    col_name = 'channel_name'
+    col_name = "channel_name"
     if col_name in elec_columns_append:
         cols_args = elec_columns_append.pop(col_name)
         data = cols_args["data"]
-        
+
         previous_ids = nwbfile.electrodes.id[:previous_table_size]
         default_value = np.array(previous_ids).astype("str")
-        
+
         extended_data = np.hstack([default_value, data])
         cols_args["data"] = extended_data
-        nwbfile.add_electrode_column(col_name, **cols_args)    
-    
+        nwbfile.add_electrode_column(col_name, **cols_args)
+
     # Extended the table with columns for properties that were not previously in the table.
     electrodes_df = nwbfile.electrodes.to_dataframe().reset_index()
     channel_name_to_data_index = {channel_name: index for index, channel_name in enumerate(channel_name_array)}
@@ -425,26 +435,24 @@ def add_electrodes(
         for channel_name in channel_name_array
     }
 
-    electrode_indexes_of_data_to_add = [channel_name_to_electrode_table_index[channel_name] for channel_name in channel_name_array]
+    electrode_indexes_of_data_to_add = [
+        channel_name_to_electrode_table_index[channel_name] for channel_name in channel_name_array
+    ]
     data_indexes_of_data_to_add = [channel_name_to_data_index[channel_name] for channel_name in channel_name_array]
     indexes_to_fill_with_default = electrodes_df.index.difference(electrode_indexes_of_data_to_add).values
-    
-    
-    
+
     for col_name, cols_args in elec_columns_append.items():
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
-            data = data.astype('float')
-        
+            data = data.astype("float")
+
         # Find first matching data-type
         sample_data = data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
 
-        
         extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=data.dtype)
         extended_data[electrode_indexes_of_data_to_add] = data[data_indexes_of_data_to_add]
-
 
         extended_data[indexes_to_fill_with_default] = default_value
         cols_args["data"] = extended_data
@@ -632,7 +640,10 @@ def add_electrical_series(
             eseries_kwargs.update(channel_conversion=channel_conversion)
     if iterator_type is None or iterator_type == "v2":
         ephys_data = SpikeInterfaceRecordingDataChunkIterator(
-            recording=checked_recording, segment_index=segment_index, return_scaled=write_scaled, **iterator_opts,
+            recording=checked_recording,
+            segment_index=segment_index,
+            return_scaled=write_scaled,
+            **iterator_opts,
         )
     elif iterator_type == "v1":
         if isinstance(checked_recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
