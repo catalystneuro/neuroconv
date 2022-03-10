@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import ABC
 
-import spikeextractors as se
+import spikeinterface as si
 import numpy as np
 from pynwb import NWBFile
 
@@ -69,8 +69,8 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         """
         if write_ecephys_metadata and "Ecephys" in metadata:
             n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])
-            recording = se.NumpyRecordingExtractor(
-                timeseries=np.array(range(n_channels)),
+            recording = si.NumpyRecording(
+                traces_list=[np.array(range(n_channels))],
                 sampling_frequency=self.sorting_extractor.get_sampling_frequency(),
             )
             add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
@@ -85,11 +85,9 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                     if any(x)
                 ]
             )
-            stub_sorting_extractor = se.SubSortingExtractor(
-                self.sorting_extractor,
-                unit_ids=self.sorting_extractor.get_unit_ids(),
+            stub_sorting_extractor = self.sorting_extractor.frame_slice(
                 start_frame=0,
-                end_frame=1.1 * max_min_spike_time,
+                end_frame=1.1*max_min_spike_time
             )
             # TODO: copy over unit properties (SubRecording and SubSorting do not carry these automatically)
             sorting_extractor = stub_sorting_extractor

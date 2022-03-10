@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 
 import spikeextractors as se
-import spikeinterface as si
+import sipickledatainterface as si
 
 from pynwb import NWBFile
 from pynwb.device import Device
