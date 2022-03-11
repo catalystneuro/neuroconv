@@ -270,20 +270,6 @@ def add_electrodes(
         if nwbfile.electrodes is None or "rel_y" not in nwbfile.electrodes.colnames:
             nwbfile.add_electrode_column("rel_y", "y position of electrode in electrode group")
 
-    if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
-        add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
-    defaults = dict(
-        x=np.nan,
-        y=np.nan,
-        z=np.nan,
-        # There doesn't seem to be a canonical default for impedence, if missing.
-        # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
-        imp=-1.0,
-        location="unknown",
-        filtering="none",
-        group_name="0",
-    )
     if metadata is None:
         metadata = dict(Ecephys=dict())
 
@@ -303,32 +289,54 @@ def add_electrodes(
         [electrode["name"] != "group" for electrode in metadata["Ecephys"]["Electrodes"]]
     ), "Passing metadata field 'group' is deprecated; pass group_name instead!"
 
+    if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
+        add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
+        
+    required_properties_default_values = dict(
+        x=np.nan,
+        y=np.nan,
+        z=np.nan,
+        # There doesn't seem to be a canonical default for impedence, if missing.
+        # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
+        imp=-1.0,
+        location="unknown",
+        filtering="none",
+        group_name="0",
+    )
+    
+    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
+
     # 1. Build column details from RX properties: dict(name: dict(description='',data=data, index=False))
     elec_columns = defaultdict(dict)
     elec_columns_append = defaultdict(dict)
 
-    property_names = recording.get_property_keys()
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
+    properties_in_recorder = recording.get_property_keys()
+    properties_to_exclude = list(exclude) + ["contact_vector"]
+    properties_to_extract = [property for property in properties_in_recorder if property not in properties_to_exclude] 
+    for property in properties_to_extract:
+        data = recording.get_property(property)
+        index = isinstance(data[0], (list, np.ndarray, tuple))
+        elec_columns[property].update(description=property, data=data, index=index)
+    
+    # Re-map some specific cases
+    if "location" in elec_columns:
+        data = recording.get_property("location")
+        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
+        for column_number in range(data.shape[1]):
+            property = column_number_to_property[column_number]
+            elec_columns[property].update(description=property, data=data[:, column_number], index=False)
+        elec_columns.pop("location")
+        
+    if "brain_area" in elec_columns:
+        elec_columns["location"] = elec_columns["brain_area"]
+        elec_columns.pop("brain_area")
+        elec_columns["location"].update(description="location")
 
-    exclude_names = list(exclude) + ["contact_vector"]
-    for prop in property_names:
-        if prop not in exclude_names:
-            data = recording.get_property(prop)
-            # store data after build and remap some properties to relevant nwb columns:
-            if prop == "location":
-                location_map = ["rel_x", "rel_y", "rel_z"]
-                for prop_name_new, loc in zip(location_map, range(data.shape[1])):
-                    elec_columns[prop_name_new].update(description=prop_name_new, data=data[:, loc], index=False)
-            else:
-                if prop == "brain_area":
-                    prop = "location"
-                elif prop == "group":
-                    if "group_name" not in property_names:
-                        prop = "group_name"
-                    else:
-                        continue
-                index = isinstance(data[0], (list, np.ndarray))
-                elec_columns[prop].update(description=prop, data=data, index=index)
+    if "group" in elec_columns:
+        if "group_name" not in properties_to_extract:
+            elec_columns["group_name"] = elec_columns["group"]
+            elec_columns["group_name"].update(description="group_name")
+        elec_columns.pop("group")
 
     # If the channel ids are integer keep the old behavior of asigning electrodes.ids equal to channel_ids
     channel_ids = recording.get_channel_ids()
@@ -356,7 +364,7 @@ def add_electrodes(
                 matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
                 default_value = type_to_default_value[matching_type]
                 default_updated.update({colname: default_value})
-    default_updated.update(defaults)
+    default_updated.update(required_properties_default_values)
 
     # Separate previously available properties from new properties.
     for name, des_dict in elec_columns.items():
