@@ -253,24 +253,25 @@ def add_electrodes(
         object to ignore when writing to the NWBFile.
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+    
     if isinstance(recording, RecordingExtractor):
-        checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
-    else:
-        checked_recording = recording
+        recording = OldToNewRecording(oldapi_recording_extractor=recording)
+
     if nwbfile.electrodes is not None:
-        ids_already_in_electrode_table = [id in nwbfile.electrodes.id for id in checked_recording.get_channel_ids()]
+        ids_already_in_electrode_table = [id in nwbfile.electrodes.id for id in recording.get_channel_ids()]
         if all(ids_already_in_electrode_table):
             warnings.warn("cannot create electrodes for this recording as ids already exist")
             return
 
-    if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
-        add_electrode_groups(recording=checked_recording, nwbfile=nwbfile, metadata=metadata)
     # For older versions of pynwb, we need to manually add these columns
     if distutils.version.LooseVersion(pynwb.__version__) < "1.3.0":
         if nwbfile.electrodes is None or "rel_x" not in nwbfile.electrodes.colnames:
             nwbfile.add_electrode_column("rel_x", "x position of electrode in electrode group")
         if nwbfile.electrodes is None or "rel_y" not in nwbfile.electrodes.colnames:
             nwbfile.add_electrode_column("rel_y", "y position of electrode in electrode group")
+
+    if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
+        add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     defaults = dict(
         x=np.nan,
@@ -299,20 +300,20 @@ def add_electrodes(
         "containing the keys 'name' and 'description'"
     )
     assert all(
-        [x["name"] != "group" for x in metadata["Ecephys"]["Electrodes"]]
+        [electrode["name"] != "group" for electrode in metadata["Ecephys"]["Electrodes"]]
     ), "Passing metadata field 'group' is deprecated; pass group_name instead!"
 
     # 1. Build column details from RX properties: dict(name: dict(description='',data=data, index=False))
     elec_columns = defaultdict(dict)
     elec_columns_append = defaultdict(dict)
 
-    property_names = checked_recording.get_property_keys()
+    property_names = recording.get_property_keys()
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
 
     exclude_names = list(exclude) + ["contact_vector"]
     for prop in property_names:
         if prop not in exclude_names:
-            data = checked_recording.get_property(prop)
+            data = recording.get_property(prop)
             # store data after build and remap some properties to relevant nwb columns:
             if prop == "location":
                 location_map = ["rel_x", "rel_y", "rel_z"]
@@ -330,7 +331,7 @@ def add_electrodes(
                 elec_columns[prop].update(description=prop, data=data, index=index)
 
     # If the channel ids are integer keep the old behavior of asigning electrodes.ids equal to channel_ids
-    channel_ids = checked_recording.get_channel_ids()
+    channel_ids = recording.get_channel_ids()
     channel_name_array = channel_ids.astype("str", copy=False)
 
     elec_columns["channel_name"].update(
@@ -401,14 +402,14 @@ def add_electrodes(
                             )
                         )
                         add_electrode_groups(
-                            recording=checked_recording, nwbfile=nwbfile, metadata=missing_group_metadata
+                            recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata
                         )
                     electrode_kwargs.update(dict(group=nwbfile.electrode_groups[group_name], group_name=group_name))
                 elif "data" in desc:
                     electrode_kwargs[name] = desc["data"][data_index]
 
             if "group_name" not in elec_columns:
-                group_id = checked_recording.get_channel_groups(channel_ids=[data_index])[0]
+                group_id = recording.get_channel_groups(channel_ids=[data_index])[0]
                 electrode_kwargs.update(dict(group=nwbfile.electrode_groups[str(group_id)], group_name=str(group_id)))
 
             nwbfile.add_electrode(**electrode_kwargs)
