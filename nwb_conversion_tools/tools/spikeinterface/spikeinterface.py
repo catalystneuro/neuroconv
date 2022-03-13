@@ -296,11 +296,9 @@ def add_electrodes(
 
     # 1. Build column details from RX properties: dict(name: dict(description='',data=data, index=False))
     elec_columns = defaultdict(dict)
-    elec_columns_append = defaultdict(dict)
 
-    properties_in_recorder = recording.get_property_keys()
     properties_to_exclude = list(exclude) + ["contact_vector"]
-    properties_to_extract = [property for property in properties_in_recorder if property not in properties_to_exclude]
+    properties_to_extract = [property for property in recording.get_property_keys() if property not in properties_to_exclude]
     for property in properties_to_extract:
         data = recording.get_property(property)
         index = isinstance(data[0], (list, np.ndarray, tuple))
@@ -361,7 +359,7 @@ def add_electrodes(
     group_list = [nwbfile.electrode_groups[group_name] for group_name in group_name_array]
     elec_columns["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
 
-    required_properties_default_values = dict(
+    required_property_to_default_value = dict(
         x=np.nan,
         y=np.nan,
         z=np.nan,
@@ -370,58 +368,49 @@ def add_electrodes(
         imp=-1.0,
         location="unknown",
         filtering="none",
+        group=None,
+        id=None,
+        group_name="default"
     )
 
-    # properties_already_in_electrode_table = None
-    # requiered_properties = None
-    # extracted_properties = None
-    # special_properties = None
-    # properties_to_add_as_columns = extracted_properties - requiered_properties - properties_already_in_electrode_table
+    electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
+    required_properties = set(required_property_to_default_value)
+    extracted_properties = set(elec_columns)
+    properties_to_add_by_rows = electrode_table_previous_properties | required_properties
+    properties_to_add_as_columns = extracted_properties - properties_to_add_by_rows
 
-    # Updating default arguments if electrodes table already present:
-    default_updated = dict()
-    if nwbfile.electrodes is not None:
-        for colname in nwbfile.electrodes.colnames:
-            if colname not in ["group", "id"]:
-                # Find first matching data-type
-                sample_data = nwbfile.electrodes[colname].data[0]
-                # assert len([type for type in type_to_default_value if isinstance(sample_data, type)]) > 0
-                matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
-                default_value = type_to_default_value[matching_type]
-                default_updated.update({colname: default_value})
+    # Find default values for previously available properties
+    property_to_default_values = dict()
+    for property in electrode_table_previous_properties - required_properties:
+        # Find first matching data-type
+        sample_data = nwbfile.electrodes[property].data[0]
+        matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
+        default_value = type_to_default_value[matching_type]
+        property_to_default_values.update({property: default_value})
 
-    default_updated.update(required_properties_default_values)
-    # Separate previously available properties from new properties.
-    for name, des_dict in elec_columns.items():
-        des_args = dict(des_dict)
-        if (name not in default_updated) and name not in (["group", "id", "group_name"]):
-            if nwbfile.electrodes is None:
-                nwbfile.add_electrode_column(name=name, description=des_args["description"], index=des_args["index"])
-            else:
-                elec_columns_append[name] = des_args
-
-    for name in elec_columns_append:
-        _ = elec_columns.pop(name)
-
-    # Add data by rows
+    property_to_default_values.update(required_property_to_default_value)
+ 
     channel_names_in_electrodes_table = []
-    if "channel_name" in nwbfile.electrodes.colnames:
-        channel_names_in_electrodes_table += np.array(nwbfile.electrodes["channel_name"].data).tolist()
-
+    if nwbfile.electrodes:
+        if "channel_name" in nwbfile.electrodes.colnames:
+            channel_names_in_electrodes_table += np.array(nwbfile.electrodes["channel_name"].data).tolist()
+    
+    # Add data by rows
     for data_index, channel_name in enumerate(channel_name_array):
         if channel_name not in channel_names_in_electrodes_table:
-            electrode_kwargs = dict(default_updated)
-            for name, desc in elec_columns.items():
+            electrode_kwargs = dict(property_to_default_values)
+            for property in properties_to_add_by_rows:
+                desc = elec_columns[property]
                 if "data" in desc:
-                    electrode_kwargs[name] = desc["data"][data_index]
+                    electrode_kwargs[property] = desc["data"][data_index]
 
             nwbfile.add_electrode(**electrode_kwargs)
 
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
     col_name = "channel_name"
-    if col_name in elec_columns_append:
-        cols_args = elec_columns_append.pop(col_name)
+    if col_name in properties_to_add_as_columns:
+        cols_args = elec_columns.pop(col_name)
         data = cols_args["data"]
 
         previous_ids = nwbfile.electrodes.id[:previous_table_size]
@@ -433,7 +422,6 @@ def add_electrodes(
 
     # Build indexes to electrodes and to data
     electrodes_df = nwbfile.electrodes.to_dataframe().reset_index()
-    channel_name_to_data_index = {channel_name: index for index, channel_name in enumerate(channel_name_array)}
     channel_name_to_electrode_table_index = {
         channel_name: electrodes_df.query(f"channel_name=='{channel_name}'").index[0]
         for channel_name in channel_name_array
@@ -442,11 +430,14 @@ def add_electrodes(
     electrode_indexes_of_data_to_add = [
         channel_name_to_electrode_table_index[channel_name] for channel_name in channel_name_array
     ]
+    
+    channel_name_to_data_index = {channel_name: index for index, channel_name in enumerate(channel_name_array)}
     data_indexes_of_data_to_add = [channel_name_to_data_index[channel_name] for channel_name in channel_name_array]
     indexes_to_fill_with_default = electrodes_df.index.difference(electrode_indexes_of_data_to_add).values
 
     # Extended the table with columns for properties that were not previously in the table.
-    for col_name, cols_args in elec_columns_append.items():
+    for col_name in properties_to_add_as_columns - {"channel_name"}:
+        cols_args = elec_columns[col_name]
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
             data = data.astype("float")
