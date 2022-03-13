@@ -292,17 +292,6 @@ def add_electrodes(
     if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
         add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
-    required_properties_default_values = dict(
-        x=np.nan,
-        y=np.nan,
-        z=np.nan,
-        # There doesn't seem to be a canonical default for impedence, if missing.
-        # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
-        imp=-1.0,
-        location="unknown",
-        filtering="none",
-    )
-
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
 
     # 1. Build column details from RX properties: dict(name: dict(description='',data=data, index=False))
@@ -347,49 +336,48 @@ def add_electrodes(
         elec_columns["location"].update(description="location")
         elec_columns.pop("brain_area")
 
-    # If no group_names are provide use groups or default 
-    if "group_name" in properties_to_extract:
+    # If no group_names are provide use groups or default
+    if "group_name" in elec_columns:
         group_name_array = elec_columns["group_name"]["data"].astype("str", copy=False)
+
     else:
         if "group" in elec_columns:
             group_name_array = elec_columns["group"]["data"].astype("str", copy=False)
-            elec_columns["group_name"].update(description="group_name", data=group_name_array, index=False)
         else:
             default_group_name = "default_group"
             group_name_array = np.full_like(channel_ids, fill_value=default_group_name)
-            elec_columns["group_name"].update(description="group_name", data=group_name_array, index=False)
-        
-    # Create pynwb objects for non-existing groups
-    group_list = [None for _ in range(group_name_array.size)]
-    for index, group_name in enumerate(group_name_array):
-        group_name_is_not_empty = group_name != ""
-        electrode_group_not_in_nwbfile = group_name not in nwbfile.electrode_groups
-        if group_name_is_not_empty and electrode_group_not_in_nwbfile:
-            warnings.warn(
-                f"Electrode group {group_name} for electrode {channel_name_array[index]} was not "
-                "found in the nwbfile! Automatically adding."
-            )
-            missing_group_metadata = dict(
-                Ecephys=dict(
-                    ElectrodeGroup=[
-                        dict(
-                            name=group_name,
-                        )
-                    ]
-                )
-            )
-            add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata)
-        group_list[index] = nwbfile.electrode_groups[group_name]
+
+    group_name_array[group_name_array == ""] = "default_group"
+    elec_columns["group_name"].update(description="group_name", data=group_name_array, index=False)
+
+    # Add missing groups
+    groupless_names = [group_name for group_name in group_name_array if group_name not in nwbfile.electrode_groups]
+    if len(groupless_names) > 0:
+        electrode_group_list = [dict(name=group_name) for group_name in groupless_names]
+        missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=electrode_group_list))
+        add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=missing_group_metadata)
+        warnings.warn(f"electrode group not found for group in {groupless_names} and were created automatically")
     
+    group_list = [nwbfile.electrode_groups[group_name] for group_name in group_name_array]
     elec_columns["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
-    
+
+    required_properties_default_values = dict(
+        x=np.nan,
+        y=np.nan,
+        z=np.nan,
+        # There doesn't seem to be a canonical default for impedence, if missing.
+        # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
+        imp=-1.0,
+        location="unknown",
+        filtering="none",
+    )
+
     # properties_already_in_electrode_table = None
     # requiered_properties = None
     # extracted_properties = None
     # special_properties = None
     # properties_to_add_as_columns = extracted_properties - requiered_properties - properties_already_in_electrode_table
-    
-    
+
     # Updating default arguments if electrodes table already present:
     default_updated = dict()
     if nwbfile.electrodes is not None:
@@ -401,7 +389,7 @@ def add_electrodes(
                 matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
                 default_value = type_to_default_value[matching_type]
                 default_updated.update({colname: default_value})
-    
+
     default_updated.update(required_properties_default_values)
     # Separate previously available properties from new properties.
     for name, des_dict in elec_columns.items():
@@ -414,7 +402,7 @@ def add_electrodes(
 
     for name in elec_columns_append:
         _ = elec_columns.pop(name)
-    
+
     # Add data by rows
     channel_names_in_electrodes_table = []
     if "channel_name" in nwbfile.electrodes.colnames:
