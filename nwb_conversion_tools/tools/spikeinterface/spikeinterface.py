@@ -379,11 +379,11 @@ def add_electrodes(
     properties_to_add_by_rows = electrode_table_previous_properties | required_properties
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
-    # Find default values for properties / columns already in the electrode table 
+    # Find default values for properties / columns already in the electrode table
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
     property_to_default_values = required_property_to_default_value
     for property in electrode_table_previous_properties - required_properties:
-        # Find a matching data type and get the default value 
+        # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
@@ -396,13 +396,15 @@ def add_electrodes(
 
     properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
     rows_in_data = [index for index in range(recording.get_num_channels())]
-    rows_to_add_to_table = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
+    rows_to_add_to_table = [
+        index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously
+    ]
 
     for row_index in rows_to_add_to_table:
         electrode_kwargs = dict(property_to_default_values)
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row_index]
-            
+
         nwbfile.add_electrode(**electrode_kwargs)
 
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
@@ -428,7 +430,7 @@ def add_electrodes(
 
     indexes_for_new_data = [channel_name_to_electrode_index[channel_name] for channel_name in channel_name_array]
     indexes_for_default_values = electrodes_df.index.difference(indexes_for_new_data).values
-    
+
     # Add properties as columns
     for property in properties_to_add_by_columns - {"channel_name"}:
         cols_args = data_to_add[property]

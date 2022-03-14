@@ -721,10 +721,10 @@ class TestAddElectrodes(TestCase):
 
         values_dic.update(id=21, channel_name="d", property1="value1_d")
         self.nwbfile.add_electrode(**values_dic)
-        
+
         values_dic.update(id=22, channel_name="f", property1="value1_f")
         self.nwbfile.add_electrode(**values_dic)
-        
+
         property1_values = ["value1_a", "value1_b", "x", "y"]
         self.recording_1.set_property(key="property1", values=property1_values)
 
