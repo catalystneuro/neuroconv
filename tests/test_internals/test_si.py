@@ -721,18 +721,25 @@ class TestAddElectrodes(TestCase):
 
         values_dic.update(id=21, channel_name="d", property1="value1_d")
         self.nwbfile.add_electrode(**values_dic)
+        
+        values_dic.update(id=22, channel_name="f", property1="value1_f")
+        self.nwbfile.add_electrode(**values_dic)
+        
+        property1_values = ["value1_a", "value1_b", "x", "y"]
+        self.recording_1.set_property(key="property1", values=property1_values)
 
-        property_values = ["value2_a", "value2_b", "value2_c", "value2_d"]
-        self.recording_1.set_property(key="property2", values=property_values)
+        property2_values = ["value2_a", "value2_b", "value2_c", "value2_d"]
+        self.recording_1.set_property(key="property2", values=property2_values)
+
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
 
-        expected_ids = [20, 21, 2, 3]
-        expected_names = ["c", "d", "a", "b"]
+        expected_ids = [20, 21, 22, 3, 4]
+        expected_names = ["c", "d", "f", "a", "b"]
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
-        expected_property_values1 = ["value1_c", "value1_d", "", ""]
-        expected_property_values2 = ["value2_c", "value2_d", "value2_a", "value2_b"]
+        expected_property_values1 = ["value1_c", "value1_d", "value1_f", "value1_a", "value1_b"]
+        expected_property_values2 = ["value2_c", "value2_d", "", "value2_a", "value2_b"]
         self.assertListEqual(list(self.nwbfile.electrodes["property1"].data), expected_property_values1)
         self.assertListEqual(list(self.nwbfile.electrodes["property2"].data), expected_property_values2)
 
