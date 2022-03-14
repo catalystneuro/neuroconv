@@ -393,19 +393,19 @@ def add_electrodes(
         property_to_default_values.update({property: default_value})
 
     # Add data by rows excluding the rows containing channel_names that were previously added
-    electrodes_table_channel_names = []
+    channel_names_used_previously = []
     if "channel_name" in electrode_table_previous_properties:
-        electrodes_table_channel_names = nwbfile.electrodes["channel_name"].data
+        channel_names_used_previously = nwbfile.electrodes["channel_name"].data
 
     properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
-    rows_in_data = [index for index in range(channel_name_array.size)]
-    rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in electrodes_table_channel_names]
+    rows_in_data = [index for index in range(recording.get_num_channels())]
+    rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
 
     for row_index in rows_to_add:
         electrode_kwargs = dict(property_to_default_values)
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row_index]
-
+            
         nwbfile.add_electrode(**electrode_kwargs)
 
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
@@ -429,8 +429,8 @@ def add_electrodes(
         for channel_name in channel_name_array
     }
 
-    indexes_for_data = [channel_name_to_electrode_index[channel_name] for channel_name in channel_name_array]
-    indexes_for_default_values = electrodes_df.index.difference(indexes_for_data).values
+    indexes_for_new_data = [channel_name_to_electrode_index[channel_name] for channel_name in channel_name_array]
+    indexes_for_default_values = electrodes_df.index.difference(indexes_for_new_data).values
     
     # Add properties as columns
     for property in properties_to_add_as_columns - {"channel_name"}:
@@ -445,7 +445,7 @@ def add_electrodes(
         default_value = type_to_default_value[matching_type]
 
         extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=data.dtype)
-        extended_data[indexes_for_data] = data
+        extended_data[indexes_for_new_data] = data
 
         extended_data[indexes_for_default_values] = default_value
         cols_args["data"] = extended_data
