@@ -51,8 +51,10 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-            Should be of the format
+            Should be of the format::
+
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
+
         starting_time: float (optional)
             Sets the starting time of the ElectricalSeries to a manually set value.
             Increments timestamps if use_times is True.
