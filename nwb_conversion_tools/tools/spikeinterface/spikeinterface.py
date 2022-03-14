@@ -333,7 +333,7 @@ def add_electrodes(
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
 
-    # If no group_names are provide use groups or default values
+    # If no group_names are provide use information from groups or default values
     if "group_name" in data_to_add:
         group_name_array = data_to_add["group_name"]["data"].astype("str", copy=False)
 
