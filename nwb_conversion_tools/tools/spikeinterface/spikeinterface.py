@@ -289,9 +289,6 @@ def add_electrodes(
         [electrode["name"] != "group" for electrode in metadata["Ecephys"]["Electrodes"]]
     ), "Passing metadata field 'group' is deprecated; pass group_name instead!"
 
-    if nwbfile.electrode_groups is None or len(nwbfile.electrode_groups) == 0:
-        add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-
     # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
     data_to_add = defaultdict(dict)
 
@@ -380,7 +377,7 @@ def add_electrodes(
     required_properties = set(required_property_to_default_value)
     extracted_properties = set(data_to_add)
     properties_to_add_by_rows = electrode_table_previous_properties | required_properties
-    properties_to_add_as_columns = extracted_properties - properties_to_add_by_rows
+    properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
     # Find default values for properties / columns already in the electrode table 
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
@@ -399,9 +396,9 @@ def add_electrodes(
 
     properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
     rows_in_data = [index for index in range(recording.get_num_channels())]
-    rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
+    rows_to_add_to_table = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
 
-    for row_index in rows_to_add:
+    for row_index in rows_to_add_to_table:
         electrode_kwargs = dict(property_to_default_values)
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row_index]
@@ -411,7 +408,7 @@ def add_electrodes(
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
 
-    if "channel_name" in properties_to_add_as_columns:
+    if "channel_name" in properties_to_add_by_columns:
         cols_args = data_to_add["channel_name"]
         data = cols_args["data"]
 
@@ -433,7 +430,7 @@ def add_electrodes(
     indexes_for_default_values = electrodes_df.index.difference(indexes_for_new_data).values
     
     # Add properties as columns
-    for property in properties_to_add_as_columns - {"channel_name"}:
+    for property in properties_to_add_by_columns - {"channel_name"}:
         cols_args = data_to_add[property]
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
@@ -451,6 +448,7 @@ def add_electrodes(
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
+    # data_added = (len(rows_to_add_to_table) > 0) or (len(properties_to_add_by_columns) > 0)
     assert (
         nwbfile.electrodes is not None
     ), "Unable to form electrode table! Check device, electrode group, and electrode metadata."
