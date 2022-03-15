@@ -84,8 +84,10 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-            Should be of the format
+            Should be of the format::
+
                 metadata["Ecephys"]["UnitProperties"] = dict(name=my_name, description=my_description)
+
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_ecephys_metadata: bool (optional, defaults to False)
