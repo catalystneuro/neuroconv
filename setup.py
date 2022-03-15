@@ -7,16 +7,14 @@ path = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(path, "README.md")) as f:
     long_description = f.read()
 with open(os.path.join(path, "requirements-minimal.txt")) as f:
-    install_requires = f.read().strip().split("\n")
+    install_requires = f.readlines()
 with open(os.path.join(path, "requirements-full.txt")) as f:
-    test_requires = f.read().strip().split("\n")
-test_requires += ["pytest", "pytest-cov"]
-extras_require = {
-    "test_full": test_requires,
-}
+    full_dependencies = f.readlines()
+testing_suite_dependencies = ["pytest", "pytest-cov", "ndx-events==0.2.0", "parameterized==0.8.1"]
+extras_require = dict(full=full_dependencies, test=testing_suite_dependencies)
 setup(
     name="nwb-conversion-tools",
-    version="0.11.1",
+    version="0.11.2",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",

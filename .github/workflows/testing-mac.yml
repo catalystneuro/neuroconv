@@ -16,13 +16,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install pytest
-        run: |
-          pip install --upgrade pip
-          pip install pytest
-          pip install pytest-cov
+        run: pip install --upgrade pip
 
       - name: Install nwb-conversion-tools with minimal requirements
-        run: pip install -e .
+        run: pip install .[test]
       - name: Run minimal pytest with coverage
         run: pytest tests/test_internals --cov=./ --cov-report xml:./nwb-conversion-tools/nwb-conversion-tools/minimal-coverage.xml
       - if: ${{ matrix.python-version == '3.7' || matrix.python-version == '3.9' }}
@@ -36,7 +33,7 @@ jobs:
           yml: ./nwb-conversion-tools/nwb-conversion-tools/codecov.yml
 
       - name: Install full requirements
-        run: pip install -r requirements-full.txt
+        run: pip install .[full]
       # - name: Get ephy_testing_data current head hash
       #   id: ephys
       #   run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"

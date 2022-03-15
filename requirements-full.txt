@@ -17,8 +17,6 @@ spikeextractors==0.9.9
 spikeinterface==0.93.0
 neo==0.10.0
 roiextractors==0.4.0
-ndx-events==0.2.0
-parameterized==0.8.1
 pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy>=1.7.1

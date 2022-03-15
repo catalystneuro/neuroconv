@@ -58,7 +58,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                 if any(x)
             ]
         )
-        end_frame = 1.1*max_min_spike_time
+        end_frame = 1.1 * max_min_spike_time
         if isinstance(self.sorting_extractor, se.SortingExtractor):
             stub_sorting_extractor = se.SubSortingExtractor(
                 self.sorting_extractor,
