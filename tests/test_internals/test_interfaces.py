@@ -116,9 +116,8 @@ def test_pkl_interface():
 
 
 class TestSortingInterface(unittest.TestCase):
-
     def setUp(self) -> None:
-        self.sorting_start_frames = [100,200,300]
+        self.sorting_start_frames = [100, 200, 300]
         self.num_frames = 1000
 
         def _make_sorting():
@@ -130,35 +129,34 @@ class TestSortingInterface(unittest.TestCase):
             return sorting
 
         class TestSortingInterface(BaseSortingExtractorInterface):
-
             def __init__(self):
                 self.sorting_extractor = _make_sorting()
                 self.source_data = dict()
 
         class TempConverter(NWBConverter):
-            data_interface_classes = dict(
-                TestSortingInterface=TestSortingInterface)
+            data_interface_classes = dict(TestSortingInterface=TestSortingInterface)
 
         source_data = dict(TestSortingInterface=dict())
         self.test_sorting_interface = TempConverter(source_data)
 
     def test_sorting_stub(self):
         test_dir = Path(mkdtemp())
-        minimal_nwbfile = test_dir/"stub_temp.nwb"
+        minimal_nwbfile = test_dir / "stub_temp.nwb"
         conversion_options = dict(TestSortingInterface=dict(stub_test=True))
         metadata = self.test_sorting_interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
-        self.test_sorting_interface.run_conversion(nwbfile_path=minimal_nwbfile, metadata=metadata,
-                                      conversion_options=conversion_options)
+        self.test_sorting_interface.run_conversion(
+            nwbfile_path=minimal_nwbfile, metadata=metadata, conversion_options=conversion_options
+        )
         with NWBHDF5IO(minimal_nwbfile, "r") as io:
             nwbfile = io.read()
             start_frame_max = np.max(self.sorting_start_frames)
             for i, start_times in enumerate(self.sorting_start_frames):
-                assert len(nwbfile.units["spike_times"][i]) == (start_frame_max*1.1) - start_times
+                assert len(nwbfile.units["spike_times"][i]) == (start_frame_max * 1.1) - start_times
 
     def test_sorting_full(self):
         test_dir = Path(mkdtemp())
-        minimal_nwbfile = test_dir/"temp.nwb"
+        minimal_nwbfile = test_dir / "temp.nwb"
         metadata = self.test_sorting_interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
         self.test_sorting_interface.run_conversion(nwbfile_path=minimal_nwbfile, metadata=metadata)
