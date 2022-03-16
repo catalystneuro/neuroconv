@@ -120,19 +120,16 @@ class TestSortingInterface(unittest.TestCase):
     def setUp(self) -> None:
         self.sorting_start_frames = [100,200,300]
         self.num_frames = 1000
-
-        def _make_sorting():
-            sorting = se.NumpySortingExtractor()
-            sorting.set_sampling_frequency(3000)
-            sorting.add_unit(unit_id=1, times=np.arange(self.sorting_start_frames[0], self.num_frames))
-            sorting.add_unit(unit_id=2, times=np.arange(self.sorting_start_frames[1], self.num_frames))
-            sorting.add_unit(unit_id=3, times=np.arange(self.sorting_start_frames[2], self.num_frames))
-            return sorting
+        sorting = se.NumpySortingExtractor()
+        sorting.set_sampling_frequency(3000)
+        sorting.add_unit(unit_id=1, times=np.arange(self.sorting_start_frames[0], self.num_frames))
+        sorting.add_unit(unit_id=2, times=np.arange(self.sorting_start_frames[1], self.num_frames))
+        sorting.add_unit(unit_id=3, times=np.arange(self.sorting_start_frames[2], self.num_frames))
 
         class TestSortingInterface(BaseSortingExtractorInterface):
 
             def __init__(self):
-                self.sorting_extractor = _make_sorting()
+                self.sorting_extractor = sorting
                 self.source_data = dict()
 
         class TempConverter(NWBConverter):
