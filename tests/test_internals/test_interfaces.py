@@ -1,3 +1,4 @@
+import unittest
 from platform import python_version
 from sys import platform
 from packaging import version
@@ -114,40 +115,54 @@ def test_pkl_interface():
     check_sortings_equal(SX1=toy_data[1], SX2=nwb_sorting)
 
 
-def test_base_sorting_interface():
-    test_dir = Path(mkdtemp())
-    minimal_nwbfile = test_dir/"temp.nwb"
+class TestSortingInterface(unittest.TestCase):
 
-    def _make_sorting(seed):
-        num_frames = 1000
-        sampling_frequency = 30000
-        sorting = se.NumpySortingExtractor()
-        sorting.set_sampling_frequency(sampling_frequency)
-        sorting.add_unit(unit_id=1, times=np.linspace(1,100,num_frames))
-        sorting.add_unit(unit_id=2, times=np.linspace(2, 100, num_frames))
-        sorting.add_unit(unit_id=3, times=np.linspace(3, 100, num_frames))
-        sorting.set_unit_property(unit_id=1, property_name="int_prop", value=80)
-        sorting.set_unit_property(unit_id=1, property_name="float_prop", value=80.0)
-        sorting.set_unit_property(unit_id=1, property_name="str_prop", value="test_val")
-        return sorting
+    def setUp(self) -> None:
+        self.sorting_start_frames = [100,200,300]
+        self.num_frames = 1000
 
-    class TestSortingInterface(BaseSortingExtractorInterface):
+        def _make_sorting():
+            sorting = se.NumpySortingExtractor()
+            sorting.set_sampling_frequency(3000)
+            sorting.add_unit(unit_id=1, times=np.arange(self.sorting_start_frames[0], self.num_frames))
+            sorting.add_unit(unit_id=2, times=np.arange(self.sorting_start_frames[1], self.num_frames))
+            sorting.add_unit(unit_id=3, times=np.arange(self.sorting_start_frames[2], self.num_frames))
+            return sorting
 
-        def __init__(self, seed:int=0):
-            self.sorting_extractor = _make_sorting(seed)
-            self.source_data = dict()
+        class TestSortingInterface(BaseSortingExtractorInterface):
 
-    class TempConverter(NWBConverter):
-        data_interface_classes = dict(
-            TestSortingInterface=TestSortingInterface)
+            def __init__(self):
+                self.sorting_extractor = _make_sorting()
+                self.source_data = dict()
 
-    source_data = dict(TestSortingInterface=dict())
-    conversion_options = dict(TestSortingInterface=dict(stub_test=True))
-    test_interface = TempConverter(source_data)
-    metadata = test_interface.get_metadata()
-    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
-    test_interface.run_conversion(nwbfile_path=minimal_nwbfile, metadata=metadata,
-                                  conversion_options=conversion_options)
-    with NWBHDF5IO(minimal_nwbfile, "r") as io:
-        nwbfile = io.read()
-        assert nwbfile.units["spike_times"][0][-1]<1.1*3*1e-3
+        class TempConverter(NWBConverter):
+            data_interface_classes = dict(
+                TestSortingInterface=TestSortingInterface)
+
+        source_data = dict(TestSortingInterface=dict())
+        self.test_sorting_interface = TempConverter(source_data)
+
+    def test_sorting_stub(self):
+        test_dir = Path(mkdtemp())
+        minimal_nwbfile = test_dir/"stub_temp.nwb"
+        conversion_options = dict(TestSortingInterface=dict(stub_test=True))
+        metadata = self.test_sorting_interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+        self.test_sorting_interface.run_conversion(nwbfile_path=minimal_nwbfile, metadata=metadata,
+                                      conversion_options=conversion_options)
+        with NWBHDF5IO(minimal_nwbfile, "r") as io:
+            nwbfile = io.read()
+            start_frame_max = np.max(self.sorting_start_frames)
+            for i, start_times in enumerate(self.sorting_start_frames):
+                assert len(nwbfile.units["spike_times"][i]) == (start_frame_max*1.1) - start_times
+
+    def test_sorting_full(self):
+        test_dir = Path(mkdtemp())
+        minimal_nwbfile = test_dir/"temp.nwb"
+        metadata = self.test_sorting_interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+        self.test_sorting_interface.run_conversion(nwbfile_path=minimal_nwbfile, metadata=metadata)
+        with NWBHDF5IO(minimal_nwbfile, "r") as io:
+            nwbfile = io.read()
+            for i, start_times in enumerate(self.sorting_start_frames):
+                assert len(nwbfile.units["spike_times"][i]) == self.num_frames - start_times
