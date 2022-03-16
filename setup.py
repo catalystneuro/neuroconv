@@ -14,7 +14,7 @@ testing_suite_dependencies = ["pytest", "pytest-cov", "ndx-events==0.2.0", "para
 extras_require = dict(full=full_dependencies, test=testing_suite_dependencies)
 setup(
     name="nwb-conversion-tools",
-    version="0.11.2",
+    version="0.11.3",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
