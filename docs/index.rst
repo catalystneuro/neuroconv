@@ -30,7 +30,7 @@ types of neural data to the Neurodata Without Borders (NWB) standard.
 
     NWBConverter <api/nwbconverter>
     Interfaces <api/interfaces>
-    
+    Tools <api/tools>
 
 For more information regarding the NWB Standard, please view
 

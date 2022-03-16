@@ -76,14 +76,15 @@ combining those multiple read/write operations. An example of how to define
 a ``NWBConverter`` would be::
 
     from nwb_conversion_tools import (
+        NWBConverter,
         BlackrockRecordingExtractorInterface,
-        KlustaSortingExtractorInterface
+        PhySortingInterface
     )
 
     class ExampleNWBConverter(NWBConverter):
         data_interface_classes = dict(
             BlackrockRecording=BlackrockRecordingExtractorInterface,
-            KlustaSorting=KlustaSortingExtractorInterface
+            PhySorting=PhySortingInterface
         )
 
 :py:class:`.NWBConverter` classes define a :py:attr:`.data_interface_classes` dictionary, a class
@@ -93,11 +94,11 @@ input data to each ``DataInterface``. The keys to this dictionary are arbitrary,
 but must match between ``data_interface_classes`` and the ``source_data``::
 
     source_data = dict(
-        BlackrockRecordingExtractorInterface=dict(
-            filename="raw_dataset_path"
+        BlackrockRecording=dict(
+            file_path="raw_dataset_path"
         ),
-        KlustaSortingExtractoreInterface=dict(
-            file_or_folder_path="sorted_dataset_path"
+        PhySorting=dict(
+            folder_path="sorted_dataset_path"
         )
     )
 
