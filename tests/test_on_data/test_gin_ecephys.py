@@ -179,10 +179,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
-        
+
         if isinstance(recording, RecordingExtractor):
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-            
+
             if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
                 nwb_recording.set_channel_offsets(
                     offsets=[
@@ -192,7 +192,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 )
         else:
             nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
-   
+
         if isinstance(recording, RecordingExtractor):
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)

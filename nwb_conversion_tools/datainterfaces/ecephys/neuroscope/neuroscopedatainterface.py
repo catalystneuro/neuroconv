@@ -205,7 +205,6 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         )
 
 
-
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
