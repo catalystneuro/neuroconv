@@ -10,8 +10,8 @@ import numpy.testing as npt
 import pytest
 from parameterized import parameterized, param
 
-from spikeinterface.core.old_api_utils import OldToNewRecording, BaseRecording
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor
+from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
 
@@ -179,17 +179,20 @@ class TestEcephysNwbConversions(unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
-        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-
-        if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
-            nwb_recording.set_channel_offsets(
-                offsets=[
-                    nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
-                    for channel_id in nwb_recording.get_channel_ids()
-                ]
-            )
-        if isinstance(recording, BaseRecording):
-            nwb_recording = OldToNewRecording(oldapi_recording_extractor=nwb_recording)
+        
+        if isinstance(recording, RecordingExtractor):
+            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+            
+            if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
+                nwb_recording.set_channel_offsets(
+                    offsets=[
+                        nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
+                        for channel_id in nwb_recording.get_channel_ids()
+                    ]
+                )
+        else:
+            nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
+   
         if isinstance(recording, RecordingExtractor):
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
