@@ -73,8 +73,6 @@ def add_recording_extractor_properties(recording_extractor: SpikeInterfaceRecord
             )
     else:
         channel_ids_mapped = recording_extractor.get_channel_ids()
-        import numpy as np
-        channel_groups_mapped = np.array(channel_groups_mapped).astype("float")
         recording_extractor.set_property(key="group", ids=channel_ids_mapped, values=channel_groups_mapped)
         recording_extractor.set_property(key="group_name", ids=channel_ids_mapped, values=group_names_mapped)
         recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids_mapped, values=channel_groups_mapped)
@@ -84,7 +82,7 @@ def add_recording_extractor_properties(recording_extractor: SpikeInterfaceRecord
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
 
-    RX = se.NeuroscopeRecordingExtractor
+    # RX = se.NeuroscopeRecordingExtractor
     RX = NeuroScopeRecordingExtractor
 
     @staticmethod
@@ -209,7 +207,7 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
-    RX = se.NeuroscopeRecordingExtractor
+    # RX = se.NeuroscopeRecordingExtractor
     RX = NeuroScopeRecordingExtractor
 
     def __init__(
