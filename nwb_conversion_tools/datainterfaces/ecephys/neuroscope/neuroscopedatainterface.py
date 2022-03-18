@@ -17,8 +17,9 @@ from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_sc
 try:
     import lxml
     from .neuroscope_utils import get_xml_file_path, get_channel_groups, get_shank_channels
+
     HAVE_LXML = True
-    
+
 except ImportError:
     HAVE_LXML = False
 INSTALL_MESSAGE = "Please install lxml to use this interface!"
@@ -26,9 +27,7 @@ INSTALL_MESSAGE = "Please install lxml to use this interface!"
 SpikeInterfaceRecording = Union[se.RecordingExtractor, BaseRecording]
 
 
-def subset_shank_channels(
-    recording_extractor: SpikeInterfaceRecording, xml_file_path: str
-) -> BaseRecording:
+def subset_shank_channels(recording_extractor: SpikeInterfaceRecording, xml_file_path: str) -> BaseRecording:
     """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
     if isinstance(recording_extractor, se.RecordingExtractor):
         recording = OldToNewRecording(oldapi_recording_extractor=recording_extractor)
@@ -44,7 +43,9 @@ def subset_shank_channels(
     return sub_recording
 
 
-def add_recording_extractor_properties(recording_extractor: SpikeInterfaceRecording, xml_file_path: str):
+def add_recording_extractor_properties(
+    recording_extractor: SpikeInterfaceRecording, xml_file_path: str
+) -> BaseRecording:
     """Automatically add properties to RecordingExtractor object."""
     channel_groups = get_channel_groups(xml_file_path=xml_file_path)
 
@@ -55,28 +56,22 @@ def add_recording_extractor_properties(recording_extractor: SpikeInterfaceRecord
     group_electrode_numbers = [x for channels in channel_groups for x, _ in enumerate(channels)]
     group_nums = [n + 1 for n, channels in enumerate(channel_groups) for _ in channels]
     group_names = [f"Group{n}" for n in group_nums]
-    
+
     channel_groups_mapped = [group_nums[channel_map[channel_id]] for channel_id in channel_map.keys()]
     group_names_mapped = [group_names[channel_map[channel_id]] for channel_id in channel_map.keys()]
     shank_electrode_number = [group_electrode_numbers[channel_map[channel_id]] for channel_id in channel_map.keys()]
 
     if isinstance(recording_extractor, se.RecordingExtractor):
-        for channel_id in channel_map.keys():
-            recording_extractor.set_channel_groups(channel_ids=[channel_id], groups=channel_groups_mapped[channel_id])
-            recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="group_name", value=group_names_mapped[channel_id]
-            )
-            recording_extractor.set_channel_property(
-                channel_id=channel_id,
-                property_name="shank_electrode_number",
-                value=shank_electrode_number[channel_id],
-            )
+        recording = OldToNewRecording(oldapi_recording_extractor=recording_extractor)
     else:
-        channel_ids_mapped = recording_extractor.get_channel_ids()
-        recording_extractor.set_property(key="group", ids=channel_ids_mapped, values=channel_groups_mapped)
-        recording_extractor.set_property(key="group_name", ids=channel_ids_mapped, values=group_names_mapped)
-        recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids_mapped, values=channel_groups_mapped)
+        recording = recording_extractor
 
+    channel_ids_mapped = recording.get_channel_ids()
+    recording.set_property(key="group", ids=channel_ids_mapped, values=channel_groups_mapped)
+    recording.set_property(key="group_name", ids=channel_ids_mapped, values=group_names_mapped)
+    recording.set_property(key="shank_electrode_number", ids=channel_ids_mapped, values=shank_electrode_number)
+
+    return recording
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -134,10 +129,14 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         else:
             super().__init__(file_path=file_path)
             if gain:
-                self.recording_extractor.set_channel_gains(gain)  # This is done automatically for spikeextractors objects
+                self.recording_extractor.set_channel_gains(
+                    gain
+                )  # This is done in __init__ for the spikeextractors version
 
         # Add the properties
-        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
+        self.recording_extractor = add_recording_extractor_properties(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
+        )
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
@@ -198,10 +197,13 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         super(NeuroscopeRecordingInterface, self).__init__(
             folder_path=folder_path, gain=gain, xml_file_path=xml_file_path
         )
+        self.recording_extractor = add_recording_extractor_properties(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
+        )
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
-        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
+
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
@@ -242,10 +244,14 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         else:
             super().__init__(file_path=file_path)
             if gain:
-                self.recording_extractor.set_channel_gains(gain)  # This is done automatically for spikeextractors objects
+                self.recording_extractor.set_channel_gains(
+                    gain
+                )  # This is done automatically for spikeextractors objects
 
         # Add the properties
-        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
+        self.recording_extractor = add_recording_extractor_properties(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
+        )
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
