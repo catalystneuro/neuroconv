@@ -1,4 +1,4 @@
-Using NWB Conversion Tools
+User Guide
 ==========================
 
 NWB files often combine data from multiple sources- neurophysiology raw and processed data,
