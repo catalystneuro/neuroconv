@@ -73,14 +73,14 @@ class TestVideoContext(unittest.TestCase):
             number_of_frames = vcc.get_movie_frame_count()
             for no in range(number_of_frames):
                 frames.append(vcc.get_movie_frame(no))
-        assert_array_equal(frames, np.flip(self.movie_frames,3))
+        assert_array_equal(frames, np.flip(self.movie_frames, 3))
 
     def test_iterable(self):
         frames = []
         vcc = VideoCaptureContext(file_path=self.movie_loc)
         for frame in vcc:
             frames.append(frame)
-        assert_array_equal(np.array(frames), np.flip(self.movie_frames,3))
+        assert_array_equal(np.array(frames), np.flip(self.movie_frames, 3))
         self.assertFalse(vcc.vc.isOpened())
         vcc.release()
 
@@ -90,7 +90,7 @@ class TestVideoContext(unittest.TestCase):
             frames = []
             for frame in vcc:
                 frames.append(frame)
-        assert_array_equal(np.array(frames), self.movie_frames[:3, :, :, [2,1,0]])
+        assert_array_equal(np.array(frames), self.movie_frames[:3, :, :, [2, 1, 0]])
 
     def test_stub_frame(self):
         with VideoCaptureContext(self.movie_loc) as vcc:
