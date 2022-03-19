@@ -94,7 +94,7 @@ class VideoCaptureContext:
             raise ValueError(f"Could not set frame number (received {frame_number}).")
 
     def get_movie_frame(self, frame_number: int):
-        """Return the specific frame from a movie."""
+        """Return the specific frame from a movie as an RGB colorspace."""
         assert self.isOpened(), self._movie_open_msg
         assert frame_number < self.get_movie_frame_count(), "frame number is greater than length of movie"
         initial_frame_number = self.current_frame
