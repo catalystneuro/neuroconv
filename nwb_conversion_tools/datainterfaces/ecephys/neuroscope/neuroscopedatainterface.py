@@ -189,10 +189,12 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=folder_path)
         super(NeuroscopeRecordingInterface, self).__init__(
-            folder_path=folder_path, gain=gain, xml_file_path=xml_file_path,
+            folder_path=folder_path,
+            gain=gain,
+            xml_file_path=xml_file_path,
         )
         self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        
+
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
