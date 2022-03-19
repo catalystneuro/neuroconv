@@ -170,7 +170,8 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+        x = np.random.randint(10000)
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}{x}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestRecording=data_interface)
