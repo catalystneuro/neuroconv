@@ -27,26 +27,27 @@ INSTALL_MESSAGE = "Please install lxml to use this interface!"
 SpikeInterfaceRecording = Union[se.RecordingExtractor, BaseRecording]
 
 
-def subset_shank_channels(recording_extractor: SpikeInterfaceRecording, xml_file_path: str) -> BaseRecording:
+def subset_shank_channels(recording_extractor: BaseRecording, xml_file_path: str) -> BaseRecording:
     """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
-    if isinstance(recording_extractor, se.RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording_extractor)
-    else:
-        recording = recording_extractor
     shank_channels = get_shank_channels(xml_file_path=xml_file_path)
 
     if shank_channels is not None:
         channel_ids = [channel_id for group in shank_channels for channel_id in group]
-        sub_recording = recording.channel_slice(channel_ids)
+        sub_recording = recording_extractor.channel_slice(channel_ids)
     else:
-        sub_recording = recording
+        sub_recording = recording_extractor
+
     return sub_recording
 
 
 def add_recording_extractor_properties(
-    recording_extractor: SpikeInterfaceRecording, xml_file_path: str
+    recording_extractor: BaseRecording, xml_file_path: str, gain: Optional[float] = None
 ) -> BaseRecording:
     """Automatically add properties to RecordingExtractor object."""
+
+    if gain:
+        recording_extractor.set_channel_gains(gain)
+
     channel_groups = get_channel_groups(xml_file_path=xml_file_path)
 
     channel_map = {
@@ -61,23 +62,17 @@ def add_recording_extractor_properties(
     group_names_mapped = [group_names[channel_map[channel_id]] for channel_id in channel_map.keys()]
     shank_electrode_number = [group_electrode_numbers[channel_map[channel_id]] for channel_id in channel_map.keys()]
 
-    if isinstance(recording_extractor, se.RecordingExtractor):
-        recording = OldToNewRecording(oldapi_recording_extractor=recording_extractor)
-    else:
-        recording = recording_extractor
-
-    channel_ids_mapped = recording.get_channel_ids()
-    recording.set_property(key="group", ids=channel_ids_mapped, values=channel_groups_mapped)
-    recording.set_property(key="group_name", ids=channel_ids_mapped, values=group_names_mapped)
-    recording.set_property(key="shank_electrode_number", ids=channel_ids_mapped, values=shank_electrode_number)
-
-    return recording
+    channel_ids_mapped = recording_extractor.get_channel_ids()
+    recording_extractor.set_property(key="group", ids=channel_ids_mapped, values=channel_groups_mapped)
+    recording_extractor.set_property(key="group_name", ids=channel_ids_mapped, values=group_names_mapped)
+    recording_extractor.set_property(
+        key="shank_electrode_number", ids=channel_ids_mapped, values=shank_electrode_number
+    )
 
 
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
 
-    # RX = se.NeuroscopeRecordingExtractor
     RX = NeuroScopeRecordingExtractor
 
     @staticmethod
@@ -103,6 +98,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
+        spikeextractors_backend: Optional[bool] = False,
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -121,21 +117,19 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             The default is None.
         """
         assert HAVE_LXML, INSTALL_MESSAGE
+
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        if self.RX == se.NeuroscopeRecordingExtractor:
-            super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
+        if spikeextractors_backend:
+            self.RX = se.NeuroscopeRecordingExtractor
+            super().__init__(file_path=file_path, xml_file_path=xml_file_path)
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
             super().__init__(file_path=file_path)
-            if gain:
-                self.recording_extractor.set_channel_gains(
-                    gain
-                )  # This is done in __init__ for the spikeextractors version
 
-        # Add the properties
-        self.recording_extractor = add_recording_extractor_properties(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
+        add_recording_extractor_properties(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
         )
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
@@ -195,11 +189,11 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=folder_path)
         super(NeuroscopeRecordingInterface, self).__init__(
-            folder_path=folder_path, gain=gain, xml_file_path=xml_file_path
+            folder_path=folder_path, gain=gain, xml_file_path=xml_file_path,
         )
-        self.recording_extractor = add_recording_extractor_properties(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
-        )
+        self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+        
+        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
@@ -216,6 +210,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
+        spikeextractors_backend: Optional[bool] = False,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -238,18 +233,15 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        if self.RX == se.NeuroscopeRecordingExtractor:
-            super().__init__(file_path=file_path, gain=gain, xml_file_path=xml_file_path)
+        if spikeextractors_backend:
+            self.RX = se.NeuroscopeRecordingExtractor
+            super().__init__(file_path=file_path, xml_file_path=xml_file_path)
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
             super().__init__(file_path=file_path)
-            if gain:
-                self.recording_extractor.set_channel_gains(
-                    gain
-                )  # This is done automatically for spikeextractors objects
 
-        # Add the properties
-        self.recording_extractor = add_recording_extractor_properties(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
+        add_recording_extractor_properties(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
         )
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
