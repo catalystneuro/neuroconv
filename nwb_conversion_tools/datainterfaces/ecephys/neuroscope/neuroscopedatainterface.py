@@ -24,8 +24,6 @@ except ImportError:
     HAVE_LXML = False
 INSTALL_MESSAGE = "Please install lxml to use this interface!"
 
-SpikeInterfaceRecording = Union[se.RecordingExtractor, BaseRecording]
-
 
 def subset_shank_channels(recording_extractor: BaseRecording, xml_file_path: str) -> BaseRecording:
     """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
@@ -115,6 +113,9 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        spikeextractors_backend : Optional[bool], optional
+            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            of a new spikeinterface object.
         """
         assert HAVE_LXML, INSTALL_MESSAGE
 
@@ -228,6 +229,9 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        spikeextractors_backend : Optional[bool], optional
+            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            of a new spikeinterface object.
         """
         assert HAVE_LXML, INSTALL_MESSAGE
 
