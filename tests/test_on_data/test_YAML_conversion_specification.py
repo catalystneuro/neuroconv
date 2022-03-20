@@ -12,7 +12,7 @@ from nwb_conversion_tools import run_conversion_from_yaml
 from nwb_conversion_tools.utils import load_dict_from_file
 
 # Load the configuration for the data tests
-test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
+test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config_local.json")
 print(test_config_dict)
 
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
