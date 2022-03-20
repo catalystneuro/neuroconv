@@ -13,9 +13,6 @@ Along with these two methods, you can also optionally override the :code:`__init
 The contributed extractors are in the **nwb-conversion-tools/datainterfaces** folder. You can fork the repo and create a new file
 **myformatdatainterface** there. In the folder, create a new file named **myformatdatainterface.py**.
 
-.. code-block:: python
-        ...
-
 
 When you are done we recommend you write a test in the **tests/test_interfaces.py** to ensure it works as expected.
 
