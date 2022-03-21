@@ -17,20 +17,20 @@ types of neural data to the Neurodata Without Borders (NWB) standard.
     the `GitHub Issues <https://github.com/catalystneuro/nwb-conversion-tools/issues>`_ page.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: User Guide
+  :maxdepth: 2
+  :caption: Contents
 
-   using_nwb_conversion_tools
-   developer_guide
-
+  user_guide
+  developer_guide
+  tutorials
 
 .. toctree::
-    :maxdepth: 2
-    :caption: API Documentation
+  :maxdepth: 2
+  :caption: API Documentation
 
-    NWBConverter <api/nwbconverter>
-    Interfaces <api/interfaces>
-    Tools <api/tools>
+  NWBConverter <api/nwbconverter>
+  Interfaces <api/interfaces>
+  Tools <api/tools>
 
 For more information regarding the NWB Standard, please view
 

@@ -94,14 +94,14 @@ class VideoCaptureContext:
             raise ValueError(f"Could not set frame number (received {frame_number}).")
 
     def get_movie_frame(self, frame_number: int):
-        """Return the specific frame from a movie."""
+        """Return the specific frame from a movie as an RGB colorspace."""
         assert self.isOpened(), self._movie_open_msg
         assert frame_number < self.get_movie_frame_count(), "frame number is greater than length of movie"
         initial_frame_number = self.current_frame
         self.current_frame = frame_number
         success, frame = self.vc.read()
         self.current_frame = initial_frame_number
-        return frame
+        return np.flip(frame, 2)
 
     def get_movie_frame_dtype(self):
         """Return the dtype for frame in a movie file."""
@@ -124,7 +124,7 @@ class VideoCaptureContext:
             success, frame = self.vc.read()
             self._current_frame += 1
             if success:
-                return frame
+                return np.flip(frame, 2)
             else:
                 raise StopIteration
         else:
