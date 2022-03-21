@@ -40,7 +40,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
     savedir = OUTPUT_PATH
 
     def setUp(self) -> None:
-        self.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "cfr").iterdir())
+        self.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
         self.nwb_converter = self.create_movie_converter()
         self.nwbfile_path = os.path.join(self.savedir, "movie_test.nwb")
 
