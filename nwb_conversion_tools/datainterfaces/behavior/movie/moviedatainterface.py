@@ -1,4 +1,4 @@
-"""Authors: Cody Baker and Ben Dichter."""
+"""Authors: Saksham Sharda, Cody Baker and Ben Dichter."""
 from pathlib import Path
 from typing import Optional
 from warnings import warn
@@ -79,12 +79,16 @@ class MovieInterface(BaseDataInterface):
     ):
         """
         Convert the movie data files to ImageSeries and write them in the NWBFile.
+        Data is written in the ImageSeries container as RGB. [times, x, y, 3-RGB]
 
         Parameters
         ----------
         nwbfile : NWBFile
         metadata : dict
             Dictionary of metadata information such as names and description of each video.
+            Metadata should be passed for each video file passed in the file_paths argument during __init__.
+            If storing as 'external mode', then provide duplicate metadata for video files that go in the
+            same ImageSeries container. len(metadata["Behavior"]["Movies"]==len(file_paths).
             Should be organized as follows:
                 metadata = dict(
                     Behavior=dict(
@@ -144,6 +148,22 @@ class MovieInterface(BaseDataInterface):
         )
 
         def _check_duplicates(image_series_kwargs_list):
+            """
+            Accumulates metadata for when multiple video files go in one ImageSeries container.
+
+            Parameters
+            ----------
+            image_series_kwargs_list: List[Dict]
+                metadata passed into run_conversion
+
+            Returns
+            -------
+            image_series_kwargs_list_unique: List[Dict]
+                if metadata has common names (case when the user intends to put multiple video files
+                under the same ImageSeries container), this removes the duplicate names.
+            file_paths_list: List[List[str]]
+                len(file_paths_list)==len(image_series_kwargs_list_unique)
+            """
             image_series_kwargs_list_keys = [i["name"] for i in image_series_kwargs_list]
             if len(set(image_series_kwargs_list_keys)) < len(image_series_kwargs_list_keys):
                 assert external_mode, "For multiple video files under the same ImageSeries name, use exernal_mode=True."
