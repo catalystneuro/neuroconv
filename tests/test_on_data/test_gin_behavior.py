@@ -7,10 +7,7 @@ from datetime import datetime
 import pytest
 import numpy as np
 from pynwb import NWBHDF5IO
-from nwb_conversion_tools import (
-    NWBConverter,
-    MovieInterface
-)
+from nwb_conversion_tools import NWBConverter, MovieInterface
 from nwb_conversion_tools.utils import load_dict_from_file
 
 
