@@ -38,7 +38,7 @@ from nwb_conversion_tools.utils import load_dict_from_file
 
 
 # Load the configuration for the data tests
-test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config_local.json")
+test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
 
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
