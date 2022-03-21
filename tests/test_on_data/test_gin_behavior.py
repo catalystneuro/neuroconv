@@ -1,57 +1,51 @@
-import os
-import shutil
-import unittest
 import tempfile
+import unittest
+import os
+from pathlib import Path
 from datetime import datetime
 
+import pytest
 import numpy as np
 from pynwb import NWBHDF5IO
-
-from nwb_conversion_tools import NWBConverter, MovieInterface
-
-try:
-    import cv2
-
-    skip_test = False
-except ImportError:
-    skip_test = True
+from nwb_conversion_tools import (
+    NWBConverter,
+    MovieInterface
+)
+from nwb_conversion_tools.utils import load_dict_from_file
 
 
-@unittest.skipIf(skip_test, "cv2 not installed")
-class TestMovieInterface(unittest.TestCase):
+# Load the configuration for the data tests
+test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
+
+#  GIN dataset: https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+if os.getenv("CI"):
+    LOCAL_PATH = Path(".")  # Must be set to "." for CI
+    print("Running GIN tests on Github CI!")
+else:
+    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
+    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
+    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
+    print("Running GIN tests locally!")
+BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
+HAVE_BEHAVIOR_DATA = BEHAVIOR_DATA_PATH.exists()
+
+if test_config_dict["SAVE_OUTPUTS"]:
+    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
+    OUTPUT_PATH.mkdir(exist_ok=True)
+else:
+    OUTPUT_PATH = Path(tempfile.mkdtemp())
+
+if not HAVE_BEHAVIOR_DATA:
+    pytest.fail(f"No oephys_testing_data folder found in location: {BEHAVIOR_DATA_PATH}!")
+
+
+class TestMovieDataNwbConversions(unittest.TestCase):
+    savedir = OUTPUT_PATH
+
     def setUp(self) -> None:
-        self.test_dir = tempfile.mkdtemp()
-        self.movie_files = self.create_movies()
+        self.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "cfr").iterdir())
         self.nwb_converter = self.create_movie_converter()
-        self.nwbfile_path = os.path.join(self.test_dir, "movie_test.nwb")
-
-    def create_movies(self):
-        movie_file1 = os.path.join(self.test_dir, "test1.avi")
-        movie_file2 = os.path.join(self.test_dir, "test2.avi")
-        (nf, nx, ny) = (30, 640, 480)
-        writer1 = cv2.VideoWriter(
-            filename=movie_file1,
-            apiPreference=None,
-            fourcc=cv2.VideoWriter_fourcc("M", "J", "P", "G"),
-            fps=25,
-            frameSize=(ny, nx),
-            params=None,
-        )
-        writer2 = cv2.VideoWriter(
-            filename=movie_file2,
-            apiPreference=None,
-            fourcc=cv2.VideoWriter_fourcc("M", "J", "P", "G"),
-            fps=25,
-            frameSize=(ny, nx),
-            params=None,
-        )
-
-        for k in range(nf):
-            writer1.write(np.random.randint(0, 255, (nx, ny, 3)).astype("uint8"))
-            writer2.write(np.random.randint(0, 255, (nx, ny, 3)).astype("uint8"))
-        writer1.release()
-        writer2.release()
-        return [movie_file1, movie_file2]
+        self.nwbfile_path = os.path.join(self.savedir, "movie_test.nwb")
 
     def create_movie_converter(self):
         class MovieTestNWBConverter(NWBConverter):
@@ -81,9 +75,13 @@ class TestMovieInterface(unittest.TestCase):
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert movie_interface_name in mod
-                assert starting_times[no] == mod[movie_interface_name].starting_time
+                if mod[movie_interface_name].starting_time is not None:
+                    assert starting_times[no] == mod[movie_interface_name].starting_time
+                else:
+                    assert starting_times[no] == mod[movie_interface_name].timestamps[0]
 
     def test_movie_starting_times_none(self):
+        """For multiple ImageSeries containers, starting times must be provided with len(movie_files)"""
         conversion_opts = dict(Movie=dict(external_mode=False))
         with self.assertRaises(ValueError):
             self.nwb_converter.run_conversion(
@@ -94,10 +92,12 @@ class TestMovieInterface(unittest.TestCase):
             )
 
     def test_movie_starting_times_none_duplicate(self):
+        """When all movies go in one ImageSeries container, starting times should be assumed 0.0"""
         conversion_opts = dict(Movie=dict(external_mode=True))
         metadata = self.get_metadata()
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
-        metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
+        for no in range(1, len(self.movie_files)):
+            metadata["Behavior"]["Movies"][no]["name"] = movie_interface_name
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -165,13 +165,14 @@ class TestMovieInterface(unittest.TestCase):
             metadata = self.nwb_converter.get_metadata()
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-                assert mod[movie_interface_name].external_file[0] == self.movie_files[no]
+                assert mod[movie_interface_name].external_file[0] == str(self.movie_files[no])
 
     def test_movie_duplicate_kwargs_external(self):
         conversion_opts = dict(Movie=dict(external_mode=True))
         metadata = self.get_metadata()
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
-        metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
+        for no in range(1, len(self.movie_files)):
+            metadata["Behavior"]["Movies"][no]["name"] = movie_interface_name
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -183,7 +184,7 @@ class TestMovieInterface(unittest.TestCase):
             mod = nwbfile.acquisition
             assert len(mod) == 1
             assert movie_interface_name in mod
-            assert len(mod[movie_interface_name].external_file) == 2
+            assert len(mod[movie_interface_name].external_file) == len(self.movie_files)
 
     def test_movie_duplicate_kwargs(self):
         conversion_opts = dict(Movie=dict(external_mode=False))
@@ -215,6 +216,6 @@ class TestMovieInterface(unittest.TestCase):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].data.shape[0] == 10
 
-    def tearDown(self) -> None:
-        shutil.rmtree(self.test_dir)
-        del self.nwb_converter
+
+if __name__ == "__main__":
+    unittest.main()
