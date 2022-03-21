@@ -15,7 +15,7 @@ with open(os.path.join(path, "requirements-full.txt")) as f:
 testing_suite_dependencies = ["pytest", "pytest-cov", "ndx-events==0.2.0", "parameterized==0.8.1"]
 extras_require = dict(full=full_dependencies, test=testing_suite_dependencies)
 
-# Create a local copy for gint test configuration based on the master file `base_gin_test_config.json`
+# Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
 gin_config_file_base = "./base_gin_test_config.json"
 gin_config_file_local = "./tests/test_on_data/gin_test_config.json"
 copy(src=gin_config_file_base, dst=gin_config_file_local)
