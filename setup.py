@@ -1,6 +1,8 @@
 from setuptools import setup, find_packages
 from codecs import open
 import os
+from pathlib import Path
+from shutil import copy
 
 path = os.path.abspath(os.path.dirname(__file__))
 
@@ -12,6 +14,12 @@ with open(os.path.join(path, "requirements-full.txt")) as f:
     full_dependencies = f.readlines()
 testing_suite_dependencies = ["pytest", "pytest-cov", "ndx-events==0.2.0", "parameterized==0.8.1"]
 extras_require = dict(full=full_dependencies, test=testing_suite_dependencies)
+
+# Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
+gin_config_file_base = "./base_gin_test_config.json"
+gin_config_file_local = "./tests/test_on_data/gin_test_config.json"
+copy(src=gin_config_file_base, dst=gin_config_file_local)
+
 setup(
     name="nwb-conversion-tools",
     version="0.11.3",
