@@ -67,3 +67,21 @@ jobs:
           datalad get -r ./imaging_datasets/
           datalad get -r ./segmentation_datasets/
           cd ..
+
+      - name: Get behavior_testing_data current head hash
+        id: behavior
+        run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
+      - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
+        uses: actions/cache@v2
+        id: cache-behavior-datasets
+        with:
+          path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/behavior_testing_data
+          key: behavior-datasets-8-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          restore-keys: behavior-datasets-8-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+      - name: Force GIN behavior download
+        if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        run: |
+          conda install -c conda-forge datalad==0.14.5
+          git config --global user.email "CI@example.com"
+          git config --global user.name "CI Almighty"
+          datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
