@@ -137,7 +137,6 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
         )
 
-
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
@@ -197,12 +196,11 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
             xml_file_path=xml_file_path,
         )
         self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        
+
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
-
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
