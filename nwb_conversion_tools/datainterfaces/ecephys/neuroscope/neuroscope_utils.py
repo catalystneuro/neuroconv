@@ -36,8 +36,17 @@ def safe_nested_find(root: et._Element, keys: list):
         return root
 
 
-def get_shank_channels(xml_file_path: str):
-    """Auxiliary function for retrieving the list of structured shank-only channels."""
+def get_shank_channels(xml_file_path: str) -> list:
+    """
+    Retrieve the list of structured shank-only channels.
+
+    These are channels involved into spike detection.
+    These are a subset of channels obtained in`get_channel_goups`.
+
+    Returns
+    -------
+        List reflecting the group structure of the channels.
+    """
     root = get_xml(xml_file_path)
     channel_groups = safe_find(safe_nested_find(root, ["spikeDetection", "channelGroups"]), "group", findall=True)
     if channel_groups and all([safe_find(group, "channels") is not None for group in channel_groups]):
@@ -45,8 +54,16 @@ def get_shank_channels(xml_file_path: str):
         return shank_channels
 
 
-def get_channel_groups(xml_file_path: str):
-    """Auxiliary function for retrieving a list of groups, each containing a list of channels."""
+def get_channel_groups(xml_file_path: str) -> list:
+    """
+    Auxiliary function for retrieving a list of groups, each containing a list of channels.
+
+    These are all of the channels that are connected to the probe.
+
+    Returns
+    -------
+        List reflecting the group structure of the channels.
+    """
     root = get_xml(xml_file_path)
     channel_groups = [
         [int(channel.text) for channel in group.findall("channel")]
