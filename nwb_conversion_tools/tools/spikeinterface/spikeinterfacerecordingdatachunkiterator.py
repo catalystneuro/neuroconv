@@ -60,7 +60,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         display_progress : bool, optional
             Display a progress bar with iteration rate and estimated completion time.
         progress_bar_options : dict, optional
-            Dictionary of keyword arguments to be passed directly to tqdm. 
+            Dictionary of keyword arguments to be passed directly to tqdm.
             See https://github.com/tqdm/tqdm#parameters for options.
         """
         if isinstance(recording, RecordingExtractor):
