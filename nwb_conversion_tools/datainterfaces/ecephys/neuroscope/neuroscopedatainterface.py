@@ -31,7 +31,8 @@ def subset_shank_channels(recording_extractor: BaseRecording, xml_file_path: str
 
     if shank_channels is not None:
         channel_ids = [channel_id for group in shank_channels for channel_id in group]
-        sub_recording = recording_extractor.channel_slice(channel_ids)
+        new_ids = recording_extractor.get_channel_ids()[channel_ids]
+        sub_recording = recording_extractor.channel_slice(new_ids)
     else:
         sub_recording = recording_extractor
 
@@ -129,12 +130,13 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         else:
             super().__init__(file_path=file_path)
 
-        add_recording_extractor_properties(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
-        )
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
+        add_recording_extractor_properties(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
+        )
+
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -195,11 +197,12 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
             xml_file_path=xml_file_path,
         )
         self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-
-        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
+        
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
+        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
+
 
 
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
