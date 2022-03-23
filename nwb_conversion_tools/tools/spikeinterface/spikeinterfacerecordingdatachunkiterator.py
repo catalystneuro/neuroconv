@@ -21,6 +21,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         buffer_shape: Optional[tuple] = None,
         chunk_mb: Optional[float] = None,
         chunk_shape: Optional[tuple] = None,
+        display_progress: bool = False,
     ):
         """
         Initialize an Iterable object which returns DataChunks with data and their selections on each iteration.
@@ -63,7 +64,13 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         self.segment_index = segment_index
         self.return_scaled = return_scaled
         self.channel_ids = recording.get_channel_ids()
-        super().__init__(buffer_gb=buffer_gb, buffer_shape=buffer_shape, chunk_mb=chunk_mb, chunk_shape=chunk_shape)
+        super().__init__(
+            buffer_gb=buffer_gb,
+            buffer_shape=buffer_shape,
+            chunk_mb=chunk_mb,
+            chunk_shape=chunk_shape,
+            display_progress=display_progress,
+        )
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording.get_traces(
