@@ -10,8 +10,8 @@ import numpy.testing as npt
 import pytest
 from parameterized import parameterized, param
 
-from spikeinterface.core.old_api_utils import OldToNewRecording, BaseRecording
 from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor
+from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
 
@@ -123,6 +123,12 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")),
         ),
         param(
+            data_interface=NeuroscopeRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"), spikeextractors_backend=True
+            ),
+        ),
+        param(
             data_interface=OpenEphysRecordingExtractorInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
         ),
@@ -164,7 +170,8 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+        backend_string = f"_se_backend_{interface_kwargs.get('spikeextractors_backend', False)}"
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}{backend_string}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestRecording=data_interface)
@@ -179,18 +186,18 @@ class TestEcephysNwbConversions(unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
-        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
 
-        if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
-            nwb_recording.set_channel_offsets(
-                offsets=[
-                    nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
-                    for channel_id in nwb_recording.get_channel_ids()
-                ]
-            )
-        if isinstance(recording, BaseRecording):
-            nwb_recording = OldToNewRecording(oldapi_recording_extractor=nwb_recording)
         if isinstance(recording, RecordingExtractor):
+            # Do the comaprison with spikeextractors method
+            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+            if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
+                nwb_recording.set_channel_offsets(
+                    offsets=[
+                        nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
+                        for channel_id in nwb_recording.get_channel_ids()
+                    ]
+                )
+
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
             check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
 
@@ -200,6 +207,12 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
             )
         else:
+            # Cast channel_ids to string and do the comparisons with spikeinterface methods
+            nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
+            recording = recording.channel_slice(
+                channel_ids=recording.get_channel_ids(), renamed_channel_ids=recording.get_channel_ids().astype("str")
+            )
+
             check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
             # This can only be tested if both gain and offest are present
             if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
