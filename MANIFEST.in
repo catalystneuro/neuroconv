@@ -1,1 +1,2 @@
 include *.yml
+include nwb_conversion_tools/schemas/*
