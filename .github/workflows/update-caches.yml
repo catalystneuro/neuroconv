@@ -1,7 +1,5 @@
 name: Updated Caches
-on:
-  schedule:
-    - cron: "0 0 * * *"
+on: push
 jobs:
   run:
     name: Update cache on ${{ matrix.os }} with Python ${{ matrix.python-version }}
@@ -9,7 +7,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          python-version: [3.7, 3.8, 3.9]
           os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: s-weigand/setup-conda@v1
@@ -18,7 +15,7 @@ jobs:
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9
 
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Get datalad - Linux
