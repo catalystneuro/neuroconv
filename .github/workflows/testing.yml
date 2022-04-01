@@ -43,8 +43,8 @@ jobs:
         run: pip install .[test]
       - name: Run minimal pytest
         run: pytest tests/test_internals -n auto --dist loadscope
-      - name: Install full requirements
-        run: pip install .[full]
+      - name: Install full requirements (-e needed for codecov report)
+        run: pip install -e .[full]
         
       - name: Get ephy_testing_data current head hash
         id: ecephys
