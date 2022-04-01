@@ -2,35 +2,58 @@ name: Update testing data
 on:
   schedule:
     - cron: "0 0 * * *"
+name: Updated Caches
+on: pull_request
 jobs:
   run:
-    name: Update testing data
-    runs-on: "ubuntu-latest"
+    name: Update cache on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      matrix:
+          python-version: [3.7, 3.8, 3.9]
+          os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: s-weigand/setup-conda@v1
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v2
+      - run: git fetch --prune --unshallow --tags
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
         with:
-          python-version: 3.7
-      - name: Install datalad
+          python-version: ${{ matrix.python-version }}
+
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
+        name: Get datalad - Linux
+        run: conda install -c conda-forge datalad==0.14.5
+      - if: ${{ matrix.os == 'macos-latest' }}
+        name: Get git-annex and datalad - MacOS
+        run: brew install git-annex
+      - if: ${{ matrix.os == 'windows-latest' }}
+        name: Get git-annex - Windows
+        uses: crazy-max/ghaction-chocolatey@v1.6.0
+        with:
+          args: install git-annex --ignore-checksums
+      - if: ${{ matrix.os == 'windows-latest' }}
+        name: Get datalad - Windows
+        run: pip install datalad==0.15.6
+
+      - name: Setup Environment
         run: |
-          conda install -c conda-forge datalad==0.14.5
+          pip install -U pip
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-
-      - name: Get ephys_testing_data current head hash
+        
+      - name: Get ephy_testing_data current head hash
         id: ecephys
-        run: echo "::set-output name=HASH_EPHYS_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
-      - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_ECEPHYS_DATASET }}
+        run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
+      - name: Cache ephys dataset - ${{ steps.ecephys.outputs.HASH_EPHYS_DATASET }}
         uses: actions/cache@v2
-        id: cache-ecephys-dataset
+        id: cache-ecephys-datasets
         with:
-          path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ephy_testing_data
-          key: ecephys-datasets-8-${{ steps.ecephys.outputs.HASH_ECEPHYS_DATASET }}
-          restore-keys: ecephys-datasets-8-${{ steps.ecephys.outputs.HASH_ECEPHYS_DATASET }}
-      - name: Update ecephys datasets
-        if: steps.cache-ecephys-dataset.outputs.cache-hit == false
+          path: ./ephy_testing_data
+          key: ecephys-datasets-040122-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+      - name: "Force GIN: ecephys download"
+        if: steps.cache-ecephys-datasets.outputs.cache-hit == false
         run: |
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           cd ephy_testing_data
@@ -53,20 +76,11 @@ jobs:
         uses: actions/cache@v2
         id: cache-ophys-datasets
         with:
-          path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ophys_testing_data
-          key: ophys-datasets-8-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-          restore-keys: ophys-datasets-8-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-      - name: Update ophys datasets
+          path: ./ophys_testing_data
+          key: ophys-datasets-040122-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+      - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
-        run: |
-          conda install -c conda-forge datalad==0.14.5
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
-          datalad install https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-          cd ophys_testing_data
-          datalad get -r ./imaging_datasets/
-          datalad get -r ./segmentation_datasets/
-          cd ..
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 
       - name: Get behavior_testing_data current head hash
         id: behavior
@@ -75,13 +89,8 @@ jobs:
         uses: actions/cache@v2
         id: cache-behavior-datasets
         with:
-          path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/behavior_testing_data
-          key: behavior-datasets-8-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-          restore-keys: behavior-datasets-8-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-      - name: Force GIN behavior download
+          path: ./behavior_testing_data
+          key: behavior-datasets-040122-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+      - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        run: |
-          conda install -c conda-forge datalad==0.14.5
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
-          datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
