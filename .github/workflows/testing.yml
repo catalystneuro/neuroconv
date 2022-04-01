@@ -98,18 +98,14 @@ jobs:
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
-      - if: ${{ matrix.os != 'ubuntu-latest'}}
-        name: Run full pytest
-        run: pytest -n auto --dist loadscope
-      - if: ${{ matrix.os == 'ubuntu-latest'}}
-        name: Run full pytest with coverage
-        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.xml
+      - name: Run full pytest with coverage
+        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:.codecov.xml
       - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.xml
+          file: ./codecov.xml
           flags: unittests
           name: codecov-umbrella 
-          yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
+          yml: ./codecov.yml
