@@ -22,15 +22,15 @@ jobs:
         name: Get datalad - Linux
         run: conda install -c conda-forge datalad==0.14.5
       - if: ${{ matrix.os == 'macos-latest' }}
-        name: Get git-annex and datalad - MacOS
+        name: Get git-annex - MacOS
         run: brew install git-annex
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Get git-annex - Windows
         uses: crazy-max/ghaction-chocolatey@v1.6.0
         with:
           args: install git-annex --ignore-checksums
-      - if: ${{ matrix.os == 'windows-latest' }}
-        name: Get datalad - Windows
+      - if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-latest'}}
+        name: Get datalad - Windows and Mac
         run: pip install datalad==0.15.6
 
       - name: Setup Environment
