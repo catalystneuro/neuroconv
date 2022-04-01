@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from tempfile import mkdtemp
 from jsonschema import validate, RefResolver
@@ -13,7 +14,6 @@ from nwb_conversion_tools.utils import load_dict_from_file
 
 # Load the configuration for the data tests
 test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
-print(test_config_dict)
 
 # GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 if os.getenv("CI"):
@@ -49,10 +49,13 @@ class TestYAMLConversionSpecification(TestCase):
         specification_schema = load_dict_from_file(
             file_path=schema_folder / "yaml_conversion_specification_schema.json"
         )
+        sys_uri_base = "file://"
+        if sys.platform.startswith("win32"):
+            sys_uri_base = "file:/"
         validate(
             instance=load_dict_from_file(file_path=yaml_file_path),
             schema=load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json"),
-            resolver=RefResolver(base_uri="file://" + str(schema_folder) + "/", referrer=specification_schema),
+            resolver=RefResolver(base_uri=sys_uri_base + str(schema_folder) + "/", referrer=specification_schema),
         )
 
     def test_run_conversion_from_yaml(self):
