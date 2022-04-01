@@ -1,13 +1,14 @@
-name: Minimal and full tests on Linux
+name: Minimal and Full Tests
 on: pull_request
 jobs:
   run:
-    name: Minimal and full tests on Linux with Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
+    name: Minimal and full tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
           python-version: [3.7, 3.8, 3.9]
+          os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
@@ -16,16 +17,35 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install pytest
-        run: pip install --upgrade pip
 
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
+        name: Get datalad - Linux
+        run: conda install -c conda-forge datalad==0.14.5
+      - if: ${{ matrix.os == 'macos-latest' }}
+        name: Get git-annex - MacOS
+        run: brew install git-annex
+      - if: ${{ matrix.os == 'windows-latest' }}
+        name: Get git-annex - Windows
+        uses: crazy-max/ghaction-chocolatey@v1.6.0
+        with:
+          args: install git-annex --ignore-checksums
+      - if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-latest'}}
+        name: Get datalad - Windows and Mac
+        run: pip install datalad==0.15.6
+
+      - name: Global Setup
+        run: |
+          pip install -U pip
+          pip install pytest-xdist
+          git config --global user.email "CI@example.com"
+          git config --global user.name "CI Almighty"
       - name: Install nwb-conversion-tools with minimal requirements
         run: pip install .[test]
-      - name: Run minimal pytest with coverage
-        run: pytest tests/test_internals
-
-      - name: Install full requirements
+      - name: Run minimal pytest
+        run: pytest tests/test_internals -n auto --dist loadscope
+      - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
+        
       - name: Get ephy_testing_data current head hash
         id: ecephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
@@ -33,15 +53,11 @@ jobs:
         uses: actions/cache@v2
         id: cache-ecephys-datasets
         with:
-          path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ephy_testing_data
-          key: ecephys-datasets-9-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
-          restore-keys: ecephys-datasets-9-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
-      - name: Force GIN ecephys download
+          path: ./ephy_testing_data
+          key: ecephys-datasets-040122-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+      - name: "Force GIN: ecephys download"
         if: steps.cache-ecephys-datasets.outputs.cache-hit == false
         run: |
-          conda install -c conda-forge datalad==0.14.5
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           cd ephy_testing_data
           datalad get -r ./neuralynx/Cheetah_v5.7.4/original_data/
@@ -55,6 +71,7 @@ jobs:
           datalad get -r ./axona/
           datalad get -r ./cellexplorer/
           cd ..
+
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
@@ -62,16 +79,11 @@ jobs:
         uses: actions/cache@v2
         id: cache-ophys-datasets
         with:
-          path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/ophys_testing_data
-          key: ophys-datasets-8-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-          restore-keys: ophys-datasets-8-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-      - name: Force GIN ophys download
+          path: ./ophys_testing_data
+          key: ophys-datasets-040122-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+      - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
-        run: |
-          conda install -c conda-forge datalad==0.14.5
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
-          datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 
       - name: Get behavior_testing_data current head hash
         id: behavior
@@ -80,25 +92,20 @@ jobs:
         uses: actions/cache@v2
         id: cache-behavior-datasets
         with:
-          path: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/behavior_testing_data
-          key: behavior-datasets-8-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-          restore-keys: behavior-datasets-8-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-      - name: Force GIN behavior download
+          path: ./behavior_testing_data
+          key: behavior-datasets-040122-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+      - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        run: |
-          conda install -c conda-forge datalad==0.14.5
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
-          datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
       - name: Run full pytest with coverage
-        run: pytest --cov=./ --cov-report xml:/home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
-      - if: ${{ matrix.python-version == '3.9' }}
+        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:.codecov.xml
+      - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/coverage.xml
+          file: ./codecov.xml
           flags: unittests
           name: codecov-umbrella 
-          yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
+          yml: ./codecov.yml
