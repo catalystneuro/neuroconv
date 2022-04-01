@@ -36,6 +36,7 @@ jobs:
       - name: Setup Environment
         run: |
           pip install -U pip
+          pip install pytest-xdist
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
       - name: Install nwb-conversion-tools with minimal requirements
@@ -98,13 +99,13 @@ jobs:
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
       - name: Run full pytest with coverage
-        run: pytest --cov=./ --cov-report xml:./coverage.xml
+        run: pytest -n auto --cov=./ --cov-report xml:./coverage.xml
       - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          file: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.xml
           flags: unittests
           name: codecov-umbrella 
           yml: /home/runner/work/nwb-conversion-tools/nwb-conversion-tools/codecov.yml
