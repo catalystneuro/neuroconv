@@ -1,7 +1,5 @@
 name: Updated Caches
-on:
-  schedule:
-    - cron: "0 0 * * *"
+on: push
 jobs:
   run:
     name: Update cache on ${{ matrix.os }} with Python ${{ matrix.python-version }}
@@ -30,8 +28,8 @@ jobs:
         uses: crazy-max/ghaction-chocolatey@v1.6.0
         with:
           args: install git-annex --ignore-checksums
-      - if: ${{ matrix.os == 'windows-latest' }}
-        name: Get datalad - Windows
+      - if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-latest' }}
+        name: Get datalad - Windows and Mac
         run: pip install datalad==0.15.6
 
       - name: Setup Environment
