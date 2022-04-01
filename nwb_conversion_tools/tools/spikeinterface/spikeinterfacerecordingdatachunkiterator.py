@@ -21,6 +21,8 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         buffer_shape: Optional[tuple] = None,
         chunk_mb: Optional[float] = None,
         chunk_shape: Optional[tuple] = None,
+        display_progress: bool = False,
+        progress_bar_options: Optional[dict] = None,
     ):
         """
         Initialize an Iterable object which returns DataChunks with data and their selections on each iteration.
@@ -55,6 +57,11 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             Manual specification of the internal chunk shape for the HDF5 dataset.
             Cannot be set if `chunk_mb` is also specified.
             The default is None.
+        display_progress : bool, optional
+            Display a progress bar with iteration rate and estimated completion time.
+        progress_bar_options : dict, optional
+            Dictionary of keyword arguments to be passed directly to tqdm.
+            See https://github.com/tqdm/tqdm#parameters for options.
         """
         if isinstance(recording, RecordingExtractor):
             self.recording = OldToNewRecording(oldapi_recording_extractor=recording)
@@ -63,7 +70,14 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         self.segment_index = segment_index
         self.return_scaled = return_scaled
         self.channel_ids = recording.get_channel_ids()
-        super().__init__(buffer_gb=buffer_gb, buffer_shape=buffer_shape, chunk_mb=chunk_mb, chunk_shape=chunk_shape)
+        super().__init__(
+            buffer_gb=buffer_gb,
+            buffer_shape=buffer_shape,
+            chunk_mb=chunk_mb,
+            chunk_shape=chunk_shape,
+            display_progress=display_progress,
+            progress_bar_options=progress_bar_options,
+        )
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording.get_traces(
