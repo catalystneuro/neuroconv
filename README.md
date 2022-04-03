@@ -118,15 +118,20 @@ Notice that this method does not install `datalad`.
 ### Downloading the data
 [Datalad](https://www.datalad.org/) (`conda install datalad`) is the recommended way for downloading the data. To do this; simply call:
 
+For electrophysiology data:
 ```shell
 datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 ```
-to install the `ecephys` data, and
 
+For optical physiology data:
 ```shell
 datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 ```
-for `ophys` data.
+
+For behavioral data:
+```shell
+datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+```
 
 
 ### Test configuration file
