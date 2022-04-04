@@ -123,7 +123,7 @@ class TestVideoContext(unittest.TestCase):
 class TestMovieInterface(unittest.TestCase):
 
     frame_shape = (800, 600, 3)
-    number_of_frames = 500
+    number_of_frames = 50
     fps = 25
 
     def setUp(self):
