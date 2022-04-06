@@ -111,9 +111,9 @@ def get_conversion_from_unit(unit: str) -> float:
     elif unit in ["mA", "mV"]:
         conversion = 1e-3
     elif unit in ["A", "V"]:
-        conversion = 1.
+        conversion = 1.0
     else:
-        conversion = 1.
+        conversion = 1.0
         warnings.warn("No valid units found for traces in the current file. Gain is set to 1, but this might be wrong.")
     return float(conversion)
 
