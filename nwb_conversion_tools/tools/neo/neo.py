@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 import warnings
+import numpy as np
 
 import neo.io.baseio
 import pynwb
@@ -317,7 +318,7 @@ def add_icephys_recordings(
                 starting_time=starting_time,
                 rate=sampling_rate,
                 conversion=response_conversion * response_gain,
-                gain=1.0,
+                gain=np.nan,
             )
             if icephys_experiment_type != "izero":
                 stim_unit = protocol[2][ei]
@@ -330,7 +331,7 @@ def add_icephys_recordings(
                     rate=sampling_rate,
                     starting_time=starting_time,
                     conversion=stim_conversion,
-                    gain=1.0,
+                    gain=np.nan,
                 )
                 icephys_recording = nwbfile.add_intracellular_recording(
                     electrode=electrode, response=response, stimulus=stimulus
