@@ -102,17 +102,17 @@ def get_conversion_from_unit(unit: str) -> float:
     float: conversion to Ampere or Volt
     """
     if unit in ["pA", "pV"]:
-        conversion = 10**-12
+        conversion = 1e-12
     elif unit in ["nA", "nV"]:
-        conversion = 10**-9
+        conversion = 1e-9
     elif unit in ["uA", "uV"]:
-        conversion = 10**-6
+        conversion = 1e-6
     elif unit in ["mA", "mV"]:
-        conversion = 10**-3
+        conversion = 1e-3
     elif unit in ["A", "V"]:
-        conversion = 10**0
+        conversion = 1.
     else:
-        conversion = 10**0
+        conversion = 1.
         warnings.warn("No valid units found for traces in the current file. Gain is set to 1, but this might be wrong.")
     return float(conversion)
 
