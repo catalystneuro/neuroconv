@@ -53,18 +53,18 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["properties"]["Icephys"] = get_base_schema(tag="Icephys")
-        metadata_schema["properties"]["Icephys"]["required"] = ["Device", "IntracellularElectrode"]
+        metadata_schema["properties"]["Icephys"]["required"] = ["Device", "Electrode"]
         metadata_schema["properties"]["Icephys"]["properties"] = dict(
             Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
-            IntracellularElectrode=dict(
+            Electrode=dict(
                 type="array",
                 minItems=1,
-                items={"$ref": "#/properties/Icephys/properties/definitions/IntracellularElectrode"},
+                items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
             ),
         )
         metadata_schema["properties"]["Icephys"]["properties"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
-            IntracellularElectrode=get_schema_from_hdmf_class(IntracellularElectrode),
+            Electrode=get_schema_from_hdmf_class(IntracellularElectrode),
         )
         return metadata_schema
 
@@ -72,7 +72,7 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         metadata = super().get_metadata()
         metadata["Icephys"] = dict(
             Device=[dict(name="Device_icephys", description="no description")],
-            IntracellularElectrode=[
+            Electrode=[
                 dict(name=f"electrode-{i}", description="no description", device="Device_icephys")
                 for i in range(get_number_of_electrodes(self.readers_list[0]))
             ],
