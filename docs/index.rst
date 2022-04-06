@@ -1,4 +1,4 @@
-Welcome to the documentation for NWB-conversion-tools!
+Welcome to the documentation for NWB Conversion Tools!
 ======================================================
 
 ..
