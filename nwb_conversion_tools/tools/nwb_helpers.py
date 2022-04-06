@@ -98,7 +98,7 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
         "Behavior",
     ], f"Invalid modality {modality} when creating device."
 
-    defaults = dict(name="Device", description=f"{modality} device. Automatically generated.")
+    defaults = dict(name=f"Device{modality}", description=f"{modality} device. Automatically generated.")
 
     if metadata is None:
         metadata = dict()

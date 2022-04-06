@@ -120,7 +120,7 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         es_key: str (optional)
             Key in metadata dictionary containing metadata info for the specific electrical series
         icephys_experiment_type: str (optional)
-            Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
+            Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero' (all current and amplifier settings turned off).
             If no value is passed, 'voltage_clamp' is used as default.
         """
         if (
