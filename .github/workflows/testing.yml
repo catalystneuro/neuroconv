@@ -54,13 +54,15 @@ jobs:
         id: cache-ecephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ecephys-datasets-040122-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ecephys-datasets-040422-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
       - name: "Force GIN: ecephys download"
         if: steps.cache-ecephys-datasets.outputs.cache-hit == false
         run: |
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           cd ephy_testing_data
           datalad get -r ./neuralynx/Cheetah_v5.7.4/original_data/
+          datalad get -r ./neuralynx/Cheetah_v5.6.3/original_data/
+          datalad get -r ./neuralynx/Cheetah_v5.4.0/original_data/
           datalad get -r ./neuroscope/test1/
           datalad get -r ./openephysbinary/v0.4.4.1_with_video_tracking/
           datalad get -r ./blackrock/
