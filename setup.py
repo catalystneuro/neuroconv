@@ -29,7 +29,7 @@ setup(
     author_email="ben.dichter@gmail.com",
     url="https://github.com/catalystneuro/nwb-conversion-tools",
     keywords="nwb",
-    packages=find_packages(where="src", exclude=["tests"]),
+    packages=find_packages(where="src"),
     package_dir={"": "src"},
     package_data={"": ["template_metafile.yml"]},
     include_package_data=True,
