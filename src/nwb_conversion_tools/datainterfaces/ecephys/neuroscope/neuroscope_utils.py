@@ -78,4 +78,3 @@ def get_session_start_time(xml_file_path):
     date_elem = safe_nested_find(root, ["generalInfo", "date"])
     if date_elem is not None:
         return parser.parse(date_elem.text)
-
