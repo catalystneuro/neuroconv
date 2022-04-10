@@ -19,7 +19,7 @@ def test_get_metadata():
 
     sx = NeuroscopeSortingInterface(
         str(NEUROSCOPE_PATH / "dataset_1"),
-        xml_file_path=str(NEUROSCOPE_PATH / "dataset_1"/ "YutaMouse42-151117.xml"),
+        xml_file_path=str(NEUROSCOPE_PATH / "dataset_1" / "YutaMouse42-151117.xml"),
     )
 
     assert sx.get_metadata()["NWBFile"]["session_start_time"] == datetime.datetime(2015, 8, 31, 0, 0)
