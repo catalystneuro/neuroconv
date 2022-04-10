@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
+from dateutil import parser
 
 from lxml import etree as et
 
@@ -70,3 +71,12 @@ def get_channel_groups(xml_file_path: str) -> list:
         for group in root.find("anatomicalDescription").find("channelGroups").findall("group")
     ]
     return channel_groups
+
+
+def get_session_start_time(xml_file_path):
+    print(xml_file_path)
+    root = get_xml(xml_file_path)
+    date_elem = safe_nested_find(root, ["generalInfo", "date"])
+    if date_elem is not None:
+        return parser.parse(date_elem.text)
+
