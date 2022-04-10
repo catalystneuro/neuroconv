@@ -74,7 +74,6 @@ def get_channel_groups(xml_file_path: str) -> list:
 
 
 def get_session_start_time(xml_file_path):
-    print(xml_file_path)
     root = get_xml(xml_file_path)
     date_elem = safe_nested_find(root, ["generalInfo", "date"])
     if date_elem is not None:
