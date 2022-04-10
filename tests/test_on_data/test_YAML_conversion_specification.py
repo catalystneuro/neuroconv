@@ -19,7 +19,7 @@ class TestYAMLConversionSpecification(TestCase):
     def test_validate_example_specification(self):
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
-        schema_folder = path_to_test_yml_files.parent.parent.parent / "nwb_conversion_tools" / "schemas"
+        schema_folder = path_to_test_yml_files.parent.parent.parent / "src" / "nwb_conversion_tools" / "schemas"
         specification_schema = load_dict_from_file(
             file_path=schema_folder / "yaml_conversion_specification_schema.json"
         )
