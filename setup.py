@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages
 from codecs import open
 import os
-from pathlib import Path
 from shutil import copy
 
 path = os.path.abspath(os.path.dirname(__file__))
@@ -22,7 +21,7 @@ copy(src=gin_config_file_base, dst=gin_config_file_local)
 
 setup(
     name="nwb-conversion-tools",
-    version="0.11.3",
+    version="0.11.5",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -30,7 +29,8 @@ setup(
     author_email="ben.dichter@gmail.com",
     url="https://github.com/catalystneuro/nwb-conversion-tools",
     keywords="nwb",
-    packages=find_packages(),
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
     package_data={"": ["template_metafile.yml"]},
     include_package_data=True,
     python_requires=">=3.7",

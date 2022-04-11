@@ -1,39 +1,12 @@
-import tempfile
 import unittest
 import os
-from pathlib import Path
 from datetime import datetime
 
-import pytest
 import numpy as np
 from pynwb import NWBHDF5IO
 from nwb_conversion_tools import NWBConverter, MovieInterface
-from nwb_conversion_tools.utils import load_dict_from_file
 
-
-# Load the configuration for the data tests
-test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
-
-#  GIN dataset: https://gin.g-node.org/CatalystNeuro/behavior_testing_data
-if os.getenv("CI"):
-    LOCAL_PATH = Path(".")  # Must be set to "." for CI
-    print("Running GIN tests on Github CI!")
-else:
-    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
-    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
-    print("Running GIN tests locally!")
-BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
-HAVE_BEHAVIOR_DATA = BEHAVIOR_DATA_PATH.exists()
-
-if test_config_dict["SAVE_OUTPUTS"]:
-    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
-    OUTPUT_PATH.mkdir(exist_ok=True)
-else:
-    OUTPUT_PATH = Path(tempfile.mkdtemp())
-
-if not HAVE_BEHAVIOR_DATA:
-    pytest.fail(f"No oephys_testing_data folder found in location: {BEHAVIOR_DATA_PATH}!")
+from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
 
 class TestMovieDataNwbConversions(unittest.TestCase):

@@ -1,4 +1,5 @@
 """Authors: Cody Baker, Alessio Buccino."""
+import sys
 from pathlib import Path
 from importlib import import_module
 from itertools import chain
@@ -44,10 +45,13 @@ def run_conversion_from_yaml(
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent.parent / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
+    sys_uri_base = "file://"
+    if sys.platform.startswith("win32"):
+        sys_uri_base = "file:/"
     validate(
         instance=specification,
         schema=specification_schema,
-        resolver=RefResolver(base_uri="file://" + str(schema_folder) + "/", referrer=specification_schema),
+        resolver=RefResolver(base_uri=sys_uri_base + str(schema_folder) + "/", referrer=specification_schema),
     )
 
     global_metadata = specification.get("metadata", dict())

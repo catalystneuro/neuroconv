@@ -1,42 +1,16 @@
-import os
+import sys
 from pathlib import Path
-from tempfile import mkdtemp
 from jsonschema import validate, RefResolver
 from datetime import datetime
 
 from hdmf.testing import TestCase
-import pytest
 from pynwb import NWBHDF5IO
 
 from nwb_conversion_tools import run_conversion_from_yaml
 from nwb_conversion_tools.utils import load_dict_from_file
 
-# Load the configuration for the data tests
-test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
-print(test_config_dict)
-
-# GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-if os.getenv("CI"):
-    LOCAL_PATH = Path(".")  # Must be set to "." for CI
-    print("Running GIN tests on Github CI!")
-else:
-    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
-    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
-    print("Running GIN tests locally!")
-DATA_PATH = LOCAL_PATH / "ephy_testing_data"
-HAVE_DATA = DATA_PATH.exists()
-
-if test_config_dict["SAVE_OUTPUTS"]:
-    OUTPUT_PATH = LOCAL_PATH / "example_yaml_output"
-    OUTPUT_PATH.mkdir(exist_ok=True)
-else:
-    OUTPUT_PATH = Path(mkdtemp())
-DATA_PATH = LOCAL_PATH / "ephy_testing_data"
-HAVE_DATA = DATA_PATH.exists()
-
-if not HAVE_DATA:
-    pytest.fail(f"No ephy_testing_data folder found in location: {DATA_PATH}!")
+from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+from .setup_paths import OUTPUT_PATH
 
 
 class TestYAMLConversionSpecification(TestCase):
@@ -45,14 +19,17 @@ class TestYAMLConversionSpecification(TestCase):
     def test_validate_example_specification(self):
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
-        schema_folder = path_to_test_yml_files.parent.parent.parent / "nwb_conversion_tools" / "schemas"
+        schema_folder = path_to_test_yml_files.parent.parent.parent / "src" / "nwb_conversion_tools" / "schemas"
         specification_schema = load_dict_from_file(
             file_path=schema_folder / "yaml_conversion_specification_schema.json"
         )
+        sys_uri_base = "file://"
+        if sys.platform.startswith("win32"):
+            sys_uri_base = "file:/"
         validate(
             instance=load_dict_from_file(file_path=yaml_file_path),
             schema=load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json"),
-            resolver=RefResolver(base_uri="file://" + str(schema_folder) + "/", referrer=specification_schema),
+            resolver=RefResolver(base_uri=sys_uri_base + str(schema_folder) + "/", referrer=specification_schema),
         )
 
     def test_run_conversion_from_yaml(self):
