@@ -21,11 +21,7 @@ def get_fstring_variable_names(fstring: str):
         (variable_name == "" for variable_name in variable_names)
     ), "Empty variable name detected in f-string! Please ensure there is text between all enclosing '{' and '}'."
     separators = [x.rstrip("{").lstrip("}") for x in re.findall(pattern="^.*?{|}.*?{|}.*?$", string=fstring)]
-    if separators[0] == "":
-        separators = separators[1:]
-    if separators[-1] == "":
-        separators = separators[:-1]
-    if any((separator == "" for separator in separators)):
+    if any((separator == "" for separator in separators[1:-1])):
         warn("There is an empty separator between two variables in the f-string! The f-string will not be invertible.")
     return variable_names, separators
 
@@ -45,8 +41,16 @@ def get_fstring_values_from_filename(filename: str, fstring: str):
     """
     variable_names, separators = get_fstring_variable_names(fstring=fstring)
     pattern = "^"
-    for separator in separators:
+    for separator in separators[:-1]:
         pattern += f"{separator}(.+)"
+    if separators[-1] != "":
+        pattern += f"{separators[-1]}"
     pattern += "$"
-    variable_values = re.findall(pattern=pattern, string=filename)[0]
+    pattern_match = re.findall(pattern=pattern, string=filename)
+    assert pattern_match, "Unable to match f-string pattern to filename! Please double check both structures."
+    variable_values = pattern_match[0]
+    for idx in range(len(variable_values) - 1):
+        assert (
+            separators[idx + 1] not in variable_values[idx]
+        ), "Adjacent variable values contain the separator character! The f-string is not invertible."
     return {variable_name: variable_value for variable_name, variable_value in zip(variable_names, variable_values)}
