@@ -111,16 +111,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=NeuralynxRecordingInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
         ),
-        param(
-            data_interface=NeuroscopeRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")),
-        ),
-        param(
-            data_interface=NeuroscopeRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"), spikeextractors_backend=True
-            ),
-        ),
+        
         param(
             data_interface=OpenEphysRecordingExtractorInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
@@ -134,6 +125,8 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
+    
+
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
             param(
@@ -162,9 +155,22 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"{suffix}, spikeextractors{spikeextractors_backend}",
+                case_name=f"{suffix}, spikeextractors_backend={spikeextractors_backend}",
             )
         )
+        
+    for spikeextractors_backend in [True, False]:
+        parameterized_recording_list.append(
+            param(
+                data_interface=NeuroscopeRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+                    spikeextractors_backend=spikeextractors_backend), 
+                case_name=f"spikeextractors_backend={spikeextractors_backend}"
+            )
+        )
+
+    
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
