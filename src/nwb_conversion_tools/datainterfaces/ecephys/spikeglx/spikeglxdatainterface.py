@@ -22,25 +22,26 @@ def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
     Fetches the session_start_time from the meta readings and adds it to the metadata.
     """
 
-    # Support for old spikeinterface objects
+    # Support for old spikeextractors objects
     recording = recording._kwargs.get("oldapi_recording_extractor", recording)
     if isinstance(recording, RecordingExtractor):
         if isinstance(recording, SubRecordingExtractor):
             meta = recording._parent_recording._meta
-            n_shanks = int(meta.get("snsShankMap", [1, 1])[1])
         else:
             meta = recording._meta
-            n_shanks = int(meta.get("snsShankMap", [1, 1])[1])
     else:
-        probe = recording.get_probe()
-        n_shanks = probe.get_shank_count()
-        meta = recording.neo_reader.signals_info_list[0]["meta"]
+        stream_id = recording._kwargs["stream_id"]
+        meta = recording.neo_reader.signals_info_dict[(0, stream_id)]["meta"]
 
-    if n_shanks > 1:
+    # These correspond to single shank channels https://billkarsh.github.io/SpikeGLX/help/imroTables/
+    imDatPrb_type = meta["imDatPrb_type"]
+    if imDatPrb_type not in ["0", "21"]:
         raise NotImplementedError("SpikeGLX metadata for more than a single shank is not yet supported.")
 
-    session_start_time = datetime.fromisoformat(meta["fileCreateTime"]).astimezone()
-    metadata["NWBFile"] = dict(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+    extracted_start_time = meta.get("fileCreateTime", None)
+    if extracted_start_time:
+        session_start_time = datetime.fromisoformat(extracted_start_time).astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+    metadata["NWBFile"] = dict(session_start_time=session_start_time)
 
     # Electrodes columns descriptions
     metadata["Ecephys"]["Electrodes"] = [
