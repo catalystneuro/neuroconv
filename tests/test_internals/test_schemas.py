@@ -22,6 +22,7 @@ def test_interface_conversion_options_schema(data_interface):
 def test_yaml_specification_schema():
     schema = load_dict_from_file(
         file_path=Path(__file__).parent.parent.parent
+        / "src"
         / "nwb_conversion_tools"
         / "schemas"
         / "yaml_conversion_specification_schema.json"
