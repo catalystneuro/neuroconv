@@ -19,7 +19,7 @@ from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_cla
 
 def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
     """
-    Fetches the session_start_time and adds it to the metada
+    Fetches the session_start_time from the meta readings and adds it to the metadata.
     """
 
     # Support for old spikeinterface objects
