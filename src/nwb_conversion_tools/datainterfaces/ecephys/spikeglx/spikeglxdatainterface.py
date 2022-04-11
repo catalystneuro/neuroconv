@@ -1,4 +1,4 @@
-"""Authors: Cody Baker and Ben Dichter."""
+"""Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -18,6 +18,9 @@ from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_cla
 
 
 def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
+    """
+    Fetches the session_start_time and adds it to the metada
+    """
 
     # Support for old spikeinterface objects
     recording = recording._kwargs.get("oldapi_recording_extractor", recording)
