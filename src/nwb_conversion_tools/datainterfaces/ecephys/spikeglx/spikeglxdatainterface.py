@@ -35,7 +35,7 @@ def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
         probe = recording.get_probe()
         n_shanks = probe.get_shank_count()
         meta = recording.neo_reader.signals_info_list[0]["meta"]
-        
+
     if n_shanks > 1:
         raise NotImplementedError("SpikeGLX metadata for more than a single shank is not yet supported.")
 
@@ -77,7 +77,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             stream_id = "".join(file_path.suffixes[:-1])[1:]
             super().__init__(folder_path=folder_path, stream_id=stream_id)
             self.source_data["file_path"] = str(file_path)
-
 
         if stub_test:
             self.subset_channels = [0, 1]
