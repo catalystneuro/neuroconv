@@ -40,15 +40,22 @@ def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
 
     extracted_start_time = meta.get("fileCreateTime", None)
     if extracted_start_time:
-        session_start_time = datetime.fromisoformat(extracted_start_time).astimezone().strftime("%Y-%m-%dT%H:%M:%S")
-    metadata["NWBFile"] = dict(session_start_time=session_start_time)
+        #session_start_time = datetime.fromisoformat(extracted_start_time).astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+        metadata["NWBFile"] = dict(session_start_time=extracted_start_time)
 
     # Electrodes columns descriptions
     metadata["Ecephys"]["Electrodes"] = [
         dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
         dict(name="shank_group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
     ]
-
+    
+def add_recording_extractor_properties(recording_extractor: BaseRecording):
+    """Automatically add properties to RecordingExtractor object."""
+    channel_ids = recording_extractor.get_channel_ids()
+    values = recording_extractor.ids_to_indices(channel_ids)
+    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=values)
+    values = ["Shank1"] * len(channel_ids)
+    recording_extractor.set_property(key="shank_group_name", ids=channel_ids, values=values)
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
@@ -83,11 +90,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             self.subset_channels = [0, 1]
 
         # Set electrodes properties
-        channel_ids = self.recording_extractor.get_channel_ids()
-        values = self.recording_extractor.ids_to_indices(channel_ids)
-        self.recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=values)
-        values = ["Shank1"] * len(channel_ids)
-        self.recording_extractor.set_property(key="shank_group_name", ids=channel_ids, values=values)
+        add_recording_extractor_properties(self.recording_extractor)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -142,11 +145,7 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
             self.subset_channels = [0, 1]
 
         # Set electrodes properties
-        channel_ids = self.recording_extractor.get_channel_ids()
-        values = self.recording_extractor.ids_to_indices(channel_ids)
-        self.recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=values)
-        values = ["Shank1"] * len(channel_ids)
-        self.recording_extractor.set_property(key="shank_group_name", ids=channel_ids, values=values)
+        add_recording_extractor_properties(self.recording_extractor)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
