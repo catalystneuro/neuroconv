@@ -1,4 +1,5 @@
 import unittest
+from itertools import product
 from pathlib import Path
 from datetime import datetime
 
@@ -39,6 +40,7 @@ def custom_name_func(testcase_func, param_num, param):
     return (
         f"{testcase_func.__name__}_{param_num}_"
         f"{parameterized.to_safe_name(param.kwargs['data_interface'].__name__)}"
+        f"_{param.kwargs.get('case_name', '')}"
     )
 
 
@@ -58,11 +60,21 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 )
             ),
         ),
+        param(
+            data_interface=SpikeGLXLFPInterface,
+            interface_kwargs=dict(
+                file_path=str(
+                    DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
+                ),
+                spikeextractors_backend=True,
+            ),
+            case_name=f"spikeextractors_backend={True}",
+        ),
     ]
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
-    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestLFP=data_interface)
@@ -81,10 +93,18 @@ class TestEcephysNwbConversions(unittest.TestCase):
             nwb_lfp_conversion = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].conversion
             # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
             # For GIN test data, sizes should be OK to load all into RAM even on CI
-            npt.assert_array_equal(x=recording.get_traces(return_scaled=False).T, y=nwb_lfp_unscaled)
-            npt.assert_array_almost_equal(
-                x=recording.get_traces(return_scaled=True).T * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
-            )
+            if isinstance(recording, RecordingExtractor):
+                npt.assert_array_equal(x=recording.get_traces(return_scaled=False).T, y=nwb_lfp_unscaled)
+                npt.assert_array_almost_equal(
+                    x=recording.get_traces(return_scaled=True).T * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
+                )
+            else:
+                npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
+                # This can only be tested if both gain and offest are present
+                if recording.has_scaled_traces():
+                    npt.assert_array_almost_equal(
+                        x=recording.get_traces(return_scaled=True) * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
+                    )
 
     parameterized_recording_list = [
         param(
@@ -132,19 +152,23 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     interface_kwargs=interface_kwargs,
                 )
             )
-    for suffix in ["ap", "lf"]:
+
+    for suffix, spikeextractors_backend in product(["ap", "lf"], [True, False]):
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
         parameterized_recording_list.append(
             param(
                 data_interface=SpikeGLXRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"{suffix}, spikeextractors{spikeextractors_backend}",
             )
         )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
-    def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs):
-        backend_string = f"_se_backend_{interface_kwargs.get('spikeextractors_backend', False)}"
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}{backend_string}.nwb")
+    def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestRecording=data_interface)
