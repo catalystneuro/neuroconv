@@ -5,15 +5,15 @@ from warnings import warn
 
 def get_fstring_variable_names(fstring: str):
     """
-    Extract and return all variable names from an fstring.
-A variable is defined as any expression inside curly brackets within the f-string
-    Also returns the separators, the strings remnants that surround the variables.
+        Extract and return all variable names from an fstring.
+    A variable is defined as any expression inside curly brackets within the f-string
+        Also returns the separators, the strings remnants that surround the variables.
 
-    Example
-    -------
-        variable_names, separators = get_fstring_variable_names(fstring="a/{x}b{y}/c{z}")
-        variable_names = ["x", "y", "z"]
-        separators = ["a/", "b", "/c"", ""]
+        Example
+        -------
+            variable_names, separators = get_fstring_variable_names(fstring="a/{x}b{y}/c{z}")
+            variable_names = ["x", "y", "z"]
+            separators = ["a/", "b", "/c"", ""]
     """
     matches = re.findall("{.*?}", fstring)
     variable_names = [match.lstrip("{").rstrip("}") for match in matches]
