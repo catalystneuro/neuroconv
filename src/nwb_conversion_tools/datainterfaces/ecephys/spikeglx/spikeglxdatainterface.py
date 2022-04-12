@@ -8,13 +8,12 @@ from spikeinterface import BaseRecording
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 from spikeinterface.core.old_api_utils import OldToNewRecording
 
-
 from spikeextractors import SubRecordingExtractor, RecordingExtractor
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
+from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
 
 
 def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
@@ -41,13 +40,15 @@ def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
     extracted_start_time = meta.get("fileCreateTime", None)
     if extracted_start_time:
         session_start_time = datetime.fromisoformat(extracted_start_time)
-        metadata["NWBFile"] = dict(session_start_time=session_start_time)
+        metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
 
     # Electrodes columns descriptions
     metadata["Ecephys"]["Electrodes"] = [
         dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
         dict(name="shank_group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
     ]
+    
+    return metadata
 
 
 def add_recording_extractor_properties(recording_extractor: BaseRecording):
@@ -103,7 +104,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        fetch_spikeglx_metadata(recording=self.recording_extractor, metadata=metadata)
+        metadata = fetch_spikeglx_metadata(recording=self.recording_extractor, metadata=metadata)
         metadata["Ecephys"]["ElectricalSeries_raw"] = dict(
             name="ElectricalSeries_raw", description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
         )
