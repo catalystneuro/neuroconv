@@ -27,16 +27,26 @@ class TestGlobbingAssertions(TestCase):
     def test_get_fstring_values_from_filename_non_invertible_assertion(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=("Adjacent variable values contain the separator character! The f-string is not invertible."),
+            exc_msg="Adjacent variable values contain the separator character! The f-string is not invertible.",
         ):
             get_fstring_values_from_filename(filename="a/foobbar/cthat", fstring="a/{x}b{y}/c{z}")
 
     def test_get_fstring_values_from_filename_bad_structure_assertion(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg=("Unable to match f-string pattern to filename! Please double check both structures."),
+            exc_msg="Unable to match f-string pattern to filename! Please double check both structures.",
         ):
             get_fstring_values_from_filename(filename="just/plain/wrong", fstring="a/{x}b{y}/c{z}")
+
+    def test_get_fstring_values_from_filename_duplicated_mismatch_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "Duplicated variable placements for 'x' in f-string do not match in instance! "
+                "Expected 'foo' but found 'wrong'."
+            ),
+        ):
+            get_fstring_values_from_filename(filename="a/foobthat/cbar/sub-wrong", fstring="a/{x}b{y}/c{z}/sub-{x}")
 
 
 def test_get_fstring_variable_names():
@@ -72,3 +82,10 @@ def test_get_fstring_values_from_filename_leading_value():
 def test_get_fstring_values_from_filename_no_trailing_value():
     fstring_values = get_fstring_values_from_filename(filename="a/foobthat/c", fstring="a/{x}b{y}/c")
     assert fstring_values == dict(x="foo", y="that")
+
+
+def test_get_fstring_values_from_filename_duplicates():
+    fstring_values = get_fstring_values_from_filename(
+        filename="a/foobthat/cbar/sub-foo", fstring="a/{x}b{y}/c{z}/sub-{x}"
+    )
+    assert fstring_values == dict(x="foo", y="that", z="bar")
