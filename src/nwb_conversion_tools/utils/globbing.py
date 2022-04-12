@@ -6,7 +6,7 @@ from warnings import warn
 def get_fstring_variable_names(fstring: str):
     """
     Extract and return all variable names from an fstring.
-
+A variable is defined as any expression inside curly brackets within the f-string
     Also returns the separators, the strings remnants that surround the variables.
 
     Example
