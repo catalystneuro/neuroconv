@@ -46,7 +46,7 @@ def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
         dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
         dict(name="shank_group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
     ]
-    
+
     return metadata
 
 
