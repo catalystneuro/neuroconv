@@ -39,8 +39,7 @@ def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
 
     extracted_start_time = meta.get("fileCreateTime", None)
     if extracted_start_time:
-        session_start_time = datetime.fromisoformat(extracted_start_time)
-        metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+        metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=extracted_start_time)))
 
     # Electrodes columns descriptions
     metadata["Ecephys"]["Electrodes"] = [
