@@ -1,10 +1,10 @@
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.utils import get_fstring_variable_names, get_fstring_values_from_filename
+from nwb_conversion_tools.utils import decompose_f_string, parse_f_string
 
 
 class TestGlobbingAssertions(TestCase):
-    def test_get_fstring_variable_names_assertion(self):
+    def test_decompose_f_string_assertion(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg=(
@@ -12,33 +12,35 @@ class TestGlobbingAssertions(TestCase):
                 "enclosing '{' and '}'."
             ),
         ):
-            get_fstring_variable_names(fstring="a/{x}b{y}/c{z}d{}")
+            decompose_f_string(f_string="a/{x}b{y}/c{z}d{}")
 
-        def test_get_fstring_separators_assertion(self):
+        def test_decompose_f_string_separators_assertion(self):
             with self.assertWarnsWith(
                 warn_type=UserWarning,
                 exc_msg=(
                     "There is an empty separator between two variables in the f-string! "
-                    "The f-string will not be invertible."
+                    "The f-string will not be uniquely invertible."
                 ),
             ):
-                get_fstring_variable_names(fstring="a/{x}{y}/c{z}")
+                decompose_f_string(f_string="a/{x}{y}/c{z}")
 
-    def test_get_fstring_values_from_filename_non_invertible_assertion(self):
+    def test_parse_f_string_non_invertible_assertion(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg="Adjacent variable values contain the separator character! The f-string is not invertible.",
+            exc_msg=(
+                "Adjacent variable values contain the separator character! The f-string is not uniquely invertible."
+            ),
         ):
-            get_fstring_values_from_filename(filename="a/foobbar/cthat", fstring="a/{x}b{y}/c{z}")
+            parse_f_string(string="a/foobbar/cthat", f_string="a/{x}b{y}/c{z}")
 
-    def test_get_fstring_values_from_filename_bad_structure_assertion(self):
+    def test_parse_f_string_bad_structure_assertion(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg="Unable to match f-string pattern to filename! Please double check both structures.",
+            exc_msg="Unable to match f-string pattern to string! Please double check both structures.",
         ):
-            get_fstring_values_from_filename(filename="just/plain/wrong", fstring="a/{x}b{y}/c{z}")
+            parse_f_string(string="just/plain/wrong", f_string="a/{x}b{y}/c{z}")
 
-    def test_get_fstring_values_from_filename_duplicated_mismatch_assertion(self):
+    def test_parse_f_string_duplicated_mismatch_assertion(self):
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg=(
@@ -46,46 +48,44 @@ class TestGlobbingAssertions(TestCase):
                 "Expected 'foo' but found 'wrong'."
             ),
         ):
-            get_fstring_values_from_filename(filename="a/foobthat/cbar/sub-wrong", fstring="a/{x}b{y}/c{z}/sub-{x}")
+            parse_f_string(string="a/foobthat/cbar/sub-wrong", f_string="a/{x}b{y}/c{z}/sub-{x}")
 
 
-def test_get_fstring_variable_names():
-    variable_names, _ = get_fstring_variable_names(fstring="a/{x}b{y}/c{z}")
+def test_decompose_f_string():
+    variable_names, _ = decompose_f_string(f_string="a/{x}b{y}/c{z}")
     assert variable_names == ["x", "y", "z"]
 
 
-def test_get_fstring_separators():
-    _, separators = get_fstring_variable_names(fstring="a/{x}b{y}/c")
+def test_decompose_f_string_separators():
+    _, separators = decompose_f_string(f_string="a/{x}b{y}/c")
     assert separators == ["a/", "b", "/c"]
 
 
-def test_get_fstring_separators_leading():
-    _, separators = get_fstring_variable_names(fstring="{start}a/{x}b{y}/c")
+def test_decompose_f_string_separators_leading():
+    _, separators = decompose_f_string(f_string="{start}a/{x}b{y}/c")
     assert separators == ["", "a/", "b", "/c"]
 
 
-def test_get_fstring_separators_trailing():
-    _, separators = get_fstring_variable_names(fstring="a/{x}b{y}/c{end}")
+def test_decompose_f_string_separators_trailing():
+    _, separators = decompose_f_string(f_string="a/{x}b{y}/c{end}")
     assert separators == ["a/", "b", "/c", ""]
 
 
-def test_get_fstring_values_from_filename():
-    fstring_values = get_fstring_values_from_filename(filename="a/foobthat/cbar", fstring="a/{x}b{y}/c{z}")
-    assert fstring_values == dict(x="foo", y="that", z="bar")
+def test_parse_f_string():
+    f_string_values = parse_f_string(string="a/foobthat/cbar", f_string="a/{x}b{y}/c{z}")
+    assert f_string_values == dict(x="foo", y="that", z="bar")
 
 
-def test_get_fstring_values_from_filename_leading_value():
-    fstring_values = get_fstring_values_from_filename(filename="123a/foobthat/cbar", fstring="{start}a/{x}b{y}/c{z}")
-    assert fstring_values == dict(start="123", x="foo", y="that", z="bar")
+def test_parse_f_string_leading_value():
+    f_string_values = parse_f_string(string="123a/foobthat/cbar", f_string="{start}a/{x}b{y}/c{z}")
+    assert f_string_values == dict(start="123", x="foo", y="that", z="bar")
 
 
-def test_get_fstring_values_from_filename_no_trailing_value():
-    fstring_values = get_fstring_values_from_filename(filename="a/foobthat/c", fstring="a/{x}b{y}/c")
-    assert fstring_values == dict(x="foo", y="that")
+def test_parse_f_string_no_trailing_value():
+    f_string_values = parse_f_string(string="a/foobthat/c", f_string="a/{x}b{y}/c")
+    assert f_string_values == dict(x="foo", y="that")
 
 
-def test_get_fstring_values_from_filename_duplicates():
-    fstring_values = get_fstring_values_from_filename(
-        filename="a/foobthat/cbar/sub-foo", fstring="a/{x}b{y}/c{z}/sub-{x}"
-    )
-    assert fstring_values == dict(x="foo", y="that", z="bar")
+def test_parse_f_string_duplicates():
+    f_string_values = parse_f_string(string="a/foobthat/cbar/sub-foo", f_string="a/{x}b{y}/c{z}/sub-{x}")
+    assert f_string_values == dict(x="foo", y="that", z="bar")
