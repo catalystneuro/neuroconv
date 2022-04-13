@@ -28,14 +28,16 @@ def fetch_spikeglx_metadata(recording: BaseRecording, metadata: dict):
             meta = recording._parent_recording._meta
         else:
             meta = recording._meta
+        # imDatPrb_type 0 and 21 correspond to single shank channels
+        # see https://billkarsh.github.io/SpikeGLX/help/imroTables/
+        imDatPrb_type = meta["imDatPrb_type"]
+        if imDatPrb_type not in ["0", "21"]:
+            raise NotImplementedError(
+                "More than a single shank is not supported in spikeextractors, use the new spikeinterface."
+            )
     else:
         stream_id = recording._kwargs["stream_id"]
         meta = recording.neo_reader.signals_info_dict[(0, stream_id)]["meta"]
-
-    # These correspond to single shank channels https://billkarsh.github.io/SpikeGLX/help/imroTables/
-    imDatPrb_type = meta["imDatPrb_type"]
-    if imDatPrb_type not in ["0", "21"]:
-        raise NotImplementedError("SpikeGLX metadata for more than a single shank is not yet supported.")
 
     extracted_start_time = meta.get("fileCreateTime", None)
     if extracted_start_time:
