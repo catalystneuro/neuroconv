@@ -7,7 +7,7 @@ from ....utils import FilePathType
 
 def _assert_single_shank_for_spike_extractors(recording: se.SpikeGLXRecordingExtractor):
     """Raises an exception for a se.SpikeGLXRecordingExtractor object intialized in a file
-    with complex geometry as this is not (and will not be )supported in the old API.
+    with complex geometry as this is not (and will not be )supported in the old spikeextractors API.
 
     Parameters
     ----------
@@ -31,7 +31,7 @@ def _assert_single_shank_for_spike_extractors(recording: se.SpikeGLXRecordingExt
 
 def _fetch_meta_dic_for_spikextractors_spikelgx_object(recording: se.SpikeGLXRecordingExtractor) -> dict:
     """
-    fetches the meta_ ile for an spikextractors_spikelgx_object
+    fetches the meta file from a se.SpikeGLXRecordingExtractor object.
     Parameters
     ----------
     recording : se.SpikeGLXRecordingExtractor
@@ -53,7 +53,7 @@ def _fetch_meta_dic_for_spikextractors_spikelgx_object(recording: se.SpikeGLXRec
 
 
 def get_session_start_time(meta: dict) -> datetime:
-    """Fetches the session_start_time from the meta dic
+    """Fetches the session start time from the meta dic
     Parameters
     ----------
     meta : dict
@@ -62,7 +62,7 @@ def get_session_start_time(meta: dict) -> datetime:
     Returns
     -------
     datetime
-        _the session start time in datetime format.
+        the session start time in datetime format.
     """
 
     session_start_time = meta.get("fileCreateTime", None)
