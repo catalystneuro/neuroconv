@@ -48,7 +48,7 @@ jobs:
         id: cache-ecephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ecephys-datasets-041122-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ecephys-datasets-041422-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
       - name: "Force GIN: ecephys download"
         if: steps.cache-ecephys-datasets.outputs.cache-hit == false
         run: |
@@ -63,6 +63,7 @@ jobs:
           datalad get -r ./intan/
           datalad get -r ./spikegadgets/
           datalad get -r ./spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/
+          datalad get -r ./spikeglx/TEST_20210920_0_g0/
           datalad get -r ./phy/phy_example_0/
           datalad get -r ./axona/
           datalad get -r ./cellexplorer/
