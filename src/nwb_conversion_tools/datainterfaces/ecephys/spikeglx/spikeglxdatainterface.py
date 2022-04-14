@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Optional
 
 import spikeextractors as se
+import probeinterface as pi
+
 from spikeinterface import BaseRecording
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 from spikeinterface.core.old_api_utils import OldToNewRecording
@@ -14,19 +16,27 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
 from .spikeglx_utils import (
     get_session_start_time,
-    _fetch_meta_dic_for_spikextractors_spikelgx_object,
+    _fetch_metadata_dic_for_spikextractors_spikelgx_object,
     _assert_single_shank_for_spike_extractors,
     fetch_stream_id_for_spikelgx_file,
 )
 
 
 def add_recording_extractor_properties(recording_extractor: BaseRecording):
-    """Automatically add properties to RecordingExtractor object."""
+    """Automatically add properties shank and electrode number for spikeglx."""
+
+    probe = recording_extractor.get_probe()
     channel_ids = recording_extractor.get_channel_ids()
-    values = recording_extractor.ids_to_indices(channel_ids)
-    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=values)
-    values = ["Shank1"] * len(channel_ids)
-    recording_extractor.set_property(key="shank_group_name", ids=channel_ids, values=values)
+    
+    if probe.get_shank_count() > 1:
+        shank_electrode_number = [contact_id.split(":")[1] for contact_id in probe.contact_ids]
+        shank_group_name = [contact_id.split(":")[0] for contact_id in probe.contact_ids]
+    else:
+        shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
+        shank_group_name = ["s0"] * len(channel_ids)
+
+    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
+    recording_extractor.set_property(key="shank_group_name", ids=channel_ids, values=shank_group_name)
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
@@ -51,12 +61,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         if spikeextractors_backend:
             self.RX = se.SpikeGLXRecordingExtractor
-            self.RX(file_path=file_path)
             super().__init__(file_path=str(file_path))
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
-            self.meta = _fetch_meta_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
+            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
@@ -64,6 +72,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
+        # Mount the probe
+        meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
+        probe = pi.read_spikeglx(meta_filename)
+        self.recording_extractor.set_probe(probe, in_place=True)
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
@@ -120,18 +132,22 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
 
         if spikeextractors_backend:
             self.RX = se.SpikeGLXRecordingExtractor
-            self.RX(file_path=file_path)
             super().__init__(file_path=str(file_path))
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
-            self.meta = _fetch_meta_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
+            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
             super().__init__(folder_path=folder_path, stream_id=self.stream_id)
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+
+        # Mount the probe
+        meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
+        probe = pi.read_spikeglx(meta_filename)
+        self.recording_extractor.set_probe(probe, in_place=True)
+
 
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)

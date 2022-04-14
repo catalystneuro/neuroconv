@@ -29,7 +29,7 @@ def _assert_single_shank_for_spike_extractors(recording: se.SpikeGLXRecordingExt
         )
 
 
-def _fetch_meta_dic_for_spikextractors_spikelgx_object(recording: se.SpikeGLXRecordingExtractor) -> dict:
+def _fetch_metadata_dic_for_spikextractors_spikelgx_object(recording: se.SpikeGLXRecordingExtractor) -> dict:
     """
     fetches the meta file from a se.SpikeGLXRecordingExtractor object.
     Parameters
@@ -41,23 +41,23 @@ def _fetch_meta_dic_for_spikextractors_spikelgx_object(recording: se.SpikeGLXRec
     Returns
     -------
     dict
-        the meta dictionary with the metadata concerning the recording.
+        a dictionary with the metadadata concerning the recording
     """
 
     if isinstance(recording, se.SubRecordingExtractor):
-        meta = recording._parent_recording._meta
+        recording_metadata = recording._parent_recording._meta
     else:
-        meta = recording._meta
+        recording_metadata = recording._meta
 
-    return meta
+    return recording_metadata
 
 
-def get_session_start_time(meta: dict) -> datetime:
-    """Fetches the session start time from the meta dic
+def get_session_start_time(recording_metadata: dict) -> datetime:
+    """Fetches the session start time from the recording_metadata dic
     Parameters
     ----------
-    meta : dict
-        the metadic as obtained from the Spikelgx recording.
+    recording_metadata : dict
+        the metadata dic as obtained from the Spikelgx recording.
 
     Returns
     -------
@@ -65,7 +65,7 @@ def get_session_start_time(meta: dict) -> datetime:
         the session start time in datetime format.
     """
 
-    session_start_time = meta.get("fileCreateTime", None)
+    session_start_time = recording_metadata.get("fileCreateTime", None)
     if session_start_time:
         session_start_time = datetime.fromisoformat(session_start_time)
 
