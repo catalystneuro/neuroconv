@@ -78,7 +78,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         stub_test: Optional[bool] = False,
         spikeextractors_backend: Optional[bool] = False,
     ):
-
+        self.stub_test = stub_test
         if spikeextractors_backend:
             self.RX = se.SpikeGLXRecordingExtractor
             super().__init__(file_path=str(file_path))
@@ -89,9 +89,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             stream_id = "".join(file_path.suffixes[:-1])[1:]
             super().__init__(folder_path=folder_path, stream_id=stream_id)
             self.source_data["file_path"] = str(file_path)
-
-        if stub_test:
-            self.subset_channels = [0, 1]
 
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
@@ -134,6 +131,7 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
         stub_test: Optional[bool] = False,
         spikeextractors_backend: Optional[bool] = False,
     ):
+        self.stub_test = stub_test
         if spikeextractors_backend:
             self.RX = se.SpikeGLXRecordingExtractor
             super().__init__(file_path=str(file_path))
@@ -144,9 +142,6 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
             stream_id = "".join(file_path.suffixes[:-1])[1:]
             super().__init__(folder_path=folder_path, stream_id=stream_id)
             self.source_data["file_path"] = str(file_path)
-
-        if stub_test:
-            self.subset_channels = [0, 1]
 
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
