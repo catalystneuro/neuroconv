@@ -60,7 +60,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 ),
                 spikeextractors_backend=False,
             ),
-            case_name=f"spikeextractors_backend={True}"
+            case_name=f"spikeextractors_backend={True}",
         ),
         param(
             data_interface=SpikeGLXLFPInterface,
