@@ -23,7 +23,7 @@ from .spikeglx_utils import (
 
 
 def add_recording_extractor_properties(recording_extractor: BaseRecording):
-    """Automatically add properties shank and electrode number for spikeglx."""
+    """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
 
     probe = recording_extractor.get_probe()
     channel_ids = recording_extractor.get_channel_ids()
