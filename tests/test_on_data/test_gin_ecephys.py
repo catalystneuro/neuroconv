@@ -57,8 +57,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 file_path=str(
                     DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
-                )
+                ),
+                spikeextractors_backend=False,
             ),
+            case_name=f"spikeextractors_backend={True}"
         ),
         param(
             data_interface=SpikeGLXLFPInterface,
@@ -144,16 +146,16 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 )
             )
 
-    for suffix, spikeextractors_backend in product(["ap", "lf"], [True, False]):
+    for spikeextractors_backend in [True, False]:
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
         parameterized_recording_list.append(
             param(
                 data_interface=SpikeGLXRecordingInterface,
                 interface_kwargs=dict(
-                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin"),
+                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.ap.bin"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"{suffix}, spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
 
