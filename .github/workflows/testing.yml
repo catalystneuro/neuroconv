@@ -102,7 +102,7 @@ jobs:
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
       - name: Run full pytest with coverage
-        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:.codecov.xml
+        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v1
