@@ -231,7 +231,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
             ),
             param(
                 data_interface=NeuroscopeSortingInterface,
-                interface_kwargs=dict(folder_path=str(DATA_PATH / "neuroscope" / "dataset_1")),
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
+                    xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+                ),
             ),
         ],
         name_func=custom_name_func,
