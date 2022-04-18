@@ -740,7 +740,7 @@ class TestAddElectrodes(TestCase):
 
         # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
-        # Properties are matched by channel name. 
+        # Properties are matched by channel name.
         expected_names = ["c", "d", "f", "a", "b"]
         expected_property_values = ["value_c", "value_d", "value_f", "value_a", "value_b"]
 
@@ -755,7 +755,7 @@ class TestAddElectrodes(TestCase):
         """
         values_dic = self.defaults
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
-        
+
         values_dic.update(id=20, channel_name="c")
         self.nwbfile.add_electrode(**values_dic)
 
@@ -764,7 +764,7 @@ class TestAddElectrodes(TestCase):
 
         values_dic.update(id=22, channel_name="f")
         self.nwbfile.add_electrode(**values_dic)
-        
+
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.recording_1.set_property(key="property", values=property_values)
 
@@ -772,14 +772,13 @@ class TestAddElectrodes(TestCase):
 
         # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
-        # Properties are matched by channel name. 
+        # Properties are matched by channel name.
         expected_names = ["c", "d", "f", "a", "b"]
         expected_property_values = ["value_c", "value_d", "", "value_a", "value_b"]
 
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
-
 
     def test_assertion_for_id_collision(self):
         """
