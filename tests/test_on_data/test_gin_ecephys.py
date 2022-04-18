@@ -139,7 +139,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
-        
+
     for spikeextractors_backend in [True, False]:
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
         parameterized_recording_list.append(
@@ -152,7 +152,6 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
-
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
