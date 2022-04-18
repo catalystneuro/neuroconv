@@ -12,11 +12,7 @@ from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.spikeinterface import write_recording
-from ...utils import (
-    get_schema_from_hdmf_class,
-    get_base_schema,
-    OptionalFilePathType,
-)
+from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
 class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
