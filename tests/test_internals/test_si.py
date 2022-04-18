@@ -644,6 +644,16 @@ class TestAddElectrodes(TestCase):
         actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
+    def test_non_overwriting_channel_names_property(self):
+        "add_electrodes function should not overwrite the recording object channel name property"
+        channel_names = ["name a", "name b", "name c", "name d"]
+        self.recording_1.set_property(key="channel_name", values=channel_names)
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_channel_names_in_electrodes_table = channel_names
+        channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
@@ -705,48 +715,74 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
-    def test_manual_row_adition_before_add_electrodes_function_and_channel_name_collision(self):
+    def test_row_matching_by_channel_name_with_existing_property(self):
         """
-        Add some rows to the electrode tables before using the add_electrodes function.
-        In this case there is with some common channel names between the previously added rows and the recroder
-        which causes collisions.
+        Adding new electrodes to an already existing electrode table should match
+        properties and information by channel name.
         """
-
         values_dic = self.defaults
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
-        self.nwbfile.add_electrode_column(name="property1", description="property_added_before")
+        self.nwbfile.add_electrode_column(name="property", description="exisiting property")
 
-        values_dic.update(id=20, channel_name="c", property1="value1_c")
+        values_dic.update(id=20, channel_name="c", property="value_c")
         self.nwbfile.add_electrode(**values_dic)
 
-        values_dic.update(id=21, channel_name="d", property1="value1_d")
+        values_dic.update(id=21, channel_name="d", property="value_d")
         self.nwbfile.add_electrode(**values_dic)
 
-        values_dic.update(id=22, channel_name="f", property1="value1_f")
+        values_dic.update(id=22, channel_name="f", property="value_f")
         self.nwbfile.add_electrode(**values_dic)
 
-        property1_values = ["value1_a", "value1_b", "x", "y"]
-        self.recording_1.set_property(key="property1", values=property1_values)
-
-        property2_values = ["value2_a", "value2_b", "value2_c", "value2_d"]
-        self.recording_1.set_property(key="property2", values=property2_values)
+        property_values = ["value_a", "value_b", "x", "y"]
+        self.recording_1.set_property(key="property", values=property_values)
 
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
 
+        # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
+        # Properties are matched by channel name.
         expected_names = ["c", "d", "f", "a", "b"]
+        expected_property_values = ["value_c", "value_d", "value_f", "value_a", "value_b"]
+
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+        self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
 
-        expected_property_values1 = ["value1_c", "value1_d", "value1_f", "value1_a", "value1_b"]
-        expected_property_values2 = ["value2_c", "value2_d", "", "value2_a", "value2_b"]
-        self.assertListEqual(list(self.nwbfile.electrodes["property1"].data), expected_property_values1)
-        self.assertListEqual(list(self.nwbfile.electrodes["property2"].data), expected_property_values2)
-
-    def test_manually_added_before_recording_id_collision(self):
+    def test_row_matching_by_channel_name_with_new_property(self):
         """
-        Add some rows to the electrode tables before using the add_electrodes function.
-        In this case there is with some common ids between the manually added rows and the recorder which causes collisions.
+        Adding new electrodes to an already existing electrode table should match
+        properties and information by channel name.
+        """
+        values_dic = self.defaults
+        self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
+
+        values_dic.update(id=20, channel_name="c")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=21, channel_name="d")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=22, channel_name="f")
+        self.nwbfile.add_electrode(**values_dic)
+
+        property_values = ["value_a", "value_b", "value_c", "value_d"]
+        self.recording_1.set_property(key="property", values=property_values)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        # Remaining ids are filled positionally.
+        expected_ids = [20, 21, 22, 3, 4]
+        # Properties are matched by channel name.
+        expected_names = ["c", "d", "f", "a", "b"]
+        expected_property_values = ["value_c", "value_d", "", "value_a", "value_b"]
+
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+        self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
+
+    def test_assertion_for_id_collision(self):
+        """
+        Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
         """
 
         values_dic = self.defaults

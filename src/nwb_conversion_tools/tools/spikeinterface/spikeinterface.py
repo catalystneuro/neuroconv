@@ -306,9 +306,12 @@ def add_electrodes(
 
     # Channel name logic
     channel_ids = checked_recording.get_channel_ids()
-    channel_name_array = channel_ids.astype("str", copy=False)
+    if "channel_name" in data_to_add:
+        channel_name_array = data_to_add["channel_name"]["data"]
+    else:
+        channel_name_array = channel_ids.astype("str", copy=False)
+        data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
 
-    data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
     # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
     if np.issubdtype(channel_ids.dtype, np.integer):
         data_to_add["id"].update(data=channel_ids, index=False)
@@ -443,8 +446,8 @@ def add_electrodes(
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
-    if (len(rows_to_add) > 0) or (len(properties_to_add_by_columns) > 0):
-        warnings.warn(f"No information added to the table")
+    if (len(rows_to_add) == 0) and (len(properties_to_add_by_columns) == 0):
+        warnings.warn(f"No information added to the electrodes table")
 
 
 def add_electrical_series(
