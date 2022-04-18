@@ -782,8 +782,7 @@ class TestAddElectrodes(TestCase):
 
     def test_assertion_for_id_collision(self):
         """
-        Add some rows to the electrode tables before using the add_electrodes function.
-        In this case there is with some common ids between the manually added rows and the recorder which causes collisions.
+        Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
         """
 
         values_dic = self.defaults
