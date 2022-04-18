@@ -180,10 +180,14 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
             )
         else:
-            # Cast channel_ids to string and do the comparisons with spikeinterface methods
+            # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
             nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
+            if "channel_name" in recording.get_property_keys():
+                renamed_channel_ids = recording.get_property("channel_name")
+            else:
+                renamed_channel_ids = recording.get_channel_ids().astype("str")
             recording = recording.channel_slice(
-                channel_ids=recording.get_channel_ids(), renamed_channel_ids=recording.get_channel_ids().astype("str")
+                channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
             )
 
             check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
