@@ -5,10 +5,12 @@ import spikeinterface as si
 import spikeextractors as se
 import numpy as np
 from pynwb import NWBFile
+from pynwb.device import Device
+from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
-from ...utils import get_base_schema
+from ...utils import get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):
@@ -25,9 +27,20 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
+        metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
         metadata_schema["properties"]["Ecephys"]["required"] = []
         metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/Device"}),
+            ElectrodeGroup=dict(
+                type="array", minItems=1, items={"$ref": "#/properties/Ecephys/properties/definitions/ElectrodeGroup"}
+            ),
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/properties/definitions/Electrodes"},
+            ),
             UnitProperties=dict(
                 type="array",
                 minItems=0,
@@ -35,8 +48,20 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                 items={"$ref": "#/properties/Ecephys/properties/definitions/UnitProperties"},
             ),
         )
+
         # Schema definition for arrays
         metadata_schema["properties"]["Ecephys"]["properties"]["definitions"] = dict(
+            Device=get_schema_from_hdmf_class(Device),
+            ElectrodeGroup=get_schema_from_hdmf_class(ElectrodeGroup),
+            Electrodes=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(type="string", description="name of this electrodes column"),
+                    description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
             UnitProperties=dict(
                 type="object",
                 additionalProperties=False,

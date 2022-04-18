@@ -20,6 +20,7 @@ from nwb_conversion_tools import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
+    NeuroscopeSortingInterface,
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
     SpikeGadgetsRecordingInterface,
@@ -230,6 +231,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     file_path=str(
                         DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
                     )
+                ),
+            ),
+            param(
+                data_interface=NeuroscopeSortingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
+                    xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
                 ),
             ),
         ],
