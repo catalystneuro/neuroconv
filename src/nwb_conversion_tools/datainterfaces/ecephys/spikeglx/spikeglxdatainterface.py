@@ -107,8 +107,34 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         conversion_options = dict(write_as="raw", es_key="ElectricalSeries_raw", stub_test=False)
         return conversion_options
 
+class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
+    """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
 
-class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
+    def get_metadata_schema(self):
+        metadata_schema = super().get_metadata_schema()
+
+        del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeries_raw"]
+        metadata_schema["properties"]["Ecephys"]["properties"].update(
+            ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
+        )
+        return metadata_schema
+
+    def get_metadata(self):
+        metadata = super().get_metadata()
+        del metadata["Ecephys"]["ElectricalSeries_raw"]
+        metadata["Ecephys"].update(
+            ElectricalSeries_lfp=dict(
+                name="ElectricalSeries_lfp", description="LFP traces for the processed (lf) SpikeGLX data."
+            )
+        )
+
+        return metadata
+
+    def get_conversion_options(self):
+        conversion_options = dict(write_as="raw", es_key="ElectricalSeries_lfp", stub_test=False)
+        return conversion_options
+
+class SpikeGLXLFPInterfaceAux(BaseLFPExtractorInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
 
     RX = SpikeGLXRecordingExtractor
@@ -156,6 +182,7 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
         )
+        
         return metadata_schema
 
     def get_metadata(self):
