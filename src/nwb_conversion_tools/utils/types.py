@@ -11,5 +11,5 @@ OptionalFilePathType = Optional[FilePathType]
 OptionalFolderPathType = Optional[FolderPathType]
 ArrayType = Union[list, np.ndarray]
 OptionalArrayType = Optional[ArrayType]
-FloatType = Union[float, np.float]
+FloatType = float
 IntType = Union[int, np.integer]
