@@ -32,6 +32,7 @@ from nwb_conversion_tools.utils import FilePathType
 
 testing_session_time = datetime.now().astimezone()
 
+
 def _create_example(seed):
     channel_ids = [0, 1, 2, 3]
     num_channels = 4
@@ -120,9 +121,7 @@ class TestExtractors(unittest.TestCase):
     def setUp(self):
         self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3, self.example_info = _create_example(seed=0)
         self.test_dir = tempfile.mkdtemp()
-        self.placeholder_metadata = dict(
-            NWBFile=dict(session_start_time=testing_session_time)
-        )
+        self.placeholder_metadata = dict(NWBFile=dict(session_start_time=testing_session_time))
 
     def tearDown(self):
         del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3

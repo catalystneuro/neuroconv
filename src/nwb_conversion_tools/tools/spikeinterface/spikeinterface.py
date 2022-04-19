@@ -172,12 +172,12 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBF
         metadata = dict()
     if "Ecephys" not in metadata:
         metadata["Ecephys"] = dict()
-    
-    if "group_name" in checked_recording.get_property_keys(): 
+
+    if "group_name" in checked_recording.get_property_keys():
         group_names = np.unique(checked_recording.get_property("group_name"))
     else:
         group_names = np.unique(checked_recording.get_channel_groups()).astype("str")
-    
+
     defaults = [
         dict(
             name=group_name,
