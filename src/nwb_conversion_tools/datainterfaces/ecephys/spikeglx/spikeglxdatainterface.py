@@ -1,35 +1,42 @@
-"""Authors: Cody Baker and Ben Dichter."""
-from datetime import datetime
+"""Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
 from typing import Optional
 
-from spikeextractors import SpikeGLXRecordingExtractor, SubRecordingExtractor, RecordingExtractor
+import spikeextractors as se
+import probeinterface as pi
+
+from spikeinterface import BaseRecording
+from spikeinterface.extractors import SpikeGLXRecordingExtractor
+from spikeinterface.core.old_api_utils import OldToNewRecording
+
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
+from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
+from .spikeglx_utils import (
+    get_session_start_time,
+    _fetch_metadata_dic_for_spikextractors_spikelgx_object,
+    _assert_single_shank_for_spike_extractors,
+    fetch_stream_id_for_spikelgx_file,
+)
 
 
-def fetch_spikeglx_metadata(file_path: FilePathType, recording: RecordingExtractor, metadata: dict):
-    file_path = Path(file_path)
-    session_id = file_path.parent.stem
+def add_recording_extractor_properties(recording_extractor: BaseRecording):
+    """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
 
-    if isinstance(recording, SubRecordingExtractor):
-        n_shanks = int(recording._parent_recording._meta.get("snsShankMap", [1, 1])[1])
-        session_start_time = datetime.fromisoformat(recording._parent_recording._meta["fileCreateTime"]).astimezone()
+    probe = recording_extractor.get_probe()
+    channel_ids = recording_extractor.get_channel_ids()
+
+    if probe.get_shank_count() > 1:
+        shank_electrode_number = [contact_id.split(":")[1] for contact_id in probe.contact_ids]
+        shank_group_name = [contact_id.split(":")[0] for contact_id in probe.contact_ids]
     else:
-        n_shanks = int(recording._meta.get("snsShankMap", [1, 1])[1])
-        session_start_time = datetime.fromisoformat(recording._meta["fileCreateTime"]).astimezone()
-    if n_shanks > 1:
-        raise NotImplementedError("SpikeGLX metadata for more than a single shank is not yet supported.")
-    metadata["NWBFile"] = dict(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+        shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
+        shank_group_name = ["s0"] * len(channel_ids)
 
-    # Electrodes columns descriptions
-    metadata["Ecephys"]["Electrodes"] = [
-        dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
-        dict(name="shank_group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
-    ]
+    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
+    recording_extractor.set_property(key="shank_group_name", ids=channel_ids, values=shank_group_name)
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
@@ -43,18 +50,34 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, stub_test: Optional[bool] = False):
-        super().__init__(file_path=str(file_path))
-        if stub_test:
-            self.subset_channels = [0, 1]
+    def __init__(
+        self,
+        file_path: FilePathType,
+        stub_test: Optional[bool] = False,
+        spikeextractors_backend: Optional[bool] = False,
+    ):
+        self.stub_test = stub_test
+        self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
+
+        if spikeextractors_backend:
+            self.RX = se.SpikeGLXRecordingExtractor
+            super().__init__(file_path=str(file_path))
+            _assert_single_shank_for_spike_extractors(self.recording_extractor)
+            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+        else:
+            file_path = Path(file_path)
+            folder_path = file_path.parent
+            super().__init__(folder_path=folder_path, stream_id=self.stream_id)
+            self.source_data["file_path"] = str(file_path)
+            self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+
+        # Mount the probe
+        meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
+        probe = pi.read_spikeglx(meta_filename)
+        self.recording_extractor.set_probe(probe, in_place=True)
         # Set electrodes properties
-        for ch in self.recording_extractor.get_channel_ids():
-            self.recording_extractor.set_channel_property(
-                channel_id=ch, property_name="shank_electrode_number", value=ch
-            )
-            self.recording_extractor.set_channel_property(
-                channel_id=ch, property_name="shank_group_name", value="Shank1"
-            )
+        add_recording_extractor_properties(self.recording_extractor)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -65,9 +88,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        fetch_spikeglx_metadata(
-            file_path=self.source_data["file_path"], recording=self.recording_extractor, metadata=metadata
-        )
+        session_start_time = get_session_start_time(self.meta)
+        if session_start_time:
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=str(session_start_time))))
+
+        # Electrodes columns descriptions
+        metadata["Ecephys"]["Electrodes"] = [
+            dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
+            dict(name="shank_group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
+        ]
+
         metadata["Ecephys"]["ElectricalSeries_raw"] = dict(
             name="ElectricalSeries_raw", description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
         )
@@ -78,33 +108,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return conversion_options
 
 
-class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
-    """Primary data interface class for converting the low-pass (ap) SpikeGLX format."""
-
-    RX = SpikeGLXRecordingExtractor
-
-    @classmethod
-    def get_source_schema(cls):
-        """Compile input schema for the RecordingExtractor."""
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
-        return source_schema
-
-    def __init__(self, file_path: FilePathType, stub_test: Optional[bool] = False):
-        super().__init__(file_path=str(file_path))
-        if stub_test:
-            self.subset_channels = [0, 1]
-        # Set electrodes properties
-        for ch in self.recording_extractor.get_channel_ids():
-            self.recording_extractor.set_channel_property(
-                channel_id=ch, property_name="shank_electrode_number", value=ch
-            )
-            self.recording_extractor.set_channel_property(
-                channel_id=ch, property_name="shank_group_name", value="Shank1"
-            )
+class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
+    """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
+
+        del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeries_raw"]
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
         )
@@ -112,14 +122,15 @@ class SpikeGLXLFPInterface(BaseLFPExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        fetch_spikeglx_metadata(
-            file_path=self.source_data["file_path"], recording=self.recording_extractor, metadata=metadata
+        del metadata["Ecephys"]["ElectricalSeries_raw"]
+        metadata["Ecephys"].update(
+            ElectricalSeries_lfp=dict(
+                name="ElectricalSeries_lfp", description="LFP traces for the processed (lf) SpikeGLX data."
+            )
         )
-        metadata["Ecephys"]["ElectricalSeries_lfp"].update(
-            description="LFP traces for the processed (lf) SpikeGLX data."
-        )
+
         return metadata
 
     def get_conversion_options(self):
-        conversion_options = dict(stub_test=False)
+        conversion_options = dict(write_as="raw", es_key="ElectricalSeries_lfp", stub_test=False)
         return conversion_options
