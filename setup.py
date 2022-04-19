@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 from codecs import open
+from pathlib import Path
 import os
 from shutil import copy
 
@@ -15,9 +16,10 @@ testing_suite_dependencies = ["pytest", "pytest-cov", "ndx-events==0.2.0", "para
 extras_require = dict(full=full_dependencies, test=testing_suite_dependencies)
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
-gin_config_file_base = "./base_gin_test_config.json"
-gin_config_file_local = "./tests/test_on_data/gin_test_config.json"
-copy(src=gin_config_file_base, dst=gin_config_file_local)
+gin_config_file_base = Path("./base_gin_test_config.json")
+gin_config_file_local = Path("./tests/test_on_data/gin_test_config.json")
+if not gin_config_file_local.exists():
+    copy(src=gin_config_file_base, dst=gin_config_file_local)
 
 setup(
     name="nwb-conversion-tools",
@@ -31,8 +33,7 @@ setup(
     keywords="nwb",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    package_data={"": ["template_metafile.yml"]},
-    include_package_data=True,
+    include_package_data=True,  # Includes files described in MANIFEST.in in the installation.
     python_requires=">=3.7",
     install_requires=install_requires,
     extras_require=extras_require,
