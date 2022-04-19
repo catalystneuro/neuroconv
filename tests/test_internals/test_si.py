@@ -24,18 +24,18 @@ from nwb_conversion_tools.tools.spikeinterface import (
     write_recording,
     write_sorting,
     add_electrodes,
-    add_electrical_series,
 )
 from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from nwb_conversion_tools.utils import FilePathType
 
+testing_session_time = datetime.now().astimezone()
 
 def _create_example(seed):
     channel_ids = [0, 1, 2, 3]
     num_channels = 4
-    num_frames = 10000
+    num_frames = 1000
     num_ttls = 30
     sampling_frequency = 30000
     X = np.random.RandomState(seed=seed).normal(0, 1, (num_channels, num_frames))
@@ -121,7 +121,7 @@ class TestExtractors(unittest.TestCase):
         self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3, self.example_info = _create_example(seed=0)
         self.test_dir = tempfile.mkdtemp()
         self.placeholder_metadata = dict(
-            NWBFile=dict(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+            NWBFile=dict(session_start_time=testing_session_time)
         )
 
     def tearDown(self):
@@ -494,10 +494,11 @@ class TestWriteElectrodes(unittest.TestCase):
         self.path1 = self.test_dir + "/test_electrodes1.nwb"
         self.path2 = self.test_dir + "/test_electrodes2.nwb"
         self.path3 = self.test_dir + "/test_electrodes3.nwb"
-        self.nwbfile1 = NWBFile("sess desc1", "file id1", datetime.now())
-        self.nwbfile2 = NWBFile("sess desc2", "file id2", datetime.now())
-        self.nwbfile3 = NWBFile("sess desc3", "file id3", datetime.now())
+        self.nwbfile1 = NWBFile("sess desc1", "file id1", testing_session_time)
+        self.nwbfile2 = NWBFile("sess desc2", "file id2", testing_session_time)
+        self.nwbfile3 = NWBFile("sess desc3", "file id3", testing_session_time)
         self.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
+
         # change channel_ids
         id_offset = np.max(self.RX.get_channel_ids())
         self.RX2 = se.subrecordingextractor.SubRecordingExtractor(
@@ -595,7 +596,7 @@ class TestAddElectrodes(TestCase):
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
         self.nwbfile = NWBFile(
-            session_description="session_description1", identifier="file_id1", session_start_time=datetime.now()
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
         channel_ids = self.base_recording.get_channel_ids()
         self.recording_1 = self.base_recording.channel_slice(
@@ -607,7 +608,7 @@ class TestAddElectrodes(TestCase):
 
         self.device = self.nwbfile.create_device(name="extra_device")
         self.electrode_group = self.nwbfile.create_electrode_group(
-            name="extra_group", description="description", location="location", device=self.device
+            name="0", description="description", location="location", device=self.device
         )
         self.defaults = dict(
             x=np.nan,
