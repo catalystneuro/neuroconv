@@ -176,7 +176,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBF
     if "group_name" in checked_recording.get_property_keys():
         group_names = np.unique(checked_recording.get_property("group_name"))
     else:
-        group_names = np.unique(checked_recording.get_channel_groups()).astype("str")
+        group_names = np.unique(checked_recording.get_channel_groups()).astype("str", copy=False)
 
     defaults = [
         dict(
