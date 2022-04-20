@@ -184,7 +184,7 @@ class MovieInterface(BaseDataInterface):
         if starting_times is not None:
             assert len(starting_times) == len(image_series_kwargs_list_updated), (
                 f"starting times list length {len(starting_times)} must be equal to number of unique"
-                f"ImageSeries {len(image_series_kwargs_list_updated)}"
+                f"ImageSeries {len(image_series_kwargs_list_updated)} \n"
                 f"Image series as input {image_series_kwargs_list} \n"
                 f"starting times = {starting_times} \n"
                 f"Image series after _check_duplicates {image_series_kwargs_list_updated}"
