@@ -146,10 +146,14 @@ class NWBConverter:
 
         if metadata is None:
             metadata = self.get_metadata()
-        if conversion_options is None:
-            conversion_options = self.get_conversion_options()
         self.validate_metadata(metadata=metadata)
-        self.validate_conversion_options(conversion_options=conversion_options)
+
+        if conversion_options is None:
+            conversion_options = dict()
+        default_conversion_options = self.get_conversion_options()
+        conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
+        self.validate_conversion_options(conversion_options=conversion_options_to_run)
+
         if save_to_file:
             load_kwargs = dict(path=nwbfile_path)
             if nwbfile_path is None:
@@ -164,7 +168,9 @@ class NWBConverter:
                 elif nwbfile is None:
                     nwbfile = make_nwbfile_from_metadata(metadata=metadata)
                 for interface_name, data_interface in self.data_interface_objects.items():
-                    data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
+                    data_interface.run_conversion(
+                        nwbfile, metadata, **conversion_options_to_run.get(interface_name, dict())
+                    )
                 io.write(nwbfile)
             print(f"NWB file saved at {nwbfile_path}!")
         else:

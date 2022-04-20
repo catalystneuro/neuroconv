@@ -83,7 +83,7 @@ jobs:
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
-          key: ophys-datasets-040122-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+          key: ophys-datasets-042022-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
@@ -96,7 +96,7 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-040122-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-042022-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
