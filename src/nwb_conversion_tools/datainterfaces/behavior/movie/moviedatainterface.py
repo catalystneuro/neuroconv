@@ -179,12 +179,14 @@ class MovieInterface(BaseDataInterface):
                     idx = keys_set.index(image_series_kwargs["name"])
                     file_paths_list[idx].append(file_paths[n])
             return image_series_kwargs_list_unique, file_paths_list
-
+        
         image_series_kwargs_list_updated, file_paths_list = _check_duplicates(image_series_kwargs_list)
         if starting_times is not None:
             assert len(starting_times) == len(image_series_kwargs_list_updated), (
                 f"starting times list length {len(starting_times)} must be equal to number of unique"
                 f"ImageSeries {len(image_series_kwargs_list_updated)}"
+                f"Image series as input {image_series_kwargs_list}"
+                f"Image series after _check_duplicates {image_series_kwargs_list_updated}"
             )
         else:
             if len(image_series_kwargs_list_updated) == 1:
