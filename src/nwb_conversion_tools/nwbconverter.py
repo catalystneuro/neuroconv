@@ -152,7 +152,6 @@ class NWBConverter:
             conversion_options = dict()
         default_conversion_options = self.get_conversion_options()
         conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
-
         self.validate_conversion_options(conversion_options=conversion_options_to_run)
 
         if save_to_file:
