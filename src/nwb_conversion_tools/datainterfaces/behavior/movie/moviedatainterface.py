@@ -183,7 +183,7 @@ class MovieInterface(BaseDataInterface):
         image_series_kwargs_list_updated, file_paths_list = _check_duplicates(image_series_kwargs_list)
         if starting_times is not None:
             assert len(starting_times) == len(image_series_kwargs_list_updated), (
-                f"starting times list length {len(starting_times)} must be equal to number of unique" 
+                f"starting times list length {len(starting_times)} must be equal to number of unique"
                 f"ImageSeries {len(image_series_kwargs_list_updated)}"
             )
         else:
