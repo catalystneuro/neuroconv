@@ -262,5 +262,10 @@ def get_schema_for_NWBFile():
         },
         "stimulus_notes": {"type": "string", "description": "Notes about stimuli, such as how and where presented."},
         "lab": {"type": "string", "description": "lab where experiment was performed"},
+        "keywords": {
+            "description": "Terms to search over",
+            "type": "array",
+            "items": {"title": "keyword", "type": "string"},
+        },
     }
     return schema
