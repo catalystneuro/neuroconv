@@ -17,11 +17,11 @@ class TestMovieDataNwbConversions(unittest.TestCase):
         """Use common recording objects and values."""
         cls.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
         cls.number_of_movie_files = len(cls.movie_files)
-        cls.starting_times = [float(np.random.randint(200)) for i in range(cls.number_of_movie_files)]
 
     def setUp(self):
         self.nwb_converter = self.create_movie_converter()
         self.nwbfile_path = os.path.join(self.savedir, "movie_test.nwb")
+        self.starting_times = [float(np.random.randint(200)) for i in range(self.number_of_movie_files)]
 
     def create_movie_converter(self):
         class MovieTestNWBConverter(NWBConverter):
