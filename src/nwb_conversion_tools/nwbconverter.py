@@ -146,10 +146,15 @@ class NWBConverter:
 
         if metadata is None:
             metadata = self.get_metadata()
-        if conversion_options is None:
-            conversion_options = self.get_conversion_options()
         self.validate_metadata(metadata=metadata)
+
+        if conversion_options is None:
+            conversion_options = dict()
+        default_conversion_options = self.get_conversion_options()
+        conversion_options = dict_deep_update(default_conversion_options, conversion_options)
+
         self.validate_conversion_options(conversion_options=conversion_options)
+
         if save_to_file:
             load_kwargs = dict(path=nwbfile_path)
             if nwbfile_path is None:
