@@ -12,16 +12,12 @@ from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 class TestMovieDataNwbConversions(unittest.TestCase):
     savedir = OUTPUT_PATH
 
-    @classmethod
-    def setUpClass(cls):
-        """Use common recording objects and values."""
-        cls.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
-        cls.number_of_movie_files = len(cls.movie_files)
-
     def setUp(self):
+        self.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
+        self.number_of_movie_files = len(self.movie_files)
         self.nwb_converter = self.create_movie_converter()
         self.nwbfile_path = os.path.join(self.savedir, "movie_test.nwb")
-        self.starting_times = [float(np.random.randint(200)) for i in range(self.number_of_movie_files)]
+        self.starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
 
     def create_movie_converter(self):
         class MovieTestNWBConverter(NWBConverter):
