@@ -23,7 +23,7 @@ jobs:
   pr_opened:
     name: Add PR to Dashboard
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.action == 'opened')
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
     steps:
       - name: Add PR to Dashboard
         uses: leonsteinhaeuser/project-beta-automations@v1.2.1
