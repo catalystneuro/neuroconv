@@ -21,7 +21,8 @@ class TestMovieDataNwbConversions(unittest.TestCase):
     def setUp(self):
         self.nwb_converter = self.create_movie_converter()
         self.nwbfile_path = os.path.join(self.savedir, "movie_test.nwb")
-        self.starting_times = [float(np.random.randint(200)) for i in range(self.number_of_movie_files)]
+        # self.starting_times = [float(np.random.randint(200)) for i in range(self.number_of_movie_files)]
+        self.starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
 
     def create_movie_converter(self):
         class MovieTestNWBConverter(NWBConverter):
