@@ -5,7 +5,7 @@ from ....utils import FilePathType, FloatType, ArrayType
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):
-    """Data Interface for TIffImagingExtractor."""
+    """Data Interface for TiffImagingExtractor."""
 
     IX = TiffImagingExtractor
 

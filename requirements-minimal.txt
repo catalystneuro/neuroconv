@@ -12,6 +12,6 @@ nwbinspector>=0.2.3
 spikeextractors>=0.9.9
 spikeinterface>=0.93.0
 neo>=0.9.0
-roiextractors>=0.4.0
+roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@10265be4a1eaece7461296a2877cc11c84bf87dc
 lxml>=4.6.5
 scipy>=1.4.1
