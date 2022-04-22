@@ -1150,8 +1150,8 @@ def add_units(
         ecephys_mod.add(units_table)
 
 
-def add_wave_forms_to_units_table(
-    sorting: SpikeInterfaceSorting,
+def add_waveforms_to_units_table(
+    sorting: SortingExtractor,
     nwbfile: pynwb.NWBFile,
     skip_features: Optional[List[str]] = None,
     units_table_name: str = "units",
@@ -1162,7 +1162,7 @@ def add_wave_forms_to_units_table(
     Primary method for writing a SortingExtractor object to an NWBFile.
     Parameters
     ----------
-    sorting: SpikeInterfaceSorting
+    sorting:  A spikeextractors SortingExtractor.
     save_path: PathType
         Required if an nwbfile is not passed. The location where the NWBFile either exists, or will be written.
     overwrite: bool
@@ -1186,15 +1186,10 @@ def add_wave_forms_to_units_table(
         - True will save it to the processing module to serve as a historical provenance for the official table.
         - False will save it to the official NWBFile.Units position; recommended only for the final form of the data.
     """
-    if isinstance(sorting, SortingExtractor):
-        sampling_frequency = sorting.get_sampling_frequency()
-        if sampling_frequency is None:
-            raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
-        checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
-    else:
-        checked_sorting = sorting
-    unit_ids = checked_sorting.get_unit_ids()
-    sampling_frequency = checked_sorting.get_sampling_frequency()
+    unit_ids = sorting.get_unit_ids()
+    sampling_frequency = sorting.get_sampling_frequency()
+    if sampling_frequency is None:
+        raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
 
     if write_units_table_in_processing_module:
         ecephys_mod = get_module(
@@ -1270,6 +1265,11 @@ def add_wave_forms_to_units_table(
                     values=flatten_vals,
                     index=spikes_index,
                 )
+        else:
+            """
+            Currently (2022-04-22), spikeinterface does not support waveform extraction.
+            """
+            pass
 
 
 def write_sorting(
@@ -1335,13 +1335,7 @@ def write_sorting(
         "processing",
     ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
 
-    write_units_table_in_processing_module = True
-    units_table_name = units_name
-    units_table_description = units_description
-
-    if write_as == "units":
-        assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
-        write_units_table_in_processing_module = False
+    write_units_table_in_processing_module = False if write_as == "units" else True
 
     if metadata is None:
         metadata = dict()
@@ -1365,12 +1359,12 @@ def write_sorting(
                 units_name=units_name,
                 units_description=units_description,
             )
-            add_wave_forms_to_units_table(
+            add_waveforms_to_units_table(
                 sorting=sorting,
                 nwbfile=nwbfile,
                 skip_features=skip_features,
-                units_table_name=units_table_name,
-                unit_table_description=units_table_description,
+                units_table_name=units_name,
+                unit_table_description=units_description,
                 write_units_table_in_processing_module=write_units_table_in_processing_module,
             )
             io.write(nwbfile)
@@ -1384,12 +1378,12 @@ def write_sorting(
             write_as=write_as,
             units_name=units_name,
         )
-        add_wave_forms_to_units_table(
+        add_waveforms_to_units_table(
             sorting=sorting,
             nwbfile=nwbfile,
             skip_features=skip_features,
-            units_table_name=units_table_name,
-            unit_table_description=units_table_description,
+            units_table_name=units_name,
+            unit_table_description=units_description,
             write_units_table_in_processing_module=write_units_table_in_processing_module,
         )
     return nwbfile
