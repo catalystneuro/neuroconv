@@ -145,7 +145,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             "Imec device \n"
             f"probe type = {probe_type} \n"
             f"probe description = {probe_type_description} \n"
-            f"flex part number = {flex_part_number} "
+            f"flex part number = {flex_part_number} \n"
             f"base station connected part number {imDatBsc_pn} \n"
         )
 
