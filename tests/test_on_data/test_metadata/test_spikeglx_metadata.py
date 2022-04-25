@@ -61,11 +61,11 @@ def test_matching_recording_property_addition_between_backends():
 
     interface_new = SpikeGLXRecordingInterface(file_path=ap_file_path)
     shank_electrode_number_new = interface_new.recording_extractor.get_property("shank_electrode_number")
-    shank_group_name_new = interface_new.recording_extractor.get_property("group_name")
+    group_name_new = interface_new.recording_extractor.get_property("group_name")
 
     interface_old = SpikeGLXRecordingInterface(file_path=ap_file_path, spikeextractors_backend=True)
     shank_electrode_number_old = interface_old.recording_extractor.get_property("shank_electrode_number")
-    shank_group_name_old = interface_old.recording_extractor.get_property("group_name")
+    group_name_old = interface_old.recording_extractor.get_property("group_name")
 
     assert_array_equal(shank_electrode_number_new, shank_electrode_number_old)
-    assert_array_equal(shank_group_name_new, shank_group_name_old)
+    assert_array_equal(group_name_new, group_name_old)
