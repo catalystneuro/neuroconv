@@ -30,14 +30,14 @@ def add_recording_extractor_properties(recording_extractor: BaseRecording):
     channel_ids = recording_extractor.get_channel_ids()
 
     if probe.get_shank_count() > 1:
-        shank_group_name = [contact_id.split(":")[0] for contact_id in probe.contact_ids]
+        group_name = [contact_id.split(":")[0] for contact_id in probe.contact_ids]
         shank_electrode_number = [int(contact_id.split(":")[1][1:]) for contact_id in probe.contact_ids]
     else:
         shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
-        shank_group_name = ["s0"] * len(channel_ids)
+        group_name = ["s0"] * len(channel_ids)
 
     recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
-    recording_extractor.set_property(key="group_name", ids=channel_ids, values=shank_group_name)
+    recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_name)
 
     contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
     recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
