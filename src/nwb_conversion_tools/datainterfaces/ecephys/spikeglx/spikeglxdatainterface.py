@@ -1,6 +1,7 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
 from typing import Optional
+import json
 
 import spikeextractors as se
 import probeinterface as pi
@@ -141,15 +142,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         flex_part_number = meta.get("imDatFx_pn", "no flex part number found")
         imDatBsc_pn = meta.get("imDatBsc_pn", "no base station part number")
 
-        description = (
-            "Imec device \n"
-            f"probe type = {probe_type} \n"
-            f"probe description = {probe_type_description} \n"
-            f"flex part number = {flex_part_number} \n"
-            f"base station connected part number {imDatBsc_pn} \n"
+        description_dic = dict(
+            probe_type=probe_type,
+            probe_type_description=probe_type_description,
+            flex_part_number=flex_part_number,
+            connected_base_station_part_number=imDatBsc_pn,
         )
-
-        device = dict(name="Neuropixel-Imec", description=description, manufacturer="Imec")
+        description_json = json.dumps(description_dic)
+        device = dict(name="Neuropixel-Imec", description=description_json, manufacturer="Imec")
 
         return device
 
