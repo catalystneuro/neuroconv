@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from jsonschema import validate
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
@@ -53,14 +53,14 @@ class NWBConverter:
         return conversion_options_schema
 
     @classmethod
-    def validate_source(cls, source_data):
+    def validate_source(cls, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against Converter source_schema."""
-        validate(instance=source_data, schema=cls.get_source_schema())
-        print("Source data is valid!")
+        cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def __init__(self, source_data):
+    def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
-        self.validate_source(source_data=source_data)
+        self.verbose = verbose
+        self._validate_source_data(source_data=source_data, verbose=self.verbose)
         self.data_interface_objects = {
             name: data_interface(**source_data[name])
             for name, data_interface in self.data_interface_classes.items()
@@ -99,15 +99,22 @@ class NWBConverter:
             conversion_options[interface_name] = interface.get_conversion_options()
         return conversion_options
 
-    def validate_metadata(self, metadata):
+    def validate_metadata(self, metadata: Dict[str, dict]):
         """Validate metadata against Converter metadata_schema."""
         validate(instance=metadata, schema=self.get_metadata_schema())
-        print("Metadata is valid!")
+        if self.verbose:
+            print("Metadata is valid!")
 
-    def validate_conversion_options(self, conversion_options):
+    def validate_conversion_options(self, conversion_options: Dict[str, dict]):
         """Validate conversion_options against Converter conversion_options_schema."""
         validate(instance=conversion_options, schema=self.get_conversion_options_schema())
-        print("conversion_options is valid!")
+        if self.verbose:
+            print("conversion_options is valid!")
+
+    def _validate_source_data(self, source_data: Dict[str, dict], verbose: bool = True):
+        validate(instance=source_data, schema=self.get_source_schema())
+        if verbose:
+            print("Source data is valid!")
 
     def run_conversion(
         self,
@@ -172,7 +179,8 @@ class NWBConverter:
                         nwbfile, metadata, **conversion_options_to_run.get(interface_name, dict())
                     )
                 io.write(nwbfile)
-            print(f"NWB file saved at {nwbfile_path}!")
+            if self.verbose:
+                print(f"NWB file saved at {nwbfile_path}!")
         else:
             if nwbfile is None:
                 nwbfile = make_nwbfile_from_metadata(metadata=metadata)
