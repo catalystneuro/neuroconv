@@ -29,14 +29,17 @@ def add_recording_extractor_properties(recording_extractor: BaseRecording):
     channel_ids = recording_extractor.get_channel_ids()
 
     if probe.get_shank_count() > 1:
-        shank_electrode_number = [contact_id.split(":")[1] for contact_id in probe.contact_ids]
         shank_group_name = [contact_id.split(":")[0] for contact_id in probe.contact_ids]
+        shank_electrode_number = [int(contact_id.split(":")[1][1:]) for contact_id in probe.contact_ids]
     else:
         shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
         shank_group_name = ["s0"] * len(channel_ids)
 
     recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=shank_electrode_number)
-    recording_extractor.set_property(key="shank_group_name", ids=channel_ids, values=shank_group_name)
+    recording_extractor.set_property(key="group_name", ids=channel_ids, values=shank_group_name)
+
+    contact_shapes = probe.contact_shapes  # The geometry of the contact shapes
+    recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
@@ -92,10 +95,21 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         if session_start_time:
             metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=str(session_start_time))))
 
+        # Device metadata
+        device = self.get_device_metadata()
+
+        # Add groups metadata
+        metadata["Ecephys"]["Device"] = [device]
+        electrode_groups = [
+            dict(name=group_name, description="no description", location="unknown", device=device["name"])
+            for group_name in set(self.recording_extractor.get_property("group_name"))
+        ]
+        metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
+
         # Electrodes columns descriptions
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
-            dict(name="shank_group_name", description="The name of the ElectrodeGroup this electrode is a part of."),
+            dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
 
         metadata["Ecephys"]["ElectricalSeries_raw"] = dict(
@@ -106,6 +120,37 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_conversion_options(self):
         conversion_options = dict(write_as="raw", es_key="ElectricalSeries_raw", stub_test=False)
         return conversion_options
+
+    def get_device_metadata(self) -> dict:
+        """Returns a device with description including the metadat as described here
+        # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+
+        Returns
+        -------
+        dict
+            a dict containing the metadata necessary for creating the device
+        """
+
+        meta = self.meta
+
+        probe_type = str(meta.get("imDatPrb_type", "no probe type"))
+        probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
+        probe_type_description = probe_type_to_probe_description.get(probe_type, "no probe description")
+
+        flex_part_number = meta.get("imDatFx_pn", "no flex part number found")
+        imDatBsc_pn = meta.get("imDatBsc_pn", "no base station part number")
+
+        description = (
+            "Imec device \n"
+            f"probe type = {probe_type} \n"
+            f"probe description = {probe_type_description} \n"
+            f"flex part number = {flex_part_number} "
+            f"base station connected part number {imDatBsc_pn} \n"
+        )
+
+        device = dict(name="Neuropixel-Imec", description=description, manufacturer="Imec")
+
+        return device
 
 
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
