@@ -12,6 +12,7 @@ jobs:
   issue_opened:
     name: Add Issue to Dashboard
     runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
     steps:
       - name: Add Issue to Dashboard
         uses: leonsteinhaeuser/project-beta-automations@v1.2.1
