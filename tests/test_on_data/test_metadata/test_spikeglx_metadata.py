@@ -40,7 +40,7 @@ def test_get_device_metadata():
     device = spikeglx_interface.get_device_metadata()
 
     description_string = (
-        "Imec device - metadata = {"
+        "{"
         '"probe_type": "0", '
         '"probe_type_description": "NP1.0", '
         '"flex_part_number": "NP2_FLEX_0", '

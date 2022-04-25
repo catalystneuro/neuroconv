@@ -147,8 +147,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         if "imDatBsc_pn" in self.meta:
             metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
 
-        metadata_json = json.dumps(metadata_dict)
-        description_string = f"Imec device - metadata = {metadata_json}"
+        description_string = "no description"
+        if metadata_dict:
+            description_string = json.dumps(metadata_dict)
         device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
 
         return device
