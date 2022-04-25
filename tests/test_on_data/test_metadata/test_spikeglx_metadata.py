@@ -69,3 +69,5 @@ def test_matching_recording_property_addition_between_backends():
 
     assert_array_equal(shank_electrode_number_new, shank_electrode_number_old)
     assert_array_equal(shank_group_name_new, shank_group_name_old)
+
+
