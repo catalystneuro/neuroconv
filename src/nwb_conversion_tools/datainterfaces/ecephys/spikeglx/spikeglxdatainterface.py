@@ -110,6 +110,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
+            dict(name="contact_shapes", description="The shape of the electrode"),
         ]
 
         metadata["Ecephys"]["ElectricalSeries_raw"] = dict(
