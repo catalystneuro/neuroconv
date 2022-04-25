@@ -134,22 +134,22 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         meta = self.meta
+        metadata_dict = dict()
+        if "imDatPrb_type" in self.meta:
+            probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
+            probe_type = str(meta["imDatPrb_type"])
+            probe_type_description = probe_type_to_probe_description[probe_type]
+            metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
 
-        probe_type = str(meta.get("imDatPrb_type", "no probe type"))
-        probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
-        probe_type_description = probe_type_to_probe_description.get(probe_type, "no probe description")
+        if "imDatFx_pn" in self.meta:
+            metadata_dict.update(flex_part_number=meta["imDatFx_pn"])
 
-        flex_part_number = meta.get("imDatFx_pn", "no flex part number found")
-        imDatBsc_pn = meta.get("imDatBsc_pn", "no base station part number")
+        if "imDatBsc_pn" in self.meta:
+            metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
 
-        description_dic = dict(
-            probe_type=probe_type,
-            probe_type_description=probe_type_description,
-            flex_part_number=flex_part_number,
-            connected_base_station_part_number=imDatBsc_pn,
-        )
-        description_json = json.dumps(description_dic)
-        device = dict(name="Neuropixel-Imec", description=description_json, manufacturer="Imec")
+        metadata_json = json.dumps(metadata_dict)
+        description_string = f"Imec device - metadata = {metadata_json}"
+        device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
 
         return device
 
