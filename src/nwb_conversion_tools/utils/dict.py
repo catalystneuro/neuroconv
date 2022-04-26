@@ -170,17 +170,32 @@ def dict_deep_update(
     d: dict
         return the updated dictionary
     """
-    if not isinstance(d, collections.abc.Mapping):
+
+    dict_to_update, dict_with_update_values = d, u
+    if not isinstance(dict_to_update, collections.abc.Mapping):
         warnings.warn("input to update should be a dict, returning output")
-        return u
+        return dict_with_update_values
+
     if copy:
-        d = deepcopy(d)
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = dict_deep_update(d.get(k, None), v, append_list=append_list, remove_repeats=remove_repeats)
-        elif append_list and isinstance(v, list):
-            for vv in v:
-                d[k] = append_replace_dict_in_list(d.get(k, []), vv, compare_key, list_dict_deep_update, remove_repeats)
+        dict_to_update = deepcopy(dict_to_update)
+
+    for key_to_update, update_values in dict_with_update_values.items():
+        # Update with a dict like object is recursive until an empty dict is found.
+        if isinstance(update_values, collections.abc.Mapping):
+            sub_dict_to_update = dict_to_update.get(key_to_update, dict())
+            sub_dict_with_update_values = update_values
+            dict_to_update[key_to_update] = dict_deep_update(
+                sub_dict_to_update, sub_dict_with_update_values, append_list=append_list, remove_repeats=remove_repeats
+            )
+        # Update with list calls the append_replace_dict_in_list function
+        elif append_list and isinstance(update_values, list):
+            for value in update_values:
+                dict_or_list_of_dicts = dict_to_update.get(key_to_update, [])
+                dict_to_update[key_to_update] = append_replace_dict_in_list(
+                    dict_or_list_of_dicts, value, compare_key, list_dict_deep_update, remove_repeats
+                )
+        # Update with something else
         else:
-            d[k] = v
-    return d
+            dict_to_update[key_to_update] = update_values
+
+    return dict_to_update

@@ -121,3 +121,4 @@ venv.bak/
 
 # NWB
 .nwb
+.pre-commit-config.yaml
