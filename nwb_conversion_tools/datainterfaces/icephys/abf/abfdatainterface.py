@@ -71,23 +71,25 @@ class AbfInterface(BaseIcephysInterface):
         )
 
         # Subject metadata
-        metadata["Subject"] = dict(
-            subject_id=metafile_data.get("subject_id", ""),
-            species=metafile_data.get("species", ""),
-            sex=metafile_data.get("sex", "U"),
-        )
-        if metafile_data.get("dob", None):
-            metadata["Subject"].update(date_of_birth=metafile_data.get("dob"))
+        if any(x in metafile_data for x in ("subject_id", "species", "sex", "dob")):
+            metadata["Subject"] = dict(
+                subject_id=metafile_data.get("subject_id"),
+                species=metafile_data.get("species"),
+                sex=metafile_data.get("sex"),
+            )
+            if metafile_data.get("dob", None):
+                metadata["Subject"].update(date_of_birth=metafile_data.get("dob"))
 
         # LabMetadata
-        metadata["ndx-dandi-icephys"] = dict(
-            # Required fields for DANDI
-            cell_id=metafile_data.get("cell_id", ""),
-            slice_id=metafile_data.get("slice_id", ""),
-            # Lab specific metadata
-            targeted_layer=metafile_data.get("targeted_layer", ""),
-            inferred_layer=metafile_data.get("estimate_laminate", ""),
-        )
+        if any(x in metafile_data for x in ("cell_id", "slice_id", "targeted_layer", "inferred_layer")):
+            metadata["ndx-dandi-icephys"] = dict(
+                # Required fields for DANDI
+                cell_id=metafile_data.get("cell_id", ""),
+                slice_id=metafile_data.get("slice_id", ""),
+                # Lab specific metadata
+                targeted_layer=metafile_data.get("targeted_layer", ""),
+                inferred_layer=metafile_data.get("estimate_laminate", ""),
+            )
 
         # Recordings sessions metadata (one Session is one abf file / neo reader)
         metafile_sessions = metafile_data.get("recording_sessions", dict())

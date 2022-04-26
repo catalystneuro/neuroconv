@@ -2,7 +2,7 @@
 from abc import ABC
 from typing import Optional
 
-from pynwb import NWBFile
+from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
@@ -12,6 +12,7 @@ from ...tools.neo import (
     get_number_of_segments,
     write_neo_to_nwb,
 )
+from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
     OptionalFilePathType,
     get_schema_from_hdmf_class,
@@ -81,7 +82,7 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
 
     def run_conversion(
         self,
-        nwbfile: NWBFile,
+        nwbfile: NWBFile = None,
         metadata: dict = None,
         stub_test: bool = False,
         use_times: bool = False,
@@ -123,6 +124,9 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
             Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero' (all current and amplifier settings turned off).
             If no value is passed, 'voltage_clamp' is used as default.
         """
+        if nwbfile is None:
+            nwbfile = make_nwbfile_from_metadata(metadata)
+
         if (
             HAVE_NDX_DANDI_ICEPHYS
             and "ndx-dandi-icephys" in metadata
@@ -138,8 +142,11 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
                 use_times=use_times,
                 write_as=write_as,
                 es_key=es_key,
-                save_path=save_path,
                 overwrite=overwrite if i == 0 else False,
                 icephys_experiment_type=metadata["Icephys"]["Sessions"][i]["icephys_experiment_type"],
                 stimulus_type=metadata["Icephys"]["Sessions"][i]["stimulus_type"],
             )
+
+        if save_path:
+            with NWBHDF5IO(save_path, "w") as io:
+                io.write(nwbfile)
