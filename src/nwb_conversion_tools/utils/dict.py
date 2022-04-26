@@ -105,8 +105,8 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
 
 
 def dict_deep_update(
-    dict_to_update: collections.abc.Mapping,
-    dict_with_update_values: collections.abc.Mapping,
+    d: collections.abc.Mapping,
+    u: collections.abc.Mapping,
     append_list: bool = True,
     remove_repeats: bool = True,
     copy: bool = True,
@@ -118,9 +118,9 @@ def dict_deep_update(
 
     Parameters
     ----------
-    dict_to_update: dict
+    d: dict
         dictionary to update
-    dict_with_update_values: dict
+    u: dict
         dictionary to update from
     append_list: bool
         if the item to update is a list, whether to append the lists or replace the list in d
@@ -171,6 +171,7 @@ def dict_deep_update(
         return the updated dictionary
     """
 
+    dict_to_update, dict_with_update_values = d, u
     if not isinstance(dict_to_update, collections.abc.Mapping):
         warnings.warn("input to update should be a dict, returning output")
         return dict_with_update_values
