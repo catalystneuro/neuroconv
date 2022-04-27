@@ -215,6 +215,7 @@ def add_icephys_recordings(
     metadata: dict = None,
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
+    skip_electrodes=(),
 ):
     """
     Add icephys recordings (stimulus/response pairs) to nwbfile object.
@@ -262,8 +263,8 @@ def add_icephys_recordings(
         f"{icephys_experiment_type}"
     )
 
-    # Check and auto-create electrodes, in case they don't existe yet on nwbfile
-    if len(nwbfile.ic_electrodes) == 0:
+    # Check and auto-create electrodes, in case they don't exist yet in nwbfile
+    if len(nwbfile.icephys_electrodes) == 0:
         warnings.warn(
             "When adding Icephys Recording, no Icephys Electrodes were found on nwbfile. Creating Electrodes now..."
         )
@@ -298,6 +299,8 @@ def add_icephys_recordings(
         for ei, electrode in enumerate(
             list(nwbfile.icephys_electrodes.values())[: len(neo_reader.header["signal_channels"]["units"])]
         ):
+            if ei in skip_electrodes:
+                continue
             # Starting time is the signal starting time within .abf file + time
             # relative to first session (first .abf file)
             ri += 1
@@ -308,7 +311,7 @@ def add_icephys_recordings(
             response_unit = neo_reader.header["signal_channels"]["units"][ei]
             response_conversion = get_conversion_from_unit(unit=response_unit)
             response_gain = neo_reader.header["signal_channels"]["gain"][ei]
-            response_name = f"{icephys_experiment_type}-response-{si + 1 + simultaneous_recordings_offset}-ch-{ei}"
+            response_name = f"{icephys_experiment_type}-response-{si + 1 + simultaneous_recordings_offset:02}-ch-{ei}"
 
             response = response_classes[icephys_experiment_type](
                 name=response_name,
@@ -324,7 +327,7 @@ def add_icephys_recordings(
                 stim_unit = protocol[2][ei]
                 stim_conversion = get_conversion_from_unit(unit=stim_unit)
                 stimulus = stim_classes[icephys_experiment_type](
-                    name=f"stimulus-{si + 1 + simultaneous_recordings_offset}-ch-{ei}",
+                    name=f"stimulus-{si + 1 + simultaneous_recordings_offset:02}-ch-{ei}",
                     description=f"Stim type: {session_stimulus_type}",
                     electrode=electrode,
                     data=protocol[0][si][ei],
@@ -378,6 +381,7 @@ def add_all_to_nwbfile(
     iterator_opts: Optional[dict] = None,
     icephys_experiment_type: Optional[str] = "voltage_clamp",
     stimulus_type: Optional[str] = None,
+    skip_electrodes=(),
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -444,6 +448,7 @@ def add_all_to_nwbfile(
         metadata=metadata,
         icephys_experiment_type=icephys_experiment_type,
         stimulus_type=stimulus_type,
+        skip_electrodes=skip_electrodes,
     )
 
 
@@ -463,6 +468,7 @@ def write_neo_to_nwb(
     iterator_opts: Optional[dict] = None,
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
+    skip_electrodes: Optional[tuple] = (),
 ):
     """
     Primary method for writing a Neo reader object to an NWBFile.
@@ -556,6 +562,21 @@ def write_neo_to_nwb(
     if metadata is None:
         metadata = get_nwb_metadata(neo_reader=neo_reader)
 
+    kwargs = dict(
+        neo_reader=neo_reader,
+        metadata=metadata,
+        use_times=use_times,
+        write_as=write_as,
+        es_key=es_key,
+        write_scaled=write_scaled,
+        compression=compression,
+        compression_opts=compression_opts,
+        iterator_type=iterator_type,
+        iterator_opts=iterator_opts,
+        icephys_experiment_type=icephys_experiment_type,
+        stimulus_type=stimulus_type,
+        skip_electrodes=skip_electrodes,
+    )
     if nwbfile is None:
         if Path(save_path).is_file() and not overwrite:
             read_mode = "r+"
@@ -575,35 +596,7 @@ def write_neo_to_nwb(
                     nwbfile_kwargs.update(metadata["NWBFile"])
                 nwbfile = pynwb.NWBFile(**nwbfile_kwargs)
 
-            add_all_to_nwbfile(
-                neo_reader=neo_reader,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                use_times=use_times,
-                write_as=write_as,
-                es_key=es_key,
-                write_scaled=write_scaled,
-                compression=compression,
-                compression_opts=compression_opts,
-                iterator_type=iterator_type,
-                iterator_opts=iterator_opts,
-                icephys_experiment_type=icephys_experiment_type,
-                stimulus_type=stimulus_type,
-            )
+            add_all_to_nwbfile(nwbfile=nwbfile, **kwargs)
             io.write(nwbfile)
     else:
-        add_all_to_nwbfile(
-            neo_reader=neo_reader,
-            nwbfile=nwbfile,
-            use_times=use_times,
-            metadata=metadata,
-            write_as=write_as,
-            es_key=es_key,
-            write_scaled=write_scaled,
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
-            icephys_experiment_type=icephys_experiment_type,
-            stimulus_type=stimulus_type,
-        )
+        add_all_to_nwbfile(nwbfile=nwbfile, **kwargs)

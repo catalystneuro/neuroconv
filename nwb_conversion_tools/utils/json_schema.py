@@ -47,6 +47,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         float="number",
         dict="object",
         list="array",
+        tuple="array",
         FilePathType="string",
         FolderPathType="string",
     )

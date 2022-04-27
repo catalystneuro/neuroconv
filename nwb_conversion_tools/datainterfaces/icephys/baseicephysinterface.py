@@ -91,6 +91,7 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         write_as: str = "raw",
         es_key: str = None,
         icephys_experiment_type: Optional[str] = None,
+        skip_electrodes: Optional[tuple] = (),
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -145,6 +146,7 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
                 overwrite=overwrite if i == 0 else False,
                 icephys_experiment_type=metadata["Icephys"]["Sessions"][i]["icephys_experiment_type"],
                 stimulus_type=metadata["Icephys"]["Sessions"][i]["stimulus_type"],
+                skip_electrodes=skip_electrodes,
             )
 
         if save_path:
