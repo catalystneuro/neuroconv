@@ -78,6 +78,10 @@ def test_get_globus_dataset_content_sizes():
     }
 
 
+@pytest.mark.skipif(
+    not HAVE_GLOBUS or not LOGGED_INTO_GLOBUS,
+    reason="You must have globus installed and be logged in to run this test!",
+)
 def test_get_s3_conversion_cost():
     content_sizes = get_globus_dataset_content_sizes(
         globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
