@@ -4,7 +4,7 @@ from pynwb.base import ProcessingModule
 from hdmf.testing import TestCase
 
 from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
-from nwb_conversion_tools.tools.data_transfers import get_globus_dataset_content_sizes
+from nwb_conversion_tools.tools.data_transfers import get_globus_dataset_content_sizes, get_s3_conversion_cost
 
 
 class TestConversionTools(TestCase):
@@ -60,3 +60,11 @@ def test_get_globus_dataset_content_sizes():
         "YutaMouse41-150821.temp.clu.7": 214835,
         "YutaMouse41-150821.temp.clu.8": 174434,
     }
+
+
+def test_get_s3_conversion_cost():
+    content_sizes = get_globus_dataset_content_sizes(
+        globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
+        path="/SenzaiY/YutaMouse41/YutaMouse41-150821/originalClu/",
+    )
+    assert get_s3_conversion_cost(total_mb=sum(content_sizes.values()) / 1e6) == 1.756555806400279e-13
