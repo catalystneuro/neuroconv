@@ -1243,7 +1243,7 @@ def _add_waveforms_to_units_table(
             """
             pass
 
-        return units_table
+    return units_table
 
 
 def write_sorting(

@@ -8,10 +8,13 @@ import numpy.testing as npt
 
 from parameterized import parameterized, param
 
-from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor
-from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
+from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor, SortingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
+
 from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
+from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
+from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
+from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
 
 from pynwb import NWBHDF5IO
 
@@ -24,6 +27,7 @@ from nwb_conversion_tools import (
     NeuroscopeSortingInterface,
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
+    KiloSortingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
@@ -225,6 +229,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
             ),
             param(
+                data_interface=KiloSortingInterface,
+                interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
+            ),
+            param(
                 data_interface=BlackrockSortingExtractorInterface,
                 interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
             ),
@@ -285,8 +293,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
         if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
             sf = 30000
             sorting.set_sampling_frequency(sf)
-        nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
-        check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
+
+        if isinstance(sorting, SortingExtractor):
+            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
+            check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
+        else:
+            nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
+            check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
 
     @parameterized.expand(
         input=[
