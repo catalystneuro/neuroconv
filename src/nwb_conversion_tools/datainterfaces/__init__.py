@@ -31,6 +31,7 @@ from .ecephys.axona.axonadatainterface import (
 )
 from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
+from .ecephys.kilo.kilodatainterface import KiloSortingInterface
 
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
@@ -66,6 +67,7 @@ interface_list = [
     OpenEphysRecordingExtractorInterface,
     OpenEphysSortingExtractorInterface,
     PhySortingInterface,
+    KiloSortingInterface,
     AxonaRecordingExtractorInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,
