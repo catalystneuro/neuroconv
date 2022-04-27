@@ -38,8 +38,16 @@ def get_s3_conversion_cost(
     Parameters
     ----------
     total_mb: float
-
-
+        The total amount of data (in MB) that will be transferred, converted, and uploaded to dandi.
+    transfer_rate_mb: float, optional
+        Estimate of the transfer rate for the data.
+    conversion_rate_mb: float, optional
+        Estimate of the conversion rate for the data. Can vary widely depending on conversion options and type of data.
+        Figure of 17MB/s is based on extensive compression of high-volume, high-resolution ecephys.
+    upload_rate_mb: float, optional
+        Estimate of the upload rate of a single file to the DANDI archive.
+    compression_ratio: float, optional
+        Esimate of the final average compression ratio for datasets in the file. Can vary widely.
     """
     c = 1 / compression_ratio  # compressed_size = total_size * c
     total_mb_s = (
