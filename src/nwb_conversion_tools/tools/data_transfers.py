@@ -24,13 +24,21 @@ def get_globus_dataset_content_sizes(globus_endpoint_id: str, path: str, recursi
 
 
 def get_s3_conversion_cost(
-    total_mb: int,
+    total_mb: float,
     transfer_rate_mb: float = 20.0,
     conversion_rate_mb: float = 17.0,
     upload_rate_mb: float = 40,
-    compression_ratio=1.7,
+    compression_ratio: float = 1.7,
 ):
-    """Evaluate potential cost of performing an entire conversion on S3 using full automation."""
+    """
+    Evaluate potential cost of performing an entire conversion on S3 using full automation.
+
+    Parameters
+    ----------
+    total_mb: float
+
+
+    """
     c = 1 / compression_ratio  # compressed_size = total_size * c
     total_mb_s = (
         total_mb**2 / 2 * (1 / transfer_rate_mb + (2 * c + 1) / conversion_rate_mb + 2 * c**2 / upload_rate_mb)
