@@ -18,6 +18,7 @@ def get_globus_dataset_content_sizes(globus_endpoint_id: str, path: str, recursi
 
     Returns dictionary whose keys are file names and values are sizes in bytes.
     """
-    contents = json.loads(os.popen(f"globus ls -Fjson {globus_endpoint_id}:{path} --recursive").read())
+    recursive_flag = " --recursive" if recursive else ""
+    contents = json.loads(os.popen(f"globus ls -Fjson {globus_endpoint_id}:{path}{recursive_flag}").read())
     files_and_sizes = {item["name"]: item["size"] for item in contents["DATA"] if item["type"] == "file"}
     return files_and_sizes

@@ -1,10 +1,21 @@
+import os
 from datetime import datetime
 
+import pytest
 from pynwb.base import ProcessingModule
 from hdmf.testing import TestCase
 
 from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 from nwb_conversion_tools.tools.data_transfers import get_globus_dataset_content_sizes
+
+try:
+    import globus_cli
+
+    HAVE_GLOBUS, LOGGED_INTO_GLOBUS = True, True
+    if not os.popen("globus ls 188a6110-96db-11eb-b7a9-f57b2d55370d").read():
+        LOGGED_INTO_GLOBUS = False
+except ModuleNotFoundError:
+    HAVE_GLOBUS, LOGGED_INTO_GLOBUS = False, False
 
 
 class TestConversionTools(TestCase):
@@ -37,8 +48,13 @@ class TestConversionTools(TestCase):
             make_nwbfile_from_metadata(metadata=dict())
 
 
+@pytest.mark.skipif(
+    not HAVE_GLOBUS or not LOGGED_INTO_GLOBUS,
+    reason="You must have globus installed and be logged in to run this test!",
+)
 def test_get_globus_dataset_content_sizes():
     """Test is fixed to a subpath that is somewhat unlikely to change in the future."""
+    globus_cli.login_manager.LoginManager._TEST_MODE = True
     assert get_globus_dataset_content_sizes(
         globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
         path="/SenzaiY/YutaMouse41/YutaMouse41-150821/originalClu/",
