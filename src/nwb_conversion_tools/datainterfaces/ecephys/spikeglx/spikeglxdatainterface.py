@@ -102,7 +102,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]
         electrode_groups = [
-            dict(name=group_name, description="no description", location="unknown", device=device["name"])
+            dict(
+                name=group_name,
+                description=f"a group representing shank {group_name}",
+                location="unknown",
+                device=device["name"],
+            )
             for group_name in set(self.recording_extractor.get_property("group_name"))
         ]
         metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
