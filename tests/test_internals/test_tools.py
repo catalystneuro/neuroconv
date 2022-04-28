@@ -104,9 +104,32 @@ def test_get_s3_conversion_cost_standard():
     not HAVE_GLOBUS or not LOGGED_INTO_GLOBUS,
     reason="You must have globus installed and be logged in to run this test!",
 )
-def test_get_s3_conversion_cost_from_globus():
+def test_get_s3_conversion_cost_from_globus_single_session():
     content_sizes = get_globus_dataset_content_sizes(
         globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
         path="/SenzaiY/YutaMouse41/YutaMouse41-150821/originalClu/",
     )
     assert get_s3_conversion_cost(total_mb=sum(content_sizes.values()) / 1e6) == 1.756555806400279e-13
+
+
+@pytest.mark.skipif(
+    not HAVE_GLOBUS or not LOGGED_INTO_GLOBUS,
+    reason="You must have globus installed and be logged in to run this test!",
+)
+def test_get_s3_conversion_cost_from_globus_multiple_sessions():
+    all_content_sizes = {
+        session_name: get_globus_dataset_content_sizes(
+            globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
+            path=f"/SenzaiY/YutaMouse41/{session_name}",
+        )
+        for session_name in ["YutaMouse41-150821", "YutaMouse41-150829"]
+    }
+    assert (
+        sum(
+            [
+                get_s3_conversion_cost(total_mb=sum(content_sizes.values()) / 1e6)
+                for content_sizes in all_content_sizes.values()
+            ]
+        )
+        == 1.3393785277236152e-07
+    )
