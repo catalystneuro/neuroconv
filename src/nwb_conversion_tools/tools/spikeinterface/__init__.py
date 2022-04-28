@@ -7,4 +7,5 @@ from .spikeinterface import (
     add_epochs,
     write_recording,
     write_sorting,
+    add_units_table,
 )
