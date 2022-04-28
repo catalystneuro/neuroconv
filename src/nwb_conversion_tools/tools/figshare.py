@@ -96,7 +96,7 @@ def download_collection(collection_id: int, destination: str) -> None:
     )
 
     # iterate over articles
-    for article_record in tqdm(article_records, desc="articles in collection {}", leave=False):
+    for article_record in tqdm(article_records, desc="articles in collection", leave=False):
         download_article(
             article_record=article_record,
             destination=os.path.join(destination, article_record["title"]),
