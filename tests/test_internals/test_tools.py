@@ -1,15 +1,19 @@
 import os
 from datetime import datetime
+from tempfile import mkdtemp
+from pathlib import Path
 
 import pytest
-from pynwb.base import ProcessingModule
+from pynwb import NWBHDF5IO, ProcessingModule
 from hdmf.testing import TestCase
 
+from nwbinspector.tools import make_minimal_nwbfile
 from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 from nwb_conversion_tools.tools.data_transfers import (
     get_globus_dataset_content_sizes,
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,
+    automatic_dandi_upload,
 )
 
 try:
@@ -159,3 +163,12 @@ def test_estimate_total_conversion_runtime():
         1235294.1176470588,
         12352941.176470589,
     ]
+
+
+def test_automatic_dandi_upload():
+    nwb_folder_path = Path(mkdtemp()) / "test_dandi_upload"
+    with NWBHDF5IO(path=nwb_folder_path / "test_nwb" / "test_nwb_1.nwb", mode="w") as io:
+        io.write(make_minimal_nwbfile())
+    automatic_dandi_upload(
+        nwb_folder_path=nwb_folder_path, dandiset_id="200560", staging=True, api_token=os.getenv("DANDI_TOKEN")
+    )
