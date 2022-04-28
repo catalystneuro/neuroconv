@@ -32,6 +32,7 @@ from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunki
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from nwb_conversion_tools.utils import FilePathType
+from nwb_conversion_tools.tools.nwb_helpers import get_module
 
 testing_session_time = datetime.now().astimezone()
 
@@ -842,6 +843,29 @@ class TestAddUnitsTable(TestCase):
         expected_unit_names_in_units_table = unit_names
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_write_units_table_in_processing_module(self):
+        """ """
+
+        units_table_name = "testing_processing"
+        unit_table_description = "testing_description"
+        add_units_table(
+            sorting=self.base_sorting,
+            nwbfile=self.nwbfile,
+            units_table_name=units_table_name,
+            unit_table_description=unit_table_description,
+            write_in_processing_module=True,
+        )
+
+        ecephys_mod = get_module(
+            nwbfile=self.nwbfile,
+            name="ecephys",
+            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
+        )
+        self.assertIn(units_table_name, ecephys_mod.data_interfaces)
+        units_table = ecephys_mod[units_table_name]
+        self.assertEqual(units_table.name, units_table_name)
+        self.assertEqual(units_table.description, unit_table_description)
 
 
 if __name__ == "__main__":

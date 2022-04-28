@@ -1079,23 +1079,20 @@ def add_units_table(
     if sampling_frequency is None:
         raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
 
-    if not write_in_processing_module:
-        units_table_name == "units"
-
     if write_in_processing_module:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
         )
-        if units_table_name not in nwbfile.processing:
+        if units_table_name not in ecephys_mod.data_interfaces:
             units_table = pynwb.misc.Units(name=units_table_name, description=unit_table_description)
             ecephys_mod.add(units_table)
 
         units_table = ecephys_mod[units_table_name]
     else:
         if nwbfile.units is None:
-            nwbfile.units = pynwb.misc.Units(name=units_table_name, description=unit_table_description)
+            nwbfile.units = pynwb.misc.Units(name="units", description=unit_table_description)
         units_table = nwbfile.units
 
     default_descriptions = dict(
