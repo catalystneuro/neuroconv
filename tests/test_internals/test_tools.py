@@ -49,7 +49,7 @@ class TestConversionTools(TestCase):
 
 
 @pytest.mark.skipif(
-    not HAVE_GLOBUS or not LOGGED_INTO_GLOBUS,
+    not (HAVE_GLOBUS and LOGGED_INTO_GLOBUS),
     reason="You must have globus installed and be logged in to run this test!",
 )
 def test_get_globus_dataset_content_sizes():
