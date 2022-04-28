@@ -99,24 +99,24 @@ def automatic_dandi_upload(
     api_token: Optional[str] = None,
 ):
     """
-
+    Fully automated upload of NWBFiles to a DANDISet.
 
     Parameters
     ----------
     nwb_folder_path : FolderPathType
-      DESCRIPTION.
+        Folder containing the NWBFiles to be uploaded.
     dandiset_id : str
-      Six-digit string identifier for the DANDISet.
+        Six-digit string identifier for the DANDISet the NWBFiles will be uploaded to.
     version : str, optional
-      "draft" or "version".
-      The default is "draft".
+        "draft" or "version".
+        The default is "draft".
     staging : bool, optional
-      Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
-      The default is False.
+        Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
+        The default is False.
     api_token : str
-      Your API token for your DANDI account - DO NOT STORE THIS IN ANY CODE ON GITHUB.
-      Use environment variables for CI, or interactivity for personal usage.
-      Or store personal conversion scripts containing the token outside of GitHub.
+        Your API token for your DANDI account - DO NOT STORE THIS IN ANY CODE ON GITHUB.
+        Use environment variables for CI, or interactivity for personal usage.
+        Or store personal conversion scripts containing the token outside of GitHub.
     """
     version = "draft" if version is None else version
     if api_token is None:
@@ -138,7 +138,6 @@ def automatic_dandi_upload(
     assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
 
     dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
-
     proc = Popen(dandi_upload_command, shell=True, stdin=PIPE)
     proc.stdin.write(bytes(f"{api_token}", "utf-8"))
     upload_return = proc.communicate()
