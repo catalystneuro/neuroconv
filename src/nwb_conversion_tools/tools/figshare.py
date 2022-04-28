@@ -49,15 +49,14 @@ def download_article(article_record: dict, destination: str) -> None:
 
     """
     # if article directory does not exist, create it
-    article_directory = os.path.join(destination, article_record["title"])
-    if not os.path.exists(article_directory):
-        os.mkdir(article_directory)
+    if not os.path.exists(destination):
+        os.mkdir(destination)
 
     # get all metadata for that article
     article_metadata = json.loads(requests.get(BASE_URL + f'/articles/{article_record["id"]}').content)
 
     # write metadata file
-    metadata_filepath = os.path.join(article_directory, "metadata.json")
+    metadata_filepath = os.path.join(destination, "metadata.json")
     if not os.path.exists(metadata_filepath):
         with open(metadata_filepath, "w") as metadata_file:
             json.dump(
@@ -68,7 +67,7 @@ def download_article(article_record: dict, destination: str) -> None:
     # download data files
     file_records = article_metadata["files"]
     for file_record in tqdm(file_records, desc=f"files in article {article_record['title']}", leave=False):
-        filepath = os.path.join(article_directory, file_record["name"])
+        filepath = os.path.join(destination, file_record["name"])
         if os.path.exists(filepath) and os.path.getsize(filepath) == file_record["size"]:
             continue
         with tqdm(desc=file_record["name"], miniters=1, leave=False) as t:
