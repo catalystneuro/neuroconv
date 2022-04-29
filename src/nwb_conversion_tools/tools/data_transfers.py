@@ -156,7 +156,7 @@ def automatic_dandi_upload(
 
     dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
     proc = Popen(dandi_upload_command, shell=True, stdin=PIPE)
-    proc.stdin.write(bytes(f"{api_token}", "utf-8"))
+    proc.stdin.write(bytes(api_token, "utf-8"))
     upload_return = proc.communicate()
     proc.terminate()
     assert upload_return, "DANDI upload failed!"
