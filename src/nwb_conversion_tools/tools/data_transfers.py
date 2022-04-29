@@ -91,15 +91,25 @@ def estimate_s3_conversion_cost(
     return cost_mb_s * total_mb_s
 
 
-def dandi_upload(
+def automatic_dandi_upload(
     nwb_folder_path: FolderPathType,
     dandiset_id: str,
     version: Optional[str] = None,
     staging: bool = False,
-    api_token: Optional[str] = None,
 ):
     """
     Fully automated upload of NWBFiles to a DANDISet.
+
+    Requires an API token set as an envrinment variable named DANDI_API_KEY.
+
+    To set this with Python, run
+        import os
+
+        os.environ["DANDI_API_KEY"] = "my_dandi_api_key"
+    or with bash, run
+        export DANDI_API_KEY="my_dandi_api_key"
+
+    DO NOT STORE THIS IN ANY PUBLICLY SHARED CODE.
 
     Parameters
     ----------
@@ -113,14 +123,13 @@ def dandi_upload(
     staging : bool, optional
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
-    api_token : str
-        Your API token for your DANDI account - DO NOT STORE THIS IN ANY CODE ON GITHUB.
-        Use environment variables for CI, or interactivity for personal usage.
-        Or store personal conversion scripts containing the token outside of GitHub.
     """
     version = "draft" if version is None else version
-    if api_token is None:
-        api_token = input("Please enter your DANDI API token: ")
+    api_token = os.getenv("DANDI_API_KEY")
+    assert api_token, (
+        "Unable to find environment variable 'DANDI_API_KEY'. "
+        "Please retrieve your token from DANDI and set this environment variable."
+    )
     url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
 
@@ -130,7 +139,7 @@ def dandi_upload(
         pattern=r"^Summary: No validation errors among \d+ file\(s\)$", string=validate_return
     ), "DANDI validation failed!"
 
-    download_return = os.popen(f"dandi download {dandiset_url}").read()
+    download_return = os.popen(f"dandi download {dandiset_url} --download dandiset.yaml").read()
     assert download_return, "DANDI download failed!"  # output is a bit too dynamic to regex; if it fails it is empty
 
     os.chdir(nwb_folder_path.parent / dandiset_id)
