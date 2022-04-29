@@ -129,8 +129,7 @@ def automatic_dandi_upload(
     """
     dandiset_folder_path = nwb_folder_path.parent if dandiset_folder_path is None else dandiset_folder_path
     version = "draft" if version is None else version
-    api_token = os.getenv("DANDI_API_KEY")
-    assert api_token, (
+    assert os.getenv("DANDI_API_KEY"), (
         "Unable to find environment variable 'DANDI_API_KEY'. "
         "Please retrieve your token from DANDI and set this environment variable."
     )
