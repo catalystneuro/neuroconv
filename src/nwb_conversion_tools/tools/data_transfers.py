@@ -1,10 +1,14 @@
 """Collection of helper functions for assessing and performing automated data transfers."""
 import os
+import subprocess
 import json
 import re
 from typing import Dict, Optional
 from pathlib import Path
-from subprocess import Popen, PIPE
+from warnings import warn
+from shutil import rmtree
+
+import psutil
 
 from ..utils import FolderPathType, OptionalFolderPathType
 
@@ -14,6 +18,20 @@ try:  # pragma: no cover
     HAVE_GLOBUS = True
 except ModuleNotFoundError:
     HAVE_GLOBUS = False
+
+
+def _kill_process(proc, timeout: float = 60.0):
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        process = psutil.Process(proc.pid)
+        for proc in process.children(recursive=True):
+            proc.kill()
+        process.kill()
+
+
+def _deploy_process(command, catch_output: bool = False):
+    pass
 
 
 def get_globus_dataset_content_sizes(globus_endpoint_id: str, path: str, recursive: bool = True) -> Dict[str, int]:
@@ -91,7 +109,7 @@ def estimate_s3_conversion_cost(
     return cost_mb_s * total_mb_s
 
 
-def automatic_dandi_upload(
+def dandi_upload(
     dandiset_id: str,
     nwb_folder_path: FolderPathType,
     dandiset_folder_path: OptionalFolderPathType = None,
@@ -127,6 +145,7 @@ def automatic_dandi_upload(
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
     """
+    initial_wd = os.getcwd()
     dandiset_folder_path = nwb_folder_path.parent if dandiset_folder_path is None else dandiset_folder_path
     version = "draft" if version is None else version
     assert os.getenv("DANDI_API_KEY"), (
@@ -137,25 +156,43 @@ def automatic_dandi_upload(
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
 
     os.chdir(nwb_folder_path.parent)
-    validate_return = os.popen(f"dandi validate {nwb_folder_path.name}").read().strip()
+    # validate_return = os.popen(f"dandi validate {nwb_folder_path.name}").read().strip()
+    validate_proc = subprocess.Popen(
+        f"dandi validate {nwb_folder_path.name}", stdout=subprocess.PIPE, shell=True, text=True
+    )
+    validate_return = validate_proc.communicate()[0].strip()
+    _kill_process(proc=validate_proc)
     assert re.fullmatch(
         pattern=r"^Summary: No validation errors among \d+ file\(s\)$", string=validate_return
     ), "DANDI validation failed!"
 
     os.chdir(dandiset_folder_path)
-    download_return = os.popen(f"dandi download {dandiset_url} --download dandiset.yaml").read()
+    # download_return = os.popen(f"dandi download {dandiset_url} --download dandiset.yaml").read()
+    download_proc = subprocess.Popen(
+        f"dandi download {dandiset_url} --download dandiset.yaml", stdout=subprocess.PIPE, shell=True, text=True
+    )
+    download_return = download_proc.communicate()[0].strip()
+    _kill_process(proc=download_proc)
     assert download_return, "DANDI download failed!"  # output is a bit too dynamic to regex; if it fails it is empty
 
     os.chdir(dandiset_folder_path / dandiset_id)
     # .absolute() to generalize default behavior vs. specified dandiset_folder_path
-    os.system(f"dandi organize {nwb_folder_path.absolute()}")
+    # os.system(f"dandi organize {nwb_folder_path.absolute()}")
+    organize_proc = subprocess.Popen(f"dandi organize {nwb_folder_path.absolute()}", shell=True)
+    _kill_process(proc=organize_proc, timeout=360)
     assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
 
     dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
-    upload_return = os.popen(dandi_upload_command)
+    # upload_return = os.popen(dandi_upload_command)
+    upload_proc = subprocess.Popen(dandi_upload_command, stdout=subprocess.PIPE, shell=True, text=True)
+    upload_return = upload_proc.communicate()[0]
+    _kill_process(proc=upload_proc)
     assert upload_return, "DANDI upload failed!"
 
     # cleanup - should be confirmed manually, Windows especially can complain
-    os.chdir(nwb_folder_path.parent)  # to prevent usage permissions
-    (nwb_folder_path.parent / dandiset_id).unlink()
-    nwb_folder_path.unlink()
+    os.chdir(initial_wd)  # restore to initial working directory; also to prevent additional process usage permissions
+    try:
+        rmtree(path=nwb_folder_path.parent / dandiset_id)
+        rmtree(path=nwb_folder_path)
+    except PermissionError:
+        warn("Unable to clean up source files and dandiset! Please manually delete them.")
