@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from pathlib import Path
 from subprocess import Popen, PIPE
 
-from ..utils import FolderPathType
+from ..utils import FolderPathType, OptionalFolderPathType
 
 try:  # pragma: no cover
     import globus_cli
@@ -93,6 +93,7 @@ def estimate_s3_conversion_cost(
 
 def automatic_dandi_upload(
     nwb_folder_path: FolderPathType,
+    dandiset_folder_path: OptionalFolderPathType = None,
     dandiset_id: str,
     version: Optional[str] = None,
     staging: bool = False,
@@ -113,8 +114,12 @@ def automatic_dandi_upload(
 
     Parameters
     ----------
-    nwb_folder_path : FolderPathType
+    nwb_folder_path : folder path
         Folder containing the NWBFiles to be uploaded.
+    dandiset_folder_path : folder path, optional
+        A separate folder location within which to download the dandiset.
+        Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
+        Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
     dandiset_id : str
         Six-digit string identifier for the DANDISet the NWBFiles will be uploaded to.
     version : str, optional
@@ -124,6 +129,7 @@ def automatic_dandi_upload(
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
     """
+    dandiset_folder_path = nwb_folder_path.parent if dandiset_folder_path is None else dandiset_folder_path
     version = "draft" if version is None else version
     api_token = os.getenv("DANDI_API_KEY")
     assert api_token, (
@@ -139,11 +145,13 @@ def automatic_dandi_upload(
         pattern=r"^Summary: No validation errors among \d+ file\(s\)$", string=validate_return
     ), "DANDI validation failed!"
 
+    os.chdir(dandiset_folder_path)
     download_return = os.popen(f"dandi download {dandiset_url} --download dandiset.yaml").read()
     assert download_return, "DANDI download failed!"  # output is a bit too dynamic to regex; if it fails it is empty
 
-    os.chdir(nwb_folder_path.parent / dandiset_id)
-    os.system(f"dandi organize ../{nwb_folder_path.name}")
+    os.chdir(dandiset_folder_path / dandiset_id)
+    # .absolute() to generalize default behavior vs. specified dandiset_folder_path
+    os.system(f"dandi organize {nwb_folder_path.absolute()}")
     assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
 
     dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
