@@ -20,21 +20,38 @@ except ModuleNotFoundError:
     HAVE_GLOBUS = False
 
 
-def _kill_process(proc, timeout: float = 60.0):
+def _kill_process(proc, timeout: Optional[float] = None):
+    """Private helper for ensuring a process and any subprocesses are properly terminated after a timeout period."""
+
+    def _kill(proc):
+        """Local helper for ensuring a process and any subprocesses are properly terminated."""
+        try:
+            process = psutil.Process(proc.pid)
+            for proc in process.children(recursive=True):
+                proc.kill()
+            process.kill()
+        except psutil.NoSuchProcess:  # good process cleaned itself up
+            pass
+
     try:
         proc.wait(timeout=timeout)
+        _kill(proc=proc)
     except subprocess.TimeoutExpired:
-        process = psutil.Process(proc.pid)
-        for proc in process.children(recursive=True):
-            proc.kill()
-        process.kill()
+        _kill(proc=proc)
 
 
-def _deploy_process(command, catch_output: bool = False):
-    pass
+def _deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
+    """Private helper for efficient submission and cleanup of shell processes."""
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True)
+    output = proc.communicate()[0].strip() if catch_output else None
+    if timeout is not None:
+        _kill_process(proc=proc, timeout=timeout)
+    return output
 
 
-def get_globus_dataset_content_sizes(globus_endpoint_id: str, path: str, recursive: bool = True) -> Dict[str, int]:
+def get_globus_dataset_content_sizes(
+    globus_endpoint_id: str, path: str, recursive: bool = True, timeout: float = 120.0
+) -> Dict[str, int]:
     """
     May require external login via 'globus login' from CLI.
 
@@ -43,7 +60,11 @@ def get_globus_dataset_content_sizes(globus_endpoint_id: str, path: str, recursi
     assert HAVE_GLOBUS, "You must install the globus CLI (pip install globus-cli)!"
 
     recursive_flag = " --recursive" if recursive else ""
-    contents = json.loads(os.popen(f"globus ls -Fjson {globus_endpoint_id}:{path}{recursive_flag}").read())
+    contents = json.loads(
+        _deploy_process(
+            command=f"globus ls -Fjson {globus_endpoint_id}:{path}{recursive_flag}", catch_output=True, timeout=timeout
+        )
+    )
     files_and_sizes = {item["name"]: item["size"] for item in contents["DATA"] if item["type"] == "file"}
     return files_and_sizes
 
@@ -115,6 +136,7 @@ def dandi_upload(
     dandiset_folder_path: OptionalFolderPathType = None,
     version: Optional[str] = None,
     staging: bool = False,
+    process_timeouts: Optional[Dict[str, Optional[float]]] = None,
 ):
     """
     Fully automated upload of NWBFiles to a DANDISet.
@@ -144,10 +166,18 @@ def dandi_upload(
     staging : bool, optional
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
+    process_timeouts : Dict[str, Optional[float]], optional
+        Dictionary used to specify mazimum timeout of each individual process in the DANDI upload.
+        Keys must be from ['validate', 'download', 'organize', 'upload'].
+        The value of each key is number of seconds to wait before forcibly terminating.
+        Set any value to None to wait until the process completes, however long that may be.
+        The default is for all processes except organize to wait until full completion
+        (in testing, organize subprocess doesn't seem to want to wait successfully).
     """
     initial_wd = os.getcwd()
     dandiset_folder_path = nwb_folder_path.parent if dandiset_folder_path is None else dandiset_folder_path
     version = "draft" if version is None else version
+    process_timeouts = dict() if process_timeouts is None else process_timeouts
     assert os.getenv("DANDI_API_KEY"), (
         "Unable to find environment variable 'DANDI_API_KEY'. "
         "Please retrieve your token from DANDI and set this environment variable."
@@ -156,37 +186,34 @@ def dandi_upload(
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
 
     os.chdir(nwb_folder_path.parent)
-    # validate_return = os.popen(f"dandi validate {nwb_folder_path.name}").read().strip()
-    validate_proc = subprocess.Popen(
-        f"dandi validate {nwb_folder_path.name}", stdout=subprocess.PIPE, shell=True, text=True
+    validate_return = _deploy_process(
+        command=f"dandi validate {nwb_folder_path.name}",
+        catch_output=True,
+        timeout=process_timeouts.get("validate"),
     )
-    validate_return = validate_proc.communicate()[0].strip()
-    _kill_process(proc=validate_proc)
     assert re.fullmatch(
         pattern=r"^Summary: No validation errors among \d+ file\(s\)$", string=validate_return
     ), "DANDI validation failed!"
 
     os.chdir(dandiset_folder_path)
-    # download_return = os.popen(f"dandi download {dandiset_url} --download dandiset.yaml").read()
-    download_proc = subprocess.Popen(
-        f"dandi download {dandiset_url} --download dandiset.yaml", stdout=subprocess.PIPE, shell=True, text=True
+    download_return = _deploy_process(
+        command=f"dandi download {dandiset_url} --download dandiset.yaml",
+        catch_output=True,
+        timeout=process_timeouts.get("download"),
     )
-    download_return = download_proc.communicate()[0].strip()
-    _kill_process(proc=download_proc)
     assert download_return, "DANDI download failed!"  # output is a bit too dynamic to regex; if it fails it is empty
 
     os.chdir(dandiset_folder_path / dandiset_id)
-    # .absolute() to generalize default behavior vs. specified dandiset_folder_path
-    # os.system(f"dandi organize {nwb_folder_path.absolute()}")
-    organize_proc = subprocess.Popen(f"dandi organize {nwb_folder_path.absolute()}", shell=True)
-    _kill_process(proc=organize_proc, timeout=360)
+    _deploy_process(
+        command=f"dandi organize {nwb_folder_path.absolute()}",  # .absolute() needed if dandiset folder is elsewhere
+        timeout=process_timeouts.get("organize", 120.0),
+    )
     assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
 
     dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
-    # upload_return = os.popen(dandi_upload_command)
-    upload_proc = subprocess.Popen(dandi_upload_command, stdout=subprocess.PIPE, shell=True, text=True)
-    upload_return = upload_proc.communicate()[0]
-    _kill_process(proc=upload_proc)
+    upload_return = _deploy_process(
+        command=dandi_upload_command, catch_output=True, timeout=process_timeouts.get("upload")
+    )
     assert upload_return, "DANDI upload failed!"
 
     # cleanup - should be confirmed manually, Windows especially can complain
