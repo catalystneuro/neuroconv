@@ -103,12 +103,10 @@ def automatic_dandi_upload(
 
     Requires an API token set as an envrinment variable named DANDI_API_KEY.
 
-    To set this with Python, run
-        import os
-
-        os.environ["DANDI_API_KEY"] = "my_dandi_api_key"
-    or with bash, run
-        export DANDI_API_KEY="my_dandi_api_key"
+    To set this in your bash terminal in Linux or MacOS, run
+        export DANDI_API_KEY="..."
+    or in Windows
+        set DANDI_API_KEY="..."
 
     DO NOT STORE THIS IN ANY PUBLICLY SHARED CODE.
 
@@ -155,10 +153,7 @@ def automatic_dandi_upload(
     assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
 
     dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
-    proc = Popen(dandi_upload_command, shell=True, stdin=PIPE)
-    proc.stdin.write(bytes(api_token, "utf-8"))
-    upload_return = proc.communicate()
-    proc.terminate()
+    upload_return = os.popen(dandi_upload_command)
     assert upload_return, "DANDI upload failed!"
 
     # cleanup - should be confirmed manually, Windows especially can complain
