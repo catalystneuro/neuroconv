@@ -92,9 +92,9 @@ def estimate_s3_conversion_cost(
 
 
 def automatic_dandi_upload(
+    dandiset_id: str,
     nwb_folder_path: FolderPathType,
     dandiset_folder_path: OptionalFolderPathType = None,
-    dandiset_id: str,
     version: Optional[str] = None,
     staging: bool = False,
 ):
@@ -112,14 +112,14 @@ def automatic_dandi_upload(
 
     Parameters
     ----------
+    dandiset_id : str
+        Six-digit string identifier for the DANDISet the NWBFiles will be uploaded to.
     nwb_folder_path : folder path
         Folder containing the NWBFiles to be uploaded.
     dandiset_folder_path : folder path, optional
         A separate folder location within which to download the dandiset.
         Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
         Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
-    dandiset_id : str
-        Six-digit string identifier for the DANDISet the NWBFiles will be uploaded to.
     version : str, optional
         "draft" or "version".
         The default is "draft".
