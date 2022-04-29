@@ -91,7 +91,7 @@ def estimate_s3_conversion_cost(
     return cost_mb_s * total_mb_s
 
 
-def automatic_dandi_upload(
+def dandi_upload(
     nwb_folder_path: FolderPathType,
     dandiset_id: str,
     version: Optional[str] = None,
