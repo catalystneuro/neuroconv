@@ -79,7 +79,7 @@ def transfer_globus_content(
     display_progress: bool = True,
     progress_update_rate: float = 60.0,
     progress_update_timeout: float = 600.0,
-) -> bool:
+) -> (bool, List[str]):
     """
     Track download progress for transferring content from source_id to destination_id:destination_folder.
 
@@ -119,6 +119,8 @@ def transfer_globus_content(
 
         If 'display_progress'=True (the default), then this function returns the total status of all transfers
         when they either finish or the progress tracking times out.
+    task_ids : list of strings
+        List of the task IDs submitted to globus, if further information is needed to reestablish tracking or terminate.
     """
     source_files = [[source_files]] if isinstance(source_files, str) else source_files
     # assertion check is ensure the logical iteration does not occur over the individual string values
@@ -182,7 +184,7 @@ def transfer_globus_content(
                 task_message = json.loads(_deploy_process(f"globus task show {task_id}", catch_output=True))
                 all_status[j] = task_message["status"] == "SUCCEEDED"
                 all_pbars[j].update(n=task_message["bytes_transferred"])
-    return success
+    return success, list(task_total_sizes)
 
 
 def estimate_total_conversion_runtime(
