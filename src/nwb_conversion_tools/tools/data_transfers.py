@@ -3,12 +3,14 @@ import os
 import subprocess
 import json
 import re
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Union
 from pathlib import Path
 from warnings import warn
 from shutil import rmtree
+from time import sleep, time
 
 import psutil
+from tqdm import tqdm
 
 from ..utils import FolderPathType, OptionalFolderPathType
 
@@ -67,6 +69,120 @@ def get_globus_dataset_content_sizes(
     )
     files_and_sizes = {item["name"]: item["size"] for item in contents["DATA"] if item["type"] == "file"}
     return files_and_sizes
+
+
+def transfer_globus_content(
+    source_id: str,
+    source_files: Union[str, List[List[str]]],
+    destination_id: str,
+    destination_folder: FolderPathType,
+    display_progress: bool = True,
+    progress_update_rate: float = 60.0,
+    progress_update_timeout: float = 600.0,
+) -> bool:
+    """
+    Track download progress for transferring content from source_id to destination_id:destination_folder.
+
+    Parameters
+    ----------
+    source_id : string
+        Source Globus ID.
+    source_files : string, or list of strings, or list of lists of strings
+        A string path or list-of-lists of string paths of files to transfer from the source_id.
+        If using a nested list, the outer level indicates which requests will be batched together.
+        If using a nested list, all items in a single batch level must be from the same common directory.
+
+        It is recommended to transfer the largest file(s) with minimal batching,
+        and to batch a large number of very small files together.
+
+        It is also generally recommended to submit up to 3 simultaneous transfer,
+        *i.e.*, `source_files` is recommended to have at most 3 items all of similar total byte size.
+    destination_id : string
+        Destination Globus ID.
+    destination_folder : FolderPathType
+        Absolute path to a local folder where all content will be transfered to.
+    display_progress : bool, optional
+        Whether or not to display the transfer as progress bars using `tqdm`.
+        Defaults to True.
+    progress_update_rate : float, optional
+        How frequently (in seconds) to update the progress bar display tracking the data transfer.
+        Defaults to 30 seconds.
+    progress_update_tiemout : float, optional
+        Maximum amount of time to monitor the transfer progress.
+        You may wish to set this to be longer when transferring very large files.
+        Defaults to 10 minutes.
+
+    Returns
+    -------
+    success : bool
+        If 'display_progress'=False, and the transfer was succesfully initiated, then this function returns True.
+
+        If 'display_progress'=True (the default), then this function returns the total status of all transfers
+        when they either finish or the progress tracking times out.
+    """
+    source_files = [[source_files]] if isinstance(source_files, str) else source_files
+    # assertion check is ensure the logical iteration does not occur over the individual string values
+    assert (
+        isinstance(source_files, list) and source_files and isinstance(source_files[0], list) and source_files[0]
+    ), "'source_files' must be a non-empty nested list-of-lists to indicate batched transfers!"
+    assert destination_folder.is_absolute(), (
+        "The 'destination_folder' must be an absolute path to resolve ambiguity with relative Globus head "
+        "as well as avoiding Globus access permissions to a personal relative path!"
+    )
+
+    folder_content_sizes = dict()
+    task_total_sizes = dict()
+    for j, batched_source_files in enumerate(source_files):
+        paths_file = Path(destination_folder) / f"paths_{j}.txt"
+        # .as_posix() to ensure correct string form Globus expects
+        # ':' replacement for Windows drives
+        source_folder = Path(batched_source_files[0]).parent.as_posix().replace(":", "")
+        destination_folder_name = Path(destination_folder).as_posix().replace(":", "")
+        with open(file=paths_file, mode="w") as f:
+            for source_file in batched_source_files:
+                file_name = Path(source_file).name
+                f.write(f"{file_name} {file_name}\n")
+
+        transfer_message = _deploy_process(
+            command=(
+                f"globus transfer {source_id}:{source_folder} {destination_id}:{destination_folder_name} "
+                f"--batch {paths_file}"
+            ),
+            catch_output=True,
+        )
+        task_id = re.findall(
+            pattern=(
+                "^Message: The transfer has been accepted and a task has been created and queued for "
+                "execution\nTask ID: (.+)\n$"
+            ),
+            string=transfer_message,
+        )
+        assert task_id is not None, "Transfer submission failed! Globus output:\n{transfer_message}."
+        # paths_file.unlink()
+
+        if source_folder not in folder_content_sizes:
+            contents = get_globus_dataset_content_sizes(globus_endpoint_id=source_id, path=source_folder)
+            folder_content_sizes.update(contents)
+        task_total_sizes.update(
+            {task_id: sum([folder_content_sizes[source_folder][source_file] for source_file in batched_source_files])}
+        )
+
+    success = True
+    if display_progress:
+        all_pbars = [
+            tqdm((), total=total_size, position=j, leave=True) for j, total_size in enumerate(task_total_sizes.values())
+        ]
+        all_status = [False for _ in task_total_sizes]
+        success = all(all_status)
+        time_so_far = 0.0
+        start_time = time()
+        while not success and time_so_far <= progress_update_timeout:
+            time_so_far = time() - start_time
+            for j, (task_id, task_total_size) in enumerate(task_total_sizes.items()):
+                task_message = json.loads(_deploy_process(f"globus task show {task_id}", catch_output=True))
+                all_status[j] = task_message["status"] == "SUCCEEDED"
+                all_pbars[j].update(n=task_message["bytes_transferred"])
+    return success
 
 
 def estimate_total_conversion_runtime(
