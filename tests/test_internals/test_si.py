@@ -2,11 +2,14 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-import numpy as np
+from collections import defaultdict
 from datetime import datetime
 
+import numpy as np
+from pynwb import NWBHDF5IO, NWBFile
+
 import spikeextractors as se
-from spikeinterface.core.testing_tools import generate_recording
+from spikeinterface.core.testing_tools import generate_recording, generate_sorting
 from hdmf.testing import TestCase
 
 from spikeextractors.testing import (
@@ -16,7 +19,6 @@ from spikeextractors.testing import (
     check_recording_return_types,
     get_default_nwbfile_metadata,
 )
-from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools import spikeinterface  # testing aliased import
 from nwb_conversion_tools.tools.spikeinterface import (
@@ -24,11 +26,13 @@ from nwb_conversion_tools.tools.spikeinterface import (
     write_recording,
     write_sorting,
     add_electrodes,
+    add_units_table,
 )
 from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from nwb_conversion_tools.utils import FilePathType
+from nwb_conversion_tools.tools.nwb_helpers import get_module
 
 testing_session_time = datetime.now().astimezone()
 
@@ -323,12 +327,11 @@ class TestExtractors(unittest.TestCase):
         check_dumping(SX_nwb)
 
         # Test for handling skip_features argument
-        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. Set use_times=False
+        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames.
         write_sorting(
             sorting=self.SX2,
             save_path=path,
             skip_features=["widths"],
-            use_times=False,
             overwrite=True,
             metadata=self.placeholder_metadata,
         )
@@ -377,7 +380,7 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             name_out,
             units_name,
-            f"Intended units table name does not match what was written! (Out: {name_out}, should be: {units_name})",
+            f"Units table name not written correctly! (value is: {name_out}, should be: {units_name})",
         )
 
         units_description = "test_description"
@@ -391,8 +394,8 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             description_out,
             units_description,
-            "Intended units table description does not match what was written! "
-            f"(Out: {description_out}, should be: {units_description})",
+            "Units table description not written correctly! "
+            f"(value is: {description_out}, should be: {units_description})",
         )
 
     def check_metadata_write(self, metadata: dict, nwbfile_path: Path, recording: se.RecordingExtractor):
@@ -795,6 +798,74 @@ class TestAddElectrodes(TestCase):
         # The self.base_recording channel_ids are [0, 1, 2, 3]
         with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
             add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+
+
+class TestAddUnitsTable(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_units = 4
+        cls.base_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
+        # Base sorting unit ids are [0, 1, 2, 3]
+
+    def setUp(self):
+        """Start with a fresh NWBFile, and remapped sorters each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=datetime.now()
+        )
+        unit_ids = self.base_sorting.get_unit_ids()
+        self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
+
+        self.defaults = dict(spike_times=[1, 1, 1])
+
+    def test_integer_unit_names(self):
+        """Ensure add units_table gets the right units name for integer units ids."""
+        add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = ["0", "1", "2", "3"]
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_string_unit_names(self):
+        """Ensure add_units_table gets the right units name for string units ids"""
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = ["a", "b", "c", "d"]
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_non_overwriting_unit_names_sorting_property(self):
+        "add_units_table function should not ovewrtie the sorting object unit_name property"
+        unit_names = ["name a", "name b", "name c", "name d"]
+        self.sorting_1.set_property(key="unit_name", values=unit_names)
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = unit_names
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_write_units_table_in_processing_module(self):
+        """ """
+
+        units_table_name = "testing_processing"
+        unit_table_description = "testing_description"
+        add_units_table(
+            sorting=self.base_sorting,
+            nwbfile=self.nwbfile,
+            units_table_name=units_table_name,
+            unit_table_description=unit_table_description,
+            write_in_processing_module=True,
+        )
+
+        ecephys_mod = get_module(
+            nwbfile=self.nwbfile,
+            name="ecephys",
+            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
+        )
+        self.assertIn(units_table_name, ecephys_mod.data_interfaces)
+        units_table = ecephys_mod[units_table_name]
+        self.assertEqual(units_table.name, units_table_name)
+        self.assertEqual(units_table.description, unit_table_description)
 
 
 if __name__ == "__main__":
