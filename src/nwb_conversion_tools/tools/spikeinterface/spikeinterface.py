@@ -273,24 +273,27 @@ def add_electrodes(
         if nwbfile.electrodes is None or "rel_y" not in nwbfile.electrodes.colnames:
             nwbfile.add_electrode_column("rel_y", "y position of electrode in electrode group")
 
-    if metadata is None:
-        metadata = dict(Ecephys=dict())
+    # Test that metadata has the expected structure
+    electrodes_metadata = list()
+    if metadata is not None:
+        electrodes_metadata = metadata.get("Ecephys", dict()).get("Electrodes", list())
 
-    if "Ecephys" not in metadata:
-        metadata["Ecephys"] = dict()
-
-    if "Electrodes" not in metadata["Ecephys"]:
-        metadata["Ecephys"]["Electrodes"] = []
-
+    required_keys = {"name", "description"}
     assert all(
-        [isinstance(x, dict) and set(x.keys()) == {"name", "description"} for x in metadata["Ecephys"]["Electrodes"]]
+        [isinstance(property, dict) and set(property.keys()) == required_keys for property in electrodes_metadata]
     ), (
         "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, "
         "containing the keys 'name' and 'description'"
     )
+
     assert all(
-        [x["name"] != "group" for x in metadata["Ecephys"]["Electrodes"]]
+        [property["name"] != "group" for property in electrodes_metadata]
     ), "Passing metadata field 'group' is deprecated; pass group_name instead!"
+
+    # Transform to a dict that maps property name to its description
+    property_descriptions = dict()
+    for property in electrodes_metadata:
+        property_descriptions[property["name"]] = property["description"]
 
     # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
     data_to_add = defaultdict(dict)
@@ -302,13 +305,13 @@ def add_electrodes(
     for property in properties_to_extract:
         data = checked_recording.get_property(property)
         index = isinstance(data[0], (list, np.ndarray, tuple))
-        data_to_add[property].update(description=property, data=data, index=index)
+        # Fill with provided custom descriptions
+        description = property_descriptions.get(property, "no description")
+        data_to_add[property].update(description=description, data=data, index=index)
 
-    # Fill with provided custom descriptions
-    for x in metadata["Ecephys"]["Electrodes"]:
-        if x["name"] not in list(data_to_add):
-            raise ValueError(f'"{x["name"]}" not a property of se object, set it first and rerun')
-        data_to_add[x["name"]]["description"] = x["description"]
+    extra_descriptions = [property for property in property_descriptions.keys() if property not in data_to_add]
+    if extra_descriptions:
+        raise ValueError(f"{extra_descriptions} are not available in the recording extractor, set them first")
 
     # Channel name logic
     channel_ids = checked_recording.get_channel_ids()
