@@ -53,7 +53,7 @@ def deploy_process(command, catch_output: bool = False, timeout: Optional[float]
 
 def get_globus_dataset_content_sizes(
     globus_endpoint_id: str, path: str, recursive: bool = True, timeout: float = 120.0
-) -> Dict[str, int]:
+) -> Dict[str, int]:  # pragma: no cover
     """
     May require external login via 'globus login' from CLI.
 
@@ -72,23 +72,23 @@ def get_globus_dataset_content_sizes(
 
 
 def transfer_globus_content(
-    source_id: str,
+    source_endpoint_id: str,
     source_files: Union[str, List[List[str]]],
-    destination_id: str,
+    destination_endpoint_id: str,
     destination_folder: FolderPathType,
     display_progress: bool = True,
     progress_update_rate: float = 60.0,
     progress_update_timeout: float = 600.0,
-) -> (bool, List[str]):
+) -> (bool, List[str]):  # pragma: no cover
     """
-    Track download progress for transferring content from source_id to destination_id:destination_folder.
+    Track progress for transferring contentfrom source_endpoint_id to destination_endpoint_id:destination_folder.
 
     Parameters
     ----------
-    source_id : string
+    source_endpoint_id : string
         Source Globus ID.
     source_files : string, or list of strings, or list of lists of strings
-        A string path or list-of-lists of string paths of files to transfer from the source_id.
+        A string path or list-of-lists of string paths of files to transfer from the source_endpoint_id.
         If using a nested list, the outer level indicates which requests will be batched together.
         If using a nested list, all items in a single batch level must be from the same common directory.
 
@@ -97,7 +97,7 @@ def transfer_globus_content(
 
         It is also generally recommended to submit up to 3 simultaneous transfer,
         *i.e.*, `source_files` is recommended to have at most 3 items all of similar total byte size.
-    destination_id : string
+    destination_endpoint_id : string
         Destination Globus ID.
     destination_folder : FolderPathType
         Absolute path to a local folder where all content will be transfered to.
@@ -115,19 +115,17 @@ def transfer_globus_content(
     Returns
     -------
     success : bool
-        If 'display_progress'=False, and the transfer was succesfully initiated, then this function returns True.
-
-        If 'display_progress'=True (the default), then this function returns the total status of all transfers
-        when they either finish or the progress tracking times out.
+        Returns the total status of all transfers when they either finish or the progress tracking times out.
     task_ids : list of strings
         List of the task IDs submitted to globus, if further information is needed to reestablish tracking or terminate.
     """
     source_files = [[source_files]] if isinstance(source_files, str) else source_files
+    destination_folder_path = Path(destination_folder)
     # assertion check is ensure the logical iteration does not occur over the individual string values
     assert (
         isinstance(source_files, list) and source_files and isinstance(source_files[0], list) and source_files[0]
     ), "'source_files' must be a non-empty nested list-of-lists to indicate batched transfers!"
-    assert destination_folder.is_absolute(), (
+    assert destination_folder_path.is_absolute(), (
         "The 'destination_folder' must be an absolute path to resolve ambiguity with relative Globus head "
         "as well as avoiding Globus access permissions to a personal relative path!"
     )
@@ -135,18 +133,18 @@ def transfer_globus_content(
     folder_content_sizes = dict()
     task_total_sizes = dict()
     for j, batched_source_files in enumerate(source_files):
-        paths_file = Path(destination_folder) / f"paths_{j}.txt"
+        paths_file = Path(destination_folder_path) / f"paths_{j}.txt"
         # .as_posix() to ensure correct string form Globus expects
         # ':' replacement for Windows drives
         source_folder = Path(batched_source_files[0]).parent.as_posix().replace(":", "")
-        destination_folder_name = Path(destination_folder).as_posix().replace(":", "")
+        destination_folder_name = destination_folder_path.as_posix().replace(":", "")
         with open(file=paths_file, mode="w") as f:
             for source_file in batched_source_files:
                 file_name = Path(source_file).name
                 f.write(f"{file_name} {file_name}\n")
 
         transfer_command = (
-            f"globus transfer {source_id}:{source_folder} {destination_id}:{destination_folder_name} "
+            f"globus transfer {source_endpoint_id}:{source_folder} {destination_endpoint_id}:{destination_folder_name} "
             f"--batch {paths_file}"
         )
         transfer_message = deploy_process(
@@ -164,7 +162,7 @@ def transfer_globus_content(
         assert task_id, f"Transfer submission failed! Globus output:\n{transfer_message}."
 
         if source_folder not in folder_content_sizes:
-            contents = get_globus_dataset_content_sizes(globus_endpoint_id=source_id, path=source_folder)
+            contents = get_globus_dataset_content_sizes(globus_endpoint_id=source_endpoint_id, path=source_folder)
             folder_content_sizes.update({source_folder: contents})
         task_total_sizes.update(
             {
@@ -177,26 +175,26 @@ def transfer_globus_content(
             }
         )
 
-    success = True
     if display_progress:
         all_pbars = [
             tqdm(desc=f"Transferring batch #{j}...", total=total_size, position=j, leave=True)
             for j, total_size in enumerate(task_total_sizes.values(), start=1)
         ]
-        all_status = [False for _ in task_total_sizes]
-        success = all(all_status)
-        time_so_far = 0.0
-        start_time = time()
-        while not success and time_so_far <= progress_update_timeout:
-            time_so_far = time() - start_time
-            for j, (task_id, task_total_size) in enumerate(task_total_sizes.items()):
-                task_update = deploy_process(f"globus task show {task_id} -Fjson", catch_output=True)
-                task_message = json.loads(task_update)
-                all_status[j] = task_message["status"] == "SUCCEEDED"
+    all_status = [False for _ in task_total_sizes]
+    success = all(all_status)
+    time_so_far = 0.0
+    start_time = time()
+    while not success and time_so_far <= progress_update_timeout:
+        time_so_far = time() - start_time
+        for j, (task_id, task_total_size) in enumerate(task_total_sizes.items()):
+            task_update = deploy_process(f"globus task show {task_id} -Fjson", catch_output=True)
+            task_message = json.loads(task_update)
+            all_status[j] = task_message["status"] == "SUCCEEDED"
+            if display_progress:
                 all_pbars[j].update(n=task_message["bytes_transferred"] - all_pbars[j].n)
-            success = all(all_status)
-            if not success:
-                sleep(progress_update_rate)
+        success = all(all_status)
+        if not success:
+            sleep(progress_update_rate)
     return success, list(task_total_sizes)
 
 

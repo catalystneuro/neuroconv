@@ -197,19 +197,24 @@ class TestGlobusTransferContent(TestCase):
 
     def test_transfer_globus_content(self):
         """Test is fixed to a subpath that is somewhat unlikely to change in the future."""
-        source_id = "188a6110-96db-11eb-b7a9-f57b2d55370d"  # Buzsaki
-        destination_id = deploy_process(command="globus endpoint local-id", catch_output=True)
+        source_endpoint_id = "188a6110-96db-11eb-b7a9-f57b2d55370d"  # Buzsaki
+        destination_endpoint_id = deploy_process(command="globus endpoint local-id", catch_output=True)
         test_source_files = [
             ["/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.1"],
             [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(2, 4)],
             [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(4, 9)],
         ]
         success, task_ids = transfer_globus_content(
-            source_id=source_id,
+            source_endpoint_id=source_endpoint_id,
             source_files=test_source_files,
-            destination_id=destination_id,
+            destination_endpoint_id=destination_endpoint_id,
             destination_folder=self.tmpdir,
             display_progress=False,
         )
         assert success
         assert task_ids
+        print(self.tmpdir)
+        print(list(self.tmpdir.glob("**/*")))
+        tmpdir_size = sum(f.stat().st_size for f in self.tmpdir.glob("**/*") if f.is_file())
+        print(tmpdir_size)
+        assert False
