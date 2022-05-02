@@ -172,7 +172,8 @@ def transfer_globus_content(
     success = True
     if display_progress:
         all_pbars = [
-            tqdm((), total=total_size, position=j, leave=True) for j, total_size in enumerate(task_total_sizes.values())
+            tqdm(desc=f"Transferring batch #{j}...", total=total_size, position=j, leave=True)
+            for j, total_size in enumerate(task_total_sizes.values())
         ]
         all_status = [False for _ in task_total_sizes]
         success = all(all_status)
@@ -184,6 +185,7 @@ def transfer_globus_content(
                 task_message = json.loads(_deploy_process(f"globus task show {task_id}", catch_output=True))
                 all_status[j] = task_message["status"] == "SUCCEEDED"
                 all_pbars[j].update(n=task_message["bytes_transferred"])
+            sleep(secs=progress_update_rate)
     return success, list(task_total_sizes)
 
 
