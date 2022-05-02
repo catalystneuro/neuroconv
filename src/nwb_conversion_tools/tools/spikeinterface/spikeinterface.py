@@ -1208,6 +1208,9 @@ def add_units_table(
         extended_data[indexes_for_new_data] = data
 
         extended_data[indexes_for_default_values] = default_value
+        # Always store numpy objects as strings
+        if np.issubdtype(extended_data.dtype, np.object_):
+            extended_data = extended_data.astype("str", copy=False)
         cols_args["data"] = extended_data
         units_table.add_column(property, **cols_args)
 
