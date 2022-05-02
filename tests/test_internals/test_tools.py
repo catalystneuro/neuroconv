@@ -1,15 +1,19 @@
 import os
 from datetime import datetime
+from tempfile import mkdtemp
+from pathlib import Path
+from shutil import rmtree
 
 import pytest
-from pynwb.base import ProcessingModule
+from pynwb import NWBHDF5IO, ProcessingModule
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
+from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata, get_default_nwbfile_metadata
 from nwb_conversion_tools.tools.data_transfers import (
     get_globus_dataset_content_sizes,
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,
+    dandi_upload,
 )
 
 try:
@@ -159,3 +163,21 @@ def test_estimate_total_conversion_runtime():
         1235294.1176470588,
         12352941.176470589,
     ]
+
+
+class TestDANDIUpload(TestCase):
+    def setUp(self):
+        self.tmpdir = Path(mkdtemp())
+        self.nwb_folder_path = self.tmpdir / "test_nwb"
+        self.nwb_folder_path.mkdir()
+        metadata = get_default_nwbfile_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        metadata.update(Subject=dict(subject_id="foo"))
+        with NWBHDF5IO(path=self.nwb_folder_path / "test_nwb_1.nwb", mode="w") as io:
+            io.write(make_nwbfile_from_metadata(metadata=metadata))
+
+    def tearDown(self):
+        rmtree(self.tmpdir)
+
+    def test_dandi_upload(self):
+        dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
