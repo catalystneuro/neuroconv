@@ -124,7 +124,7 @@ def transfer_globus_content(
         source_endpoint_id: str,
         source_files: Union[str, List[List[str]]],
         destination_endpoint_id: str,
-        destination_folder: Path,
+        destination_folder_path: Path,
     ) -> Dict[str, int]:
         """Send transfer request to Globus."""
         folder_content_sizes = dict()
@@ -175,7 +175,7 @@ def transfer_globus_content(
         return task_total_sizes
 
     def _track_transfer(
-        task_ids: List[str],
+        task_total_sizes: Dict[str, int],
         display_progress: bool = True,
         progress_update_rate: float = 60.0,
         progress_update_timeout: float = 600.0,
@@ -221,16 +221,15 @@ def transfer_globus_content(
         source_endpoint_id=source_endpoint_id,
         source_files=source_files,
         destination_endpoint_id=destination_endpoint_id,
-        destination_folder=destination_folder,
+        destination_folder_path=destination_folder_path,
     )
-    task_ids = list(task_total_sizes)
     success = _track_transfer(
-        task_ids=task_ids,
+        task_total_sizes=task_total_sizes,
         display_progress=display_progress,
         progress_update_rate=progress_update_rate,
         progress_update_timeout=progress_update_timeout,
     )
-    return success, task_ids
+    return success, list(task_total_sizes)
 
 
 def estimate_total_conversion_runtime(
