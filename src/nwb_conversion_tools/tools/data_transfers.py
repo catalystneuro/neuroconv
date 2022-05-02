@@ -119,6 +119,93 @@ def transfer_globus_content(
     task_ids : list of strings
         List of the task IDs submitted to globus, if further information is needed to reestablish tracking or terminate.
     """
+
+    def _submit_transfer_request(
+        source_endpoint_id: str,
+        source_files: Union[str, List[List[str]]],
+        destination_endpoint_id: str,
+        destination_folder: Path,
+    ) -> Dict[str, int]:
+        """Send transfer request to Globus."""
+        folder_content_sizes = dict()
+        task_total_sizes = dict()
+        for j, batched_source_files in enumerate(source_files):
+            paths_file = destination_folder_path / f"paths_{j}.txt"
+            # .as_posix() to ensure correct string form Globus expects
+            # ':' replacement for Windows drives
+            source_folder = Path(batched_source_files[0]).parent.as_posix().replace(":", "")
+            destination_folder_name = destination_folder_path.as_posix().replace(":", "")
+            with open(file=paths_file, mode="w") as f:
+                for source_file in batched_source_files:
+                    file_name = Path(source_file).name
+                    f.write(f"{file_name} {file_name}\n")
+
+            transfer_command = (
+                "globus transfer "
+                f"{source_endpoint_id}:{source_folder} {destination_endpoint_id}:/{destination_folder_name} "
+                f"--batch {paths_file}"
+            )
+            transfer_message = deploy_process(
+                command=transfer_command,
+                catch_output=True,
+            )
+            task_id = re.findall(
+                pattern=(
+                    "^Message: The transfer has been accepted and a task has been created and queued for "
+                    "execution\nTask ID: (.+)$"
+                ),
+                string=transfer_message,
+            )
+            paths_file.unlink()
+            assert task_id, f"Transfer submission failed! Globus output:\n{transfer_message}."
+
+            if source_folder not in folder_content_sizes:
+                contents = get_globus_dataset_content_sizes(globus_endpoint_id=source_endpoint_id, path=source_folder)
+                folder_content_sizes.update({source_folder: contents})
+            task_total_sizes.update(
+                {
+                    task_id[0]: sum(
+                        [
+                            folder_content_sizes[source_folder][Path(source_file).name]
+                            for source_file in batched_source_files
+                        ]
+                    )
+                }
+            )
+        return task_total_sizes
+
+    def _track_transfer(
+        task_ids: List[str],
+        display_progress: bool = True,
+        progress_update_rate: float = 60.0,
+        progress_update_timeout: float = 600.0,
+    ) -> bool:
+        """Track the progress of transfers."""
+        if display_progress:
+            all_pbars = [
+                tqdm(desc=f"Transferring batch #{j}...", total=total_size, position=j, leave=True)
+                for j, total_size in enumerate(task_total_sizes.values(), start=1)
+            ]
+        all_status = [False for _ in task_total_sizes]
+        success = all(all_status)
+        time_so_far = 0.0
+        start_time = time()
+        while not success and time_so_far <= progress_update_timeout:
+            time_so_far = time() - start_time
+            for j, (task_id, task_total_size) in enumerate(task_total_sizes.items()):
+                task_update = deploy_process(f"globus task show {task_id} -Fjson", catch_output=True)
+                task_message = json.loads(task_update)
+                all_status[j] = task_message["status"] == "SUCCEEDED"
+                assert (
+                    all_status[j] != "OK" or all_status[j] != "SUCCEEDED"
+                ), f"Something went wrong with the transfer! Please manually inspect the task with ID '{task_id}'."
+                if display_progress:
+                    all_pbars[j].update(n=task_message["bytes_transferred"] - all_pbars[j].n)
+            success = all(all_status)
+            if not success:
+                sleep(progress_update_rate)
+        return success
+
     source_files = [[source_files]] if isinstance(source_files, str) else source_files
     destination_folder_path = Path(destination_folder)
     # assertion check is ensure the logical iteration does not occur over the individual string values
@@ -130,73 +217,20 @@ def transfer_globus_content(
         "as well as avoiding Globus access permissions to a personal relative path!"
     )
 
-    folder_content_sizes = dict()
-    task_total_sizes = dict()
-    for j, batched_source_files in enumerate(source_files):
-        paths_file = Path(destination_folder_path) / f"paths_{j}.txt"
-        # .as_posix() to ensure correct string form Globus expects
-        # ':' replacement for Windows drives
-        source_folder = Path(batched_source_files[0]).parent.as_posix().replace(":", "")
-        destination_folder_name = destination_folder_path.as_posix().replace(":", "")
-        with open(file=paths_file, mode="w") as f:
-            for source_file in batched_source_files:
-                file_name = Path(source_file).name
-                f.write(f"{file_name} {file_name}\n")
-
-        transfer_command = (
-            "globus transfer "
-            f"{source_endpoint_id}:{source_folder} {destination_endpoint_id}:/{destination_folder_name} "
-            f"--batch {paths_file}"
-        )
-        transfer_message = deploy_process(
-            command=transfer_command,
-            catch_output=True,
-        )
-        task_id = re.findall(
-            pattern=(
-                "^Message: The transfer has been accepted and a task has been created and queued for "
-                "execution\nTask ID: (.+)$"
-            ),
-            string=transfer_message,
-        )
-        paths_file.unlink()
-        assert task_id, f"Transfer submission failed! Globus output:\n{transfer_message}."
-
-        if source_folder not in folder_content_sizes:
-            contents = get_globus_dataset_content_sizes(globus_endpoint_id=source_endpoint_id, path=source_folder)
-            folder_content_sizes.update({source_folder: contents})
-        task_total_sizes.update(
-            {
-                task_id[0]: sum(
-                    [
-                        folder_content_sizes[source_folder][Path(source_file).name]
-                        for source_file in batched_source_files
-                    ]
-                )
-            }
-        )
-
-    if display_progress:
-        all_pbars = [
-            tqdm(desc=f"Transferring batch #{j}...", total=total_size, position=j, leave=True)
-            for j, total_size in enumerate(task_total_sizes.values(), start=1)
-        ]
-    all_status = [False for _ in task_total_sizes]
-    success = all(all_status)
-    time_so_far = 0.0
-    start_time = time()
-    while not success and time_so_far <= progress_update_timeout:
-        time_so_far = time() - start_time
-        for j, (task_id, task_total_size) in enumerate(task_total_sizes.items()):
-            task_update = deploy_process(f"globus task show {task_id} -Fjson", catch_output=True)
-            task_message = json.loads(task_update)
-            all_status[j] = task_message["status"] == "SUCCEEDED"
-            if display_progress:
-                all_pbars[j].update(n=task_message["bytes_transferred"] - all_pbars[j].n)
-        success = all(all_status)
-        if not success:
-            sleep(progress_update_rate)
-    return success, list(task_total_sizes)
+    task_total_sizes = _submit_transfer_request(
+        source_endpoint_id=source_endpoint_id,
+        source_files=source_files,
+        destination_endpoint_id=destination_endpoint_id,
+        destination_folder=destination_folder,
+    )
+    task_ids = list(task_total_sizes)
+    success = _track_transfer(
+        task_ids=task_ids,
+        display_progress=display_progress,
+        progress_update_rate=progress_update_rate,
+        progress_update_timeout=progress_update_timeout,
+    )
+    return success, task_ids
 
 
 def estimate_total_conversion_runtime(

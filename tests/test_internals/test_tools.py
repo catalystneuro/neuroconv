@@ -190,7 +190,8 @@ class TestDANDIUpload(TestCase):
 )
 class TestGlobusTransferContent(TestCase):
     def setUp(self):
-        self.tmpdir = Path(mkdtemp())
+        self.tmpdir = Path(mkdtemp())  # Globus has permission issues here apparently
+        self.tmpdir = Path("C:/Users/Raven/Documents/test_globus")  # For local test, which is currently the only way...
 
     def tearDown(self):
         rmtree(self.tmpdir)
