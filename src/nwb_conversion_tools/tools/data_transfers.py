@@ -42,7 +42,7 @@ def _kill_process(proc, timeout: Optional[float] = None):
         _kill(proc=proc)
 
 
-def _deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
+def deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
     """Private helper for efficient submission and cleanup of shell processes."""
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True)
     output = proc.communicate()[0].strip() if catch_output else None
@@ -63,7 +63,7 @@ def get_globus_dataset_content_sizes(
 
     recursive_flag = " --recursive" if recursive else ""
     contents = json.loads(
-        _deploy_process(
+        deploy_process(
             command=f"globus ls -Fjson {globus_endpoint_id}:{path}{recursive_flag}", catch_output=True, timeout=timeout
         )
     )
@@ -145,35 +145,43 @@ def transfer_globus_content(
                 file_name = Path(source_file).name
                 f.write(f"{file_name} {file_name}\n")
 
-        transfer_message = _deploy_process(
-            command=(
-                f"globus transfer {source_id}:{source_folder} {destination_id}:{destination_folder_name} "
-                f"--batch {paths_file}"
-            ),
+        transfer_command = (
+            f"globus transfer {source_id}:{source_folder} {destination_id}:{destination_folder_name} "
+            f"--batch {paths_file}"
+        )
+        transfer_message = deploy_process(
+            command=transfer_command,
             catch_output=True,
         )
         task_id = re.findall(
             pattern=(
                 "^Message: The transfer has been accepted and a task has been created and queued for "
-                "execution\nTask ID: (.+)\n$"
+                "execution\nTask ID: (.+)$"
             ),
             string=transfer_message,
         )
-        assert task_id is not None, "Transfer submission failed! Globus output:\n{transfer_message}."
-        # paths_file.unlink()
+        paths_file.unlink()
+        assert task_id, f"Transfer submission failed! Globus output:\n{transfer_message}."
 
         if source_folder not in folder_content_sizes:
             contents = get_globus_dataset_content_sizes(globus_endpoint_id=source_id, path=source_folder)
-            folder_content_sizes.update(contents)
+            folder_content_sizes.update({source_folder: contents})
         task_total_sizes.update(
-            {task_id: sum([folder_content_sizes[source_folder][source_file] for source_file in batched_source_files])}
+            {
+                task_id[0]: sum(
+                    [
+                        folder_content_sizes[source_folder][Path(source_file).name]
+                        for source_file in batched_source_files
+                    ]
+                )
+            }
         )
 
     success = True
     if display_progress:
         all_pbars = [
             tqdm(desc=f"Transferring batch #{j}...", total=total_size, position=j, leave=True)
-            for j, total_size in enumerate(task_total_sizes.values())
+            for j, total_size in enumerate(task_total_sizes.values(), start=1)
         ]
         all_status = [False for _ in task_total_sizes]
         success = all(all_status)
@@ -182,10 +190,13 @@ def transfer_globus_content(
         while not success and time_so_far <= progress_update_timeout:
             time_so_far = time() - start_time
             for j, (task_id, task_total_size) in enumerate(task_total_sizes.items()):
-                task_message = json.loads(_deploy_process(f"globus task show {task_id}", catch_output=True))
+                task_update = deploy_process(f"globus task show {task_id} -Fjson", catch_output=True)
+                task_message = json.loads(task_update)
                 all_status[j] = task_message["status"] == "SUCCEEDED"
-                all_pbars[j].update(n=task_message["bytes_transferred"])
-            sleep(secs=progress_update_rate)
+                all_pbars[j].update(n=task_message["bytes_transferred"] - all_pbars[j].n)
+            success = all(all_status)
+            if not success:
+                sleep(progress_update_rate)
     return success, list(task_total_sizes)
 
 
@@ -306,7 +317,7 @@ def dandi_upload(
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
 
     os.chdir(nwb_folder_path.parent)
-    validate_return = _deploy_process(
+    validate_return = deploy_process(
         command=f"dandi validate {nwb_folder_path.name}",
         catch_output=True,
         timeout=process_timeouts.get("validate"),
@@ -316,7 +327,7 @@ def dandi_upload(
     ), "DANDI validation failed!"
 
     os.chdir(dandiset_folder_path)
-    download_return = _deploy_process(
+    download_return = deploy_process(
         command=f"dandi download {dandiset_url} --download dandiset.yaml",
         catch_output=True,
         timeout=process_timeouts.get("download"),
@@ -324,14 +335,14 @@ def dandi_upload(
     assert download_return, "DANDI download failed!"  # output is a bit too dynamic to regex; if it fails it is empty
 
     os.chdir(dandiset_folder_path / dandiset_id)
-    _deploy_process(
+    deploy_process(
         command=f"dandi organize {nwb_folder_path.absolute()}",  # .absolute() needed if dandiset folder is elsewhere
         timeout=process_timeouts.get("organize", 120.0),
     )
     assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
 
     dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
-    upload_return = _deploy_process(
+    upload_return = deploy_process(
         command=dandi_upload_command, catch_output=True, timeout=process_timeouts.get("upload")
     )
     assert upload_return, "DANDI upload failed!"

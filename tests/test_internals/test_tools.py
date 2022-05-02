@@ -14,6 +14,8 @@ from nwb_conversion_tools.tools.data_transfers import (
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,
     dandi_upload,
+    transfer_globus_content,
+    deploy_process,
 )
 
 try:
@@ -62,7 +64,6 @@ class TestConversionTools(TestCase):
 )
 def test_get_globus_dataset_content_sizes():
     """Test is fixed to a subpath that is somewhat unlikely to change in the future."""
-    globus_cli.login_manager.LoginManager._TEST_MODE = True
     assert get_globus_dataset_content_sizes(
         globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
         path="/SenzaiY/YutaMouse41/YutaMouse41-150821/originalClu/",
@@ -181,3 +182,34 @@ class TestDANDIUpload(TestCase):
 
     def test_dandi_upload(self):
         dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
+
+
+@pytest.mark.skipif(
+    not (HAVE_GLOBUS and LOGGED_INTO_GLOBUS),
+    reason="You must have globus installed and be logged in to run this test!",
+)
+class TestGlobusTransferContent(TestCase):
+    def setUp(self):
+        self.tmpdir = Path(mkdtemp())
+
+    def tearDown(self):
+        rmtree(self.tmpdir)
+
+    def test_transfer_globus_content(self):
+        """Test is fixed to a subpath that is somewhat unlikely to change in the future."""
+        source_id = "188a6110-96db-11eb-b7a9-f57b2d55370d"  # Buzsaki
+        destination_id = deploy_process(command="globus endpoint local-id", catch_output=True)
+        test_source_files = [
+            ["/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.1"],
+            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(2, 4)],
+            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(4, 9)],
+        ]
+        success, task_ids = transfer_globus_content(
+            source_id=source_id,
+            source_files=test_source_files,
+            destination_id=destination_id,
+            destination_folder=self.tmpdir,
+            display_progress=False,
+        )
+        assert success
+        assert task_ids
