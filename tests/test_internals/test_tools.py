@@ -211,10 +211,7 @@ class TestGlobusTransferContent(TestCase):
             destination_folder=self.tmpdir,
             display_progress=False,
         )
+        tmpdir_size = sum(f.stat().st_size for f in self.tmpdir.glob("**/*") if f.is_file())
         assert success
         assert task_ids
-        print(self.tmpdir)
-        print(list(self.tmpdir.glob("**/*")))
-        tmpdir_size = sum(f.stat().st_size for f in self.tmpdir.glob("**/*") if f.is_file())
-        print(tmpdir_size)
-        assert False
+        assert tmpdir_size > 0

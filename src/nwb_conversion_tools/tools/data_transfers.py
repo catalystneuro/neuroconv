@@ -3,7 +3,7 @@ import os
 import subprocess
 import json
 import re
-from typing import Dict, Optional, List, Union
+from typing import Dict, Optional, List, Union, Tuple
 from pathlib import Path
 from warnings import warn
 from shutil import rmtree
@@ -79,7 +79,7 @@ def transfer_globus_content(
     display_progress: bool = True,
     progress_update_rate: float = 60.0,
     progress_update_timeout: float = 600.0,
-) -> (bool, List[str]):  # pragma: no cover
+) -> Tuple[bool, List[str]]:  # pragma: no cover
     """
     Track progress for transferring contentfrom source_endpoint_id to destination_endpoint_id:destination_folder.
 
@@ -144,7 +144,8 @@ def transfer_globus_content(
                 f.write(f"{file_name} {file_name}\n")
 
         transfer_command = (
-            f"globus transfer {source_endpoint_id}:{source_folder} {destination_endpoint_id}:{destination_folder_name} "
+            "globus transfer "
+            f"{source_endpoint_id}:{source_folder} {destination_endpoint_id}:/{destination_folder_name} "
             f"--batch {paths_file}"
         )
         transfer_message = deploy_process(
