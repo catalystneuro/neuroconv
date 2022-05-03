@@ -1,7 +1,7 @@
 Neuroscope data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Example of how to convert ``Neuroscope`` to nwb
+Example of how to convert ``Neuroscope`` to nwb:
 
     >>> from datetime import datetime
     >>> from dateutil import tz
