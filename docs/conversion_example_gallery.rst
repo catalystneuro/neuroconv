@@ -1,7 +1,8 @@
 Examples of conversion
 ======================
 
-Description of the structure in this session_description
+The examples here are guaranteed to be running correctly with our testing suite. The aim to be a showcase of the library
+capabilities and their aim is to get you to hit ground running with your conversion.  
 
 Recording & Sorting Interfaces
 ------------------------------
@@ -10,7 +11,7 @@ Recording & Sorting Interfaces
     :maxdepth: 1
 
     Neuroscope <conversion_examples_gallery/recording_and_sorting/neuroscope>
-    Spikelgx <conversion_examples_gallery/recording_and_sorting/spikelgx>
+    Spikelgx <conversion_examples_gallery/recording_and_sorting/spikeglx>
 
 
 

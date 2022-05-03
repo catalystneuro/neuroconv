@@ -16,10 +16,12 @@ We use this for the metadata:
 
 Finally, we indicate the location of the ``dat`` file and run the conversion.
 
-    >>> file_path = "/home/heberto/ephy_testing_data/neuroscope/test1/test1.dat"    
+    >>> file_path = "./ephy_testing_data/neuroscope/test1/test1.dat"  
     >>> interface = NeuroscopeRecordingInterface(file_path=file_path)
-    >>> save_path = "./nwb_file.nwb"
+    >>> save_path = "./nwb_neurocope_file.nwb"
     >>> interface.run_conversion(save_path=save_path, metadata=metadata)
+
+Note that the file path is design to run in our CI. You have to make the file_path point to your local data file.
 
 If everything went right, this should return True
 
