@@ -1,4 +1,4 @@
-dandi==0.36.0
+dandi @ git+https://github.com/dandi/dandi-cli.git@9a749401aa2dec2ba59f352205b02a3d8083b1d8  # that uses schema v0.7.x
 pynwb==2.0.0
 hdmf==3.2.1
 tqdm==4.60.0
