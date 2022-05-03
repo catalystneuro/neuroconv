@@ -8,6 +8,7 @@ PyYAML>=5.4
 jsonschema>=3.2.0
 psutil>=5.8.0
 dandi>=0.34.1
+dandischema>=0.7.1  # needs to be most recent
 nwbinspector>=0.2.3
 spikeextractors>=0.9.9
 spikeinterface>=0.93.0
