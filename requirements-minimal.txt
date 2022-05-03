@@ -8,7 +8,7 @@ PyYAML>=5.4
 jsonschema>=3.2.0
 psutil>=5.8.0
 dandi>=0.34.1
-dandischema @ git+https://github.com/dandi/dandi-schema.git@master  # needs to be most recent to match server
+dandischema @ git+https://github.com/dandi/dandi-schema.git@37fdbdd3cf098a087c1e8c6715e923026fe245e1  # 0.6.3
 nwbinspector>=0.2.3
 spikeextractors>=0.9.9
 spikeinterface>=0.93.0
