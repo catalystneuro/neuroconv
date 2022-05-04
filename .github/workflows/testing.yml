@@ -26,8 +26,8 @@ jobs:
       - if: ${{ matrix.os == 'macos-latest' }}
         name: Get git-annex - MacOS
         run: |
-          brew install git-annex
-          brew install --overwrite git
+          brew install https://github.com/Homebrew/homebrew-core/blob/a3510c0295007540f00dc7b629c93038340e8d54/Formula/git-annex.rb
+          # brew install --overwrite git
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Get git-annex - Windows
         uses: crazy-max/ghaction-chocolatey@v1.6.0
