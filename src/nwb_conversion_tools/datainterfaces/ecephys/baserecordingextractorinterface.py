@@ -95,7 +95,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
     def run_conversion(
         self,
-        nwbfile: NWBFile,
+        nwbfile: NWBFile = None,
         metadata: dict = None,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
