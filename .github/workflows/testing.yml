@@ -26,7 +26,10 @@ jobs:
       - if: ${{ matrix.os == 'macos-latest' }}
         name: Get git-annex - MacOS
         run: |
-          brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/a3510c0295007540f00dc7b629c93038340e8d54/Formula/git-annex.rb
+          brew tap-new $USER/local-git-annex-10.20220222
+          brew extract --version=10.20220222 git-annex $USER/local-git-annex
+          brew install git-annex@10.20220222
+          # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/a3510c0295007540f00dc7b629c93038340e8d54/Formula/git-annex.rb
           # brew install --overwrite git
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Get git-annex - Windows
