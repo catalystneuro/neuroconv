@@ -26,8 +26,12 @@ jobs:
       - if: ${{ matrix.os == 'macos-latest' }}
         name: Get git-annex - MacOS
         run: |
-          brew install git-annex
-          brew install --overwrite git
+          # Temporarily disabling MacOS due to recently break in brew installation of git-annex
+          # brew tap-new $USER/local-git-annex-10.20220222
+          # brew extract --version=10.20220222 git-annex $USER/local-git-annex
+          # brew install git-annex@10.20220222
+          # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/a3510c0295007540f00dc7b629c93038340e8d54/Formula/git-annex.rb
+          # brew install --overwrite git
       - if: ${{ matrix.os == 'windows-latest' }}
         name: Get git-annex - Windows
         uses: crazy-max/ghaction-chocolatey@v1.6.0
@@ -42,7 +46,6 @@ jobs:
           pip install pytest-xdist
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-
       - name: Install nwb-conversion-tools with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
@@ -60,7 +63,7 @@ jobs:
           path: ./ephy_testing_data
           key: ecephys-datasets-041422-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
       - name: "Force GIN: ecephys download"
-        if: steps.cache-ecephys-datasets.outputs.cache-hit == false
+        if: steps.cache-ecephys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
         run: |
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           cd ephy_testing_data
@@ -78,7 +81,6 @@ jobs:
           datalad get -r ./axona/
           datalad get -r ./cellexplorer/
           cd ..
-
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
@@ -105,7 +107,8 @@ jobs:
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
-      - name: Run full pytest with coverage
+      - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'}}
+        name: Run full pytest with coverage
         run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         name: Upload full coverage to Codecov
