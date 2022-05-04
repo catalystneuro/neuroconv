@@ -81,7 +81,7 @@ def transfer_globus_content(
     progress_update_timeout: float = 600.0,
 ) -> Tuple[bool, List[str]]:  # pragma: no cover
     """
-    Track progress for transferring contentfrom source_endpoint_id to destination_endpoint_id:destination_folder.
+    Track progress for transferring content from source_endpoint_id to destination_endpoint_id:destination_folder.
 
     Parameters
     ----------
