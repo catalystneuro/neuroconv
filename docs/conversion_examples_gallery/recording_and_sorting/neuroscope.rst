@@ -8,6 +8,11 @@ Example of how to convert ``Neuroscope`` to nwb:
     >>> from pathlib import Path
     >>> from nwb_conversion_tools import NeuroscopeRecordingInterface
 
+First, we indicate the location of the ``dat`` for initializing the metadata
+
+    >>> file_path = "./ephy_testing_data/neuroscope/test1/test1.dat"  
+    >>> interface = NeuroscopeRecordingInterface(file_path=file_path)
+
 Then we creates a datetime object representing the date of the first of January of 2020 in the US/Pacific time-zone. 
 We use this for the metadata:
     
@@ -16,10 +21,8 @@ We use this for the metadata:
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
 
-Finally, we indicate the location of the ``dat`` file and run the conversion.
+Finally, we indicate the save_path an run the file.
 
-    >>> file_path = "./ephy_testing_data/neuroscope/test1/test1.dat"  
-    >>> interface = NeuroscopeRecordingInterface(file_path=file_path)
     >>> save_path = "./nwb_neurocope_file.nwb"
     >>> interface.run_conversion(save_path=save_path, metadata=metadata)
 
