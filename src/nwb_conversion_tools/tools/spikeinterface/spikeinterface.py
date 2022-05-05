@@ -1078,23 +1078,21 @@ def add_units_table(
     else:
         checked_sorting = sorting
 
-    sampling_frequency = checked_sorting.get_sampling_frequency()
-    if sampling_frequency is None:
-        raise ValueError("Writing a SortingExtractor to an NWBFile requires a known sampling frequency!")
-
     if write_in_processing_module:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
         )
-        if units_table_name not in ecephys_mod.data_interfaces:
+        write_table_first_time = units_table_name not in ecephys_mod.data_interfaces
+        if write_table_first_time:
             units_table = pynwb.misc.Units(name=units_table_name, description=unit_table_description)
             ecephys_mod.add(units_table)
 
         units_table = ecephys_mod[units_table_name]
     else:
-        if nwbfile.units is None:
+        write_table_first_time = nwbfile.units is None
+        if write_table_first_time:
             nwbfile.units = pynwb.misc.Units(name="units", description=unit_table_description)
         units_table = nwbfile.units
 
@@ -1109,7 +1107,7 @@ def add_units_table(
         quality="Quality of the unit as defined by phy (good, mua, noise).",
         spike_amplitude="Average amplitude of peaks detected on the channel.",
         spike_rate="Average rate of peaks detected on the channel.",
-        unit_name="unique reference for each unit.",
+        unit_name="Unique reference for each unit.",
     )
     if property_descriptions is None:
         property_descriptions = dict()
@@ -1118,51 +1116,108 @@ def add_units_table(
 
     property_descriptions = dict(default_descriptions, **property_descriptions)
 
-    all_properties = checked_sorting.get_property_keys()
-    write_properties = set(all_properties) - set(skip_properties)
-    for property_name in write_properties:
-        if property_name not in property_descriptions:
-            warnings.warn(
-                f"Description for property {property_name} not found in property_descriptions. "
-                "Setting description to 'no description'"
-            )
-    aggregated_unit_properties = defaultdict()
-    for property_name in write_properties:
-        unit_col_args = dict(
-            name=property_name, description=property_descriptions.get(property_name, "No description.")
-        )
-        if property_name in ["max_channel", "max_electrode"] and nwbfile.electrodes is not None:
-            unit_col_args.update(table=nwbfile.electrodes)
+    data_to_add = defaultdict(dict)
+    sorting_properties = checked_sorting.get_property_keys()
+    excluded_properties = list(skip_properties) + ["contact_vector"]
+    properties_to_extract = [property for property in sorting_properties if property not in excluded_properties]
 
-        units_table.add_column(**unit_col_args)
-        aggregated_unit_properties[property_name] = checked_sorting.get_property(key=property_name)
+    # Extract properties
+    for property in properties_to_extract:
+        data = checked_sorting.get_property(property)
+        index = isinstance(data[0], (list, np.ndarray, tuple))
+        description = property_descriptions.get(property, "No description.")
+        data_to_add[property].update(description=description, data=data, index=index)
+        if property in ["max_channel", "max_electrode"] and nwbfile.electrodes is not None:
+            data_to_add[property].update(table=nwbfile.electrodes)
 
     # Unit name logic
     units_ids = checked_sorting.get_unit_ids()
-    if "unit_name" in aggregated_unit_properties:
-        unit_name_array = aggregated_unit_properties["unit_name"]
+    if "unit_name" in data_to_add:
+        unit_name_array = data_to_add["unit_name"]["data"]
     else:
         unit_name_array = units_ids.astype("str", copy=False)
-        unit_col_args = dict(
-            name="unit_name",
-            description="unique reference for each unit",
-        )
-        units_table.add_column(**unit_col_args)
-        aggregated_unit_properties["unit_name"] = unit_name_array
+        data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
-    for i, unit_id in enumerate(units_ids):
-        spkt = checked_sorting.get_unit_spike_train(unit_id=unit_id, return_times=True)
-        kwargs = {key: val[i] for key, val in aggregated_unit_properties.items()}
+    # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
+    if np.issubdtype(units_ids.dtype, np.integer):
+        data_to_add["id"].update(data=units_ids.astype("int"))
 
-        # If the units ids are integer keep the old behavior of asigning table's id equal to unit_ids
-        if str(unit_id).isdigit():
-            id = int(unit_id)
-        else:
-            id = i
+    units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
+    extracted_properties = set(data_to_add)
+    properties_to_add_by_rows = units_table_previous_properties | set({"id"})
+    properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
-        units_table.add_unit(id=id, spike_times=spkt, **kwargs)
+    # Find default values for properties / columns already in the table
+    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
+    property_to_default_values = {"id": None}
+    for property in units_table_previous_properties:
+        # Find a matching data type and get the default value
+        sample_data = units_table[property].data[0]
+        matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
+        default_value = type_to_default_value[matching_type]
+        property_to_default_values.update({property: default_value})
+
+    # Add data by rows excluding the rows with previously added unit names
+    unit_names_used_previously = []
+    if "unit_name" in units_table_previous_properties:
+        unit_names_used_previously = units_table["unit_name"].data
+
+    properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
+    rows_in_data = [index for index in range(checked_sorting.get_num_units())]
+    rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
+    for row in rows_to_add:
+        unit_kwargs = dict(property_to_default_values)
+        for property in properties_with_data:
+            unit_kwargs[property] = data_to_add[property]["data"][row]
+        spike_times = checked_sorting.get_unit_spike_train(unit_id=units_ids[row], return_times=True)
+        units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
+
+    # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
+    previous_table_size = len(units_table.id[:]) - len(unit_name_array)
+    if "unit_name" in properties_to_add_by_columns:
+        cols_args = data_to_add["unit_name"]
+        data = cols_args["data"]
+
+        previous_ids = units_table.id[:previous_table_size]
+        default_value = np.array(previous_ids).astype("str")
+
+        extended_data = np.hstack([default_value, data])
+        cols_args["data"] = extended_data
+        units_table.add_column("unit_name", **cols_args)
+
+    # Build  a channel name to electrode table index map
+    table_df = units_table.to_dataframe().reset_index()
+    unit_name_to_electrode_index = {
+        unit_name: table_df.query(f"unit_name=='{unit_name}'").index[0] for unit_name in unit_name_array
+    }
+
+    indexes_for_new_data = [unit_name_to_electrode_index[unit_name] for unit_name in unit_name_array]
+    indexes_for_default_values = table_df.index.difference(indexes_for_new_data).values
+
+    # Add properties as columns
+    for property in properties_to_add_by_columns - set({"unit_name"}):
+        cols_args = data_to_add[property]
+        data = cols_args["data"]
+        if np.issubdtype(data.dtype, np.integer):
+            data = data.astype("float")
+
+        # Find first matching data-type
+        sample_data = data[0]
+        matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
+        default_value = type_to_default_value[matching_type]
+
+        extended_data = np.empty(shape=len(units_table.id[:]), dtype=data.dtype)
+        extended_data[indexes_for_new_data] = data
+
+        extended_data[indexes_for_default_values] = default_value
+        # Always store numpy objects as strings
+        if np.issubdtype(extended_data.dtype, np.object_):
+            extended_data = extended_data.astype("str", copy=False)
+        cols_args["data"] = extended_data
+        units_table.add_column(property, **cols_args)
 
     if write_waveforms:
+        assert write_table_first_time, "write_waveforms is not supported with re-write"
         units_table = _add_waveforms_to_units_table(
             sorting=sorting, units_table=units_table, skip_features=skip_features
         )
