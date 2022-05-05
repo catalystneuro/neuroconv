@@ -59,4 +59,4 @@ autodoc_default_options = {
 }
 add_module_names = False
 
-toggleprompt_offset_right = 35  # This controls the position of the prompt
+toggleprompt_offset_right = 35  # This controls the position of the prompt for >>>
