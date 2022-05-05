@@ -1078,23 +1078,22 @@ def add_units_table(
     else:
         checked_sorting = sorting
 
-    write_table_first_time = False
     if write_in_processing_module:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
         )
-        if units_table_name not in ecephys_mod.data_interfaces:
+        write_table_first_time = units_table_name not in ecephys_mod.data_interfaces
+        if write_table_first_time:
             units_table = pynwb.misc.Units(name=units_table_name, description=unit_table_description)
             ecephys_mod.add(units_table)
-            write_table_first_time = True
 
         units_table = ecephys_mod[units_table_name]
     else:
-        if nwbfile.units is None:
+        write_table_first_time = nwbfile.units is None
+        if write_table_first_time:
             nwbfile.units = pynwb.misc.Units(name="units", description=unit_table_description)
-            write_table_first_time = True
         units_table = nwbfile.units
 
     default_descriptions = dict(
@@ -1108,7 +1107,7 @@ def add_units_table(
         quality="Quality of the unit as defined by phy (good, mua, noise).",
         spike_amplitude="Average amplitude of peaks detected on the channel.",
         spike_rate="Average rate of peaks detected on the channel.",
-        unit_name="unique reference for each unit.",
+        unit_name="Unique reference for each unit.",
     )
     if property_descriptions is None:
         property_descriptions = dict()
@@ -1137,15 +1136,15 @@ def add_units_table(
         unit_name_array = data_to_add["unit_name"]["data"]
     else:
         unit_name_array = units_ids.astype("str", copy=False)
-        data_to_add["unit_name"].update(description="unique reference for each unit", data=unit_name_array, index=False)
+        data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
     # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
     if np.issubdtype(units_ids.dtype, np.integer):
-        data_to_add["id"].update(data=units_ids.astype("int"), index=False)
+        data_to_add["id"].update(data=units_ids.astype("int"))
 
-    units_table_previous_properties = set(units_table.colnames) - {"spike_times"}
+    units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
     extracted_properties = set(data_to_add)
-    properties_to_add_by_rows = units_table_previous_properties | {"id"}
+    properties_to_add_by_rows = units_table_previous_properties | set({"id"})
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
     # Find default values for properties / columns already in the table
@@ -1196,7 +1195,7 @@ def add_units_table(
     indexes_for_default_values = table_df.index.difference(indexes_for_new_data).values
 
     # Add properties as columns
-    for property in properties_to_add_by_columns - {"unit_name"}:
+    for property in properties_to_add_by_columns - set({"unit_name"}):
         cols_args = data_to_add[property]
         data = cols_args["data"]
         if np.issubdtype(data.dtype, np.integer):
