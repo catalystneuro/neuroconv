@@ -140,7 +140,7 @@ Once the data is downloaded to your system, you must manually modify the config 
 The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=true` in the `gin_test_config.json` file and modify the variable `OUTPUT_PATH` in the respective test if necessary.
 
 ## Build the documentation
-For building the documentation locally, the following procedure can be followed. Create and clean environment and type
+For building the documentation locally, the following procedure can be followed. Create a clean environment and type
 the following commands in your terminal:
 ```shell
 git clone https://github.com/catalystneuro/nwb-conversion-tools
@@ -155,4 +155,4 @@ Now, to build the documention issue the following command in your terminal:
 sphinx-build -b html docs ./docs/_build/
 ```
 
-This builds the html under `/docs/_build/` (from your root directory, where you have installed `nwb-conversion-tools`). This allows you to review the output and build process localy before any modification.
+This builds the html under `/docs/_build/` (from your root directory, where you have installed `nwb-conversion-tools`). This allows you to review the outcome of the process localy before commiting code.
