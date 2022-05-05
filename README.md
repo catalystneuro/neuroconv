@@ -145,7 +145,7 @@ the following commands in your terminal:
 ```shell
 git clone https://github.com/catalystneuro/nwb-conversion-tools
 cd nwb-conversion-tools
-pip install -e .[doc]
+pip install -e .[docs]
 ```
 These commands install both the latest version of the repo and the dependencies necessary to build the documentation.
 Note that the argument `-e` makes you install [editable](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs)
