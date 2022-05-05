@@ -7,7 +7,16 @@ project = "NWB Conversion Tools"
 copyright = "2021, CatalystNeuro"
 author = "Cody Baker and Ben Dichter"
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.autosummary", "sphinx.ext.napoleon", "myst_parser"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.napoleon",
+    "myst_parser",
+    "sphinx_toggleprompt",
+    "sphinx_copybutton",
+]
+
 templates_path = ["_templates"]
 master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
@@ -50,3 +59,5 @@ autodoc_default_options = {
     "toctree": True,
 }
 add_module_names = False
+
+toggleprompt_offset_right = 35
