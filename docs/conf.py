@@ -9,7 +9,6 @@ author = "Cody Baker and Ben Dichter"
 
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.doctest",
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "myst_parser",
