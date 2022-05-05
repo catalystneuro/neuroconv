@@ -31,8 +31,9 @@ If everything went right, this should return True
     True
 
 The other type of display:
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: python
-    
+
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
