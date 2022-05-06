@@ -48,19 +48,22 @@ jobs:
         id: cache-ecephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ecephys-datasets-040122-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ecephys-datasets-041422-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
       - name: "Force GIN: ecephys download"
         if: steps.cache-ecephys-datasets.outputs.cache-hit == false
         run: |
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           cd ephy_testing_data
           datalad get -r ./neuralynx/Cheetah_v5.7.4/original_data/
-          datalad get -r ./neuroscope/test1/
+          datalad get -r ./neuralynx/Cheetah_v5.6.3/original_data/
+          datalad get -r ./neuralynx/Cheetah_v5.4.0/original_data/
+          datalad get -r ./neuroscope/
           datalad get -r ./openephysbinary/v0.4.4.1_with_video_tracking/
           datalad get -r ./blackrock/
           datalad get -r ./intan/
           datalad get -r ./spikegadgets/
           datalad get -r ./spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/
+          datalad get -r ./spikeglx/TEST_20210920_0_g0/
           datalad get -r ./phy/phy_example_0/
           datalad get -r ./axona/
           datalad get -r ./cellexplorer/
@@ -74,7 +77,7 @@ jobs:
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
-          key: ophys-datasets-040122-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+          key: ophys-datasets-042022-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
@@ -87,7 +90,7 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-040122-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-042022-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data

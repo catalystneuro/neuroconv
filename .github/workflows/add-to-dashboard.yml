@@ -1,0 +1,35 @@
+name: Add Issue or PR to Dashboard
+
+on:
+  issues:
+    types: opened
+
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  issue_opened:
+    name: Add Issue to Dashboard
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues'
+    steps:
+      - name: Add Issue to Dashboard
+        uses: leonsteinhaeuser/project-beta-automations@v1.2.1
+        with:
+          gh_token: ${{ secrets.MY_GITHUB_TOKEN }}
+          organization: catalystneuro
+          project_id: 3
+          resource_node_id: ${{ github.event.issue.node_id }}
+  pr_opened:
+    name: Add PR to Dashboard
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    steps:
+      - name: Add PR to Dashboard
+        uses: leonsteinhaeuser/project-beta-automations@v1.2.1
+        with:
+          gh_token: ${{ secrets.MY_GITHUB_TOKEN }}
+          organization: catalystneuro
+          project_id: 3
+          resource_node_id: ${{ github.event.pull_request.node_id }}

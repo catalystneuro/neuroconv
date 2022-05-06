@@ -65,8 +65,8 @@ class BaseImagingExtractorInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile: NWBFile,
-        metadata: dict,
+        nwbfile: NWBFile = None,
+        metadata: dict = None,
         overwrite: bool = False,
         save_path: OptionalFilePathType = None,
     ):

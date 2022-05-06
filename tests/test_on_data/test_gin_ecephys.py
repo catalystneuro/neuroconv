@@ -1,20 +1,20 @@
-import tempfile
 import unittest
-import os
+from itertools import product
 from pathlib import Path
 from datetime import datetime
 
 import numpy as np
 import numpy.testing as npt
 
-import pytest
 from parameterized import parameterized, param
 
-from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor
-from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
+from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor, SortingExtractor
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
-from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
 
+from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
+from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
+from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
+from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
 
 from pynwb import NWBHDF5IO
 
@@ -24,8 +24,10 @@ from nwb_conversion_tools import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
+    NeuroscopeSortingInterface,
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
+    KiloSortingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
@@ -34,38 +36,16 @@ from nwb_conversion_tools import (
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
 )
-from nwb_conversion_tools.utils import load_dict_from_file
 
-
-# Load the configuration for the data tests
-test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
-
-# GIN dataset: https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-if os.getenv("CI"):
-    LOCAL_PATH = Path(".")  # Must be set to "." for CI
-    print("Running GIN tests on Github CI!")
-else:
-    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
-    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
-    print("Running GIN tests locally!")
-DATA_PATH = LOCAL_PATH / "ephy_testing_data"
-HAVE_DATA = DATA_PATH.exists()
-
-if test_config_dict["SAVE_OUTPUTS"]:
-    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
-    OUTPUT_PATH.mkdir(exist_ok=True)
-else:
-    OUTPUT_PATH = Path(tempfile.mkdtemp())
-
-if not HAVE_DATA:
-    pytest.fail(f"No ephy_testing_data folder found in location: {DATA_PATH}!")
+from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+from .setup_paths import OUTPUT_PATH
 
 
 def custom_name_func(testcase_func, param_num, param):
     return (
         f"{testcase_func.__name__}_{param_num}_"
         f"{parameterized.to_safe_name(param.kwargs['data_interface'].__name__)}"
+        f"_{param.kwargs.get('case_name', '')}"
     )
 
 
@@ -77,19 +57,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=AxonaLFPDataInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg")),
         ),
-        param(
-            data_interface=SpikeGLXLFPInterface,
-            interface_kwargs=dict(
-                file_path=str(
-                    DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
-                )
-            ),
-        ),
     ]
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
-    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestLFP=data_interface)
@@ -108,25 +80,23 @@ class TestEcephysNwbConversions(unittest.TestCase):
             nwb_lfp_conversion = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].conversion
             # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
             # For GIN test data, sizes should be OK to load all into RAM even on CI
-            npt.assert_array_equal(x=recording.get_traces(return_scaled=False).T, y=nwb_lfp_unscaled)
-            npt.assert_array_almost_equal(
-                x=recording.get_traces(return_scaled=True).T * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
-            )
+            if isinstance(recording, RecordingExtractor):
+                npt.assert_array_equal(x=recording.get_traces(return_scaled=False).T, y=nwb_lfp_unscaled)
+                npt.assert_array_almost_equal(
+                    x=recording.get_traces(return_scaled=True).T * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
+                )
+            else:
+                npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
+                # This can only be tested if both gain and offest are present
+                if recording.has_scaled_traces():
+                    npt.assert_array_almost_equal(
+                        x=recording.get_traces(return_scaled=True) * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
+                    )
 
     parameterized_recording_list = [
         param(
             data_interface=NeuralynxRecordingInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
-        ),
-        param(
-            data_interface=NeuroscopeRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")),
-        ),
-        param(
-            data_interface=NeuroscopeRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"), spikeextractors_backend=True
-            ),
         ),
         param(
             data_interface=OpenEphysRecordingExtractorInterface,
@@ -141,6 +111,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
+
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
             param(
@@ -159,19 +130,48 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     interface_kwargs=interface_kwargs,
                 )
             )
-    for suffix in ["ap", "lf"]:
+
+    for spikeextractors_backend in [True, False]:
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
         parameterized_recording_list.append(
             param(
                 data_interface=SpikeGLXRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.{suffix}.bin")),
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.ap.bin"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
+
+    for spikeextractors_backend in [True, False]:
+        sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+        parameterized_recording_list.append(
+            param(
+                data_interface=SpikeGLXLFPInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.lf.bin"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
+
+    for spikeextractors_backend in [True, False]:
+        parameterized_recording_list.append(
+            param(
+                data_interface=NeuroscopeRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
-    def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs):
-        backend_string = f"_se_backend_{interface_kwargs.get('spikeextractors_backend', False)}"
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}{backend_string}.nwb")
+    def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestRecording=data_interface)
@@ -207,10 +207,14 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
             )
         else:
-            # Cast channel_ids to string and do the comparisons with spikeinterface methods
+            # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
             nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
+            if "channel_name" in recording.get_property_keys():
+                renamed_channel_ids = recording.get_property("channel_name")
+            else:
+                renamed_channel_ids = recording.get_channel_ids().astype("str")
             recording = recording.channel_slice(
-                channel_ids=recording.get_channel_ids(), renamed_channel_ids=recording.get_channel_ids().astype("str")
+                channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
             )
 
             check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
@@ -222,6 +226,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
         input=[
             param(
                 data_interface=PhySortingInterface,
+                interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
+            ),
+            param(
+                data_interface=KiloSortingInterface,
                 interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
             ),
             param(
@@ -255,6 +263,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     )
                 ),
             ),
+            param(
+                data_interface=NeuroscopeSortingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
+                    xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+                ),
+            ),
         ],
         name_func=custom_name_func,
     )
@@ -278,8 +293,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
         if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
             sf = 30000
             sorting.set_sampling_frequency(sf)
-        nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
-        check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
+
+        if isinstance(sorting, SortingExtractor):
+            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
+            check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
+        else:
+            nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
+            check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
 
     @parameterized.expand(
         input=[

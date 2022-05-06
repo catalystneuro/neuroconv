@@ -12,7 +12,7 @@ from ..utils import dict_deep_update
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
     """Check if processing module exists. If not, create it. Then return module."""
     if name in nwbfile.processing:
-        if description is not None and nwbfile.modules[name].description != description:
+        if description is not None and nwbfile.processing[name].description != description:
             warn(
                 "Custom description given to get_module does not match existing module description! "
                 "Ignoring custom description."

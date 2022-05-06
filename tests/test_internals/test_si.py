@@ -2,11 +2,14 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-import numpy as np
+from collections import defaultdict
 from datetime import datetime
 
+import numpy as np
+from pynwb import NWBHDF5IO, NWBFile
+
 import spikeextractors as se
-from spikeinterface.core.testing_tools import generate_recording
+from spikeinterface.core.testing_tools import generate_recording, generate_sorting
 from hdmf.testing import TestCase
 
 from spikeextractors.testing import (
@@ -16,7 +19,6 @@ from spikeextractors.testing import (
     check_recording_return_types,
     get_default_nwbfile_metadata,
 )
-from pynwb import NWBHDF5IO, NWBFile
 
 from nwb_conversion_tools import spikeinterface  # testing aliased import
 from nwb_conversion_tools.tools.spikeinterface import (
@@ -24,18 +26,21 @@ from nwb_conversion_tools.tools.spikeinterface import (
     write_recording,
     write_sorting,
     add_electrodes,
-    add_electrical_series,
+    add_units_table,
 )
 from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from nwb_conversion_tools.utils import FilePathType
+from nwb_conversion_tools.tools.nwb_helpers import get_module
+
+testing_session_time = datetime.now().astimezone()
 
 
 def _create_example(seed):
     channel_ids = [0, 1, 2, 3]
     num_channels = 4
-    num_frames = 10000
+    num_frames = 1000
     num_ttls = 30
     sampling_frequency = 30000
     X = np.random.RandomState(seed=seed).normal(0, 1, (num_channels, num_frames))
@@ -120,9 +125,7 @@ class TestExtractors(unittest.TestCase):
     def setUp(self):
         self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3, self.example_info = _create_example(seed=0)
         self.test_dir = tempfile.mkdtemp()
-        self.placeholder_metadata = dict(
-            NWBFile=dict(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
-        )
+        self.placeholder_metadata = dict(NWBFile=dict(session_start_time=testing_session_time))
 
     def tearDown(self):
         del self.RX, self.RX2, self.RX3, self.SX, self.SX2, self.SX3
@@ -324,12 +327,11 @@ class TestExtractors(unittest.TestCase):
         check_dumping(SX_nwb)
 
         # Test for handling skip_features argument
-        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames. Set use_times=False
+        # SX2 has timestamps, so loading it back from Nwb will not recover the same spike frames.
         write_sorting(
             sorting=self.SX2,
             save_path=path,
             skip_features=["widths"],
-            use_times=False,
             overwrite=True,
             metadata=self.placeholder_metadata,
         )
@@ -378,7 +380,7 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             name_out,
             units_name,
-            f"Intended units table name does not match what was written! (Out: {name_out}, should be: {units_name})",
+            f"Units table name not written correctly! (value is: {name_out}, should be: {units_name})",
         )
 
         units_description = "test_description"
@@ -392,8 +394,8 @@ class TestExtractors(unittest.TestCase):
         self.assertEqual(
             description_out,
             units_description,
-            "Intended units table description does not match what was written! "
-            f"(Out: {description_out}, should be: {units_description})",
+            "Units table description not written correctly! "
+            f"(value is: {description_out}, should be: {units_description})",
         )
 
     def check_metadata_write(self, metadata: dict, nwbfile_path: Path, recording: se.RecordingExtractor):
@@ -494,10 +496,11 @@ class TestWriteElectrodes(unittest.TestCase):
         self.path1 = self.test_dir + "/test_electrodes1.nwb"
         self.path2 = self.test_dir + "/test_electrodes2.nwb"
         self.path3 = self.test_dir + "/test_electrodes3.nwb"
-        self.nwbfile1 = NWBFile("sess desc1", "file id1", datetime.now())
-        self.nwbfile2 = NWBFile("sess desc2", "file id2", datetime.now())
-        self.nwbfile3 = NWBFile("sess desc3", "file id3", datetime.now())
+        self.nwbfile1 = NWBFile("sess desc1", "file id1", testing_session_time)
+        self.nwbfile2 = NWBFile("sess desc2", "file id2", testing_session_time)
+        self.nwbfile3 = NWBFile("sess desc3", "file id3", testing_session_time)
         self.metadata_list = [dict(Ecephys={i: dict(name=i, description="desc")}) for i in ["es1", "es2"]]
+
         # change channel_ids
         id_offset = np.max(self.RX.get_channel_ids())
         self.RX2 = se.subrecordingextractor.SubRecordingExtractor(
@@ -595,7 +598,7 @@ class TestAddElectrodes(TestCase):
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
         self.nwbfile = NWBFile(
-            session_description="session_description1", identifier="file_id1", session_start_time=datetime.now()
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
         channel_ids = self.base_recording.get_channel_ids()
         self.recording_1 = self.base_recording.channel_slice(
@@ -607,7 +610,7 @@ class TestAddElectrodes(TestCase):
 
         self.device = self.nwbfile.create_device(name="extra_device")
         self.electrode_group = self.nwbfile.create_electrode_group(
-            name="extra_group", description="description", location="location", device=self.device
+            name="0", description="description", location="location", device=self.device
         )
         self.defaults = dict(
             x=np.nan,
@@ -643,6 +646,16 @@ class TestAddElectrodes(TestCase):
         expected_channel_names_in_electrodes_table = ["a", "b", "c", "d", "e", "f"]
         actual_channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(actual_channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+
+    def test_non_overwriting_channel_names_property(self):
+        "add_electrodes function should not overwrite the recording object channel name property"
+        channel_names = ["name a", "name b", "name c", "name d"]
+        self.recording_1.set_property(key="channel_name", values=channel_names)
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_channel_names_in_electrodes_table = channel_names
+        channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
@@ -705,48 +718,74 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
 
-    def test_manual_row_adition_before_add_electrodes_function_and_channel_name_collision(self):
+    def test_row_matching_by_channel_name_with_existing_property(self):
         """
-        Add some rows to the electrode tables before using the add_electrodes function.
-        In this case there is with some common channel names between the previously added rows and the recroder
-        which causes collisions.
+        Adding new electrodes to an already existing electrode table should match
+        properties and information by channel name.
         """
-
         values_dic = self.defaults
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
-        self.nwbfile.add_electrode_column(name="property1", description="property_added_before")
+        self.nwbfile.add_electrode_column(name="property", description="exisiting property")
 
-        values_dic.update(id=20, channel_name="c", property1="value1_c")
+        values_dic.update(id=20, channel_name="c", property="value_c")
         self.nwbfile.add_electrode(**values_dic)
 
-        values_dic.update(id=21, channel_name="d", property1="value1_d")
+        values_dic.update(id=21, channel_name="d", property="value_d")
         self.nwbfile.add_electrode(**values_dic)
 
-        values_dic.update(id=22, channel_name="f", property1="value1_f")
+        values_dic.update(id=22, channel_name="f", property="value_f")
         self.nwbfile.add_electrode(**values_dic)
 
-        property1_values = ["value1_a", "value1_b", "x", "y"]
-        self.recording_1.set_property(key="property1", values=property1_values)
-
-        property2_values = ["value2_a", "value2_b", "value2_c", "value2_d"]
-        self.recording_1.set_property(key="property2", values=property2_values)
+        property_values = ["value_a", "value_b", "x", "y"]
+        self.recording_1.set_property(key="property", values=property_values)
 
         add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
 
+        # Remaining ids are filled positionally.
         expected_ids = [20, 21, 22, 3, 4]
+        # Properties are matched by channel name.
         expected_names = ["c", "d", "f", "a", "b"]
+        expected_property_values = ["value_c", "value_d", "value_f", "value_a", "value_b"]
+
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+        self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
 
-        expected_property_values1 = ["value1_c", "value1_d", "value1_f", "value1_a", "value1_b"]
-        expected_property_values2 = ["value2_c", "value2_d", "", "value2_a", "value2_b"]
-        self.assertListEqual(list(self.nwbfile.electrodes["property1"].data), expected_property_values1)
-        self.assertListEqual(list(self.nwbfile.electrodes["property2"].data), expected_property_values2)
-
-    def test_manually_added_before_recording_id_collision(self):
+    def test_row_matching_by_channel_name_with_new_property(self):
         """
-        Add some rows to the electrode tables before using the add_electrodes function.
-        In this case there is with some common ids between the manually added rows and the recorder which causes collisions.
+        Adding new electrodes to an already existing electrode table should match
+        properties and information by channel name.
+        """
+        values_dic = self.defaults
+        self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
+
+        values_dic.update(id=20, channel_name="c")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=21, channel_name="d")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=22, channel_name="f")
+        self.nwbfile.add_electrode(**values_dic)
+
+        property_values = ["value_a", "value_b", "value_c", "value_d"]
+        self.recording_1.set_property(key="property", values=property_values)
+
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        # Remaining ids are filled positionally.
+        expected_ids = [20, 21, 22, 3, 4]
+        # Properties are matched by channel name.
+        expected_names = ["c", "d", "f", "a", "b"]
+        expected_property_values = ["value_c", "value_d", "", "value_a", "value_b"]
+
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+        self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
+
+    def test_assertion_for_id_collision(self):
+        """
+        Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
         """
 
         values_dic = self.defaults
@@ -759,6 +798,74 @@ class TestAddElectrodes(TestCase):
         # The self.base_recording channel_ids are [0, 1, 2, 3]
         with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
             add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+
+
+class TestAddUnitsTable(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_units = 4
+        cls.base_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
+        # Base sorting unit ids are [0, 1, 2, 3]
+
+    def setUp(self):
+        """Start with a fresh NWBFile, and remapped sorters each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=datetime.now()
+        )
+        unit_ids = self.base_sorting.get_unit_ids()
+        self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
+
+        self.defaults = dict(spike_times=[1, 1, 1])
+
+    def test_integer_unit_names(self):
+        """Ensure add units_table gets the right units name for integer units ids."""
+        add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = ["0", "1", "2", "3"]
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_string_unit_names(self):
+        """Ensure add_units_table gets the right units name for string units ids"""
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = ["a", "b", "c", "d"]
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_non_overwriting_unit_names_sorting_property(self):
+        "add_units_table function should not ovewrtie the sorting object unit_name property"
+        unit_names = ["name a", "name b", "name c", "name d"]
+        self.sorting_1.set_property(key="unit_name", values=unit_names)
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = unit_names
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_write_units_table_in_processing_module(self):
+        """ """
+
+        units_table_name = "testing_processing"
+        unit_table_description = "testing_description"
+        add_units_table(
+            sorting=self.base_sorting,
+            nwbfile=self.nwbfile,
+            units_table_name=units_table_name,
+            unit_table_description=unit_table_description,
+            write_in_processing_module=True,
+        )
+
+        ecephys_mod = get_module(
+            nwbfile=self.nwbfile,
+            name="ecephys",
+            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
+        )
+        self.assertIn(units_table_name, ecephys_mod.data_interfaces)
+        units_table = ecephys_mod[units_table_name]
+        self.assertEqual(units_table.name, units_table_name)
+        self.assertEqual(units_table.description, unit_table_description)
 
 
 if __name__ == "__main__":

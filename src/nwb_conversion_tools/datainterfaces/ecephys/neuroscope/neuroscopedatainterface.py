@@ -12,7 +12,8 @@ from spikeinterface.extractors import NeuroScopeRecordingExtractor
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class
+from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class, dict_deep_update
+from .neuroscope_utils import get_session_start_time
 
 try:
     import lxml
@@ -153,6 +154,9 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         metadata["Ecephys"].update(
             ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
         )
+        session_start_time = get_session_start_time(str(xml_file_path))
+        if session_start_time is not None:
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
         return metadata
 
 
@@ -286,7 +290,6 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to folder containing .clu and .res files.
-            The default is None.
         keep_mua_units : bool
             Optional. Whether or not to return sorted spikes from multi-unit activity.
             The default is True.
@@ -328,4 +331,9 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
         metadata = dict(Ecephys=NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+
+        session_start_time = get_session_start_time(str(xml_file_path))
+        if session_start_time is not None:
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+
         return metadata

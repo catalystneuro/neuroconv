@@ -1,48 +1,23 @@
-import tempfile
 import unittest
 import os
-from pathlib import Path
 from datetime import datetime
 
-import pytest
 import numpy as np
 from pynwb import NWBHDF5IO
 from nwb_conversion_tools import NWBConverter, MovieInterface
-from nwb_conversion_tools.utils import load_dict_from_file
 
-
-# Load the configuration for the data tests
-test_config_dict = load_dict_from_file(Path(__file__).parent / "gin_test_config.json")
-
-#  GIN dataset: https://gin.g-node.org/CatalystNeuro/behavior_testing_data
-if os.getenv("CI"):
-    LOCAL_PATH = Path(".")  # Must be set to "." for CI
-    print("Running GIN tests on Github CI!")
-else:
-    # Override LOCAL_PATH in the `gin_test_config.json` file to a point on your system that contains the dataset folder
-    # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
-    LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
-    print("Running GIN tests locally!")
-BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
-HAVE_BEHAVIOR_DATA = BEHAVIOR_DATA_PATH.exists()
-
-if test_config_dict["SAVE_OUTPUTS"]:
-    OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
-    OUTPUT_PATH.mkdir(exist_ok=True)
-else:
-    OUTPUT_PATH = Path(tempfile.mkdtemp())
-
-if not HAVE_BEHAVIOR_DATA:
-    pytest.fail(f"No oephys_testing_data folder found in location: {BEHAVIOR_DATA_PATH}!")
+from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
 
 class TestMovieDataNwbConversions(unittest.TestCase):
     savedir = OUTPUT_PATH
 
-    def setUp(self) -> None:
+    def setUp(self):
         self.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
+        self.number_of_movie_files = len(self.movie_files)
         self.nwb_converter = self.create_movie_converter()
         self.nwbfile_path = os.path.join(self.savedir, "movie_test.nwb")
+        self.starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
 
     def create_movie_converter(self):
         class MovieTestNWBConverter(NWBConverter):
@@ -57,7 +32,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
         return metadata
 
     def test_movie_starting_times(self):
-        starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
+        starting_times = self.starting_times
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=False))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
@@ -108,7 +83,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
             assert mod[movie_interface_name].starting_time == 0.0
 
     def test_movie_custom_module(self):
-        starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
+        starting_times = self.starting_times
         module_name = "TestModule"
         module_description = "This is a test module."
         conversion_opts = dict(
@@ -131,7 +106,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
             assert module_description == nwbfile.processing[module_name].description
 
     def test_movie_chunking(self):
-        starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
+        starting_times = self.starting_times
         conv_ops = dict(
             Movie=dict(external_mode=False, stub_test=True, starting_times=starting_times, chunk_data=False)
         )
@@ -148,7 +123,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
                 assert mod[movie_interface_name].data.chunks is not None  # TODO retrive storage_layout of hdf5 dataset
 
     def test_movie_external_mode(self):
-        starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
+        starting_times = self.starting_times
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=True))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
@@ -197,7 +172,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
             )
 
     def test_movie_stub(self):
-        starting_times = [np.float(np.random.randint(200)) for i in range(len(self.movie_files))]
+        starting_times = self.starting_times
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=False, stub_test=True))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
