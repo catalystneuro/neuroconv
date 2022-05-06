@@ -110,8 +110,6 @@ jobs:
       - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'}}
         name: Run full pytest with coverage
         run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
-      - name: Test the examples gallery in the documentation
-        run: pytest --doctest-glob="*.rst" docs/conversion_examples_gallery
       - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         name: Upload full coverage to Codecov
         uses: codecov/codecov-action@v1
