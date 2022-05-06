@@ -1,4 +1,4 @@
-Blackrock data converison 
+Blackrock data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Convert Blackrock data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.BlackrockRecordingExtractorInterface`.
