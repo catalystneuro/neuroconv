@@ -14,12 +14,12 @@ Convert Neuroscope data to NWB using :py:class:`~nwb_conversion_tools.datainterf
     >>> file_path = "./ephy_testing_data/neuroscope/test1/test1.dat"
     >>> interface = NeuroscopeRecordingInterface(file_path=file_path)
     >>> 
-    >>> # Extract what metadata we can from the source files 
+    >>> # Extract what metadata we can from the source files
+    >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred 
     >>> # automatically from the source files you must supply one.
-    >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> save_path = "./nwb_neuroscope.nwb"
