@@ -10,7 +10,7 @@ Convert spikeglx data to NWB using :py:class:`~nwb_conversion_tools.datainterfac
     >>> from pathlib import Path
     >>> from nwb_conversion_tools import SpikeGLXRecordingInterface
     >>> 
-    >>> # For Neuroscope we need to pass the location of the ``.bin`` file 
+    >>> # For this interface we need to pass the location of the ``.bin`` file 
     >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"
     >>> # Change the file_path to the location in your system
     >>> interface = SpikeGLXRecordingInterface(file_path=file_path)
@@ -18,7 +18,7 @@ Convert spikeglx data to NWB using :py:class:`~nwb_conversion_tools.datainterfac
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> tzinfo = tz.gettz("America/Los_Angeles")
+    >>> tzinfo = tz.gettz("US/Pacific")
     >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
     >>> session_start_time = session_start_time.replace(tzinfo=tzinfo).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
