@@ -84,11 +84,11 @@ class AbfInterface(BaseIcephysInterface):
         if any(x in metafile_data for x in ("cell_id", "slice_id", "targeted_layer", "inferred_layer")):
             metadata["ndx-dandi-icephys"] = dict(
                 # Required fields for DANDI
-                cell_id=metafile_data.get("cell_id", ""),
-                slice_id=metafile_data.get("slice_id", ""),
+                cell_id=metafile_data.get("cell_id"),
+                slice_id=metafile_data.get("slice_id"),
                 # Lab specific metadata
-                targeted_layer=metafile_data.get("targeted_layer", ""),
-                inferred_layer=metafile_data.get("estimate_laminate", ""),
+                targeted_layer=metafile_data.get("targeted_layer"),
+                inferred_layer=metafile_data.get("estimate_laminate"),
             )
 
         # Recordings sessions metadata (one Session is one abf file / neo reader)
