@@ -17,6 +17,7 @@ Convert Neuroscope data to NWB using :py:class:`~nwb_conversion_tools.datainterf
     >>> # Extract what metadata we can from the source files 
     >>> # session_start_time is required for conversion. If it cannot be inferred 
     >>> # automatically from the source files you must supply one.
+    >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
@@ -26,4 +27,4 @@ Convert Neuroscope data to NWB using :py:class:`~nwb_conversion_tools.datainterf
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
     >>> Path(save_path).is_file()
-    False
+    True
