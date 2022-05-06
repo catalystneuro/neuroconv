@@ -1,7 +1,7 @@
-Phy data conversion
+Kilosorting data conversion
 ^^^^^^^^^^^^^^^^^^^
 
-Convert Phy data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.PhySortingInterface`.
+Convert Kilosorting data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.Kilosorting`.
 
 .. code-block:: python
     
@@ -9,11 +9,11 @@ Convert Phy data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.Ph
     from dateutil import tz
     from pathlib import Path
 
-    from nwb_conversion_tools import KiloSortingInterface
+    from nwb_conversion_tools import PhySortingInterface
 
 
     folder_path = f"/home/heberto/ephy_testing_data/phy/phy_example_0"
-    interface = KiloSortingInterface(folder_path=folder_path)
+    interface = PhySortingInterface(folder_path=folder_path)
 
     metadata = interface.get_metadata()
     print(metadata)
