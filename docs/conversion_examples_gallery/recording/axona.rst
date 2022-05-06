@@ -11,7 +11,7 @@ Convert spikeglx data to NWB using :py:class:`~nwb_conversion_tools.datainterfac
     >>> from nwb_conversion_tools import AxonaRecordingExtractorInterface
     >>> 
     >>> # For this interface we need to pass the location of the ``.bin`` file 
-    >>> file_path = f"{ECEPHY_DATA_PATH}/axona/axona_raw.bin""
+    >>> file_path = f"{ECEPHY_DATA_PATH}/axona/axona_raw.bin"
     >>> # Change the file_path to the location in your system
     >>> interface = AxonaRecordingExtractorInterface(file_path=file_path)
     >>> 
