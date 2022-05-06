@@ -1,7 +1,18 @@
 """Collection of helper functions for assessing and performing automated data transfers."""
 import os
+import subprocess
 import json
-from typing import Dict
+import re
+from typing import Dict, Optional, List, Union, Tuple
+from pathlib import Path
+from warnings import warn
+from shutil import rmtree
+from time import sleep, time
+
+import psutil
+from tqdm import tqdm
+
+from ..utils import FolderPathType, OptionalFolderPathType
 
 try:  # pragma: no cover
     import globus_cli
@@ -11,7 +22,38 @@ except ModuleNotFoundError:
     HAVE_GLOBUS = False
 
 
-def get_globus_dataset_content_sizes(globus_endpoint_id: str, path: str, recursive: bool = True) -> Dict[str, int]:
+def _kill_process(proc, timeout: Optional[float] = None):
+    """Private helper for ensuring a process and any subprocesses are properly terminated after a timeout period."""
+
+    def _kill(proc):
+        """Local helper for ensuring a process and any subprocesses are properly terminated."""
+        try:
+            process = psutil.Process(proc.pid)
+            for proc in process.children(recursive=True):
+                proc.kill()
+            process.kill()
+        except psutil.NoSuchProcess:  # good process cleaned itself up
+            pass
+
+    try:
+        proc.wait(timeout=timeout)
+        _kill(proc=proc)
+    except subprocess.TimeoutExpired:
+        _kill(proc=proc)
+
+
+def deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
+    """Private helper for efficient submission and cleanup of shell processes."""
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True)
+    output = proc.communicate()[0].strip() if catch_output else None
+    if timeout is not None:
+        _kill_process(proc=proc, timeout=timeout)
+    return output
+
+
+def get_globus_dataset_content_sizes(
+    globus_endpoint_id: str, path: str, recursive: bool = True, timeout: float = 120.0
+) -> Dict[str, int]:  # pragma: no cover
     """
     May require external login via 'globus login' from CLI.
 
@@ -20,9 +62,174 @@ def get_globus_dataset_content_sizes(globus_endpoint_id: str, path: str, recursi
     assert HAVE_GLOBUS, "You must install the globus CLI (pip install globus-cli)!"
 
     recursive_flag = " --recursive" if recursive else ""
-    contents = json.loads(os.popen(f"globus ls -Fjson {globus_endpoint_id}:{path}{recursive_flag}").read())
+    contents = json.loads(
+        deploy_process(
+            command=f"globus ls -Fjson {globus_endpoint_id}:{path}{recursive_flag}", catch_output=True, timeout=timeout
+        )
+    )
     files_and_sizes = {item["name"]: item["size"] for item in contents["DATA"] if item["type"] == "file"}
     return files_and_sizes
+
+
+def transfer_globus_content(
+    source_endpoint_id: str,
+    source_files: Union[str, List[List[str]]],
+    destination_endpoint_id: str,
+    destination_folder: FolderPathType,
+    display_progress: bool = True,
+    progress_update_rate: float = 60.0,
+    progress_update_timeout: float = 600.0,
+) -> Tuple[bool, List[str]]:  # pragma: no cover
+    """
+    Track progress for transferring content from source_endpoint_id to destination_endpoint_id:destination_folder.
+
+    Parameters
+    ----------
+    source_endpoint_id : string
+        Source Globus ID.
+    source_files : string, or list of strings, or list of lists of strings
+        A string path or list-of-lists of string paths of files to transfer from the source_endpoint_id.
+        If using a nested list, the outer level indicates which requests will be batched together.
+        If using a nested list, all items in a single batch level must be from the same common directory.
+
+        It is recommended to transfer the largest file(s) with minimal batching,
+        and to batch a large number of very small files together.
+
+        It is also generally recommended to submit up to 3 simultaneous transfer,
+        *i.e.*, `source_files` is recommended to have at most 3 items all of similar total byte size.
+    destination_endpoint_id : string
+        Destination Globus ID.
+    destination_folder : FolderPathType
+        Absolute path to a local folder where all content will be transfered to.
+    display_progress : bool, optional
+        Whether or not to display the transfer as progress bars using `tqdm`.
+        Defaults to True.
+    progress_update_rate : float, optional
+        How frequently (in seconds) to update the progress bar display tracking the data transfer.
+        Defaults to 30 seconds.
+    progress_update_tiemout : float, optional
+        Maximum amount of time to monitor the transfer progress.
+        You may wish to set this to be longer when transferring very large files.
+        Defaults to 10 minutes.
+
+    Returns
+    -------
+    success : bool
+        Returns the total status of all transfers when they either finish or the progress tracking times out.
+    task_ids : list of strings
+        List of the task IDs submitted to globus, if further information is needed to reestablish tracking or terminate.
+    """
+
+    def _submit_transfer_request(
+        source_endpoint_id: str,
+        source_files: Union[str, List[List[str]]],
+        destination_endpoint_id: str,
+        destination_folder_path: Path,
+    ) -> Dict[str, int]:
+        """Send transfer request to Globus."""
+        folder_content_sizes = dict()
+        task_total_sizes = dict()
+        for j, batched_source_files in enumerate(source_files):
+            paths_file = destination_folder_path / f"paths_{j}.txt"
+            # .as_posix() to ensure correct string form Globus expects
+            # ':' replacement for Windows drives
+            source_folder = Path(batched_source_files[0]).parent.as_posix().replace(":", "")
+            destination_folder_name = destination_folder_path.as_posix().replace(":", "")
+            with open(file=paths_file, mode="w") as f:
+                for source_file in batched_source_files:
+                    file_name = Path(source_file).name
+                    f.write(f"{file_name} {file_name}\n")
+
+            transfer_command = (
+                "globus transfer "
+                f"{source_endpoint_id}:{source_folder} {destination_endpoint_id}:/{destination_folder_name} "
+                f"--batch {paths_file}"
+            )
+            transfer_message = deploy_process(
+                command=transfer_command,
+                catch_output=True,
+            )
+            task_id = re.findall(
+                pattern=(
+                    "^Message: The transfer has been accepted and a task has been created and queued for "
+                    "execution\nTask ID: (.+)$"
+                ),
+                string=transfer_message,
+            )
+            paths_file.unlink()
+            assert task_id, f"Transfer submission failed! Globus output:\n{transfer_message}."
+
+            if source_folder not in folder_content_sizes:
+                contents = get_globus_dataset_content_sizes(globus_endpoint_id=source_endpoint_id, path=source_folder)
+                folder_content_sizes.update({source_folder: contents})
+            task_total_sizes.update(
+                {
+                    task_id[0]: sum(
+                        [
+                            folder_content_sizes[source_folder][Path(source_file).name]
+                            for source_file in batched_source_files
+                        ]
+                    )
+                }
+            )
+        return task_total_sizes
+
+    def _track_transfer(
+        task_total_sizes: Dict[str, int],
+        display_progress: bool = True,
+        progress_update_rate: float = 60.0,
+        progress_update_timeout: float = 600.0,
+    ) -> bool:
+        """Track the progress of transfers."""
+        if display_progress:
+            all_pbars = [
+                tqdm(desc=f"Transferring batch #{j}...", total=total_size, position=j, leave=True)
+                for j, total_size in enumerate(task_total_sizes.values(), start=1)
+            ]
+        all_status = [False for _ in task_total_sizes]
+        success = all(all_status)
+        time_so_far = 0.0
+        start_time = time()
+        while not success and time_so_far <= progress_update_timeout:
+            time_so_far = time() - start_time
+            for j, (task_id, task_total_size) in enumerate(task_total_sizes.items()):
+                task_update = deploy_process(f"globus task show {task_id} -Fjson", catch_output=True)
+                task_message = json.loads(task_update)
+                all_status[j] = task_message["status"] == "SUCCEEDED"
+                assert (
+                    all_status[j] != "OK" or all_status[j] != "SUCCEEDED"
+                ), f"Something went wrong with the transfer! Please manually inspect the task with ID '{task_id}'."
+                if display_progress:
+                    all_pbars[j].update(n=task_message["bytes_transferred"] - all_pbars[j].n)
+            success = all(all_status)
+            if not success:
+                sleep(progress_update_rate)
+        return success
+
+    source_files = [[source_files]] if isinstance(source_files, str) else source_files
+    destination_folder_path = Path(destination_folder)
+    # assertion check is ensure the logical iteration does not occur over the individual string values
+    assert (
+        isinstance(source_files, list) and source_files and isinstance(source_files[0], list) and source_files[0]
+    ), "'source_files' must be a non-empty nested list-of-lists to indicate batched transfers!"
+    assert destination_folder_path.is_absolute(), (
+        "The 'destination_folder' must be an absolute path to resolve ambiguity with relative Globus head "
+        "as well as avoiding Globus access permissions to a personal relative path!"
+    )
+
+    task_total_sizes = _submit_transfer_request(
+        source_endpoint_id=source_endpoint_id,
+        source_files=source_files,
+        destination_endpoint_id=destination_endpoint_id,
+        destination_folder_path=destination_folder_path,
+    )
+    success = _track_transfer(
+        task_total_sizes=task_total_sizes,
+        display_progress=display_progress,
+        progress_update_rate=progress_update_rate,
+        progress_update_timeout=progress_update_timeout,
+    )
+    return success, list(task_total_sizes)
 
 
 def estimate_total_conversion_runtime(
@@ -84,3 +291,98 @@ def estimate_s3_conversion_cost(
     cost_gb_m = 0.08 / 1e3  # $0.08 / GB Month
     cost_mb_s = cost_gb_m / (1e3 * 2.628e6)  # assuming 30 day month; unsure how amazon weights shorter months?
     return cost_mb_s * total_mb_s
+
+
+def dandi_upload(
+    dandiset_id: str,
+    nwb_folder_path: FolderPathType,
+    dandiset_folder_path: OptionalFolderPathType = None,
+    version: Optional[str] = None,
+    staging: bool = False,
+    process_timeouts: Optional[Dict[str, Optional[float]]] = None,
+):
+    """
+    Fully automated upload of NWBFiles to a DANDISet.
+
+    Requires an API token set as an envrinment variable named DANDI_API_KEY.
+
+    To set this in your bash terminal in Linux or MacOS, run
+        export DANDI_API_KEY="..."
+    or in Windows
+        set DANDI_API_KEY="..."
+
+    DO NOT STORE THIS IN ANY PUBLICLY SHARED CODE.
+
+    Parameters
+    ----------
+    dandiset_id : str
+        Six-digit string identifier for the DANDISet the NWBFiles will be uploaded to.
+    nwb_folder_path : folder path
+        Folder containing the NWBFiles to be uploaded.
+    dandiset_folder_path : folder path, optional
+        A separate folder location within which to download the dandiset.
+        Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
+        Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
+    version : str, optional
+        "draft" or "version".
+        The default is "draft".
+    staging : bool, optional
+        Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
+        The default is False.
+    process_timeouts : Dict[str, Optional[float]], optional
+        Dictionary used to specify mazimum timeout of each individual process in the DANDI upload.
+        Keys must be from ['validate', 'download', 'organize', 'upload'].
+        The value of each key is number of seconds to wait before forcibly terminating.
+        Set any value to None to wait until the process completes, however long that may be.
+        The default is for all processes except organize to wait until full completion
+        (in testing, organize subprocess doesn't seem to want to wait successfully).
+    """
+    initial_wd = os.getcwd()
+    dandiset_folder_path = nwb_folder_path.parent if dandiset_folder_path is None else dandiset_folder_path
+    version = "draft" if version is None else version
+    process_timeouts = dict() if process_timeouts is None else process_timeouts
+    assert os.getenv("DANDI_API_KEY"), (
+        "Unable to find environment variable 'DANDI_API_KEY'. "
+        "Please retrieve your token from DANDI and set this environment variable."
+    )
+    url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
+    dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
+
+    os.chdir(nwb_folder_path.parent)
+    validate_return = deploy_process(
+        command=f"dandi validate {nwb_folder_path.name}",
+        catch_output=True,
+        timeout=process_timeouts.get("validate"),
+    )
+    assert re.fullmatch(
+        pattern=r"^Summary: No validation errors among \d+ file\(s\)$", string=validate_return
+    ), "DANDI validation failed!"
+
+    os.chdir(dandiset_folder_path)
+    download_return = deploy_process(
+        command=f"dandi download {dandiset_url} --download dandiset.yaml",
+        catch_output=True,
+        timeout=process_timeouts.get("download"),
+    )
+    assert download_return, "DANDI download failed!"  # output is a bit too dynamic to regex; if it fails it is empty
+
+    os.chdir(dandiset_folder_path / dandiset_id)
+    deploy_process(
+        command=f"dandi organize {nwb_folder_path.absolute()}",  # .absolute() needed if dandiset folder is elsewhere
+        timeout=process_timeouts.get("organize", 120.0),
+    )
+    assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
+
+    dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
+    upload_return = deploy_process(
+        command=dandi_upload_command, catch_output=True, timeout=process_timeouts.get("upload")
+    )
+    assert upload_return, "DANDI upload failed!"
+
+    # cleanup - should be confirmed manually, Windows especially can complain
+    os.chdir(initial_wd)  # restore to initial working directory; also to prevent additional process usage permissions
+    try:
+        rmtree(path=nwb_folder_path.parent / dandiset_id)
+        rmtree(path=nwb_folder_path)
+    except PermissionError:
+        warn("Unable to clean up source files and dandiset! Please manually delete them.")

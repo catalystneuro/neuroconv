@@ -55,10 +55,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(
-            self,
-            file_path: FilePathType,
-            stub_test: Optional[bool] = False,
-            spikeextractors_backend: Optional[bool] = False,
+        self,
+        file_path: FilePathType,
+        stub_test: Optional[bool] = False,
+        spikeextractors_backend: Optional[bool] = False,
     ):
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
@@ -131,6 +131,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_device_metadata(self) -> dict:
         """Returns a device with description including the metadat as described here
         # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+
         Returns
         -------
         dict

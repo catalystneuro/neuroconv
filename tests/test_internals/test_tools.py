@@ -1,15 +1,21 @@
 import os
 from datetime import datetime
+from tempfile import mkdtemp
+from pathlib import Path
+from shutil import rmtree
 
 import pytest
-from pynwb.base import ProcessingModule
+from pynwb import NWBHDF5IO, ProcessingModule
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
+from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata, get_default_nwbfile_metadata
 from nwb_conversion_tools.tools.data_transfers import (
     get_globus_dataset_content_sizes,
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,
+    dandi_upload,
+    transfer_globus_content,
+    deploy_process,
 )
 
 try:
@@ -58,7 +64,6 @@ class TestConversionTools(TestCase):
 )
 def test_get_globus_dataset_content_sizes():
     """Test is fixed to a subpath that is somewhat unlikely to change in the future."""
-    globus_cli.login_manager.LoginManager._TEST_MODE = True
     assert get_globus_dataset_content_sizes(
         globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
         path="/SenzaiY/YutaMouse41/YutaMouse41-150821/originalClu/",
@@ -159,3 +164,55 @@ def test_estimate_total_conversion_runtime():
         1235294.1176470588,
         12352941.176470589,
     ]
+
+
+class TestDANDIUpload(TestCase):
+    def setUp(self):
+        self.tmpdir = Path(mkdtemp())
+        self.nwb_folder_path = self.tmpdir / "test_nwb"
+        self.nwb_folder_path.mkdir()
+        metadata = get_default_nwbfile_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        metadata.update(Subject=dict(subject_id="foo"))
+        with NWBHDF5IO(path=self.nwb_folder_path / "test_nwb_1.nwb", mode="w") as io:
+            io.write(make_nwbfile_from_metadata(metadata=metadata))
+
+    def tearDown(self):
+        rmtree(self.tmpdir)
+
+    def test_dandi_upload(self):
+        dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
+
+
+@pytest.mark.skipif(
+    not (HAVE_GLOBUS and LOGGED_INTO_GLOBUS),
+    reason="You must have globus installed and be logged in to run this test!",
+)
+class TestGlobusTransferContent(TestCase):
+    def setUp(self):
+        self.tmpdir = Path(mkdtemp())  # Globus has permission issues here apparently
+        self.tmpdir = Path("C:/Users/Raven/Documents/test_globus")  # For local test, which is currently the only way...
+
+    def tearDown(self):
+        rmtree(self.tmpdir)
+
+    def test_transfer_globus_content(self):
+        """Test is fixed to a subpath that is somewhat unlikely to change in the future."""
+        source_endpoint_id = "188a6110-96db-11eb-b7a9-f57b2d55370d"  # Buzsaki
+        destination_endpoint_id = deploy_process(command="globus endpoint local-id", catch_output=True)
+        test_source_files = [
+            ["/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.1"],
+            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(2, 4)],
+            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(4, 9)],
+        ]
+        success, task_ids = transfer_globus_content(
+            source_endpoint_id=source_endpoint_id,
+            source_files=test_source_files,
+            destination_endpoint_id=destination_endpoint_id,
+            destination_folder=self.tmpdir,
+            display_progress=False,
+        )
+        tmpdir_size = sum(f.stat().st_size for f in self.tmpdir.glob("**/*") if f.is_file())
+        assert success
+        assert task_ids
+        assert tmpdir_size > 0
