@@ -12,7 +12,7 @@ Convert Neuroscope data to NWB using :py:class:`~nwb_conversion_tools.datainterf
     >>> 
     >>> # For this data interface we need to pass the location of the `.rhd` file 
     >>> suffix = "rhd" # This can also be rhs
-    >>> file_path = f"{ECEPHY_DATA_PATH}/neuroscope/intan/intan_{suffix}_test_1.{suffix}"
+    >>> file_path = f"{ECEPHY_DATA_PATH}/intan/intan_{suffix}_test_1.{suffix}"
     >>> # Change the file_path to the location in your system
     >>> interface = IntanRecordingInterface(file_path=file_path)
     >>> 

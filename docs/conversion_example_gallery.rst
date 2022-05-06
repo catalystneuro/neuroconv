@@ -11,6 +11,7 @@ Recording
     :maxdepth: 1
 
     Axona <conversion_examples_gallery/recording/axona>
+    Intan <conversion_examples_gallery/recording/intan>
     Neuroscope <conversion_examples_gallery/recording/neuroscope>
     Spikelgx <conversion_examples_gallery/recording/spikeglx>
 
