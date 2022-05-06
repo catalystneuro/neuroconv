@@ -815,6 +815,7 @@ class TestAddUnitsTable(TestCase):
         )
         unit_ids = self.base_sorting.get_unit_ids()
         self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
+        self.sorting_2 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["c", "d", "e", "f"])
 
         self.defaults = dict(spike_times=[1, 1, 1])
 
@@ -843,6 +844,188 @@ class TestAddUnitsTable(TestCase):
         expected_unit_names_in_units_table = unit_names
         unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
         self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_integer_unit_names_overwrite(self):
+        """Ensure unit names merge correctly after appending when unit names are integers."""
+        unit_ids = self.base_sorting.get_unit_ids()
+        offest_units_ids = unit_ids + 2
+        sorting_with_offset_unit_ids = self.base_sorting.select_units(
+            unit_ids=unit_ids, renamed_unit_ids=offest_units_ids
+        )
+
+        add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
+        add_units_table(sorting=sorting_with_offset_unit_ids, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = ["0", "1", "2", "3", "4", "5"]
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_string_unit_names_overwrite(self):
+        """Ensure unit names merge correctly after appending when channel names are strings."""
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = ["a", "b", "c", "d", "e", "f"]
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_non_overwriting_unit_names_sorting_property(self):
+        "add_units_table function should not ovewrtie the sorting object unit_name property"
+        unit_names = ["name a", "name b", "name c", "name d"]
+        self.sorting_1.set_property(key="unit_name", values=unit_names)
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_unit_names_in_units_table = unit_names
+        unit_names_in_units_table = list(self.nwbfile.units["unit_name"].data)
+        self.assertListEqual(unit_names_in_units_table, expected_unit_names_in_units_table)
+
+    def test_common_property_extension(self):
+        """Add a property for a first sorting that is then extended by a second sorting."""
+        self.sorting_1.set_property(key="common_property", values=["value_1"] * self.num_units)
+        self.sorting_2.set_property(key="common_property", values=["value_2"] * self.num_units)
+
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        properties_in_units_table = list(self.nwbfile.units["common_property"].data)
+        expected_properties_in_units_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
+        self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
+
+    def test_property_addition(self):
+        """Add a property only available in a second sorting."""
+        self.sorting_2.set_property(key="added_property", values=["added_value"] * self.num_units)
+
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        properties_in_units_table = list(self.nwbfile.units["added_property"].data)
+        expected_properties_in_units_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
+        self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
+
+    def test_units_table_extension_after_manual_unit_addition(self):
+        """Add some rows to the units tables before using the add_units_table function"""
+        values_dic = self.defaults
+
+        values_dic.update(id=123, spike_times=[0, 1, 2])
+        self.nwbfile.add_unit(**values_dic)
+
+        values_dic.update(id=124, spike_times=[2, 3, 4])
+        self.nwbfile.add_unit(**values_dic)
+
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_units_ids = [123, 124, 2, 3, 4, 5]
+        expected_unit_names = ["123", "124", "a", "b", "c", "d"]
+        self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+
+    def test_manual_extension_after_add_units_table(self):
+        """Add some units to the units table after using the add_units_table function"""
+
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        values_dic = self.defaults
+
+        # Previous properties
+        values_dic.update(id=123, unit_name=str(123))
+        self.nwbfile.units.add_unit(**values_dic)
+
+        values_dic.update(id=124, unit_name=str(124))
+        self.nwbfile.units.add_unit(**values_dic)
+
+        values_dic.update(id=None, unit_name="6")  # automatic ID set
+        self.nwbfile.units.add_unit(**values_dic)
+
+        expected_unit_ids = [0, 1, 2, 3, 123, 124, 6]
+        expected_unit_names = ["a", "b", "c", "d", "123", "124", "6"]
+        self.assertListEqual(list(self.nwbfile.units.id.data), expected_unit_ids)
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+
+    def test_property_matching_by_unit_name_with_existing_property(self):
+        """
+        Add some units to the units tables before using the add_units_table function.
+        Previous properties that are also available in the sorting are matched with unit_name
+        """
+
+        values_dic = self.defaults
+
+        self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
+        self.nwbfile.add_unit_column(name="property", description="property_added_before")
+
+        values_dic.update(id=20, unit_name="c", property="value_c")
+        self.nwbfile.add_unit(**values_dic)
+
+        values_dic.update(id=21, unit_name="d", property="value_d")
+        self.nwbfile.add_unit(**values_dic)
+
+        values_dic.update(id=22, unit_name="f", property="value_f")
+        self.nwbfile.add_unit(**values_dic)
+
+        property_values = ["value_a", "value_b", "x", "y"]
+        self.sorting_1.set_property(key="property", values=property_values)
+
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        # Properties correspond with unit names, ids are filled positionally
+        expected_units_ids = [20, 21, 22, 3, 4]
+        expected_unit_names = ["c", "d", "f", "a", "b"]
+        expected_property_values = ["value_c", "value_d", "value_f", "value_a", "value_b"]
+
+        self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+        self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
+
+    def test_property_matching_by_unit_name_with_new_property(self):
+        """
+        Add some units to the units tables before using the add_units_table function.
+        New properties in the sorter are matched by unit name
+        """
+
+        values_dic = self.defaults
+
+        self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
+
+        values_dic.update(id=20, unit_name="c")
+        self.nwbfile.add_unit(**values_dic)
+
+        values_dic.update(id=21, unit_name="d")
+        self.nwbfile.add_unit(**values_dic)
+
+        values_dic.update(id=22, unit_name="f")
+        self.nwbfile.add_unit(**values_dic)
+
+        property_values = ["value_a", "value_b", "value_c", "value_d"]
+        self.sorting_1.set_property(key="property", values=property_values)
+
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        # Properties correspond with unit names, ids are filled positionally
+        expected_units_ids = [20, 21, 22, 3, 4]
+        expected_unit_names = ["c", "d", "f", "a", "b"]
+        expected_property_values = ["value_c", "value_d", "", "value_a", "value_b"]
+
+        self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+        self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
+
+    def test_id_collision_assertion(self):
+        """
+        Add some units to the units table before using the add_units_table function.
+        In this case there is are some common ids between the manually added units and the sorting ids which causes
+        collisions. That is, if the units ids in the sorter integer it is required for them to be different from the
+        ids already in the table.
+        """
+
+        values_dic = self.defaults
+
+        values_dic.update(id=0)
+        self.nwbfile.add_unit(**values_dic)
+
+        values_dic.update(id=1)
+        self.nwbfile.add_unit(**values_dic)
+        # The self.base_sorting unit_ids are [0, 1, 2, 3]
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
+            add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
 
     def test_write_units_table_in_processing_module(self):
         """ """
