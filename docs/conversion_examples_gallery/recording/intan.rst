@@ -1,7 +1,7 @@
 Intan data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Neuroscope data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.IntanRecordingInterface`.
+Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.IntanRecordingInterface`.
 
 .. code-block:: python
 
