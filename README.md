@@ -138,3 +138,21 @@ datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 Once the data is downloaded to your system, you must manually modify the config file ([example](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/base_gin_test_config.json)) located in `./tests/test_on_data/gin_test_config.json` so its corresponding `LOCAL_PATH` key points to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
 
 The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=true` in the `gin_test_config.json` file and modify the variable `OUTPUT_PATH` in the respective test if necessary.
+
+## Build the documentation
+For building the documentation locally, the following procedure can be followed. Create a clean environment and type
+the following commands in your terminal:
+```shell
+git clone https://github.com/catalystneuro/nwb-conversion-tools
+cd nwb-conversion-tools
+pip install -e .[docs]
+```
+These commands install both the latest version of the repo and the dependencies necessary to build the documentation.
+Note that the argument `-e` makes you install [editable](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs)
+
+Now, to build the documention issue the following command in your terminal:
+```shell
+sphinx-build -b html docs ./docs/_build/
+```
+
+This builds the html under `/docs/_build/` (from your root directory, where you have installed `nwb-conversion-tools`). This allows you to review the outcome of the process localy before commiting code.
