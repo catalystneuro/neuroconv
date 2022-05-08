@@ -85,13 +85,10 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         nwbfile: NWBFile = None,
         metadata: dict = None,
         stub_test: bool = False,
-        use_times: bool = False,
         save_path: OptionalFilePathType = None,
         overwrite: bool = False,
-        write_as: str = "raw",
-        es_key: str = None,
         icephys_experiment_type: Optional[str] = None,
-        skip_electrodes: Optional[tuple] = (),
+        skip_electrodes: tuple = (),
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -114,16 +111,11 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
             If using save_path, whether or not to overwrite the NWBFile if it already exists.
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
-        buffer_mb: int (optional, defaults to 500MB)
-            Maximum amount of memory (in MB) to use per iteration of the internal DataChunkIterator.
-            Requires trace data in the RecordingExtractor to be a memmap object.
-        write_as: str (optional, defaults to 'raw')
-            Options: 'raw', 'lfp' or 'processed'
-        es_key: str (optional)
-            Key in metadata dictionary containing metadata info for the specific electrical series
         icephys_experiment_type: str (optional)
             Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero' (all current and amplifier settings turned off).
             If no value is passed, 'voltage_clamp' is used as default.
+        skip_electrodes: tuple
+
         """
         if nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata)
@@ -140,9 +132,6 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
                 neo_reader=reader,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                use_times=use_times,
-                write_as=write_as,
-                es_key=es_key,
                 overwrite=overwrite if i == 0 else False,
                 icephys_experiment_type=metadata["Icephys"]["Sessions"][i]["icephys_experiment_type"],
                 stimulus_type=metadata["Icephys"]["Sessions"][i]["stimulus_type"],

@@ -9,6 +9,7 @@ import numpy as np
 
 import neo.io.baseio
 import pynwb
+from hdmf.backends.hdf5 import H5DataIO
 
 from ..nwb_helpers import add_device_from_metadata
 from ...utils import OptionalFilePathType
@@ -215,7 +216,8 @@ def add_icephys_recordings(
     metadata: dict = None,
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
-    skip_electrodes=(),
+    skip_electrodes: Tuple[int] = (),
+    compression: str = "gzip",
 ):
     """
     Add icephys recordings (stimulus/response pairs) to nwbfile object.
@@ -228,6 +230,9 @@ def add_icephys_recordings(
     icephys_experiment_type : str, optional
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         The default is 'voltage_clamp'.
+    stimulus_type : str
+    skip_electrodes: tuple
+    compression: str | bool
     """
     n_segments = get_number_of_segments(neo_reader, block=0)
 
@@ -317,7 +322,10 @@ def add_icephys_recordings(
                 name=response_name,
                 description=f"Response to: {session_stimulus_type}",
                 electrode=electrode,
-                data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
+                data=H5DataIO(
+                    data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
+                    compression=compression,
+                ),
                 starting_time=starting_time,
                 rate=sampling_rate,
                 conversion=response_conversion * response_gain,
@@ -370,18 +378,11 @@ def add_icephys_recordings(
 def add_all_to_nwbfile(
     neo_reader,
     nwbfile=None,
-    use_times: bool = False,
     metadata: dict = None,
-    write_as: str = "raw",
-    es_key: str = None,
-    write_scaled: bool = False,
     compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = None,
-    iterator_opts: Optional[dict] = None,
     icephys_experiment_type: Optional[str] = "voltage_clamp",
     stimulus_type: Optional[str] = None,
-    skip_electrodes=(),
+    skip_electrodes: Tuple[int] = (),
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -393,43 +394,18 @@ def add_all_to_nwbfile(
     neo_reader: Neo reader object
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
-    use_times: bool
-        If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
-        the sampling rate is used.
     metadata: dict
         metadata info for constructing the nwb file (optional).
         Check the auxiliary function docstrings for more information
         about metadata format.
-    write_as: str (optional, defaults to 'raw')
-        How to save the traces data in the nwb file. Options:
-        - 'raw' will save it in acquisition
-        - 'processed' will save it as FilteredEphys, in a processing module
-        - 'lfp' will save it as LFP, in a processing module
-    es_key: str (optional)
-        Key in metadata dictionary containing metadata info for the specific electrical series
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
     compression: str (optional, defaults to "gzip")
         Type of compression to use. Valid types are "gzip" and "lzf".
         Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
-        Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2')
-        or DataChunkIterator (iterator_tpye='v1').
-        Valid options are
-            buffer_gb : float (optional, defaults to 1 GB, available for both 'v2' and 'v1')
-                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-            chunk_mb : float (optional, defaults to 1 MB, only available for 'v2')
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
+    stimulus_type: str, optional
+    skip_electrodes: str, optional
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -449,6 +425,7 @@ def add_all_to_nwbfile(
         icephys_experiment_type=icephys_experiment_type,
         stimulus_type=stimulus_type,
         skip_electrodes=skip_electrodes,
+        compression=compression,
     )
 
 
@@ -457,15 +434,8 @@ def write_neo_to_nwb(
     save_path: OptionalFilePathType = None,
     overwrite: bool = False,
     nwbfile=None,
-    use_times: bool = False,
     metadata: dict = None,
-    write_as: str = "raw",
-    es_key: str = None,
-    write_scaled: bool = False,
     compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = None,
-    iterator_opts: Optional[dict] = None,
     icephys_experiment_type: Optional[str] = None,
     stimulus_type: Optional[str] = None,
     skip_electrodes: Optional[tuple] = (),
@@ -480,12 +450,10 @@ def write_neo_to_nwb(
         Required if an nwbfile is not passed. Must be the path to the nwbfile
         being appended, otherwise one is created and written.
     overwrite: bool
-        If using save_path, whether or not to overwrite the NWBFile if it already exists.
+        If using save_path, whether to overwrite the NWBFile if it already exists.
     nwbfile: NWBFile
         Required if a save_path is not specified. If passed, this function
         will fill the relevant fields within the nwbfile.
-    use_times: bool
-        If True, the times are saved to the nwb file. If False (default), the sampling rate is used.
     metadata: dict
         metadata info for constructing the nwb file (optional). Should be of the format
             metadata['Ecephys'] = {}
@@ -520,32 +488,9 @@ def write_neo_to_nwb(
 
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
-    write_as: str (optional, defaults to 'raw')
-        How to save the traces data in the nwb file. Options:
-        - 'raw' will save it in acquisition
-        - 'processed' will save it as FilteredEphys, in a processing module
-        - 'lfp' will save it as LFP, in a processing module
-    es_key: str (optional)
-        Key in metadata dictionary containing metadata info for the specific electrical series
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
     compression: str (optional, defaults to "gzip")
         Type of compression to use. Valid types are "gzip" and "lzf".
         Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
-        Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-        Valid options are
-            buffer_gb : float (optional, defaults to 1 GB)
-                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-            chunk_mb : float (optional, defaults to 1 MB)
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
@@ -565,14 +510,7 @@ def write_neo_to_nwb(
     kwargs = dict(
         neo_reader=neo_reader,
         metadata=metadata,
-        use_times=use_times,
-        write_as=write_as,
-        es_key=es_key,
-        write_scaled=write_scaled,
         compression=compression,
-        compression_opts=compression_opts,
-        iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
         icephys_experiment_type=icephys_experiment_type,
         stimulus_type=stimulus_type,
         skip_electrodes=skip_electrodes,
