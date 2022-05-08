@@ -12,7 +12,7 @@ from .types import FilePathType, FolderPathType
 
 def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     """Return the base schema used for all other schemas."""
-    base_schema = dict(required=[], properties={}, type="object", additionalProperties=True)
+    base_schema = dict(required=[], properties={}, type="object", additionalProperties=False)
     if tag is not None:
         base_schema.update(tag=tag)
     if root:
