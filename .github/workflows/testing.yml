@@ -62,7 +62,7 @@ jobs:
         id: cache-ecephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ecephys-datasets-041422-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ecephys-datasets-050822-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
       - name: "Force GIN: ecephys download"
         if: steps.cache-ecephys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
         run: |
