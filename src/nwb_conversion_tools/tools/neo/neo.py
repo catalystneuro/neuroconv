@@ -68,15 +68,13 @@ def get_number_of_segments(neo_reader, block: int = 0) -> int:
     return neo_reader.header["nb_segment"][block]
 
 
-def get_command_traces(neo_reader, block: int = 0, segment: int = 0, cmd_channel: int = 0) -> Tuple[list, str, str]:
+def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> Tuple[list, str, str]:
     """
     Get command traces (e.g. voltage clamp command traces).
 
     Parameters
     ----------
     neo_reader : neo.io.baseio
-    block : int, optional.
-        Defaults to 0.
     segment : int, optional
         Defaults to 0.
     cmd_channel : int, optional
