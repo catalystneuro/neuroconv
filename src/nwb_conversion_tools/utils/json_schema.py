@@ -16,6 +16,11 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         # Over-write behaviors for datetime object
         if isinstance(o, datetime):
             return o.isoformat()
+
+        # This should transforms numpy generic integers and floats to python floats
+        if isinstance(o, np.generic):
+            return o.item()
+
         # The base-class handles it
         return super().default(o)
 
