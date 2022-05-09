@@ -80,7 +80,7 @@ class TestOphysNwbConversions(unittest.TestCase):
 
         converter = TestConverter(source_data=dict(TestImaging=dict(interface_kwargs)))
         metadata = converter.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         imaging = converter.data_interface_objects["TestImaging"].imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
@@ -134,7 +134,7 @@ class TestOphysNwbConversions(unittest.TestCase):
 
         converter = TestConverter(source_data=dict(TestSegmentation=dict(interface_kwargs)))
         metadata = converter.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
         nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)

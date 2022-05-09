@@ -28,7 +28,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
 
     def get_metadata(self):
         metadata = self.nwb_converter.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         return metadata
 
     def test_movie_starting_times(self):

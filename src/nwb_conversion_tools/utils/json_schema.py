@@ -1,5 +1,6 @@
 """Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 import collections.abc
+import json
 import inspect
 from datetime import datetime
 
@@ -8,6 +9,15 @@ import numpy as np
 
 from .dict import dict_deep_update
 from .types import FilePathType, FolderPathType
+
+
+class NWBMetaDataEncoder(json.JSONEncoder):
+    def default(self, o):
+        # Over-write behaviors for datetime object
+        if isinstance(o, datetime):
+            return o.isoformat()
+        # The base-class handles it
+        return super().default(o)
 
 
 def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
