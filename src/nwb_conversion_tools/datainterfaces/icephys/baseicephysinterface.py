@@ -18,7 +18,7 @@ from ...utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     get_base_schema,
-    get_metadata_schema_for_icephys
+    get_metadata_schema_for_icephys,
 )
 
 

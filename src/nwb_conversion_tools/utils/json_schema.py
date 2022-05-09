@@ -288,40 +288,37 @@ def get_metadata_schema_for_icephys():
             type="array",
             minItems=1,
             items={"$ref": "#/properties/Icephys/properties/definitions/Sessions"},
-        )
+        ),
     )
 
     schema["properties"]["definitions"] = dict(
         Device=get_schema_from_hdmf_class(Device),
         Electrode=get_schema_from_hdmf_class(IntracellularElectrode),
         Sessions=dict(
-            name={
-                "type": "string", 
-                "description": "Session name."
-            },
+            name={"type": "string", "description": "Session name."},
             relative_session_start_time={
                 "type": "number",
                 "description": "the start time of the sessions in seconds, relative to the absolute start time",
             },
             icephys_experiment_type={
                 "type": "string",
-                "description": "Icephys experiment type. Allowed types are: voltage_clamp, current_clamp and izero"
+                "description": "Icephys experiment type. Allowed types are: voltage_clamp, current_clamp and izero",
             },
             stimulus_type={
-                "type": "string", 
-                "description": "Description of the type pf stimulus, e.g. Square current clamp."
+                "type": "string",
+                "description": "Description of the type pf stimulus, e.g. Square current clamp.",
             },
             recordings=dict(
                 type="array",
                 minItems=1,
                 items={"$ref": "#/properties/Icephys/properties/definitions/SessionsRecordings"},
-            )
+            ),
         ),
         SessionsRecordings=dict(
             intracellular_recordings_table_ind={"type": "number", "description": ""},
             simultaneous_recordings_table_ind={"type": "number", "description": ""},
-            sequential_recordings_table_ind={"type": "number", "description": ""}
-        )
+            sequential_recordings_table_ind={"type": "number", "description": ""},
+        ),
     )
 
     return schema

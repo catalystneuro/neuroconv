@@ -16,6 +16,6 @@ from .json_schema import (
     get_base_schema,
     unroot_schema,
     fill_defaults,
-    get_metadata_schema_for_icephys
+    get_metadata_schema_for_icephys,
 )
 from .globbing import decompose_f_string, parse_f_string
