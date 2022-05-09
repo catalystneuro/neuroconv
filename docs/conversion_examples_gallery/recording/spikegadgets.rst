@@ -1,7 +1,7 @@
 Spikegadgets data conversion 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert spikegadgets data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.SpikeGadgetsRecordingInterface`.
+Convert spikegadgets data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface.SpikeGadgetsRecordingInterface`.
 
 .. code-block:: python
 
