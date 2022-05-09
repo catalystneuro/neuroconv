@@ -18,7 +18,6 @@ Convert spikegadgets data to NWB using :py:class:`~nwb_conversion_tools.datainte
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> tzinfo = tz.gettz("US/Pacific")
     >>> session_start_time = session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> session_start_time = session_start_time.replace(tzinfo=tzinfo).isoformat()
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)

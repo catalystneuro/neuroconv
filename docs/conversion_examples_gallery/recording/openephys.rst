@@ -18,7 +18,6 @@ Convert Open Ehpys data to NWB using :py:class:`~nwb_conversion_tools.datainterf
     Decoding data from  binary  format
     Reading oebin file
     >>> metadata = interface.get_metadata()
-    >>> tzinfo = tz.gettz("US/Pacific")
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> session_start_time = session_start_time.replace(tzinfo=tzinfo).isoformat()
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
