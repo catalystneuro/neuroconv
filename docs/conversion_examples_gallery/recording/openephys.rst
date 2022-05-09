@@ -1,7 +1,7 @@
-Phy sorting data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Open Ephys data conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Phy data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.PhySortingInterface`.
+Convert Open Ehpys data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.OpenEphysRecordingExtractorInterface`.
 
 .. code-block:: python
     
@@ -9,12 +9,14 @@ Convert Phy data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.Ph
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>> 
-    >>> from nwb_conversion_tools import PhySortingInterface
-    >>> 
-    >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"
-    >>> # Change the file_path to the location of the data in your system
-    >>> interface = PhySortingInterface(folder_path=folder_path)
-    >>> 
+    >>> from nwb_conversion_tools import OpenEphysRecordingExtractorInterface
+    >>>
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/openephysbinary/v0.4.4.1_with_video_tracking"
+    >>> # Change the folder_path to the appropiate location in your system
+    >>> interface = OpenEphysRecordingExtractorInterface(folder_path=folder_path)  
+    Loading Open-Ephys: reading settings...
+    Decoding data from  binary  format
+    Reading oebin file
     >>> metadata = interface.get_metadata()
     >>> tzinfo = tz.gettz("US/Pacific")
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))

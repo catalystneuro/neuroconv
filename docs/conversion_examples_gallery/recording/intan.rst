@@ -1,6 +1,5 @@
 Intan data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
+^^^^^^^^^^^^^^^^^^^^^
 Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.IntanRecordingInterface`.
 
 .. code-block:: python
@@ -13,7 +12,7 @@ Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>> # For this data interface we need to pass the location of the `.rhd` file 
     >>> suffix = "rhd" # This can also be rhs
     >>> file_path = f"{ECEPHY_DATA_PATH}/intan/intan_{suffix}_test_1.{suffix}"
-    >>> # Change the file_path to the location in your system
+    >>> # Change the file_path to the location of the data in your system
     >>> interface = IntanRecordingInterface(file_path=file_path)
     >>> 
     >>> # Extract what metadata we can from the source files

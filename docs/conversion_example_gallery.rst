@@ -14,6 +14,8 @@ Recording
     Blackrock <conversion_examples_gallery/recording/blackrock>
     Intan <conversion_examples_gallery/recording/intan>
     Neuroscope <conversion_examples_gallery/recording/neuroscope>
+    Open Ephys <conversion_examples_gallery/recording/openephys>
+    Spikegadgets <conversion_examples_gallery/recording/spikegadgets>
     Spikelgx <conversion_examples_gallery/recording/spikeglx>
 
 Sorting
