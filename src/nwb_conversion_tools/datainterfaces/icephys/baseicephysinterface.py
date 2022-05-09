@@ -18,6 +18,7 @@ from ...utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     get_base_schema,
+    get_metadata_schema_for_icephys
 )
 
 
@@ -52,21 +53,8 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
-
-        metadata_schema["properties"]["Icephys"] = get_base_schema(tag="Icephys")
-        metadata_schema["properties"]["Icephys"]["required"] = ["Device", "Electrode"]
-        metadata_schema["properties"]["Icephys"]["properties"] = dict(
-            Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
-            Electrode=dict(
-                type="array",
-                minItems=1,
-                items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
-            ),
-        )
-        metadata_schema["properties"]["Icephys"]["properties"]["definitions"] = dict(
-            Device=get_schema_from_hdmf_class(Device),
-            Electrode=get_schema_from_hdmf_class(IntracellularElectrode),
-        )
+        metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(DandiIcephysMetadata)
+        metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
     def get_metadata(self):

@@ -281,6 +281,7 @@ def add_icephys_recordings(
         ri = max(nwbfile.intracellular_recordings["responses"].index)
     else:
         ri = -1
+
     if getattr(nwbfile, "icephys_simultaneous_recordings", None):
         simultaneous_recordings_offset = len(nwbfile.icephys_simultaneous_recordings)
     else:

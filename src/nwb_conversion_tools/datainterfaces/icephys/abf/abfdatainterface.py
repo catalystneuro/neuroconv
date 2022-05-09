@@ -87,8 +87,8 @@ class AbfInterface(BaseIcephysInterface):
                 cell_id=metafile_data.get("cell_id"),
                 slice_id=metafile_data.get("slice_id"),
                 # Lab specific metadata
-                targeted_layer=metafile_data.get("targeted_layer"),
-                inferred_layer=metafile_data.get("estimate_laminate"),
+                targeted_layer=metafile_data.get("targeted_layer", "unknown"),
+                inferred_layer=metafile_data.get("inferred_layer", "unknown"),
             )
 
         # Recordings sessions metadata (one Session is one abf file / neo reader)
@@ -113,7 +113,7 @@ class AbfInterface(BaseIcephysInterface):
 
             metadata["Icephys"]["Sessions"].append(
                 dict(
-                    abf_file_name=abf_file_name,
+                    name=abf_file_name,
                     relative_session_start_time=relative_session_start_time,
                     icephys_experiment_type=extra_info.get("icephys_experiment_type", None),
                     stimulus_type=extra_info.get("stimulus_type", "not described"),
@@ -130,9 +130,9 @@ class AbfInterface(BaseIcephysInterface):
                 for el in range(n_electrodes):
                     metadata["Icephys"]["Sessions"][ir]["recordings"].append(
                         dict(
-                            intracellular_recordings_table_id=i,
-                            simultaneous_recordings_table_id=ii,
-                            sequential_recordings_table_id=iii,
+                            intracellular_recordings_table_ind=i,
+                            simultaneous_recordings_table_ind=ii,
+                            sequential_recordings_table_ind=iii,
                             # repetitions_table_id=0,
                             # experimental_conditions_table_id=0
                         )
