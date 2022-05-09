@@ -10,7 +10,7 @@ from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
-from nwbinspector.utils import check_regular_series
+from nwb_conversion_tools.utils import check_regular_series
 
 from .movie_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface

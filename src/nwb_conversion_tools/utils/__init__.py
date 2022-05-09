@@ -18,3 +18,5 @@ from .json_schema import (
     fill_defaults,
 )
 from .globbing import decompose_f_string, parse_f_string
+
+from .checks import check_regular_series
