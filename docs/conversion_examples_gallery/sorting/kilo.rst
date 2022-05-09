@@ -16,11 +16,11 @@ Convert Kilosorting data to NWB using :py:class:`~nwb_conversion_tools.datainter
     >>> interface = KiloSortingInterface(folder_path=folder_path)
     >>> 
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
-    >>> session_start_time = session_start_time.replace(tzinfo=tzinfo).isoformat()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
     >>> save_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(save_path=save_path, metadata=metadata)
-    >>> 
+    >>>
+    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
     >>> Path(save_path).is_file()
     True
