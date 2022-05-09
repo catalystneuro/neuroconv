@@ -1,7 +1,7 @@
 Phy sorting data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Phy data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.phy.phydatainterface.PhySortingInterface`.
+Convert Phy data to NWB using :py:class:`~.nwb_conversion_tools.datainterfaces.ecephys.phy.phydatainterface.PhySortingInterface`.
 
 .. code-block:: python
     

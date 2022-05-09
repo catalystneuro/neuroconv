@@ -1,6 +1,6 @@
 Intan data conversion
 ^^^^^^^^^^^^^^^^^^^^^
-Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.IntanRecordingInterface`.
+Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.intan.intandatainterface.IntanRecordingInterface`.
 
 .. code-block:: python
 
