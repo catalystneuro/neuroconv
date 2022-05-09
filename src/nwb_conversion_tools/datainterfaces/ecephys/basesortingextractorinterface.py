@@ -10,7 +10,7 @@ from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
-from ...utils import get_base_schema, get_schema_from_hdmf_class
+from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType
 
 
 class BaseSortingExtractorInterface(BaseDataInterface, ABC):
@@ -98,7 +98,13 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         return stub_sorting_extractor
 
     def run_conversion(
-        self, nwbfile: NWBFile, metadata: dict, stub_test: bool = False, write_ecephys_metadata: bool = False
+        self,
+        nwbfile: NWBFile = None,
+        metadata: dict = None,
+        stub_test: bool = False,
+        save_path: OptionalFilePathType = None,
+        overwrite: bool = False,
+        write_ecephys_metadata: bool = False,
     ):
         """
         Primary function for converting the data in a SortingExtractor to NWB format.
@@ -147,4 +153,10 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                                 )
                             ],
                         )
-        write_sorting(sorting_extractor, property_descriptions=property_descriptions, nwbfile=nwbfile)
+        write_sorting(
+            sorting_extractor,
+            nwbfile=nwbfile,
+            save_path=save_path,
+            overwrite=overwrite,
+            property_descriptions=property_descriptions,
+        )
