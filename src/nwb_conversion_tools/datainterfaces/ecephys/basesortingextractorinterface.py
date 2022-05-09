@@ -156,6 +156,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         write_sorting(
             sorting_extractor,
             nwbfile=nwbfile,
+            metadata=metadata,
             save_path=save_path,
             overwrite=overwrite,
             property_descriptions=property_descriptions,
