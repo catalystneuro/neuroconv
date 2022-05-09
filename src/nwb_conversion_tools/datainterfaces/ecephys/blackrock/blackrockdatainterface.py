@@ -73,62 +73,15 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
         return metadata
 
-    def run_conversion(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict = None,
-        stub_test: bool = False,
-        use_times: bool = False,
-        save_path: OptionalFilePathType = None,
-        overwrite: bool = False,
-        write_as: str = "raw",
-        es_key: str = None,
-    ):
-        """
-        Primary function for converting recording extractor data to nwb.
-
-        Parameters
-        ----------
-        nwbfile: NWBFile
-            nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
-            Should be of the format::
-
-                metadata['Ecephys']['ElectricalSeries'] = {
-                    'name': my_name,
-                    'description': my_description
-                }
-
-        use_times: bool
-            If True, the timestamps are saved to the nwb file using recording.frame_to_time(). If False (default),
-            the sampling rate is used.
-        write_as_lfp: bool (optional, defaults to False)
-            If True, writes the traces under a processing LFP module in the NWBFile instead of acquisition.
-        save_path: PathType
-            Required if an nwbfile is not passed. Must be the path to the nwbfile
-            being appended, otherwise one is created and written.
-        overwrite: bool
-            If using save_path, whether or not to overwrite the NWBFile if it already exists.
-        stub_test: bool, optional (default False)
-            If True, will truncate the data to run the conversion faster and take up less memory.
-        """
+    def get_conversion_options(self):
         if int(self.file_path.suffix[-1]) >= 5:
             write_as = "raw"
-        elif write_as not in ["processed", "lfp"]:
+            es_key = "ElectricalSeries_raw"
+        else:
             write_as = "processed"
-        print(f"Converting Blackrock {write_as} traces...")
-
-        super().run_conversion(
-            nwbfile=nwbfile,
-            metadata=metadata,
-            use_times=use_times,
-            write_as=write_as,
-            es_key=es_key,
-            save_path=save_path,
-            overwrite=overwrite,
-            stub_test=stub_test,
-        )
+            es_key = "ElectricalSeries_processed"
+        conversion_options = dict(write_as=write_as, es_key=es_key, stub_test=False)
+        return conversion_options
 
 
 class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
