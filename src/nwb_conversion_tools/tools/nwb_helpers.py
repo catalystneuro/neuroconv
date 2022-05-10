@@ -64,6 +64,57 @@ def make_nwbfile_from_metadata(metadata: dict):
     return NWBFile(**nwbfile_kwargs)
 
 
+def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict = None):
+    """
+    Add device information from metadata to NWBFile object.
+
+    Will always ensure nwbfile has at least one device, but multiple
+    devices within the metadata list will also be created.
+
+    Parameters
+    ----------
+    nwbfile: NWBFile
+        nwb file to which the new device information is to be added
+    modality: str
+        Type of data recorded by device. Options:
+        - Ecephys (default)
+        - Icephys
+        - Ophys
+        - Behavior
+    metadata: dict
+        Metadata info for constructing the NWBFile (optional).
+        Should be of the format
+            metadata[modality]['Device'] = [
+                {
+                    'name': my_name,
+                    'description': my_description
+                },
+                ...
+            ]
+        Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+    """
+    assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+    assert modality in [
+        "Ecephys",
+        "Icephys",
+        "Ophys",
+        "Behavior",
+    ], f"Invalid modality {modality} when creating device."
+
+    defaults = dict(name=f"Device{modality}", description=f"{modality} device. Automatically generated.")
+
+    if metadata is None:
+        metadata = dict()
+    if modality not in metadata:
+        metadata[modality] = dict()
+    if "Device" not in metadata[modality]:
+        metadata[modality]["Device"] = [defaults]
+
+    for dev in metadata[modality]["Device"]:
+        if dev.get("name", defaults["name"]) not in nwbfile.devices:
+            nwbfile.create_device(**dict(defaults, **dev))
+
+
 @contextmanager
 def make_or_load_nwbfile(
     nwbfile_path: FilePathType, metadata: Optional[dict] = None, nwbfile: NWBFile = None, overwrite: bool = False
@@ -83,6 +134,21 @@ def make_or_load_nwbfile(
         Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     """
+    assert not (overwrite is False and Path(nwbfile_path).exists() and nwbfile is not None), (
+        "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
+        "passed! Cannot reconcile which nwbfile object to write."
+    )
+    if metadata is not None and nwbfile is not None:
+        warn(
+            "Passing an in-memory NWBFile object, but also passing metadata for building a fresh NWBFile. "
+            "Metadata will be ignored."
+        )
+    if metadata is not None and overwrite is False and Path(nwbfile_path).exists():
+        warn(
+            f"Writing to 'nwbfile_path' ({nwbfile_path}) in append mode, but also passing metadata for building a "
+            "fresh NWBFile. Metadata will be ignored and the existing file will be appended."
+        )
+
     load_kwargs = dict(path=nwbfile_path)
     if Path(nwbfile_path).is_file() and not overwrite:
         load_kwargs.update(mode="r+", load_namespaces=True)
