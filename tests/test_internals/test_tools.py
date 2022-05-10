@@ -237,6 +237,23 @@ class TestMakeOrLoadNWBFile(TestCase):
         self.time_series_1 = TimeSeries(name="test1", data=[1], rate=1.0, unit="test")
         self.time_series_2 = TimeSeries(name="test2", data=[1], rate=1.0, unit="test")
 
+    def test_make_or_load_nwbfile_assertion(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_assertion.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
+                "passed! Cannot reconcile which nwbfile object to write."
+            ),
+        ):
+            with make_or_load_nwbfile(
+                nwbfile_path=nwbfile_path, nwbfile=make_nwbfile_from_metadata(metadata=self.metadata), overwrite=False
+            ) as nwbfile:
+                nwbfile.add_acquisition(self.time_series_1)
+
     def test_make_or_load_nwbfile_write(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_write.nwb"
         with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
@@ -247,7 +264,6 @@ class TestMakeOrLoadNWBFile(TestCase):
 
     def test_make_or_load_nwbfile_closure(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_closure.nwb"
-        data = [1]
         with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
             nwbfile.add_acquisition(self.time_series_1)
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:

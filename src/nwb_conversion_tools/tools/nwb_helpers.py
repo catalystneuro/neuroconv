@@ -83,6 +83,11 @@ def make_or_load_nwbfile(
         Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     """
+    assert not (overwrite is False and Path(nwbfile_path).exists() and nwbfile is not None), (
+        "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
+        "passed! Cannot reconcile which nwbfile object to write."
+    )
+
     load_kwargs = dict(path=nwbfile_path)
     if Path(nwbfile_path).is_file() and not overwrite:
         load_kwargs.update(mode="r+", load_namespaces=True)
