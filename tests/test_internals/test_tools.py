@@ -168,7 +168,8 @@ def test_estimate_total_conversion_runtime():
 
 
 @pytest.mark.skipif(
-    not HAVE_DANDI_KEY, reason="You must set your DANDI_API_KEY to run this test!",
+    not HAVE_DANDI_KEY,
+    reason="You must set your DANDI_API_KEY to run this test!",
 )
 class TestDANDIUpload(TestCase):
     def setUp(self):
