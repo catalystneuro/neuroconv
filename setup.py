@@ -46,5 +46,7 @@ setup(
     python_requires=">=3.7",
     install_requires=install_requires,
     extras_require=extras_require,
-    entry_points={"console_scripts": ["nwb-gui=nwb_conversion_tools.gui.command_line:main"],},
+    entry_points={
+        "console_scripts": ["nwb-gui=nwb_conversion_tools.gui.command_line:main"],
+    },
 )
