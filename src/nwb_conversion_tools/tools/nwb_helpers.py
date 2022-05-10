@@ -87,6 +87,16 @@ def make_or_load_nwbfile(
         "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
         "passed! Cannot reconcile which nwbfile object to write."
     )
+    if metadata is not None and nwbfile is not None:
+        warn(
+            "Passing an in-memory NWBFile object, but also passing metadata for building a fresh NWBFile. "
+            "Metadata will be ignored."
+        )
+    if metadata is not None and overwrite is False and Path(nwbfile_path).exists():
+        warn(
+            f"Writing to 'nwbfile_path' ({nwbfile_path}) in append mode, but also passing metadata for building a "
+            "fresh NWBFile. Metadata will be ignored and the existing file will be appended."
+        )
 
     load_kwargs = dict(path=nwbfile_path)
     if Path(nwbfile_path).is_file() and not overwrite:
