@@ -112,7 +112,7 @@ def dict_deep_update(
     copy: bool = True,
     compare_key: str = "name",
     list_dict_deep_update: bool = True,
-) -> collections.abc.Mapping:
+) -> dict:
     """
     Perform an update to all nested keys of dictionary d(input) from dictionary u(updating dict).
 
