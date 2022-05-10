@@ -5,10 +5,15 @@ from pathlib import Path
 from shutil import rmtree
 
 import pytest
-from pynwb import NWBHDF5IO, ProcessingModule
+from pynwb import NWBHDF5IO, ProcessingModule, TimeSeries
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.tools.nwb_helpers import get_module, make_nwbfile_from_metadata, get_default_nwbfile_metadata
+from nwb_conversion_tools.tools.nwb_helpers import (
+    get_module,
+    make_nwbfile_from_metadata,
+    get_default_nwbfile_metadata,
+    make_or_load_nwbfile,
+)
 from nwb_conversion_tools.tools.data_transfers import (
     get_globus_dataset_content_sizes,
     estimate_s3_conversion_cost,
@@ -26,6 +31,7 @@ try:
         LOGGED_INTO_GLOBUS = False
 except ModuleNotFoundError:
     HAVE_GLOBUS, LOGGED_INTO_GLOBUS = False, False
+HAVE_DANDI_KEY = "DANDI_API_KEY" in os.environ
 
 
 class TestConversionTools(TestCase):
@@ -128,8 +134,7 @@ def test_estimate_s3_conversion_cost_from_globus_single_session():
 def test_estimate_s3_conversion_cost_from_globus_multiple_sessions():
     all_content_sizes = {
         session_name: get_globus_dataset_content_sizes(
-            globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
-            path=f"/SenzaiY/YutaMouse41/{session_name}",
+            globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d", path=f"/SenzaiY/YutaMouse41/{session_name}",
         )
         for session_name in ["YutaMouse41-150821", "YutaMouse41-150829"]
     }
@@ -166,6 +171,9 @@ def test_estimate_total_conversion_runtime():
     ]
 
 
+@pytest.mark.skipif(
+    not HAVE_DANDI_KEY, reason="You must set your DANDI_API_KEY to run this test!",
+)
 class TestDANDIUpload(TestCase):
     def setUp(self):
         self.tmpdir = Path(mkdtemp())
@@ -216,3 +224,58 @@ class TestGlobusTransferContent(TestCase):
         assert success
         assert task_ids
         assert tmpdir_size > 0
+
+
+class TestMakeOrLoadNWBFile(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = Path(mkdtemp())
+        cls.metadata = dict(NWBFile=dict(session_start_time=datetime.now().astimezone()))
+
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(cls.tmpdir)
+
+    def setUp(self):
+        self.time_series_1 = TimeSeries(name="test1", data=[1], rate=1.0, unit="test")
+        self.time_series_2 = TimeSeries(name="test2", data=[1], rate=1.0, unit="test")
+
+    def test_make_or_load_nwbfile_write(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_write.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_closure(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_closure.nwb"
+        data = [1]
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            self.assertCountEqual(nwbfile_out.acquisition["test1"].data, self.time_series_1.data)
+        assert not nwbfile_out.acquisition["test1"].data  # A closed h5py.Dataset returns false
+
+    def test_make_or_load_nwbfile_append(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_pass_nwbfile(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_pass_nwbfile.nwb"
+        nwbfile_in = make_nwbfile_from_metadata(metadata=self.metadata)
+        nwbfile_in.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, nwbfile=nwbfile_in, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition
