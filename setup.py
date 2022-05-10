@@ -15,7 +15,13 @@ with open(os.path.join(path, "requirements-full.txt")) as f:
 with open(os.path.join(path, "requirements-rtd.txt")) as f:
     documentation_dependencies = f.readlines()
 
-testing_suite_dependencies = ["pytest", "pytest-cov", "ndx-events==0.2.0", "parameterized==0.8.1"]
+testing_suite_dependencies = [
+    "pytest",
+    "pytest-cov",
+    "ndx-events==0.2.0",
+    "parameterized==0.8.1",
+    "ndx-dandi-icephys>=0.4.0",
+]
 extras_require = dict(full=full_dependencies, test=testing_suite_dependencies, docs=documentation_dependencies)
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
@@ -40,7 +46,5 @@ setup(
     python_requires=">=3.7",
     install_requires=install_requires,
     extras_require=extras_require,
-    entry_points={
-        "console_scripts": ["nwb-gui=nwb_conversion_tools.gui.command_line:main"],
-    },
+    entry_points={"console_scripts": ["nwb-gui=nwb_conversion_tools.gui.command_line:main"],},
 )
