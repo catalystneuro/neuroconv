@@ -1,5 +1,4 @@
 import unittest
-from itertools import product
 from pathlib import Path
 from datetime import datetime
 
@@ -27,7 +26,7 @@ from nwb_conversion_tools import (
     NeuroscopeSortingInterface,
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
-    KiloSortingInterface,
+    KilosortSortingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
@@ -229,7 +228,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
             ),
             param(
-                data_interface=KiloSortingInterface,
+                data_interface=KilosortSortingInterface,
                 interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
             ),
             param(
