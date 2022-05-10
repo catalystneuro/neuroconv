@@ -307,6 +307,17 @@ class TestMakeOrLoadNWBFile(TestCase):
             self.assertCountEqual(nwbfile_out.acquisition["test1"].data, self.time_series_1.data)
         assert not nwbfile_out.acquisition["test1"].data  # A closed h5py.Dataset returns false
 
+    def test_make_or_load_nwbfile_overwrite(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_overwrite.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" not in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition
+
     def test_make_or_load_nwbfile_append(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb"
         with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
