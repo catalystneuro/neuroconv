@@ -36,7 +36,12 @@ def get_default_nwbfile_metadata():
         metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)
     Proper conversions should override these fields prior to calling NWBConverter.run_conversion()
     """
-    metadata = dict(NWBFile=dict(session_description="no description", identifier=str(uuid.uuid4()),))
+    metadata = dict(
+        NWBFile=dict(
+            session_description="no description",
+            identifier=str(uuid.uuid4()),
+        )
+    )
     return metadata
 
 

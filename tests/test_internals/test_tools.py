@@ -134,7 +134,8 @@ def test_estimate_s3_conversion_cost_from_globus_single_session():
 def test_estimate_s3_conversion_cost_from_globus_multiple_sessions():
     all_content_sizes = {
         session_name: get_globus_dataset_content_sizes(
-            globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d", path=f"/SenzaiY/YutaMouse41/{session_name}",
+            globus_endpoint_id="188a6110-96db-11eb-b7a9-f57b2d55370d",
+            path=f"/SenzaiY/YutaMouse41/{session_name}",
         )
         for session_name in ["YutaMouse41-150821", "YutaMouse41-150829"]
     }
@@ -172,7 +173,8 @@ def test_estimate_total_conversion_runtime():
 
 
 @pytest.mark.skipif(
-    not HAVE_DANDI_KEY, reason="You must set your DANDI_API_KEY to run this test!",
+    not HAVE_DANDI_KEY,
+    reason="You must set your DANDI_API_KEY to run this test!",
 )
 class TestDANDIUpload(TestCase):
     def setUp(self):
