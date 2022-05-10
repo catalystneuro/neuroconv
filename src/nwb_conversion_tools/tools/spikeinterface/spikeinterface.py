@@ -18,7 +18,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from ..nwb_helpers import get_module, make_nwbfile_from_metadata
+from ..nwb_helpers import get_module, make_nwbfile_from_metadata, make_or_load_nwbfile
 from ...utils import dict_deep_update, OptionalFilePathType
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
@@ -859,6 +859,7 @@ def add_all_to_nwbfile(
 def write_recording(
     recording: SpikeInterfaceRecording,
     save_path: OptionalFilePathType = None,
+    nwbfile_path: OptionalFilePathType = None,
     overwrite: bool = False,
     nwbfile: Optional[pynwb.NWBFile] = None,
     starting_time: Optional[float] = None,
@@ -966,6 +967,27 @@ def write_recording(
     assert (
         distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
+    if save_path is not None:
+        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
+        if nwbfile_path is not None:
+            if save_path == nwbfile_path:
+                warn(
+                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
+                    f"'save_path' {will_be_removed_str}",
+                    DeprecationWarning,
+                )
+            else:
+                warn(
+                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
+                    f"'save_path' {will_be_removed_str}",
+                    DeprecationWarning,
+                )
+        else:
+            warn(
+                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
+                DeprecationWarning,
+            )
+            nwbfile_path = save_path
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
 
@@ -974,18 +996,10 @@ def write_recording(
     elif metadata is None:
         metadata = get_nwb_metadata(recording=recording)
     if nwbfile is None:
-        if Path(save_path).is_file() and not overwrite:
-            read_mode = "r+"
-        else:
-            read_mode = "w"
-        with pynwb.NWBHDF5IO(str(save_path), mode=read_mode) as io:
-            if read_mode == "r+":
-                nwbfile = io.read()
-            else:
-                nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=overwrite) as nwbfile_out:
             add_all_to_nwbfile(
                 recording=recording,
-                nwbfile=nwbfile,
+                nwbfile=nwbfile_out,
                 metadata=metadata,
                 starting_time=starting_time,
                 use_times=use_times,
@@ -998,7 +1012,6 @@ def write_recording(
                 iterator_opts=iterator_opts,
                 write_electrical_series=write_electrical_series,
             )
-            io.write(nwbfile)
     else:
         add_all_to_nwbfile(
             recording=recording,
