@@ -87,8 +87,8 @@ class AbfInterface(BaseIcephysInterface):
                 cell_id=metafile_data.get("cell_id"),
                 slice_id=metafile_data.get("slice_id"),
                 # Lab specific metadata
-                targeted_layer=metafile_data.get("targeted_layer", "unknown"),
-                inferred_layer=metafile_data.get("inferred_layer", "unknown"),
+                targeted_layer=metafile_data.get("targeted_layer"),
+                inferred_layer=metafile_data.get("inferred_layer"),
             )
 
         # Recordings sessions metadata (one Session is one abf file / neo reader)
