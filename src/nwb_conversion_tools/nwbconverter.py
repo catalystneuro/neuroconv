@@ -1,4 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
+import json
 from jsonschema import validate
 from pathlib import Path
 from typing import Optional, Dict
@@ -15,6 +16,8 @@ from .utils import (
     unroot_schema,
     fill_defaults,
 )
+
+from .utils.json_schema import NWBMetaDataEncoder
 
 
 class NWBConverter:
@@ -81,7 +84,9 @@ class NWBConverter:
         for data_interface in self.data_interface_objects.values():
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
-        fill_defaults(metadata_schema, self.get_metadata())
+
+        default_values = self.get_metadata()
+        fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
     def get_metadata(self):
@@ -101,7 +106,12 @@ class NWBConverter:
 
     def validate_metadata(self, metadata: Dict[str, dict]):
         """Validate metadata against Converter metadata_schema."""
-        validate(instance=metadata, schema=self.get_metadata_schema())
+
+        encoder = NWBMetaDataEncoder()
+        # The encoder produces a serialiazed object so we de serialized it for comparison
+        serialied_metadata = encoder.encode(metadata)
+        decoded_metadata = json.loads(serialied_metadata)
+        validate(instance=decoded_metadata, schema=self.get_metadata_schema())
         if self.verbose:
             print("Metadata is valid!")
 

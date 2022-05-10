@@ -37,7 +37,7 @@ def test_converter():
 
         converter = ExtensionTestNWBConverter(source_data=dict(NdxEvents=dict()))
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S")
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         rmtree(test_dir)

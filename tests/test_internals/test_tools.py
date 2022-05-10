@@ -37,7 +37,7 @@ HAVE_DANDI_KEY = "DANDI_API_KEY" in os.environ
 class TestConversionTools(TestCase):
     def test_get_module(self):
         nwbfile = make_nwbfile_from_metadata(
-            metadata=dict(NWBFile=dict(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))),
+            metadata=dict(NWBFile=dict(session_start_time=datetime.now().astimezone()))
         )
 
         name_1 = "test_1"
