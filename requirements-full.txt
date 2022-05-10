@@ -1,5 +1,5 @@
 dandi @ git+https://github.com/dandi/dandi-cli.git@9a749401aa2dec2ba59f352205b02a3d8083b1d8  # that uses schema v0.7.x
-pynwb==2.0.0
+pynwb @ git+https://github.com/NeurodataWithoutBorders/pynwb@dev
 hdmf==3.2.1
 tqdm==4.60.0
 natsort==7.1.1
@@ -21,3 +21,4 @@ pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy>=1.7.1
 tiffile==2018.10.18
+ndx-dandi-icephys>=0.4.0
