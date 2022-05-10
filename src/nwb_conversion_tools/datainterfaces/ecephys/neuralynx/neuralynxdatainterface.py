@@ -26,15 +26,12 @@ def get_metadata(folder_path: FolderPathType) -> dict:
     """
     Parse the header of one of the .ncs files to get the session start time (without
     timezone) and the session_id.
-
     Parameters
     ----------
     folder_path: str or Path
-
     Returns
     -------
     dict
-
     """
     folder_path = Path(folder_path)
     csc_files = sorted(folder_path.glob("*.[nN]cs"))
@@ -55,12 +52,10 @@ def get_metadata(folder_path: FolderPathType) -> dict:
 
 def get_filtering(channel_path: FolderPathType) -> str:
     """Get the filtering metadata from an .nsc file.
-
     Parameters
     ----------
     channel_path: str or Path
         Filepath for an .nsc file
-
     Returns
     -------
     str:
