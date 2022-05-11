@@ -18,7 +18,7 @@ from nwb_conversion_tools.tools.data_transfers import (
     get_globus_dataset_content_sizes,
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,
-    dandi_upload,
+    automatic_dandi_upload,
     transfer_globus_content,
     deploy_process,
 )
@@ -176,7 +176,7 @@ def test_estimate_total_conversion_runtime():
     not HAVE_DANDI_KEY,
     reason="You must set your DANDI_API_KEY to run this test!",
 )
-class TestDANDIUpload(TestCase):
+class TestAutomaticDANDIUpload(TestCase):
     def setUp(self):
         self.tmpdir = Path(mkdtemp())
         self.nwb_folder_path = self.tmpdir / "test_nwb"
@@ -190,8 +190,8 @@ class TestDANDIUpload(TestCase):
     def tearDown(self):
         rmtree(self.tmpdir)
 
-    def test_dandi_upload(self):
-        dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
+    def test_automatic_dandi_upload(self):
+        automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
 
 
 @pytest.mark.skipif(
@@ -213,7 +213,7 @@ class TestGlobusTransferContent(TestCase):
         test_source_files = [
             ["/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.1"],
             [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(2, 4)],
-            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(4, 9)],
+            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(4, 6)],
         ]
         success, task_ids = transfer_globus_content(
             source_endpoint_id=source_endpoint_id,
