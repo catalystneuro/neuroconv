@@ -1,7 +1,7 @@
 Kilosorting data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Kilosorting data to NWB using :py:class:`~.nwb_conversion_tools.datainterfaces.ecephys.kilo.kilodatainterface.KiloSortingInterface`.
+Convert Kilosort data to NWB using :py:class:`~.nwb_conversion_tools.datainterfaces.ecephys.kilo.kilodatainterface.KiloSortingInterface`.
 
 .. code-block:: python
     
