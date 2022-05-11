@@ -101,7 +101,7 @@ class VideoCaptureContext:
         self.current_frame = frame_number
         success, frame = self.vc.read()
         self.current_frame = initial_frame_number
-        return np.flip(frame, 2)
+        return np.flip(frame, 2)  # np.flip to re-order color channels to RGB
 
     def get_movie_frame_dtype(self):
         """Return the dtype for frame in a movie file."""
@@ -124,7 +124,7 @@ class VideoCaptureContext:
             success, frame = self.vc.read()
             self._current_frame += 1
             if success:
-                return np.flip(frame, 2)
+                return np.flip(frame, 2)  # np.flip to re-order color channels to RGB
             else:
                 raise StopIteration
         else:
