@@ -3,3 +3,5 @@ Jinja2<3.1
 sphinx==3.5.1
 sphinx_rtd_theme==0.5.1
 readthedocs-sphinx-search==0.1.0rc3
+sphinx-toggleprompt @ git+https://github.com/jurasofish/sphinx-toggleprompt@default_on_off 
+sphinx-copybutton==0.5.0
