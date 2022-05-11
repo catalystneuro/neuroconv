@@ -27,6 +27,7 @@ The sorters are not yet in doctest. Adding here in advance to see the structure.
     :maxdepth: 1
 
     Kilosort <conversion_examples_gallery/sorting/kilosort>
+    Neuroscope <conversion_examples_gallery/sorting/neuroscope>
     Phy <conversion_examples_gallery/sorting/phy>
 
 
