@@ -1,5 +1,5 @@
 Kilosort data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Convert Kilosort data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.kilosort.kilosortdatainterface`.
 
@@ -9,11 +9,11 @@ Convert Kilosort data to NWB using :py:class:`~nwb_conversion_tools.datainterfac
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>> 
-    >>> from nwb_conversion_tools import KiloSortingInterface
+    >>> from nwb_conversion_tools import KilosortSortingInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"
     >>> # Change the file_path to the location of the data in your system
-    >>> interface = KiloSortingInterface(folder_path=folder_path)
+    >>> interface = KilosortSortingInterface(folder_path=folder_path)
     >>> 
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
