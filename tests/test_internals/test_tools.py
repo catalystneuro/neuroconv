@@ -213,7 +213,7 @@ class TestGlobusTransferContent(TestCase):
         test_source_files = [
             ["/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.1"],
             [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(2, 4)],
-            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(4, 9)],
+            [f"/PeyracheA/Mouse12/Mouse12-120815/Mouse12-120815.clu.{x}" for x in range(4, 6)],
         ]
         success, task_ids = transfer_globus_content(
             source_endpoint_id=source_endpoint_id,
