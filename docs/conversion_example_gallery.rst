@@ -26,6 +26,7 @@ The sorters are not yet in doctest. Adding here in advance to see the structure.
 .. toctree::
     :maxdepth: 1
 
+    Cell Explorer <conversion_examples_gallery/sorting/cellexplorer>
     Kilosort <conversion_examples_gallery/sorting/kilosort>
     Neuroscope <conversion_examples_gallery/sorting/neuroscope>
     Phy <conversion_examples_gallery/sorting/phy>
