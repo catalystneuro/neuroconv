@@ -13,6 +13,7 @@ Recording
     Axona <conversion_examples_gallery/recording/axona>
     Blackrock <conversion_examples_gallery/recording/blackrock>
     Intan <conversion_examples_gallery/recording/intan>
+    Neuralynx <conversion_examples_gallery/recording/neuralynx>
     Neuroscope <conversion_examples_gallery/recording/neuroscope>
     OpenEphys <conversion_examples_gallery/recording/openephys>
     Spikegadgets <conversion_examples_gallery/recording/spikegadgets>
@@ -25,7 +26,7 @@ The sorters are not yet in doctest. Adding here in advance to see the structure.
 .. toctree::
     :maxdepth: 1
 
-    Kilosort <conversion_examples_gallery/sorting/kilo>
+    Kilosort <conversion_examples_gallery/sorting/kilosort>
     Phy <conversion_examples_gallery/sorting/phy>
 
 

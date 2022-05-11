@@ -35,7 +35,7 @@ Intan Recording
 
 Kilosort Sorting
 ----------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.kilo.kilodatainterface
+.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
 Neuralynx Recording
 -------------------
@@ -53,9 +53,8 @@ Phy Sorting
 -----------
 .. automodule:: nwb_conversion_tools.datainterfaces.ecephys.phy.phydatainterface
 
-
 Spikegadgets Recording
-------------------
+----------------------
 .. automodule:: nwb_conversion_tools.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface
 
 

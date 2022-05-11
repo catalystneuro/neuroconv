@@ -1,4 +1,4 @@
-"""Authors: Cody Baker."""
+"""Authors: Heberto Mayorquin, Cody Baker."""
 from typing import Optional
 
 from spikeinterface.extractors import KiloSortSortingExtractor
