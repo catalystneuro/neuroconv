@@ -7,7 +7,7 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
 
 
-class KiloSortingInterface(BaseSortingExtractorInterface):
+class KilosortSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a KiloSortingExtractor from spikeinterface."""
 
     SX = KiloSortSortingExtractor
