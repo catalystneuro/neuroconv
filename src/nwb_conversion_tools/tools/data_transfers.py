@@ -296,6 +296,7 @@ def dandi_upload(
     dandiset_folder_path: OptionalFolderPathType = None,
     version: Optional[str] = None,
     staging: bool = False,
+    cleanup: bool = False,
 ):
     """
     Fully automated upload of NWBFiles to a DANDISet.
@@ -325,6 +326,9 @@ def dandi_upload(
     staging : bool, optional
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
+    cleanup : bool, optional
+        Whether or not to remove the dandiset folder path and nwb_folder_path.
+        Defaults to False.
     """
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
@@ -365,8 +369,9 @@ def dandi_upload(
     upload(paths=[str(x.absolute()) for x in organized_nwbfiles], dandi_instance=dandi_instance)
 
     # Cleanup should be confirmed manually; Windows especially can complain
-    try:
-        rmtree(path=dandiset_folder_path)
-        rmtree(path=nwb_folder_path)
-    except PermissionError:  # pragma: no cover
-        warn("Unable to clean up source files and dandiset! Please manually delete them.")
+    if cleanup:
+        try:
+            rmtree(path=dandiset_folder_path)
+            rmtree(path=nwb_folder_path)
+        except PermissionError:  # pragma: no cover
+            warn("Unable to clean up source files and dandiset! Please manually delete them.")
