@@ -22,7 +22,8 @@ Convert spikeglx data to NWB using :py:class:`~nwb_conversion_tools.datainterfac
     >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
     >>> session_start_time = session_start_time.replace(tzinfo=tzinfo).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>>  # Choose a path for saving the nwb file and run the conversion
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
     >>> save_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(save_path=save_path, metadata=metadata)
     >>>
