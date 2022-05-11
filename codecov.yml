@@ -17,3 +17,5 @@ coverage:
 ignore:
   - "./tests/"
   - "./setup.py"
+  - "./docs/"
+  - "./documentation/"

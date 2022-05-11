@@ -9,6 +9,10 @@ Base Sorting
 ------------
 .. automodule:: nwb_conversion_tools.datainterfaces.ecephys.basesortingextractorinterface
 
+Tutorial Recording & Sorting
+----------------------------
+.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
+
 Axona Recording
 ---------------
 .. automodule:: nwb_conversion_tools.datainterfaces.ecephys.axona.axonadatainterface
@@ -29,6 +33,14 @@ Intan Recording
 ---------------
 .. automodule:: nwb_conversion_tools.datainterfaces.ecephys.intan.intandatainterface
 
+Kilosort Sorting
+----------------
+.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.kilosort.kilosortdatainterface
+
+Neuralynx Recording
+-------------------
+.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
+
 Neuroscope Recording & Sorting
 ------------------------------
 .. automodule:: nwb_conversion_tools.datainterfaces.ecephys.neuroscope.neuroscopedatainterface
@@ -41,9 +53,10 @@ Phy Sorting
 -----------
 .. automodule:: nwb_conversion_tools.datainterfaces.ecephys.phy.phydatainterface
 
-Tutorial Recording & Sorting
-----------------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
+Spikegadgets Recording
+----------------------
+.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface
+
 
 SpikeGLX Recording
 ------------------

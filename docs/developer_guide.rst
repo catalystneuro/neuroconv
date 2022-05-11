@@ -8,7 +8,7 @@ The most common contribution is for a user/developer to help us integrate a new 
 .. toctree::
     :maxdepth: 1
 
-    data_interface
-    project_structure
+    Build a Data Interface <developer_guide/build_data_interface>
+    Project Structure <developer_guide/project_structure>
 
 Or feel free to raise a bug report or feature request for our maintainers to prioritize!
