@@ -13,9 +13,9 @@ from tempfile import mkdtemp
 import psutil
 from tqdm import tqdm
 from pynwb import NWBHDF5IO
-from dandi.download import download
-from dandi.organize import organize
-from dandi.upload import upload
+from dandi.download import download as dandi_download
+from dandi.organize import organize as dandi_organize
+from dandi.upload import upload as dandi_upload
 
 from ..utils import FolderPathType, OptionalFolderPathType
 
@@ -342,10 +342,10 @@ def dandi_upload(
 
     url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
-    download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
+    dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
 
-    organize(paths=str(nwb_folder_path), dandiset_path=str(dandiset_path))
+    dandi_organize(paths=str(nwb_folder_path), dandiset_path=str(dandiset_path))
     organized_nwbfiles = dandiset_path.rglob("*.nwb")
 
     # DANDI has yet to implement forcing of session_id inclusion in organize step
@@ -366,7 +366,7 @@ def dandi_upload(
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
     dandi_instance = "dandi-staging" if staging else "dandi"
-    upload(paths=[str(x.absolute()) for x in organized_nwbfiles], dandi_instance=dandi_instance)
+    dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance)
 
     # Cleanup should be confirmed manually; Windows especially can complain
     if cleanup:
