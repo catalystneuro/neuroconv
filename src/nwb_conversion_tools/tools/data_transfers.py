@@ -8,9 +8,14 @@ from pathlib import Path
 from warnings import warn
 from shutil import rmtree
 from time import sleep, time
+from tempfile import mkdtemp
 
 import psutil
 from tqdm import tqdm
+from pynwb import NWBHDF5IO
+from dandi.download import download as dandi_download
+from dandi.organize import organize as dandi_organize
+from dandi.upload import upload as dandi_upload
 
 from ..utils import FolderPathType, OptionalFolderPathType
 
@@ -22,32 +27,23 @@ except ModuleNotFoundError:
     HAVE_GLOBUS = False
 
 
-def _kill_process(proc, timeout: Optional[float] = None):
+def _kill_process(proc):
     """Private helper for ensuring a process and any subprocesses are properly terminated after a timeout period."""
-
-    def _kill(proc):
-        """Local helper for ensuring a process and any subprocesses are properly terminated."""
-        try:
-            process = psutil.Process(proc.pid)
-            for proc in process.children(recursive=True):
-                proc.kill()
-            process.kill()
-        except psutil.NoSuchProcess:  # good process cleaned itself up
-            pass
-
     try:
-        proc.wait(timeout=timeout)
-        _kill(proc=proc)
-    except subprocess.TimeoutExpired:
-        _kill(proc=proc)
+        process = psutil.Process(proc.pid)
+        for proc in process.children(recursive=True):
+            proc.kill()
+        process.kill()
+    except psutil.NoSuchProcess:  # good process cleaned itself up
+        pass
 
 
 def deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
     """Private helper for efficient submission and cleanup of shell processes."""
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True)
     output = proc.communicate()[0].strip() if catch_output else None
-    if timeout is not None:
-        _kill_process(proc=proc, timeout=timeout)
+    proc.wait(timeout=timeout)
+    _kill_process(proc=proc)
     return output
 
 
@@ -208,6 +204,7 @@ def transfer_globus_content(
 
     source_files = [[source_files]] if isinstance(source_files, str) else source_files
     destination_folder_path = Path(destination_folder)
+    destination_folder_path.mkdir(exist_ok=True)
     # assertion check is ensure the logical iteration does not occur over the individual string values
     assert (
         isinstance(source_files, list) and source_files and isinstance(source_files[0], list) and source_files[0]
@@ -293,13 +290,13 @@ def estimate_s3_conversion_cost(
     return cost_mb_s * total_mb_s
 
 
-def dandi_upload(
+def automatic_dandi_upload(
     dandiset_id: str,
     nwb_folder_path: FolderPathType,
     dandiset_folder_path: OptionalFolderPathType = None,
     version: Optional[str] = None,
     staging: bool = False,
-    process_timeouts: Optional[Dict[str, Optional[float]]] = None,
+    cleanup: bool = False,
 ):
     """
     Fully automated upload of NWBFiles to a DANDISet.
@@ -329,60 +326,52 @@ def dandi_upload(
     staging : bool, optional
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
-    process_timeouts : Dict[str, Optional[float]], optional
-        Dictionary used to specify mazimum timeout of each individual process in the DANDI upload.
-        Keys must be from ['validate', 'download', 'organize', 'upload'].
-        The value of each key is number of seconds to wait before forcibly terminating.
-        Set any value to None to wait until the process completes, however long that may be.
-        The default is for all processes except organize to wait until full completion
-        (in testing, organize subprocess doesn't seem to want to wait successfully).
+    cleanup : bool, optional
+        Whether or not to remove the dandiset folder path and nwb_folder_path.
+        Defaults to False.
     """
-    initial_wd = os.getcwd()
-    dandiset_folder_path = nwb_folder_path.parent if dandiset_folder_path is None else dandiset_folder_path
+    dandiset_folder_path = (
+        Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
+    )
+    dandiset_path = dandiset_folder_path / dandiset_id
     version = "draft" if version is None else version
-    process_timeouts = dict() if process_timeouts is None else process_timeouts
     assert os.getenv("DANDI_API_KEY"), (
         "Unable to find environment variable 'DANDI_API_KEY'. "
         "Please retrieve your token from DANDI and set this environment variable."
     )
+
     url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
+    dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
+    assert dandiset_path.exists(), "DANDI download failed!"
 
-    os.chdir(nwb_folder_path.parent)
-    validate_return = deploy_process(
-        command=f"dandi validate {nwb_folder_path.name}",
-        catch_output=True,
-        timeout=process_timeouts.get("validate"),
-    )
-    assert re.fullmatch(
-        pattern=r"^Summary: No validation errors among \d+ file\(s\)$", string=validate_return
-    ), "DANDI validation failed!"
+    dandi_organize(paths=str(nwb_folder_path), dandiset_path=str(dandiset_path))
+    organized_nwbfiles = dandiset_path.rglob("*.nwb")
 
-    os.chdir(dandiset_folder_path)
-    download_return = deploy_process(
-        command=f"dandi download {dandiset_url} --download dandiset.yaml",
-        catch_output=True,
-        timeout=process_timeouts.get("download"),
-    )
-    assert download_return, "DANDI download failed!"  # output is a bit too dynamic to regex; if it fails it is empty
+    # DANDI has yet to implement forcing of session_id inclusion in organize step
+    # This manually enforces it when only a single sesssion per subject is organized
+    for organized_nwbfile in organized_nwbfiles:
+        if "ses" not in organized_nwbfile.stem:
+            with NWBHDF5IO(path=organized_nwbfile, mode="r") as io:
+                nwbfile = io.read()
+                session_id = nwbfile.session_id
+            dandi_stem = organized_nwbfile.stem
+            dandi_stem_split = dandi_stem.split("_")
+            dandi_stem_split.insert(1, f"ses-{session_id}")
+            corrected_name = "_".join(dandi_stem_split) + ".nwb"
+            organized_nwbfile.rename(organized_nwbfile.parent / corrected_name)
+    organized_nwbfiles = dandiset_path.rglob("*.nwb")
+    # The above block can be removed once they add the feature
 
-    os.chdir(dandiset_folder_path / dandiset_id)
-    deploy_process(
-        command=f"dandi organize {nwb_folder_path.absolute()}",  # .absolute() needed if dandiset folder is elsewhere
-        timeout=process_timeouts.get("organize", 120.0),
-    )
-    assert len(list(Path.cwd().iterdir())) > 1, "DANDI organize failed!"
+    assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
-    dandi_upload_command = "dandi upload -i dandi-staging" if staging else "dandi upload"
-    upload_return = deploy_process(
-        command=dandi_upload_command, catch_output=True, timeout=process_timeouts.get("upload")
-    )
-    assert upload_return, "DANDI upload failed!"
+    dandi_instance = "dandi-staging" if staging else "dandi"
+    dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance)
 
-    # cleanup - should be confirmed manually, Windows especially can complain
-    os.chdir(initial_wd)  # restore to initial working directory; also to prevent additional process usage permissions
-    try:
-        rmtree(path=nwb_folder_path.parent / dandiset_id)
-        rmtree(path=nwb_folder_path)
-    except PermissionError:
-        warn("Unable to clean up source files and dandiset! Please manually delete them.")
+    # Cleanup should be confirmed manually; Windows especially can complain
+    if cleanup:
+        try:
+            rmtree(path=dandiset_folder_path)
+            rmtree(path=nwb_folder_path)
+        except PermissionError:  # pragma: no cover
+            warn("Unable to clean up source files and dandiset! Please manually delete them.")
