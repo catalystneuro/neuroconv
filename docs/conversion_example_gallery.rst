@@ -25,7 +25,7 @@ The sorters are not yet in doctest. Adding here in advance to see the structure.
 .. toctree::
     :maxdepth: 1
 
-    Kilosorting <conversion_examples_gallery/sorting/kilo>
+    Kilosort <conversion_examples_gallery/sorting/kilo>
     Phy <conversion_examples_gallery/sorting/phy>
 
 
