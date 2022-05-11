@@ -10,7 +10,7 @@ Convert Neuroscope sorting data to NWB using :py:class:`~nwb_conversion_tools.da
     >>> from pathlib import Path
     >>> from nwb_conversion_tools import NeuroscopeSortingInterface
     >>> 
-    >>> folder_path = f"/home/heberto/ephy_testing_data/neuroscope/dataset_1"
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/neuroscope/dataset_1"
     >>> xml_file_path = folder_path + "/YutaMouse42-151117.xml"
     >>> # Neuroscope sorting requires both the folder_path (containing the .clu and .res files.)and the xml_file_path
     >>> interface = NeuroscopeSortingInterface(folder_path=folder_path, xml_file_path=xml_file_path)
