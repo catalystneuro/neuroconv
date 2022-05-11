@@ -2,11 +2,14 @@
 import uuid
 from datetime import datetime
 from warnings import warn
+from contextlib import contextmanager
+from typing import Optional
+from pathlib import Path
 
-from pynwb import NWBFile
+from pynwb import NWBFile, NWBHDF5IO
 from pynwb.file import Subject
 
-from ..utils import dict_deep_update
+from ..utils import dict_deep_update, FilePathType
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -110,3 +113,56 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
     for dev in metadata[modality]["Device"]:
         if dev.get("name", defaults["name"]) not in nwbfile.devices:
             nwbfile.create_device(**dict(defaults, **dev))
+
+
+@contextmanager
+def make_or_load_nwbfile(
+    nwbfile_path: FilePathType, metadata: Optional[dict] = None, nwbfile: NWBFile = None, overwrite: bool = False
+):
+    """
+    Context for automatically handling decision of write vs. append for writing an NWBFile.
+
+    Parameters
+    ----------
+    nwbfile_path: FilePathType
+        Path for where to write the NWBFile.
+    metadata: dict, optional
+        Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+    nwbfile: NWBFile, optional
+        An in-memory NWBFile object to write to the location.
+    overwrite: bool, optional
+        Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+        The default is False (append mode).
+    """
+    assert not (overwrite is False and Path(nwbfile_path).exists() and nwbfile is not None), (
+        "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
+        "passed! Cannot reconcile which nwbfile object to write."
+    )
+    if metadata is not None and nwbfile is not None:
+        warn(
+            "Passing an in-memory NWBFile object, but also passing metadata for building a fresh NWBFile. "
+            "Metadata will be ignored."
+        )
+    if metadata is not None and overwrite is False and Path(nwbfile_path).exists():
+        warn(
+            f"Writing to 'nwbfile_path' ({nwbfile_path}) in append mode, but also passing metadata for building a "
+            "fresh NWBFile. Metadata will be ignored and the existing file will be appended."
+        )
+
+    load_kwargs = dict(path=nwbfile_path)
+    if Path(nwbfile_path).is_file() and not overwrite:
+        load_kwargs.update(mode="r+", load_namespaces=True)
+    else:
+        load_kwargs.update(mode="w")
+    io = NWBHDF5IO(**load_kwargs)
+    try:
+        if load_kwargs["mode"] == "r+":
+            nwbfile = io.read()
+        elif nwbfile is None:
+            nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        yield nwbfile
+    finally:
+        try:
+            io.write(nwbfile)
+        finally:
+            io.close()
