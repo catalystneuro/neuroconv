@@ -967,6 +967,8 @@ def write_recording(
     assert (
         distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
+
+    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
     if save_path is not None:
         will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
         if nwbfile_path is not None:

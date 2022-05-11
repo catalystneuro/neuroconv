@@ -1,5 +1,8 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod, ABC
+from typing import Optional
+
+from pynwb import NWBFile
 
 from .utils import get_base_schema, get_schema_from_method_signature
 
@@ -40,6 +43,14 @@ class BaseDataInterface(ABC):
         return dict()
 
     @abstractmethod
-    def run_conversion(self, nwbfile_path: str, metadata: dict, **conversion_options):
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[str] = None,
+        metadata: Optional[dict] = None,
+        nwbfile: Optional[NWBFile] = None,
+        overwrite: bool = False,
+        save_to_file: bool = True,
+        **conversion_options,
+    ):
         """Child DataInterface classes should override this to perform their conversion."""
         pass
