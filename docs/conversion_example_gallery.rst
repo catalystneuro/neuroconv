@@ -21,7 +21,6 @@ Recording
 
 Sorting
 -------
-The sorters are not yet in doctest. Adding here in advance to see the structure. No need to review
 
 .. toctree::
     :maxdepth: 1
