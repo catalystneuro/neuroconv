@@ -170,22 +170,16 @@ class NWBConverter:
         conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
         self.validate_conversion_options(conversion_options=conversion_options_to_run)
 
-        if save_to_file:
-            load_kwargs = dict(nwbfile_path=nwbfile_path, overwrite=overwrite)
-            if nwbfile is None or (not Path(nwbfile_path).exists() and not overwrite) or overwrite:
-                load_kwargs.update(metadata=metadata)
-            else:
-                load_kwargs.update(nwbfile=nwbfile)
-            with make_or_load_nwbfile(**load_kwargs) as nwbfile_out:
-                for interface_name, data_interface in self.data_interface_objects.items():
-                    data_interface.run_conversion(
-                        nwbfile=nwbfile_out, metadata=metadata, **conversion_options_to_run.get(interface_name, dict())
-                    )
-            if self.verbose:
-                print(f"NWB file saved at {nwbfile_path}!")
-        else:
-            if nwbfile is None:
-                nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path,
+            metadata=metadata,
+            nwbfile=nwbfile,
+            overwrite=overwrite,
+            save_to_file=save_to_file,
+            verbose=self.verbose,
+        ) as nwbfile_out:
             for interface_name, data_interface in self.data_interface_objects.items():
-                data_interface.run_conversion(nwbfile, metadata, **conversion_options.get(interface_name, dict()))
-        return nwbfile
+                data_interface.run_conversion(
+                    nwbfile=nwbfile_out, metadata=metadata, **conversion_options_to_run.get(interface_name, dict())
+                )
+        return nwbfile_out

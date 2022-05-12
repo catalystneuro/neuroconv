@@ -242,8 +242,19 @@ class TestMakeOrLoadNWBFile(TestCase):
         self.time_series_1 = TimeSeries(name="test1", data=[1], rate=1.0, unit="test")
         self.time_series_2 = TimeSeries(name="test2", data=[1], rate=1.0, unit="test")
 
-    def test_make_or_load_nwbfile_assertion(self):
-        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_assertion.nwb"
+    def test_make_or_load_nwbfile_assertion_1(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "You must specify either an 'nwbfile_path', or an in-memory 'nwbfile' object, "
+                "or provide the metadata for creating one."
+            ),
+        ):
+            with make_or_load_nwbfile(verbose=True) as nwbfile:
+                nwbfile.add_acquisition(self.time_series_1)
+
+    def test_make_or_load_nwbfile_assertion_2(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_assertion_2.nwb"
         with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
             nwbfile.add_acquisition(self.time_series_1)
 
@@ -258,42 +269,6 @@ class TestMakeOrLoadNWBFile(TestCase):
                 nwbfile_path=nwbfile_path, nwbfile=make_nwbfile_from_metadata(metadata=self.metadata), overwrite=False
             ) as nwbfile:
                 nwbfile.add_acquisition(self.time_series_1)
-
-    def test_make_or_load_nwbfile_warning_1(self):
-        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_warning_1.nwb"
-        with self.assertWarnsWith(
-            warn_type=UserWarning,
-            exc_msg=(
-                "Passing an in-memory NWBFile object, but also passing metadata for building a fresh NWBFile. "
-                "Metadata will be ignored."
-            ),
-        ):
-            with make_or_load_nwbfile(
-                nwbfile_path=nwbfile_path,
-                metadata=self.metadata,
-                nwbfile=make_nwbfile_from_metadata(metadata=self.metadata),
-                overwrite=True,
-            ) as nwbfile:
-                nwbfile.add_acquisition(self.time_series_1)
-
-    def test_make_or_load_nwbfile_warning_2(self):
-        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_warning_2.nwb"
-        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
-            nwbfile.add_acquisition(self.time_series_1)
-
-        with self.assertWarnsWith(
-            warn_type=UserWarning,
-            exc_msg=(
-                f"Writing to 'nwbfile_path' ({nwbfile_path}) in append mode, but also passing metadata for building a "
-                "fresh NWBFile. Metadata will be ignored and the existing file will be appended."
-            ),
-        ):
-            with make_or_load_nwbfile(
-                nwbfile_path=nwbfile_path,
-                metadata=self.metadata,
-                overwrite=False,
-            ) as nwbfile:
-                nwbfile.add_acquisition(self.time_series_2)
 
     def test_make_or_load_nwbfile_write(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_write.nwb"
