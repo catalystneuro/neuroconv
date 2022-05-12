@@ -46,11 +46,28 @@ class BaseDataInterface(ABC):
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
-        metadata: Optional[dict] = None,
         nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
         overwrite: bool = False,
-        save_to_file: bool = True,
         **conversion_options,
     ):
-        """Child DataInterface classes should override this to perform their conversion."""
-        pass
+        """
+        Run the NWB conversion for the instantiated data interface.
+
+        Parameters
+        ----------
+        nwbfile_path: FilePathType
+            Path for where to write or load (if overwrite=False) the NWBFile.
+            If specified, this context will always write to the this location.
+        nwbfile: NWBFile, optional
+            An in-memory NWBFile object to write to the location.
+        metadata: dict, optional
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        overwrite: bool, optional
+            Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+            The default is False (append mode).
+        verbose: bool, optional
+            If 'nwbfile_path' is specified, informs user after a successful write operation.
+            The default is True.
+        """
+        raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")

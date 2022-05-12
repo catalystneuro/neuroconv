@@ -151,6 +151,7 @@ class NWBConverter:
         verbose: bool, optional
             If 'nwbfile_path' is specified, informs user after a successful write operation.
             The default is True.
+        conversion_options: dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """

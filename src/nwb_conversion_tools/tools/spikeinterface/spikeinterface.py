@@ -858,21 +858,22 @@ def add_all_to_nwbfile(
 
 def write_recording(
     recording: SpikeInterfaceRecording,
-    save_path: OptionalFilePathType = None,
     nwbfile_path: OptionalFilePathType = None,
-    overwrite: bool = False,
     nwbfile: Optional[pynwb.NWBFile] = None,
+    metadata: Optional[dict] = None,
+    overwrite: bool = False,
+    verbose: bool = True,
     starting_time: Optional[float] = None,
     use_times: bool = False,
-    metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
+    compression: Optional[str] = None,
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = None,
     iterator_opts: Optional[dict] = None,
+    save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -880,11 +881,9 @@ def write_recording(
     Parameters
     ----------
     recording: SpikeInterfaceRecording
-    save_path: FilePathType, optional
-        Required if an nwbfile is not passed. Must be the path to the nwbfile
-        being appended, otherwise one is created and written.
-    overwrite: bool
-        If using save_path, whether or not to overwrite the NWBFile if it already exists.
+    nwbfile_path: FilePathType
+        Path for where to write or load (if overwrite=False) the NWBFile.
+        If specified, this context will always write to the this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling
@@ -892,13 +891,7 @@ def write_recording(
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
-    starting_time: float (optional)
-        Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times: bool
-        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
-        the sampling rate is used.
-    metadata: dict
+    metadata: dict, optional
         metadata info for constructing the nwb file (optional). Should be
         of the format
             metadata['Ecephys'] = {}
@@ -932,6 +925,18 @@ def write_recording(
             }
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
+    overwrite: bool, optional
+        Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+        The default is False (append mode).
+    verbose: bool, optional
+        If 'nwbfile_path' is specified, informs user after a successful write operation.
+        The default is True.
+    starting_time: float (optional)
+        Sets the starting time of the ElectricalSeries to a manually set value.
+        Increments timestamps if use_times is True.
+    use_times: bool
+        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
+        the sampling rate is used.
     write_as: str (optional, defaults to 'raw')
         How to save the traces data in the nwb file. Options:
         - 'raw' will save it in acquisition
@@ -967,6 +972,7 @@ def write_recording(
     assert (
         distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
+    compression = "gzip" if compression is None else compression
 
     # TODO on or after August 1st, 2022, remove argument and deprecation warnings
     if save_path is not None:
@@ -991,36 +997,19 @@ def write_recording(
             )
             nwbfile_path = save_path
 
-    assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
-
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
         metadata = get_nwb_metadata(recording=recording)
-    if nwbfile is None:
-        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=overwrite) as nwbfile_out:
-            add_all_to_nwbfile(
-                recording=recording,
-                nwbfile=nwbfile_out,
-                metadata=metadata,
-                starting_time=starting_time,
-                use_times=use_times,
-                write_as=write_as,
-                es_key=es_key,
-                write_scaled=write_scaled,
-                compression=compression,
-                compression_opts=compression_opts,
-                iterator_type=iterator_type,
-                iterator_opts=iterator_opts,
-                write_electrical_series=write_electrical_series,
-            )
-    else:
+    with make_or_load_nwbfile(
+        nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
+    ) as nwbfile_out:
         add_all_to_nwbfile(
             recording=recording,
-            nwbfile=nwbfile,
+            nwbfile=nwbfile_out,
+            metadata=metadata,
             starting_time=starting_time,
             use_times=use_times,
-            metadata=metadata,
             write_as=write_as,
             es_key=es_key,
             write_scaled=write_scaled,
@@ -1030,7 +1019,7 @@ def write_recording(
             iterator_opts=iterator_opts,
             write_electrical_series=write_electrical_series,
         )
-    return nwbfile
+    return nwbfile_out
 
 
 def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
