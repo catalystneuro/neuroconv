@@ -128,10 +128,9 @@ class NWBConverter:
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
-        metadata: Optional[dict] = None,
         nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
         overwrite: bool = False,
-        save_to_file: bool = True,
         conversion_options: Optional[dict] = None,
     ):
         """
@@ -139,27 +138,22 @@ class NWBConverter:
 
         Parameters
         ----------
-        nwbfile_path : str, optional
-            Location to save the NWBFile, if save_to_file is True. The default is None.
-        metadata : dict, optional
-        nwbfile : NWBFile, optional
-            A pre-existing NWBFile object to be appended (instead of reading from nwbfile_path).
-        overwrite : bool, optional
-            If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
-            If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
-            The default is False.
-        save_to_file : bool, optional
-            If False, returns an NWBFile object instead of writing it to the nwbfile_path. The default is True.
-        conversion_options : dict, optional
+        nwbfile_path: FilePathType
+            Path for where to write or load (if overwrite=False) the NWBFile.
+            If specified, this context will always write to the this location.
+        nwbfile: NWBFile, optional
+            An in-memory NWBFile object to write to the location.
+        metadata: dict, optional
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        overwrite: bool, optional
+            Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+            The default is False (append mode).
+        verbose: bool, optional
+            If 'nwbfile_path' is specified, informs user after a successful write operation.
+            The default is True.
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         """
-        assert (
-            not save_to_file and nwbfile_path is None
-        ) or nwbfile is None, (
-            "Either pass a nwbfile_path location with save_to_file=True, or a nwbfile object, but not both!"
-        )
-
         if metadata is None:
             metadata = self.get_metadata()
         self.validate_metadata(metadata=metadata)
@@ -172,10 +166,9 @@ class NWBConverter:
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
-            metadata=metadata,
             nwbfile=nwbfile,
+            metadata=metadata,
             overwrite=overwrite,
-            save_to_file=save_to_file,
             verbose=self.verbose,
         ) as nwbfile_out:
             for interface_name, data_interface in self.data_interface_objects.items():

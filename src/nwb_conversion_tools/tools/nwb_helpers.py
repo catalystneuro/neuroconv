@@ -129,14 +129,18 @@ def make_or_load_nwbfile(
     Parameters
     ----------
     nwbfile_path: FilePathType
-        Path for where to write the NWBFile.
-    metadata: dict, optional
-        Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        Path for where to write or load (if overwrite=False) the NWBFile.
+        If specified, this context will always write to the this location.
     nwbfile: NWBFile, optional
         An in-memory NWBFile object to write to the location.
+    metadata: dict, optional
+        Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite: bool, optional
         Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
+    verbose: bool, optional
+        If 'nwbfile_path' is specified, informs user after a successful write operation.
+        The default is True.
     """
     assert not (nwbfile_path is None and nwbfile is None and metadata is None), (
         "You must specify either an 'nwbfile_path', or an in-memory 'nwbfile' object, "
