@@ -522,8 +522,12 @@ class TestWriteElectrodes(unittest.TestCase):
                 self.RX.set_channel_property(chan_id1, "prop3", str(chan_id1))
 
     def test_append_same_properties(self):
-        write_recording(recording=self.RX, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1")
-        write_recording(recording=self.RX2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2")
+        self.nwbfile1 = write_recording(
+            recording=self.RX, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1"
+        )
+        self.nwbfile1 = write_recording(
+            recording=self.RX2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
+        )
         with NWBHDF5IO(str(self.path1), "w") as io:
             io.write(self.nwbfile1)
         with NWBHDF5IO(str(self.path1), "r") as io:
@@ -551,8 +555,12 @@ class TestWriteElectrodes(unittest.TestCase):
         for chan_id in self.RX2.get_channel_ids():
             self.RX2.clear_channel_property(chan_id, "prop2")
             self.RX2.set_channel_property(chan_id, "prop_new", chan_id)
-        write_recording(recording=self.RX, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1")
-        write_recording(recording=self.RX2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2")
+        self.nwbfile1 = write_recording(
+            recording=self.RX, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1"
+        )
+        self.nwbfile1 = write_recording(
+            recording=self.RX2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
+        )
         with NWBHDF5IO(str(self.path1), "w") as io:
             io.write(self.nwbfile1)
         with NWBHDF5IO(str(self.path1), "r") as io:
@@ -573,8 +581,12 @@ class TestWriteElectrodes(unittest.TestCase):
             self.metadata_list[i]["Ecephys"].update(
                 ElectrodeGroup=[dict(name=grp_name, description=grp_name + " description")]
             )
-        write_recording(recording=self.RX, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1")
-        write_recording(recording=self.RX2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2")
+        self.nwbfile1 = write_recording(
+            recording=self.RX, nwbfile=self.nwbfile1, metadata=self.metadata_list[0], es_key="es1"
+        )
+        self.nwbfile1 = write_recording(
+            recording=self.RX2, nwbfile=self.nwbfile1, metadata=self.metadata_list[1], es_key="es2"
+        )
         with NWBHDF5IO(str(self.path1), "w") as io:
             io.write(self.nwbfile1)
         with NWBHDF5IO(str(self.path1), "r") as io:

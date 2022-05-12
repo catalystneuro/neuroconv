@@ -59,9 +59,8 @@ def test_tutorials():
     metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
     conversion_options = dict(RecordingTutorial=dict(stub_test=stub_test), SortingTutorial=dict())
     converter.run_conversion(
-        metadata=metadata,
         nwbfile_path=output_file,
-        save_to_file=True,
+        metadata=metadata,
         overwrite=True,
         conversion_options=conversion_options,
     )
@@ -106,7 +105,7 @@ def test_pkl_interface():
     converter = SpikeInterfaceTestNWBConverter(source_data=source_data)
     metadata = converter.get_metadata()
     metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-    converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
     nwb_recording = se.NwbRecordingExtractor(file_path=nwbfile_path)
     nwb_sorting = se.NwbSortingExtractor(file_path=nwbfile_path)

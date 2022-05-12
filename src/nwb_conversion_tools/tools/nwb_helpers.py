@@ -142,11 +142,12 @@ def make_or_load_nwbfile(
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
     """
+    nwbfile_path_in = Path(nwbfile_path) if nwbfile_path else None
     assert not (nwbfile_path is None and nwbfile is None and metadata is None), (
         "You must specify either an 'nwbfile_path', or an in-memory 'nwbfile' object, "
         "or provide the metadata for creating one."
     )
-    assert not (overwrite is False and Path(nwbfile_path).exists() and nwbfile is not None), (
+    assert not (overwrite is False and nwbfile_path_in and nwbfile_path_in.exists() and nwbfile is not None), (
         "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
         "passed! Cannot reconcile which nwbfile object to write."
     )
@@ -166,11 +167,11 @@ def make_or_load_nwbfile(
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         yield nwbfile
     finally:
-        try:
-            if nwbfile_path:
+        if nwbfile_path:
+            try:
                 io.write(nwbfile)
 
                 if verbose:
                     print(f"NWB file saved at {nwbfile_path}!")
-        finally:
-            io.close()
+            finally:
+                io.close()

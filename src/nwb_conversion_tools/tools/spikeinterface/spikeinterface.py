@@ -865,8 +865,8 @@ def write_recording(
     verbose: bool = True,
     starting_time: Optional[float] = None,
     use_times: bool = False,
-    write_as: str = "raw",
-    es_key: str = None,
+    write_as: Optional[str] = None,
+    es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
     compression: Optional[str] = None,
@@ -972,6 +972,7 @@ def write_recording(
     assert (
         distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
+    write_as = "raw" if write_as is None else write_as
     compression = "gzip" if compression is None else compression
 
     # TODO on or after August 1st, 2022, remove argument and deprecation warnings
