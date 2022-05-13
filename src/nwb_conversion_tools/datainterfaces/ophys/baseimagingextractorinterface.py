@@ -1,4 +1,6 @@
 """Author: Ben Dichter."""
+from typing import Optional
+
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
@@ -16,9 +18,10 @@ from ...utils import (
 class BaseImagingExtractorInterface(BaseDataInterface):
     IX = None
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose=True, **source_data):
         super().__init__(**source_data)
         self.imaging_extractor = self.IX(**source_data)
+        self.verbose = verbose
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -65,11 +68,18 @@ class BaseImagingExtractorInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile: NWBFile = None,
-        metadata: dict = None,
+        nwbfile_path: OptionalFilePathType = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
         overwrite: bool = False,
         save_path: OptionalFilePathType = None,
     ):
         write_imaging(
-            imaging=self.imaging_extractor, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, save_path=save_path
+            imaging=self.imaging_extractor,
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            verbose=self.verbose,
+            save_path=save_path,
         )
