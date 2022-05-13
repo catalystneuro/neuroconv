@@ -12,5 +12,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
 
     SX = se.PhySortingExtractor
 
-    def __init__(self, folder_path: FolderPathType, exclude_cluster_groups: Optional[list] = None):
-        super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups)
+    def __init__(
+        self, folder_path: FolderPathType, exclude_cluster_groups: Optional[list] = None, verbose: bool = True
+    ):
+        super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)

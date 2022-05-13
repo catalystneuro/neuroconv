@@ -278,6 +278,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list] = None,
         xml_file_path: OptionalFilePathType = None,
+        verbose: bool = True,
         # TODO: we can enable this once
         #     a) waveforms on unit columns support conversion factor in NWB
         #     b) write_sorting utils support writing said waveforms properly to a units table
@@ -320,6 +321,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
             keep_mua_units=keep_mua_units,
             exclude_shanks=exclude_shanks,
             xml_file_path=xml_file_path,
+            verbose=verbose,
             # TODO: we can enable this once
             #     a) waveforms on unit columns support conversion factor in NWB
             #     b) write_sorting utils support writing said waveforms properly to a units table

@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import ABC
+from typing import Optional
 
 import spikeinterface as si
 import spikeextractors as se
@@ -18,9 +19,10 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
 
     SX = None
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose=True, **source_data):
         super().__init__(**source_data)
         self.sorting_extractor = self.SX(**source_data)
+        self.verbose = verbose
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -99,12 +101,13 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
 
     def run_conversion(
         self,
-        nwbfile: NWBFile = None,
-        metadata: dict = None,
-        stub_test: bool = False,
-        save_path: OptionalFilePathType = None,
+        nwbfile_path: OptionalFilePathType = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
         overwrite: bool = False,
+        stub_test: bool = False,
         write_ecephys_metadata: bool = False,
+        save_path: OptionalFilePathType = None,  # TODO: to be removed
     ):
         """
         Primary function for converting the data in a SortingExtractor to NWB format.
@@ -155,9 +158,11 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
                         )
         write_sorting(
             sorting_extractor,
+            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            save_path=save_path,
             overwrite=overwrite,
+            verbose=self.verbose,
+            save_path=save_path,
             property_descriptions=property_descriptions,
         )
