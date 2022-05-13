@@ -79,7 +79,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         self.subset_channels = None
-        self.source_data = dict(folder_path=folder_path)
+        self.source_data = dict(folder_path=folder_path, verbose=verbose)
         self.verbose = True
 
         nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
