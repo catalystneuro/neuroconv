@@ -183,4 +183,5 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            save_path=save_path,  # TODO: to be removed, depreceation applied at tools level
         )
