@@ -13,7 +13,7 @@ Convert Neuralynx data to NWB using :py:class:`~.nwb_conversion_tools.datainterf
     >>> # For this data interface we need to pass the folder where the data is  
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuralynx/Cheetah_v5.7.4/original_data"
     >>> # Change the folder_path to the appropiate location in your system
-    >>> interface = NeuralynxRecordingInterface(folder_path=folder_path)
+    >>> interface = NeuralynxRecordingInterface(folder_path=folder_path, verbose=False)
     >>> 
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
@@ -24,7 +24,7 @@ Convert Neuralynx data to NWB using :py:class:`~.nwb_conversion_tools.datainterf
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, verbose=False)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
     >>> Path(save_path).is_file()

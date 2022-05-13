@@ -13,7 +13,7 @@ Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>> suffix = "rhd" # This can also be rhs
     >>> file_path = f"{ECEPHY_DATA_PATH}/intan/intan_{suffix}_test_1.{suffix}"
     >>> # Change the file_path to the location of the data in your system
-    >>> interface = IntanRecordingInterface(file_path=file_path)
+    >>> interface = IntanRecordingInterface(file_path=file_path, verbose=False)
     >>> 
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
@@ -24,7 +24,7 @@ Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, verbose=False)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
     >>> Path(save_path).is_file()

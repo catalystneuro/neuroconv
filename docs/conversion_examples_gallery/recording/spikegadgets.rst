@@ -13,7 +13,7 @@ Convert spikegadgets data to NWB using :py:class:`~nwb_conversion_tools.datainte
     >>> # For this interface we need to pass the location of the ``.bin`` file 
     >>> file_path = f"{ECEPHY_DATA_PATH}/spikegadgets/20210225_em8_minirec2_ac.rec"
     >>> # Change the file_path to the location in your system
-    >>> interface = SpikeGadgetsRecordingInterface(file_path=file_path)
+    >>> interface = SpikeGadgetsRecordingInterface(file_path=file_path, verbose=False)
     >>> 
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
@@ -23,7 +23,7 @@ Convert spikegadgets data to NWB using :py:class:`~nwb_conversion_tools.datainte
     >>> 
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, verbose=False)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
     >>> Path(save_path).is_file()
