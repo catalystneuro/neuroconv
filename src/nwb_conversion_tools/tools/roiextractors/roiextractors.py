@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from warnings import warn
 from collections import abc
+from typing import Optional
 
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile, NWBHDF5IO
@@ -21,8 +22,8 @@ from pynwb.ophys import (
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata
-from ...utils import FilePathType, dict_deep_update
+from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
+from ...utils import FilePathType, OptionalFilePathType, dict_deep_update
 
 
 # TODO: This function should be refactored, but for now seems necessary to avoid errors in tests
@@ -212,30 +213,40 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
 
 def write_imaging(
     imaging: ImagingExtractor,
-    save_path: FilePathType = None,
-    nwbfile=None,
-    metadata: dict = None,
+    nwbfile_path: OptionalFilePathType = None,
+    nwbfile: Optional[NWBFile] = None,
+    metadata: Optional[dict] = None,
     overwrite: bool = False,
+    verbose: bool = True,
     buffer_size: int = 10,
     use_times=False,
+    save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
+    Primary method for writing an ImagingExtractor object to an NWBFile.
+
     Parameters
     ----------
     imaging: ImagingExtractor
         The imaging extractor object to be written to nwb
-    save_path: PathType
-        Required if an nwbfile is not passed. Must be the path to the nwbfile
-        being appended, otherwise one is created and written.
-    nwbfile: NWBFile
-        Required if a save_path is not specified. If passed, this function
-        will fill the relevant fields within the nwbfile. E.g., calling
-        write_imaging(my_imaging_extractor, my_nwbfile)
+    nwbfile_path: FilePathType
+        Path for where to write or load (if overwrite=False) the NWBFile.
+        If specified, this context will always write to the this location.
+    nwbfile: NWBFile, optional
+        If passed, this function will fill the relevant fields within the NWBFile object.
+        E.g., calling
+            write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
-    overwrite: bool
-        If True and save_path is existing, it is overwritten
+        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        and returned by the function.
+    metadata: dict, optional
+        Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+    overwrite: bool, optional
+        Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+        The default is False (append mode).
+    verbose: bool, optional
+        If 'nwbfile_path' is specified, informs user after a successful write operation.
+        The default is True.
     num_chunks: int
         Number of chunks for writing data to file
     use_times: bool (optional, defaults to False)
@@ -243,45 +254,21 @@ def write_imaging(
         the sampling rate is used.
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
-
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    # Update any previous metadata with user passed dictionary
+
     if metadata is None:
         metadata = dict()
     if hasattr(imaging, "nwb_metadata"):
         metadata = dict_deep_update(imaging.nwb_metadata, metadata)
     metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
-    if nwbfile is None:
-        save_path = Path(save_path)
-        assert save_path.suffix == ".nwb", "'save_path' file is not an .nwb file"
-
-        if save_path.is_file():
-            if not overwrite:
-                read_mode = "r+"
-            else:
-                # save_path.unlink()
-                read_mode = "w"
-        else:
-            read_mode = "w"
-        with NWBHDF5IO(str(save_path), mode=read_mode) as io:
-            if read_mode == "r+":
-                nwbfile = io.read()
-            else:
-                nwbfile = make_nwbfile_from_metadata(metadata=metadata)
-                add_devices(nwbfile=nwbfile, metadata=metadata)
-                add_two_photon_series(
-                    imaging=imaging,
-                    nwbfile=nwbfile,
-                    metadata=metadata,
-                    buffer_size=buffer_size,
-                )
-                add_epochs(imaging=imaging, nwbfile=nwbfile)
-            io.write(nwbfile)
-    else:
+    with make_or_load_nwbfile(
+        nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
+    ) as nwbfile_out:
         add_devices(nwbfile=nwbfile, metadata=metadata)
-        add_two_photon_series(imaging=imaging, nwbfile=nwbfile, metadata=metadata, use_times=use_times)
+        add_two_photon_series(imaging=imaging, nwbfile=nwbfile, metadata=metadata, buffer_size=buffer_size)
         add_epochs(imaging=imaging, nwbfile=nwbfile)
+    return nwbfile_out
 
 
 def get_nwb_segmentation_metadata(sgmextractor):
