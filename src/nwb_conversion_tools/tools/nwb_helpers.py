@@ -155,7 +155,7 @@ def make_or_load_nwbfile(
     load_kwargs = dict()
     if nwbfile_path:
         load_kwargs.update(path=nwbfile_path)
-        if Path(nwbfile_path).is_file() and not overwrite:
+        if nwbfile_path_in.is_file() and not overwrite:
             load_kwargs.update(mode="r+", load_namespaces=True)
         else:
             load_kwargs.update(mode="w")

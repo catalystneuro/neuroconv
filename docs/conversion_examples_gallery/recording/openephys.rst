@@ -26,7 +26,7 @@ Convert OpenEphys data to NWB using :py:class:`~nwb_conversion_tools.datainterfa
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, verbose=False)
     >>> 
     >>> Path(save_path).is_file()
     True

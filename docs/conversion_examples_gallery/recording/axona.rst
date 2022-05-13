@@ -25,7 +25,7 @@ Convert axona data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, verbose=False)
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
     >>> Path(save_path).is_file()
