@@ -257,6 +257,29 @@ def write_imaging(
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
+    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
+    if save_path is not None:
+        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
+        if nwbfile_path is not None:
+            if save_path == nwbfile_path:
+                warn(
+                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
+                    f"'save_path' {will_be_removed_str}",
+                    DeprecationWarning,
+                )
+            else:
+                warn(
+                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
+                    f"'save_path' {will_be_removed_str}",
+                    DeprecationWarning,
+                )
+        else:
+            warn(
+                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
+                DeprecationWarning,
+            )
+            nwbfile_path = save_path
+
     if metadata is None:
         metadata = dict()
     if hasattr(imaging, "nwb_metadata"):
