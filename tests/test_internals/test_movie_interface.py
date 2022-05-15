@@ -218,3 +218,28 @@ class TestMovieInterface(unittest.TestCase):
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].data.shape[0] == 10
+
+    def test_movie_timestamps(self):
+        timestamps = list(np.linspace(0.0, 1.16, 30)) + list(
+            np.linspace(50.0, 51.16, 30))
+        conversion_opts = dict(
+            Movie=dict(
+                starting_times=self.starting_times,
+                timestamps=timestamps,
+                external_mode=True)
+        )
+
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_opts,
+            metadata=self.metadata,
+        )
+
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            mod = nwbfile.acquisition
+            metadata = self.nwb_converter.get_metadata()
+            for no in range(len(metadata["Behavior"]["Movies"])):
+                movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
+                np.array_equal(timestamps, mod[movie_interface_name].timestamps[:])
