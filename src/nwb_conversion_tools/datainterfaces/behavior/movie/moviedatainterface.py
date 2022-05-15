@@ -106,6 +106,7 @@ class MovieInterface(BaseDataInterface):
         stub_test: bool = False,
         external_mode: bool = True,
         starting_times: Optional[list] = None,
+        timestamps: Optional[list] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
@@ -150,6 +151,8 @@ class MovieInterface(BaseDataInterface):
         starting_times : list, optional
             List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
             sequential order and are contiguous.
+        timestamps : list, optional
+            List of timestamps for the movies. If unspecified, timestamps are extracted from each movie data.
         chunk_data : bool, optional
             If True, uses a DataChunkIterator to read and write the movie, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
@@ -213,8 +216,11 @@ class MovieInterface(BaseDataInterface):
             if external_mode:
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
+                    if timestamps is None:
+                        timestamps = starting_times[j] + vc.get_movie_timestamps()
                 image_series_kwargs.update(
-                    starting_time=starting_times[j], rate=fps, format="external", external_file=file_list
+                    format="external",
+                    external_file=file_list,
                 )
             else:
                 file = file_list[0]
@@ -287,10 +293,11 @@ class MovieInterface(BaseDataInterface):
                         chunks=best_gzip_chunk,
                     )
                 image_series_kwargs.update(data=data)
-                if check_regular_series(series=timestamps):
-                    image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
-                else:
-                    image_series_kwargs.update(timestamps=timestamps)
+
+            if check_regular_series(series=timestamps):
+                image_series_kwargs.update(starting_time=starting_times[j], rate=fps)
+            else:
+                image_series_kwargs.update(timestamps=timestamps)
 
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
