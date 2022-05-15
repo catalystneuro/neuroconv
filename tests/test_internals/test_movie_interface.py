@@ -220,13 +220,9 @@ class TestMovieInterface(unittest.TestCase):
                 assert mod[movie_interface_name].data.shape[0] == 10
 
     def test_movie_timestamps(self):
-        timestamps = list(np.linspace(0.0, 1.16, 30)) + list(
-            np.linspace(50.0, 51.16, 30))
+        timestamps = list(np.linspace(0.0, 1.16, 30)) + list(np.linspace(50.0, 51.16, 30))
         conversion_opts = dict(
-            Movie=dict(
-                starting_times=self.starting_times,
-                timestamps=timestamps,
-                external_mode=True)
+            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
         )
 
         self.nwb_converter.run_conversion(
