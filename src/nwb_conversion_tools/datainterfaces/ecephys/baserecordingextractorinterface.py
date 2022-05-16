@@ -1,11 +1,10 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import ABC
 from typing import Optional
-import numpy as np
 
+import numpy as np
 import spikeextractors as se
 import spikeinterface as si
-
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
@@ -20,10 +19,11 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
     RX = None
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
         self.recording_extractor = self.RX(**source_data)
         self.subset_channels = None
+        self.verbose = verbose
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -95,20 +95,21 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
     def run_conversion(
         self,
+        nwbfile_path: OptionalFilePathType = None,
         nwbfile: NWBFile = None,
-        metadata: dict = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
         use_times: bool = False,
-        save_path: OptionalFilePathType = None,
-        overwrite: bool = False,
-        write_as: str = "raw",
+        write_as: Optional[str] = None,
         write_electrical_series: bool = True,
         es_key: str = None,
-        compression: Optional[str] = "gzip",
+        compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = None,
         iterator_opts: Optional[dict] = None,
+        save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -165,19 +166,22 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
+
         write_recording(
             recording=recording,
+            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
+            overwrite=overwrite,
+            verbose=self.verbose,
             starting_time=starting_time,
             use_times=use_times,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=es_key,
-            save_path=save_path,
-            overwrite=overwrite,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
+            save_path=save_path,  # TODO: to be removed, depreceation applied at tools level
         )

@@ -21,9 +21,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = se.IntanRecordingExtractor
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
         assert HAVE_PYINTAN, INSTALL_MESSAGE
-        super().__init__(file_path=file_path)
+        super().__init__(file_path=file_path, verbose=verbose)
         if ".rhd" in Path(self.source_data["file_path"]).suffixes:
             intan_file_metadata = read_rhd(self.source_data["file_path"])[1]
         else:

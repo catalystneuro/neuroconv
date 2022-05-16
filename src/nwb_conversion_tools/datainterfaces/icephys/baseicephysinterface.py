@@ -27,6 +27,7 @@ try:
 
     HAVE_NDX_DANDI_ICEPHYS = True
 except ImportError:
+    DandiIcephysMetadata = None
     HAVE_NDX_DANDI_ICEPHYS = False
 
 
@@ -53,7 +54,8 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(DandiIcephysMetadata)
+        if DandiIcephysMetadata:
+            metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(DandiIcephysMetadata)
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
