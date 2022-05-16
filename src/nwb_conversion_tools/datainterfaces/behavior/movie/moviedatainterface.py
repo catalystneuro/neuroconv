@@ -299,8 +299,9 @@ class MovieInterface(BaseDataInterface):
                 if fps != rate:
                     warn(
                         f"The fps={fps} from movie data is unequal to the difference in"
-                        f"regular timestamps. Using fps={rate} from timestamps instead."
-                        , UserWarning)
+                        f"regular timestamps. Using fps={rate} from timestamps instead.",
+                        UserWarning,
+                    )
                 image_series_kwargs.update(starting_time=starting_times[j], rate=rate)
             else:
                 image_series_kwargs.update(timestamps=timestamps)
