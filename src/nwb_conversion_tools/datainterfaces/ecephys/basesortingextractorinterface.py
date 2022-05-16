@@ -114,14 +114,24 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
 
         Parameters
         ----------
-        nwbfile: NWBFile
-            nwb file to which the recording information is to be added
+        nwbfile_path: FilePathType
+            Path for where to write or load (if overwrite=False) the NWBFile.
+            If specified, the context will always write to this location.
+        nwbfile: NWBFile, optional
+            If passed, this function will fill the relevant fields within the NWBFile object.
+            E.g., calling
+                write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+            will result in the appropriate changes to the my_nwbfile object.
+            If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+            and returned by the function.
         metadata: dict
-            metadata info for constructing the nwb file (optional).
+            Information for constructing the nwb file (optional) and units table descriptions.
             Should be of the format::
 
                 metadata["Ecephys"]["UnitProperties"] = dict(name=my_name, description=my_description)
-
+        overwrite: bool, optional
+            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            The default is False (append mode).
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_ecephys_metadata: bool (optional, defaults to False)

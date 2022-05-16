@@ -1335,7 +1335,7 @@ def write_sorting(
     sorting: SortingExtractor
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
-        If specified, this context will always write to the this location.
+        If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling
@@ -1346,7 +1346,7 @@ def write_sorting(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite: bool, optional
-        Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
