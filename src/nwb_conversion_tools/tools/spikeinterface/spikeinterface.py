@@ -883,7 +883,7 @@ def write_recording(
     recording: SpikeInterfaceRecording
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
-        If specified, this context will always write to the this location.
+        If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling

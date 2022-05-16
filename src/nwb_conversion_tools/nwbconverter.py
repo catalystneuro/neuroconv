@@ -132,7 +132,7 @@ class NWBConverter:
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         conversion_options: Optional[dict] = None,
-    ):
+    ) -> NWBFile:
         """
         Run the NWB conversion over all the instantiated data interfaces.
 
@@ -140,7 +140,7 @@ class NWBConverter:
         ----------
         nwbfile_path: FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to the this location.
+            If specified, the context will always write to this location.
         nwbfile: NWBFile, optional
             An in-memory NWBFile object to write to the location.
         metadata: dict, optional
@@ -154,6 +154,11 @@ class NWBConverter:
         conversion_options: dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
+
+        Returns
+        -------
+        nwbfile: NWBFile
+            The in-memory NWBFile object after all conversion operations are complete.
         """
         if metadata is None:
             metadata = self.get_metadata()

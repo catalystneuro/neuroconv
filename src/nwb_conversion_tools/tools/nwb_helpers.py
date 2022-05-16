@@ -130,7 +130,7 @@ def make_or_load_nwbfile(
     ----------
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
-        If specified, this context will always write to the this location.
+        If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         An in-memory NWBFile object to write to the location.
     metadata: dict, optional
