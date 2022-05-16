@@ -266,9 +266,8 @@ class TestMovieInterface(TestCase):
             nwbfile = io.read()
             acquisition_module = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-    for movie_metadata in metadata["Behavior"]["Movies"]:
-        movie_interface_name = movie_metadata["name"]
-                movie_interface_name = metadata["Behavior"]["Movies"][movie_num]["name"]
+            for movie_metadata in metadata["Behavior"]["Movies"]:
+                movie_interface_name = movie_metadata["name"]
                 with self.assertWarnsWith(warn_type=UserWarning, exc_msg=expected_warn_msg):
                     assert acquisition_module[movie_interface_name].rate == rate
                     assert acquisition_module[movie_interface_name].timestamps is None
