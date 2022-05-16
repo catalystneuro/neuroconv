@@ -26,5 +26,5 @@ Convert spikegadgets data to NWB using :py:class:`~nwb_conversion_tools.datainte
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(save_path).is_file()
+    >>> Path(nwbfile_path).is_file()
     True

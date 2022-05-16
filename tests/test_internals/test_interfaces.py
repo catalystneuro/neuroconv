@@ -46,7 +46,7 @@ def test_tutorials():
     sampling_frequency = 30000.0  # Hz
     stub_test = False
     test_dir = Path(mkdtemp())
-    output_file = str(test_dir / "TestTutorial.nwb")
+    nwbfile_path = str(test_dir / "TestTutorial.nwb")
     source_data = dict(
         RecordingTutorial=dict(duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency),
         SortingTutorial=dict(duration=duration, num_units=num_units, sampling_frequency=sampling_frequency),
@@ -59,7 +59,7 @@ def test_tutorials():
     metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
     conversion_options = dict(RecordingTutorial=dict(stub_test=stub_test), SortingTutorial=dict())
     converter.run_conversion(
-        nwbfile_path=output_file,
+        nwbfile_path=nwbfile_path,
         metadata=metadata,
         overwrite=True,
         conversion_options=conversion_options,
@@ -73,7 +73,7 @@ def test_tutorial_interfaces():
         )
 
     test_dir = Path(mkdtemp())
-    output_file = str(test_dir / "TestTutorial.nwb")
+    nwbfile_path = str(test_dir / "TestTutorial.nwb")
     source_data = dict(
         RecordingTutorial=dict(),
         SortingTutorial=dict(),
@@ -81,7 +81,7 @@ def test_tutorial_interfaces():
     converter = TutorialNWBConverter(source_data=source_data)
     metadata = converter.get_metadata()
     metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-    converter.run_conversion(nwbfile_path=output_file, overwrite=True, metadata=metadata)
+    converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
 
 def test_pkl_interface():

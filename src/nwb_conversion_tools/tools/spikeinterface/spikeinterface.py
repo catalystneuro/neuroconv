@@ -883,7 +883,7 @@ def write_recording(
     recording: SpikeInterfaceRecording
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
-        If specified, this context will always write to the this location.
+        If specified, the context will always write to this location.
     nwbfile: NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling
@@ -926,7 +926,7 @@ def write_recording(
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
     overwrite: bool, optional
-        Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
