@@ -1,5 +1,6 @@
 import shutil
 import unittest
+from hdmf.testing import TestCase
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +19,7 @@ except ImportError:
 
 
 @unittest.skipIf(skip_test, "cv2 not installed")
-class TestMovieInterface(unittest.TestCase):
+class TestMovieInterface(TestCase):
     def setUp(self) -> None:
         self.test_dir = Path(tempfile.mkdtemp())
         self.movie_files = self.create_movies()
@@ -253,11 +254,19 @@ class TestMovieInterface(unittest.TestCase):
             metadata=self.metadata,
         )
 
+        rate = np.round(timestamps[1] - timestamps[0], 9)
+        fps = 25.0
+        expected_warn_msg = f"The fps={fps} from movie data is unequal to the " \
+                            f"difference in regular timestamps. " \
+                            f"Using fps={rate} from timestamps instead."
+
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             acquisition_module = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
             for movie_num in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][movie_num]["name"]
-                assert acquisition_module[movie_interface_name].rate == timestamps[1] - timestamps[0]
-                assert acquisition_module[movie_interface_name].timestamps is None
+                with self.assertWarnsWith(warn_type=UserWarning,
+                                          exc_msg=expected_warn_msg):
+                    assert acquisition_module[movie_interface_name].rate == rate
+                    assert acquisition_module[movie_interface_name].timestamps is None
