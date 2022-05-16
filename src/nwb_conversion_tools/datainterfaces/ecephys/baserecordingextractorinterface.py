@@ -118,7 +118,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         ----------
         nwbfile_path: FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to the this location.
+            If specified, this context will always write to this location.
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
         metadata: dict
@@ -127,7 +127,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
         overwrite: bool, optional
-            Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
         starting_time: float (optional)
             Sets the starting time of the ElectricalSeries to a manually set value.
