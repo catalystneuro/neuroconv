@@ -219,7 +219,7 @@ class TestMovieInterface(unittest.TestCase):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].data.shape[0] == 10
 
-    def test_movie_timestamps(self):
+    def test_movie_irregular_timestamps(self):
         timestamps = [1, 2, 4]
         conversion_opts = dict(
             Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
@@ -239,3 +239,25 @@ class TestMovieInterface(unittest.TestCase):
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 np.array_equal(timestamps, mod[movie_interface_name].timestamps[:])
+
+    def test_movie_regular_timestamps(self):
+        timestamps = [2.2, 2.4, 2.6]
+        conversion_opts = dict(
+            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
+        )
+
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_opts,
+            metadata=self.metadata,
+        )
+
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            mod = nwbfile.acquisition
+            metadata = self.nwb_converter.get_metadata()
+            for no in range(len(metadata["Behavior"]["Movies"])):
+                movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
+                assert mod[movie_interface_name].rate == timestamps[1] - timestamps[0]
+                assert mod[movie_interface_name].timestamps is None
