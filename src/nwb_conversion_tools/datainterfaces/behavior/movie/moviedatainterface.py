@@ -304,8 +304,7 @@ class MovieInterface(BaseDataInterface):
                         f"regular timestamps. Using the rate "
                         f"({rate_from_regular_timestamps}) from timestamps instead."
                     )
-                    image_series_kwargs.update(starting_time=starting_times[j],
-                                               rate=rate_from_regular_timestamps)
+                    image_series_kwargs.update(starting_time=starting_times[j], rate=rate_from_regular_timestamps)
             else:
                 image_series_kwargs.update(timestamps=timestamps)
 
