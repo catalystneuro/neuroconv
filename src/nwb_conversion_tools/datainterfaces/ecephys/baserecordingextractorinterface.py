@@ -96,7 +96,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
     def run_conversion(
         self,
         nwbfile_path: OptionalFilePathType = None,
-        nwbfile: NWBFile = None,
+        nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         stub_test: bool = False,
@@ -116,6 +116,9 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
         Parameters
         ----------
+        nwbfile_path: FilePathType
+            Path for where to write or load (if overwrite=False) the NWBFile.
+            If specified, this context will always write to this location.
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
         metadata: dict
@@ -123,18 +126,15 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
-
+        overwrite: bool, optional
+            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        The default is False (append mode).
         starting_time: float (optional)
             Sets the starting time of the ElectricalSeries to a manually set value.
             Increments timestamps if use_times is True.
         use_times: bool
             If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
             the sampling rate is used.
-        save_path: OptionalFilePathType
-            Required if an nwbfile is not passed. Must be the path to the nwbfile
-            being appended, otherwise one is created and written.
-        overwrite: bool
-            If using save_path, whether or not to overwrite the NWBFile if it already exists.
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as: str (optional, defaults to 'raw')
