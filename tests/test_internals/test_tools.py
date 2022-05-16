@@ -242,7 +242,8 @@ class TestMakeOrLoadNWBFile(TestCase):
         self.time_series_1 = TimeSeries(name="test1", data=[1], rate=1.0, unit="test")
         self.time_series_2 = TimeSeries(name="test2", data=[1], rate=1.0, unit="test")
 
-    def test_make_or_load_nwbfile_assertion_1(self):
+    def test_make_or_load_nwbfile_assertion_nwbfile_path_and_nwbfile_object(self):
+        """Test if assertion is raised when specifying both an NWBFile path and an in-memory NWBFile object."""
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg=(
@@ -253,8 +254,9 @@ class TestMakeOrLoadNWBFile(TestCase):
             with make_or_load_nwbfile(verbose=True) as nwbfile:
                 nwbfile.add_acquisition(self.time_series_1)
 
-    def test_make_or_load_nwbfile_assertion_2(self):
-        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_assertion_2.nwb"
+    def test_make_or_load_nwbfile_assertion_conflicting_bases(self):
+        """Test if assertion is raised when conflicting nwbfile object bases are used."""
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_assertion_conflicting_bases.nwb"
         with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
             nwbfile.add_acquisition(self.time_series_1)
 

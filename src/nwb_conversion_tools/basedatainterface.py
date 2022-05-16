@@ -58,13 +58,13 @@ class BaseDataInterface(ABC):
         ----------
         nwbfile_path: FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to the this location.
+            If specified, the context will always write to this location.
         nwbfile: NWBFile, optional
             An in-memory NWBFile object to write to the location.
         metadata: dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite: bool, optional
-            Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         verbose: bool, optional
             If 'nwbfile_path' is specified, informs user after a successful write operation.

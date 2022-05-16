@@ -20,7 +20,11 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         return source_schema
 
     def __init__(
-        self, file_path: FilePathType, gains: OptionalArrayType = None, probe_file_path: OptionalFilePathType = None
+        self,
+        file_path: FilePathType,
+        gains: OptionalArrayType = None,
+        probe_file_path: OptionalFilePathType = None,
+        verbose: bool = True,
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -37,8 +41,8 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
         """
-        super().__init__(filename=file_path)
-        self.source_data = dict(file_path=file_path)
+        super().__init__(filename=file_path, verbose=verbose)
+        self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:
             if len(gains) == 1:
                 gains = [gains[0]] * self.recording_extractor.get_num_channels()

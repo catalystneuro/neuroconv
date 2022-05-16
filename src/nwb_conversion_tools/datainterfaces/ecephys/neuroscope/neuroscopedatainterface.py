@@ -99,6 +99,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
         spikeextractors_backend: Optional[bool] = False,
+        verbose: bool = True,
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -126,10 +127,10 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 
         if spikeextractors_backend:
             self.RX = se.NeuroscopeRecordingExtractor
-            super().__init__(file_path=file_path, xml_file_path=xml_file_path)
+            super().__init__(file_path=file_path, xml_file_path=xml_file_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
-            super().__init__(file_path=file_path)
+            super().__init__(file_path=file_path, verbose=verbose)
 
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path

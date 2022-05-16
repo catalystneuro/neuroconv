@@ -68,9 +68,9 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     RX = se.AxonaRecordingExtractor
 
-    def __init__(self, file_path: FilePathType):
-        super().__init__(filename=file_path)
-        self.source_data = dict(file_path=file_path)
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
+        super().__init__(filename=file_path, verbose=verbose)
+        self.source_data = dict(file_path=file_path, verbose=verbose)
 
     def get_metadata(self):
 
