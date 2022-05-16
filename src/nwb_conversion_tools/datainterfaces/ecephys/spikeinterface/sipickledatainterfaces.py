@@ -11,10 +11,11 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     RX = None
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
         self.recording_extractor = load_extractor_from_pickle(pkl_file=file_path)
         self.subset_channels = None
         self.source_data = dict(file_path=file_path)
+        self.verbose = verbose
 
 
 class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
@@ -22,6 +23,7 @@ class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
 
     SX = None
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
         self.sorting_extractor = load_extractor_from_pickle(pkl_file=file_path)
         self.source_data = dict(file_path=file_path)
+        self.verbose = verbose

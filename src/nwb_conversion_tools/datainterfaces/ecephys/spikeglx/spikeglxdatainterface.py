@@ -59,20 +59,21 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         stub_test: Optional[bool] = False,
         spikeextractors_backend: Optional[bool] = False,
+        verbose: bool = True,
     ):
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
         if spikeextractors_backend:
             self.RX = se.SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path))
+            super().__init__(file_path=str(file_path), verbose=verbose)
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
             self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
-            super().__init__(folder_path=folder_path, stream_id=self.stream_id)
+            super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 

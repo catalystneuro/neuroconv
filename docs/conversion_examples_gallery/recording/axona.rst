@@ -13,7 +13,7 @@ Convert axona data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>> # For this interface we need to pass the location of the ``.bin`` file 
     >>> file_path = f"{ECEPHY_DATA_PATH}/axona/axona_raw.bin"
     >>> # Change the file_path to the location in your system
-    >>> interface = AxonaRecordingExtractorInterface(file_path=file_path)
+    >>> interface = AxonaRecordingExtractorInterface(file_path=file_path, verbose=False)
     >>> 
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
@@ -24,9 +24,9 @@ Convert axona data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> save_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(save_path=save_path, metadata=metadata)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(save_path).is_file()
+    >>> Path(nwbfile_path).is_file()
     True

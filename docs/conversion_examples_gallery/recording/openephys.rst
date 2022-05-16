@@ -13,7 +13,7 @@ Convert OpenEphys data to NWB using :py:class:`~nwb_conversion_tools.datainterfa
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/openephysbinary/v0.4.4.1_with_video_tracking"
     >>> # Change the folder_path to the appropiate location in your system
-    >>> interface = OpenEphysRecordingExtractorInterface(folder_path=folder_path)  
+    >>> interface = OpenEphysRecordingExtractorInterface(folder_path=folder_path, verbose=False)  
     Loading Open-Ephys: reading settings...
     Decoding data from  binary  format
     Reading oebin file
@@ -25,8 +25,8 @@ Convert OpenEphys data to NWB using :py:class:`~nwb_conversion_tools.datainterfa
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> save_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
-    >>> interface.run_conversion(save_path=save_path, metadata=metadata)
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
     >>> 
-    >>> Path(save_path).is_file()
+    >>> Path(nwbfile_path).is_file()
     True

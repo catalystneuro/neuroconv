@@ -28,8 +28,11 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         experiment_id: Optional[int] = 0,
         recording_id: Optional[int] = 0,
         stub_test: Optional[bool] = False,
+        verbose: bool = True,
     ):
-        super().__init__(folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id)
+        super().__init__(
+            folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
+        )
         if stub_test:
             self.subset_channels = [0, 1]
 

@@ -37,6 +37,6 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         assert HAVE_SONPY, INSTALL_MESSAGE
         return cls.RX.get_all_channels_info(file_path=file_path)
 
-    def __init__(self, file_path: FilePathType, smrx_channel_ids: list):
+    def __init__(self, file_path: FilePathType, smrx_channel_ids: list, verbose: bool = True):
         assert HAVE_SONPY, INSTALL_MESSAGE
-        super().__init__(file_path=file_path, smrx_channel_ids=smrx_channel_ids)
+        super().__init__(file_path=file_path, smrx_channel_ids=smrx_channel_ids, verbose=verbose)

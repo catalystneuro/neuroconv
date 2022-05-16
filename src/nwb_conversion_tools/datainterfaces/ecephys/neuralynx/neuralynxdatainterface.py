@@ -77,9 +77,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = MultiRecordingChannelExtractor
 
-    def __init__(self, folder_path: FolderPathType):
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         self.subset_channels = None
-        self.source_data = dict(folder_path=folder_path)
+        self.source_data = dict(folder_path=folder_path, verbose=verbose)
+        self.verbose = verbose
+
         nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
         extractors = [NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in nsc_files]
         gains = [extractor.get_channel_gains()[0] for extractor in extractors]
@@ -94,7 +96,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
                     "filtering",
                     get_filtering(filename),
                 )
-        except:
+        except Exception:
             warnings.warn("filtering could not be extracted.")
 
     def get_metadata(self):
