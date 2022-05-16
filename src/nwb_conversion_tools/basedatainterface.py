@@ -64,7 +64,7 @@ class BaseDataInterface(ABC):
         metadata: dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite: bool, optional
-            Whether nor not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         verbose: bool, optional
             If 'nwbfile_path' is specified, informs user after a successful write operation.
