@@ -21,8 +21,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
     SX = se.CellExplorerSortingExtractor
 
-    def __init__(self, file_path: FilePathType):
-        super().__init__(spikes_matfile_path=file_path)
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
+        super().__init__(spikes_matfile_path=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 

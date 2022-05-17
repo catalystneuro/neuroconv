@@ -13,7 +13,7 @@ Convert Phy data to NWB using :py:class:`~.nwb_conversion_tools.datainterfaces.e
     >>> 
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"
     >>> # Change the file_path to the location of the data in your system
-    >>> interface = PhySortingInterface(folder_path=folder_path)
+    >>> interface = PhySortingInterface(folder_path=folder_path, verbose=False)
     >>> 
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
