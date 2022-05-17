@@ -239,10 +239,7 @@ class TestMovieInterface(TestCase):
             metadata = self.nwb_converter.get_metadata()
             for movie_metadata in metadata["Behavior"]["Movies"]:
                 movie_interface_name = movie_metadata["name"]
-                np.testing.assert_array_equal(
-                    timestamps,
-                    acquisition_module[movie_interface_name].timestamps[:]
-                )
+                np.testing.assert_array_equal(timestamps, acquisition_module[movie_interface_name].timestamps[:])
 
     def test_movie_regular_timestamps(self):
         timestamps = [2.2, 2.4, 2.6]
