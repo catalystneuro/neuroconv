@@ -20,4 +20,4 @@ from .json_schema import (
 )
 from .globbing import decompose_f_string, parse_f_string
 
-from .checks import check_regular_series
+from .checks import calculate_regular_series_rate

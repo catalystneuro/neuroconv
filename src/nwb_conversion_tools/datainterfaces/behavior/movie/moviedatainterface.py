@@ -10,7 +10,7 @@ from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
-from nwb_conversion_tools.utils import check_regular_series
+from nwb_conversion_tools.utils import calculate_regular_series_rate
 
 from .movie_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
@@ -294,11 +294,11 @@ class MovieInterface(BaseDataInterface):
                     )
                 image_series_kwargs.update(data=data)
 
-            is_regular, rate = check_regular_series(series=timestamps)
-            if is_regular:
+            rate = calculate_regular_series_rate(series=timestamps)
+            if rate is not None:
                 if fps != rate:
                     warn(
-                        f"The fps={fps} from movie data is unequal to the difference in"
+                        f"The fps={fps} from movie data is unequal to the difference in "
                         f"regular timestamps. Using fps={rate} from timestamps instead.",
                         UserWarning,
                     )
