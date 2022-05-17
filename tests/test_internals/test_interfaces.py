@@ -125,9 +125,10 @@ class TestSortingInterface(unittest.TestCase):
         sorting.add_unit(unit_id=3, times=np.arange(self.sorting_start_frames[2], self.num_frames))
 
         class TestSortingInterface(BaseSortingExtractorInterface):
-            def __init__(self):
+            def __init__(self, verbose: bool = True):
                 self.sorting_extractor = sorting
                 self.source_data = dict()
+                self.verbose = verbose
 
         class TempConverter(NWBConverter):
             data_interface_classes = dict(TestSortingInterface=TestSortingInterface)

@@ -30,7 +30,13 @@ class SortingTutorialInterface(BaseSortingExtractorInterface):
 
     SX = TutorialSortingExtractor
 
-    def __init__(self, duration: float = 10.0, num_units: int = 10, sampling_frequency: float = 30000.0):
+    def __init__(
+        self,
+        duration: float = 10.0,
+        num_units: int = 10,
+        sampling_frequency: float = 30000.0,
+        verbose: bool = True,
+    ):
         """
         Initialize the internal properties of the recording interface.
 
@@ -54,6 +60,7 @@ class SortingTutorialInterface(BaseSortingExtractorInterface):
             self.sorting_extractor.set_unit_property(
                 unit_id=unit_id, property_name="custom_unit_column", value="A custom value"
             )
+        self.verbose = verbose
 
     def get_metadata(self):
         # Set all automatically constructed metadata for the interface at this step

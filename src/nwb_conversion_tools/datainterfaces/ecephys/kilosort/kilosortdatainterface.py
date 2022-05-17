@@ -12,7 +12,7 @@ class KilosortSortingInterface(BaseSortingExtractorInterface):
 
     SX = KiloSortSortingExtractor
 
-    def __init__(self, folder_path: FolderPathType, keep_good_only: bool = False):
+    def __init__(self, folder_path: FolderPathType, keep_good_only: bool = False, verbose: bool = True):
         """
         Load and prepare sorting data for kilosort
 
@@ -23,4 +23,4 @@ class KilosortSortingInterface(BaseSortingExtractorInterface):
         keep_good_only: bool
             If True, only Kilosort-labeled 'good' units are returned
         """
-        super().__init__(folder_path=folder_path, keep_good_only=keep_good_only)
+        super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose)
