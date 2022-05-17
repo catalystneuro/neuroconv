@@ -1,4 +1,4 @@
-Axona data converison 
+Axona data converison
 ^^^^^^^^^^^^^^^^^^^^^
 
 Convert axona data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingExtractorInterface`.
@@ -9,12 +9,12 @@ Convert axona data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>> from nwb_conversion_tools import AxonaRecordingExtractorInterface
-    >>> 
-    >>> # For this interface we need to pass the location of the ``.bin`` file 
+    >>>
+    >>> # For this interface we need to pass the location of the ``.bin`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/axona/axona_raw.bin"
     >>> # Change the file_path to the location in your system
     >>> interface = AxonaRecordingExtractorInterface(file_path=file_path, verbose=False)
-    >>> 
+    >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion

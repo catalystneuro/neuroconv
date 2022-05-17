@@ -39,7 +39,7 @@ jobs:
           pip install -U pip
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-        
+
       - name: Get ephy_testing_data current head hash
         id: ecephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
