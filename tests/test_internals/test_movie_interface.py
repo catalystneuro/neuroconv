@@ -1,5 +1,7 @@
 import shutil
 import unittest
+from zoneinfo import ZoneInfo
+
 from hdmf.testing import TestCase
 import tempfile
 from datetime import datetime
@@ -25,7 +27,8 @@ class TestMovieInterface(TestCase):
         self.movie_files = self.create_movies()
         self.nwb_converter = self.create_movie_converter()
         self.metadata = self.nwb_converter.get_metadata()
-        self.metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        session_start_time = datetime.now().astimezone(tz=ZoneInfo("US/Pacific")).isoformat()
+        self.metadata["NWBFile"].update(session_start_time=session_start_time)
         self.nwbfile_path = self.test_dir / "movie_test.nwb"
         self.starting_times = [0.0, 50.0]
 
