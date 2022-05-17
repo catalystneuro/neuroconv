@@ -53,7 +53,7 @@ jobs:
         run: pytest tests/test_internals -n auto --dist loadscope
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
-        
+
       - name: Get ephy_testing_data current head hash
         id: ecephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
@@ -120,5 +120,5 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./codecov.xml
           flags: unittests
-          name: codecov-umbrella 
+          name: codecov-umbrella
           yml: ./codecov.yml

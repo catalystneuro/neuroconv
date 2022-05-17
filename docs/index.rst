@@ -40,7 +40,7 @@ For more information regarding the NWB Standard, please view
 
 .. Indices and tables
 .. ==================
-.. 
+..
 .. * :ref:`genindex`
 .. * :ref:`modindex`
 .. * :ref:`search`

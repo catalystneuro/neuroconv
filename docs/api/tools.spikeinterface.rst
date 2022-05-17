@@ -1,4 +1,4 @@
-Spike Interface 
+Spike Interface
 ===============
 
 Interface with spikeinterface

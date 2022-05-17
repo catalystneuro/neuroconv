@@ -15,7 +15,7 @@ from {{modality_value.repo}} import Nwb{{type_name}}Extractor, {{format_dict.ext
 ```
         {% endfor %}
     {% endfor %}
-{% endfor %}    
+{% endfor %}
 """
 
 _dict = {

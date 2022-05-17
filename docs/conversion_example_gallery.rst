@@ -1,7 +1,7 @@
 Conversion Gallery
 ======================
 
-The examples here are guaranteed to be running correctly with our testing suite. 
+The examples here are guaranteed to be running correctly with our testing suite.
 Their aim is to be a showcase of the library capabilities and to get you to hit ground running with your conversion.
 
 Recording
@@ -29,5 +29,3 @@ Sorting
     Kilosort <conversion_examples_gallery/sorting/kilosort>
     Neuroscope <conversion_examples_gallery/sorting/neuroscope>
     Phy <conversion_examples_gallery/sorting/phy>
-
-

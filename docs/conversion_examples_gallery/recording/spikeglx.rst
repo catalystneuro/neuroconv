@@ -1,4 +1,4 @@
-Spikeglx data converison 
+Spikeglx data converison
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 Convert spikeglx data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface`.
@@ -9,12 +9,12 @@ Convert spikeglx data to NWB using :py:class:`~nwb_conversion_tools.datainterfac
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>> from nwb_conversion_tools import SpikeGLXRecordingInterface
-    >>> 
-    >>> # For this interface we need to pass the location of the ``.bin`` file 
+    >>>
+    >>> # For this interface we need to pass the location of the ``.bin`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"
     >>> # Change the file_path to the location in your system
     >>> interface = SpikeGLXRecordingInterface(file_path=file_path, verbose=False)
-    >>> 
+    >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion

@@ -8,7 +8,7 @@
 
 # NWB conversion tools
 
-NWB Conversion Tools is a package for creating NWB files by converting and 
+NWB Conversion Tools is a package for creating NWB files by converting and
 combining neural data in proprietary formats and adding essential metadata.
 
 **Under heavy construction. API is changing rapidly.**
@@ -33,7 +33,7 @@ cd nwb-conversion-tools
 conda env create -f make_env.yml
 conda activate nwb_conversion_env
 ```
-Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs). 
+Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs).
 
 Finally, if you prefer to avoid `conda` altogether, the following commands provide a clean installation within the current environment:
 ```shell
@@ -52,7 +52,7 @@ You can use a graphical interface for your converter with [NWB Web GUI](https://
 This project is an ongoing effort for the Ripple U19 conversion of extracellular electrophysiology data to NWB format, including final publishing of each dataset on DANDI. Currently spans 7 major publications and over 14 TB of data on the [DANDI Archive](https://www.dandiarchive.org/). Most of the data consists of raw recordings, LFP, spike sorted units, and behavior with can consist of a mix of mental state tracking, position tracking through mazes, and trial stimulus events.
 
 #### [Shenoy lab](https://npsl.sites.stanford.edu): [shenoy-lab-to-nwb](https://github.com/catalystneuro/shenoy-lab-to-nwb):
-The Shenoy lab is one of the pioneers in developing BCIs for people with paralysis. They are part of the [BrainGate](https://www.braingate.org) team 
+The Shenoy lab is one of the pioneers in developing BCIs for people with paralysis. They are part of the [BrainGate](https://www.braingate.org) team
 and were the winners of the 2019 [BCI award](https://www.bci-award.com/2019).
 They use extracellular recordings from Utah arrays and Neuropixels in primates.
 
@@ -75,7 +75,7 @@ The Feldman lab utilizes a Neuropixels (SpikeGLX) system along with multiple sop
 Neuropixel (SpikeGLX) recordings of subjects navigating a virtual reality! Behavior contains a huge variety of NWB data types including positional and view angle over time,  collision detection, and more! Paired with a [specific extension](https://github.com/catalystneuro/ndx-tank-metadata) for parsing experiment metadata.
 
 #### [Groh lab](https://www.uni-heidelberg.de/izn/researchgroups/groh/): [mease-lab-to-nwb](https://github.com/catalystneuro/mease-lab-to-nwb)
-Utilizing the CED recording interface, this project paired ecephys channels with optogenetic stimulation via laser pulses, and mechnical pressure stimulation over time - all of which are channels of data extracted from the common `.smrx` files! 
+Utilizing the CED recording interface, this project paired ecephys channels with optogenetic stimulation via laser pulses, and mechnical pressure stimulation over time - all of which are channels of data extracted from the common `.smrx` files!
 
 #### [Giocomo lab](https://giocomolab.weebly.com/): [giocomo-lab-to-nwb](https://github.com/catalystneuro/giocomo-lab-to-nwb/tree/master/giocomo_lab_to_nwb/mallory21)
 
@@ -90,7 +90,7 @@ Utilizing the CED recording interface, this project paired ecephys channels with
 
 # For Developers
 ## Running GIN tests locally
-`nwb-conversion-tools` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality. 
+`nwb-conversion-tools` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality.
 
 ### Install testing dependencies
 We provide two easy ways of installing all the dependencies required for testing:
@@ -104,7 +104,7 @@ conda env create -f make_env_testing.yml
 conda activate nwb_conversion_testing_env
 ```
 
-Note that this will also install `datalad` which is the endorsed way of downloading the testing data plus `pytest` and `pytest-cov` which are the tools that we use on our continuous integration suit. 
+Note that this will also install `datalad` which is the endorsed way of downloading the testing data plus `pytest` and `pytest-cov` which are the tools that we use on our continuous integration suit.
 
 2) The same can be accomplished by using `pip`. In a clean environment run:
 

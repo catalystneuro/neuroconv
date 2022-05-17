@@ -124,7 +124,3 @@ The final metadata dictionary should follow the form defined by
 Though this example was only for two data streams (recording and spike-sorted
 data), it can easily extend to any number of sources, including video of a
 subject, extracted position estimates, stimuli, or any other data source.
-
-
-
-

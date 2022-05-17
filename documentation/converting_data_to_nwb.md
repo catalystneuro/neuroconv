@@ -1,5 +1,5 @@
 ## Converting data to NWB
-Below is a collection of simple conversion scripts that are all tested against small 
+Below is a collection of simple conversion scripts that are all tested against small
 proprietary examples files. They are all optimized to handle very large data by iteratively
 steping through large files and read/writing them one piece at a time. They also leverage
 lossless compression within HDF5, which allows you to make large datasets smaller without
@@ -10,24 +10,24 @@ losing any data. We have seen this reduce large datasets by up to 66%!
 <summary>Extracellular electrophysiology</summary>
 
 <br>
-For extracellular electrophysiology, we use the SpikeExtractors repository from the 
-[SpikeInterface](http://spikeinterface.readthedocs.io/) 
+For extracellular electrophysiology, we use the SpikeExtractors repository from the
+[SpikeInterface](http://spikeinterface.readthedocs.io/)
 project. To install this package, run
 
 ```bash
 $ pip install spikeextractors
 ```
-        
-All of the format listed below are tested against example dataset in the 
-[ephy_testing_data](https://gin.g-node.org/NeuralEnsemble/ephy_testing_data) GIN repository 
+
+All of the format listed below are tested against example dataset in the
+[ephy_testing_data](https://gin.g-node.org/NeuralEnsemble/ephy_testing_data) GIN repository
 maintained by the NEO team.
 <blockquote>
 <p>
-    
+
 <details>
 <summary>Recording</summary><blockquote>
 <p>
-        
+
 
 <details>
 <summary>    Blackrock</summary><blockquote>
@@ -41,7 +41,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Intan</summary><blockquote>
@@ -55,7 +55,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    MEArec</summary><blockquote>
@@ -69,7 +69,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Neuralynx</summary><blockquote>
@@ -83,7 +83,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Neuroscope</summary><blockquote>
@@ -97,7 +97,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    OpenEphys (legacy)</summary><blockquote>
@@ -111,7 +111,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    OpenEphys binary (Neuropixels)</summary><blockquote>
@@ -125,7 +125,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Phy</summary><blockquote>
@@ -139,7 +139,7 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    SpikeGLX</summary><blockquote>
@@ -153,14 +153,14 @@ NwbRecordingExtractor.write_recording(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote></details>
-    
+
 <details>
 <summary>Sorting</summary><blockquote>
 <p>
-        
+
 
 <details>
 <summary>    Blackrock</summary><blockquote>
@@ -174,7 +174,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Klusta</summary><blockquote>
@@ -188,7 +188,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    MEArec</summary><blockquote>
@@ -202,7 +202,7 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Phy</summary><blockquote>
@@ -216,38 +216,38 @@ NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Plexon</summary><blockquote>
 <p>
 
 ```python
-from spikeextractors import NwbSortingExtractor, 
+from spikeextractors import NwbSortingExtractor,
 
 rx = ("File_plexon_2.plx")
 NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Spyking Circus</summary><blockquote>
 <p>
 
 ```python
-from spikeextractors import NwbSortingExtractor, 
+from spikeextractors import NwbSortingExtractor,
 
 rx = ("file_or_folder_path")
 NwbSortingExtractor.write_sorting(rx, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote></details>
-    
+
 </p>
 </blockquote></details>
 
@@ -260,17 +260,17 @@ library developed by [CatalystNeuro](catalystneuro.com). To install, run
 
 ```bash
 $ pip install roiextractors
-``` 
+```
 
-All formats listed in the optical physiology section are tested against the 
+All formats listed in the optical physiology section are tested against the
 [ophys_testing_data](https://gin.g-node.org/CatalystNeuro/ophys_testing_data) GIN repository.
 <blockquote>
 <p>
-    
+
 <details>
 <summary>Imaging</summary><blockquote>
 <p>
-        
+
 
 <details>
 <summary>    Tiff</summary><blockquote>
@@ -284,7 +284,7 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Hdf5</summary><blockquote>
@@ -298,7 +298,7 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    SBX</summary><blockquote>
@@ -312,14 +312,14 @@ NwbImagingExtractor.write_imaging(imaging_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote></details>
-    
+
 <details>
 <summary>Segmentation</summary><blockquote>
 <p>
-        
+
 
 <details>
 <summary>    CaImAn</summary><blockquote>
@@ -333,7 +333,7 @@ NwbSegmentationExtractor.write_segmentation(seg_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 
 <details>
 <summary>    Suite2p</summary><blockquote>
@@ -347,9 +347,9 @@ NwbSegmentationExtractor.write_segmentation(seg_ex, "output_path.nwb")
 ```
 </p>
 </blockquote></details>
-        
+
 </p>
 </blockquote></details>
-    
+
 </p>
 </blockquote></details>
