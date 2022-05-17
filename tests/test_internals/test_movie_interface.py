@@ -247,20 +247,20 @@ class TestMovieInterface(TestCase):
             Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
         )
 
-        self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path,
-            overwrite=True,
-            conversion_options=conversion_opts,
-            metadata=self.metadata,
-        )
-
         rate = np.round(timestamps[1] - timestamps[0], 9)
         fps = 25.0
         expected_warn_msg = (
-            f"The fps={fps} from movie data is unequal to the "
-            f"difference in regular timestamps. "
-            f"Using fps={rate} from timestamps instead."
+            f"The fps={fps} from movie data is unequal to the difference in "
+            f"regular timestamps. Using fps={rate} from timestamps instead."
         )
+
+        with self.assertWarnsWith(warn_type=UserWarning, exc_msg=expected_warn_msg):
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                overwrite=True,
+                conversion_options=conversion_opts,
+                metadata=self.metadata,
+            )
 
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -268,6 +268,5 @@ class TestMovieInterface(TestCase):
             metadata = self.nwb_converter.get_metadata()
             for movie_metadata in metadata["Behavior"]["Movies"]:
                 movie_interface_name = movie_metadata["name"]
-                with self.assertWarnsWith(warn_type=UserWarning, exc_msg=expected_warn_msg):
-                    assert acquisition_module[movie_interface_name].rate == rate
-                    assert acquisition_module[movie_interface_name].timestamps is None
+                assert acquisition_module[movie_interface_name].rate == rate
+                assert acquisition_module[movie_interface_name].timestamps is None
