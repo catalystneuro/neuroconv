@@ -1,5 +1,6 @@
 import shutil
 import unittest
+from hdmf.testing import TestCase
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +19,7 @@ except ImportError:
 
 
 @unittest.skipIf(skip_test, "cv2 not installed")
-class TestMovieInterface(unittest.TestCase):
+class TestMovieInterface(TestCase):
     def setUp(self) -> None:
         self.test_dir = Path(tempfile.mkdtemp())
         self.movie_files = self.create_movies()
@@ -218,3 +219,54 @@ class TestMovieInterface(unittest.TestCase):
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].data.shape[0] == 10
+
+    def test_movie_irregular_timestamps(self):
+        timestamps = [1, 2, 4]
+        conversion_opts = dict(
+            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
+        )
+
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_opts,
+            metadata=self.metadata,
+        )
+
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            acquisition_module = nwbfile.acquisition
+            metadata = self.nwb_converter.get_metadata()
+            for movie_metadata in metadata["Behavior"]["Movies"]:
+                movie_interface_name = movie_metadata["name"]
+                np.array_equal(timestamps, acquisition_module[movie_interface_name].timestamps[:])
+
+    def test_movie_regular_timestamps(self):
+        timestamps = [2.2, 2.4, 2.6]
+        conversion_opts = dict(
+            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
+        )
+
+        rate = np.round(timestamps[1] - timestamps[0], 9)
+        fps = 25.0
+        expected_warn_msg = (
+            f"The fps={fps} from movie data is unequal to the difference in "
+            f"regular timestamps. Using fps={rate} from timestamps instead."
+        )
+
+        with self.assertWarnsWith(warn_type=UserWarning, exc_msg=expected_warn_msg):
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                overwrite=True,
+                conversion_options=conversion_opts,
+                metadata=self.metadata,
+            )
+
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            acquisition_module = nwbfile.acquisition
+            metadata = self.nwb_converter.get_metadata()
+            for movie_metadata in metadata["Behavior"]["Movies"]:
+                movie_interface_name = movie_metadata["name"]
+                assert acquisition_module[movie_interface_name].rate == rate
+                assert acquisition_module[movie_interface_name].timestamps is None

@@ -1,7 +1,14 @@
+from numbers import Real
+from typing import Optional
+
 import numpy as np
 
 
-def check_regular_series(series: np.ndarray, tolerance_decimals: int = 9):
-    """General purpose function for checking if the difference between all consecutive points in a series are equal."""
-    uniq_diff_ts = np.unique(np.diff(series).round(decimals=tolerance_decimals))
-    return len(uniq_diff_ts) == 1
+def calculate_regular_series_rate(series: np.ndarray, tolerance_decimals: int = 9) -> Optional[Real]:
+    """Calculates the rate of a series as the difference between all consecutive points.
+    If the difference between all time points are all the same value, then the value of
+    rate is a scalar otherwise it is None."""
+    diff_ts = np.diff(series).round(decimals=tolerance_decimals)
+    uniq_diff_ts = np.unique(diff_ts)
+    rate = diff_ts[0] if len(uniq_diff_ts) == 1 else None
+    return rate
