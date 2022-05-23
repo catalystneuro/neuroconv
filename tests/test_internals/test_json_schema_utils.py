@@ -206,7 +206,7 @@ def test_load_metadata_from_file():
         ),
     )
 
-    yaml_file_path = os.path.join(os.path.dirname(__file__), "metadata_tests.yml")
+    yaml_file_path = os.path.join(os.path.dirname(__file__), "metadata_tests.yaml")
     json_file_path = os.path.join(os.path.dirname(__file__), "metadata_tests.json")
 
     m1 = load_dict_from_file(file_path=yaml_file_path)
