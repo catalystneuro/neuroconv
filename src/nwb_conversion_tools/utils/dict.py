@@ -39,9 +39,12 @@ def load_dict_from_file(file_path: FilePathType) -> dict:
     """Safely load metadata from .yml or .json files."""
     file_path = Path(file_path)
     assert file_path.is_file(), f"{file_path} is not a file."
-    assert file_path.suffix in [".yml", ".json"], f"{file_path} is not a valid .yml or .json file."
+    yaml_valid_extensions = [".yml", ".yaml"]
+    file_is_valid_yaml = file_path.suffix in yaml_valid_extensions
+    file_is_valid_json = file_path.suffix = ".json"
+    assert file_is_valid_yaml or file_is_valid_json, f"{file_path} is not a valid .yml or .json file."
 
-    if file_path.suffix == ".yml":
+    if file_path.suffix in yaml_valid_extensions:
         with open(file=file_path, mode="r") as stream:
             dictionary = yaml.load(stream=stream, Loader=NoDatesSafeLoader)
     elif file_path.suffix == ".json":
