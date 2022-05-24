@@ -10,13 +10,11 @@ from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
 
 class TestMovieDataNwbConversions(unittest.TestCase):
-    savedir = OUTPUT_PATH
-
     def setUp(self):
         self.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
         self.number_of_movie_files = len(self.movie_files)
         self.nwb_converter = self.create_movie_converter()
-        self.nwbfile_path = os.path.join(self.savedir, "movie_test.nwb")
+        self.nwbfile_path = OUTPUT_PATH / "movie_test.nwb"
         self.starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
 
     def create_movie_converter(self):
@@ -80,9 +78,9 @@ class TestMovieDataNwbConversions(unittest.TestCase):
         )
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            mod = nwbfile.acquisition
-            assert first_movie_name in mod
-            assert mod[first_movie_name].starting_time == 0.0
+            assert first_movie_name in nwbfile.acquisition
+            image_series = nwbfile.acquisition[first_movie_name]
+            self.assertAlmostEqual(image_series.starting_time, 0.0)
 
     def test_movie_custom_module(self):
         starting_times = self.starting_times
