@@ -41,7 +41,7 @@ def load_dict_from_file(file_path: FilePathType) -> dict:
     assert file_path.is_file(), f"{file_path} is not a file."
     assert file_path.suffix in (".json", ".yml", ".yaml"), f"{file_path} is not a valid .yml or .json file."
 
-    if file_path.suffix in yaml_valid_extensions:
+    if file_path.suffix in (".yml", ".yaml"):
         with open(file=file_path, mode="r") as stream:
             dictionary = yaml.load(stream=stream, Loader=NoDatesSafeLoader)
     elif file_path.suffix == ".json":
