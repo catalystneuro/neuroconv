@@ -63,7 +63,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
 
     def test_movie_starting_times_with_duplicate_names(self):
         """When all movies go in one ImageSeries container, starting times should be assumed 0.0"""
-        self.nwbfile_path = self.nwbfile_path.with_stem("no_duplicates")
+        self.nwbfile_path = self.nwbfile_path.parent / "movie_duplicated_names.nwb"
         conversion_opts = dict(Movie=dict(external_mode=True))
         metadata = self.get_metadata()
         movies_metadata = metadata["Behavior"]["Movies"]
@@ -81,6 +81,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
             nwbfile = io.read()
             assert first_movie_name in nwbfile.acquisition
             image_series = nwbfile.acquisition[first_movie_name]
+            assert image_series is not None
             starting_time = image_series.starting_time
             assert starting_time == 0.0, f"image series {image_series} starting time not equal to 0"
 
