@@ -293,7 +293,6 @@ class MovieInterface(BaseDataInterface):
                         chunks=best_gzip_chunk,
                     )
                 image_series_kwargs.update(data=data)
-
             rate = calculate_regular_series_rate(series=timestamps)
             if rate is not None:
                 if fps != rate:

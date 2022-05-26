@@ -12,6 +12,7 @@ from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 class TestMovieDataNwbConversions(unittest.TestCase):
     def setUp(self):
         self.movie_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
+        self.movie_files.sort()
         self.number_of_movie_files = len(self.movie_files)
         self.nwb_converter = self.create_movie_converter()
         self.nwbfile_path = OUTPUT_PATH / "movie_test.nwb"
@@ -83,7 +84,9 @@ class TestMovieDataNwbConversions(unittest.TestCase):
             image_series = nwbfile.acquisition[first_movie_name]
             assert image_series is not None
             starting_time = image_series.starting_time
-            assert starting_time == 0.0, f"image series {image_series} starting time not equal to 0"
+            assert (
+                starting_time == 0.0
+            ), f"image series {image_series} starting time not equal to 0 {image_series.timestamps}"
 
     def test_movie_custom_module(self):
         starting_times = self.starting_times
