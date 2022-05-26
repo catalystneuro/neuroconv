@@ -22,7 +22,7 @@ jobs:
 
       - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' }}
         name: Get datalad - Linux
-        run: conda install -c conda-forge datalad==0.16.1
+        run: conda install -c conda-forge datalad==0.16.3
      # - if: ${{ matrix.os == 'macos-latest' }}
      #   name: Get git-annex - MacOS
      #   run: |
@@ -37,9 +37,9 @@ jobs:
         uses: crazy-max/ghaction-chocolatey@v1.6.0
         with:
           args: install git-annex --ignore-checksums
-      - if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-latest'}}
+      - if: ${{ matrix.os == 'windows-latest' }} #|| matrix.os == 'macos-latest'}}
         name: Get datalad - Windows and Mac
-        run: pip install datalad==0.15.6
+        run: pip install datalad==0.16.3
 
       - name: Global Setup
         run: |
@@ -94,7 +94,7 @@ jobs:
           path: ./ophys_testing_data
           key: ophys-datasets-042022-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: "Force GIN: ophys download"
-        if: steps.cache-ophys-datasets.outputs.cache-hit == false
+        if: steps.cache-ophys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
 
       - name: Get behavior_testing_data current head hash
@@ -107,7 +107,7 @@ jobs:
           path: ./behavior_testing_data
           key: behavior-datasets-042022-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
       - name: "Force GIN: behavior download"
-        if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        if: steps.cache-behavior-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
       - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'}}
