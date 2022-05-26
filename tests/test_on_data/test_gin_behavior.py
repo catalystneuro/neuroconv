@@ -66,6 +66,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
         """When all movies go in one ImageSeries container, starting times should be assumed 0.0"""
         self.nwbfile_path = self.nwbfile_path.parent / "movie_duplicated_names.nwb"
         conversion_opts = dict(Movie=dict(external_mode=True))
+
         metadata = self.get_metadata()
         movies_metadata = metadata["Behavior"]["Movies"]
         first_movie_name = movies_metadata[0]["name"]
@@ -84,9 +85,9 @@ class TestMovieDataNwbConversions(unittest.TestCase):
             image_series = nwbfile.acquisition[first_movie_name]
             assert image_series is not None
             starting_time = image_series.starting_time
-            assert (
-                starting_time == 0.0
-            ), f"image series {image_series} starting time not equal to 0 {image_series.timestamps}"
+            if starting_time is None:
+                starting_time = image_series.timestamps[0]
+            assert starting_time == 0.0, f"image series {image_series} starting time not equal to 0"
 
     def test_movie_custom_module(self):
         starting_times = self.starting_times
@@ -128,7 +129,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].data.chunks is not None  # TODO retrive storage_layout of hdf5 dataset
 
-    def test_movie_external_mode(self):
+    def test_external_mode(self):
         starting_times = self.starting_times
         conversion_opts = dict(Movie=dict(starting_times=starting_times, external_mode=True))
         self.nwb_converter.run_conversion(
@@ -145,12 +146,14 @@ class TestMovieDataNwbConversions(unittest.TestCase):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].external_file[0] == str(self.movie_files[no])
 
-    def test_movie_duplicate_kwargs_external(self):
+    def test_external_model_with_duplicate_movies(self):
         conversion_opts = dict(Movie=dict(external_mode=True))
+
         metadata = self.get_metadata()
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         for no in range(1, len(self.movie_files)):
             metadata["Behavior"]["Movies"][no]["name"] = movie_interface_name
+
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
