@@ -37,7 +37,7 @@ jobs:
         uses: crazy-max/ghaction-chocolatey@v1.6.0
         with:
           args: install git-annex --ignore-checksums
-      - if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-latest'}}
+      - if: ${{ matrix.os == 'windows-latest' }} #|| matrix.os == 'macos-latest'}}
         name: Get datalad - Windows and Mac
         run: pip install datalad==0.16.3
 
