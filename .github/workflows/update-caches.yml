@@ -21,7 +21,7 @@ jobs:
 
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         name: Get datalad - Linux
-        run: conda install -c conda-forge datalad==0.16.1
+        run: conda install -c conda-forge datalad==0.16.3
       - if: ${{ matrix.os == 'macos-latest' }}
         name: Get git-annex and datalad - MacOS
         run: brew install git-annex
@@ -32,7 +32,7 @@ jobs:
           args: install git-annex --ignore-checksums
       - if: ${{ matrix.os == 'windows-latest' || matrix.os == 'macos-latest' }}
         name: Get datalad - Windows and Mac
-        run: pip install datalad==0.15.6
+        run: pip install datalad==0.16.3
 
       - name: Setup Environment
         run: |
