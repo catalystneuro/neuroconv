@@ -112,7 +112,7 @@ jobs:
 
       - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'}}
         name: Run full pytest with coverage
-        run: pytest tests/test_on_data/test_gin_behavior.py
+        run: pytest ./tests/test_on_data/test_gin_behavior.py
       # - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
       #   name: Upload full coverage to Codecov
       #   uses: codecov/codecov-action@v1
