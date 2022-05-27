@@ -84,7 +84,7 @@ class TestOphysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         imaging = converter.data_interface_objects["TestImaging"].imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
-        check_imaging_equal(img1=imaging, img2=nwb_imaging)
+        check_imaging_equal(imaging, nwb_imaging)
 
     @parameterized.expand(
         [
@@ -138,7 +138,7 @@ class TestOphysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
         nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
-        check_segmentations_equal(seg1=segmentation, seg2=nwb_segmentation)
+        check_segmentations_equal(segmentation, nwb_segmentation)
 
 
 if __name__ == "__main__":

@@ -42,6 +42,7 @@ from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 
 from .behavior.movie.moviedatainterface import MovieInterface
 
@@ -84,4 +85,5 @@ interface_list = [
     Hdf5ImagingInterface,
     MovieInterface,
     AbfInterface,
+    ScanImageImagingInterface,
 ]
