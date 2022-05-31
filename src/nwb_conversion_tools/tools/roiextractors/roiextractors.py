@@ -36,7 +36,7 @@ def safe_update(d, u):
     return d
 
 
-def default_ophys_metadata():
+def get_default_ophys_metadata():
     """Fill default metadata for optical physiology."""
     metadata = get_default_nwbfile_metadata()
     metadata.update(
@@ -82,7 +82,7 @@ def default_ophys_metadata():
 
 def add_devices(nwbfile: NWBFile, metadata: dict):
     """Add optical physiology devices from metadata."""
-    metadata = dict_deep_update(default_ophys_metadata(), metadata)
+    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
     for device in metadata.get("Ophys", dict()).get("Device", dict()):
         if "name" in device and device["name"] not in nwbfile.devices:
             nwbfile.create_device(**device)
@@ -95,7 +95,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-    metadata = dict_deep_update(default_ophys_metadata(), metadata)
+    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
     metadata = safe_update(metadata, get_nwb_imaging_metadata(imaging))
     # Tests if ElectricalSeries already exists in acquisition
     nwb_es_names = [ac for ac in nwbfile.acquisition]
@@ -181,18 +181,21 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     ----------
     imgextractor: ImagingExtractor
     """
-    metadata = default_ophys_metadata()
+    metadata = get_default_ophys_metadata()
     # Optical Channel name:
-    for i in range(imgextractor.get_num_channels()):
-        ch_name = imgextractor.get_channel_names()[i]
-        if i == 0:
-            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][i]["name"] = ch_name
+    channel_name_list = imgextractor.get_channel_names()
+    if channel_name_list is None:
+        channel_name_list = ["generic_name"] * imgextractor.get_num_channels()
+
+    for index, channel_name in enumerate(channel_name_list):
+        if index == 0:
+            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][index]["name"] = channel_name
         else:
             metadata["Ophys"]["ImagingPlane"][0]["optical_channel"].append(
                 dict(
-                    name=ch_name,
+                    name=channel_name,
                     emission_lambda=np.nan,
-                    description=f"{ch_name} description",
+                    description=f"{channel_name} description",
                 )
             )
     # set imaging plane rate:
@@ -205,6 +208,13 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # TwoPhotonSeries update:
     metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=imgextractor.get_image_size(), rate=rate)
+
+    device_name = metadata["Ophys"]["Device"][0]["name"]
+    metadata["Ophys"]["ImagingPlane"][0]["device"] = device_name
+
+    plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
+    metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
+
     # remove what Segmentation extractor will input:
     _ = metadata["Ophys"].pop("ImageSegmentation")
     _ = metadata["Ophys"].pop("Fluorescence")
@@ -284,7 +294,9 @@ def write_imaging(
         metadata = dict()
     if hasattr(imaging, "nwb_metadata"):
         metadata = dict_deep_update(imaging.nwb_metadata, metadata)
-    metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
+    default_metadata = get_nwb_imaging_metadata(imaging)
+    metadata = dict_deep_update(default_metadata, metadata)
+
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
@@ -304,7 +316,7 @@ def get_nwb_segmentation_metadata(sgmextractor):
     ----------
     sgmextractor: SegmentationExtractor
     """
-    metadata = default_ophys_metadata()
+    metadata = get_default_ophys_metadata()
     # Optical Channel name:
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]

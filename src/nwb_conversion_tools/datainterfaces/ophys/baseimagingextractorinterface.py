@@ -12,6 +12,7 @@ from ...utils import (
     fill_defaults,
     get_base_schema,
     OptionalFilePathType,
+    dict_deep_update,
 )
 
 
@@ -54,7 +55,8 @@ class BaseImagingExtractorInterface(BaseDataInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata.update(get_nwb_imaging_metadata(self.imaging_extractor))
+        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
+        metadata = dict_deep_update(default_metadata, metadata)
         _ = metadata.pop("NWBFile")
 
         # fix troublesome data types

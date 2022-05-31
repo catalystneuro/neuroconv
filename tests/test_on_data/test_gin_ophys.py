@@ -66,18 +66,6 @@ class TestOphysNwbConversions(unittest.TestCase):
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestImaging=data_interface)
 
-            def get_metadata(self):
-                metadata = super().get_metadata()
-                # attach device to ImagingPlane lacking property
-                device_name = metadata["Ophys"]["Device"][0]["name"]
-                if "device" not in metadata["Ophys"]["ImagingPlane"][0].keys():
-                    metadata["Ophys"]["ImagingPlane"][0]["device"] = device_name
-                # attach ImagingPlane to TwoPhotonSeries lacking property
-                plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
-                if "imaging_plane" not in metadata["Ophys"]["TwoPhotonSeries"][0].keys():
-                    metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
-                return metadata
-
         converter = TestConverter(source_data=dict(TestImaging=dict(interface_kwargs)))
         metadata = converter.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())

@@ -10,8 +10,9 @@ from ..setup_paths import OPHYS_DATA_PATH
 def test_scanimage_metadata():
     scan_image_tiff_filepath = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"
 
-    scaniamge_data_interface = ScanImageImagingInterface(scan_image_tiff_filepath)
-    assert scaniamge_data_interface.get_metadata() == {
+    scanimage_interface = ScanImageImagingInterface(scan_image_tiff_filepath)
+    metadata = scanimage_interface.get_metadata()
+    expected_metadata = {
         "Ophys": {
             "Device": [{"name": "Microscope"}],
             "ImagingPlane": [
@@ -25,6 +26,7 @@ def test_scanimage_metadata():
                         {"name": "channel_0", "emission_lambda": np.nan, "description": "no description"}
                     ],
                     "imaging_rate": 3.90625,
+                    "device": "Microscope",
                 }
             ],
             "TwoPhotonSeries": {
@@ -33,3 +35,5 @@ def test_scanimage_metadata():
         },
         "NWBFile": {"session_start_time": datetime(2017, 10, 9, 16, 57, 7, 967000)},
     }
+
+    assert metadata == expected_metadata
