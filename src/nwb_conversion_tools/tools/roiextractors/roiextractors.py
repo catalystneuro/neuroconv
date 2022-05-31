@@ -87,23 +87,15 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
     """
     metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
 
-    # Tests if ElectricalSeries already exists in acquisition
+    # Tests if TwoPhotonSeries already exists in acquisition
     two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
     two_photon_series_name = two_photon_series_metadata["name"]
     acquisition_modules = [module for module in nwbfile.acquisition]
 
-    # Only add if the two photon series if it is not present before
+    # Only add if TwoPhotonSeries is not present before
     if two_photon_series_name not in acquisition_modules:
 
-        image_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-        image_plane_metadata["optical_channel"] = [
-            OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
-        ]
-
-        device = nwbfile.devices[list(nwbfile.devices.keys())[0]]
-        image_plane_metadata["device"] = device
-        imaging_plane = nwbfile.create_imaging_plane(**image_plane_metadata)
-
+        # Add the data
         def data_generator(imaging):
             for i in range(imaging.get_num_frames()):
                 yield imaging.get_frames(frame_idxs=[i]).squeeze().T
@@ -112,26 +104,28 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
             DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
             compression=True,
         )
+        two_p_series_kwargs = two_photon_series_metadata
+        two_p_series_kwargs.update(data=data)
 
-        two_p_series_kwargs = dict_deep_update(
-            two_photon_series_metadata,
-            dict(data=data, imaging_plane=imaging_plane),
-        )
+        # Add the image plane
+        image_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        image_plane_metadata["optical_channel"] = [
+            OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
+        ]
 
-        if not use_times:
-            two_p_series_kwargs.update(
-                starting_time=imaging.frame_to_time(0),
-                rate=float(imaging.get_sampling_frequency()),
-            )
-        else:
-            two_p_series_kwargs.update(
-                timestamps=H5DataIO(
-                    imaging.frame_to_time(np.arange(imaging.get_num_frames())),
-                    compression="gzip",
-                )
-            )
+        device = nwbfile.devices[list(nwbfile.devices.keys())[0]]
+        image_plane_metadata["device"] = device
+        imaging_plane = nwbfile.create_imaging_plane(**image_plane_metadata)
+        two_p_series_kwargs.update(imaging_plane=imaging_plane)
+
+        # Add timestamps or rate
+        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+        if use_times:
+            two_p_series_kwargs.update(timestamps=H5DataIO(timestamps, compression="gzip"))
             if "rate" in two_p_series_kwargs:
                 del two_p_series_kwargs["rate"]
+        else:
+            two_p_series_kwargs.update(starting_time=timestamps[0], rate=float(imaging.get_sampling_frequency()))
 
         # Add the TwoPhotonSeries to the nwbfile
         ophys_ts = TwoPhotonSeries(**two_p_series_kwargs)
