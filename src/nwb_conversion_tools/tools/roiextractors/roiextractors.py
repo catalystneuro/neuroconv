@@ -26,16 +26,6 @@ from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metada
 from ...utils import FilePathType, OptionalFilePathType, dict_deep_update
 
 
-# TODO: This function should be refactored, but for now seems necessary to avoid errors in tests
-def safe_update(d, u):
-    for k, v in u.items():
-        if isinstance(v, abc.Mapping):
-            d[k] = safe_update(d.get(k, {}), v)
-        else:
-            d[k] = v
-    return d
-
-
 def default_ophys_metadata():
     """Fill default metadata for optical physiology."""
     metadata = get_default_nwbfile_metadata()
@@ -95,20 +85,24 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-    metadata = dict_deep_update(default_ophys_metadata(), metadata)
-    metadata = safe_update(metadata, get_nwb_imaging_metadata(imaging))
-    # Tests if ElectricalSeries already exists in acquisition
-    nwb_es_names = [ac for ac in nwbfile.acquisition]
-    opts = metadata["Ophys"]["TwoPhotonSeries"][0]
-    if opts["name"] not in nwb_es_names:
-        # retrieve device
-        device = nwbfile.devices[list(nwbfile.devices.keys())[0]]
-        metadata["Ophys"]["ImagingPlane"][0]["optical_channel"] = [
-            OpticalChannel(**i) for i in metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]
-        ]
-        metadata["Ophys"]["ImagingPlane"][0] = safe_update(metadata["Ophys"]["ImagingPlane"][0], {"device": device})
+    metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
 
-        imaging_plane = nwbfile.create_imaging_plane(**metadata["Ophys"]["ImagingPlane"][0])
+    # Tests if ElectricalSeries already exists in acquisition
+    two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+    two_photon_series_name = two_photon_series_metadata["name"]
+    acquisition_modules = [_ for _ in nwbfile.acquisition]
+
+    # Only add if module is new
+    if two_photon_series_name not in acquisition_modules:
+
+        image_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        image_plane_metadata["optical_channel"] = [
+            OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
+        ]
+
+        device = nwbfile.devices[list(nwbfile.devices.keys())[0]]
+        image_plane_metadata["device"] = device
+        imaging_plane = nwbfile.create_imaging_plane(**image_plane_metadata)
 
         def data_generator(imaging):
             for i in range(imaging.get_num_frames()):
@@ -119,9 +113,8 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
             compression=True,
         )
 
-        # using internal data. this data will be stored inside the NWB file
         two_p_series_kwargs = dict_deep_update(
-            metadata["Ophys"]["TwoPhotonSeries"][0],
+            two_photon_series_metadata,
             dict(data=data, imaging_plane=imaging_plane),
         )
 
@@ -207,7 +200,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     # adding imaging_rate:
     metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=imgextractor.get_image_size(), rate=rate)
+    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()), rate=rate)
 
     device_name = metadata["Ophys"]["Device"][0]["name"]
     metadata["Ophys"]["ImagingPlane"][0]["device"] = device_name
