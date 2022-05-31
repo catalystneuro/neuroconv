@@ -106,7 +106,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
 
         def data_generator(imaging):
             for i in range(imaging.get_num_frames()):
-                yield imaging.get_frames(frame_idxs=[i]).T
+                yield imaging.get_frames(frame_idxs=[i]).squeeze().T
 
         data = H5DataIO(
             DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
@@ -132,8 +132,9 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
             )
             if "rate" in two_p_series_kwargs:
                 del two_p_series_kwargs["rate"]
-        ophys_ts = TwoPhotonSeries(**two_p_series_kwargs)
 
+        # Add the TwoPhotonSeries to the nwbfile
+        ophys_ts = TwoPhotonSeries(**two_p_series_kwargs)
         nwbfile.add_acquisition(ophys_ts)
     return nwbfile
 
