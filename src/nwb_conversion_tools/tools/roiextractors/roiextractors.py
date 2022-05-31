@@ -90,9 +90,9 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
     # Tests if ElectricalSeries already exists in acquisition
     two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
     two_photon_series_name = two_photon_series_metadata["name"]
-    acquisition_modules = [_ for _ in nwbfile.acquisition]
+    acquisition_modules = [module for module in nwbfile.acquisition]
 
-    # Only add if module is new
+    # Only add if the two photon series if it is not present before
     if two_photon_series_name not in acquisition_modules:
 
         image_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
