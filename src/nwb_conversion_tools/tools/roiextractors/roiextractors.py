@@ -26,7 +26,7 @@ from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metada
 from ...utils import FilePathType, OptionalFilePathType, dict_deep_update
 
 
-def default_ophys_metadata():
+def get_default_ophys_metadata():
     """Fill default metadata for optical physiology."""
     metadata = get_default_nwbfile_metadata()
     metadata.update(
@@ -72,7 +72,7 @@ def default_ophys_metadata():
 
 def add_devices(nwbfile: NWBFile, metadata: dict):
     """Add optical physiology devices from metadata."""
-    metadata = dict_deep_update(default_ophys_metadata(), metadata)
+    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
     for device in metadata.get("Ophys", dict()).get("Device", dict()):
         if "name" in device and device["name"] not in nwbfile.devices:
             nwbfile.create_device(**device)
@@ -174,7 +174,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     ----------
     imgextractor: ImagingExtractor
     """
-    metadata = default_ophys_metadata()
+    metadata = get_default_ophys_metadata()
     # Optical Channel name:
     channel_name_list = imgextractor.get_channel_names()
     if channel_name_list is None:
@@ -309,7 +309,7 @@ def get_nwb_segmentation_metadata(sgmextractor):
     ----------
     sgmextractor: SegmentationExtractor
     """
-    metadata = default_ophys_metadata()
+    metadata = get_default_ophys_metadata()
     # Optical Channel name:
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
