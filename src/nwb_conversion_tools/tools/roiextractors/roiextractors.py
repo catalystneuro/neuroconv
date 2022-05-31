@@ -36,7 +36,7 @@ def safe_update(d, u):
     return d
 
 
-def default_ophys_metadata():
+def get_default_ophys_metadata():
     """Fill default metadata for optical physiology."""
     metadata = get_default_nwbfile_metadata()
     metadata.update(
@@ -82,7 +82,7 @@ def default_ophys_metadata():
 
 def add_devices(nwbfile: NWBFile, metadata: dict):
     """Add optical physiology devices from metadata."""
-    metadata = dict_deep_update(default_ophys_metadata(), metadata)
+    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
     for device in metadata.get("Ophys", dict()).get("Device", dict()):
         if "name" in device and device["name"] not in nwbfile.devices:
             nwbfile.create_device(**device)
@@ -95,7 +95,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-    metadata = dict_deep_update(default_ophys_metadata(), metadata)
+    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
     metadata = safe_update(metadata, get_nwb_imaging_metadata(imaging))
     # Tests if ElectricalSeries already exists in acquisition
     nwb_es_names = [ac for ac in nwbfile.acquisition]
@@ -181,7 +181,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     ----------
     imgextractor: ImagingExtractor
     """
-    metadata = default_ophys_metadata()
+    metadata = get_default_ophys_metadata()
     # Optical Channel name:
     channel_name_list = imgextractor.get_channel_names()
     if channel_name_list is None:
@@ -316,7 +316,7 @@ def get_nwb_segmentation_metadata(sgmextractor):
     ----------
     sgmextractor: SegmentationExtractor
     """
-    metadata = default_ophys_metadata()
+    metadata = get_default_ophys_metadata()
     # Optical Channel name:
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
