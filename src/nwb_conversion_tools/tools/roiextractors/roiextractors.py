@@ -24,7 +24,12 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
-from ...utils import FilePathType, OptionalFilePathType, dict_deep_update
+from nwb_conversion_tools.utils import (
+    FilePathType,
+    OptionalFilePathType,
+    dict_deep_update,
+    calculate_regular_series_rate,
+)
 
 
 def get_default_ophys_metadata():
@@ -69,98 +74,6 @@ def get_default_ophys_metadata():
         ),
     )
     return metadata
-
-
-def add_devices(nwbfile: NWBFile, metadata: dict):
-    """Add optical physiology devices from metadata."""
-    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
-    for device in metadata.get("Ophys", dict()).get("Device", dict()):
-        if "name" in device and device["name"] not in nwbfile.devices:
-            nwbfile.create_device(**device)
-    return nwbfile
-
-
-def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=False):
-    """
-    Auxiliary static method for nwbextractor.
-
-    Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
-    """
-    metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
-
-    # Tests if TwoPhotonSeries already exists in acquisition
-    two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
-    two_photon_series_name = two_photon_series_metadata["name"]
-    acquisition_modules = [module for module in nwbfile.acquisition]
-
-    # Only add if TwoPhotonSeries is not present before
-    if two_photon_series_name not in acquisition_modules:
-
-        # Add the data
-        def data_generator(imaging):
-            for i in range(imaging.get_num_frames()):
-                yield imaging.get_frames(frame_idxs=[i]).squeeze().T
-
-        data = H5DataIO(
-            DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
-            compression=True,
-        )
-        two_p_series_kwargs = two_photon_series_metadata
-        two_p_series_kwargs.update(data=data)
-
-        # Add the image plane
-        image_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-        image_plane_metadata["optical_channel"] = [
-            OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
-        ]
-
-        device = nwbfile.devices[list(nwbfile.devices.keys())[0]]
-        image_plane_metadata["device"] = device
-        imaging_plane = nwbfile.create_imaging_plane(**image_plane_metadata)
-        two_p_series_kwargs.update(imaging_plane=imaging_plane)
-
-        # Add timestamps or rate
-        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-        if use_times:
-            two_p_series_kwargs.update(timestamps=H5DataIO(timestamps, compression="gzip"))
-            if "rate" in two_p_series_kwargs:
-                warn("Passed both rate and use times, rate is to be removed.")
-                del two_p_series_kwargs["rate"]
-        else:
-            two_p_series_kwargs.update(starting_time=timestamps[0], rate=float(imaging.get_sampling_frequency()))
-
-        # Add the TwoPhotonSeries to the nwbfile
-        two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
-        nwbfile.add_acquisition(two_photon_series)
-    return nwbfile
-
-
-def add_epochs(imaging, nwbfile):
-    """
-    Auxiliary static method for nwbextractor.
-
-    Adds epochs from recording object to nwbfile object.
-    """
-    # add/update epochs
-    for (name, ep) in imaging._epochs.items():
-        if nwbfile.epochs is None:
-            nwbfile.add_epoch(
-                start_time=imaging.frame_to_time(ep["start_frame"]),
-                stop_time=imaging.frame_to_time(ep["end_frame"]),
-                tags=name,
-            )
-        else:
-            if [name] in nwbfile.epochs["tags"][:]:
-                ind = nwbfile.epochs["tags"][:].index([name])
-                nwbfile.epochs["start_time"].data[ind] = imaging.frame_to_time(ep["start_frame"])
-                nwbfile.epochs["stop_time"].data[ind] = imaging.frame_to_time(ep["end_frame"])
-            else:
-                nwbfile.add_epoch(
-                    start_time=imaging.frame_to_time(ep["start_frame"]),
-                    stop_time=imaging.frame_to_time(ep["end_frame"]),
-                    tags=name,
-                )
-    return nwbfile
 
 
 def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
@@ -212,6 +125,97 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     return metadata
 
 
+def add_devices(nwbfile: NWBFile, metadata: dict):
+    """Add optical physiology devices from metadata."""
+    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
+    for device in metadata.get("Ophys", dict()).get("Device", dict()):
+        if "name" in device and device["name"] not in nwbfile.devices:
+            nwbfile.create_device(**device)
+    return nwbfile
+
+
+def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10):
+    """
+    Auxiliary static method for nwbextractor.
+
+    Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
+    """
+    metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
+
+    # Tests if TwoPhotonSeries already exists in acquisition
+    two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+    two_photon_series_name = two_photon_series_metadata["name"]
+    acquisition_modules = [module for module in nwbfile.acquisition]
+
+    # Only add if TwoPhotonSeries is not present before
+    if two_photon_series_name not in acquisition_modules:
+
+        # Add the data
+        def data_generator(imaging):
+            for i in range(imaging.get_num_frames()):
+                yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+
+        data = H5DataIO(
+            DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
+            compression=True,
+        )
+        two_p_series_kwargs = two_photon_series_metadata
+        two_p_series_kwargs.update(data=data)
+
+        # Add timestamps or rate
+        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+        rate = calculate_regular_series_rate(series=timestamps)
+        if rate:
+            two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+        else:
+            two_p_series_kwargs.update(timestamps=H5DataIO(timestamps, compression="gzip"))
+            del two_p_series_kwargs["rate"]
+
+        # Add the image plane
+        image_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        image_plane_metadata["optical_channel"] = [
+            OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
+        ]
+
+        device = nwbfile.devices[list(nwbfile.devices.keys())[0]]
+        image_plane_metadata["device"] = device
+        imaging_plane = nwbfile.create_imaging_plane(**image_plane_metadata)
+        two_p_series_kwargs.update(imaging_plane=imaging_plane)
+
+        # Add the TwoPhotonSeries to the nwbfile
+        two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
+        nwbfile.add_acquisition(two_photon_series)
+    return nwbfile
+
+
+def add_epochs(imaging, nwbfile):
+    """
+    Auxiliary static method for nwbextractor.
+
+    Adds epochs from recording object to nwbfile object.
+    """
+    # add/update epochs
+    for (name, ep) in imaging._epochs.items():
+        if nwbfile.epochs is None:
+            nwbfile.add_epoch(
+                start_time=imaging.frame_to_time(ep["start_frame"]),
+                stop_time=imaging.frame_to_time(ep["end_frame"]),
+                tags=name,
+            )
+        else:
+            if [name] in nwbfile.epochs["tags"][:]:
+                ind = nwbfile.epochs["tags"][:].index([name])
+                nwbfile.epochs["start_time"].data[ind] = imaging.frame_to_time(ep["start_frame"])
+                nwbfile.epochs["stop_time"].data[ind] = imaging.frame_to_time(ep["end_frame"])
+            else:
+                nwbfile.add_epoch(
+                    start_time=imaging.frame_to_time(ep["start_frame"]),
+                    stop_time=imaging.frame_to_time(ep["end_frame"]),
+                    tags=name,
+                )
+    return nwbfile
+
+
 def write_imaging(
     imaging: ImagingExtractor,
     nwbfile_path: OptionalFilePathType = None,
@@ -220,7 +224,6 @@ def write_imaging(
     overwrite: bool = False,
     verbose: bool = True,
     buffer_size: int = 10,
-    use_times=False,
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
@@ -250,9 +253,6 @@ def write_imaging(
         The default is True.
     num_chunks: int
         Number of chunks for writing data to file
-    use_times: bool (optional, defaults to False)
-        If True, the times are saved to the nwb file using imaging.frame_to_time(). If False (defualt),
-        the sampling rate is used.
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
@@ -292,9 +292,7 @@ def write_imaging(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         add_devices(nwbfile=nwbfile, metadata=metadata)
-        add_two_photon_series(
-            imaging=imaging, nwbfile=nwbfile, metadata=metadata, buffer_size=buffer_size, use_times=use_times
-        )
+        add_two_photon_series(imaging=imaging, nwbfile=nwbfile, metadata=metadata, buffer_size=buffer_size)
         add_epochs(imaging=imaging, nwbfile=nwbfile)
     return nwbfile_out
 
