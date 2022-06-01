@@ -27,7 +27,7 @@ interfaces_to_combine = ["TiffImagingInterface", "Suite2pSegmentationInterface"]
 
 
 def custom_name_func(testcase_func, param_num, param):
-    return f"{testcase_func.__name__}_{param_num}_" f"_{param.kwargs.get('case_name', '')}"
+    return f"{testcase_func.__name__}_{param_num}" f"_{param.kwargs.get('case_name', '')}"
 
 
 class TestConversionCombinations(unittest.TestCase):
