@@ -1,4 +1,5 @@
 """Authors: Saksham Sharda and Alessio Buccino."""
+from logging import warning
 import os
 import numpy as np
 from pathlib import Path
@@ -123,13 +124,14 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
         if use_times:
             two_p_series_kwargs.update(timestamps=H5DataIO(timestamps, compression="gzip"))
             if "rate" in two_p_series_kwargs:
+                warn("Passed both rate and use times, rate is to be removed.")
                 del two_p_series_kwargs["rate"]
         else:
             two_p_series_kwargs.update(starting_time=timestamps[0], rate=float(imaging.get_sampling_frequency()))
 
         # Add the TwoPhotonSeries to the nwbfile
-        ophys_ts = TwoPhotonSeries(**two_p_series_kwargs)
-        nwbfile.add_acquisition(ophys_ts)
+        two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
+        nwbfile.add_acquisition(two_photon_series)
     return nwbfile
 
 
@@ -192,6 +194,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
         if imgextractor.get_sampling_frequency() is None
         else float(imgextractor.get_sampling_frequency())
     )
+
     # adding imaging_rate:
     metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # TwoPhotonSeries update:
