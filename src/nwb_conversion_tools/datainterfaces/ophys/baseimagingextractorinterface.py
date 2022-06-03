@@ -44,9 +44,12 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         )
 
         # Schema definition for arrays
+
+        imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
+        imaging_plane_schema["properties"]["optical_channel"].pop("maxItems")
         metadata_schema["properties"]["Ophys"]["properties"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
-            ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
+            ImagingPlane=imaging_plane_schema,
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
 
