@@ -1,11 +1,12 @@
 """Authors: Saksham Sharda and Alessio Buccino."""
-from logging import warning
 import os
-import numpy as np
 from pathlib import Path
 from warnings import warn
 from collections import abc
 from typing import Optional
+from copy import deepcopy
+
+import numpy as np
 
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile, NWBHDF5IO
@@ -141,13 +142,16 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
 
+
     if use_times:
         warn("use times is deprecate and will be removed on or after August 1st, 2022.")
 
-    metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
+
+    metadata_copy = deepcopy(metadata)
+    metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy)
 
     # Tests if TwoPhotonSeries already exists in acquisition
-    two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+    two_photon_series_metadata = metadata_copy["Ophys"]["TwoPhotonSeries"][0]
     two_photon_series_name = two_photon_series_metadata["name"]
     acquisition_modules = [module for module in nwbfile.acquisition]
 
@@ -176,7 +180,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
             del two_p_series_kwargs["rate"]
 
         # Add the image plane
-        image_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        image_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][0]
         image_plane_metadata["optical_channel"] = [
             OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
         ]
@@ -189,6 +193,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
         # Add the TwoPhotonSeries to the nwbfile
         two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
         nwbfile.add_acquisition(two_photon_series)
+
     return nwbfile
 
 

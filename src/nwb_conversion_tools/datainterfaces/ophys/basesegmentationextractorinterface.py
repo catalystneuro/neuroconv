@@ -38,6 +38,8 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
 
         # Temporary fixes until centralized definition of metadata schemas
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
+        metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
+
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"][
             "items"
         ]["required"] = list()
@@ -45,6 +47,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"].pop(
             "maxItems"
         )
+
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
