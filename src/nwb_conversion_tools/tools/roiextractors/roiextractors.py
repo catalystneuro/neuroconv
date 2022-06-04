@@ -142,10 +142,8 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
 
-
     if use_times:
         warn("use times is deprecate and will be removed on or after August 1st, 2022.")
-
 
     metadata_copy = deepcopy(metadata)
     metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy)
