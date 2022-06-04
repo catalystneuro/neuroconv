@@ -134,12 +134,16 @@ def add_devices(nwbfile: NWBFile, metadata: dict):
     return nwbfile
 
 
-def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10):
+def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=False):
     """
     Auxiliary static method for nwbextractor.
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
+
+    if use_times:
+        warn("use times is deprecate and will be removed on or after August 1st, 2022.")
+
     metadata = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata)
 
     # Tests if TwoPhotonSeries already exists in acquisition
@@ -224,6 +228,7 @@ def write_imaging(
     overwrite: bool = False,
     verbose: bool = True,
     buffer_size: int = 10,
+    use_times=False,
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
@@ -257,6 +262,9 @@ def write_imaging(
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    if use_times:
+        warn("use times is deprecate and will be removed on or after August 1st, 2022")
 
     # TODO on or after August 1st, 2022, remove argument and deprecation warnings
     if save_path is not None:
