@@ -79,7 +79,7 @@ def get_default_ophys_metadata():
 
 def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     """
-    Convert metadata from the segmentation into nwb specific metadata.
+    Convert metadata from the ImagingExtractor into nwb specific metadata.
 
     Parameters
     ----------
