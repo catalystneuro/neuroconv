@@ -9,7 +9,7 @@ class TestIteratorAssertions(TestCase):
         with self.assertRaisesWith(
             AssertionError, exc_msg="buffer_gb (5e-06) must be greater than the chunk size (0.000996872)!"
         ):
-            SliceableDataChunkIterator(data=np.random.random(size=(10 ** 3, 10 ** 3)), buffer_gb=0.000005)
+            SliceableDataChunkIterator(data=np.random.random(size=(10**3, 10**3)), buffer_gb=0.000005)
 
 
 def test_early_exit():
@@ -32,5 +32,5 @@ def test_buffer_padding_mixed_shape():
 
 def test_min_axis_too_large():
     """uses ~8 MB array with each contiguous axis at around ~8 KB with 5 KB buffer_size and 1 KB chunk size."""
-    iterator = SliceableDataChunkIterator(data=np.zeros(shape=(10 ** 3, 10 ** 3)), chunk_mb=1e-3, buffer_gb=5e-6)
+    iterator = SliceableDataChunkIterator(data=np.zeros(shape=(10**3, 10**3)), chunk_mb=1e-3, buffer_gb=5e-6)
     assert iterator.buffer_shape == (22, 22)
