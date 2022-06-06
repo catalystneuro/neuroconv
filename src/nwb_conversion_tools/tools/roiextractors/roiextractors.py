@@ -143,7 +143,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
     """
 
     if use_times:
-        warn("use times is deprecate and will be removed on or after August 1st, 2022.")
+        warn("Keyword argument 'use_times' is deprecate dand will be removed on or after August 1st, 2022.")
 
     metadata_copy = deepcopy(metadata)
     metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy)
