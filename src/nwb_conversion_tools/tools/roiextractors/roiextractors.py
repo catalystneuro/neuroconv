@@ -267,7 +267,7 @@ def write_imaging(
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     if use_times:
-        warn("use times is deprecate and will be removed on or after August 1st, 2022")
+        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
 
     # TODO on or after August 1st, 2022, remove argument and deprecation warnings
     if save_path is not None:
