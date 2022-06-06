@@ -13,20 +13,24 @@ class TestIteratorAssertions(TestCase):
 
 
 def test_early_exit():
-    iterator = SliceableDataChunkIterator(data=np.random.random(size=(10 ** 6, 200)), buffer_gb=2.0)
+    """Uses a 32 byte array with 1 GB buffer size (default) and 1 MB chunk size (default)."""
+    iterator = SliceableDataChunkIterator(data=np.random.random(size=(2, 2)))
     assert iterator.maxshape == iterator.buffer_shape
 
 
 def test_buffer_padding_long_shape():
-    iterator = SliceableDataChunkIterator(data=np.random.random(size=(10 ** 6, 200)))
-    assert iterator.buffer_shape == (625000, 200)
+    """Uses ~8 MB array with 11 MB buffer size and 1 MB chunk size (default)."""
+    iterator = SliceableDataChunkIterator(data=np.zeros(shape=(160000, 20)), buffer_gb=1.1e-2)
+    assert iterator.buffer_shape == (48000, 20)
 
 
 def test_buffer_padding_mixed_shape():
-    iterator = SliceableDataChunkIterator(data=np.random.random(size=(20, 40, 7 ** 4)))
-    assert iterator.buffer_shape == (20, 40, 2401)
+    """Uses ~15 MB array with 11 MB buffer size and 1 MB chunk size (default)."""
+    iterator = SliceableDataChunkIterator(data=np.zeros(shape=(20, 40, 2401)), buffer_gb=1.1e-2)
+    assert iterator.buffer_shape == (20, 40, 960)
 
 
 def test_min_axis_too_large():
-    iterator = SliceableDataChunkIterator(data=np.random.random(size=(10 ** 3, 10 ** 3)), chunk_mb=1e-3, buffer_gb=5e-6)
+    """uses ~8 MB array with each contiguous axis at around ~8 KB with 5 KB buffer_size and 1 KB chunk size."""
+    iterator = SliceableDataChunkIterator(data=np.zeros(shape=(10 ** 3, 10 ** 3)), chunk_mb=1e-3, buffer_gb=5e-6)
     assert iterator.buffer_shape == (22, 22)
