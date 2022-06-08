@@ -103,11 +103,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
                 )
             )
     # set imaging plane rate:
-    rate = (
-        np.float("NaN")
-        if imgextractor.get_sampling_frequency() is None
-        else float(imgextractor.get_sampling_frequency())
-    )
+    rate = np.nan if imgextractor.get_sampling_frequency() is None else float(imgextractor.get_sampling_frequency())
 
     # adding imaging_rate:
     metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
@@ -331,7 +327,7 @@ def get_nwb_segmentation_metadata(sgmextractor):
                 )
             )
     # set roi_response_series rate:
-    rate = np.float("NaN") if sgmextractor.get_sampling_frequency() is None else sgmextractor.get_sampling_frequency()
+    rate = np.nan if sgmextractor.get_sampling_frequency() is None else sgmextractor.get_sampling_frequency()
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
         if trace_name == "raw":
             if trace_data is not None:
@@ -518,7 +514,7 @@ def write_segmentation(
             description=f"region for Imaging plane{plane_no_loop}",
             region=list(range(segext_obj.get_num_rois())),
         )
-        rate = np.float("NaN") if segext_obj.get_sampling_frequency() is None else segext_obj.get_sampling_frequency()
+        rate = np.nan if segext_obj.get_sampling_frequency() is None else segext_obj.get_sampling_frequency()
         for i, j in roi_response_dict.items():
             data = getattr(segext_obj, f"_roi_response_{i}")
             if data is not None:
