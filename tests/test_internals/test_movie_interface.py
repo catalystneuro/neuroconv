@@ -247,7 +247,7 @@ class TestMovieInterface(TestCase):
             Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
         )
 
-        rate = np.round(timestamps[1] - timestamps[0], 9)
+        rate = 1.0 / np.round(timestamps[1] - timestamps[0], 9)
         fps = 25.0
         expected_warn_msg = (
             f"The fps={fps} from movie data is unequal to the difference in "
