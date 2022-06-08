@@ -10,5 +10,5 @@ def calculate_regular_series_rate(series: np.ndarray, tolerance_decimals: int = 
     rate is a scalar otherwise it is None."""
     diff_ts = np.diff(series).round(decimals=tolerance_decimals)
     uniq_diff_ts = np.unique(diff_ts)
-    rate = diff_ts[0] if len(uniq_diff_ts) == 1 else None
+    rate = 1.0 / diff_ts[0] if len(uniq_diff_ts) == 1 else None
     return rate
