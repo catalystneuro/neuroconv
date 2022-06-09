@@ -5,13 +5,15 @@ from datetime import datetime
 import numpy as np
 
 from pynwb import NWBFile
+from pynwb.device import Device
+
 
 from nwb_conversion_tools.tools.roiextractors import add_devices
 
 
 class TestAddDevices(unittest.TestCase):
     def setUp(self):
-        self.session_start_time = datetime.now()
+        self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
             session_description="session_description",
             identifier="file_id",
