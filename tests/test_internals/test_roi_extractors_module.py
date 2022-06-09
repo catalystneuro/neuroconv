@@ -5,14 +5,15 @@ from datetime import datetime
 import numpy as np
 
 from pynwb import NWBFile
-from roiextractors.testing import generate_dummy_imaging_extractor
+from pynwb.device import Device
+
 
 from nwb_conversion_tools.tools.roiextractors import add_devices
 
 
 class TestAddDevices(unittest.TestCase):
     def setUp(self):
-        self.session_start_time = datetime.now()
+        self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
             session_description="session_description",
             identifier="file_id",
@@ -112,3 +113,30 @@ class TestAddDevices(unittest.TestCase):
         devices = self.nwbfile.devices
 
         assert len(devices) == 0
+
+    def test_device_object(self):
+
+        device_name = "device_object"
+        device_object = Device(name=device_name)
+        device_list = [device_object]
+        self.metadata["Ophys"].update(Device=device_list)
+        add_devices(self.nwbfile, metadata=self.metadata)
+
+        devices = self.nwbfile.devices
+
+        assert len(devices) == 1
+        assert device_name in devices
+
+    def test_device_object_and_metadata_mix(self):
+
+        device_object = Device(name="device_object")
+        device_metadata = dict(name="device_metadata")
+        device_list = [device_object, device_metadata]
+        self.metadata["Ophys"].update(Device=device_list)
+        add_devices(self.nwbfile, metadata=self.metadata)
+
+        devices = self.nwbfile.devices
+
+        assert len(devices) == 2
+        assert "device_metadata" in devices
+        assert "device_object" in devices

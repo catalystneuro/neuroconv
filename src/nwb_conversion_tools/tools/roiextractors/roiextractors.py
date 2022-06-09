@@ -2,7 +2,6 @@
 import os
 from pathlib import Path
 from warnings import warn
-from collections import abc
 from typing import Optional
 from copy import deepcopy
 
@@ -13,6 +12,7 @@ from pynwb import NWBFile, NWBHDF5IO
 from pynwb.base import Images
 from pynwb.file import Subject
 from pynwb.image import GrayscaleImage
+from pynwb.device import Device
 from pynwb.ophys import (
     ImageSegmentation,
     Fluorescence,
@@ -122,7 +122,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     return metadata
 
 
-def add_devices(nwbfile: NWBFile, metadata: dict):
+def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """Add optical physiology devices from metadata."""
     metadata_copy = deepcopy(metadata)
     default_metadata = get_default_ophys_metadata()
@@ -130,8 +130,9 @@ def add_devices(nwbfile: NWBFile, metadata: dict):
     device_metadata = metadata_copy["Ophys"]["Device"]
 
     for device in device_metadata:
-        if "name" in device and device["name"] not in nwbfile.devices:
-            nwbfile.create_device(**device)
+        device = Device(**device) if isinstance(device, dict) else device
+        if device.name not in nwbfile.devices:
+            nwbfile.add_device(device)
 
     return nwbfile
 
@@ -508,23 +509,31 @@ def write_segmentation(
             )
 
             ps = image_segmentation.create_plane_segmentation(**input_kwargs)
-        # Fluorescence Traces:
+
+        # Fluorescence Traces - This should be a function on its own.
         if "Flourescence" not in ophys.data_interfaces:
             fluorescence = Fluorescence()
             ophys.add(fluorescence)
         else:
             fluorescence = ophys.data_interfaces["Fluorescence"]
-        roi_response_dict = segext_obj.get_traces_dict()
+
         roi_table_region = ps.create_roi_table_region(
             description=f"region for Imaging plane{plane_no_loop}",
             region=list(range(segext_obj.get_num_rois())),
         )
+
+        roi_response_dict = segext_obj.get_traces_dict()
+
         rate = np.nan if segext_obj.get_sampling_frequency() is None else segext_obj.get_sampling_frequency()
-        for i, j in roi_response_dict.items():
-            data = getattr(segext_obj, f"_roi_response_{i}")
-            if data is not None:
-                data = np.asarray(data)
-                trace_name = "RoiResponseSeries" if i == "raw" else i.capitalize()
+
+        # Filter empty data
+        roi_response_dict = {key: value for key, value in roi_response_dict.items() if value is not None}
+        for signal, response_series in roi_response_dict.items():
+
+            not_all_data_is_zero = any(x != 0 for x in np.ravel(response_series))
+            if not_all_data_is_zero:
+                data = np.asarray(response_series)
+                trace_name = "RoiResponseSeries" if signal == "raw" else signal.capitalize()
                 trace_name = trace_name if plane_no_loop == 0 else trace_name + f"_Plane{plane_no_loop}"
                 input_kwargs = dict(
                     name=trace_name,
@@ -535,6 +544,7 @@ def write_segmentation(
                 )
                 if trace_name not in fluorescence.roi_response_series:
                     fluorescence.create_roi_response_series(**input_kwargs)
+
         # create Two Photon Series:
         if "TwoPhotonSeries" not in nwbfile.acquisition:
             warn("could not find TwoPhotonSeries, using ImagingExtractor to create an nwbfile")
@@ -548,6 +558,7 @@ def write_segmentation(
                     if img_no is not None:
                         images.add_image(GrayscaleImage(name=img_name, data=img_no.T))
                 ophys.add(images)
+
         # saving NWB file:
         if write:
             io.write(nwbfile)
