@@ -58,7 +58,7 @@ class TestAddDevices(unittest.TestCase):
 
         devices = self.nwbfile.devices
 
-        assert len(devices) == 1
+        assert len(devices) == 2
         assert all(device_name in devices for device_name in device_name_list)
 
     def test_add_one_device_and_then_another(self):
@@ -111,5 +111,4 @@ class TestAddDevices(unittest.TestCase):
 
         devices = self.nwbfile.devices
 
-        assert len(devices) == 1
-        assert "Microscope" in devices
+        assert len(devices) == 0
