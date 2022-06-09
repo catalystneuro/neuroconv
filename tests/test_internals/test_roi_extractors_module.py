@@ -5,7 +5,6 @@ from datetime import datetime
 import numpy as np
 
 from pynwb import NWBFile
-from roiextractors.testing import generate_dummy_imaging_extractor
 
 from nwb_conversion_tools.tools.roiextractors import add_devices
 
