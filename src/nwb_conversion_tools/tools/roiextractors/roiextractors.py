@@ -2,7 +2,6 @@
 import os
 from pathlib import Path
 from warnings import warn
-from collections import abc
 from typing import Optional
 from copy import deepcopy
 
@@ -13,6 +12,7 @@ from pynwb import NWBFile, NWBHDF5IO
 from pynwb.base import Images
 from pynwb.file import Subject
 from pynwb.image import GrayscaleImage
+from pynwb.device import Device
 from pynwb.ophys import (
     ImageSegmentation,
     Fluorescence,
@@ -122,7 +122,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     return metadata
 
 
-def add_devices(nwbfile: NWBFile, metadata: dict):
+def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """Add optical physiology devices from metadata."""
     metadata_copy = deepcopy(metadata)
     default_metadata = get_default_ophys_metadata()
@@ -130,8 +130,9 @@ def add_devices(nwbfile: NWBFile, metadata: dict):
     device_metadata = metadata_copy["Ophys"]["Device"]
 
     for device in device_metadata:
-        if "name" in device and device["name"] not in nwbfile.devices:
-            nwbfile.create_device(**device)
+        device = Device(**device) if isinstance(device, dict) else device
+        if device.name not in nwbfile.devices:
+            nwbfile.add_device(device)
 
     return nwbfile
 
