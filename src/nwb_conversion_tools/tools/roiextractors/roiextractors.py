@@ -124,10 +124,15 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
 
 def add_devices(nwbfile: NWBFile, metadata: dict):
     """Add optical physiology devices from metadata."""
-    metadata = dict_deep_update(get_default_ophys_metadata(), metadata)
-    for device in metadata.get("Ophys", dict()).get("Device", dict()):
+    metadata_copy = deepcopy(metadata)
+    default_metadata = get_default_ophys_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+    device_metadata = metadata_copy["Ophys"]["Device"]
+
+    for device in device_metadata:
         if "name" in device and device["name"] not in nwbfile.devices:
             nwbfile.create_device(**device)
+
     return nwbfile
 
 
