@@ -20,7 +20,7 @@ def test_early_exit():
 
 def test_buffer_padding_long_shape():
     """Uses ~8 MB array with 11 MB buffer size and 1 MB chunk size (default)."""
-    iterator = SliceableDataChunkIterator(data=np.empty(shape=(10 ** 7, 20)), buffer_gb=1.1e-2)
+    iterator = SliceableDataChunkIterator(data=np.empty(shape=(10**7, 20)), buffer_gb=1.1e-2)
     assert iterator.buffer_shape == (68482, 20)
 
 
