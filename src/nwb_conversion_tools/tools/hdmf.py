@@ -7,6 +7,7 @@ from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIter
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> Tuple[int]:
+        num_axes = len(self.maxshape)
         chunk_bytes = np.prod(self.chunk_shape) * self.dtype.itemsize
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert (
@@ -36,22 +37,20 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
             return tuple(sub_square_buffer_shape)
 
         # Original one-shot estimation has good performance for certain shapes
-        k2 = np.floor(
-            (buffer_gb * 1e9 / (np.prod(self.chunk_shape) * self.dtype.itemsize)) ** (1 / len(self.chunk_shape))
-        )
-        unpadded_buffer_shape = tuple(
-            [
-                min(max(int(x), self.chunk_shape[j]), self.maxshape[j])
-                for j, x in enumerate(k2 * np.array(self.chunk_shape))
-            ]
-        )
+        chunk_to_buffer_ratio = buffer_gb * 1e9 / chunk_bytes
+        chunk_scaling_factor = np.floor(chunk_to_buffer_ratio ** (1 / num_axes))
+        unpadded_buffer_shape = [
+            np.clip(a=int(x), a_min=self.chunk_shape[j], a_max=self.maxshape[j])
+            for j, x in enumerate(chunk_scaling_factor * np.array(self.chunk_shape))
+        ]
+
         unpadded_buffer_bytes = np.prod(unpadded_buffer_shape) * self.dtype.itemsize
 
-        # Otherwise, try to start by filling the smallest axis completely or calculate best partial fill
+        # Method that starts by filling the smallest axis completely or calculates best partial fill
         padded_buffer_shape = np.array(self.chunk_shape)
         chunks_per_axis = np.ceil(maxshape / self.chunk_shape)
         small_axis_fill_size = chunk_bytes * min(chunks_per_axis)
-        full_axes_used = np.zeros(shape=len(self.maxshape), dtype=bool)
+        full_axes_used = np.zeros(shape=num_axes, dtype=bool)
         if small_axis_fill_size <= target_buffer_bytes:
             buffer_bytes = small_axis_fill_size
             padded_buffer_shape[smallest_chunk_axis] = self.maxshape[smallest_chunk_axis]
