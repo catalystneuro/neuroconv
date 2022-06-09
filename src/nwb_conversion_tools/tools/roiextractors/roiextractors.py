@@ -524,9 +524,8 @@ def write_segmentation(
         roi_response_dict = {key: value for key, value in roi_response_dict.items() if value is not None}
         for signal, response_series in roi_response_dict.items():
 
-            # all_data_is_zero = [value == 0 for value in list(response_series.flatten())]
-            all_data_is_zero = np.isclose(response_series, 0).all()
-            if not all_data_is_zero:
+            not_all_data_is_zero = any(x != 0 for x in np.ravel(response_series))
+            if not_all_data_is_zero:
                 data = np.asarray(response_series)
                 trace_name = "RoiResponseSeries" if signal == "raw" else signal.capitalize()
                 trace_name = trace_name if plane_no_loop == 0 else trace_name + f"_Plane{plane_no_loop}"
