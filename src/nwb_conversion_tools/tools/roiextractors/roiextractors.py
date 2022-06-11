@@ -36,9 +36,12 @@ from nwb_conversion_tools.utils import (
 def get_default_ophys_metadata():
     """Fill default metadata for optical physiology."""
     metadata = get_default_nwbfile_metadata()
+
+    default_device = dict(name="Microscope")
+
     metadata.update(
         Ophys=dict(
-            Device=[dict(name="Microscope")],
+            Device=[default_device],
             Fluorescence=dict(
                 roi_response_series=[
                     dict(
@@ -55,6 +58,7 @@ def get_default_ophys_metadata():
                     excitation_lambda=np.nan,
                     indicator="unknown",
                     location="unknown",
+                    device=default_device["name"],
                     optical_channel=[
                         dict(
                             name="OpticalChannel",
@@ -110,9 +114,6 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     # TwoPhotonSeries update:
     metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()), rate=rate)
 
-    device_name = metadata["Ophys"]["Device"][0]["name"]
-    metadata["Ophys"]["ImagingPlane"][0]["device"] = device_name
-
     plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
     metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
 
@@ -137,6 +138,26 @@ def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     return nwbfile
 
 
+def _add_imaging_plane(nwbfile: NWBFile, metadata=dict) -> NWBFile:
+
+    metadata_copy = deepcopy(metadata)
+    add_devices(nwbfile=nwbfile, metadata=metadata_copy)
+
+    # Add the image plane
+    image_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][0]
+
+    device_name = image_plane_metadata["device"]
+    image_plane_metadata["device"] = nwbfile.devices[device_name]
+
+    image_plane_metadata["optical_channel"] = [
+        OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
+    ]
+
+    nwbfile.create_imaging_plane(**image_plane_metadata)
+
+    return nwbfile
+
+
 def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=False):
     """
     Auxiliary static method for nwbextractor.
@@ -148,51 +169,48 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
 
     metadata_copy = deepcopy(metadata)
-    metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy)
+    metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy, append_list=False)
 
     # Tests if TwoPhotonSeries already exists in acquisition
     two_photon_series_metadata = metadata_copy["Ophys"]["TwoPhotonSeries"][0]
     two_photon_series_name = two_photon_series_metadata["name"]
-    acquisition_modules = [module for module in nwbfile.acquisition]
 
-    # Only add if TwoPhotonSeries is not present before
-    if two_photon_series_name not in acquisition_modules:
+    if two_photon_series_name in nwbfile.acquisition:
+        warn(f"{two_photon_series_name} already on nwbfile")
+        return nwbfile
 
-        # Add the data
-        def data_generator(imaging):
-            for i in range(imaging.get_num_frames()):
-                yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+    # Add the image plane to nwb.
+    nwbfile = _add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy)
 
-        data = H5DataIO(
-            DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
-            compression=True,
-        )
-        two_p_series_kwargs = two_photon_series_metadata
-        two_p_series_kwargs.update(data=data)
+    # Add the data
+    def data_generator(imaging):
+        for i in range(imaging.get_num_frames()):
+            yield imaging.get_frames(frame_idxs=[i]).squeeze()
 
-        # Add timestamps or rate
-        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate:
-            two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
-        else:
-            two_p_series_kwargs.update(timestamps=H5DataIO(timestamps, compression="gzip"))
-            del two_p_series_kwargs["rate"]
+    data = H5DataIO(
+        DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
+        compression=True,
+    )
+    two_p_series_kwargs = two_photon_series_metadata
+    two_p_series_kwargs.update(data=data)
 
-        # Add the image plane
-        image_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][0]
-        image_plane_metadata["optical_channel"] = [
-            OpticalChannel(**metadata) for metadata in image_plane_metadata["optical_channel"]
-        ]
+    # Add timestamps or rate
+    timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+    rate = calculate_regular_series_rate(series=timestamps)
+    if rate:
+        two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    else:
+        two_p_series_kwargs.update(timestamps=H5DataIO(timestamps, compression="gzip"))
+        two_p_series_kwargs["rate"] = None
 
-        device = nwbfile.devices[list(nwbfile.devices.keys())[0]]
-        image_plane_metadata["device"] = device
-        imaging_plane = nwbfile.create_imaging_plane(**image_plane_metadata)
-        two_p_series_kwargs.update(imaging_plane=imaging_plane)
+    # Add imaging plane
+    imaging_plane_name = two_photon_series_metadata["imaging_plane"]
+    imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
+    two_p_series_kwargs.update(imaging_plane=imaging_plane)
 
-        # Add the TwoPhotonSeries to the nwbfile
-        two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
-        nwbfile.add_acquisition(two_photon_series)
+    # Add the TwoPhotonSeries to the nwbfile
+    two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
+    nwbfile.add_acquisition(two_photon_series)
 
     return nwbfile
 
@@ -440,10 +458,10 @@ def write_segmentation(
         if image_plane_name not in nwbfile.imaging_planes.keys():
             input_kwargs = dict(
                 name=image_plane_name,
-                device=nwbfile.get_device(metadata_base_common["Ophys"]["Device"][0]["name"]),
             )
             metadata["Ophys"]["ImagingPlane"][0]["optical_channel"] = optical_channels
             input_kwargs.update(**metadata["Ophys"]["ImagingPlane"][0])
+            input_kwargs.update(device=nwbfile.get_device(metadata_base_common["Ophys"]["Device"][0]["name"]))
             if "imaging_rate" in input_kwargs:
                 input_kwargs["imaging_rate"] = float(input_kwargs["imaging_rate"])
             imaging_plane = nwbfile.create_imaging_plane(**input_kwargs)
