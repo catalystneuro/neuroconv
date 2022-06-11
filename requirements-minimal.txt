@@ -11,6 +11,6 @@ dandi==0.39.6  # 0.39.5 already uses schema v0.7.x
 spikeextractors>=0.9.9
 spikeinterface>=0.93.0
 neo>=0.9.0
-spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@261c5f94359ce5631f2d8f19bac923ceeffb63c7
+roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@fix_nwb_extractor_frames
 lxml>=4.6.5
 scipy>=1.4.1
