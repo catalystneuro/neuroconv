@@ -199,7 +199,11 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
         data_chunk_iterator = data_in_hdfm_data_io.data
         two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
-        assert two_photon_series_extracted.shape == (self.num_frames, self.columns, self.rows)  # to be fixed/clarified soon
+        assert two_photon_series_extracted.shape == (
+            self.num_frames,
+            self.columns,
+            self.rows,
+        )  # to be fixed/clarified soon
 
         # Check device
         devices = self.nwbfile.devices
