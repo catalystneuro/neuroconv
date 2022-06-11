@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 
 
-def calculate_regular_series_rate(series: np.ndarray, tolerance_decimals: int = 9) -> Optional[Real]:
+def calculate_regular_series_rate(series: np.ndarray, tolerance_decimals: int = 6) -> Optional[Real]:
     """Calculates the rate of a series as the difference between all consecutive points.
     If the difference between all time points are all the same value, then the value of
     rate is a scalar otherwise it is None."""
