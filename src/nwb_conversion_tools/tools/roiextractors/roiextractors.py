@@ -185,7 +185,7 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
     # Add the data
     def data_generator(imaging):
         for i in range(imaging.get_num_frames()):
-            yield imaging.get_frames(frame_idxs=[i]).squeeze()
+            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
 
     data = H5DataIO(
         DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
