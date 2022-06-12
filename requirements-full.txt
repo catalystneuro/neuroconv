@@ -16,7 +16,7 @@ opencv-python==4.5.1.48
 spikeextractors==0.9.9
 spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@12b7863684b705e3d0ae8165bb3009143c70530c
 neo==0.10.2
-roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@fix_nwb_extractor_frames
+roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@c23e4a00324b381f2aad25d685e1cd68b588b563  # v0.4.7, pre-transpose fix
 pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy>=1.7.1
