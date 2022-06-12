@@ -318,9 +318,7 @@ def write_imaging(
     if metadata is None:
         metadata = dict()
     if hasattr(imaging, "nwb_metadata"):
-        metadata = dict_deep_update(imaging.nwb_metadata, metadata)
-    default_metadata = get_nwb_imaging_metadata(imaging)
-    metadata = dict_deep_update(default_metadata, metadata, append_list=False)
+        metadata = dict_deep_update(imaging.nwb_metadata, metadata, append_list=False)
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
