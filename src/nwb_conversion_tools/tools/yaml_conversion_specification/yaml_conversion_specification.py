@@ -149,7 +149,3 @@ def run_conversion_from_yaml(
                     dandi_filename != ".nwb"
                 ), f"Not enough metadata available to assign name to {str(named_dandi_metadata['path'])}!"
                 named_dandi_metadata["path"].rename(str(output_folder / dandi_filename))
-
-
-if __name__ == "__main__":
-    run_conversion_from_yaml_cli()
