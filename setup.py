@@ -49,7 +49,7 @@ setup(
     entry_points={
         "console_scripts": [
             # "nwb-gui=nwb_conversion_tools.gui.command_line:main",  # not currently working
-            "nwbct-run-conversion = nwb_conversion_tools.tools.yaml_conversion_specification.yaml_conversion_specification:main",
+            "nwbct-run-conversion = nwb_conversion_tools.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
         ],
     },
 )
