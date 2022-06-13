@@ -18,16 +18,16 @@ from ...utils import dict_deep_update, load_dict_from_file, FilePathType, Option
 @click.argument("specification-file-path")
 @click.option(
     "--data-folder",
-    help="Modules to import prior to reading the file(s).",
+    help="Folder where the source data may be found.",
     type=click.Path(writable=True),
 )
 @click.option(
     "--output-folder",
     default=None,
-    help="Save path for the report file.",
+    help="Folder to save the output NWBFile to.",
     type=click.Path(writable=True),
 )
-@click.option("--overwrite", help="Overwrite an existing report file at the location.", is_flag=True)
+@click.option("--overwrite", help="Overwrite an existing NWBFile at the location.", is_flag=True)
 def run_conversion_from_yaml_cli(
     specification_file_path: str,
     data_folder: Optional[str] = None,
