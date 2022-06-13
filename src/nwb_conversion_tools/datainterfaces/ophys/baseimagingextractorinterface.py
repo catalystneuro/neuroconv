@@ -77,10 +77,18 @@ class BaseImagingExtractorInterface(BaseDataInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        stub_test: bool = False,
         save_path: OptionalFilePathType = None,
     ):
+
+        if stub_test:
+            stub_frames = min([100, self.imaging_extractor.get_num_frames()])
+            imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
+        else:
+            imaging_extractor = self.imaging_extractor
+
         write_imaging(
-            imaging=self.imaging_extractor,
+            imaging=imaging_extractor,
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
