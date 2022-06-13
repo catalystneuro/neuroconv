@@ -4,12 +4,48 @@ from pathlib import Path
 from importlib import import_module
 from itertools import chain
 from jsonschema import validate, RefResolver
+from typing import Optional
 
+import click
 from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
 from ...nwbconverter import NWBConverter
 from ...utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
+
+
+@click.command()
+@click.argument("specification-file-path")
+@click.option(
+    "--data-folder",
+    help="Modules to import prior to reading the file(s).",
+    type=click.Path(writable=True),
+)
+@click.option(
+    "--output-folder",
+    default=None,
+    help="Save path for the report file.",
+    type=click.Path(writable=True),
+)
+@click.option("--overwrite", help="Overwrite an existing report file at the location.", is_flag=True)
+def run_conversion_from_yaml_cli(
+    specification_file_path: str,
+    data_folder: Optional[str] = None,
+    output_folder: Optional[str] = None,
+    overwrite: bool = False,
+):
+    """
+    Run the tool function 'run_conversion_from_yaml' via the command line.
+
+    specification-file-path :
+    Path to the .yml specification file.
+    """
+    run_conversion_from_yaml(
+        specification_file_path=specification_file_path,
+        data_folder=data_folder,
+        output_folder=output_folder,
+        overwrite=overwrite,
+    )
 
 
 def run_conversion_from_yaml(
@@ -113,3 +149,7 @@ def run_conversion_from_yaml(
                     dandi_filename != ".nwb"
                 ), f"Not enough metadata available to assign name to {str(named_dandi_metadata['path'])}!"
                 named_dandi_metadata["path"].rename(str(output_folder / dandi_filename))
+
+
+if __name__ == "__main__":
+    run_conversion_from_yaml_cli()
