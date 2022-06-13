@@ -194,6 +194,9 @@ def add_two_photon_series(imaging, nwbfile, metadata, buffer_size=10, use_times=
     two_p_series_kwargs = two_photon_series_metadata
     two_p_series_kwargs.update(data=data)
 
+    # Add dimension
+    two_p_series_kwargs.update(dimension=imaging.get_image_size())
+
     # Add timestamps or rate
     timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
     rate = calculate_regular_series_rate(series=timestamps)
@@ -315,9 +318,7 @@ def write_imaging(
     if metadata is None:
         metadata = dict()
     if hasattr(imaging, "nwb_metadata"):
-        metadata = dict_deep_update(imaging.nwb_metadata, metadata)
-    default_metadata = get_nwb_imaging_metadata(imaging)
-    metadata = dict_deep_update(default_metadata, metadata)
+        metadata = dict_deep_update(imaging.nwb_metadata, metadata, append_list=False)
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
@@ -403,7 +404,7 @@ def write_segmentation(
     # updating base metadata with new:
     for num, data in enumerate(metadata_base_list):
         metadata_input = metadata[num] if metadata else {}
-        metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input)
+        metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input, append_list=False)
     metadata_base_common = metadata_base_list[0]
 
     # build/retrieve nwbfile:
