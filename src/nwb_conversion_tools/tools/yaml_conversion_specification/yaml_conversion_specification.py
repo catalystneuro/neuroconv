@@ -18,7 +18,9 @@ from ...utils import dict_deep_update, load_dict_from_file, FilePathType, Option
 @click.command()
 @click.argument("specification-file-path")
 @click.option(
-    "--data-folder-path", help="Path to folder where the source data may be found.", type=click.Path(writable=True),
+    "--data-folder-path",
+    help="Path to folder where the source data may be found.",
+    type=click.Path(writable=True),
 )
 @click.option(
     "--output-folder-path",
@@ -109,7 +111,8 @@ def run_conversion_from_yaml(
     global_metadata = specification.get("metadata", dict())
     global_data_interfaces = specification.get("data_interfaces")
     nwb_conversion_tools = import_module(
-        name=".", package="nwb_conversion_tools",  # relative import, but named and referenced as if it were absolute
+        name=".",
+        package="nwb_conversion_tools",  # relative import, but named and referenced as if it were absolute
     )
     file_counter = 0
     for experiment in specification["experiments"].values():
