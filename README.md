@@ -1,6 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/nwb-conversion-tools.svg)](https://badge.fury.io/py/nwb-conversion-tools)
-![Partial (lazy) Tests](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/partial-tests.yml/badge.svg)
-![Full Tests](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/full-tests-linux.yml/badge.svg)
+![Full Tests](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/testing.yml/badge.svg)
 ![Auto-release](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/auto-publish.yml/badge.svg)
 [![codecov](https://codecov.io/github/catalystneuro/nwb-conversion-tools/coverage.svg?branch=main)](https://codecov.io/github/catalystneuro/nwb-conversion-tools?branch=main)
 [![documentation](https://readthedocs.org/projects/nwb-conversion-tools/badge/?version=main)](https://nwb-conversion-tools.readthedocs.io/en/main/)
