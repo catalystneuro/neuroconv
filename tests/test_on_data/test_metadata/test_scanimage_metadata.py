@@ -23,7 +23,7 @@ def test_scanimage_metadata():
                     "indicator": "unknown",
                     "location": "unknown",
                     "optical_channel": [
-                        {"name": "channel_0", "emission_lambda": np.nan, "description": "no description"}
+                        {"name": "generic_name", "emission_lambda": np.nan, "description": "no description"}
                     ],
                     "imaging_rate": 3.90625,
                     "device": "Microscope",

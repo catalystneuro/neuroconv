@@ -72,7 +72,12 @@ class TestOphysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         imaging = converter.data_interface_objects["TestImaging"].imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
-        check_imaging_equal(imaging, nwb_imaging)
+
+        exclude_channel_comparison = False
+        if imaging.get_channel_names() is None:
+            exclude_channel_comparison = True
+
+        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
 
     @parameterized.expand(
         [
