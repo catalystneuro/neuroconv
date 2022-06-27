@@ -131,12 +131,12 @@ class TestEcephysNwbConversions(unittest.TestCase):
             )
 
     for spikeextractors_backend in [True, False]:
-        sub_path = Path("spikeglx") / "TEST_20210920_0_g0" / "TEST_20210920_0_g0_t0.imec0.ap.bin"
+        sub_path = Path("spikeglx") / "TEST_20210920_0_g0"
         parameterized_recording_list.append(
             param(
                 data_interface=SpikeGLXRecordingInterface,
                 interface_kwargs=dict(
-                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.ap.bin"),
+                    file_path=str(DATA_PATH / sub_path / "TEST_20210920_0_g0_t0.imec0.ap.bin"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
