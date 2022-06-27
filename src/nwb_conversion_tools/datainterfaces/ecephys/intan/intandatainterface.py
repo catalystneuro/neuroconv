@@ -1,6 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
 
+from spikeinterface.core.old_api_utils import OldToNewRecording
 
 import spikeextractors as se
 from pynwb.ecephys import ElectricalSeries
@@ -22,7 +23,9 @@ def extract_electrode_metadata_with_pyintan(file_path):
         intan_file_metadata = read_rhd(file_path)[1]
     else:
         intan_file_metadata = read_rhs(file_path)[1]
-    exclude_chan_types = ["AUX", "ADC", "VDD"]
+
+    exclude_chan_types = ["AUX", "ADC", "VDD", "_STIM", "ANALOG"]
+
     valid_channels = [
         x for x in intan_file_metadata if not any([y in x["native_channel_name"] for y in exclude_chan_types])
     ]
@@ -52,6 +55,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose)
 
         electrodes_metadata = extract_electrode_metadata_with_pyintan(file_path)
+        self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
 
         group_names = electrodes_metadata["group_names"]
         group_electrode_numbers = electrodes_metadata["group_electrode_numbers"]
@@ -59,20 +63,14 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         custom_names = electrodes_metadata["custom_names"]
 
         channel_ids = self.recording_extractor.get_channel_ids()
-        for channel_id, channel_group in zip(channel_ids, group_names):
-            self.recording_extractor.set_channel_property(
-                channel_id=channel_id, property_name="group_name", value=f"Group{channel_group}"
-            )
+        self.recording_extractor.set_property(key="group_name", ids=channel_ids, values=group_names)
         if len(unique_group_names) > 1:
-            for channel_id, group_electrode_number in zip(channel_ids, group_electrode_numbers):
-                self.recording_extractor.set_channel_property(
-                    channel_id=channel_id, property_name="group_electrode_number", value=group_electrode_number
-                )
+            self.recording_extractor.set_property(
+                key="group_electrode_number", ids=channel_ids, values=group_electrode_numbers
+            )
+
         if any(custom_names):
-            for channel_id, custom_name in zip(channel_ids, custom_names):
-                self.recording_extractor.set_channel_property(
-                    channel_id=channel_id, property_name="custom_channel_name", value=custom_name
-                )
+            self.recording_extractor.set_property(key="custom_channel_name", ids=channel_ids, values=custom_names)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -82,17 +80,19 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
-        channel_ids = self.recording_extractor.get_channel_ids()
-        property_names = self.recording_extractor.get_shared_channel_property_names()
+        unique_group_name = set(self.recording_extractor.get_property("group_name"))
+        device = (
+            dict(
+                name="Intan",
+                description="Intan recording",
+                manufacturer="Intan",
+            ),
+        )
+        device_list = [device]
+
         ecephys_metadata = dict(
             Ecephys=dict(
-                Device=[
-                    dict(
-                        name="Intan",
-                        description="Intan recording",
-                        manufacturer="Intan",
-                    ),
-                ],
+                Device=device_list,
                 ElectrodeGroup=[
                     dict(
                         name=group_name,
@@ -100,14 +100,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                         device="Intan",
                         location="",
                     )
-                    for group_name in set(
-                        [
-                            self.recording_extractor.get_channel_property(
-                                channel_id=channel_id, property_name="group_name"
-                            )
-                            for channel_id in channel_ids
-                        ]
-                    )
+                    for group_name in unique_group_name
                 ],
                 Electrodes=[
                     dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of.")
@@ -115,12 +108,16 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                 ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
             )
         )
-        if "group_electrode_number" in property_names:
+
+        recording_extractor_properties = self.recording_extractor.get_property_keys()
+
+        if "group_electrode_number" in recording_extractor_properties:
             ecephys_metadata["Ecephys"]["Electrodes"].append(
                 dict(name="group_electrode_number", description="0-indexed channel within a group.")
             )
-        if "custom_channel_name" in property_names:
+        if "custom_channel_name" in recording_extractor_properties:
             ecephys_metadata["Ecephys"]["Electrodes"].append(
                 dict(name="custom_channel_name", description="Custom channel name assigned in Intan.")
             )
+
         return ecephys_metadata
