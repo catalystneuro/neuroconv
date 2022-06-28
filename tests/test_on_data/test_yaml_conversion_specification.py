@@ -1,4 +1,5 @@
 import sys
+import unittest
 from pathlib import Path
 from jsonschema import validate, RefResolver
 from datetime import datetime
@@ -120,3 +121,7 @@ class TestYAMLConversionSpecification(TestCase):
                 output_folder=self.test_folder,
                 overwrite=True,
             )
+
+
+if __name__ == "__main__":
+    unittest.main()
