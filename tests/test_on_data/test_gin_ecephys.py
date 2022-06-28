@@ -131,13 +131,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 )
             )
 
-    for spikeextractors_backend in [True, False]:
+    for spikeextractors_backend in [False]:  # Cannot run since legacy spikeextractors cannot read new GIN file
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
         parameterized_recording_list.append(
             param(
                 data_interface=SpikeGLXRecordingInterface,
                 interface_kwargs=dict(
-                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.ap.bin"),
+                    file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.ap.bin"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
