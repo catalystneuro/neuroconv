@@ -130,7 +130,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 )
             )
 
-    for spikeextractors_backend in [True, False]:
+    for spikeextractors_backend in [False]:  # Cannot run try since legacy spikeextractors cannot read new GIN file
         sub_path = Path("spikeglx") / "TEST_20210920_0_g0"
         parameterized_recording_list.append(
             param(
