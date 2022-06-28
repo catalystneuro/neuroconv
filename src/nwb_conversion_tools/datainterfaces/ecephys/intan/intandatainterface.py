@@ -81,13 +81,12 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         unique_group_name = set(self.recording_extractor.get_property("group_name"))
-        device = (
-            dict(
-                name="Intan",
-                description="Intan recording",
-                manufacturer="Intan",
-            ),
+        device = dict(
+            name="Intan",
+            description="Intan recording",
+            manufacturer="Intan",
         )
+
         device_list = [device]
 
         ecephys_metadata = dict(
