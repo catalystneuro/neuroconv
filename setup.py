@@ -32,7 +32,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="nwb-conversion-tools",
-    version="0.11.34",
+    version="0.11.35",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -47,6 +47,9 @@ setup(
     install_requires=install_requires,
     extras_require=extras_require,
     entry_points={
-        "console_scripts": ["nwb-gui=nwb_conversion_tools.gui.command_line:main"],
+        "console_scripts": [
+            # "nwb-gui=nwb_conversion_tools.gui.command_line:main",  # not currently working
+            "nwbct-run-conversion = nwb_conversion_tools.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
+        ],
     },
 )
