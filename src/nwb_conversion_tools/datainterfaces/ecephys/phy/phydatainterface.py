@@ -17,8 +17,8 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         self,
         folder_path: FolderPathType,
         exclude_cluster_groups: Optional[list] = None,
-        verbose: Optional[bool] = True,
-        spikeextractors_backend: Optional[bool] = False,
+        verbose: bool = True,
+        spikeextractors_backend: bool = False,
     ):
         if spikeextractors_backend:
             self.SX = se.PhySortingExtractor
