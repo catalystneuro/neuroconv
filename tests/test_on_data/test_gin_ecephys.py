@@ -42,7 +42,7 @@ from .setup_paths import OUTPUT_PATH
 
 def custom_name_func(testcase_func, param_num, param):
     interface_name = param.kwargs["data_interface"].__name__
-    reduced_interface_name = interface_name.replace("Recording", "").replace("Interface", "").Replace("Sorting", "")
+    reduced_interface_name = interface_name.replace("Recording", "").replace("Interface", "").replace("Sorting", "")
 
     return (
         f"{testcase_func.__name__}_{param_num}_"
