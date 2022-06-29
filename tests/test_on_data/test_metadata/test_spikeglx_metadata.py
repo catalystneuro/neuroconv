@@ -1,6 +1,7 @@
 import datetime
 from numpy.testing import assert_array_equal
 
+import pytest
 import probeinterface as pi
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
@@ -76,6 +77,7 @@ def test_spikelgx_recording_property_addition():
     assert_array_equal(contact_shapes, expected_contact_shapes)
 
 
+@pytest.mark.skip(reason="Legacy spikeextractors cannot read new GIN file.")
 def test_matching_recording_property_addition_between_backends():
     """Test that the extracted properties match with both backends"""
     folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
