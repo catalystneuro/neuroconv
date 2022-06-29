@@ -1,4 +1,4 @@
-"""Authors: Cody Baker."""
+"""Authors: Heberto Mayorquin, Cody Baker."""
 from typing import Optional
 
 import spikeextractors as se
@@ -13,6 +13,10 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     SX = se.PhySortingExtractor
 
     def __init__(
-        self, folder_path: FolderPathType, exclude_cluster_groups: Optional[list] = None, verbose: bool = True
+        self,
+        folder_path: FolderPathType,
+        exclude_cluster_groups: Optional[list] = None,
+        verbose: Optional[bool] = True,
+        spikeextractors_backend: Optional[bool] = False,
     ):
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
