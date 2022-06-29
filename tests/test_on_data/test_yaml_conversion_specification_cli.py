@@ -20,7 +20,7 @@ class TestYAMLConversionSpecification(TestCase):
         deploy_process(
             command=(
                 f"nwbct-run-conversion {yaml_file_path} "
-                f"--data-folder {DATA_PATH} --output-folder {self.test_folder} --overwrite"
+                f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
         )
 
@@ -56,7 +56,7 @@ class TestYAMLConversionSpecification(TestCase):
         deploy_process(
             command=(
                 f"nwbct-run-conversion {yaml_file_path} "
-                f"--data-folder {DATA_PATH} --output-folder {self.test_folder} --overwrite"
+                f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
         )
 

@@ -102,20 +102,29 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
         ),
         param(
-            data_interface=BlackrockRecordingExtractorInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5")),
-        ),
-        param(
             data_interface=AxonaRecordingExtractorInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
+
+    for spikeextractors_backend in [True, False]:
+        parameterized_recording_list.append(
+            param(
+                data_interface=BlackrockRecordingExtractorInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
 
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
             param(
                 data_interface=IntanRecordingInterface,
                 interface_kwargs=dict(file_path=str(DATA_PATH / "intan" / f"intan_{suffix}_test_1.{suffix}")),
+                case_name=suffix,
             )
         )
     for file_name, num_channels in zip(["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"], [512, 128]):
@@ -221,59 +230,61 @@ class TestEcephysNwbConversions(unittest.TestCase):
             if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
                 check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
-    @parameterized.expand(
-        input=[
+    parameterized_sorting_list = [
+        param(
+            data_interface=KilosortSortingInterface,
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
+        ),
+        param(
+            data_interface=BlackrockSortingExtractorInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
+        ),
+        param(
+            data_interface=CellExplorerSortingInterface,
+            interface_kwargs=dict(
+                file_path=str(
+                    DATA_PATH / "cellexplorer" / "dataset_1" / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
+                )
+            ),
+        ),
+        param(
+            data_interface=CellExplorerSortingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")
+            ),
+        ),
+        param(
+            data_interface=CellExplorerSortingInterface,
+            interface_kwargs=dict(
+                file_path=str(
+                    DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
+                )
+            ),
+        ),
+        param(
+            data_interface=NeuroscopeSortingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
+                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+            ),
+        ),
+    ]
+
+    for spikeextractors_backend in [False, True]:
+        parameterized_sorting_list.append(
             param(
                 data_interface=PhySortingInterface,
-                interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
-            ),
-            param(
-                data_interface=KilosortSortingInterface,
-                interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
-            ),
-            param(
-                data_interface=BlackrockSortingExtractorInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
-            ),
-            param(
-                data_interface=CellExplorerSortingInterface,
                 interface_kwargs=dict(
-                    file_path=str(
-                        DATA_PATH
-                        / "cellexplorer"
-                        / "dataset_1"
-                        / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
-                    )
+                    folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
+                    spikeextractors_backend=spikeextractors_backend,
                 ),
-            ),
-            param(
-                data_interface=CellExplorerSortingInterface,
-                interface_kwargs=dict(
-                    file_path=str(
-                        DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat"
-                    )
-                ),
-            ),
-            param(
-                data_interface=CellExplorerSortingInterface,
-                interface_kwargs=dict(
-                    file_path=str(
-                        DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
-                    )
-                ),
-            ),
-            param(
-                data_interface=NeuroscopeSortingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
-                    xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
-                ),
-            ),
-        ],
-        name_func=custom_name_func,
-    )
-    def test_convert_sorting_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
+
+    @parameterized.expand(input=parameterized_sorting_list, name_func=custom_name_func)
+    def test_convert_sorting_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestSorting=data_interface)

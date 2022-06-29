@@ -1,8 +1,9 @@
 """Authors: Luiz Tauffer."""
 from typing import Optional
 from pathlib import Path
+
+from spikeinterface.extractors import BlackrockRecordingExtractor
 import spikeextractors as se
-from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
@@ -19,7 +20,7 @@ from ....utils import (
 class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a BlackrockRecordingExtractor."""
 
-    RX = se.BlackrockRecordingExtractor
+    RX = BlackrockRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -29,7 +30,24 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, nsx_override: OptionalFilePathType = None, verbose: bool = True):
+    def __init__(
+        self,
+        file_path: FilePathType,
+        nsx_override: OptionalFilePathType = None,
+        verbose: bool = True,
+        spikeextractors_backend: Optional[bool] = False,
+    ):
+        """
+        Load and prepare data corresponding to Blackrock interface
+
+        Parameters
+        ----------
+        file_path : FilePathType
+            The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
+        spikeextractors_backend : Optional[bool], optional
+            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            of a new spikeinterface object.
+        """
         file_path = Path(file_path)
         if file_path.suffix == "":
             assert nsx_override is not None, (
@@ -41,10 +59,15 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             assert "ns" in file_path.suffix, "file_path should be an nsx file"
             nsx_to_load = int(file_path.suffix[-1])
             self.file_path = file_path
-        super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose)
-        self.source_data = dict(
-            file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
-        )
+
+        if spikeextractors_backend:
+            self.RX = se.BlackrockRecordingExtractor
+            super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose)
+            self.source_data = dict(
+                file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
+            )
+        else:
+            super().__init__(file_path=file_path, verbose=verbose)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
