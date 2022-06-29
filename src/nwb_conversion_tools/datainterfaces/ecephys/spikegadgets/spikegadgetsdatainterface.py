@@ -25,6 +25,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         gains: OptionalArrayType = None,
         probe_file_path: OptionalFilePathType = None,
         verbose: bool = True,
+        spikeextractors_backend: bool = False,
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -40,6 +41,9 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         probe_file_path : FilePathType, optional
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
+        spikeextractors_backend : bool
+            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            of a new spikeinterface object.
         """
         super().__init__(filename=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path, verbose=verbose)

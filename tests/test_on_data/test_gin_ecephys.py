@@ -136,8 +136,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
     num_channels_list = [512, 128]
     file_name_num_channels_pairs = zip(file_name_list, num_channels_list)
     gains_list = [None, [0.195], [0.385]]
-    for (file_name, num_channels), gains in itertools.product(file_name_num_channels_pairs, gains_list):
-        interface_kwargs = dict(file_path=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"))
+    for iteration in itertools.product(file_name_num_channels_pairs, gains_list, [True, False]):
+        (file_name, num_channels), gains, spikeextractors_backend = iteration
+
+        interface_kwargs = dict(
+            file_path=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"),
+            spikeextractors_backend=spikeextractors_backend,
+        )
 
         if gains is not None:
             if gains[0] == 0.385:
@@ -146,8 +151,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
             gain_string = gains[0]
         else:
             gain_string = None
-        case_name = f"{file_name}, num_channels={num_channels}, gains={gain_string}"
 
+        case_name = (
+            f"{file_name}, num_channels={num_channels}, gains={gain_string}"
+            f"spikeextractors_backend={spikeextractors_backend}"
+        )
         parameterized_recording_list.append(
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
         )
