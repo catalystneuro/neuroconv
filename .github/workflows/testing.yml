@@ -3,6 +3,7 @@ on:
   schedule:
     - cron: "0 0 * * *"  # daily
   pull_request:
+  workflow_dispatch:
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
