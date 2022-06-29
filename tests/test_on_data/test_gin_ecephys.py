@@ -116,7 +116,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
-      
+
      for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
