@@ -261,7 +261,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         ),
     ]
 
-    for spikeextractors_backend in [False, True]:  # Cannot run since legacy spikeextractors cannot read new GIN file
+    for spikeextractors_backend in [False, True]:
         parameterized_sorting_list.append(
             param(
                 data_interface=PhySortingInterface,
