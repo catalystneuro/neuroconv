@@ -76,8 +76,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         stream_id: Optional[str] = "0",
-        spikeextractors_backend: Optional[bool] = False,
-        verbose: Optional[bool] = True,
+        spikeextractors_backend: bool = False,
+        verbose: bool = True,
     ):
         """Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
 
@@ -86,12 +86,12 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to either a rhd or a rhs file
-        stream_id : Optional[str], optional
+        stream_id : str, optional
             The stream of the data for spikeinterface, "0" by default.
-        spikeextractors_backend : Optional[bool], optional
+        spikeextractors_backend : bool
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
-        verbose : Optional[bool], optional
+        verbose : bool
             Verbose
         """
 
