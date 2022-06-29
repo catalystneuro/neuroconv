@@ -1,4 +1,5 @@
 import sys
+import unittest
 from pathlib import Path
 from jsonschema import validate, RefResolver
 from datetime import datetime
@@ -37,8 +38,8 @@ class TestYAMLConversionSpecification(TestCase):
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
         run_conversion_from_yaml(
             specification_file_path=yaml_file_path,
-            data_folder=DATA_PATH,
-            output_folder=self.test_folder,
+            data_folder_path=DATA_PATH,
+            output_folder_path=self.test_folder,
             overwrite=True,
         )
 
@@ -73,8 +74,8 @@ class TestYAMLConversionSpecification(TestCase):
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_missing_nwbfile_names.yml"
         run_conversion_from_yaml(
             specification_file_path=yaml_file_path,
-            data_folder=DATA_PATH,
-            output_folder=self.test_folder,
+            data_folder_path=DATA_PATH,
+            output_folder_path=self.test_folder,
             overwrite=True,
         )
 
@@ -116,7 +117,11 @@ class TestYAMLConversionSpecification(TestCase):
         ):
             run_conversion_from_yaml(
                 specification_file_path=yaml_file_path,
-                data_folder=DATA_PATH,
-                output_folder=self.test_folder,
+                data_folder_path=DATA_PATH,
+                output_folder_path=self.test_folder,
                 overwrite=True,
             )
+
+
+if __name__ == "__main__":
+    unittest.main()
