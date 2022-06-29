@@ -15,4 +15,4 @@ roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@c23e4a003
 lxml>=4.6.5
 scipy>=1.4.1
 click  # must be unspecified version to handle platform/pyVersion
-pyopenephys==1.1.2
+pyopenephys>=1.1.2
