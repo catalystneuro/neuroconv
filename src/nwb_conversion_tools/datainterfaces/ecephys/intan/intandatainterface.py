@@ -75,7 +75,6 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        stream_id: Optional[str] = "0",
         stream_id: str = "0",
         spikeextractors_backend: bool = False,
         verbose: bool = True,
