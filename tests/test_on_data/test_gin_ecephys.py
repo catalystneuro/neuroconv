@@ -277,6 +277,18 @@ class TestEcephysNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [False, True]:
         parameterized_sorting_list.append(
             param(
+                data_interface=NeuroscopeSortingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
+                    xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
+
+        parameterized_sorting_list.append(
+            param(
                 data_interface=PhySortingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "phy" / "phy_example_0"),

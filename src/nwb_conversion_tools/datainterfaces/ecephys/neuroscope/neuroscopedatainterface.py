@@ -279,6 +279,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         exclude_shanks: Optional[list] = None,
         xml_file_path: OptionalFilePathType = None,
         verbose: bool = True,
+        spikeextractors_backend: bool = False,
         # TODO: we can enable this once
         #     a) waveforms on unit columns support conversion factor in NWB
         #     b) write_sorting utils support writing said waveforms properly to a units table
