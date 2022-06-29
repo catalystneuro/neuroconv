@@ -129,9 +129,10 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
+        metadata = super().get_metadata()
+        ecephys_metadata = metadata["Ecephys"]
 
         # Add device
-        ecephys_metadata = dict()
         device = dict(
             name="Intan",
             description="Intan recording",
@@ -172,7 +173,4 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                 dict(name="custom_channel_name", description="Custom channel name assigned in Intan.")
             )
 
-        # Build metadata dictionary and return complete structure
-        metadata = dict()
-        metadata.update(Ecephys=ecephys_metadata)
         return metadata
