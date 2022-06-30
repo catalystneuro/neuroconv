@@ -9,7 +9,7 @@ jsonschema>=3.2.0
 psutil>=5.8.0
 dandi==0.39.6  # 0.39.5 already uses schema v0.7.x
 spikeextractors>=0.9.9
-spikeinterface @ git+https://github.com/catalystneuro/spikeinterface.git@remove_units_warning
+spikeinterface>=0.93.0
 neo>=0.9.0
 roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@1d50cbeb15c317eecca73f4dcb16bca1bb1ff9f6
 lxml>=4.6.5
