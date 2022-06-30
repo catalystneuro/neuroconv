@@ -111,10 +111,7 @@ class TestOphysNwbConversions(unittest.TestCase):
             ),
             param(
                 data_interface=Suite2pSegmentationInterface,
-                interface_kwargs=dict(
-                    # TODO: argument name is 'file_path' on roiextractors, but it clearly refers to a folder_path
-                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p")
-                ),
+                interface_kwargs=dict(folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p")),
             ),
         ],
         name_func=custom_name_func,
