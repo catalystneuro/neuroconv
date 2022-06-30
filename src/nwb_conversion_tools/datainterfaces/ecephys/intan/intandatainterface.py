@@ -79,6 +79,21 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
+        """Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
+
+
+        Parameters
+        ----------
+        file_path : FilePathType
+            Path to either a rhd or a rhs file
+        stream_id : str, optional
+            The stream of the data for spikeinterface, "0" by default.
+        spikeextractors_backend : bool
+            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            of a new spikeinterface object.
+        verbose : bool
+            Verbose
+        """
 
         if spikeextractors_backend:
             assert HAVE_PYINTAN, INSTALL_MESSAGE
@@ -114,43 +129,48 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
-        unique_group_name = set(self.recording_extractor.get_property("group_name"))
+        metadata = super().get_metadata()
+        ecephys_metadata = metadata["Ecephys"]
+
+        # Add device
         device = dict(
             name="Intan",
             description="Intan recording",
             manufacturer="Intan",
         )
-
         device_list = [device]
+        ecephys_metadata.update(Device=device_list)
 
-        ecephys_metadata = dict(
-            Ecephys=dict(
-                Device=device_list,
-                ElectrodeGroup=[
-                    dict(
-                        name=group_name,
-                        description=f"Group {group_name} electrodes.",
-                        device="Intan",
-                        location="",
-                    )
-                    for group_name in unique_group_name
-                ],
-                Electrodes=[
-                    dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of.")
-                ],
-                ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
+        # Add electrode group
+        unique_group_name = set(self.recording_extractor.get_property("group_name"))
+        electrode_group_list = [
+            dict(
+                name=group_name,
+                description=f"Group {group_name} electrodes.",
+                device="Intan",
+                location="",
             )
+            for group_name in unique_group_name
+        ]
+        ecephys_metadata.update(ElectrodeGroup=electrode_group_list)
+
+        # Add electrodes and electrode groups
+        ecephys_metadata.update(
+            Electrodes=[
+                dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of.")
+            ],
+            ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
         )
 
+        # Add group electrode number if available
         recording_extractor_properties = self.recording_extractor.get_property_keys()
-
         if "group_electrode_number" in recording_extractor_properties:
-            ecephys_metadata["Ecephys"]["Electrodes"].append(
+            ecephys_metadata["Electrodes"].append(
                 dict(name="group_electrode_number", description="0-indexed channel within a group.")
             )
         if "custom_channel_name" in recording_extractor_properties:
-            ecephys_metadata["Ecephys"]["Electrodes"].append(
+            ecephys_metadata["Electrodes"].append(
                 dict(name="custom_channel_name", description="Custom channel name assigned in Intan.")
             )
 
-        return ecephys_metadata
+        return metadata

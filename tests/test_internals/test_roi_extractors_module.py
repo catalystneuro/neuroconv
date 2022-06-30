@@ -183,9 +183,11 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         self.metadata["Ophys"].update(TwoPhotonSeries=[self.two_photon_series_metadata])
 
         self.num_frames = 30
-        self.rows = 10
-        self.columns = 15
-        self.imaging_extractor = generate_dummy_imaging_extractor(self.num_frames, rows=self.rows, columns=self.columns)
+        self.num_rows = 10
+        self.num_columns = 15
+        self.imaging_extractor = generate_dummy_imaging_extractor(
+            self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
+        )
 
     def test_add_two_photon_series(self):
 
@@ -199,11 +201,10 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
         data_chunk_iterator = data_in_hdfm_data_io.data
         two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
-        assert two_photon_series_extracted.shape == (
-            self.num_frames,
-            self.columns,
-            self.rows,
-        )  # to be fixed/clarified soon
+
+        # NWB stores images as num_columns x num_rows
+        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
 
         # Check device
         devices = self.nwbfile.devices
@@ -233,7 +234,10 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
             acquisition_modules = read_nwbfile.acquisition
             self.two_photon_series_name in acquisition_modules
             two_photon_series = acquisition_modules[self.two_photon_series_name].data
-            assert two_photon_series.shape == (self.num_frames, self.columns, self.rows)  # to be fixed/clarified soon
+
+            # NWB stores images as num_columns x num_rows
+            expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+            assert two_photon_series.shape == expected_two_photon_series_shape
 
             # Check device
             devices = read_nwbfile.devices
