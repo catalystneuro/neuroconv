@@ -11,6 +11,7 @@ dandi==0.39.6  # 0.39.5 already uses schema v0.7.x
 spikeextractors>=0.9.9
 spikeinterface>=0.93.0
 neo>=0.9.0
-roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@c23e4a00324b381f2aad25d685e1cd68b588b563  # v0.4.7, pre-transpose fix
+roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@1d50cbeb15c317eecca73f4dcb16bca1bb1ff9f6
 lxml>=4.6.5
 scipy>=1.4.1
+click  # must be unspecified version to handle platform/pyVersion

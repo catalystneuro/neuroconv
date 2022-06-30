@@ -15,5 +15,5 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, sampling_frequency: FloatType, channel_names: ArrayType = None):
-        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, channel_names=channel_names)
+    def __init__(self, file_path: FilePathType, sampling_frequency: FloatType):
+        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency)
