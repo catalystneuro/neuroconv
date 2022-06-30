@@ -11,7 +11,7 @@ from .setup_paths import OPHYS_DATA_PATH
 TiffImagingInterface_source_data = dict(
     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"), sampling_frequency=15.0
 )
-Suite2pSegmentationInterface_source_data = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"))
+Suite2pSegmentationInterface_source_data = dict(folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"))
 
 interface_to_source_data_map = dict(
     TiffImagingInterface=TiffImagingInterface_source_data,
