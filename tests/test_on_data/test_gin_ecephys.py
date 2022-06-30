@@ -95,10 +95,6 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     parameterized_recording_list = [
         param(
-            data_interface=NeuralynxRecordingInterface,
-            interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
-        ),
-        param(
             data_interface=OpenEphysRecordingExtractorInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
         ),
@@ -107,6 +103,18 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
+
+    for spikeextractors_backend in [True, False]:
+        parameterized_recording_list.append(
+            param(
+                data_interface=NeuralynxRecordingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(

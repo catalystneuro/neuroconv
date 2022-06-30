@@ -5,6 +5,7 @@ from natsort import natsorted
 from dateutil import parser
 import json
 
+from spikeinterface.extractors import NeuralynxRecordingExtractor
 from spikeinterface.core.old_api_utils import OldToNewRecording
 from spikeinterface import BaseRecording
 
@@ -80,7 +81,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = se.MultiRecordingChannelExtractor
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
 
         self.nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
 
