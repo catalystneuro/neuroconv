@@ -82,6 +82,8 @@ jobs:
           datalad get -r ./blackrock/
           datalad get -r ./intan/
           datalad get -r ./spikegadgets/
+          datalad get -r ./spike2/130322-1LY.smr
+          datalad get -r ./spike2/m365_1sec.smrx
           datalad get -r ./spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/
           datalad get -r ./spikeglx/TEST_20210920_0_g0/
           datalad get -r ./phy/phy_example_0/
