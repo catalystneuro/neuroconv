@@ -29,9 +29,9 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         folder_path: FolderPathType,
         experiment_id: Optional[int] = 0,
         recording_id: Optional[int] = 0,
-        stub_test: Optional[bool] = False,
+        stub_test: bool = False,
         verbose: bool = True,
-        spikeextractors_backend: Optional[bool] = False,
+        spikeextractors_backend: bool = False,
     ):
         self.spikeextractors_backend = spikeextractors_backend
         if spikeextractors_backend:
