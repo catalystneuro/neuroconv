@@ -2,6 +2,7 @@ import json
 from dateutil.parser import parse as dateparse
 from typing import Optional
 
+
 try:
     from PIL import Image, ExifTags
 
@@ -49,12 +50,17 @@ class ScanImageImagingInterface(TiffImagingInterface):
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency)
 
     def get_metadata(self):
+        device_number = 0  # Imaging plane metadata is a list with metadata for each plane
 
-        new_metadata = dict(Ophys=dict(TwoPhotonSeries=dict(description=json.dumps(self.image_metadata))))
+        metadata = super().get_metadata()
 
-        if "state.internal.triggerTimeString" in self.image_metadata:
-            new_metadata["NWBFile"] = dict(
-                session_start_time=dateparse(self.image_metadata["state.internal.triggerTimeString"])
-            )
+        extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
+        metadata["NWBFile"] = dict(session_start_time=extracted_session_start_time)
 
-        return dict_deep_update(super().get_metadata(), new_metadata)
+        # Extract many scan image properties and attach them as dic in the description
+        ophys_metadata = metadata["Ophys"]
+        two_photon_series_metadata = ophys_metadata["TwoPhotonSeries"][device_number]
+        extracted_description = json.dumps(self.image_metadata)
+        two_photon_series_metadata.update(description=extracted_description)
+
+        return metadata
