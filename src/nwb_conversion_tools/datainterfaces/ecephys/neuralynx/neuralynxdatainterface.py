@@ -89,7 +89,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
-            super().__init__(folder_path=folder_path)
+            super().__init__(folder_path=folder_path, verbose=verbose)
             self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
 
         # General
