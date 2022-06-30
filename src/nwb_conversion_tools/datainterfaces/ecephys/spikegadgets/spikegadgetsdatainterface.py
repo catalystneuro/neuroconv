@@ -57,7 +57,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
 
             super().__init__(filename=file_path, verbose=verbose)
         else:
-            super().__init__(file_path=file_path, stream_id="trodes")
+            super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:
