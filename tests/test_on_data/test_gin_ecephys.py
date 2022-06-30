@@ -21,6 +21,7 @@ from pynwb import NWBHDF5IO
 from nwb_conversion_tools import (
     NWBConverter,
     CellExplorerSortingInterface,
+    CEDRecordingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
@@ -105,6 +106,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
         param(
             data_interface=AxonaRecordingExtractorInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
+        ),
+        param(
+            data_interface=CEDRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "130322-1LY.smr")),
         ),
     ]
 
