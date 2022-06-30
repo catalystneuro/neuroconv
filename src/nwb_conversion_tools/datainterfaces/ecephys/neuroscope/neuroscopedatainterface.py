@@ -1,13 +1,13 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 import spikeextractors as se
 from spikeinterface.core.old_api_utils import OldToNewRecording
 from pynwb.ecephys import ElectricalSeries
 
 from spikeinterface import BaseRecording
-from spikeinterface.extractors import NeuroScopeRecordingExtractor
+from spikeinterface.extractors import NeuroScopeRecordingExtractor, NeuroScopeSortingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
@@ -270,7 +270,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
 
-    SX = se.NeuroscopeMultiSortingExtractor
+    SX = NeuroScopeSortingExtractor
 
     def __init__(
         self,
@@ -279,6 +279,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         exclude_shanks: Optional[list] = None,
         xml_file_path: OptionalFilePathType = None,
         verbose: bool = True,
+        spikeextractors_backend: bool = False,
         # TODO: we can enable this once
         #     a) waveforms on unit columns support conversion factor in NWB
         #     b) write_sorting utils support writing said waveforms properly to a units table
@@ -313,8 +314,13 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
             Most common value is 0.195 for an intan recording system.
             The default is None.
             Not currently in use pending updates to NWB waveforms.
+        spikeextractors_backend : Optional[bool], optional
+            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            of a new spikeinterface object.
         """
         assert HAVE_LXML, INSTALL_MESSAGE
+        if spikeextractors_backend:
+            self.SX = se.NeuroscopeMultiSortingExtractor
 
         super().__init__(
             folder_path=folder_path,

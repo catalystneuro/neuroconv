@@ -823,7 +823,7 @@ class TestAddUnitsTable(TestCase):
     def setUp(self):
         """Start with a fresh NWBFile, and remapped sorters each time."""
         self.nwbfile = NWBFile(
-            session_description="session_description1", identifier="file_id1", session_start_time=datetime.now()
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
         unit_ids = self.base_sorting.get_unit_ids()
         self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
