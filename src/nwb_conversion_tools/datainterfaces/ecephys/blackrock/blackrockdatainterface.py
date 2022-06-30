@@ -35,7 +35,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         nsx_override: OptionalFilePathType = None,
         verbose: bool = True,
-        spikeextractors_backend: Optional[bool] = False,
+        spikeextractors_backend: bool = False,
     ):
         """
         Load and prepare data corresponding to Blackrock interface
@@ -44,7 +44,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
-        spikeextractors_backend : Optional[bool], optional
+        spikeextractors_backend : bool
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
