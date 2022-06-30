@@ -79,20 +79,24 @@ def get_filtering(channel_path: FolderPathType) -> str:
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the Neuralynx format."""
 
-    RX = se.MultiRecordingChannelExtractor
+    RX = NeuralynxRecordingExtractor
 
     def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
 
         self.nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
 
-        # Spikeextractors pipe-line.
-        self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
-        self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+        if spikeextractors_backend:
+            self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+        else:
+            super().__init__(folder_path=folder_path)
+            self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
 
         # General
         self.add_recording_extractor_properties()
 
     def initialize_in_spikeextractors(self, folder_path, verbose):
+        self.RX = se.MultiRecordingChannelExtractor
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path, verbose=verbose)
         self.verbose = verbose
