@@ -153,7 +153,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             gain_string = None
 
         case_name = (
-            f"{file_name}, num_channels={num_channels}, gains={gain_string}"
+            f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
             f"spikeextractors_backend={spikeextractors_backend}"
         )
         parameterized_recording_list.append(
