@@ -7,6 +7,7 @@ from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
 from nwb_conversion_tools import (
     NWBConverter,
+    ScanImageImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
     SbxImagingInterface,
@@ -30,6 +31,12 @@ class TestOphysNwbConversions(unittest.TestCase):
     savedir = OUTPUT_PATH
 
     imaging_interface_list = [
+        param(
+            data_interface=ScanImageImagingInterface,
+            interface_kwargs=dict(
+                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff")
+            ),
+        ),
         param(
             data_interface=TiffImagingInterface,
             interface_kwargs=dict(
