@@ -52,7 +52,7 @@ class ScanImageImagingInterface(TiffImagingInterface):
         else:
             assert_msg = (
                 "sampling frequency not found in image metadata, "
-                "pass the frequency using the argument fallback_sampling_frequency required"
+                "input the frequency using the argument `fallback_sampling_frequency`"
             )
             assert fallback_sampling_frequency is not None, assert_msg
             sampling_frequency = fallback_sampling_frequency
