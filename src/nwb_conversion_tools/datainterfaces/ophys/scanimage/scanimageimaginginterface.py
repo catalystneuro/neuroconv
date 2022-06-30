@@ -11,7 +11,16 @@ except ImportError:
     HAVE_PIL = False
 
 from ..tiff.tiffdatainterface import TiffImagingInterface
-from ....utils import dict_deep_update, FilePathType, OptionalArrayType
+from ....utils import FilePathType
+
+
+def extract_extra_metadata(file_path):
+    image = Image.open(file_path)
+    image_exif = image.getexif()
+    exif = {ExifTags.TAGS[k]: v for k, v in image_exif.items() if k in ExifTags.TAGS and type(v) is not bytes}
+    extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in exif["ImageDescription"].split("\r") if "=" in x}
+
+    return extra_metadata
 
 
 class ScanImageImagingInterface(TiffImagingInterface):
@@ -36,15 +45,16 @@ class ScanImageImagingInterface(TiffImagingInterface):
         """
 
         assert HAVE_PIL, "To use the ScanImageTiffExtractor install Pillow: \n\n pip install pillow\n\n"
-        image = Image.open(file_path)
-        image_exif = image.getexif()
-        exif = {ExifTags.TAGS[k]: v for k, v in image_exif.items() if k in ExifTags.TAGS and type(v) is not bytes}
-        self.image_metadata = {
-            x.split("=")[0]: x.split("=")[1] for x in exif["ImageDescription"].split("\r") if "=" in x
-        }
+        self.image_metadata = extract_extra_metadata(file_path=file_path)
+
         if "state.acq.frameRate" in self.image_metadata:
             sampling_frequency = float(self.image_metadata["state.acq.frameRate"])
         else:
+            assert_msg = (
+                "sampling frequency not found in image metadata, "
+                "pass the frequency using the argument fallback_sampling_frequency required"
+            )
+            assert fallback_sampling_frequency is not None, assert_msg
             sampling_frequency = fallback_sampling_frequency
 
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency)
@@ -54,13 +64,15 @@ class ScanImageImagingInterface(TiffImagingInterface):
 
         metadata = super().get_metadata()
 
-        extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
-        metadata["NWBFile"] = dict(session_start_time=extracted_session_start_time)
+        if "state.internal.triggerTimeString" in self.image_metadata:
+            extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
+            metadata["NWBFile"] = dict(session_start_time=extracted_session_start_time)
 
         # Extract many scan image properties and attach them as dic in the description
         ophys_metadata = metadata["Ophys"]
         two_photon_series_metadata = ophys_metadata["TwoPhotonSeries"][device_number]
-        extracted_description = json.dumps(self.image_metadata)
-        two_photon_series_metadata.update(description=extracted_description)
+        if self.image_metadata is not None:
+            extracted_description = json.dumps(self.image_metadata)
+            two_photon_series_metadata.update(description=extracted_description)
 
         return metadata
