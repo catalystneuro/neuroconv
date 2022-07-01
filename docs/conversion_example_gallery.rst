@@ -2,7 +2,7 @@ Conversion Gallery
 ======================
 
 The examples here are guaranteed to be running correctly with our testing suite.
-Their aim is to be a showcase of the library capabilities and to get you to hit ground running with your conversion.
+Their aim is to be a showcase of the library capabilities and to get you to hit the ground running with your own conversion.
 
 Recording
 ---------

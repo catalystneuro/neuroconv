@@ -98,7 +98,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        spikeextractors_backend: Optional[bool] = False,
+        spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
         """
@@ -116,7 +116,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        spikeextractors_backend : Optional[bool], optional
+        spikeextractors_backend : bool
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
@@ -218,7 +218,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        spikeextractors_backend: Optional[bool] = False,
+        spikeextractors_backend: bool = False,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -227,7 +227,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .dat file.
-        gain : Optional[float], optional
+        gain : Optional[float], optiona
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
@@ -235,7 +235,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        spikeextractors_backend : Optional[bool], optional
+        spikeextractors_backend : bool
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
@@ -314,7 +314,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
             Most common value is 0.195 for an intan recording system.
             The default is None.
             Not currently in use pending updates to NWB waveforms.
-        spikeextractors_backend : Optional[bool], optional
+        spikeextractors_backend : bool
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """

@@ -42,9 +42,12 @@ from .setup_paths import OUTPUT_PATH
 
 
 def custom_name_func(testcase_func, param_num, param):
+    interface_name = param.kwargs["data_interface"].__name__
+    reduced_interface_name = interface_name.replace("Recording", "").replace("Interface", "").replace("Sorting", "")
+
     return (
         f"{testcase_func.__name__}_{param_num}_"
-        f"{parameterized.to_safe_name(param.kwargs['data_interface'].__name__)}"
+        f"{parameterized.to_safe_name(reduced_interface_name)}"
         f"_{param.kwargs.get('case_name', '')}"
     )
 
@@ -99,14 +102,22 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
         ),
         param(
-            data_interface=OpenEphysRecordingExtractorInterface,
-            interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
-        ),
-        param(
             data_interface=AxonaRecordingExtractorInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
+
+    for spikeextractors_backend in [True, False]:
+        parameterized_recording_list.append(
+            param(
+                data_interface=OpenEphysRecordingExtractorInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
@@ -131,17 +142,34 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name=f"{suffix}, spikeextractors_backend={spikeextractors_backend}",
             )
         )
-    for file_name, num_channels in zip(["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"], [512, 128]):
-        for gains in [None, [0.195], [0.385] * num_channels]:
-            interface_kwargs = dict(file_path=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"))
-            if gains is not None:
-                interface_kwargs.update(gains=gains)
-            parameterized_recording_list.append(
-                param(
-                    data_interface=SpikeGadgetsRecordingInterface,
-                    interface_kwargs=interface_kwargs,
-                )
-            )
+
+    file_name_list = ["20210225_em8_minirec2_ac", "W122_06_09_2019_1_fromSD"]
+    num_channels_list = [512, 128]
+    file_name_num_channels_pairs = zip(file_name_list, num_channels_list)
+    gains_list = [None, [0.195], [0.385]]
+    for iteration in itertools.product(file_name_num_channels_pairs, gains_list, [True, False]):
+        (file_name, num_channels), gains, spikeextractors_backend = iteration
+
+        interface_kwargs = dict(
+            file_path=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"),
+            spikeextractors_backend=spikeextractors_backend,
+        )
+
+        if gains is not None:
+            if gains[0] == 0.385:
+                gains = gains * num_channels
+            interface_kwargs.update(gains=gains)
+            gain_string = gains[0]
+        else:
+            gain_string = None
+
+        case_name = (
+            f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
+            f"spikeextractors_backend={spikeextractors_backend}"
+        )
+        parameterized_recording_list.append(
+            param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
+        )
 
     for spikeextractors_backend in [False]:  # Cannot run since legacy spikeextractors cannot read new GIN file
         sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
@@ -182,7 +210,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
-    def test_convert_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+    def test_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
