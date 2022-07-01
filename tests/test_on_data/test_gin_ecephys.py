@@ -42,9 +42,12 @@ from .setup_paths import OUTPUT_PATH
 
 
 def custom_name_func(testcase_func, param_num, param):
+    interface_name = param.kwargs["data_interface"].__name__
+    reduced_interface_name = interface_name.replace("Recording", "").replace("Interface", "").replace("Sorting", "")
+
     return (
         f"{testcase_func.__name__}_{param_num}_"
-        f"{parameterized.to_safe_name(param.kwargs['data_interface'].__name__)}"
+        f"{parameterized.to_safe_name(reduced_interface_name)}"
         f"_{param.kwargs.get('case_name', '')}"
     )
 
@@ -99,14 +102,22 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),
         ),
         param(
-            data_interface=OpenEphysRecordingExtractorInterface,
-            interface_kwargs=dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
-        ),
-        param(
             data_interface=AxonaRecordingExtractorInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
     ]
+
+    for spikeextractors_backend in [True, False]:
+        parameterized_recording_list.append(
+            param(
+                data_interface=OpenEphysRecordingExtractorInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+                    spikeextractors_backend=spikeextractors_backend,
+                ),
+                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+            )
+        )
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
