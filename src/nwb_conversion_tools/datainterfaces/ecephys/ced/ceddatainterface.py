@@ -1,9 +1,10 @@
-"""Authors: Luiz Tauffer."""
+"""Authors: Heberto Mayorquin, Luiz Tauffer."""
+from pathlib import Path
 from platform import python_version
 from sys import platform
 from packaging import version
 
-from spikeextractors import CEDRecordingExtractor
+from spikeinterface.extractors import CedRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, FilePathType
@@ -20,9 +21,10 @@ if platform == "darwin" and version.parse(python_version()) < version.parse("3.8
 
 
 class CEDRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a CEDRecordingExtractor."""
+    """Primary data interface class for converting data from CED (Cambridge Electronic Design)
+    ."""
 
-    RX = CEDRecordingExtractor
+    RX = CedRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -37,6 +39,9 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         assert HAVE_SONPY, INSTALL_MESSAGE
         return cls.RX.get_all_channels_info(file_path=file_path)
 
-    def __init__(self, file_path: FilePathType, smrx_channel_ids: list, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
         assert HAVE_SONPY, INSTALL_MESSAGE
-        super().__init__(file_path=file_path, smrx_channel_ids=smrx_channel_ids, verbose=verbose)
+        stream_id = None
+        if Path(file_path).suffix == ".smr":
+            stream_id = "1"
+        super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
