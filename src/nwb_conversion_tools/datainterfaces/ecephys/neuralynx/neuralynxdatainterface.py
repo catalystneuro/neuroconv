@@ -1,11 +1,15 @@
-"""Authors: Cody Baker and Ben Dichter."""
+"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 import warnings
 from pathlib import Path
 from natsort import natsorted
 from dateutil import parser
 import json
 
-from spikeextractors import MultiRecordingChannelExtractor, NeuralynxRecordingExtractor
+from spikeinterface.extractors import NeuralynxRecordingExtractor
+from spikeinterface.core.old_api_utils import OldToNewRecording
+from spikeinterface import BaseRecording
+
+import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType
@@ -75,27 +79,41 @@ def get_filtering(channel_path: FolderPathType) -> str:
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the Neuralynx format."""
 
-    RX = MultiRecordingChannelExtractor
+    RX = NeuralynxRecordingExtractor
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
+
+        self.nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
+
+        if spikeextractors_backend:
+            self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+        else:
+            super().__init__(folder_path=folder_path, verbose=verbose)
+            self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
+
+        # General
+        self.add_recording_extractor_properties()
+
+    def initialize_in_spikeextractors(self, folder_path, verbose):
+        self.RX = se.MultiRecordingChannelExtractor
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path, verbose=verbose)
         self.verbose = verbose
 
-        nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
-        extractors = [NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in nsc_files]
+        extractors = [se.NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in self.nsc_files]
+        self.recording_extractor = self.RX(extractors)
+
         gains = [extractor.get_channel_gains()[0] for extractor in extractors]
         for extractor in extractors:
             extractor.clear_channel_gains()
-        self.recording_extractor = self.RX(extractors)
         self.recording_extractor.set_channel_gains(gains=gains)
+
+    def add_recording_extractor_properties(self):
+
         try:
-            for i, filename in enumerate(nsc_files):
-                self.recording_extractor.set_channel_property(
-                    i,
-                    "filtering",
-                    get_filtering(filename),
-                )
+            filtering = [get_filtering(filename) for filename in self.nsc_files]
+            self.recording_extractor.set_property(key="filtering", values=filtering)
         except Exception:
             warnings.warn("filtering could not be extracted.")
 

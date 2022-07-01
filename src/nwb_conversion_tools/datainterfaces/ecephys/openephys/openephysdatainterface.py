@@ -1,7 +1,9 @@
-"""Authors: Luiz Tauffer."""
-import pytz
-import spikeextractors as se
+"""Authors: Heberto Mayorquin, Luiz Tauffer."""
 from typing import Optional
+
+import pyopenephys
+import spikeextractors as se
+from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -11,7 +13,7 @@ from ....utils import get_schema_from_method_signature, FolderPathType
 class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a OpenEphysRecordingExtractor."""
 
-    RX = se.OpenEphysRecordingExtractor
+    RX = OpenEphysBinaryRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -27,12 +29,21 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         folder_path: FolderPathType,
         experiment_id: Optional[int] = 0,
         recording_id: Optional[int] = 0,
-        stub_test: Optional[bool] = False,
+        stub_test: bool = False,
         verbose: bool = True,
+        spikeextractors_backend: bool = False,
     ):
-        super().__init__(
-            folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
-        )
+        self.spikeextractors_backend = spikeextractors_backend
+        if spikeextractors_backend:
+            self.RX = se.OpenEphysRecordingExtractor
+
+            super().__init__(
+                folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
+            )
+
+        else:
+            super().__init__(folder_path=folder_path, verbose=verbose)
+
         if stub_test:
             self.subset_channels = [0, 1]
 
@@ -40,14 +51,14 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
 
-        # Open file and extract info
-        session_start_time = self.recording_extractor._fileobj.experiments[0].datetime
-        session_start_time_tzaware = pytz.timezone("EST").localize(session_start_time)
+        if self.spikeextractors_backend:
+            session_start_time = self.recording_extractor._fileobj.experiments[0].datetime
+        else:
+            folder_path = self.source_data["folder_path"]
+            fileobj = pyopenephys.File(folder_path)
+            session_start_time = fileobj.experiments[0].datetime
 
-        metadata["NWBFile"] = dict(
-            session_start_time=session_start_time_tzaware.strftime("%Y-%m-%dT%H:%M:%S"),
-        )
-
+        metadata["NWBFile"] = dict(session_start_time=session_start_time)
         return metadata
 
 
