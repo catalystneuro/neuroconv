@@ -1,5 +1,7 @@
-"""Authors: Cody Baker."""
-from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
+"""Authors: Heberto Mayorquin, Cody Baker."""
+
+import spikeextractors as se
+from spikeinterface.extractors import SpikeGadgetsRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
@@ -25,6 +27,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         gains: OptionalArrayType = None,
         probe_file_path: OptionalFilePathType = None,
         verbose: bool = True,
+        spikeextractors_backend: bool = False,
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -40,12 +43,24 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         probe_file_path : FilePathType, optional
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
+        spikeextractors_backend : bool
+            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            of a new spikeinterface object.
         """
-        super().__init__(filename=file_path, verbose=verbose)
+
+        if spikeextractors_backend:
+            self.RX = se.SpikeGadgetsRecordingExtractor
+            if probe_file_path is not None:
+                self.recording_extractor = se.load_probe_file(
+                    recording=self.recording_extractor, probe_file=probe_file_path
+                )
+
+            super().__init__(filename=file_path, verbose=verbose)
+        else:
+            super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
+
         self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:
             if len(gains) == 1:
                 gains = [gains[0]] * self.recording_extractor.get_num_channels()
             self.recording_extractor.set_channel_gains(gains=gains)
-        if probe_file_path is not None:
-            self.recording_extractor = load_probe_file(recording=self.recording_extractor, probe_file=probe_file_path)
