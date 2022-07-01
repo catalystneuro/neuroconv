@@ -108,11 +108,6 @@ class TestEcephysNwbConversions(unittest.TestCase):
         ),
         param(
             data_interface=CEDRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "130322-1LY.smr")),
-            case_name="smr",
-        ),
-        param(
-            data_interface=CEDRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
             case_name="smrx",
         ),
