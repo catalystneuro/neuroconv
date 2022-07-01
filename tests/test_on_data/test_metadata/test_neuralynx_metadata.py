@@ -52,9 +52,9 @@ def test_neuralynx_filtering():
 def test_neuralynx_filtering_recording_extractor():
 
     ri = NeuralynxRecordingInterface(folder_path=(NLX_PATH / "Cheetah_v5.7.4" / "original_data"))
-
-    assert (
-        ri.recording_extractor.get_channel_property(0, "filtering") == '{"DSPLowCutFilterEnabled": "True", '
+    filtering = ri.recording_extractor.get_property("filtering")[0][:]
+    expected_filtering = (
+        '{"DSPLowCutFilterEnabled": "True", '
         '"DspLowCutFrequency": "10", '
         '"DspLowCutNumTaps": "0", '
         '"DspLowCutFilterType": "DCO", '
@@ -65,3 +65,4 @@ def test_neuralynx_filtering_recording_extractor():
         '"DspDelayCompensation": "Enabled", '
         '"DspFilterDelay_µs": "984"}'
     )
+    assert filtering == expected_filtering
