@@ -24,18 +24,6 @@ def extract_extra_metadata(file_path):
     return extra_metadata
 
 
-from PIL import Image, ExifTags
-
-
-def extract_extra_metadata2(file_path):
-    image = Image.open(file_path)
-    image_exif = image.getexif()
-    exif = {ExifTags.TAGS[k]: v for k, v in image_exif.items() if k in ExifTags.TAGS and type(v) is not bytes}
-    extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in exif["ImageDescription"].split("\r") if "=" in x}
-
-    return extra_metadata
-
-
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
     IX = ScanImageTiffImagingExtractor
