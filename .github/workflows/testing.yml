@@ -49,7 +49,7 @@ jobs:
 
       - name: Global Setup
         run: |
-          pip install -U pip
+          python -m pip install -U pip  # Official recommended way
           pip install pytest-xdist
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
