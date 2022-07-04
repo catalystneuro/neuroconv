@@ -53,6 +53,7 @@ jobs:
           pip install pytest-xdist
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
+          pip instal wheel # Needed for scan image
       - name: Install nwb-conversion-tools with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
