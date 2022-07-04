@@ -2,28 +2,38 @@ import json
 from dateutil.parser import parse as dateparse
 from typing import Optional
 
+from roiextractors import ScanImageTiffImagingExtractor
 
 try:
-    from PIL import Image, ExifTags
+    from ScanImageTiffReader import ScanImageTiffReader
 
-    HAVE_PIL = True
+    HAVE_SCAN_IMAGE_TIFF = True
 except ImportError:
-    HAVE_PIL = False
+    HAVE_SCAN_IMAGE_TIFF = False
 
-from ..tiff.tiffdatainterface import TiffImagingInterface
+
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType
 
 
 def extract_extra_metadata(file_path):
-    image = Image.open(file_path)
-    image_exif = image.getexif()
-    exif = {ExifTags.TAGS[k]: v for k, v in image_exif.items() if k in ExifTags.TAGS and type(v) is not bytes}
-    extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in exif["ImageDescription"].split("\r") if "=" in x}
+
+    description = ScanImageTiffReader(str(file_path)).description(iframe=0)
+    extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in description.split("\r") if "=" in x}
 
     return extra_metadata
 
 
-class ScanImageImagingInterface(TiffImagingInterface):
+class ScanImageImagingInterface(BaseImagingExtractorInterface):
+
+    IX = ScanImageTiffImagingExtractor
+
+    @classmethod
+    def get_source_schema(cls):
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
+        return source_schema
+
     def __init__(
         self,
         file_path: FilePathType,
@@ -40,11 +50,11 @@ class ScanImageImagingInterface(TiffImagingInterface):
         fallback_sampling_frequency: float, optional
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
-        channel_names: list
-            list of channel names.
         """
 
-        assert HAVE_PIL, "To use the ScanImageTiffExtractor install Pillow: \n\n pip install pillow\n\n"
+        assert (
+            HAVE_SCAN_IMAGE_TIFF
+        ), "To use the ScanImageTiffExtractor install scanimage-tiff-reader: \n\n pip install scanimage-tiff-reader\n\n"
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
         if "state.acq.frameRate" in self.image_metadata:
