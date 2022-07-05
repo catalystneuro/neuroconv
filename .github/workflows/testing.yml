@@ -100,11 +100,11 @@ jobs:
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
-          key: ophys-datasets-042022-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+          key: ophys-datasets-220702-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
-        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-
+        run: |
+          datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
       - name: Get behavior_testing_data current head hash
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"

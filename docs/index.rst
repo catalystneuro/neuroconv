@@ -21,9 +21,9 @@ types of neural data to the Neurodata Without Borders (NWB) standard.
   :caption: Contents
 
   user_guide
-  developer_guide
   conversion_example_gallery
   tutorials
+  developer_guide
 
 .. toctree::
   :maxdepth: 2
