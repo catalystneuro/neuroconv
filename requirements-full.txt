@@ -1,5 +1,5 @@
 dandi==0.39.6
-pynwb==2.0.1
+pynwb==2.1.0
 hdmf==3.2.1
 tqdm==4.60.0
 natsort==7.1.1
