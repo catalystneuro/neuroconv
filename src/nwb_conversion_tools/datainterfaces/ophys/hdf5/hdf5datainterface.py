@@ -17,6 +17,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         start_time: FloatType = None,
         metadata: dict = None,
         channel_names: ArrayType = None,
+        verbose: bool = True,
     ):
         super().__init__(
             file_path=file_path,
@@ -25,4 +26,5 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             start_time=start_time,
             metadata=metadata,
             channel_names=channel_names,
+            verbose=verbose,
         )

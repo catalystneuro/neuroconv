@@ -20,7 +20,7 @@ from ...utils import (
 class BaseImagingExtractorInterface(BaseDataInterface, ABC):
     IX = None
 
-    def __init__(self, verbose=True, **source_data):
+    def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
         self.imaging_extractor = self.IX(**source_data)
         self.verbose = verbose

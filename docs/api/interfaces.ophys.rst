@@ -45,3 +45,7 @@ Sbx Imaging
 Tiff Imaging
 ------------
 .. automodule:: nwb_conversion_tools.datainterfaces.ophys.tiff.tiffdatainterface
+
+ScanImage Imaging
+-----------------
+.. automodule:: nwb_conversion_tools.datainterfaces.ophys.scanimage.scanimageimaginginterface

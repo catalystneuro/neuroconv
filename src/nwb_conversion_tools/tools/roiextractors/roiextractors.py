@@ -323,9 +323,9 @@ def write_imaging(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        add_devices(nwbfile=nwbfile, metadata=metadata)
-        add_two_photon_series(imaging=imaging, nwbfile=nwbfile, metadata=metadata, buffer_size=buffer_size)
-        add_epochs(imaging=imaging, nwbfile=nwbfile)
+        add_devices(nwbfile=nwbfile_out, metadata=metadata)
+        add_two_photon_series(imaging=imaging, nwbfile=nwbfile_out, metadata=metadata, buffer_size=buffer_size)
+        add_epochs(imaging=imaging, nwbfile=nwbfile_out)
     return nwbfile_out
 
 
