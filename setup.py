@@ -14,14 +14,9 @@ with open(os.path.join(path, "requirements-full.txt")) as f:
     full_dependencies = f.readlines()
 with open(os.path.join(path, "requirements-rtd.txt")) as f:
     documentation_dependencies = f.readlines()
+with open(os.path.join(path, "requirements-testing.txt")) as f:
+    testing_suite_dependencies = f.readlines()
 
-testing_suite_dependencies = [
-    "pytest",
-    "pytest-cov",
-    "ndx-events==0.2.0",
-    "parameterized==0.8.1",
-    "ndx-dandi-icephys>=0.4.0",
-]
 extras_require = dict(full=full_dependencies, test=testing_suite_dependencies, docs=documentation_dependencies)
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
@@ -32,7 +27,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="nwb-conversion-tools",
-    version="0.11.37",
+    version="0.11.38",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",

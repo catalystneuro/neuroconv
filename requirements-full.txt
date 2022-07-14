@@ -3,7 +3,8 @@ pynwb==2.1.0
 hdmf==3.3.2
 tqdm==4.60.0
 natsort==7.1.1
-numpy==1.21.0
+numpy==1.21.0;python_version<'3.8'
+numpy==1.22.0;python_version>='3.8'
 pandas==1.2.3
 hdf5storage==0.1.18
 scipy>=1.4.1
