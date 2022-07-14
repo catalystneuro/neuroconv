@@ -1,4 +1,5 @@
-numpy>=1.22.0
+numpy>=1.21.0;python_version<'3.7'
+numpy>=1.22.0;python_version>='3.8'
 pynwb>=1.4.0
 hdmf>=3.2.1
 h5py>=2.10.0
