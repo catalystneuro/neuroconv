@@ -27,7 +27,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="nwb-conversion-tools",
-    version="0.11.37",
+    version="0.11.38",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",

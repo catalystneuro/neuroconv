@@ -15,9 +15,9 @@ psutil==5.8.0
 lxml==4.9.1
 opencv-python==4.5.1.48
 spikeextractors==0.9.10
-spikeinterface @ git+https://github.com/Spikeinterface/spikeinterface.git@d26f991ca05c3af2fec2b4fbce8004ca9e9cd9f1
+spikeinterface>=0.94.0
 neo==0.10.2
-roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@1d50cbeb15c317eecca73f4dcb16bca1bb1ff9f6
+roiextractors==0.4.17
 pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy>=1.7.1
