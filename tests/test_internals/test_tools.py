@@ -5,6 +5,7 @@ from pathlib import Path
 from shutil import rmtree
 
 import pytest
+import unittest
 from pynwb import NWBHDF5IO, ProcessingModule, TimeSeries
 from hdmf.testing import TestCase
 
@@ -194,7 +195,7 @@ class TestAutomaticDANDIUpload(TestCase):
         automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
 
 
-@pytest.mark.skipif(
+@unittest.skipIf(
     not (HAVE_GLOBUS and LOGGED_INTO_GLOBUS),
     reason="You must have globus installed and be logged in to run this test!",
 )
