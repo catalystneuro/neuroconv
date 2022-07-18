@@ -241,7 +241,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
         if isinstance(recording, RecordingExtractor):
-            # Do the comaprison with spikeextractors method
+            # Do the comparison with spikeextractors method
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
                 nwb_recording.set_channel_offsets(
@@ -271,7 +271,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             )
 
             check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
-            # This can only be tested if both gain and offest are present
+            # This can only be tested if both gain and offset are present
             if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
                 check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
