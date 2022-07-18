@@ -1,11 +1,11 @@
 import os
+import unittest
 from datetime import datetime
 from tempfile import mkdtemp
 from pathlib import Path
 from shutil import rmtree
 
 import pytest
-import unittest
 from pynwb import NWBHDF5IO, ProcessingModule, TimeSeries
 from hdmf.testing import TestCase
 
@@ -173,7 +173,7 @@ def test_estimate_total_conversion_runtime():
     ]
 
 
-@unittest.skipif(
+@unittest.skipIf(
     not HAVE_DANDI_KEY,
     reason="You must set your DANDI_API_KEY to run this test!",
 )
