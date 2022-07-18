@@ -32,7 +32,7 @@ try:
         LOGGED_INTO_GLOBUS = False
 except ModuleNotFoundError:
     HAVE_GLOBUS, LOGGED_INTO_GLOBUS = False, False
-HAVE_DANDI_KEY = "DANDI_API_KEY" in os.environ
+HAVE_DANDI_KEY = os.getenv("DANDI_API_KEY") is not None  # "DANDI_API_KEY" in os.environ
 
 
 class TestConversionTools(TestCase):
