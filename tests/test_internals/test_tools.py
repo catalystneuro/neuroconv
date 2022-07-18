@@ -32,6 +32,9 @@ try:
         LOGGED_INTO_GLOBUS = False
 except ModuleNotFoundError:
     HAVE_GLOBUS, LOGGED_INTO_GLOBUS = False, False
+
+print("here - 1")
+print(os.environ)
 HAVE_DANDI_KEY = os.getenv("DANDI_API_KEY") is not None  # "DANDI_API_KEY" in os.environ
 
 
@@ -192,6 +195,8 @@ class TestAutomaticDANDIUpload(TestCase):
         reason="You must set your DANDI_API_KEY to run this test!",
     )
     def test_automatic_dandi_upload(self):
+        print("here - 2")
+        print(os.environ)
         automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
 
 
