@@ -173,10 +173,6 @@ def test_estimate_total_conversion_runtime():
     ]
 
 
-@unittest.skipIf(
-    not HAVE_DANDI_KEY,
-    reason="You must set your DANDI_API_KEY to run this test!",
-)
 class TestAutomaticDANDIUpload(TestCase):
     def setUp(self):
         self.tmpdir = Path(mkdtemp())
@@ -191,14 +187,14 @@ class TestAutomaticDANDIUpload(TestCase):
     def tearDown(self):
         rmtree(self.tmpdir)
 
+    @unittest.skipIf(
+        not HAVE_DANDI_KEY,
+        reason="You must set your DANDI_API_KEY to run this test!",
+    )
     def test_automatic_dandi_upload(self):
         automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
 
 
-@unittest.skipIf(
-    not (HAVE_GLOBUS and LOGGED_INTO_GLOBUS),
-    reason="You must have globus installed and be logged in to run this test!",
-)
 class TestGlobusTransferContent(TestCase):
     def setUp(self):
         self.tmpdir = Path(mkdtemp())  # Globus has permission issues here apparently
@@ -207,6 +203,10 @@ class TestGlobusTransferContent(TestCase):
     def tearDown(self):
         rmtree(self.tmpdir)
 
+    @unittest.skipIf(
+        not (HAVE_GLOBUS and LOGGED_INTO_GLOBUS),
+        reason="You must have globus installed and be logged in to run this test!",
+    )
     def test_transfer_globus_content(self):
         """Test is fixed to a subpath that is somewhat unlikely to change in the future."""
         source_endpoint_id = "188a6110-96db-11eb-b7a9-f57b2d55370d"  # Buzsaki
