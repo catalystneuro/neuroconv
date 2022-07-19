@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "source.schema.json",
+  "title": "Source data and conversion options",
+  "description": "Schema for the source data and conversion options",
+  "version": "0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+
+    "source_data": {
+      "title": "Source Files",
+      "type": "object",
+      "required": [
+        "raw_data",
+        "processed_data"
+      ],
+      "properties": {
+        "raw_data": {
+          "type": "string",
+          "format": "file",
+          "description": "path to raw data file"
+        },
+        "processed_data": {
+          "type": "string",
+          "format": "directory",
+          "description": "path to directory containing processed data files"
+        },
+        "ref_image": {
+          "type": "string",
+          "format": "file",
+          "description": "path to reference image file"
+        }
+      }
+    },
+
+    "conversion_options": {
+      "title": "Conversion Options",
+      "type": "object",
+      "properties": {
+        "add_raw": {
+          "type": "boolean",
+          "default": true
+        },
+        "add_processed": {
+          "type": "boolean",
+          "default": true
+        },
+        "add_behavior": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}
