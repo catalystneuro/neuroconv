@@ -7,9 +7,9 @@ import numpy as np
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
-from roiextractors.testing import generate_dummy_imaging_extractor
+from roiextractors.testing import generate_dummy_imaging_extractor, generate_dummy_segmentation_extractor
 
-from nwb_conversion_tools.tools.roiextractors import add_devices, add_two_photon_series
+from nwb_conversion_tools.tools.roiextractors import add_devices, add_two_photon_series, add_summary_images
 
 
 class TestAddDevices(unittest.TestCase):
@@ -248,6 +248,38 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
             imaging_planes_in_file = read_nwbfile.imaging_planes
             assert self.imaging_plane_name in imaging_planes_in_file
             assert len(imaging_planes_in_file) == 1
+
+
+class TestAddSummaryImages(unittest.TestCase):
+    def setUp(self):
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+    def test_add_sumary_images(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rows=10, num_columns=15, has_summary_images=True
+        )
+
+        images_set_name = "images_set_name"
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        images_collection = ophys.data_interfaces[images_set_name]
+
+        extracted_images_dict = images_collection.images
+        extracted_images_dict = {image_name: image.data.T for image_name, image in extracted_images_dict.items()}
+        expected_images_dict = segmentation_extractor.get_images_dict()
+
+        assert expected_images_dict.keys() == extracted_images_dict.keys()
+        for image_name in expected_images_dict.keys():
+            np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
 
 
 if __name__ == "__main__":
