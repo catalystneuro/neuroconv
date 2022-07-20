@@ -261,9 +261,7 @@ class TestAddSummaryImages(unittest.TestCase):
 
     def test_add_sumary_images(self):
 
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rows=10, num_columns=15, has_summary_images=True
-        )
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
         images_set_name = "images_set_name"
         add_summary_images(
@@ -280,6 +278,22 @@ class TestAddSummaryImages(unittest.TestCase):
         assert expected_images_dict.keys() == extracted_images_dict.keys()
         for image_name in expected_images_dict.keys():
             np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
+
+    def test_extractor_with_no_summary_images(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rows=10, num_columns=15, has_summary_images=False
+        )
+
+        images_set_name = "images_set_name"
+        self.nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
+
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        assert images_set_name not in ophys.data_interfaces
 
 
 if __name__ == "__main__":
