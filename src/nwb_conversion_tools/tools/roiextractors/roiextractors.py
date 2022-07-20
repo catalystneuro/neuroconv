@@ -373,6 +373,32 @@ def get_nwb_segmentation_metadata(sgmextractor):
     return metadata
 
 
+def add_summary_images(
+    nwbfile: NWBFile, segmentation_extractor: SegmentationExtractor, images_set_name: str
+) -> NWBFile:
+
+    images_dict = segmentation_extractor.get_images_dict()
+    images_to_add = {image_name: image for image_name, image in images_dict.items() if image is not None}
+    if not images_to_add:
+        return nwbfile
+
+    if "ophys" not in nwbfile.processing:
+        nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
+
+    ophys = nwbfile.get_processing_module("ophys")
+
+    image_collection_does_not_exist = images_set_name not in ophys.data_interfaces
+    if image_collection_does_not_exist:
+        ophys.add(Images(images_set_name))
+    image_collection = ophys.data_interfaces[images_set_name]
+
+    for image_name, img in images_to_add.items():
+        # Note that nwb uses the conversion width x heigth (columns, rows) and roiextractors uses the transpose
+        image_collection.add_image(GrayscaleImage(name=image_name, data=img.T))
+
+    return nwbfile
+
+
 def write_segmentation(
     segext_obj: SegmentationExtractor,
     save_path: FilePathType = None,
