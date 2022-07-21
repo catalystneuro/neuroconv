@@ -1,9 +1,9 @@
-[![PyPI version](https://badge.fury.io/py/nwb-conversion-tools.svg)](https://badge.fury.io/py/nwb-conversion-tools)
-![Full Tests](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/testing.yml/badge.svg)
-![Auto-release](https://github.com/catalystneuro/nwb-conversion-tools/actions/workflows/auto-publish.yml/badge.svg)
-[![codecov](https://codecov.io/github/catalystneuro/nwb-conversion-tools/coverage.svg?branch=main)](https://codecov.io/github/catalystneuro/nwb-conversion-tools?branch=main)
-[![documentation](https://readthedocs.org/projects/nwb-conversion-tools/badge/?version=main)](https://nwb-conversion-tools.readthedocs.io/en/main/)
-[![License](https://img.shields.io/pypi/l/pynwb.svg)](https://github.com/catalystneuro/nwb-conversion-tools/license.txt)
+[![PyPI version](https://badge.fury.io/py/neuroconv.svg)](https://badge.fury.io/py/nwb-conversion-tools)
+![Full Tests](https://github.com/catalystneuro/neuroconv/actions/workflows/testing.yml/badge.svg)
+![Auto-release](https://github.com/catalystneuro/neuroconv/actions/workflows/auto-publish.yml/badge.svg)
+[![codecov](https://codecov.io/github/catalystneuro/neuroconv/coverage.svg?branch=main)](https://codecov.io/github/catalystneuro/neuroconv?branch=main)
+[![documentation](https://readthedocs.org/projects/neuroconv/badge/?version=main)](https://neuroconv.readthedocs.io/en/main/)
+[![License](https://img.shields.io/pypi/l/pynwb.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
 
 # NeuroConv
 
@@ -17,9 +17,9 @@ Features:
 * Leverages SpikeExtractor to support conversion from a number or proprietary formats.
 
 ## Installation
-To install the latest stable release of **nwb-conversion-tools** though PyPI, type:
+To install the latest stable release of **neuroconv** though PyPI, type:
 ```shell
-pip install nwb-conversion-tools
+pip install neuroconv
 ```
 
 For more flexibility we recommend installing the latest version directly from GitHub. The following commands create an environment with all the required dependencies and the latest updates:
@@ -38,9 +38,7 @@ pip install git+https://github.com/catalystneuro/neuroconv.git@master
 ```
 
 ## Dependencies
-NWB Conversion Tools relies heavily on [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
-
-You can use a graphical interface for your converter with [NWB Web GUI](https://github.com/catalystneuro/nwb-web-gui).
+NWB Conversion Tools relies heavily on [SpikeInterface](https://github.com/SpikeInterface/spikeinterface) and [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
 
 
 ## Catalogue
@@ -106,8 +104,8 @@ Note that this will also install `datalad` which is the endorsed way of download
 2) The same can be accomplished by using `pip`. In a clean environment run:
 
 ```shell
-git clone https://github.com/catalystneuro/nwb-conversion-tools
-cd nwb-conversion-tools
+git clone https://github.com/catalystneuro/neuroconv
+cd neuroconv
 pip install .[test, full]
 ```
 
