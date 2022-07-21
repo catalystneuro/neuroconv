@@ -26,14 +26,14 @@ if not gin_config_file_local.exists():
     copy(src=gin_config_file_base, dst=gin_config_file_local)
 
 setup(
-    name="neuroconv",
+    name="nwb-conversion-tools",
     version="0.11.38",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Cody Baker, Szonja Weigl, Heberto Mayorquin, Luiz Tauffer, and Ben Dichter",
+    author="Ben Dichter, Cody Baker, and Luiz Tauffer",
     author_email="ben.dichter@gmail.com",
-    url="https://github.com/catalystneuro/neuroconv",
+    url="https://github.com/catalystneuro/nwb-conversion-tools",
     keywords="nwb",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
@@ -43,7 +43,7 @@ setup(
     extras_require=extras_require,
     entry_points={
         "console_scripts": [
-            "neuroconv = neuroconv.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
+            "nwbct-run-conversion = nwb_conversion_tools.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
         ],
     },
 )

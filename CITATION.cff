@@ -4,8 +4,8 @@ authors:
   - family-names: Baker
     given-names: Cody
     orcid: https://orcid.org/0000-0002-0829-4790
-  - family-names: Weigl
-    given-names: Szonja
+  - family-names: Sharda
+    given-names: Saksham
   - family-names: Mayorquin
     given-names: Heberto
     orcid: https://orcid.org/0000-0002-5937-7537
@@ -17,7 +17,7 @@ authors:
   - family-names: Dichter
     given-names: Benjamin
     orcid: https://orcid.org/0000-0001-5725-6910
-title: "NeuroConv"
+title: "Nwb-conversion-tools"
 version: 0.9.9
 date-released: 2022-2-3
-url: "https://github.com/catalystneuro/neuroconv.git"
+url: "https://github.com/catalystneuro/nwb-conversion-tools.git"

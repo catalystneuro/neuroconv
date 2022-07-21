@@ -5,10 +5,12 @@
 [![documentation](https://readthedocs.org/projects/nwb-conversion-tools/badge/?version=main)](https://nwb-conversion-tools.readthedocs.io/en/main/)
 [![License](https://img.shields.io/pypi/l/pynwb.svg)](https://github.com/catalystneuro/nwb-conversion-tools/license.txt)
 
-# NeuroConv
+# NWB conversion tools
 
-Neuroconv is a package for creating NWB files by converting and
+NWB Conversion Tools is a package for creating NWB files by converting and
 combining neural data in proprietary formats and adding essential metadata.
+
+**Under heavy construction. API is changing rapidly.**
 
 
 Features:
@@ -17,28 +19,28 @@ Features:
 * Leverages SpikeExtractor to support conversion from a number or proprietary formats.
 
 ## Installation
-To install the latest stable release of **neuroconv** though PyPI, type:
+To install the latest stable release of **nwb-conversion-tools** though PyPI, type:
 ```shell
-pip install neuroconv
+pip install nwb-conversion-tools
 ```
 
 For more flexibility we recommend installing the latest version directly from GitHub. The following commands create an environment with all the required dependencies and the latest updates:
 
 ```shell
-git clone https://github.com/catalystneuro/neuroconv
-cd neuroconv
-conda env create -f make_environment.yml
-conda activate neuroconv_environment
+git clone https://github.com/catalystneuro/nwb-conversion-tools
+cd nwb-conversion-tools
+conda env create -f make_env.yml
+conda activate nwb_conversion_env
 ```
 Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs).
 
 Finally, if you prefer to avoid `conda` altogether, the following commands provide a clean installation within the current environment:
 ```shell
-pip install git+https://github.com/catalystneuro/neuroconv.git@main
+pip install git+https://github.com/catalystneuro/nwb-conversion-tools.git@master
 ```
 
 ## Dependencies
-Neuroconv relies heavily on [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
+NWB Conversion Tools relies heavily on [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
 
 You can use a graphical interface for your converter with [NWB Web GUI](https://github.com/catalystneuro/nwb-web-gui).
 
