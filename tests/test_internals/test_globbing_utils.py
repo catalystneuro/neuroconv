@@ -1,6 +1,6 @@
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.utils import decompose_f_string, parse_f_string
+from neuroconv.utils import decompose_f_string, parse_f_string
 
 
 class TestGlobbingAssertions(TestCase):

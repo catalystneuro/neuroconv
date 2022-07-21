@@ -10,12 +10,11 @@ from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
 from tqdm import tqdm
-from nwb_conversion_tools.utils import calculate_regular_series_rate
 
 from .movie_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
-from ....utils import get_schema_from_hdmf_class, get_base_schema
+from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate
 
 
 def _check_duplicates(movies_metadata, file_paths):
@@ -37,7 +36,6 @@ def _check_duplicates(movies_metadata, file_paths):
     file_paths_list: List[List[str]]
         len(file_paths_list)==len(movies_metadata_unique)
     """
-
     keys_set = []
     movies_metadata_unique = []
     file_paths_list = []

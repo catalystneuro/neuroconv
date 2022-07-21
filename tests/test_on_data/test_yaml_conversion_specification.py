@@ -7,8 +7,8 @@ from datetime import datetime
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools import run_conversion_from_yaml
-from nwb_conversion_tools.utils import load_dict_from_file
+from neuroconv import run_conversion_from_yaml
+from neuroconv.utils import load_dict_from_file
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 from .setup_paths import OUTPUT_PATH

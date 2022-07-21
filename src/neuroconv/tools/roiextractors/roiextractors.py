@@ -25,7 +25,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
-from nwb_conversion_tools.utils import (
+from ...utils import (
     FilePathType,
     OptionalFilePathType,
     dict_deep_update,

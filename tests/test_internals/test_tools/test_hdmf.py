@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from nwb_conversion_tools.tools.hdmf import SliceableDataChunkIterator
+from neuroconv.tools.hdmf import SliceableDataChunkIterator
 
 
 def test_sliceable_data_chunk_iterator():

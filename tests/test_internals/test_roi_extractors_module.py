@@ -9,7 +9,7 @@ from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
 from roiextractors.testing import generate_dummy_imaging_extractor
 
-from nwb_conversion_tools.tools.roiextractors import add_devices, add_two_photon_series
+from neuroconv.tools.roiextractors import add_devices, add_two_photon_series
 
 
 class TestAddDevices(unittest.TestCase):

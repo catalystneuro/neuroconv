@@ -9,13 +9,13 @@ import pytest
 from pynwb import NWBHDF5IO, ProcessingModule, TimeSeries
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.tools.nwb_helpers import (
+from neuroconv.tools.nwb_helpers import (
     get_module,
     make_nwbfile_from_metadata,
     get_default_nwbfile_metadata,
     make_or_load_nwbfile,
 )
-from nwb_conversion_tools.tools.data_transfers import (
+from neuroconv.tools.data_transfers import (
     get_globus_dataset_content_sizes,
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,

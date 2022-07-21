@@ -4,13 +4,13 @@ import unittest
 from pathlib import Path
 from datetime import datetime
 
+import neo
 import pytest
 import numpy.testing as npt
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools import NWBConverter, AbfInterface
-from nwb_conversion_tools import neo
-from nwb_conversion_tools.utils import load_dict_from_file
+from neuroconv import NWBConverter, AbfInterface
+from neuroconv.utils import load_dict_from_file
 
 try:
     from parameterized import parameterized, param

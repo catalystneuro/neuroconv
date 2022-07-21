@@ -1,7 +1,7 @@
 from pathlib import Path
 import datetime
 
-from nwb_conversion_tools.datainterfaces.ecephys.neuralynx.neuralynxdatainterface import (
+from neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface import (
     get_metadata,
     get_filtering,
     NeuralynxRecordingInterface,

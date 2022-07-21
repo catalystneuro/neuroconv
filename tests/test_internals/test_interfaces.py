@@ -5,13 +5,15 @@ from packaging import version
 from tempfile import mkdtemp
 from pathlib import Path
 from datetime import datetime
+
 import numpy as np
 import pytest
 import spikeextractors as se
 from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
-from nwb_conversion_tools import (
+
+from neuroconv import (
     NWBConverter,
     RecordingTutorialInterface,
     SortingTutorialInterface,
@@ -19,7 +21,7 @@ from nwb_conversion_tools import (
     SIPickleSortingExtractorInterface,
     CEDRecordingInterface,
 )
-from nwb_conversion_tools.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
+from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
 
 class TestAssertions(TestCase):
