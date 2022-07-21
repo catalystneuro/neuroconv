@@ -5,8 +5,8 @@ import pytest
 import probeinterface as pi
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
-from nwb_conversion_tools.datainterfaces.ecephys.spikeglx.spikeglx_utils import get_session_start_time
-from nwb_conversion_tools import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
+from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import get_session_start_time
+from neuroconv import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

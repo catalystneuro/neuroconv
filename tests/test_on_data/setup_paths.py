@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from nwb_conversion_tools.utils import load_dict_from_file
+from neuroconv.utils import load_dict_from_file
 
 
 # Load the configuration for the data tests

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union
 from copy import deepcopy
 
-from nwb_conversion_tools.utils import (
+from neuroconv.utils import (
     get_schema_from_method_signature,
     dict_deep_update,
     fill_defaults,

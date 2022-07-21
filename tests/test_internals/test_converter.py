@@ -5,14 +5,15 @@ from datetime import datetime
 
 from pynwb import NWBFile
 
+from neuroconv import NWBConverter
+from neuroconv.basedatainterface import BaseDataInterface
+
 try:
     from ndx_events import LabeledEvents
 
     HAVE_NDX_EVENTS = True
 except ImportError:
     HAVE_NDX_EVENTS = False
-from nwb_conversion_tools import NWBConverter
-from nwb_conversion_tools.basedatainterface import BaseDataInterface
 
 
 def test_converter():

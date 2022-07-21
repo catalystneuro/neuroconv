@@ -9,7 +9,7 @@ Convert Phy data to NWB using :py:class:`~.nwb_conversion_tools.datainterfaces.e
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>>
-    >>> from nwb_conversion_tools import PhySortingInterface
+    >>> from neuroconv import PhySortingInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"
     >>> # Change the file_path to the location of the data in your system

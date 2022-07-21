@@ -1,10 +1,8 @@
 import unittest
-import os
 from datetime import datetime
 
-import numpy as np
 from pynwb import NWBHDF5IO
-from nwb_conversion_tools import NWBConverter, MovieInterface
+from neuroconv import NWBConverter, MovieInterface
 
 from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 

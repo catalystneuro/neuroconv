@@ -1,4 +1,4 @@
-name: nwb_conversion_env
+name: neuroconv_environment
 channels:
 - defaults
 - anaconda

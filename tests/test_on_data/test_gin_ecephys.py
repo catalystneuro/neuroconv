@@ -18,7 +18,7 @@ from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractor
 
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools import (
+from neuroconv import (
     NWBConverter,
     CellExplorerSortingInterface,
     CEDRecordingInterface,

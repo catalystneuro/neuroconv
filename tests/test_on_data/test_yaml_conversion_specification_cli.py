@@ -5,7 +5,7 @@ from datetime import datetime
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools.tools.data_transfers import deploy_process
+from neuroconv.tools.data_transfers import deploy_process
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 from .setup_paths import OUTPUT_PATH
@@ -19,7 +19,7 @@ class TestYAMLConversionSpecification(TestCase):
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
         deploy_process(
             command=(
-                f"nwbct-run-conversion {yaml_file_path} "
+                f"neuroconv {yaml_file_path} "
                 f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
         )
@@ -55,7 +55,7 @@ class TestYAMLConversionSpecification(TestCase):
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_missing_nwbfile_names.yml"
         deploy_process(
             command=(
-                f"nwbct-run-conversion {yaml_file_path} "
+                f"neuroconv {yaml_file_path} "
                 f"--data-folder-path {DATA_PATH} --output-folder-path {self.test_folder} --overwrite"
             )
         )

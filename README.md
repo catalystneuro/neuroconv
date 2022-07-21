@@ -5,12 +5,10 @@
 [![documentation](https://readthedocs.org/projects/nwb-conversion-tools/badge/?version=main)](https://nwb-conversion-tools.readthedocs.io/en/main/)
 [![License](https://img.shields.io/pypi/l/pynwb.svg)](https://github.com/catalystneuro/nwb-conversion-tools/license.txt)
 
-# NWB conversion tools
+# NeuroConv
 
-NWB Conversion Tools is a package for creating NWB files by converting and
+NeuroConv is a package for creating NWB files by converting and
 combining neural data in proprietary formats and adding essential metadata.
-
-**Under heavy construction. API is changing rapidly.**
 
 
 Features:
@@ -27,16 +25,16 @@ pip install nwb-conversion-tools
 For more flexibility we recommend installing the latest version directly from GitHub. The following commands create an environment with all the required dependencies and the latest updates:
 
 ```shell
-git clone https://github.com/catalystneuro/nwb-conversion-tools
-cd nwb-conversion-tools
-conda env create -f make_env.yml
-conda activate nwb_conversion_env
+git clone https://github.com/catalystneuro/neuroconv
+cd neuroconv
+conda env create -f make_environment.yml
+conda activate neuroconv_environment
 ```
 Note that this will install the package in [editable mode](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs).
 
 Finally, if you prefer to avoid `conda` altogether, the following commands provide a clean installation within the current environment:
 ```shell
-pip install git+https://github.com/catalystneuro/nwb-conversion-tools.git@master
+pip install git+https://github.com/catalystneuro/neuroconv.git@master
 ```
 
 ## Dependencies
@@ -142,8 +140,8 @@ The output of these tests is, by default, stored in a temporary directory that i
 For building the documentation locally, the following procedure can be followed. Create a clean environment and type
 the following commands in your terminal:
 ```shell
-git clone https://github.com/catalystneuro/nwb-conversion-tools
-cd nwb-conversion-tools
+git clone https://github.com/catalystneuro/neuroconv
+cd neuroconv
 pip install -e .[docs]
 ```
 These commands install both the latest version of the repo and the dependencies necessary to build the documentation.

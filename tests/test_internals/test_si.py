@@ -2,7 +2,6 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from collections import defaultdict
 from datetime import datetime
 
 import numpy as np
@@ -20,19 +19,19 @@ from spikeextractors.testing import (
     get_default_nwbfile_metadata,
 )
 
-from nwb_conversion_tools import spikeinterface  # testing aliased import
-from nwb_conversion_tools.tools.spikeinterface import (
+from neuroconv import spikeinterface  # testing aliased import
+from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
     write_sorting,
     add_electrodes,
     add_units_table,
 )
-from nwb_conversion_tools.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
+from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-from nwb_conversion_tools.utils import FilePathType
-from nwb_conversion_tools.tools.nwb_helpers import get_module
+from neuroconv.utils import FilePathType
+from neuroconv.tools.nwb_helpers import get_module
 
 testing_session_time = datetime.now().astimezone()
 

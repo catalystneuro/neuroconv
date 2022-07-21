@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from nwb_conversion_tools import interface_list
-from nwb_conversion_tools.utils import load_dict_from_file
+from neuroconv import interface_list
+from neuroconv.utils import load_dict_from_file
 
 
 @pytest.mark.parametrize("data_interface", interface_list)
@@ -23,7 +23,7 @@ def test_yaml_specification_schema():
     schema = load_dict_from_file(
         file_path=Path(__file__).parent.parent.parent
         / "src"
-        / "nwb_conversion_tools"
+        / "neuroconv"
         / "schemas"
         / "yaml_conversion_specification_schema.json"
     )

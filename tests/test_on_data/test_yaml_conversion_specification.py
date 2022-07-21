@@ -7,8 +7,8 @@ from datetime import datetime
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
-from nwb_conversion_tools import run_conversion_from_yaml
-from nwb_conversion_tools.utils import load_dict_from_file
+from neuroconv import run_conversion_from_yaml
+from neuroconv.utils import load_dict_from_file
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 from .setup_paths import OUTPUT_PATH
@@ -20,7 +20,7 @@ class TestYAMLConversionSpecification(TestCase):
     def test_validate_example_specification(self):
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
         yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification.yml"
-        schema_folder = path_to_test_yml_files.parent.parent.parent / "src" / "nwb_conversion_tools" / "schemas"
+        schema_folder = path_to_test_yml_files.parent.parent.parent / "src" / "neuroconv" / "schemas"
         specification_schema = load_dict_from_file(
             file_path=schema_folder / "yaml_conversion_specification_schema.json"
         )

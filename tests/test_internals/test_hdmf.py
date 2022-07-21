@@ -1,7 +1,7 @@
 import numpy as np
 from hdmf.testing import TestCase
 
-from nwb_conversion_tools.tools.hdmf import SliceableDataChunkIterator
+from neuroconv.tools.hdmf import SliceableDataChunkIterator
 
 
 class TestIteratorAssertions(TestCase):

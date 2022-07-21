@@ -8,7 +8,7 @@ Convert spikegadgets data to NWB using :py:class:`~nwb_conversion_tools.datainte
     from datetime import datetime
     from dateutil import tz
     from pathlib import Path
-    from nwb_conversion_tools import SpikeGadgetsRecordingInterface
+    from neuroconv import SpikeGadgetsRecordingInterface
 
     # For this interface we need to pass the specific path to the files.
     file_path = f"{ECEPHY_DATA_PATH}/spikegadgets/20210225_em8_minirec2_ac.rec"

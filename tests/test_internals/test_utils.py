@@ -1,4 +1,4 @@
-from nwb_conversion_tools.utils import calculate_regular_series_rate
+from neuroconv.utils import calculate_regular_series_rate
 
 
 def test_check_regular_series():
