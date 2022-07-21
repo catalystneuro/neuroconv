@@ -1,7 +1,7 @@
 name: Minimal and Full Tests
 on:
   schedule:
-    - cron: "0 0 * * *"  # daily
+    - cron: "0 16 * * *"  # Daily at Noon EST
   pull_request:
 
 env:
@@ -24,27 +24,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-
-      - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' }}
-        name: Get datalad - Linux
-        run: conda install -c conda-forge datalad==0.16.3
-     # - if: ${{ matrix.os == 'macos-latest' }}
-     #   name: Get git-annex - MacOS
-     #   run: |
-          # Temporarily disabling MacOS due to recently break in brew installation of git-annex
-          # brew tap-new $USER/local-git-annex-10.20220222
-          # brew extract --version=10.20220222 git-annex $USER/local-git-annex
-          # brew install git-annex@10.20220222
-          # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/a3510c0295007540f00dc7b629c93038340e8d54/Formula/git-annex.rb
-          # brew install --overwrite git
-      - if: ${{ matrix.os == 'windows-latest' }}
-        name: Get git-annex - Windows
-        uses: crazy-max/ghaction-chocolatey@v1.6.0
-        with:
-          args: install git-annex --ignore-checksums
-      - if: ${{ matrix.os == 'windows-latest' }} #|| matrix.os == 'macos-latest'}}
-        name: Get datalad - Windows and Mac
-        run: pip install datalad==0.16.3
 
       - name: Global Setup
         run: |
@@ -69,8 +48,35 @@ jobs:
         with:
           path: ./ephy_testing_data
           key: ecephys-datasets-220630-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
-      - name: "Force GIN: ecephys download"
-        if: steps.cache-ecephys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
+      - name: Get ophys_testing_data current head hash
+        id: ophys
+        run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
+      - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+        uses: actions/cache@v2
+        id: cache-ophys-datasets
+        with:
+          path: ./ophys_testing_data
+          key: ophys-datasets-220702-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+      - name: Get behavior_testing_data current head hash
+        id: behavior
+        run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
+      - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
+        uses: actions/cache@v2
+        id: cache-behavior-datasets
+        with:
+          path: ./behavior_testing_data
+          key: behavior-datasets-042022-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+      - if: ${{ (steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false) && matrix.os == 'ubuntu-latest' }}
+        name: Get datalad - Linux
+        run: conda install -c conda-forge datalad==0.16.3
+      - if: ${{ (steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false) && matrix.os == 'windows-latest' }}
+        name: Get git-annex - Windows
+        uses: crazy-max/ghaction-chocolatey@v1.6.0
+        with:
+          args: install git-annex --ignore-checksums
+
+      - if: steps.cache-ecephys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
+        name: "Force GIN: ecephys download"
         run: |
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           cd ephy_testing_data
@@ -90,31 +96,11 @@ jobs:
           datalad get -r ./cellexplorer/
           datalad get -r ./axon/
           cd ..
-      - name: Get ophys_testing_data current head hash
-        id: ophys
-        run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
-
-      - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-        uses: actions/cache@v2
-        id: cache-ophys-datasets
-        with:
-          path: ./ophys_testing_data
-          key: ophys-datasets-220702-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
-      - name: "Force GIN: ophys download"
-        if: steps.cache-ophys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
-        run: |
-          datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-      - name: Get behavior_testing_data current head hash
-        id: behavior
-        run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
-      - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
-        uses: actions/cache@v2
-        id: cache-behavior-datasets
-        with:
-          path: ./behavior_testing_data
-          key: behavior-datasets-042022-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-      - name: "Force GIN: behavior download"
-        if: steps.cache-behavior-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
+      - if: steps.cache-ophys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
+        name: "Force GIN: ophys download"
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+      - if: steps.cache-behavior-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
+        name: "Force GIN: behavior download"
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
 
       - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'}}
