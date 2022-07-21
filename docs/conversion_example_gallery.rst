@@ -42,6 +42,13 @@ Imaging
     Scanbox <conversion_examples_gallery/imaging/scanbox>
     ScanImage <conversion_examples_gallery/imaging/scanimage>
 
+Behavior
+--------
+.. toctree::
+    :maxdepth: 1
+
+    DeepLabCut <conversion_examples_gallery/behavior/deeplabcut>
+
 Segmentation
 ------------
 
