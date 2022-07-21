@@ -7,7 +7,7 @@ Convert Intan data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from nwb_conversion_tools import IntanRecordingInterface
+    >>> from neuroconv import IntanRecordingInterface
     >>>
     >>> # For this data interface we need to pass the location of the `.rhd` file
     >>> suffix = "rhd" # This can also be rhs

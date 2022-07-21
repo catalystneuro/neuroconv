@@ -8,7 +8,7 @@ Convert Blackrock data to NWB using :py:class:`~nwb_conversion_tools.datainterfa
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from nwb_conversion_tools import BlackrockRecordingExtractorInterface
+    >>> from neuroconv import BlackrockRecordingExtractorInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.ns5`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/blackrock/FileSpec2.3001.ns5"
