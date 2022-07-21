@@ -1,4 +1,4 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda and Alessio Buccino."""
+"""Authors: Heberto Mayorquin, Saksham Sharda and Alessio Buccino, Szonja Weigl"""
 import os
 from pathlib import Path
 from warnings import warn
