@@ -1,2 +1,3 @@
 include *.yml
+include *.json
 include neuroconv/schemas/*
