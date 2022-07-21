@@ -1,7 +1,7 @@
 DeepLabCut data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert DeepLabCut imaging data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`.
+Convert DeepLabCut imaging data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`.
 
 .. code-block:: python
 
