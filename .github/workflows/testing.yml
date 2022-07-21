@@ -74,6 +74,9 @@ jobs:
         uses: crazy-max/ghaction-chocolatey@v1.6.0
         with:
           args: install git-annex --ignore-checksums
+      - if: ${{ (steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false) && matrix.os == 'windows-latest' }}
+        name: Get datalad - Windows
+        run: pip install datalad==0.16.3
 
       - if: steps.cache-ecephys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
         name: "Force GIN: ecephys download"
