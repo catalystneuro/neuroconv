@@ -88,20 +88,7 @@ Utilizing the CED recording interface, this project paired ecephys channels with
 `nwb-conversion-tools` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality.
 
 ### Install testing dependencies
-We provide two easy ways of installing all the dependencies required for testing:
-
-1) The first is a `conda` based solution that creates an environment with all the dependencies already installed.
-
-```shell
-git clone https://github.com/catalystneuro/nwb-conversion-tools
-cd nwb-conversion-tools
-conda env create -f make_env_testing.yml
-conda activate nwb_conversion_testing_env
-```
-
-Note that this will also install `datalad` which is the endorsed way of downloading the testing data plus `pytest` and `pytest-cov` which are the tools that we use on our continuous integration suit.
-
-2) The same can be accomplished by using `pip`. In a clean environment run:
+In a clean environment run:
 
 ```shell
 git clone https://github.com/catalystneuro/neuroconv
@@ -109,7 +96,6 @@ cd neuroconv
 pip install .[test, full]
 ```
 
-Notice that this method does not install `datalad`.
 ### Downloading the data
 [Datalad](https://www.datalad.org/) (`conda install datalad`) is the recommended way for downloading the data. To do this; simply call:
 
