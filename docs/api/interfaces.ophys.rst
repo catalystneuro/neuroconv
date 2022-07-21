@@ -3,27 +3,27 @@ Segmentation
 
 Base Segmentation
 -----------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.basesegmentationextractorinterface
+.. automodule:: neuroconv.datainterfaces.ophys.basesegmentationextractorinterface
 
 Caiman Segmentation
 -------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.caiman.caimandatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.caiman.caimandatainterface
 
 Cnmfe Segmentation
 ------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.cnmfe.cnmfedatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.cnmfe.cnmfedatainterface
 
 Extract Segmentation
 --------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.extract.extractdatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.extract.extractdatainterface
 
 Sima Segmentation
 -----------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.sima.simadatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.sima.simadatainterface
 
 Suite2p Segmentation
 --------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.suite2p.suite2pdatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface
 
 
 
@@ -32,20 +32,20 @@ Imaging
 
 Base Imaging
 ------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.baseimagingextractorinterface
+.. automodule:: neuroconv.datainterfaces.ophys.baseimagingextractorinterface
 
 Hdf5 Imaging
 ------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.hdf5.hdf5datainterface
+.. automodule:: neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface
 
 Sbx Imaging
 -----------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.sbx.sbxdatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.sbx.sbxdatainterface
 
 Tiff Imaging
 ------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.tiff.tiffdatainterface
+.. automodule:: neuroconv.datainterfaces.ophys.tiff.tiffdatainterface
 
 ScanImage Imaging
 -----------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ophys.scanimage.scanimageimaginginterface
+.. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface

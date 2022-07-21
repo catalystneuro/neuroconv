@@ -3,8 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, Path(__file__).resolve().parents[1])
 
-project = "NWB Conversion Tools"
-copyright = "2021, CatalystNeuro"
+project = "NeuroConv"
+copyright = "2022, CatalystNeuro"
 author = "Cody Baker and Ben Dichter"
 
 extensions = [
