@@ -378,7 +378,7 @@ def add_summary_images(
 ) -> NWBFile:
 
     images_dict = segmentation_extractor.get_images_dict()
-    images_to_add = {image_name: image for image_name, image in images_dict.items() if image is not None}
+    images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
     if not images_to_add:
         return nwbfile
 
@@ -392,9 +392,9 @@ def add_summary_images(
         ophys.add(Images(images_set_name))
     image_collection = ophys.data_interfaces[images_set_name]
 
-    for image_name, img in images_to_add.items():
+    for img_name, img in images_to_add.items():
         # Note that nwb uses the conversion width x heigth (columns, rows) and roiextractors uses the transpose
-        image_collection.add_image(GrayscaleImage(name=image_name, data=img.T))
+        image_collection.add_image(GrayscaleImage(name=img_name, data=img.T))
 
     return nwbfile
 
