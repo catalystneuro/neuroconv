@@ -1,3 +1,3 @@
 ROI extractors
 ==============
-.. automodule:: nwb_conversion_tools.tools.roiextractors.roiextractors
+.. automodule:: neuroconv.tools.roiextractors.roiextractors
