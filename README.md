@@ -136,4 +136,4 @@ Now, to build the documention issue the following command in your terminal:
 sphinx-build -b html docs ./docs/_build/
 ```
 
-This builds the html under `/docs/_build/` (from your root directory, where you have installed `nwb-conversion-tools`). This allows you to review the outcome of the process localy before commiting code.
+This builds the html under `/docs/_build/` (from your root directory, where you have installed `neuroconv`). This allows you to review the outcome of the process localy before commiting code.
