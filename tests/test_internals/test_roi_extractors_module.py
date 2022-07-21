@@ -2,14 +2,20 @@ from tempfile import mkdtemp
 import unittest
 from pathlib import Path
 from datetime import datetime
+from copy import deepcopy
 
 import numpy as np
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
-from roiextractors.testing import generate_dummy_imaging_extractor
+from roiextractors.testing import generate_dummy_imaging_extractor, generate_dummy_segmentation_extractor
 
-from neuroconv.tools.roiextractors import add_devices, add_two_photon_series
+from neuroconv.tools.roiextractors import (
+    add_devices,
+    add_imaging_plane,
+    add_two_photon_series,
+    add_summary_images,
+)
 
 
 class TestAddDevices(unittest.TestCase):
@@ -143,6 +149,92 @@ class TestAddDevices(unittest.TestCase):
         assert "device_object" in devices
 
 
+class TestAddImagingPlane(unittest.TestCase):
+    def setUp(self):
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        self.device_name = "optical_device"
+        self.device_metadata = dict(name=self.device_name)
+        self.metadata["Ophys"].update(Device=[self.device_metadata])
+
+        self.optical_channel_metadata = dict(
+            name="optical_channel",
+            emission_lambda=np.nan,
+            description="description",
+        )
+
+        self.imaging_plane_name = "imaging_plane_name"
+        self.imaging_plane_description = "imaging_plane_description"
+        self.imaging_plane_metadata = dict(
+            name=self.imaging_plane_name,
+            optical_channel=[self.optical_channel_metadata],
+            description=self.imaging_plane_description,
+            device=self.device_name,
+            excitation_lambda=np.nan,
+            indicator="unknown",
+            location="unknown",
+        )
+
+        self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
+
+    def test_add_imaging_plane(self):
+
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 1
+        assert self.imaging_plane_name in imaging_planes
+
+        imaging_plane = imaging_planes[self.imaging_plane_name]
+        assert imaging_plane.description == self.imaging_plane_description
+
+    def test_not_overwriting_imaging_plane_if_same_name(self):
+
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        self.imaging_plane_metadata["description"] = "modified description"
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 1
+        assert self.imaging_plane_name in imaging_planes
+
+    def test_add_two_imaging_planes(self):
+
+        # Add the first imaging plane
+        first_imaging_plane_name = "first_imaging_plane_name"
+        first_imaging_plane_description = "first_imaging_plane_description"
+        self.imaging_plane_metadata["name"] = first_imaging_plane_name
+        self.imaging_plane_metadata["description"] = first_imaging_plane_description
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        # Add the second imaging plane
+        second_imaging_plane_name = "second_imaging_plane_name"
+        second_imaging_plane_description = "second_imaging_plane_description"
+        self.imaging_plane_metadata["name"] = second_imaging_plane_name
+        self.imaging_plane_metadata["description"] = second_imaging_plane_description
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        # Test expected values
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 2
+
+        first_imaging_plane = imaging_planes[first_imaging_plane_name]
+        assert first_imaging_plane.name == first_imaging_plane_name
+        assert first_imaging_plane.description == first_imaging_plane_description
+
+        second_imaging_plane = imaging_planes[second_imaging_plane_name]
+        assert second_imaging_plane.name == second_imaging_plane_name
+        assert second_imaging_plane.description == second_imaging_plane_description
+
+
 class TestAddTwoPhotonSeries(unittest.TestCase):
     def setUp(self):
         self.session_start_time = datetime.now().astimezone()
@@ -248,6 +340,86 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
             imaging_planes_in_file = read_nwbfile.imaging_planes
             assert self.imaging_plane_name in imaging_planes_in_file
             assert len(imaging_planes_in_file) == 1
+
+
+class TestAddSummaryImages(unittest.TestCase):
+    def setUp(self):
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+    def test_add_sumary_images(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
+
+        images_set_name = "images_set_name"
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        images_collection = ophys.data_interfaces[images_set_name]
+
+        extracted_images_dict = images_collection.images
+
+        extracted_images_dict = {img_name: img.data.T for img_name, img in extracted_images_dict.items()}
+        expected_images_dict = segmentation_extractor.get_images_dict()
+
+        assert expected_images_dict.keys() == extracted_images_dict.keys()
+        for image_name in expected_images_dict.keys():
+            np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
+
+    def test_extractor_with_one_summary_image_suppressed(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
+        segmentation_extractor._image_correlation = None
+
+        images_set_name = "images_set_name"
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        images_collection = ophys.data_interfaces[images_set_name]
+
+        extracted_images_number = len(images_collection.images)
+        expected_images_number = len(
+            {img_name: img for img_name, img in segmentation_extractor.get_images_dict().items() if img is not None}
+        )
+        assert extracted_images_number == expected_images_number
+
+    def test_extractor_with_no_summary_images(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rows=10, num_columns=15, has_summary_images=False
+        )
+
+        images_set_name = "images_set_name"
+        self.nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
+
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        assert images_set_name not in ophys.data_interfaces
+
+    def test_extractor_with_no_summary_images_and_no_ophys_module(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rows=10, num_columns=15, has_summary_images=False
+        )
+
+        images_set_name = "images_set_name"
+
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        assert len(self.nwbfile.processing) == 0
 
 
 if __name__ == "__main__":
