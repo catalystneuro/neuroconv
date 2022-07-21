@@ -1,7 +1,7 @@
 Interfaces
 ============
 
-.. automodule:: nwb-conversion-tools
+.. automodule:: neuroconv
     :members:
     :no-undoc-members:
 
