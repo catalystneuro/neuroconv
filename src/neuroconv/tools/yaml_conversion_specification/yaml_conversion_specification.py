@@ -112,7 +112,7 @@ def run_conversion_from_yaml(
     global_data_interfaces = specification.get("data_interfaces")
     nwb_conversion_tools = import_module(
         name=".",
-        package="nwb_conversion_tools",  # relative import, but named and referenced as if it were absolute
+        package="neuroconv",  # relative import, but named and referenced as if it were absolute
     )
     file_counter = 0
     for experiment in specification["experiments"].values():

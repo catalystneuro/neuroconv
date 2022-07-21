@@ -4,13 +4,13 @@ import unittest
 from pathlib import Path
 from datetime import datetime
 
-import neo
 import pytest
 import numpy.testing as npt
 from pynwb import NWBHDF5IO
 
 from neuroconv import NWBConverter, AbfInterface
 from neuroconv.utils import load_dict_from_file
+from neuroconv.tools.neo import get_number_of_segments, get_number_of_electrodes
 
 try:
     from parameterized import parameterized, param
@@ -67,8 +67,8 @@ class TestIcephysNwbConversions(unittest.TestCase):
         from neo import AxonIO
 
         neo_reader = AxonIO(filename=interface_kwargs["file_paths"][0])
-        n_segments = neo.get_number_of_segments(neo_reader, block=0)
-        n_electrodes = neo.get_number_of_electrodes(neo_reader)
+        n_segments = get_number_of_segments(neo_reader, block=0)
+        n_electrodes = get_number_of_electrodes(neo_reader)
 
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
