@@ -17,3 +17,12 @@ For what is not covered by black, this project follows some of the conventions t
 #. A corollary is that, if :code:`neuroconv.foo`` exports a class or function that is implemented in :code:`neuroconv.foo.bar.baz`, the test should import it from :code:`neuroconv.foo`.
 #. Please dont use :code:`import *` in any case. It is considered harmful by the official Python recommendations. It makes the code harder to read as the origin of symbols is no longer explicitly referenced, but most important, it prevents using a static analysis tool like pyflakes to automatically find bugs in scikit-learn.
 #. Use the numpy `docstring standard <https://numpydoc.readthedocs.io/en/latest/format.html#numpydoc-docstring-guide>`_ in all your docstring.
+
+Data interfaces conventions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#. Use :code:`file_path` and :code:`folder_path` as arguments for the location of input files and folder respectively.
+#. In opposition to convention number 1 above, we use :code:`nwbfile` to refer to in-memory filesin the nwb format.
+
+Other conventions
+^^^^^^^^^^^^^^^^^
+#. Whenever possible, use dictionary literals :code:`dictionary = dict(foo=bar)`  instead of constructors :code:`dictionary={foo=bar}`.
