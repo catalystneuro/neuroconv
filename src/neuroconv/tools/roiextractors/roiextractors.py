@@ -465,18 +465,17 @@ def write_segmentation(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
 
-        # Subject:
-        if metadata_base_common.get("Subject") and nwbfile.subject is None:
-            nwbfile_out.subject = Subject(**metadata_base_common["Subject"])
         # Processing Module:
         if "ophys" not in nwbfile_out.processing:
             ophys = nwbfile_out.create_processing_module("ophys", "contains optical physiology processed data")
         else:
             ophys = nwbfile_out.get_processing_module("ophys")
+
         for plane_no_loop, (segext_obj, metadata) in enumerate(zip(segext_objs, metadata_base_list)):
-            # Device:
-            if metadata["Ophys"]["Device"][0]["name"] not in nwbfile_out.devices:
-                nwbfile_out.create_device(**metadata["Ophys"]["Device"][0])
+
+            # Add device:
+            add_devices(nwbfile=nwbfile, metadata=metadata)
+
             # ImageSegmentation:
             image_segmentation_name = (
                 "ImageSegmentation" if plane_no_loop == 0 else f"ImageSegmentation_Plane{plane_no_loop}"
@@ -486,23 +485,12 @@ def write_segmentation(
                 ophys.add(image_segmentation)
             else:
                 image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
-            # OpticalChannel:
-            optical_channels = [OpticalChannel(**i) for i in metadata["Ophys"]["ImagingPlane"][0]["optical_channel"]]
 
-            # ImagingPlane:
-            image_plane_name = "ImagingPlane" if plane_no_loop == 0 else f"ImagePlane_{plane_no_loop}"
-            if image_plane_name not in nwbfile_out.imaging_planes.keys():
-                input_kwargs = dict(
-                    name=image_plane_name,
-                )
-                metadata["Ophys"]["ImagingPlane"][0]["optical_channel"] = optical_channels
-                input_kwargs.update(**metadata["Ophys"]["ImagingPlane"][0])
-                input_kwargs.update(device=nwbfile_out.get_device(metadata_base_common["Ophys"]["Device"][0]["name"]))
-                if "imaging_rate" in input_kwargs:
-                    input_kwargs["imaging_rate"] = float(input_kwargs["imaging_rate"])
-                imaging_plane = nwbfile_out.create_imaging_plane(**input_kwargs)
-            else:
-                imaging_plane = nwbfile_out.imaging_planes[image_plane_name]
+            # Add imaging plane
+            imaging_plane_name = "ImagingPlane" if plane_no_loop == 0 else f"ImagePlane_{plane_no_loop}"
+            add_imaging_plane(nwbfile=nwbfile, metadata=metadata)
+            imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
+
             # PlaneSegmentation:
             input_kwargs = dict(
                 description="output from segmenting imaging plane",
