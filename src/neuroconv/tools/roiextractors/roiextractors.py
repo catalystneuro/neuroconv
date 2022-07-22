@@ -520,7 +520,7 @@ def write_segmentation(
             nwbfile_path = save_path
 
     with make_or_load_nwbfile(
-        nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
+        nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata_base_common, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         # Processing Module:
         if "ophys" not in nwbfile_out.processing:
@@ -531,7 +531,7 @@ def write_segmentation(
         for plane_no_loop, (segext_obj, metadata) in enumerate(zip(segext_objs, metadata_base_list)):
 
             # Add device:
-            add_devices(nwbfile=nwbfile, metadata=metadata)
+            add_devices(nwbfile=nwbfile_out, metadata=metadata)
 
             # ImageSegmentation:
             image_segmentation_name = (
@@ -545,8 +545,8 @@ def write_segmentation(
 
             # Add imaging plane
             imaging_plane_name = "ImagingPlane" if plane_no_loop == 0 else f"ImagePlane_{plane_no_loop}"
-            add_imaging_plane(nwbfile=nwbfile, metadata=metadata)
-            imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
+            add_imaging_plane(nwbfile=nwbfile_out, metadata=metadata)
+            imaging_plane = nwbfile_out.imaging_planes[imaging_plane_name]
 
             # PlaneSegmentation:
             input_kwargs = dict(
