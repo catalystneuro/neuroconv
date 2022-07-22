@@ -1,4 +1,4 @@
-"""Authors: Saksham Sharda and Alessio Buccino."""
+"""Authors: Heberto Mayorquin, Saksham Sharda and Alessio Buccino, Szonja Weigl"""
 import os
 from pathlib import Path
 from warnings import warn
@@ -26,7 +26,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
-from neuroconv.utils import (
+from ...utils import (
     FilePathType,
     OptionalFilePathType,
     dict_deep_update,
@@ -39,11 +39,13 @@ def get_default_ophys_metadata():
     metadata = get_default_nwbfile_metadata()
 
     default_device = dict(name="Microscope")
+
     default_optical_channel = dict(
         name="OpticalChannel",
         emission_lambda=np.nan,
         description="no description",
     )
+
     default_imaging_plane = dict(
         name="ImagingPlane",
         description="no description",
@@ -54,29 +56,30 @@ def get_default_ophys_metadata():
         optical_channel=[default_optical_channel],
     )
 
+    default_roi_response_series = dict(
+        name="RoiResponseSeries",
+        description="array of raw fluorescence traces",
+    )
+
+    default_fluoresence = dict(roi_response_series=[default_roi_response_series])
+
+    default_two_photon_series = dict(
+        name="TwoPhotonSeries",
+        description="no description",
+        comments="Generalized from RoiInterface",
+        unit="n.a.",
+    )
+
     metadata.update(
         Ophys=dict(
             Device=[default_device],
-            Fluorescence=dict(
-                roi_response_series=[
-                    dict(
-                        name="RoiResponseSeries",
-                        description="array of raw fluorescence traces",
-                    )
-                ]
-            ),
+            Fluorescence=default_fluoresence,
             ImageSegmentation=dict(plane_segmentations=[dict(description="Segmented ROIs", name="PlaneSegmentation")]),
             ImagingPlane=[default_imaging_plane],
-            TwoPhotonSeries=[
-                dict(
-                    name="TwoPhotonSeries",
-                    description="no description",
-                    comments="Generalized from RoiInterface",
-                    unit="n.a.",
-                )
-            ],
+            TwoPhotonSeries=[default_two_photon_series],
         ),
     )
+
     return metadata
 
 
@@ -527,9 +530,7 @@ def write_segmentation(
             nwbfile = io.read()
         else:
             nwbfile = make_nwbfile_from_metadata(metadata=metadata_base_common)
-    # Subject:
-    if metadata_base_common.get("Subject") and nwbfile.subject is None:
-        nwbfile.subject = Subject(**metadata_base_common["Subject"])
+
     # Processing Module:
     if "ophys" not in nwbfile.processing:
         ophys = nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
@@ -652,9 +653,20 @@ def write_segmentation(
                 if trace_name not in fluorescence.roi_response_series:
                     fluorescence.create_roi_response_series(**input_kwargs)
 
-        # Adding summary images (mean and correlation)
-        images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
-        add_summary_images(nwbfile=nwbfile, segmentation_extractor=segext_obj, images_set_name=images_set_name)
+        # create Two Photon Series:
+        if "TwoPhotonSeries" not in nwbfile.acquisition:
+            warn("could not find TwoPhotonSeries, using ImagingExtractor to create an nwbfile")
+
+        # adding images:
+        images_dict = segext_obj.get_images_dict()
+        if any([image is not None for image in images_dict.values()]):
+            images_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
+            if images_name not in ophys.data_interfaces:
+                images = Images(images_name)
+                for img_name, img_no in images_dict.items():
+                    if img_no is not None:
+                        images.add_image(GrayscaleImage(name=img_name, data=img_no.T))
+                ophys.add(images)
 
         # saving NWB file:
         if write:
