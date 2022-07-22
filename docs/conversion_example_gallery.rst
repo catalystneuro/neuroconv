@@ -1,5 +1,5 @@
 Conversion Gallery
-======================
+==================
 
 The examples here are guaranteed to be running correctly with our testing suite.
 Their aim is to be a showcase of the library capabilities and to get you to hit the ground running with your own conversion.
@@ -42,13 +42,6 @@ Imaging
     Scanbox <conversion_examples_gallery/imaging/scanbox>
     ScanImage <conversion_examples_gallery/imaging/scanimage>
 
-Behavior
---------
-.. toctree::
-    :maxdepth: 1
-
-    DeepLabCut <conversion_examples_gallery/behavior/deeplabcut>
-
 Segmentation
 ------------
 
@@ -59,3 +52,10 @@ Segmentation
     Caiman (TBD)
     EXTRACT (TBD)
     CNMFE (Tbd)
+
+Behavior
+--------
+.. toctree::
+    :maxdepth: 1
+
+    DeepLabCut <conversion_examples_gallery/behavior/deeplabcut>
