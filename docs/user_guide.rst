@@ -7,7 +7,7 @@ A full conversion means handling all of these different data types at the same t
 and it can get tricky to ensure that timing is synchronized across different
 acquisition systems. While the automated proprietary format conversions build upon
 PyNWB to solve the challenges of variety of data formats and size of data,
-NWB Conversion Tools build upon these automated conversion tools to provide a
+NeuroConv build upon these automated conversion tools to provide a
 system for combining data across multiple streams.
 
 This workflow is as follows:
@@ -16,7 +16,7 @@ This workflow is as follows:
 #. Adjust or add any missing metadata
 #. Run the conversion, inserting this metadata in the appropriate place.
 
-In order to accomplish these three tasks, the NWB Conversion Tools relies on two tiers
+In order to accomplish these three tasks, the NeuroConv relies on two tiers
 of structure, represented by the two main classes in the package: :class:`.BaseDataInterface`
 and :class:`~.nwbconverter.NWBConverter`.
 
@@ -112,7 +112,7 @@ them together, call::
 
 The metadata can then be manually modified with any additional user-input::
 
-    metadata["NWBFile"]["session_description"] = "NWB Conversion Tools tutorial."
+    metadata["NWBFile"]["session_description"] = "NeuroConv tutorial."
     metadata["NWBFile"]["experimenter"] = "My name"
     metadata["Subject"]["subject_id"] ="ID of experimental subject"
 

@@ -3,61 +3,60 @@ Recording & Sorting
 
 Base Recording
 --------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.baserecordingextractorinterface
+.. automodule:: neuroconv.datainterfaces.ecephys.baserecordingextractorinterface
 
 Base Sorting
 ------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.basesortingextractorinterface
+.. automodule:: neuroconv.datainterfaces.ecephys.basesortingextractorinterface
 
 Tutorial Recording & Sorting
 ----------------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
 
 Axona Recording
 ---------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.axona.axonadatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
 
 Blackrock Recording
 -------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.blackrock.blackrockdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface
 
 CED Recording
 -------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.ced.ceddatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.ced.ceddatainterface
 
 CellExplorer Sorting
 --------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface
 
 Intan Recording
 ---------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.intan.intandatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
 
 Kilosort Sorting
 ----------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.kilosort.kilosortdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
 Neuralynx Recording
 -------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
 
 Neuroscope Recording & Sorting
 ------------------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.neuroscope.neuroscopedatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface
 
 OpenEphys Recording
 -------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.openephys.openephysdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
 
 Phy Sorting
 -----------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.phy.phydatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
 
 Spikegadgets Recording
 ----------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface
-
+.. automodule:: neuroconv.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface
 
 SpikeGLX Recording
 ------------------
-.. automodule:: nwb_conversion_tools.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
