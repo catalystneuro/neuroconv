@@ -1,7 +1,7 @@
 CNMFE
 ^^^^^
 
-Convert CNMFE segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.cnmfe.cnmfedainterface.CnmfeSegmentationInterface`.
+Convert CNMFE segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.cnmfe.cnmfedatainterface.CnmfeSegmentationInterface`.
 
 .. code-block:: python
 

@@ -1,7 +1,7 @@
 Extract
 ^^^^^^^
 
-Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.suit2p.suite2pdatainterface.Suite2pSegmentationInterface`.
+Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`.
 
 .. code-block:: python
 
