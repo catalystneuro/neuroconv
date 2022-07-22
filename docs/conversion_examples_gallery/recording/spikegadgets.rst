@@ -4,12 +4,11 @@ Spikegadgets data conversion
 Convert spikegadgets data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface.SpikeGadgetsRecordingInterface`.
 
 .. code-block:: python
-    # TODO - re-enable '' lines when SI >0.94 is released
-    from datetime import datetime
-    from dateutil import tz
-    from pathlib import Path
-    from neuroconv import SpikeGadgetsRecordingInterface
-
+    >>> from datetime import datetime
+    >>> from dateutil import tz
+    >>> from pathlib import Path
+    >>> from neuroconv import SpikeGadgetsRecordingInterface
+    >>>
     >>> # For this interface we need to pass the specific path to the files.
     >>> file_path = f"{ECEPHY_DATA_PATH}/spikegadgets/20210225_em8_minirec2_ac.rec"
     >>> # Change the file_path to the location in your system
