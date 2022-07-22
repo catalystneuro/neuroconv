@@ -21,7 +21,7 @@ For what is not covered by black, this project follows some of the conventions f
 Data interfaces conventions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #. Use :code:`file_path` and :code:`folder_path` as arguments for the location of input files and folder respectively.
-#. In opposition to convention number 1 above, we use :code:`nwbfile` to refer to in-memory filesin the nwb format.
+#. As an exception to convention number 1 above, we use :code:`nwbfile` to refer to in-memory files in the nwb format.
 
 Other conventions
 ^^^^^^^^^^^^^^^^^
