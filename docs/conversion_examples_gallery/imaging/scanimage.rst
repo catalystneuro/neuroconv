@@ -1,7 +1,7 @@
 ScanImage data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert ScanImage imaging data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageImagingInterface`.
+Convert ScanImage imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageImagingInterface`.
 
 .. code-block:: python
 
