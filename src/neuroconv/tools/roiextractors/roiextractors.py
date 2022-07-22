@@ -138,8 +138,9 @@ def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     device_metadata = metadata_copy["Ophys"]["Device"]
 
     for device in device_metadata:
-        device = Device(**device) if isinstance(device, dict) else device
-        if device.name not in nwbfile.devices:
+        device_name = device["name"] if isinstance(device, dict) else device.name
+        if device_name not in nwbfile.devices:
+            device = Device(**device) if isinstance(device, dict) else device
             nwbfile.add_device(device)
 
     return nwbfile
@@ -538,9 +539,9 @@ def write_segmentation(
         ophys = nwbfile.get_processing_module("ophys")
 
     for plane_no_loop, (segext_obj, metadata) in enumerate(zip(segext_objs, metadata_base_list)):
-        # Device:
-        if metadata["Ophys"]["Device"][0]["name"] not in nwbfile.devices:
-            nwbfile.create_device(**metadata["Ophys"]["Device"][0])
+
+        # Add device:
+        add_devices(nwbfile=nwbfile, metadata=metadata)
 
         # ImageSegmentation:
         image_segmentation_name = (
