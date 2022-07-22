@@ -25,6 +25,7 @@ from neuroconv import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroscopeRecordingInterface,
+    NeuroscopeLFPInterface,
     NeuroscopeSortingInterface,
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
@@ -60,6 +61,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
         param(
             data_interface=AxonaLFPDataInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg")),
+        ),
+        param(
+            data_interface=NeuroscopeLFPInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
+                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+            ),
         ),
     ]
 
