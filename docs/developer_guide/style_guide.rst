@@ -8,7 +8,7 @@ for per-commit hooks. To enable black formating do the following:
 1. Install pre-commit: :code:`pip install pre-commit``
 2. Execute :code:`pre-commit install`` to install git hooks in your .git/ directory.
 
-For what is not covered by black, this project follows some of the conventions to `scikit-learn <https://scikit-learn.org/stable/>`_.
+For what is not covered by black, this project follows some of the conventions from `scikit-learn <https://scikit-learn.org/stable/>`_.
 
 #. Use underscores to separate words in non class names: :code:`n_samples` rather than :code:`nsamples`.
 #. Avoid multiple statements on one line. Prefer a line return after a control flow statement (if/for).
