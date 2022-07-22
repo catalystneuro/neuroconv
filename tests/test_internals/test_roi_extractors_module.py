@@ -18,7 +18,6 @@ from neuroconv.tools.roiextractors import (
 )
 
 
-
 class TestAddDevices(unittest.TestCase):
     def setUp(self):
         self.session_start_time = datetime.now().astimezone()
