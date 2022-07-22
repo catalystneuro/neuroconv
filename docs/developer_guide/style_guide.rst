@@ -25,4 +25,4 @@ Data interfaces conventions
 
 Other conventions
 ^^^^^^^^^^^^^^^^^
-#. Whenever possible, use dictionary literals :code:`dictionary = dict(foo=bar)`  instead of constructors :code:`dictionary={foo=bar}`.
+#. Whenever possible, use dictionary literals :code:`dictionary = dict(foo=bar)`  instead of constructors :code:`dictionary={foo: bar}`.
