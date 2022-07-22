@@ -1,7 +1,7 @@
 Open Ephys data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert OpenEphys data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.openephys.openephysdatainterface.OpenEphysRecordingExtractorInterface`.
+Convert OpenEphys data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface.OpenEphysRecordingExtractorInterface`.
 
 .. code-block:: python
 
