@@ -1,7 +1,7 @@
 Spikeglx data converison
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert spikeglx data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface`.
+Convert spikeglx data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface`.
 
 .. code-block:: python
 
