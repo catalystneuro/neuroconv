@@ -9,5 +9,6 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
 
     SegX = CaimanSegmentationExtractor
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
         super().__init__(file_path=file_path)
+        self.verbose = verbose
