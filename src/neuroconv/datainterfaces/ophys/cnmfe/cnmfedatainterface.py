@@ -5,7 +5,7 @@ from ....utils import FilePathType
 
 
 class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
-    """Data interface for CnmfeRecordingInterface."""
+    """Data interface for constrained nonnegative matrix factorization (CNMFE) segmentation extractor."""
 
     SegX = CnmfeSegmentationExtractor
 
