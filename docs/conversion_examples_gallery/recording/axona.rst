@@ -1,7 +1,7 @@
 Axona data converison
 ^^^^^^^^^^^^^^^^^^^^^
 
-Convert axona data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingExtractorInterface`.
+Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingExtractorInterface`.
 
 .. code-block:: python
 

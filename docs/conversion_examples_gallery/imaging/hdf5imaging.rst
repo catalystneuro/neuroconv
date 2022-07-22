@@ -1,7 +1,7 @@
 HDF5 data conversion
 ^^^^^^^^^^^^^^^^^^^
 
-Convert HDF5 imaging data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ophys.hdf5.hdf5datainterface.Hdf5ImagingInterface`.
+Convert HDF5 imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface.Hdf5ImagingInterface`.
 
 .. code-block:: python
 

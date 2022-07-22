@@ -2,6 +2,7 @@ from tempfile import mkdtemp
 import unittest
 from pathlib import Path
 from datetime import datetime
+from copy import deepcopy
 
 import numpy as np
 
@@ -9,7 +10,7 @@ from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
 from roiextractors.testing import generate_dummy_imaging_extractor
 
-from neuroconv.tools.roiextractors import add_devices, add_two_photon_series
+from neuroconv.tools.roiextractors import add_devices, add_imaging_plane, add_two_photon_series
 
 
 class TestAddDevices(unittest.TestCase):
@@ -141,6 +142,92 @@ class TestAddDevices(unittest.TestCase):
         assert len(devices) == 2
         assert "device_metadata" in devices
         assert "device_object" in devices
+
+
+class TestAddImagingPlane(unittest.TestCase):
+    def setUp(self):
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        self.device_name = "optical_device"
+        self.device_metadata = dict(name=self.device_name)
+        self.metadata["Ophys"].update(Device=[self.device_metadata])
+
+        self.optical_channel_metadata = dict(
+            name="optical_channel",
+            emission_lambda=np.nan,
+            description="description",
+        )
+
+        self.imaging_plane_name = "imaging_plane_name"
+        self.imaging_plane_description = "imaging_plane_description"
+        self.imaging_plane_metadata = dict(
+            name=self.imaging_plane_name,
+            optical_channel=[self.optical_channel_metadata],
+            description=self.imaging_plane_description,
+            device=self.device_name,
+            excitation_lambda=np.nan,
+            indicator="unknown",
+            location="unknown",
+        )
+
+        self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
+
+    def test_add_imaging_plane(self):
+
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 1
+        assert self.imaging_plane_name in imaging_planes
+
+        imaging_plane = imaging_planes[self.imaging_plane_name]
+        assert imaging_plane.description == self.imaging_plane_description
+
+    def test_not_overwriting_imaging_plane_if_same_name(self):
+
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        self.imaging_plane_metadata["description"] = "modified description"
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 1
+        assert self.imaging_plane_name in imaging_planes
+
+    def test_add_two_imaging_planes(self):
+
+        # Add the first imaging plane
+        first_imaging_plane_name = "first_imaging_plane_name"
+        first_imaging_plane_description = "first_imaging_plane_description"
+        self.imaging_plane_metadata["name"] = first_imaging_plane_name
+        self.imaging_plane_metadata["description"] = first_imaging_plane_description
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        # Add the second imaging plane
+        second_imaging_plane_name = "second_imaging_plane_name"
+        second_imaging_plane_description = "second_imaging_plane_description"
+        self.imaging_plane_metadata["name"] = second_imaging_plane_name
+        self.imaging_plane_metadata["description"] = second_imaging_plane_description
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        # Test expected values
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 2
+
+        first_imaging_plane = imaging_planes[first_imaging_plane_name]
+        assert first_imaging_plane.name == first_imaging_plane_name
+        assert first_imaging_plane.description == first_imaging_plane_description
+
+        second_imaging_plane = imaging_planes[second_imaging_plane_name]
+        assert second_imaging_plane.name == second_imaging_plane_name
+        assert second_imaging_plane.description == second_imaging_plane_description
 
 
 class TestAddTwoPhotonSeries(unittest.TestCase):

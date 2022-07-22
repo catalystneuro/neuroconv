@@ -1,7 +1,7 @@
 Scanbox data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Scanbox imaging data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ophys.sbx.sbxdatainterface.SbxImagingInterface`.
+Convert Scanbox imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.sbx.sbxdatainterface.SbxImagingInterface`.
 
 .. code-block:: python
 
