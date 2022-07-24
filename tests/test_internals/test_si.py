@@ -5,10 +5,12 @@ from pathlib import Path
 from datetime import datetime
 
 import numpy as np
-from pynwb import NWBHDF5IO, NWBFile
 
+from pynwb import NWBHDF5IO, NWBFile
+import pynwb.ecephys
 import spikeextractors as se
 from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.testing import TestCase
 
 from spikeextractors.testing import (
@@ -25,6 +27,7 @@ from neuroconv.tools.spikeinterface import (
     write_recording,
     write_sorting,
     add_electrodes,
+    add_electrical_series,
     add_units_table,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
@@ -597,6 +600,96 @@ class TestWriteElectrodes(unittest.TestCase):
                 else:
                     assert nwb.electrodes["group_name"][i] == "M1"
                     assert nwb.electrodes["group"][i].description == "M1 description"
+
+
+class TestAddElectricalSeries(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_channels = 3
+        cls.durations = [0.100]  # 3000 samples in the recorder
+        cls.test_recording_extractor = generate_recording(num_channels=cls.num_channels, durations=cls.durations)
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+
+    def test_default_values(self):
+
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        acquisition_module = self.nwbfile.acquisition
+        assert "ElectricalSeries_raw" in acquisition_module
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+
+        assert isinstance(electrical_series.data, H5DataIO)
+
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == "gzip"
+        assert compression_parameters["compression_opts"] == 4
+
+        extracted_data = electrical_series.data[:]
+        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_equal(expected_data, extracted_data)
+
+    def test_write_as_lfp(self):
+        write_as = "lfp"
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+        )
+
+        processing_module = self.nwbfile.processing
+        assert "ecephys" in processing_module
+
+        ecephys_module = processing_module["ecephys"]
+        assert "LFP" in ecephys_module.data_interfaces
+
+        lfp_container = ecephys_module.data_interfaces["LFP"]
+        assert isinstance(lfp_container, pynwb.ecephys.LFP)
+        assert "ElectricalSeries_lfp" in lfp_container.electrical_series
+
+        electrical_series = lfp_container.electrical_series["ElectricalSeries_lfp"]
+        extracted_data = electrical_series.data[:]
+        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_equal(expected_data, extracted_data)
+
+    def test_write_as_processing(self):
+        write_as = "processed"
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+        )
+
+        processing_module = self.nwbfile.processing
+        assert "ecephys" in processing_module
+
+        ecephys_module = processing_module["ecephys"]
+        assert "Processed" in ecephys_module.data_interfaces
+
+        filtered_ephys_container = ecephys_module.data_interfaces["Processed"]
+        assert isinstance(filtered_ephys_container, pynwb.ecephys.FilteredEphys)
+        assert "ElectricalSeries_processed" in filtered_ephys_container.electrical_series
+
+        electrical_series = filtered_ephys_container.electrical_series["ElectricalSeries_processed"]
+        extracted_data = electrical_series.data[:]
+        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_equal(expected_data, extracted_data)
+
+    def test_write_as_assertion(self):
+
+        write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
+
+        reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
+
+        with self.assertRaisesRegex(AssertionError, reg_expression):
+            add_electrical_series(
+                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            )
+
+    def test_write_scaled(self):
+        # TO-DO
+        pass
 
 
 class TestAddElectrodes(TestCase):
