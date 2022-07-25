@@ -705,7 +705,7 @@ class TestAddElectricalSeries(TestCase):
         available_memory_in_bytes = psutil.virtual_memory().available
         frame_size_in_bytes = element_size_in_bytes * num_channels
 
-        excess_in_bytes = frame_size_in_bytes * int(num_frames / 2)  # 50 excess frames
+        excess_in_bytes = frame_size_in_bytes * int(num_frames / 2)  # 50 % excess frames
 
         num_frames_to_overflow = (available_memory_in_bytes + excess_in_bytes) / (element_size_in_bytes * num_channels)
 
