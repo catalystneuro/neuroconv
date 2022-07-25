@@ -11,7 +11,7 @@ from neuroconv import run_conversion_from_yaml
 from neuroconv.utils import load_dict_from_file
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from .setup_paths import OUTPUT_PATH
+from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
 
 class TestYAMLConversionSpecification(TestCase):
@@ -121,6 +121,16 @@ class TestYAMLConversionSpecification(TestCase):
                 output_folder_path=self.test_folder,
                 overwrite=True,
             )
+
+    def test_run_conversion_from_yaml(self):
+        path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
+        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_movies.yml"
+        run_conversion_from_yaml(
+            specification_file_path=yaml_file_path,
+            data_folder_path=BEHAVIOR_DATA_PATH,
+            output_folder_path=self.test_folder,
+            overwrite=True,
+        )
 
 
 if __name__ == "__main__":
