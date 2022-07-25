@@ -700,14 +700,11 @@ class TestAddElectricalSeries(TestCase):
         dtype = self.test_recording_extractor.get_dtype()
         element_size_in_bytes = dtype.itemsize
         num_channels = self.test_recording_extractor.get_num_channels()
-        num_frames = self.test_recording_extractor.get_num_frames()
 
         available_memory_in_bytes = psutil.virtual_memory().available
-        frame_size_in_bytes = element_size_in_bytes * num_channels
 
-        excess_in_bytes = frame_size_in_bytes * int(num_frames) * 2  # 2 times excess in frames
-
-        num_frames_to_overflow = (available_memory_in_bytes + excess_in_bytes) / (element_size_in_bytes * num_channels)
+        excess = 1.5  # Of what is available in memory
+        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * num_channels)
 
         # Mock recording extractor with as much frames as necessary to overflow memory
 
