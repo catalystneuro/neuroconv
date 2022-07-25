@@ -59,4 +59,3 @@ Behavior
     :maxdepth: 1
 
     DeepLabCut <conversion_examples_gallery/behavior/deeplabcut>
-
