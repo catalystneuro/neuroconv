@@ -131,7 +131,7 @@ class TestYAMLConversionSpecification(TestCase):
             output_folder_path=self.test_folder,
             overwrite=True,
         )
-            
+
 
 if __name__ == "__main__":
     unittest.main()
