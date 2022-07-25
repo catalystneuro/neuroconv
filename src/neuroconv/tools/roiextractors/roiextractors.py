@@ -687,18 +687,8 @@ def write_segmentation(
                     if trace_name not in fluorescence.roi_response_series:
                         fluorescence.create_roi_response_series(**input_kwargs)
 
-            # create Two Photon Series:
-            if "TwoPhotonSeries" not in nwbfile_out.acquisition:
-                warn("could not find TwoPhotonSeries, using ImagingExtractor to create an nwbfile")
-            # adding images:
-            images_dict = segext_obj.get_images_dict()
-            if any([image is not None for image in images_dict.values()]):
-                images_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
-                if images_name not in ophys.data_interfaces:
-                    images = Images(images_name)
-                    for img_name, img_no in images_dict.items():
-                        if img_no is not None:
-                            images.add_image(GrayscaleImage(name=img_name, data=img_no.T))
-                    ophys.add(images)
+            # Adding summary images (mean and correlation)
+            images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
+            add_summary_images(nwbfile=nwbfile, segmentation_extractor=segext_obj, images_set_name=images_set_name)
 
     return nwbfile_out
