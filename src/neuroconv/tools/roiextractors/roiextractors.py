@@ -159,7 +159,7 @@ def _add_imaging_plane(nwbfile: NWBFile, metadata=dict) -> NWBFile:
     return nwbfile
 
 
-def get_plane_segmentation_metadata(
+def _get_plane_segmentation_metadata(
     metadata: dict,
     plane_segmentation_index: int = 0,
 ) -> dict:
@@ -610,7 +610,7 @@ def write_segmentation(
             imaging_plane = nwbfile.imaging_planes[image_plane_name]
 
         # Add plane segmentation
-        plane_segmentation_metadata = get_plane_segmentation_metadata(metadata=metadata)
+        plane_segmentation_metadata = _get_plane_segmentation_metadata(metadata=metadata)
         plane_segmentation_name = plane_segmentation_metadata["name"]
         if plane_segmentation_name not in image_segmentation.plane_segmentations:
             segmentation_results = _get_output_from_segmentation_extractor(
