@@ -1,5 +1,15 @@
-# v0.1.1
+# Upcoming
 
+### Fixes
+
+### Improvements
+* Unified the `run_conversion` method of `BaseSegmentationExtractorInterface` with that of all the other base interfaces. The method `write_segmentation` now uses the common `make_or_load_nwbfile` context manager [PR #29](https://github.com/catalystneuro/neuroconv/pull/29)
+
+### Features
+
+### Testing
+
+# v0.1.1
 ### Fixes
 * Fixed the behavior of the `file_paths` usage in the MovieInterface when run via the YAML conversion specification. [PR #33](https://github.com/catalystneuro/neuroconv/pull/33)
 
