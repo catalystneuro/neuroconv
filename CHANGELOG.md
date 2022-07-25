@@ -1,4 +1,4 @@
-# v0.2.0
+# v0.1.1
 
 ### Fixes
 * Fixed the behavior of the `file_paths` usage in the MovieInterface when run via the YAML conversion specification. [PR #33](https://github.com/catalystneuro/neuroconv/pull/33)
