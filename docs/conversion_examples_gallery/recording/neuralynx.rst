@@ -1,7 +1,7 @@
 Neuralynx data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Neuralynx data to NWB using :py:class:`~.nwb_conversion_tools.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxRecordingInterface`.
+Convert Neuralynx data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxRecordingInterface`.
 
 .. code-block:: python
 

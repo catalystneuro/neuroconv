@@ -1,17 +1,18 @@
-Scanbox data conversion
-^^^^^^^^^^^^^^^^^^^^^^^
+CNMFE
+^^^^^
 
-Convert Scanbox imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.sbx.sbxdatainterface.SbxImagingInterface`.
+Convert CNMFE segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.cnmfe.cnmfedatainterface.CnmfeSegmentationInterface`.
 
 .. code-block:: python
+
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import SbxImagingInterface
+    >>> from neuroconv import CnmfeSegmentationInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx"
-    >>> interface = SbxImagingInterface(file_path=file_path, verbose=False)
+    >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "cnmfe" / "2014_04_01_p203_m19_check01_cnmfeAnalysis.mat"
+    >>> interface = CnmfeSegmentationInterface(file_path=file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> metadata.update(NWBFile=dict())

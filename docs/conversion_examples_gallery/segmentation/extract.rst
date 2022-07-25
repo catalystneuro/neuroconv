@@ -1,17 +1,17 @@
-Scanbox data conversion
-^^^^^^^^^^^^^^^^^^^^^^^
+Extract
+^^^^^^^
 
-Convert Scanbox imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.sbx.sbxdatainterface.SbxImagingInterface`.
+Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.extract.extractdatainterface.ExtractSegmentationInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import SbxImagingInterface
+    >>> from neuroconv import ExtractSegmentationInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx"
-    >>> interface = SbxImagingInterface(file_path=file_path, verbose=False)
+    >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "extract"/ "2014_04_01_p203_m19_check01_extractAnalysis.mat"
+    >>> interface = ExtractSegmentationInterface(file_path=file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> metadata.update(NWBFile=dict())

@@ -1,17 +1,17 @@
-Scanbox data conversion
-^^^^^^^^^^^^^^^^^^^^^^^
+CaImAn
+^^^^^^
 
-Convert Scanbox imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.sbx.sbxdatainterface.SbxImagingInterface`.
+Convert CaImAn segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.caiman.caimandatainterface.CaimanSegmentationInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import SbxImagingInterface
+    >>> from neuroconv import CaimanSegmentationInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx"
-    >>> interface = SbxImagingInterface(file_path=file_path, verbose=False)
+    >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5"
+    >>> interface = CaimanSegmentationInterface(file_path=file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> metadata.update(NWBFile=dict())
