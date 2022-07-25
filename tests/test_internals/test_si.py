@@ -1,9 +1,11 @@
 import shutil
 import tempfile
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 from datetime import datetime
 
+import psutil
 import numpy as np
 
 from pynwb import NWBHDF5IO, NWBFile
@@ -26,6 +28,7 @@ from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
     write_sorting,
+    check_if_recording_traces_fit_into_memory,
     add_electrodes,
     add_electrical_series,
     add_units_table,
@@ -690,6 +693,31 @@ class TestAddElectricalSeries(TestCase):
     def test_write_scaled(self):
         # TO-DO
         pass
+
+    def test_non_iterative_write(self):
+
+        # Estimate num of frames required to exceed memory capabilities
+        dtype = self.test_recording_extractor.get_dtype()
+        element_size_in_bytes = dtype.itemsize
+        num_channels = self.test_recording_extractor.get_num_channels()
+
+        available_memory_in_bytes = psutil.virtual_memory().available
+        frame_size_in_bytes = element_size_in_bytes * num_channels
+        available_memory_in_bytes_plus_one_frame = available_memory_in_bytes + frame_size_in_bytes
+
+        num_frames_to_overflow = available_memory_in_bytes_plus_one_frame / (element_size_in_bytes * num_channels)
+
+        # Mock recording extractor with as much frames as necessary to overflow memory
+
+        mock_recorder = Mock()
+        mock_recorder.get_dtype.return_value = dtype
+        mock_recorder.get_num_channels.return_value = num_channels
+        mock_recorder.get_num_frames.return_value = num_frames_to_overflow
+
+        reg_expression = f"Memory error, full electrical series is (.*?) GB are available. Use iterator_type='V2'"
+
+        with self.assertRaisesRegex(MemoryError, reg_expression):
+            check_if_recording_traces_fit_into_memory(recording=mock_recorder)
 
 
 class TestAddElectrodes(TestCase):

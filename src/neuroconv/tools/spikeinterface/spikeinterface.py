@@ -15,6 +15,7 @@ from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+import psutil
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
@@ -457,6 +458,35 @@ def add_electrodes(
         warnings.warn(f"No information added to the electrodes table")
 
 
+def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording, segment_index: int = 0) -> None:
+    """Raises an error if the full traces of a recording extractor are larger than psutil.virtual_memory().available
+
+    Parameters
+    ----------
+    recording : SpikeInterfaceRecording
+        A recording extractor object from spikeinterface.
+    segment_index : int, optional
+        The segment index of the recording extractor object, by default 0
+
+    Raises
+    ------
+    MemoryError
+    """
+    element_size_in_bytes = recording.get_dtype().itemsize
+    num_channels = recording.get_num_channels()
+    num_frames = recording.get_num_frames(segment_index=segment_index)
+
+    traces_size_in_bytes = element_size_in_bytes * num_channels * num_frames
+    available_memory_in_bytes = psutil.virtual_memory().available
+
+    if traces_size_in_bytes > available_memory_in_bytes:
+        message = (
+            f"Memory error, full electrical series is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
+            f"({round(available_memory_in_bytes/1e9, 2)} GB are available. Use iterator_type='V2'"
+        )
+        raise MemoryError(message)
+
+
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
     nwbfile=None,
@@ -635,7 +665,9 @@ def add_electrical_series(
             eseries_kwargs.update(conversion=1e-6)
             eseries_kwargs.update(channel_conversion=channel_conversion)
     if iterator_type is None:
+        check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)
         ephys_data = checked_recording.get_traces(return_scaled=write_scaled, segment_index=segment_index)
+
     elif iterator_type == "v2":
         ephys_data = SpikeInterfaceRecordingDataChunkIterator(
             recording=checked_recording,
