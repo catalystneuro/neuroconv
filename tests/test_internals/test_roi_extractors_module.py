@@ -8,9 +8,12 @@ import numpy as np
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
-from roiextractors.testing import generate_dummy_imaging_extractor
+from pynwb.ophys import ImageSegmentation
+from roiextractors.testing import generate_dummy_imaging_extractor, \
+    generate_dummy_segmentation_extractor
 
 from neuroconv.tools.roiextractors import add_devices, add_imaging_plane, add_two_photon_series
+from neuroconv.tools.roiextractors.roiextractors import add_plane_segmentation
 
 
 class TestAddDevices(unittest.TestCase):
@@ -228,6 +231,39 @@ class TestAddImagingPlane(unittest.TestCase):
         second_imaging_plane = imaging_planes[second_imaging_plane_name]
         assert second_imaging_plane.name == second_imaging_plane_name
         assert second_imaging_plane.description == second_imaging_plane_description
+
+
+class TestAddPlaneSegmentation(unittest.TestCase):
+    def setUp(self) -> None:
+        self.segmentation_extractor = generate_dummy_segmentation_extractor()
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        img_seg = ImageSegmentation()
+        ophys_module = self.nwbfile.create_processing_module(
+            name='ophys',
+            description='optical physiology processed data'
+        )
+        ophys_module.add(img_seg)
+
+    def test_add_plane_segmentation(self):
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            image_segmentation_name="ImageSegmentation",
+        )
+
+        image_segmentation = self.nwbfile.processing['ophys'].get("ImageSegmentation")
+        plane_segmentations = image_segmentation.plane_segmentations
+        assert len(plane_segmentations) == 1
 
 
 class TestAddTwoPhotonSeries(unittest.TestCase):
