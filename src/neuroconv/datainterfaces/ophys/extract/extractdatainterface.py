@@ -9,5 +9,6 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
 
     SegX = ExtractSegmentationExtractor
 
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
+        self.verbose = verbose
         super().__init__(file_path=file_path)
