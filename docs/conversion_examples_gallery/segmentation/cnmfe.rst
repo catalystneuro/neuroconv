@@ -1,17 +1,18 @@
-HDF5 data conversion
-^^^^^^^^^^^^^^^^^^^^
+CNMFE
+^^^^^
 
-Convert HDF5 imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface.Hdf5ImagingInterface`.
+Convert CNMFE segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.cnmfe.cnmfedatainterface.CnmfeSegmentationInterface`.
 
 .. code-block:: python
+
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import Hdf5ImagingInterface
+    >>> from neuroconv import CnmfeSegmentationInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"
-    >>> interface = Hdf5ImagingInterface(file_path=file_path, verbose=False)
+    >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "cnmfe" / "2014_04_01_p203_m19_check01_cnmfeAnalysis.mat"
+    >>> interface = CnmfeSegmentationInterface(file_path=file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> metadata.update(NWBFile=dict())
