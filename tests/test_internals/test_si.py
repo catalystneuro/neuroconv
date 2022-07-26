@@ -837,6 +837,18 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
+    def test_variable_offsets_assertion(self):
+
+        gains = self.gains_default
+        offsets = self.offsets_variable
+        self.test_recording_extractor.set_channel_gains(gains=gains)
+        self.test_recording_extractor.set_channel_offsets(offsets=offsets)
+
+        reg_expression = f"Recording extractors with heterogeneous offsets are not supported"
+
+        with self.assertRaisesRegex(ValueError, reg_expression):
+            add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
 
 class TestAddElectrodes(TestCase):
     @classmethod
