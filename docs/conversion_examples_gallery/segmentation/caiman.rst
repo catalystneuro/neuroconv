@@ -1,17 +1,17 @@
-HDF5 data conversion
-^^^^^^^^^^^^^^^^^^^^
+CaImAn
+^^^^^^
 
-Convert HDF5 imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface.Hdf5ImagingInterface`.
+Convert CaImAn segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.caiman.caimandatainterface.CaimanSegmentationInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import Hdf5ImagingInterface
+    >>> from neuroconv import CaimanSegmentationInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"
-    >>> interface = Hdf5ImagingInterface(file_path=file_path, verbose=False)
+    >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5"
+    >>> interface = CaimanSegmentationInterface(file_path=file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> metadata.update(NWBFile=dict())
