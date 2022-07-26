@@ -489,7 +489,7 @@ def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording
 
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
-    nwbfile=None,
+    nwbfile,
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
@@ -503,9 +503,7 @@ def add_electrical_series(
     iterator_opts: Optional[dict] = None,
 ):
     """
-    Auxiliary static method for nwbextractor.
-
-    Adds traces from recording object as ElectricalSeries to nwbfile object.
+    Adds traces from recording object as ElectricalSeries to an nwbfile object.
 
     Parameters
     ----------
@@ -561,15 +559,13 @@ def add_electrical_series(
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
     else:
         checked_recording = recording
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
+
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
+
     assert compression is None or compression in [
         "gzip",
         "lzf",
     ], "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', or None."
-
-    if not nwbfile.electrodes:
-        add_electrodes(recording, nwbfile, metadata)
 
     assert write_as in [
         "raw",
@@ -587,8 +583,8 @@ def add_electrical_series(
     elif compression == "lzf" and compression_opts is not None:
         warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
         compression_opts = None
-    if iterator_opts is None:
-        iterator_opts = dict()
+
+    # Write as functionality
     if write_as == "raw":
         eseries_kwargs = dict(
             name="ElectricalSeries_raw",
@@ -652,9 +648,9 @@ def add_electrical_series(
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
-    # channels gains - for RecordingExtractor, these are values to cast traces to uV.
+    # Spikeinterface objects guarantee data in micro volts when return_scaled=True
     # For nwb, the conversions (gains) cast the data to Volts.
-    # To get traces in Volts we take data*channel_conversion*conversion.
+    # To get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
 
