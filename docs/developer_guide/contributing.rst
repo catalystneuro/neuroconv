@@ -22,12 +22,12 @@ Did you find a bug? or Do you intend to add a new feature or change an existing 
    * Use `PyNWB <https://github.com/NeurodataWithoutBorders/pynwb>`_  for any changes regarding the PyNWB API and the corresponding documentation
    * Use `MatNWB <https://github.com/NeurodataWithoutBorders/matnwb>`_  for any changes regarding the MatNWB API and the corresponding documentation
 
-* **Ensure the feature or change was not already reported** by searching on GitHub under `NeuroConv Issues <https://github.com/catalystneuro/neuroconv/issues>`_ and `NeuroConv Pull Requests <https://github.com/catalystneuro/neuroconv/pull_requests>`_.
+* **Ensure the feature or change was not already reported** by searching on GitHub under `NeuroConv Issues <https://github.com/catalystneuro/neuroconv/issues>`_ and `NeuroConv Pull Requests <https://github.com/catalystneuro/neuroconv/pulls>`_.
 
 * If you are unable to find an open issue addressing the problem then open a new issue on the respective repository. Be sure to include:
 
     * **brief and descriptive title**
-    * **clear description of the problem you are trying to solve***. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team and ultimately the NWB community a better understanding for the reasons of changes and enables others to suggest solutions.
+    * **clear description of the problem you are trying to solve**. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team and ultimately the NWB community a better understanding for the reasons of changes and enables others to suggest solutions.
     * **context** providing as much relevant information as possible and if available a **code sample** or an **executable test case** demonstrating the expected behavior and/or problem.
 
 * Both NeuroConv and NWB are currently being developed primarily by staff at scientific research institutions and industry, most of which work on many different research projects. Please be patient, if our development team is not able to respond immediately to your issues. In particular issues that belong to later project milestones may not be reviewed or processed until work on that milestone begins.
