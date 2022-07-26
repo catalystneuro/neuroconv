@@ -72,11 +72,21 @@ def get_default_ophys_metadata():
         unit="n.a.",
     )
 
+    default_image_segmentation = dict(
+        name="ImageSegmentation",
+        plane_segmentations=[
+            dict(
+                name="PlaneSegmentation",
+                description="Segmented ROIs",
+            )
+        ],
+    )
+
     metadata.update(
         Ophys=dict(
             Device=[default_device],
             Fluorescence=default_fluoresence,
-            ImageSegmentation=dict(plane_segmentations=[dict(description="Segmented ROIs", name="PlaneSegmentation")]),
+            ImageSegmentation=default_image_segmentation,
             ImagingPlane=[default_imaging_plane],
             TwoPhotonSeries=[default_two_photon_series],
         ),
