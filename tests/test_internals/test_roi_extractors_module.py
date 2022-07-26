@@ -273,18 +273,25 @@ class TestAddImageSegmentation(unittest.TestCase):
 
 
 class TestAddPlaneSegmentation(unittest.TestCase):
-    def setUp(self) -> None:
-        self.num_rois = 10
-        self.num_frames = 20
-        self.num_rows = 25
-        self.num_columns = 20
+    @classmethod
+    def setUpClass(cls):
+        cls.num_rois = 10
+        cls.num_frames = 20
+        cls.num_rows = 25
+        cls.num_columns = 20
+
+        cls.session_start_time = datetime.now().astimezone()
+
+        cls.image_segmentation_name = "image_segmentation_name"
+        cls.plane_segmentation_name = "plane_segmentation_name"
+
+    def setUp(self):
         self.segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
         )
-        self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
             session_description="session_description",
             identifier="file_id",
@@ -292,9 +299,6 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         )
 
         self.metadata = dict(Ophys=dict())
-
-        self.image_segmentation_name = "image_segmentation_name"
-        self.plane_segmentation_name = "plane_segmentation_name"
 
         self.plane_segmentation_metadata = dict(
             name=self.plane_segmentation_name,
