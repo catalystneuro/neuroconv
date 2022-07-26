@@ -332,8 +332,7 @@ def add_plane_segmentation(
 
         roi_locations = np.array(segmentation_extractor.get_roi_locations()).T
 
-        imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][
-            plane_segmentation_index]
+        imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][plane_segmentation_index]
         imaging_plane_name = imaging_plane_metadata["name"]
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
 
