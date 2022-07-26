@@ -704,7 +704,6 @@ def write_segmentation(
                 segmentation_extractor=segext_obj,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
-                plane_segmentation_index=plane_no_loop,
                 iterator_options=dict(buffer_size=buffer_size),
                 compression_options=dict(
                     compression=True,
@@ -713,7 +712,7 @@ def write_segmentation(
             )
 
             plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"]
-            plane_segmentation_name = plane_segmentation_metadata[plane_no_loop]["name"]
+            plane_segmentation_name = plane_segmentation_metadata[0]["name"]
             plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
             # Fluorescence Traces - This should be a function on its own.
