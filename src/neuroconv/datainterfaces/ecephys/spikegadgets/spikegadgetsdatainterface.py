@@ -2,6 +2,7 @@
 
 import spikeextractors as se
 from spikeinterface.extractors import SpikeGadgetsRecordingExtractor
+from spikeinterface.core.old_api_utils import OldToNewRecording
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
@@ -56,6 +57,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
                 )
 
             super().__init__(filename=file_path, verbose=verbose)
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
             super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
 
