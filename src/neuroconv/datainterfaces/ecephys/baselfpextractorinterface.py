@@ -39,7 +39,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         use_times: bool = False,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = None,
+        iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
         save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
