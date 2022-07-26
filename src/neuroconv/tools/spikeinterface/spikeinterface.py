@@ -663,7 +663,7 @@ def add_electrical_series(
         raise ValueError("Recording extractors with heterogeneous offsets are not supported")
     unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
 
-    micro_to_volts_conversion_factor = 1e6
+    micro_to_volts_conversion_factor = 1e-6
     eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
 
     if not write_scaled:

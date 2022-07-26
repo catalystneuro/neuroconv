@@ -760,11 +760,11 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
-        assert conversion_factor_scalar == 1e6
+        assert conversion_factor_scalar == 1e-6
 
         # Test offset scalar
         offset_scalar = electrical_series.offset
-        assert offset_scalar == offsets[0] * 1e6
+        assert offset_scalar == offsets[0] * 1e-6
 
         # Test channel conversion vector
         channel_conversion_vector = electrical_series.channel_conversion
@@ -773,7 +773,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
         extracted_data = electrical_series.data[:]
         data_in_volts = extracted_data * channel_conversion_vector * conversion_factor_scalar + offset_scalar
-        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e6
+        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_uniform_non_default(self):
@@ -790,11 +790,11 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
-        assert conversion_factor_scalar == 1e6
+        assert conversion_factor_scalar == 1e-6
 
         # Test offset scalar
         offset_scalar = electrical_series.offset
-        assert offset_scalar == offsets[0] * 1e6
+        assert offset_scalar == offsets[0] * 1e-6
 
         # Test channel conversion vector
         channel_conversion_vector = electrical_series.channel_conversion
@@ -803,7 +803,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
         extracted_data = electrical_series.data[:]
         data_in_volts = extracted_data * channel_conversion_vector * conversion_factor_scalar + offset_scalar
-        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e6
+        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_gains(self):
@@ -820,11 +820,11 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
-        assert conversion_factor_scalar == 1e6
+        assert conversion_factor_scalar == 1e-6
 
         # Test offset scalar
         offset_scalar = electrical_series.offset
-        assert offset_scalar == offsets[0] * 1e6
+        assert offset_scalar == offsets[0] * 1e-6
 
         # Test channel conversion vector
         channel_conversion_vector = electrical_series.channel_conversion
@@ -833,7 +833,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
         extracted_data = electrical_series.data[:]
         data_in_volts = extracted_data * channel_conversion_vector * conversion_factor_scalar + offset_scalar
-        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e6
+        traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_null_offsets_in_recording_extractor(self):
@@ -848,7 +848,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
-        assert conversion_factor_scalar == 1e6
+        assert conversion_factor_scalar == 1e-6
 
         # Test offset scalar
         offset_scalar = electrical_series.offset
@@ -864,7 +864,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         traces_data = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=False)
         gains = self.test_recording_extractor.get_channel_gains()
         traces_data_in_micro_volts = traces_data * gains
-        traces_data_in_volts = traces_data_in_micro_volts * 1e6
+        traces_data_in_volts = traces_data_in_micro_volts * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_offsets_assertion(self):
