@@ -16,8 +16,13 @@ from roiextractors.testing import (
 )
 
 from neuroconv.tools.nwb_helpers import get_module
-from neuroconv.tools.roiextractors import add_devices, add_imaging_plane, add_two_photon_series
-from neuroconv.tools.roiextractors.roiextractors import add_plane_segmentation, add_image_segmentation
+from neuroconv.tools.roiextractors import (
+    add_devices,
+    add_imaging_plane,
+    add_two_photon_series,
+    add_plane_segmentation,
+    add_image_segmentation,
+)
 
 
 class TestAddDevices(unittest.TestCase):
