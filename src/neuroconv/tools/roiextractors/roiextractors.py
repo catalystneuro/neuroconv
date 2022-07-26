@@ -1,4 +1,4 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda and Alessio Buccino, Szonja Weigl"""
+"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl"""
 import os
 from pathlib import Path
 from warnings import warn
@@ -25,7 +25,7 @@ from pynwb.ophys import (
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
+from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile, get_module
 from ...utils import (
     FilePathType,
     OptionalFilePathType,
@@ -456,10 +456,7 @@ def add_summary_images(
     if not images_to_add:
         return nwbfile
 
-    if "ophys" not in nwbfile.processing:
-        nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
-
-    ophys = nwbfile.get_processing_module("ophys")
+    ophys = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
 
     image_collection_does_not_exist = images_set_name not in ophys.data_interfaces
     if image_collection_does_not_exist:
@@ -565,12 +562,8 @@ def write_segmentation(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata_base_common, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        # Processing Module:
-        if "ophys" not in nwbfile_out.processing:
-            ophys = nwbfile_out.create_processing_module("ophys", "contains optical physiology processed data")
-        else:
-            ophys = nwbfile_out.get_processing_module("ophys")
 
+        ophys = get_module(nwbfile=nwbfile_out, name="ophys", description="contains optical physiology processed data")
         for plane_no_loop, (segext_obj, metadata) in enumerate(zip(segext_objs, metadata_base_list)):
 
             # Add device:
@@ -689,6 +682,6 @@ def write_segmentation(
 
             # Adding summary images (mean and correlation)
             images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
-            add_summary_images(nwbfile=nwbfile, segmentation_extractor=segext_obj, images_set_name=images_set_name)
+            add_summary_images(nwbfile=nwbfile_out, segmentation_extractor=segext_obj, images_set_name=images_set_name)
 
     return nwbfile_out
