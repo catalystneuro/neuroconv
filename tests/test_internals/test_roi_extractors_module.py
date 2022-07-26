@@ -341,14 +341,12 @@ class TestAddPlaneSegmentation(unittest.TestCase):
 
         image_mask_iterator = plane_segmentation["image_mask"].data
 
-        data_chunks = np.zeros((self.num_frames, self.num_columns, self.num_rows))
+        data_chunks = np.zeros((self.num_rois, self.num_columns, self.num_rows))
         for data_chunk in image_mask_iterator:
             data_chunks[data_chunk.selection] = data_chunk.data
 
-        expected_image_masks = np.zeros((self.num_frames, self.num_columns, self.num_rows))
-        for roi_id in self.segmentation_extractor.get_roi_ids():
-            expected_image_masks[roi_id] = self.segmentation_extractor.get_roi_image_masks(roi_ids=[roi_id]).T.squeeze()
-
+        # transpose to num_rois x image_width x image_height
+        expected_image_masks = self.segmentation_extractor.get_roi_image_masks().T
         assert_array_equal(data_chunks, expected_image_masks)
 
     @parameterized.expand(
