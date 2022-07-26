@@ -8,13 +8,15 @@ import numpy.testing as npt
 
 from parameterized import parameterized, param
 
-from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor, SortingExtractor
-from spikeextractors.testing import check_recordings_equal, check_sortings_equal
+from spikeextractors import NwbSortingExtractor, RecordingExtractor, SortingExtractor
+from spikeextractors.testing import check_sortings_equal
 
-from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
+from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
-from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
+from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
+
+from spikeinterface.core import BaseRecording
 
 from pynwb import NWBHDF5IO
 
@@ -240,40 +242,23 @@ class TestEcephysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
-        if isinstance(recording, RecordingExtractor):
-            # Do the comparison with spikeextractors method
-            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-            if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
-                nwb_recording.set_channel_offsets(
-                    offsets=[
-                        nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
-                        for channel_id in nwb_recording.get_channel_ids()
-                    ]
-                )
+        if not isinstance(recording, BaseRecording):
+            raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
-            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
-            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
-
-            # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
-            # For GIN test data, sizes should be OK to load all into RAM even on CI
-            npt.assert_array_equal(
-                x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
-            )
+        # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
+        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+        if "channel_name" in recording.get_property_keys():
+            renamed_channel_ids = recording.get_property("channel_name")
         else:
-            # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-            nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
-            if "channel_name" in recording.get_property_keys():
-                renamed_channel_ids = recording.get_property("channel_name")
-            else:
-                renamed_channel_ids = recording.get_channel_ids().astype("str")
-            recording = recording.channel_slice(
-                channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
-            )
+            renamed_channel_ids = recording.get_channel_ids().astype("str")
+        recording = recording.channel_slice(
+            channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
+        )
 
-            check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
-            # This can only be tested if both gain and offset are present
-            if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
-                check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=True)
+        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
+        # This can only be tested if both gain and offset are present
+        if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
     parameterized_sorting_list = [
         param(
