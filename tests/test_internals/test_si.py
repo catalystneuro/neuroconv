@@ -605,7 +605,7 @@ class TestWriteElectrodes(unittest.TestCase):
                     assert nwb.electrodes["group"][i].description == "M1 description"
 
 
-class TestAddElectricalSeries(TestCase):
+class TestAddElectricalSeries(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Use common recording objects and values."""
