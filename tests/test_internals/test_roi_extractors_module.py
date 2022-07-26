@@ -357,8 +357,23 @@ class TestAddPlaneSegmentation(unittest.TestCase):
                 expected_rejected_roi_ids=[1] * 10,
             ),
             param(
-                rejected_list=[2, 6, 8, ],
-                expected_rejected_roi_ids=[0, 0, 1, 0, 0, 0, 1, 0, 1, 0, ],
+                rejected_list=[
+                    2,
+                    6,
+                    8,
+                ],
+                expected_rejected_roi_ids=[
+                    0,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    1,
+                    0,
+                    1,
+                    0,
+                ],
             ),
         ],
     )
@@ -449,10 +464,8 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert second_plane_segmentation_name in image_segmentation.plane_segmentations
         assert first_plane_segmentation_name in image_segmentation.plane_segmentations
 
-        first_plane_segmentation = image_segmentation.plane_segmentations[
-            first_plane_segmentation_name]
-        second_plane_segmentation = image_segmentation.plane_segmentations[
-            second_plane_segmentation_name]
+        first_plane_segmentation = image_segmentation.plane_segmentations[first_plane_segmentation_name]
+        second_plane_segmentation = image_segmentation.plane_segmentations[second_plane_segmentation_name]
 
         assert first_plane_segmentation.name == first_plane_segmentation_name
         assert first_plane_segmentation.description == first_plane_segmentation_description
