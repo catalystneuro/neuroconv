@@ -278,7 +278,6 @@ class TestAddPlaneSegmentation(unittest.TestCase):
             num_frames=self.num_frames,
             num_rows=self.num_rows,
             num_columns=self.num_columns,
-            rejected_list=[2, 3, 4, 9],
         )
         self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(

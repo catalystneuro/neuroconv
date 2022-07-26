@@ -263,7 +263,6 @@ def add_plane_segmentation(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_index: int = 0,
-    image_segmentation_name: str = None,
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
@@ -281,8 +280,6 @@ def add_plane_segmentation(
         The metadata for the plane segmentation.
     plane_segmentation_index: int, optional
         The index of the plane segmentation to add.
-    image_segmentation_name : str, optional
-        The name of the image segmentation to add the plane segmentation to.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
     compression_options : dict, optional
@@ -293,8 +290,6 @@ def add_plane_segmentation(
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
-    if image_segmentation_name is None:
-        image_segmentation_name = "ImageSegmentation"
     if iterator_options is None:
         iterator_options = dict()
     if compression_options is None:
@@ -314,23 +309,19 @@ def add_plane_segmentation(
     plane_segmentation_metadata = image_segmentation_metadata["plane_segmentations"][plane_segmentation_index]
     plane_segmentation_name = plane_segmentation_metadata["name"]
 
-    # Check if "ophys" processing module already exists in the NWB file
-    if "ophys" not in nwbfile.processing:
-        ophys = nwbfile.create_processing_module(
-            "ophys",
-            "contains optical physiology processed data"
-        )
-    else:
-        ophys = nwbfile.get_processing_module("ophys")
+    add_imaging_plane(
+        nwbfile=nwbfile,
+        metadata=metadata_copy,
+        imaging_plane_index=plane_segmentation_index,
+    )
 
-    # Check if the image segmentation already exists in the NWB file
-    if image_segmentation_name not in ophys.data_interfaces:
-        ophys.add(
-            ImageSegmentation(
-                image_segmentation_name, "contains image segmentation data"
-            )
-        )
+    add_image_segmentation(
+        nwbfile=nwbfile,
+        metadata=metadata_copy,
+    )
 
+    ophys = get_module(nwbfile, "ophys")
+    image_segmentation_name = image_segmentation_metadata["name"]
     image_segmentation = ophys.get_data_interface(image_segmentation_name)
 
     # Check if the plane segmentation already exists in the image segmentation
@@ -344,12 +335,6 @@ def add_plane_segmentation(
         imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][
             plane_segmentation_index]
         imaging_plane_name = imaging_plane_metadata["name"]
-        if imaging_plane_name not in nwbfile.imaging_planes:
-            imaging_plane = _create_imaging_plane_from_metadata(
-                nwbfile=nwbfile, imaging_plane_metadata=imaging_plane_metadata
-            )
-            nwbfile.add_imaging_plane(imaging_plane)
-
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
 
         plane_segmentation_kwargs = dict(
