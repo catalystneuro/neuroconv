@@ -377,7 +377,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             input_gain_array = np.ones_like(output_channel_conversion) * input_gain
             np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
 
-            nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
+            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             nwb_recording_gains = nwb_recording.get_channel_gains()
             npt.assert_almost_equal(input_gain * np.ones_like(nwb_recording_gains), nwb_recording_gains)
 
