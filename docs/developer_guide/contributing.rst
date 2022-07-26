@@ -1,44 +1,86 @@
-## Contributing to the project
+How to contribute to NeuroConv software and documents
+=====================================================
 
-We welcome any suggestions to this project! We've done our best to make this as easy as possible for developers to propose new checks.
+.. _sec-code-of-conduct:
 
-Begin by raising a ['New Check' issue](https://github.com/NeurodataWithoutBorders/nwbinspector/issues/new/choose) to discuss it with the rest of the team. __Please wait for approval on the Issue before beginning the PR process.__
+Code of Conduct
+---------------
 
-Once approved, follow these steps to add the new check function to the core registry. We ask that you keep Pull Requests as small as possible to facilitate review; if suggesting the addition of multiple checks, please make a separate Pull Request for each individual check.
+This project and everyone participating in it is governed by our `code of conduct guidelines <https://github.com/catalystneuro/neuroconv/blob/main/.github/CODE_OF_CONDUCT.rst>`_. By participating, you are expected to uphold this code. Please report unacceptable behavior.
 
-1) Use the `register_check` decorator to wrap your new check function. The decorator takes two keyword arguments, the `importance` level and `neurodata_type`.
-    Importance level may be one of...
+.. _sec-contribution-types:
 
-    `Importance.CRITICAL`: Something about the object (usually its `data`) has a high likelihood of being incorrect, but in a way that can't be detected via PyNWB validation.
+Types of Contributions
+----------------------
 
-    `Importance.BEST_PRACTICE_VIOLATION`: The object contains a major violation of something from the [Best Practices](https://www.nwb.org/best-practices/) list.
+Did you find a bug? or Do you intend to add a new feature or change an existing one?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    `Importance.BEST_PRACTICE_SUGGESTION`: The object contains a minor violation of something from the [Best Practices](https://www.nwb.org/best-practices/) list. Typically used in cases where an informative metadata field is missing.
+* **Identify the appropriate repository** for the change you are suggesting:
 
-    The `neurodata_type` is the most general type of object in PyNWB that meets the criteria imposed by the check logic.
+   * Use `nwb-schema <https://github.com/NeurodataWithoutBorders/nwb-schema/>`_ for any changes to the NWB format schema, schema language, storage, and other NWB related documents
+   * Use `PyNWB <https://github.com/NeurodataWithoutBorders/pynwb>`_  for any changes regarding the PyNWB API and the corresponding documentation
+   * Use `MatNWB <https://github.com/NeurodataWithoutBorders/matnwb>`_  for any changes regarding the MatNWB API and the corresponding documentation
 
-2) Begin your function name with `check_`.
-3) Write a one-line docstring briefly describing the check and its intention.
-4) Use the simplest possible logic for detecting the issue. If the applied logic is general to arbitrary Python data types (_e.g._, any numpy array), consider including it in the `utils`.
-5) `if` the issue is detected, `return` an `InspectorMessage` object with an informative `message` detailing what was expected.
-6) Inside one of the `tests/unit_tests/` files include tests of both a passing check (where `None` is returned) and a failing check (an `InspectorMessage` is returned).
+* **Ensure the feature or change was not already reported** by searching on GitHub under `NeuroConv Issues <https://github.com/catalystneuro/neuroconv/issues>`_ and `NeuroConv Pull Requests <https://github.com/catalystneuro/neuroconv/pulls>`_.
 
-A good example for reference is
+* If you are unable to find an open issue addressing the problem then open a new issue on the respective repository. Be sure to include:
 
-```python
-@register_check(importance=Importance.BEST_PRACTICE_SUGGESTION, neurodata_type=NWBFile)
-def check_experimenter(nwbfile: NWBFile):
-    """Check if an experimenter has been added for the session."""
-    if not nwbfile.experimenter:
-        return InspectorMessage(message="Experimenter is missing.")
-```
+    * **brief and descriptive title**
+    * **clear description of the problem you are trying to solve**. Describing the use case is often more important than proposing a specific solution. By describing the use case and problem you are trying to solve gives the development team and ultimately the NWB community a better understanding for the reasons of changes and enables others to suggest solutions.
+    * **context** providing as much relevant information as possible and if available a **code sample** or an **executable test case** demonstrating the expected behavior and/or problem.
 
-with tests
+* Both NeuroConv and NWB are currently being developed primarily by staff at scientific research institutions and industry, most of which work on many different research projects. Please be patient, if our development team is not able to respond immediately to your issues. In particular issues that belong to later project milestones may not be reviewed or processed until work on that milestone begins.
 
-```python
-def test_check_experimenter_pass():
-    assert check_experimenter(nwbfile=NWBFile(..., experimenter="test_experimenter")) is None
+Did you write a patch that fixes a bug or implements a new feature?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+See the ``Contributing Patches and Changes`` section below for details.
 
-def test_check_experimenter_fail():
-    assert check_experimenter(nwbfile=make_minimal_nwbfile()) == InspectorMessage(message="Experimenter is missing.")
-```
+Do you have questions about the NWB format?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Ask questions on our `Slack workspace <https://nwb-users.slack.com>`_ or sign up for our `NWB mailing list <http://visitor.r20.constantcontact.com/manage/optin?v=001nQUq2GTjwCjZxK_V2-6RLElLJO1HMVtoNLJ-wGyDCukZQZxu2AFJmNh6NS0_lGMsWc2w9hZpeNn74HuWdv5RtLX9qX0o0Hy1P0hOgMrkm2NoGAX3VoY25wx8HAtIZwredcCuM0nCUGodpvoaue3SzQ%3D%3D>`_ for updates.
+
+Informal discussions between developers and users?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The https://nwb-users.slack.com slack is currently used mainly for informal discussions between developers and users.
+
+.. _sec-contributing:
+
+Contributing Patches and Changes
+--------------------------------
+
+The ``main`` branch of `NeuroConv <https://github.com/catalystneuro/neuroconv>`_ is protected; you cannot push to it directly. You must upload your changes by pushing a new branch, then submit your changes to the ``main`` branch via a `Pull Request <https://help.github.com/articles/creating-a-pull-request>`_. This allows us to conduct automated testing of your contribution, and gives us a space for developers to discuss the contribution and request changes. If you decide to tackle an issue, please make yourself an assignee on the issue to communicate this to the team. Don't worry - this does not commit you to solving this issue. It just lets others know who they should talk to about it.
+
+From your local copy directory, use the following commands.
+
+If you have not already, you will need to clone the repo:
+
+.. code-block:: bash
+
+    $ git clone https://github.com/catalystneuro/neuroconv
+
+1) First create a new branch to work on
+
+.. code-block:: bash
+
+    $ git checkout -b <new_branch>
+
+2) Make your changes.
+
+3) We will automatically run tests to ensure that your contributions didn't break anything and that they follow our style guide. You can speed up the testing cycle by running these tests locally on your own computer by calling ``pytest`` from the top-level directory.
+
+4) Push your feature branch to origin (*i.e.* GitHub)
+
+.. code-block:: bash
+
+    $ git push origin <new_branch>
+
+5) Once you have tested and finalized your changes, create a pull request (PR) targeting ``dev`` as the base branch:
+
+    * Ensure the PR description clearly describes the problem and solution.
+    * Include the relevant issue number if applicable. TIP: Writing e.g. "fix #613" will automatically close issue #613 when this PR is merged.
+    * Before submitting, please ensure that the code follows the standard coding style of the respective repository.
+    * If you would like help with your contribution, or would like to communicate contributions that are not ready to merge, submit a PR where the title begins with "[WIP]."
+    * **NOTE:** Contributed branches will be removed by the development team after the merge is complete and should, hence, not be used after the pull request is complete.
