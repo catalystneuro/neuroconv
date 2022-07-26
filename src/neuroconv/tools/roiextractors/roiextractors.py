@@ -706,7 +706,10 @@ def write_segmentation(
                 metadata=metadata,
                 plane_segmentation_index=plane_no_loop,
                 iterator_options=dict(buffer_size=buffer_size),
-                compression_options=dict(compression=True, compression_opts=9,)
+                compression_options=dict(
+                    compression=True,
+                    compression_opts=9,
+                ),
             )
 
             plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"]
