@@ -237,6 +237,36 @@ class TestAddImagingPlane(unittest.TestCase):
         assert second_imaging_plane.description == second_imaging_plane_description
 
 
+class TestAddImageSegmentation(unittest.TestCase):
+    def setUp(self):
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        self.image_segmentation_name = "image_segmentation_name"
+        image_segmentation_metadata = dict(ImageSegmentation=dict(name=self.image_segmentation_name))
+
+        self.metadata["Ophys"].update(image_segmentation_metadata)
+
+    def test_add_image_segmentation(self):
+        """
+        Test that add_image_segmentation method adds an image segmentation to the nwbfile
+        specified by the metadata.
+        """
+
+        add_image_segmentation(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        ophys = get_module(self.nwbfile, "ophys")
+
+        image_segmentation = ophys.data_interfaces.get(self.image_segmentation_name)
+        self.assertEqual(image_segmentation.name, self.image_segmentation_name)
+
+
 class TestAddPlaneSegmentation(unittest.TestCase):
     def setUp(self) -> None:
         self.num_rois = 10
