@@ -698,10 +698,9 @@ class TestAddElectricalSeries(unittest.TestCase):
         num_channels = self.test_recording_extractor.get_num_channels()
 
         available_memory_in_bytes = psutil.virtual_memory().available
-        frame_size_in_bytes = element_size_in_bytes * num_channels
-        available_memory_in_bytes_plus_one_frame = available_memory_in_bytes + frame_size_in_bytes
 
-        num_frames_to_overflow = available_memory_in_bytes_plus_one_frame / (element_size_in_bytes * num_channels)
+        excess = 1.5  # Of what is available in memory
+        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * num_channels)
 
         # Mock recording extractor with as much frames as necessary to overflow memory
         mock_recorder = Mock()
