@@ -666,6 +666,9 @@ def add_electrical_series(
         eseries_kwargs.update(channel_conversion=channel_conversion)
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
+    # Iterator
+    iterator_opts = dict() if iterator_opts is None else iterator_opts
+
     if iterator_type is None:
         check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)
         ephys_data = checked_recording.get_traces(return_scaled=write_scaled, segment_index=segment_index)
