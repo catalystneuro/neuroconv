@@ -227,6 +227,37 @@ def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int
     return nwbfile
 
 
+def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+    """
+    Adds the image segmentation specified by the metadata to the nwb file.
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The nwbfile to add the image segmentation to.
+    metadata: dict
+        The metadata to create the image segmentation from.
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the image segmentation added.
+    """
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = get_default_ophys_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
+    image_segmentation_name = image_segmentation_metadata["name"]
+
+    ophys = get_module(nwbfile, "ophys")
+
+    # Check if the image segmentation already exists in the NWB file
+    if image_segmentation_name not in ophys.data_interfaces:
+        ophys.add(ImageSegmentation(name=image_segmentation_name))
+
+    return nwbfile
+
+
 def add_plane_segmentation(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
