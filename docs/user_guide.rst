@@ -59,7 +59,7 @@ the data from the interfaces.
 
 Here is an example of how to use a DataInterface::
 
-    from nwb_conversion_tools import SpikeGLXRecordingInterface
+    from neuroconv import SpikeGLXRecordingInterface
 
     source_data = dict(file_path="path/to/towersTask_g0_t0.imec0.ap.bin")
 
@@ -97,7 +97,7 @@ conversion process. This single NWBConversion object is responsible for
 combining those multiple read/write operations. An example of how to define
 a ``NWBConverter`` would be::
 
-    from nwb_conversion_tools import (
+    from neuroconv import (
         NWBConverter,
         BlackrockRecordingExtractorInterface,
         PhySortingInterface
