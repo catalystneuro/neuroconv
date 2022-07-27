@@ -308,3 +308,7 @@ directly from the dataset it interfaces with. This is done with the method ``get
 with properties related to optophysiology data. The ``LabConverter`` will combine the
 DataInterfaces specific schemas and metadatas into a full dictionaries, and potentially
 include properties that lie outside the scope of specific DataInterfaces.
+
+.. seealso::
+   We have :ref:`tutorials <tutorials>` that demonstrate how to setup a conversion
+   pipeline using NeuroConv.
