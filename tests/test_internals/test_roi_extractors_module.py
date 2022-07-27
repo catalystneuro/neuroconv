@@ -602,8 +602,7 @@ class TestAddFluorescence(unittest.TestCase):
             metadata=self.metadata,
         )
 
-        self.segmentation_extractor._roi_response_raw = np.zeros(
-            (self.num_rois, self.num_frames))
+        self.segmentation_extractor._roi_response_raw = np.zeros((self.num_rois, self.num_frames))
 
         add_fluorescence(
             segmentation_extractor=self.segmentation_extractor,
