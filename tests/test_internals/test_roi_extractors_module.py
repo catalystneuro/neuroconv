@@ -21,7 +21,8 @@ from neuroconv.tools.roiextractors import (
     add_imaging_plane,
     add_two_photon_series,
     add_plane_segmentation,
-    add_image_segmentation, add_fluorescence,
+    add_image_segmentation,
+    add_fluorescence,
 )
 
 
