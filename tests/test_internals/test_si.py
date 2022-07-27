@@ -725,7 +725,7 @@ class TestAddElectricalSeries(unittest.TestCase):
 
         expected_rate = self.sampling_frequency
         extracted_rate = electrical_series.rate
-        assert extracted_rate == expected_rate
+        assert extracted_rate == expected_rate, f"timestamps stored {electrical_series.timestamps}"
 
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
