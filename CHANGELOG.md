@@ -8,6 +8,7 @@
 * Coerced the recording extractors with `spikeextractors_backend=True` to BaseRecording objects for Axona, Blackrock, Openephys, and SpikeGadgets. [PR #38](https://github.com/catalystneuro/neuroconv/pull/38)
 
 ### Features
+* Added conversion interface for DeepLabCut data together with unit tests and a conversion example in the gallery. [PR #24](https://github.com/catalystneuro/neuroconv/pull/24)
 * Allow writing of offsets to ElectricalSeries obects from SpikeInterface (requires PyNWB>=2.1.0). [PR #37](https://github.com/catalystneuro/neuroconv/pull/37)
 
 ### Testing
@@ -22,7 +23,7 @@
 
 ### Features
 * Add non-iterative writing capabilities to `add_electrical_series`. [PR #32](https://github.com/catalystneuro/neuroconv/pull/32)
-* Added conversion interface for DeepLabCut data together with unit tests and a conversion example in the gallery [PR #24](https://github.com/catalystneuro/neuroconv/pull/24)
+
 ### Testing
 * Added unittests for the `write_as` functionality in the `add_electrical_series` of the spikeinterface module. [PR #32](https://github.com/catalystneuro/neuroconv/pull/32)
 
