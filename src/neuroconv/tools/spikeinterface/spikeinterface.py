@@ -693,30 +693,17 @@ def add_electrical_series(
     eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
 
     # Timestamps vs rate
-    recording_segment = checked_recording.select_segments(segment_indices=segment_index)
-
-    timestamps = recording_segment.get_times()
-    rate = calculate_regular_series_rate(series=timestamps)  # Returns None if is not regular
-
-    # Check for first time differences between provided argument and recording extractor properties
-    if starting_time is not None:
-        subsgment_start_time = recording_segment.t_start
-        subsegment_has_start_time = subsgment_start_time is not None
-        provided_start_time_is_different = subsgment_start_time != starting_time
-        if subsegment_has_start_time and provided_start_time_is_different:
-            warning_message = (
-                f"Starting times discrepancy between spikeinterface recorder start time {subsgment_start_time} "
-                f"and provided_start_time {starting_time}. "
-                f"Using the user provide start time and discarding the recorder start time"
-            )
-            warn(warning_message)
-
-        recording_segment.t_start = starting_time
+    timestamps = checked_recording.get_times(segment_index=segment_index)
+    rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
 
     if rate:
         eseries_kwargs.update(starting_time=starting_time, rate=rate)
     else:
-        wrapped_timestamps = H5DataIO(data=timestamps, compression=compression, compression_opts=compression_opts)
+        starting_time = starting_time if starting_time is not None else 0
+        shifted_time_stamps = starting_time + timestamps
+        wrapped_timestamps = H5DataIO(
+            data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
+        )
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
