@@ -43,7 +43,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
             )
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
             # Remove when spikeinterface 0.95 is released, this has an int sampling rate that causes problems
-            self.recording_extractor._sampling_rate = float(self.recording_extractor.get_sampling_rate())
+            self.recording_extractor._sampling_rate = float(self.recording_extractor.get_sampling_frequency())
         else:
             super().__init__(folder_path=folder_path, verbose=verbose)
 
