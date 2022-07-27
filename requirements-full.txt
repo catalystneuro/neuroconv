@@ -17,7 +17,7 @@ opencv-python==4.5.1.48
 spikeextractors==0.9.10
 spikeinterface>=0.94.0
 neo==0.10.2
-roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@155efa5d0597529b5b02a8ada633d8b0452ab1d7
+roiextractors==0.4.18
 pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy>=1.7.1
