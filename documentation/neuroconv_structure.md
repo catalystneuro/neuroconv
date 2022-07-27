@@ -212,4 +212,4 @@ OphysDataInterface would return a similar dictionaries for metadata_schema and m
 
 \* When Converter interfaces with GUI Forms
 
-![](converter-gui-operations.png)
+![](../docs/img/converter-gui-operations.png)
