@@ -21,7 +21,7 @@ from neuroconv.tools.roiextractors import (
     add_imaging_plane,
     add_two_photon_series,
     add_plane_segmentation,
-    add_image_segmentation,
+    add_image_segmentation, add_fluorescence,
 )
 
 
@@ -479,6 +479,82 @@ class TestAddPlaneSegmentation(unittest.TestCase):
 
         assert second_plane_segmentation.name == second_plane_segmentation_name
         assert second_plane_segmentation.description == second_plane_segmentation_description
+
+
+class TestAddFluorescence(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.num_rois = 10
+        cls.num_frames = 20
+        cls.num_rows = 25
+        cls.num_columns = 20
+
+        cls.session_start_time = datetime.now().astimezone()
+
+        cls.fluorescence_name = "fluorescence"
+
+        cls.raw_roi_response_series_metadata = dict(
+            name="raw",
+            description="raw fluorescence signal",
+        )
+
+        cls.dff_roi_response_series_metadata = dict(
+            name="dff",
+            description="relative (df/f) fluoresence signal",
+        )
+
+        cls.deconvolved_roi_response_series_metadata = dict(
+            name="deconvolved",
+            description="deconvolved fluorescence signal",
+        )
+
+        cls.neuropil_roi_response_series_metadata = dict(
+            name="neuropil",
+            description="neuropil fluorescence signal",
+        )
+
+    def setUp(self):
+        self.segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        fluorescence_metadata = dict(
+            Fluorescence=dict(
+                name=self.fluorescence_name,
+                roi_response_series=[
+                    self.raw_roi_response_series_metadata,
+                    self.dff_roi_response_series_metadata,
+                    self.deconvolved_roi_response_series_metadata,
+                    self.neuropil_roi_response_series_metadata,
+                ],
+            )
+        )
+
+        self.metadata["Ophys"].update(fluorescence_metadata)
+
+    def test_add_fluorescence(self):
+        """Test adding fluorescence to the nwbfile."""
+
+        add_fluorescence(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        fluorescence = self.nwbfile.processing["ophys"].get(self.fluorescence_name)
+
+        self.assertEqual(fluorescence.name, self.fluorescence_name)
+        self.assertEqual(len(fluorescence.roi_response_series), len(self.segmentation_extractor.get_traces_dict()))
 
 
 class TestAddTwoPhotonSeries(unittest.TestCase):
