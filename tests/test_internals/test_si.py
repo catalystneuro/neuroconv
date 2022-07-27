@@ -725,7 +725,13 @@ class TestAddElectricalSeries(unittest.TestCase):
 
         expected_rate = self.sampling_frequency
         extracted_rate = electrical_series.rate
-        assert extracted_rate == expected_rate, f"timestamps stored {electrical_series.timestamps}"
+        debugg_msg = (
+            f"timestamps stored {electrical_series.timestamps.data}"
+            f"recording extractor, {self.test_recording_extractor.get_times()}"
+            f"diff {np.diff(self.test_recording_extractor.get_times())}"
+            f"round {np.diff(self.test_recording_extractor.get_times()).round()}"
+        )
+        assert extracted_rate == expected_rate, debugg_msg
 
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
@@ -737,7 +743,7 @@ class TestAddElectricalSeries(unittest.TestCase):
 
         assert electrical_series.rate is None
 
-        extracted_timestamps = electrical_series.timestamps
+        extracted_timestamps = electrical_series.timestamps.data
         np.testing.assert_array_almost_equal(extracted_timestamps, expected_timestamps)
 
 
