@@ -697,7 +697,7 @@ def add_electrical_series(
     rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
 
     if rate:
-        eseries_kwargs.update(starting_time=starting_time, rate=rate)
+        eseries_kwargs.update(starting_time=starting_time, rate=checked_recording.sampling_frequency)
     else:
         starting_time = starting_time if starting_time is not None else 0
         shifted_time_stamps = starting_time + timestamps
