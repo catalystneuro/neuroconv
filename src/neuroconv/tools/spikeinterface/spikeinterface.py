@@ -489,7 +489,7 @@ def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording
 
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
-    nwbfile=None,
+    nwbfile,
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
@@ -503,9 +503,7 @@ def add_electrical_series(
     iterator_opts: Optional[dict] = None,
 ):
     """
-    Auxiliary static method for nwbextractor.
-
-    Adds traces from recording object as ElectricalSeries to nwbfile object.
+    Adds traces from recording object as ElectricalSeries to an nwbfile object.
 
     Parameters
     ----------
@@ -534,8 +532,9 @@ def add_electrical_series(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str (optional)
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
+    write_scaled: bool (optional, defaults to False)
+        If True, writes the traces in uV with the right conversion.
+        If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
     compression: str (optional, defaults to "gzip")
         Type of compression to use. Valid types are "gzip" and "lzf".
         Set to None to disable all compression.
@@ -560,15 +559,13 @@ def add_electrical_series(
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
     else:
         checked_recording = recording
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
+
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
+
     assert compression is None or compression in [
         "gzip",
         "lzf",
     ], "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', or None."
-
-    if not nwbfile.electrodes:
-        add_electrodes(recording, nwbfile, metadata)
 
     assert write_as in [
         "raw",
@@ -586,8 +583,8 @@ def add_electrical_series(
     elif compression == "lzf" and compression_opts is not None:
         warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
         compression_opts = None
-    if iterator_opts is None:
-        iterator_opts = dict()
+
+    # Write as functionality
     if write_as == "raw":
         eseries_kwargs = dict(
             name="ElectricalSeries_raw",
@@ -651,19 +648,27 @@ def add_electrical_series(
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
-    # channels gains - for RecordingExtractor, these are values to cast traces to uV.
+    # Spikeinterface objects guarantee data in micro volts when return_scaled=True
     # For nwb, the conversions (gains) cast the data to Volts.
-    # To get traces in Volts we take data*channel_conversion*conversion.
+    # To get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
-    if write_scaled or channel_conversion is None:
-        eseries_kwargs.update(conversion=1e-6)
-    else:
-        if len(np.unique(channel_conversion)) == 1:  # if all gains are equal
-            eseries_kwargs.update(conversion=channel_conversion[0] * 1e-6)
-        else:
-            eseries_kwargs.update(conversion=1e-6)
-            eseries_kwargs.update(channel_conversion=channel_conversion)
+
+    unique_offset = np.unique(channel_offset)
+    if unique_offset.size > 1:
+        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+    unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
+
+    micro_to_volts_conversion_factor = 1e-6
+    eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
+
+    if not write_scaled:
+        eseries_kwargs.update(channel_conversion=channel_conversion)
+        eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
+
+    # Iterator
+    iterator_opts = dict() if iterator_opts is None else iterator_opts
+
     if iterator_type is None:
         check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)
         ephys_data = checked_recording.get_traces(return_scaled=write_scaled, segment_index=segment_index)
