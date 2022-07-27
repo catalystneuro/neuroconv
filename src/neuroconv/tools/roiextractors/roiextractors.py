@@ -401,10 +401,8 @@ def add_fluorescence(segmentation_extractor: SegmentationExtractor, nwbfile: NWB
     fluorescence_name = fluorescence_metadata["name"]
 
     ophys = get_module(nwbfile, "ophys")
-    if fluorescence_name not in ophys.data_interfaces:
-        # create roi response series
-        fluorescence = Fluorescence(name=fluorescence_name)
-        ophys.add(fluorescence)
+    if fluorescence_name in ophys.data_interfaces:
+        return nwbfile
 
     add_plane_segmentation(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata)
 
@@ -420,7 +418,7 @@ def add_fluorescence(segmentation_extractor: SegmentationExtractor, nwbfile: NWB
     plane_no_loop = 0
     # Create a reference for ROIs from the plane segmentation
     roi_table_region = plane_segmentation.create_roi_table_region(
-        region=list(range(segmentation_extractor.get_num_rois())),
+        region=segmentation_extractor.get_roi_ids(),
         description=f"region for Imaging plane{plane_no_loop}",
     )
 
@@ -432,12 +430,13 @@ def add_fluorescence(segmentation_extractor: SegmentationExtractor, nwbfile: NWB
     # Filter all zero data
     roi_response_dict = {key: value for key, value in roi_response_dict.items() if np.any(value)}
 
-    fluorescence = ophys.get_data_interface(fluorescence_name)
+    # Create fluorescence
+    fluorescence = Fluorescence(name=fluorescence_name)
 
     rate = (
         np.nan
         if segmentation_extractor.get_sampling_frequency() is None
-        else segmentation_extractor.get_sampling_frequency()
+        else float(segmentation_extractor.get_sampling_frequency())
     )
 
     # Create the fluorescence response series
@@ -458,6 +457,9 @@ def add_fluorescence(segmentation_extractor: SegmentationExtractor, nwbfile: NWB
                 unit="n.a.",  # should be retrieved from the metadata when possible
             )
             fluorescence.create_roi_response_series(**roi_response_series_kwargs)
+
+    # Add fluorescence to the ophys module
+    ophys.add(fluorescence)
 
     return nwbfile
 

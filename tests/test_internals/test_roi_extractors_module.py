@@ -557,6 +557,65 @@ class TestAddFluorescence(unittest.TestCase):
         self.assertEqual(fluorescence.name, self.fluorescence_name)
         self.assertEqual(len(fluorescence.roi_response_series), len(self.segmentation_extractor.get_traces_dict()))
 
+    def test_add_fluorescence_one_of_the_traces_is_none(self):
+        """Test that roi response series with None values are not added to the nwbfile."""
+
+        self.segmentation_extractor._roi_response_neuropil = None
+
+        add_fluorescence(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        assert "Neuropil" not in roi_response_series
+
+        self.assertEqual(len(roi_response_series), 3)
+
+    def test_add_fluorescence_one_of_the_traces_is_all_zeros(self):
+        """Test that roi response series with all zero values are not added to the nwbfile."""
+
+        self.segmentation_extractor._roi_response_deconvolved = np.zeros((self.num_rois, self.num_frames))
+
+        add_fluorescence(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        assert "Deconvolved" not in roi_response_series
+        self.assertEqual(len(roi_response_series), 3)
+
+    def test_not_overwriting_fluorescence_if_same_name(self):
+        """Test that adding fluorescence trces with the same name will not overwrite
+        the existing fluorescence object in nwbfile."""
+
+        add_fluorescence(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        self.segmentation_extractor._roi_response_raw = np.zeros(
+            (self.num_rois, self.num_frames))
+
+        add_fluorescence(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        self.assertEqual(len(roi_response_series), 4)
+
 
 class TestAddTwoPhotonSeries(unittest.TestCase):
     def setUp(self):
