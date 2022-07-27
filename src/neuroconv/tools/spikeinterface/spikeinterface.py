@@ -532,8 +532,9 @@ def add_electrical_series(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str (optional)
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
+    write_scaled: bool (optional, defaults to False)
+        If True, writes the traces in uV with the right conversion.
+        If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
     compression: str (optional, defaults to "gzip")
         Type of compression to use. Valid types are "gzip" and "lzf".
         Set to None to disable all compression.
@@ -653,18 +654,20 @@ def add_electrical_series(
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
 
-    if write_scaled or channel_conversion is None:
-        eseries_kwargs.update(conversion=1e-6)
-    else:
-        if len(np.unique(channel_conversion)) == 1:  # if all gains are equal
-            eseries_kwargs.update(conversion=channel_conversion[0] * 1e-6)
-        else:
-            eseries_kwargs.update(conversion=1e-6)
-            eseries_kwargs.update(channel_conversion=channel_conversion)
+    unique_offset = np.unique(channel_offset)
+    if unique_offset.size > 1:
+        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+    unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
+
+    micro_to_volts_conversion_factor = 1e-6
+    eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
+
+    if not write_scaled:
+        eseries_kwargs.update(channel_conversion=channel_conversion)
+        eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
     # Iterator
-    if iterator_opts is None:
-        iterator_opts = dict()
+    iterator_opts = dict() if iterator_opts is None else iterator_opts
 
     if iterator_type is None:
         check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)

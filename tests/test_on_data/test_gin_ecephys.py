@@ -373,9 +373,9 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_conversion = nwbfile.acquisition["ElectricalSeries_raw"].conversion
-            output_gain = output_conversion * 1e6
-            self.assertEqual(first=input_gain, second=output_gain)
+            output_channel_conversion = nwbfile.acquisition["ElectricalSeries_raw"].channel_conversion[:]
+            input_gain_array = np.ones_like(output_channel_conversion) * input_gain
+            np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
 
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             nwb_recording_gains = nwb_recording.get_channel_gains()
