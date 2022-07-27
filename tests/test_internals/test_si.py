@@ -606,7 +606,7 @@ class TestWriteElectrodes(unittest.TestCase):
                     assert nwb.electrodes["group"][i].description == "M1 description"
 
 
-class TestAddElectricalSeries(unittest.TestCase):
+class TestAddElectricalSeriesWriting(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Use common recording objects and values."""
@@ -717,6 +717,24 @@ class TestAddElectricalSeries(unittest.TestCase):
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
 
+
+class TestAddElectricalSeriesSavingTimestampsvsRates(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_channels = 3
+        cls.sampling_frequency = 1.0
+        cls.durations = [3.0]  # 3 samples in the recorder
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+        self.test_recording_extractor = generate_recording(
+            sampling_frequency=self.sampling_frequency, num_channels=self.num_channels, durations=self.durations
+        )
+
     def test_uniform_timestamps(self):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
@@ -725,13 +743,8 @@ class TestAddElectricalSeries(unittest.TestCase):
 
         expected_rate = self.sampling_frequency
         extracted_rate = electrical_series.rate
-        debugg_msg = (
-            f"timestamps stored {electrical_series.timestamps.data}"
-            f"recording extractor, {self.test_recording_extractor.get_times()}"
-            f"diff {np.diff(self.test_recording_extractor.get_times())}"
-            f"round {np.diff(self.test_recording_extractor.get_times()).round()}"
-        )
-        assert extracted_rate == expected_rate, debugg_msg
+
+        assert extracted_rate == expected_rate
 
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
