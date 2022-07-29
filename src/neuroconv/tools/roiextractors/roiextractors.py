@@ -1,4 +1,4 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda and Alessio Buccino, Szonja Weigl"""
+"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl"""
 import os
 from pathlib import Path
 from warnings import warn
@@ -25,7 +25,7 @@ from pynwb.ophys import (
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
+from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile, get_module
 from ...utils import (
     FilePathType,
     OptionalFilePathType,
@@ -430,6 +430,46 @@ def get_nwb_segmentation_metadata(sgmextractor):
     return metadata
 
 
+def add_summary_images(
+    nwbfile: NWBFile, segmentation_extractor: SegmentationExtractor, images_set_name: str = "summary_images"
+) -> NWBFile:
+    """
+    Adds summary images (i.e. mean and correlation) to the nwbfile using an image container object pynwb.Image
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        An previously defined -in memory- NWBFile.
+    segmentation_extractor : SegmentationExtractor
+        A segmentation extractor object from roiextractors.
+    images_set_name : str
+        The name of the image container, "summary_images" by default.
+
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the summary images added.
+    """
+
+    images_dict = segmentation_extractor.get_images_dict()
+    images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
+    if not images_to_add:
+        return nwbfile
+
+    ophys = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
+
+    image_collection_does_not_exist = images_set_name not in ophys.data_interfaces
+    if image_collection_does_not_exist:
+        ophys.add(Images(images_set_name))
+    image_collection = ophys.data_interfaces[images_set_name]
+
+    for img_name, img in images_to_add.items():
+        # Note that nwb uses the conversion width x heigth (columns, rows) and roiextractors uses the transpose
+        image_collection.add_image(GrayscaleImage(name=img_name, data=img.T))
+
+    return nwbfile
+
+
 def write_segmentation(
     segext_obj: SegmentationExtractor,
     nwbfile_path: OptionalFilePathType = None,
@@ -522,12 +562,8 @@ def write_segmentation(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata_base_common, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        # Processing Module:
-        if "ophys" not in nwbfile_out.processing:
-            ophys = nwbfile_out.create_processing_module("ophys", "contains optical physiology processed data")
-        else:
-            ophys = nwbfile_out.get_processing_module("ophys")
 
+        ophys = get_module(nwbfile=nwbfile_out, name="ophys", description="contains optical physiology processed data")
         for plane_no_loop, (segext_obj, metadata) in enumerate(zip(segext_objs, metadata_base_list)):
 
             # Add device:
@@ -644,18 +680,8 @@ def write_segmentation(
                     if trace_name not in fluorescence.roi_response_series:
                         fluorescence.create_roi_response_series(**input_kwargs)
 
-            # create Two Photon Series:
-            if "TwoPhotonSeries" not in nwbfile_out.acquisition:
-                warn("could not find TwoPhotonSeries, using ImagingExtractor to create an nwbfile")
-            # adding images:
-            images_dict = segext_obj.get_images_dict()
-            if any([image is not None for image in images_dict.values()]):
-                images_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
-                if images_name not in ophys.data_interfaces:
-                    images = Images(images_name)
-                    for img_name, img_no in images_dict.items():
-                        if img_no is not None:
-                            images.add_image(GrayscaleImage(name=img_name, data=img_no.T))
-                    ophys.add(images)
+            # Adding summary images (mean and correlation)
+            images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
+            add_summary_images(nwbfile=nwbfile_out, segmentation_extractor=segext_obj, images_set_name=images_set_name)
 
     return nwbfile_out
