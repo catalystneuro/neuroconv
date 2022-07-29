@@ -1,3 +1,5 @@
+.. _conversion_gallery:
+
 Conversion Gallery
 ======================
 

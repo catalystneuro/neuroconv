@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Union
 
 import spikeextractors as se
+from spikeinterface.core.old_api_utils import OldToNewRecording
+
 from pynwb import NWBFile
 from pynwb.behavior import Position, SpatialSeries
 
@@ -71,6 +73,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         super().__init__(filename=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path, verbose=verbose)
+        self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
 
     def get_metadata(self):
 
