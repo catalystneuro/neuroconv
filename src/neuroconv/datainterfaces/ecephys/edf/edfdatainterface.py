@@ -20,7 +20,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
-        Load and prepare sorting data for kilosort
+        Load and prepare data for EDF
+        Currently only continuous EDF+ files (EDF+C) and original EDF files (EDF) are supported
+
 
         Parameters
         ----------
@@ -29,4 +31,5 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, True by default
             Allows verbose.
         """
+        assert HAVE_PYEDFLIB, INSTALL_MESSAGE
         super().__init__(file_path=file_path, verbose=verbose)
