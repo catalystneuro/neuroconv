@@ -8,5 +8,6 @@ from .roiextractors import (
     add_epochs,
     write_imaging,
     get_nwb_segmentation_metadata,
+    add_summary_images,
     write_segmentation,
 )

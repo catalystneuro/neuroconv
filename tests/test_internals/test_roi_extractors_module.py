@@ -22,6 +22,7 @@ from neuroconv.tools.roiextractors import (
     add_two_photon_series,
     add_plane_segmentation,
     add_image_segmentation,
+    add_summary_images,
 )
 
 
@@ -586,6 +587,86 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
             imaging_planes_in_file = read_nwbfile.imaging_planes
             assert self.imaging_plane_name in imaging_planes_in_file
             assert len(imaging_planes_in_file) == 1
+
+
+class TestAddSummaryImages(unittest.TestCase):
+    def setUp(self):
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+    def test_add_sumary_images(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
+
+        images_set_name = "images_set_name"
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        images_collection = ophys.data_interfaces[images_set_name]
+
+        extracted_images_dict = images_collection.images
+
+        extracted_images_dict = {img_name: img.data.T for img_name, img in extracted_images_dict.items()}
+        expected_images_dict = segmentation_extractor.get_images_dict()
+
+        assert expected_images_dict.keys() == extracted_images_dict.keys()
+        for image_name in expected_images_dict.keys():
+            np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
+
+    def test_extractor_with_one_summary_image_suppressed(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
+        segmentation_extractor._image_correlation = None
+
+        images_set_name = "images_set_name"
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        images_collection = ophys.data_interfaces[images_set_name]
+
+        extracted_images_number = len(images_collection.images)
+        expected_images_number = len(
+            {img_name: img for img_name, img in segmentation_extractor.get_images_dict().items() if img is not None}
+        )
+        assert extracted_images_number == expected_images_number
+
+    def test_extractor_with_no_summary_images(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rows=10, num_columns=15, has_summary_images=False
+        )
+
+        images_set_name = "images_set_name"
+        self.nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
+
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        assert images_set_name not in ophys.data_interfaces
+
+    def test_extractor_with_no_summary_images_and_no_ophys_module(self):
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rows=10, num_columns=15, has_summary_images=False
+        )
+
+        images_set_name = "images_set_name"
+
+        add_summary_images(
+            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+        )
+
+        assert len(self.nwbfile.processing) == 0
 
 
 if __name__ == "__main__":
