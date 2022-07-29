@@ -101,7 +101,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,
+        use_times: bool = False,  # To-do to remove, deprecation
         write_as: Optional[str] = None,
         write_electrical_series: bool = True,
         es_key: str = None,
@@ -132,9 +132,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         starting_time: float (optional)
             Sets the starting time of the ElectricalSeries to a manually set value.
             Increments timestamps if use_times is True.
-        use_times: bool
-            If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
-            the sampling rate is used.
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as: str (optional, defaults to 'raw')
