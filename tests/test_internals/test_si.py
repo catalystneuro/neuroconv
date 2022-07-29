@@ -12,6 +12,7 @@ from pynwb import NWBHDF5IO, NWBFile
 import pynwb.ecephys
 import spikeextractors as se
 from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.testing import TestCase
 
@@ -605,13 +606,16 @@ class TestWriteElectrodes(unittest.TestCase):
                     assert nwb.electrodes["group"][i].description == "M1 description"
 
 
-class TestAddElectricalSeries(unittest.TestCase):
+class TestAddElectricalSeriesWriting(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Use common recording objects and values."""
         cls.num_channels = 3
-        cls.durations = [0.100]  # 3000 samples in the recorder
-        cls.test_recording_extractor = generate_recording(num_channels=cls.num_channels, durations=cls.durations)
+        cls.sampling_frequency = 1.0
+        cls.durations = [3.0]  # 3 samples in the recorder
+        cls.test_recording_extractor = generate_recording(
+            sampling_frequency=cls.sampling_frequency, num_channels=cls.num_channels, durations=cls.durations
+        )
 
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
@@ -714,7 +718,46 @@ class TestAddElectricalSeries(unittest.TestCase):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
 
 
-from spikeinterface.extractors import NumpyRecording
+class TestAddElectricalSeriesSavingTimestampsvsRates(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_channels = 3
+        cls.sampling_frequency = 1.0
+        cls.durations = [3.0]  # 3 samples in the recorder
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+        self.test_recording_extractor = generate_recording(
+            sampling_frequency=self.sampling_frequency, num_channels=self.num_channels, durations=self.durations
+        )
+
+    def test_uniform_timestamps(self):
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+
+        expected_rate = self.sampling_frequency
+        extracted_rate = electrical_series.rate
+
+        assert extracted_rate == expected_rate
+
+    def test_non_uniform_timestamps(self):
+        expected_timestamps = np.array([0.0, 2.0, 10.0])
+        self.test_recording_extractor.set_times(times=expected_timestamps, with_warning=False)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+
+        assert electrical_series.rate is None
+
+        extracted_timestamps = electrical_series.timestamps.data
+        np.testing.assert_array_almost_equal(extracted_timestamps, expected_timestamps)
 
 
 class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
