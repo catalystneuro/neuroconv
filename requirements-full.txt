@@ -26,4 +26,4 @@ ndx-dandi-icephys>=0.4.0
 pillow==9.1.1
 pyopenephys==1.1.2
 scanimage-tiff-reader==1.4.1
-dlc2nwb @ git+https://github.com/DeepLabCut/DLC2NWB@077e42d48a819840278775cd8b71293c51f5f185
+dlc2nwb==0.2
