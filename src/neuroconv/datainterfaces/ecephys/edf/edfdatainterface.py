@@ -1,7 +1,16 @@
+"""Authors: Heberto Mayorquin"""
 from spikeinterface.extractors import EDFRecordingExtractor
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 from ....utils.types import FilePathType
+
+try:
+    import pyedflib
+
+    HAVE_PYEDFLIB = True
+except ImportError:
+    HAVE_PYEDFLIB = False
+INSTALL_MESSAGE = "Please install pyedflib (https://pypi.org/project/pyEDFlib/) to use this interface!"
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
