@@ -33,3 +33,29 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         """
         assert HAVE_PYEDFLIB, INSTALL_MESSAGE
         super().__init__(file_path=file_path, verbose=verbose)
+        self.edf_header = self.recording_extractor.neo_reader.edf_header
+
+    def extract_nwb_file_metadata(self):
+
+        nwbfile_metadata = dict(
+            session_start_time=self.edf_header["start_date"], experimenter=self.edf_header["technician"]
+        )
+
+        return nwbfile_metadata
+
+    def extract_subject_metadata(self):
+
+        subject_metadata = dict(subject_id=self.edf_header["patient_code"], DOB=self.edf_header["birthdate"])
+
+        return subject_metadata
+
+    def get_metadata(self):
+
+        metadata = super().get_metadata()
+        nwbfile_metadata = self.extract_nwb_file_metadata()
+        metadata["NWBFile"].update(nwbfile_metadata)
+
+        subject_metadata = self.extract_subject_metadata()
+        metadata["Subject"].upate(subject_metadata)
+
+        return metadata
