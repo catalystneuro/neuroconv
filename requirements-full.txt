@@ -17,7 +17,7 @@ opencv-python==4.5.1.48
 spikeextractors==0.9.10
 spikeinterface @ git+https://github.com/catalystneuro/spikeinterface.git@add_edf_recording_extractor
 neo @ git+https://github.com/NeuralEnsemble/python-neo@master
-roiextractors==0.4.17
+roiextractors==0.4.18
 pyintan==0.3.0
 pyopenephys==1.1.2
 sonpy>=1.7.1
