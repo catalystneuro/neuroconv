@@ -21,5 +21,9 @@ jobs:
           python -m pip install -U pip  # Official recommended way
           pip install pylint
           pip install pyenchant
-      - name: Run spell-checker
-        run: pylint --disable all --enable spelling --spelling-dict en_US .
+      - name: Run spell-checker on source
+        run: pylint --disable all --enable spelling --spelling-dict en_US ./src
+      - name: Run spell-checker on docs
+        run: pylint --disable all --enable spelling --spelling-dict en_US ./docs
+      - name: Run spell-checker on tests
+        run: pylint --disable all --enable spelling --spelling-dict en_US ./tests
