@@ -5,9 +5,8 @@ from pathlib import Path
 from pynwb.file import NWBFile
 
 from ....basedatainterface import BaseDataInterface
-from neuroconv.utils import dict_deep_update
-from neuroconv.utils import FilePathType, OptionalFilePathType
-from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
+from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
+from ....tools.nwb_helpers import make_or_load_nwbfile
 
 try:
     from dlc2nwb.utils import auxiliaryfunctions, write_subject_to_nwb
