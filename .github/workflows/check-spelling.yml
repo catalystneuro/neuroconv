@@ -1,0 +1,25 @@
+name: Check spelling
+on: pull_request
+
+jobs:
+  run:
+    name: Check spelling
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: s-weigand/setup-conda@v1
+      - uses: actions/checkout@v2
+      - run: git fetch --prune --unshallow --tags
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Global Setup
+        run: |
+          python -m pip install -U pip  # Official recommended way
+          pip install pylint
+          pip install pyenchant
+      - name: Run spell-checker
+        run: pylint --disable all --enable spelling --spelling-dict en_US .
