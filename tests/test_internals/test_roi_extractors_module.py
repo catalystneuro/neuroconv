@@ -5,15 +5,23 @@ from datetime import datetime
 from copy import deepcopy
 
 import numpy as np
+from numpy.testing import assert_array_equal
+from parameterized import parameterized, param
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
-from roiextractors.testing import generate_dummy_imaging_extractor, generate_dummy_segmentation_extractor
+from roiextractors.testing import (
+    generate_dummy_imaging_extractor,
+    generate_dummy_segmentation_extractor,
+)
 
+from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     add_devices,
     add_imaging_plane,
     add_two_photon_series,
+    add_plane_segmentation,
+    add_image_segmentation,
     add_summary_images,
 )
 
@@ -233,6 +241,245 @@ class TestAddImagingPlane(unittest.TestCase):
         second_imaging_plane = imaging_planes[second_imaging_plane_name]
         assert second_imaging_plane.name == second_imaging_plane_name
         assert second_imaging_plane.description == second_imaging_plane_description
+
+
+class TestAddImageSegmentation(unittest.TestCase):
+    def setUp(self):
+        self.session_start_time = datetime.now().astimezone()
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        self.image_segmentation_name = "image_segmentation_name"
+        image_segmentation_metadata = dict(ImageSegmentation=dict(name=self.image_segmentation_name))
+
+        self.metadata["Ophys"].update(image_segmentation_metadata)
+
+    def test_add_image_segmentation(self):
+        """
+        Test that add_image_segmentation method adds an image segmentation to the nwbfile
+        specified by the metadata.
+        """
+
+        add_image_segmentation(nwbfile=self.nwbfile, metadata=self.metadata)
+
+        ophys = get_module(self.nwbfile, "ophys")
+
+        image_segmentation = ophys.data_interfaces.get(self.image_segmentation_name)
+        self.assertEqual(image_segmentation.name, self.image_segmentation_name)
+
+
+class TestAddPlaneSegmentation(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.num_rois = 10
+        cls.num_frames = 20
+        cls.num_rows = 25
+        cls.num_columns = 20
+
+        cls.session_start_time = datetime.now().astimezone()
+
+        cls.image_segmentation_name = "image_segmentation_name"
+        cls.plane_segmentation_name = "plane_segmentation_name"
+
+    def setUp(self):
+        self.segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        self.plane_segmentation_metadata = dict(
+            name=self.plane_segmentation_name,
+            description="Segmented ROIs",
+        )
+
+        image_segmentation_metadata = dict(
+            ImageSegmentation=dict(
+                name=self.image_segmentation_name,
+                plane_segmentations=[
+                    self.plane_segmentation_metadata,
+                ],
+            )
+        )
+
+        self.metadata["Ophys"].update(image_segmentation_metadata)
+
+    def test_add_plane_segmentation(self):
+        """Test that add_plane_segmentation method adds a plane segmentation to the nwbfile
+        specified by the metadata."""
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+
+        self.assertEqual(len(plane_segmentations), 1)
+
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        self.assertEqual(plane_segmentation.name, self.plane_segmentation_name)
+        self.assertEqual(plane_segmentation.description, self.plane_segmentation_metadata["description"])
+
+        plane_segmentation_num_rois = len(plane_segmentation.id)
+        self.assertEqual(plane_segmentation_num_rois, self.num_rois)
+
+        plane_segmentation_roi_centroid_data = plane_segmentation["RoiCentroid"].data
+        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations().T
+
+        assert_array_equal(plane_segmentation_roi_centroid_data, expected_roi_centroid_data)
+
+        image_mask_iterator = plane_segmentation["image_mask"].data
+
+        data_chunks = np.zeros((self.num_rois, self.num_columns, self.num_rows))
+        for data_chunk in image_mask_iterator:
+            data_chunks[data_chunk.selection] = data_chunk.data
+
+        # transpose to num_rois x image_width x image_height
+        expected_image_masks = self.segmentation_extractor.get_roi_image_masks().T
+        assert_array_equal(data_chunks, expected_image_masks)
+
+    @parameterized.expand(
+        [
+            param(
+                rejected_list=[],
+                expected_rejected_roi_ids=[0] * 10,
+            ),
+            param(
+                rejected_list=list(np.arange(0, 10)),
+                expected_rejected_roi_ids=[1] * 10,
+            ),
+            param(
+                rejected_list=[
+                    2,
+                    6,
+                    8,
+                ],
+                expected_rejected_roi_ids=[
+                    0,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    1,
+                    0,
+                    1,
+                    0,
+                ],
+            ),
+        ],
+    )
+    def test_rejected_roi_ids(self, rejected_list, expected_rejected_roi_ids):
+        """Test that the ROI ids that were rejected are correctly set in
+        the plane segmentation ROI table."""
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            rejected_list=rejected_list,
+        )
+
+        add_plane_segmentation(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        plane_segmentation_rejected_roi_ids = plane_segmentation["Rejected"].data
+        assert_array_equal(plane_segmentation_rejected_roi_ids, expected_rejected_roi_ids)
+
+        accepted_roi_ids = list(np.logical_not(np.array(expected_rejected_roi_ids)).astype(int))
+        plane_segmentation_accepted_roi_ids = plane_segmentation["Accepted"].data
+        assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
+
+    def test_not_overwriting_plane_segmentation_if_same_name(self):
+        """Test that adding a plane segmentation with the same name will not overwrite
+        the existing plane segmentation."""
+
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        self.plane_segmentation_metadata["description"] = "modified description"
+
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+
+        assert len(image_segmentation.plane_segmentations) == 1
+        assert self.plane_segmentation_name in image_segmentation.plane_segmentations
+
+        plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
+
+        self.assertNotEqual(plane_segmentation.description, self.plane_segmentation_metadata["description"])
+
+    def test_add_two_plane_segmentation(self):
+        """Test adding two plane segmentations to the nwbfile."""
+
+        # Add first plane segmentation
+        first_plane_segmentation_name = "first_plane_segmentation_name"
+        first_plane_segmentation_description = "first_plane_segmentation_description"
+        self.plane_segmentation_metadata["name"] = first_plane_segmentation_name
+        self.plane_segmentation_metadata["description"] = first_plane_segmentation_description
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        # Add second plane segmentation
+        second_plane_segmentation_name = "second_plane_segmentation_name"
+        second_plane_segmentation_description = "second_plane_segmentation_description"
+        self.plane_segmentation_metadata["name"] = second_plane_segmentation_name
+        self.plane_segmentation_metadata["description"] = second_plane_segmentation_description
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+
+        assert len(image_segmentation.plane_segmentations) == 2
+        assert second_plane_segmentation_name in image_segmentation.plane_segmentations
+        assert first_plane_segmentation_name in image_segmentation.plane_segmentations
+
+        first_plane_segmentation = image_segmentation.plane_segmentations[first_plane_segmentation_name]
+        second_plane_segmentation = image_segmentation.plane_segmentations[second_plane_segmentation_name]
+
+        assert first_plane_segmentation.name == first_plane_segmentation_name
+        assert first_plane_segmentation.description == first_plane_segmentation_description
+
+        assert second_plane_segmentation.name == second_plane_segmentation_name
+        assert second_plane_segmentation.description == second_plane_segmentation_description
 
 
 class TestAddTwoPhotonSeries(unittest.TestCase):

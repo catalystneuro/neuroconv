@@ -6,6 +6,7 @@ from typing import Optional
 from copy import deepcopy
 
 import numpy as np
+from hdmf.common import VectorData
 
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile, NWBHDF5IO
@@ -70,11 +71,21 @@ def get_default_ophys_metadata():
         unit="n.a.",
     )
 
+    default_image_segmentation = dict(
+        name="ImageSegmentation",
+        plane_segmentations=[
+            dict(
+                name="PlaneSegmentation",
+                description="Segmented ROIs",
+            )
+        ],
+    )
+
     metadata.update(
         Ophys=dict(
             Device=[default_device],
             Fluorescence=default_fluoresence,
-            ImageSegmentation=dict(plane_segmentations=[dict(description="Segmented ROIs", name="PlaneSegmentation")]),
+            ImageSegmentation=default_image_segmentation,
             ImagingPlane=[default_imaging_plane],
             TwoPhotonSeries=[default_two_photon_series],
         ),
@@ -211,6 +222,151 @@ def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int
             nwbfile=nwbfile, imaging_plane_metadata=imaging_plane_metadata
         )
         nwbfile.add_imaging_plane(imaging_plane)
+
+    return nwbfile
+
+
+def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
+    """
+    Adds the image segmentation specified by the metadata to the nwb file.
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The nwbfile to add the image segmentation to.
+    metadata: dict
+        The metadata to create the image segmentation from.
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the image segmentation added.
+    """
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = get_default_ophys_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
+    image_segmentation_name = image_segmentation_metadata["name"]
+
+    ophys = get_module(nwbfile, "ophys")
+
+    # Check if the image segmentation already exists in the NWB file
+    if image_segmentation_name not in ophys.data_interfaces:
+        ophys.add(ImageSegmentation(name=image_segmentation_name))
+
+    return nwbfile
+
+
+def add_plane_segmentation(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    plane_segmentation_index: int = 0,
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
+) -> NWBFile:
+    """
+    Adds the plane segmentation specified by the metadata to the image segmentation.
+    If the plane segmentation already exists in the image segmentation, it is not added again.
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get the results from.
+    nwbfile : NWBFile
+        The nwbfile to add the plane segmentation to.
+    metadata : dict, optional
+        The metadata for the plane segmentation.
+    plane_segmentation_index: int, optional
+        The index of the plane segmentation to add.
+    iterator_options : dict, optional
+        The options to use when iterating over the image masks of the segmentation extractor.
+    compression_options : dict, optional
+        The options to use when compressing the image masks of the segmentation extractor.
+
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the plane segmentation added.
+    """
+    if iterator_options is None:
+        iterator_options = dict()
+    if compression_options is None:
+        compression_options = dict()
+
+    def image_mask_iterator():
+        for roi_id in segmentation_extractor.get_roi_ids():
+            image_masks = segmentation_extractor.get_roi_image_masks(roi_ids=[roi_id]).T.squeeze()
+            yield image_masks
+
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = get_default_ophys_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
+    plane_segmentation_metadata = image_segmentation_metadata["plane_segmentations"][plane_segmentation_index]
+    plane_segmentation_name = plane_segmentation_metadata["name"]
+
+    add_imaging_plane(
+        nwbfile=nwbfile,
+        metadata=metadata_copy,
+        imaging_plane_index=plane_segmentation_index,
+    )
+
+    add_image_segmentation(
+        nwbfile=nwbfile,
+        metadata=metadata_copy,
+    )
+
+    ophys = get_module(nwbfile, "ophys")
+    image_segmentation_name = image_segmentation_metadata["name"]
+    image_segmentation = ophys.get_data_interface(image_segmentation_name)
+
+    # Check if the plane segmentation already exists in the image segmentation
+    if plane_segmentation_name not in image_segmentation.plane_segmentations:
+        roi_ids = segmentation_extractor.get_roi_ids()
+        accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
+        rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
+
+        roi_locations = segmentation_extractor.get_roi_locations().T
+
+        imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][plane_segmentation_index]
+        imaging_plane_name = imaging_plane_metadata["name"]
+        imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
+
+        plane_segmentation_kwargs = dict(
+            **plane_segmentation_metadata,
+            imaging_plane=imaging_plane,
+            columns=[
+                VectorData(
+                    data=H5DataIO(
+                        DataChunkIterator(image_mask_iterator(), **iterator_options),
+                        **compression_options,
+                    ),
+                    name="image_mask",
+                    description="image masks",
+                ),
+                VectorData(
+                    data=roi_locations,
+                    name="RoiCentroid",
+                    description="x,y location of centroid of the roi in image_mask",
+                ),
+                VectorData(
+                    data=accepted_ids,
+                    name="Accepted",
+                    description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
+                ),
+                VectorData(
+                    data=rejected_ids,
+                    name="Rejected",
+                    description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation",
+                ),
+            ],
+            id=roi_ids,
+        )
+
+        image_segmentation.create_plane_segmentation(**plane_segmentation_kwargs)
 
     return nwbfile
 
@@ -573,77 +729,27 @@ def write_segmentation(
             image_segmentation_name = (
                 "ImageSegmentation" if plane_no_loop == 0 else f"ImageSegmentation_Plane{plane_no_loop}"
             )
-            if image_segmentation_name not in ophys.data_interfaces:
-                image_segmentation = ImageSegmentation(name=image_segmentation_name)
-                ophys.add(image_segmentation)
-            else:
-                image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
+            add_image_segmentation(nwbfile=nwbfile_out, metadata=metadata)
+            image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
 
             # Add imaging plane
-            imaging_plane_name = "ImagingPlane" if plane_no_loop == 0 else f"ImagePlane_{plane_no_loop}"
             add_imaging_plane(nwbfile=nwbfile_out, metadata=metadata)
-            imaging_plane = nwbfile_out.imaging_planes[imaging_plane_name]
 
             # PlaneSegmentation:
-            input_kwargs = dict(
-                description="output from segmenting imaging plane",
-                imaging_plane=imaging_plane,
+            add_plane_segmentation(
+                segmentation_extractor=segext_obj,
+                nwbfile=nwbfile_out,
+                metadata=metadata,
+                iterator_options=dict(buffer_size=buffer_size),
+                compression_options=dict(
+                    compression=True,
+                    compression_opts=9,
+                ),
             )
-            ps_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
-            if ps_metadata["name"] not in image_segmentation.plane_segmentations:
-                ps_exist = False
-            else:
-                ps = image_segmentation.get_plane_segmentation(ps_metadata["name"])
-                ps_exist = True
-            roi_ids = segext_obj.get_roi_ids()
-            accepted_list = segext_obj.get_accepted_list()
-            accepted_list = [] if accepted_list is None else accepted_list
-            rejected_list = segext_obj.get_rejected_list()
-            rejected_list = [] if rejected_list is None else rejected_list
-            accepted_ids = [1 if k in accepted_list else 0 for k in roi_ids]
-            rejected_ids = [1 if k in rejected_list else 0 for k in roi_ids]
-            roi_locations = np.array(segext_obj.get_roi_locations()).T
 
-            def image_mask_iterator():
-                for id in segext_obj.get_roi_ids():
-                    img_msks = segext_obj.get_roi_image_masks(roi_ids=[id]).T.squeeze()
-                    yield img_msks
-
-            if not ps_exist:
-                from hdmf.common import VectorData
-
-                input_kwargs.update(
-                    **ps_metadata,
-                    columns=[
-                        VectorData(
-                            data=H5DataIO(
-                                DataChunkIterator(image_mask_iterator(), buffer_size=buffer_size),
-                                compression=True,
-                                compression_opts=9,
-                            ),
-                            name="image_mask",
-                            description="image masks",
-                        ),
-                        VectorData(
-                            data=roi_locations,
-                            name="RoiCentroid",
-                            description="x,y location of centroid of the roi in image_mask",
-                        ),
-                        VectorData(
-                            data=accepted_ids,
-                            name="Accepted",
-                            description="1 if ROi was accepted or 0 if rejected as a cell during segmentation operation",
-                        ),
-                        VectorData(
-                            data=rejected_ids,
-                            name="Rejected",
-                            description="1 if ROi was rejected or 0 if accepted as a cell during segmentation operation",
-                        ),
-                    ],
-                    id=roi_ids,
-                )
-
-                ps = image_segmentation.create_plane_segmentation(**input_kwargs)
+            plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"]
+            plane_segmentation_name = plane_segmentation_metadata[0]["name"]
+            plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
             # Fluorescence Traces - This should be a function on its own.
             if "Flourescence" not in ophys.data_interfaces:
@@ -652,7 +758,7 @@ def write_segmentation(
             else:
                 fluorescence = ophys.data_interfaces["Fluorescence"]
 
-            roi_table_region = ps.create_roi_table_region(
+            roi_table_region = plane_segmentation.create_roi_table_region(
                 description=f"region for Imaging plane{plane_no_loop}",
                 region=list(range(segext_obj.get_num_rois())),
             )
