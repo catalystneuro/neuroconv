@@ -25,3 +25,6 @@ testpaths = [
 "docs/conversion_examples_gallery/",
 "tests"
 ]
+[tool.pylint.'SPELLING']
+spelling-dict = "en_US"
+spelling-private-dict-file = "exclude-spelling.txt"

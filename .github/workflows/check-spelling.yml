@@ -22,8 +22,8 @@ jobs:
           pip install pylint
           pip install pyenchant
       - name: Run spell-checker on source
-        run: pylint --disable all --enable spelling --spelling-dict en_US ./src
+        run: pylint --disable all --enable spelling --rcfile=pyproject.toml ./src
       - name: Run spell-checker on docs
-        run: pylint --disable all --enable spelling --spelling-dict en_US ./docs
+        run: pylint --disable all --enable spelling --rcfile=pyproject.toml ./docs
       - name: Run spell-checker on tests
-        run: pylint --disable all --enable spelling --spelling-dict en_US ./tests
+        run: pylint --disable all --enable spelling --rcfile=pyproject.toml ./tests
