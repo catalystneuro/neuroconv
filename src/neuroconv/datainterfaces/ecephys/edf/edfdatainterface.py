@@ -38,7 +38,8 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     def extract_nwb_file_metadata(self):
 
         nwbfile_metadata = dict(
-            session_start_time=self.edf_header["startdate"], experimenter=self.edf_header["technician"]
+            session_start_time=self.edf_header["startdate"] if self.edf_header["startdate"] else None,
+            experimenter=self.edf_header["technician"] if self.edf_header["technician"] else None,
         )
 
         return nwbfile_metadata
