@@ -1,11 +1,9 @@
-from importlib.metadata import version
-
 import numpy as np
 from numpy.testing import assert_array_equal
 
 from hdmf.testing import TestCase
-from packaging.version import Version
 from parameterized import parameterized, param
+from nwbinspector.utils import get_package_version
 from roiextractors.testing import generate_dummy_imaging_extractor
 
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
@@ -72,7 +70,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         chunk_shape=(13, 2, 2),
         case_name="chunk_shape_greater_than_buffer_shape",
     )
-    if Version(version("hdmf")) >= Version("3.3.2"):
+    if get_package_version(name="hdmf").base_version >= "3.3.2":
         param_chunk_shape_exceeds_buffer_shape.kwargs[
             "expected_error_msg"
         ] = "Some dimensions of chunk_shape ((13, 2, 2)) exceed the buffer shape ((5, 10, 10))!"

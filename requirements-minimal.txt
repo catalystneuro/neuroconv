@@ -17,3 +17,4 @@ lxml>=4.6.5
 scipy>=1.4.1
 click  # must be unspecified version to handle platform/pyVersion
 pyopenephys>=1.1.2
+nwbinspector @ git+https://github.com/NeurodataWithoutBorders/nwbinspector.git@9586da0d693a746f03a8bcd3291e12307ef9059a
