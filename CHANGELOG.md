@@ -13,6 +13,7 @@
 * Unified the documentation of NeuroConv structure in the User Guide readthedocs. [PR #39](https://github.com/catalystneuro/neuroconv/pull/39)
 
 ### Features
+* Added conversion interface for DeepLabCut data together with unit tests and a conversion example in the gallery. [PR #24](https://github.com/catalystneuro/neuroconv/pull/24)
 * Allow writing of offsets to ElectricalSeries obects from SpikeInterface (requires PyNWB>=2.1.0). [PR #37](https://github.com/catalystneuro/neuroconv/pull/37)
 
 ### Testing
