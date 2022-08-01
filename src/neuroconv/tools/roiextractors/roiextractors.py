@@ -449,12 +449,18 @@ def add_fluorescence(segmentation_extractor: SegmentationExtractor, nwbfile: NWB
             pass
         trace_name = trace_name if plane_no_loop == 0 else trace_name + f"_Plane{plane_no_loop}"
         if trace_name not in fluorescence.roi_response_series:
+            trace_metadata = [series for series in fluorescence_metadata["roi_response_series"]
+                              if series["name"] == response_series_name]
+            trace_metadata = trace_metadata[0] if trace_metadata else []
+            unit = trace_metadata["unit"] if "unit" in trace_metadata else "n.a"
+            description = trace_metadata["description"] if "description" in trace_metadata else "no description"
             roi_response_series_kwargs = dict(
                 name=trace_name,
                 data=data.T,
                 rois=roi_table_region,
                 rate=rate,
-                unit="n.a.",  # should be retrieved from the metadata when possible
+                unit=unit,
+                description=description,
             )
             fluorescence.create_roi_response_series(**roi_response_series_kwargs)
 
