@@ -410,8 +410,6 @@ def add_fluorescence_traces(
     fluorescence_name = fluorescence_metadata["name"]
 
     ophys = get_module(nwbfile, "ophys")
-    if fluorescence_name in ophys.data_interfaces:
-        return nwbfile
 
     add_plane_segmentation(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata)
 
@@ -423,13 +421,19 @@ def add_fluorescence_traces(
     plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][0]["name"]
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
-    # TODO what should be done with plane_no_loop?
-    plane_no_loop = 0
     # Create a reference for ROIs from the plane segmentation
     roi_table_region = plane_segmentation.create_roi_table_region(
         region=segmentation_extractor.get_roi_ids(),
-        description=f"region for Imaging plane{plane_no_loop}",
+        description=f"region for Imaging plane{plane_index}",
     )
+
+    # Create fluorescence container
+    if fluorescence_name in ophys.data_interfaces:
+        fluorescence = ophys.get_data_interface(fluorescence_name)
+    else:
+        fluorescence = Fluorescence(name=fluorescence_name)
+        # Add fluorescence to the ophys module
+        ophys.add(fluorescence)
 
     # Get traces from the segmentation extractor
     roi_response_dict = segmentation_extractor.get_traces_dict()
@@ -438,9 +442,6 @@ def add_fluorescence_traces(
     roi_response_dict = {key: value for key, value in roi_response_dict.items() if value is not None}
     # Filter all zero data
     roi_response_dict = {key: value for key, value in roi_response_dict.items() if np.any(value)}
-
-    # Create fluorescence
-    fluorescence = Fluorescence(name=fluorescence_name)
 
     rate = (
         np.nan
@@ -452,11 +453,7 @@ def add_fluorescence_traces(
     for response_series_name, response_series_data in roi_response_dict.items():
         data = np.array(response_series_data)
         trace_name = "RoiResponseSeries" if response_series_name == "raw" else response_series_name.capitalize()
-        if trace_name == "Dff":
-            # TODO
-            # dF/F RoiResponseSeries data should be stored in a DfOverF object
-            pass
-        trace_name = trace_name if plane_no_loop == 0 else trace_name + f"_Plane{plane_no_loop}"
+        trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
         if trace_name not in fluorescence.roi_response_series:
             trace_metadata = [series for series in fluorescence_metadata["roi_response_series"]
                               if series["name"] == response_series_name]
@@ -472,9 +469,6 @@ def add_fluorescence_traces(
                 description=description,
             )
             fluorescence.create_roi_response_series(**roi_response_series_kwargs)
-
-    # Add fluorescence to the ophys module
-    ophys.add(fluorescence)
 
     return nwbfile
 
