@@ -439,9 +439,9 @@ def add_fluorescence_traces(
     roi_response_dict = segmentation_extractor.get_traces_dict()
 
     # Filter empty data
-    roi_response_dict = {key: value for key, value in roi_response_dict.items() if value is not None}
+    roi_response_dict = {trace_name: trace for trace_name, trace in roi_response_dict.items() if trace is not None}
     # Filter all zero data
-    roi_response_dict = {key: value for key, value in roi_response_dict.items() if np.any(value)}
+    roi_response_dict = {trace_name: trace for trace_name, trace in roi_response_dict.items() if np.any(trace)}
 
     rate = (
         np.nan
