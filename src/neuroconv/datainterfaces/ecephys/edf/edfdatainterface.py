@@ -38,18 +38,24 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     def extract_nwb_file_metadata(self):
 
         nwbfile_metadata = dict(
-            session_start_time=self.edf_header["startdate"] if self.edf_header["startdate"] else None,
-            experimenter=self.edf_header["technician"] if self.edf_header["technician"] else None,
+            session_start_time=self.edf_header["startdate"],
+            experimenter=self.edf_header["technician"],
         )
+
+        # Filter empty values
+        nwbfile_metadata = {property: value for property, value in nwbfile_metadata.items() if value}
 
         return nwbfile_metadata
 
     def extract_subject_metadata(self):
 
         subject_metadata = dict(
-            subject_id=self.edf_header["patientcode"] if self.edf_header["patientcode"] else None,
-            date_of_birth=self.edf_header["birthdate"] if self.edf_header["birthdate"] else None,
+            subject_id=self.edf_header["patientcode"],
+            date_of_birth=self.edf_header["birthdate"],
         )
+
+        # Filfter empty values
+        subject_metadata = {property: value for property, value in subject_metadata.items() if value}
 
         return subject_metadata
 
