@@ -375,10 +375,10 @@ def add_plane_segmentation(
 
 
 def add_fluorescence_traces(
-        segmentation_extractor: SegmentationExtractor,
-        nwbfile: NWBFile,
-        metadata: Optional[dict],
-        plane_index: int = 0,
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    plane_index: int = 0,
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -455,8 +455,11 @@ def add_fluorescence_traces(
         trace_name = "RoiResponseSeries" if response_series_name == "raw" else response_series_name.capitalize()
         trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
         if trace_name not in fluorescence.roi_response_series:
-            trace_metadata = [series for series in fluorescence_metadata["roi_response_series"]
-                              if series["name"] == response_series_name]
+            trace_metadata = [
+                series
+                for series in fluorescence_metadata["roi_response_series"]
+                if series["name"] == response_series_name
+            ]
             trace_metadata = trace_metadata[0] if trace_metadata else []
             unit = trace_metadata["unit"] if "unit" in trace_metadata else "n.a"
             description = trace_metadata["description"] if "description" in trace_metadata else "no description"
