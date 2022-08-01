@@ -113,7 +113,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         param(
             data_interface=EDFRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf")),
-            case_name="artificial_data",
+            case_name="artficial_data",
         ),
     ]
     for spikeextractors_backend in [True, False]:
