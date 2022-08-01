@@ -46,6 +46,7 @@ from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 
 from .behavior.movie.moviedatainterface import MovieInterface
+from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 
 from .icephys.abf.abfdatainterface import AbfInterface
 
@@ -85,6 +86,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     MovieInterface,
+    DeepLabCutInterface,
     AbfInterface,
     ScanImageImagingInterface,
     EDFRecordingInterface,

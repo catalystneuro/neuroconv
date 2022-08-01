@@ -27,3 +27,4 @@ pillow==9.1.1
 pyopenephys==1.1.2
 scanimage-tiff-reader==1.4.1
 pyedflib==0.1.30
+dlc2nwb==0.2
