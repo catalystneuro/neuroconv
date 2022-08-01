@@ -45,7 +45,10 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
     def extract_subject_metadata(self):
 
-        subject_metadata = dict(subject_id=self.edf_header["patientcode"], date_of_birth=self.edf_header["birthdate"])
+        subject_metadata = dict(
+            subject_id=self.edf_header["patientcode"] if self.edf_header["patientcode"] else None,
+            date_of_birth=self.edf_header["birthdate"] if self.edf_header["birthdate"] else None,
+        )
 
         return subject_metadata
 
