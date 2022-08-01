@@ -26,3 +26,4 @@ ndx-dandi-icephys>=0.4.0
 pillow==9.1.1
 pyopenephys==1.1.2
 scanimage-tiff-reader==1.4.1
+dlc2nwb==0.2
