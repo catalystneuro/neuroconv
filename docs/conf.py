@@ -14,6 +14,7 @@ extensions = [
     "myst_parser",
     "sphinx_toggleprompt",
     "sphinx_copybutton",
+    "sphinx_search.extension",
 ]
 
 templates_path = ["_templates"]
