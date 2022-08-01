@@ -10,7 +10,7 @@ jsonschema>=3.2.0
 psutil>=5.8.0
 dandi==0.39.6
 spikeextractors>=0.9.10
-spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@master
+spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@6e5426f8ae9c11af34040f43ee438719afd4453c
 neo>=0.9.0
 roiextractors==0.4.18
 lxml>=4.6.5
