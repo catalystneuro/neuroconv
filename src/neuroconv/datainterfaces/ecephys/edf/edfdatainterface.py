@@ -56,6 +56,6 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         metadata["NWBFile"].update(nwbfile_metadata)
 
         subject_metadata = self.extract_subject_metadata()
-        metadata["Subject"].upate(subject_metadata)
+        metadata.get("Subject", dict()).upate(subject_metadata)
 
         return metadata
