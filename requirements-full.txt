@@ -26,3 +26,4 @@ ndx-dandi-icephys>=0.4.0
 pillow==9.1.1
 pyopenephys==1.1.2
 scanimage-tiff-reader==1.4.1
+nwbinspector @ git+https://github.com/NeurodataWithoutBorders/nwbinspector.git@9586da0d693a746f03a8bcd3291e12307ef9059a
