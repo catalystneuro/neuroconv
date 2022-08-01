@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, Path(__file__).resolve().parents[1])
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 project = "NeuroConv"
 copyright = "2022, CatalystNeuro"
@@ -59,5 +59,5 @@ autodoc_default_options = {
 }
 add_module_names = False
 
-toggleprompt_offset_right = 45  # This controls the position of the prompt for >>>
+toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>) for the conversion gallery
 toggleprompt_default_hidden = "true"
