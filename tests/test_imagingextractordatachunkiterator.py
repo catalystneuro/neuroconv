@@ -8,6 +8,7 @@ from roiextractors.testing import generate_dummy_imaging_extractor
 
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 
+
 def custom_name_func(testcase_func, param_num, param):
     return f"{testcase_func.__name__}_{param_num}" f"_{param.kwargs.get('case_name', '')}"
 
