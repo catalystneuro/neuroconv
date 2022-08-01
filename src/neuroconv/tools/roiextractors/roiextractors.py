@@ -374,22 +374,31 @@ def add_plane_segmentation(
     return nwbfile
 
 
-def add_fluorescence(segmentation_extractor: SegmentationExtractor, nwbfile: NWBFile, metadata: dict) -> NWBFile:
+def add_fluorescence_traces(
+        segmentation_extractor: SegmentationExtractor,
+        nwbfile: NWBFile,
+        metadata: Optional[dict],
+        plane_index: int = 0,
+) -> NWBFile:
     """
-    Adds the fluorescence specificied by the metadata to the nwb file.
-    The fluorescence that is added is the one located in metadata["Ophys"]["Fluorescence"]
+    Adds the fluorescence traces specified by the metadata to the nwb file.
+    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"]
 
     Parameters
     ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get the traces from.
     nwbfile : NWBFile
-        An previously defined -in memory- NWBFile.
+        The nwbfile to add the fluorescence traces to.
     metadata : dict
-        The metadata in the nwb conversion tools format.
+        The metadata for the fluorescence traces.
+    plane_index : int, optional
+        The index of the plane to add the fluorescence traces to.
 
     Returns
     -------
     NWBFile
-        The nwbfile passed as an input with the fluorescence added.
+        The nwbfile passed as an input with the fluorescence traces added.
     """
 
     # Set the defaults and required infrastructure
