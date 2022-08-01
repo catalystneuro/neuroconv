@@ -122,13 +122,19 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     defaults: dict
     overwrite: bool
     """
-    for key, val in schema["properties"].items():
-        if key in defaults:
-            if val["type"] == "object":
-                fill_defaults(val, defaults[key], overwrite=overwrite)
+
+    for property_name, description_dict in schema["properties"].items():
+        if property_name in defaults:
+
+            if "anyOf" in description_dict:
+                description_dict_list = description_dict["anyOf"]
+                for description_dict in description_dict_list:
+                    description_dict["default"] = defaults[property_name]
+            elif description_dict["type"] == "object":
+                fill_defaults(description_dict, defaults[property_name], overwrite=overwrite)
             else:
-                if overwrite or ("default" not in val):
-                    val["default"] = defaults[key]
+                if overwrite or ("default" not in description_dict):
+                    description_dict["default"] = defaults[property_name]
 
 
 def unroot_schema(schema: dict):
@@ -237,9 +243,14 @@ def get_schema_for_NWBFile():
             "format": "date-time",
         },
         "experimenter": {
-            "type": "array",
-            "items": {"type": "string", "title": "experimenter"},
-            "description": "name of person who performed experiment",
+            "anyOf": [
+                {
+                    "type": "array",
+                    "items": {"type": "string", "title": "experimenter"},
+                    "description": "name of person who performed experiment",
+                },
+                {"type": "string", "description": "name of person who performed experiment", "title": "experimenter"},
+            ],
         },
         "experiment_description": {"type": "string", "description": "general description of the experiment"},
         "session_id": {"type": "string", "description": "lab-specific ID for the session"},
