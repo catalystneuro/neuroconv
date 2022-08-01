@@ -19,7 +19,8 @@ import psutil
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import dict_deep_update, OptionalFilePathType
+from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
+
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 SpikeInterfaceSorting = Union[BaseSorting, SortingExtractor]
@@ -489,7 +490,7 @@ def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording
 
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
-    nwbfile,
+    nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
@@ -521,10 +522,6 @@ def add_electrical_series(
         The recording segment to add to the NWBFile.
     starting_time: float (optional)
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times: bool (optional, defaults to False)
-        If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
-        the sampling rate is used.
     write_as: str (optional, defaults to 'raw')
         How to save the traces data in the nwb file. Options:
         - 'raw' will save it in acquisition
@@ -532,8 +529,9 @@ def add_electrical_series(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str (optional)
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
+    write_scaled: bool (optional, defaults to False)
+        If True, writes the traces in uV with the right conversion.
+        If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
     compression: str (optional, defaults to "gzip")
         Type of compression to use. Valid types are "gzip" and "lzf".
         Set to None to disable all compression.
@@ -554,6 +552,9 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    if use_times:
+        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
     else:
@@ -647,24 +648,25 @@ def add_electrical_series(
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
-    # Spikeinterface objects guarantee data in micro volts when return_scaled=True
-    # For nwb, the conversions (gains) cast the data to Volts.
-    # To get traces in Volts we take data*channel_conversion*conversion + offset
+    # Spikeinterface guarantee data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
+    # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
 
-    if write_scaled or channel_conversion is None:
-        eseries_kwargs.update(conversion=1e-6)
-    else:
-        if len(np.unique(channel_conversion)) == 1:  # if all gains are equal
-            eseries_kwargs.update(conversion=channel_conversion[0] * 1e-6)
-        else:
-            eseries_kwargs.update(conversion=1e-6)
-            eseries_kwargs.update(channel_conversion=channel_conversion)
+    unique_offset = np.unique(channel_offset)
+    if unique_offset.size > 1:
+        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+    unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
+
+    micro_to_volts_conversion_factor = 1e-6
+    eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
+
+    if not write_scaled:
+        eseries_kwargs.update(channel_conversion=channel_conversion)
+        eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
     # Iterator
-    if iterator_opts is None:
-        iterator_opts = dict()
+    iterator_opts = dict() if iterator_opts is None else iterator_opts
 
     if iterator_type is None:
         check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)
@@ -690,36 +692,19 @@ def add_electrical_series(
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
     eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
 
-    # Tiemestamps vs rate (#To-do: should use check_regular_timestamps)
-    if not use_times and starting_time is None:
-        eseries_kwargs.update(starting_time=float(checked_recording.get_times(segment_index=segment_index)[0]))
-    elif not use_times and starting_time is not None:
-        eseries_kwargs.update(starting_time=starting_time)
-    if not use_times:
-        eseries_kwargs.update(rate=float(recording.get_sampling_frequency()))
-    elif not use_times and starting_time is not None:
-        eseries_kwargs.update(rate=float(checked_recording.get_sampling_frequency()))
-    elif use_times and starting_time is not None:
-        eseries_kwargs.update(
-            timestamps=H5DataIO(
-                data=starting_time
-                + checked_recording.get_times()[
-                    np.arange(checked_recording.get_num_samples(segment_index=segment_index))
-                ],
-                compression=compression,
-                compression_opts=compression_opts,
-            )
+    # Timestamps vs rate
+    timestamps = checked_recording.get_times(segment_index=segment_index)
+    rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+
+    if rate:
+        eseries_kwargs.update(starting_time=starting_time, rate=checked_recording.get_sampling_frequency())
+    else:
+        starting_time = starting_time if starting_time is not None else 0
+        shifted_time_stamps = starting_time + timestamps
+        wrapped_timestamps = H5DataIO(
+            data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
         )
-    elif use_times and starting_time is None:
-        eseries_kwargs.update(
-            timestamps=H5DataIO(
-                data=checked_recording.get_times()[
-                    np.arange(checked_recording.get_num_samples(segment_index=segment_index))
-                ],
-                compression=compression,
-                compression_opts=compression_opts,
-            )
-        )
+        eseries_kwargs.update(timestamps=wrapped_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)

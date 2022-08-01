@@ -45,3 +45,8 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         if Path(file_path).suffix == ".smr":
             stream_id = "1"
         super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
+
+        # Subset raw channel properties
+        signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]
+        channel_ids_of_raw_data = [channel_info[1] for channel_info in signal_channels if channel_info[4] == "mV"]
+        self.recording_extractor = self.recording_extractor.channel_slice(channel_ids=channel_ids_of_raw_data)
