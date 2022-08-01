@@ -19,7 +19,7 @@ Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.edf.e
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
-    >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
