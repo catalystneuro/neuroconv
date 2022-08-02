@@ -111,9 +111,5 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
         )
-        # This condition can be removed when the ImagingExtractors are not
-        # squeezing the data when the selection is a single slice
-        if len(data.shape) < len(selection):
-            data = data[np.newaxis, ...]
 
         return data.transpose((0, 2, 1))[(slice(0, self.buffer_shape[0]),) + selection[1:]]
