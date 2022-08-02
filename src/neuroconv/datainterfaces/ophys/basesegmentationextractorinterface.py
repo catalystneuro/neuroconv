@@ -56,7 +56,6 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
     def get_metadata(self):
         metadata = super().get_metadata()
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
-        _ = metadata.pop("NWBFile")
         return metadata
 
     def run_conversion(

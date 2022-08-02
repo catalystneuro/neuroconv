@@ -20,6 +20,7 @@ Recording
     OpenEphys <conversion_examples_gallery/recording/openephys>
     Spikegadgets <conversion_examples_gallery/recording/spikegadgets>
     Spikelgx <conversion_examples_gallery/recording/spikeglx>
+    EDF <conversion_examples_gallery/recording/edf>
 
 Sorting
 -------

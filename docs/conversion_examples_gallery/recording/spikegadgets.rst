@@ -16,11 +16,11 @@ Convert spikegadgets data to NWB using :py:class:`~neuroconv.datainterfaces.ecep
     # Change the file_path to the location in your system
     interface = SpikeGadgetsRecordingInterface(file_path=file_path, verbose=False)
 
-    # Extract what metadata we can from the source files
-    metadata = interface.get_metadata()
-    # For data provenance we add the time zone information to the conversion
-    session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
-    metadata["NWBFile"] = dict(session_start_time=session_start_time)
+     # Extract what metadata we can from the source files
+     metadata = interface.get_metadata()
+     # For data provenance we add the time zone information to the conversion
+     session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
+     metadata["NWBFile"].update(session_start_time=session_start_time)
 
     # Choose a path for saving the nwb file and run the conversion
     nwbfile_path = f"{path_to_save_nwbfile}"

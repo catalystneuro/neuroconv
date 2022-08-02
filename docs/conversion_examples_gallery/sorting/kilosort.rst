@@ -17,7 +17,7 @@ Convert Kilosort data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>>
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
-    >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
     >>>

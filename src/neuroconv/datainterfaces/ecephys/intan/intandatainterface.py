@@ -1,6 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
-from typing import Optional
 
 from spikeinterface.core.old_api_utils import OldToNewRecording
 from spikeinterface import BaseRecording
@@ -18,7 +17,7 @@ try:
     HAVE_PYINTAN = True
 except ImportError:
     HAVE_PYINTAN = False
-INSTALL_MESSAGE = "Please install pyintan (https://pypi.org/project/pyintan/) to use this extractor!"
+INSTALL_MESSAGE = "Please install pyintan (https://pypi.org/project/pyintan/) to use this interface!"
 
 
 def extract_electrode_metadata_with_pyintan(file_path):
