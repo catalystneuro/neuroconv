@@ -47,7 +47,7 @@ jobs:
         id: cache-ecephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ecephys-datasets-220630-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ecephys-datasets-22-07-29-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
@@ -56,7 +56,7 @@ jobs:
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
-          key: ophys-datasets-220702-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+          key: ophys-datasets-22-07-29-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: Get behavior_testing_data current head hash
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
@@ -65,7 +65,7 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-042022-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-2022-07-29-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
       - if: ${{ (steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false) && matrix.os == 'ubuntu-latest' }}
         name: Get datalad - Linux
         run: conda install -c conda-forge datalad==0.16.3
@@ -98,6 +98,7 @@ jobs:
           datalad get -r ./axona/
           datalad get -r ./cellexplorer/
           datalad get -r ./axon/
+          datalad get -r ./edf/
           cd ..
       - if: steps.cache-ophys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
         name: "Force GIN: ophys download"
