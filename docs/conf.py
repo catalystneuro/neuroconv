@@ -65,4 +65,7 @@ toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>)
 toggleprompt_default_hidden = "true"
 
 # Intersphinx
-intersphinx_mapping = {'hdmf': ('https://hdmf.readthedocs.io/en/stable/', None)}
+intersphinx_mapping = {
+    "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
+    "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
+}
