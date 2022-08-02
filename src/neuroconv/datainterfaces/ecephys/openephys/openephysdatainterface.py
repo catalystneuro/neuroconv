@@ -58,7 +58,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         fileobj = pyopenephys.File(folder_path)
         session_start_time = fileobj.experiments[0].datetime
 
-        metadata["NWBFile"] = dict(session_start_time=session_start_time)
+        metadata["NWBFile"].update(session_start_time=session_start_time)
         return metadata
 
 

@@ -38,6 +38,7 @@ from neuroconv import (
     BlackrockSortingExtractorInterface,
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
+    EDFRecordingInterface,
 )
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
@@ -108,6 +109,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=CEDRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
             case_name="smrx",
+        ),
+        param(
+            data_interface=EDFRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf")),
+            case_name="artificial_data",
         ),
     ]
     for spikeextractors_backend in [True, False]:
