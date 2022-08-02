@@ -112,18 +112,20 @@ class MovieInterface(BaseDataInterface):
         compression_options: Optional[int] = None,
     ):
         """
-        Convert the movie data files to ImageSeries and write them in the NWBFile.
-        Data is written in the ImageSeries container as RGB. [times, x, y, 3-RGB]
+        Convert the movie data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
+        :py:class:`~pynwb.file.NWBFile`. Data is written in the :py:class:`~pynwb.image.ImageSeries` container as
+        RGB. [times, x, y, 3-RGB].
 
         Parameters
         ----------
         nwbfile : NWBFile
         metadata : dict
             Dictionary of metadata information such as names and description of each video.
-            Metadata should be passed for each video file passed in the file_paths argument during __init__.
+            Metadata should be passed for each video file passed in the file_paths argument during ``__init__``.
             If storing as 'external mode', then provide duplicate metadata for video files that go in the
-            same ImageSeries container. len(metadata["Behavior"]["Movies"]==len(file_paths).
-            Should be organized as follows:
+            same :py:class:`~pynwb.image.ImageSeries` container. ``len(metadata["Behavior"]["Movies"]==len(file_paths)``.
+            Should be organized as follows::
+
                 metadata = dict(
                     Behavior=dict(
                         Movies=[
@@ -135,27 +137,28 @@ class MovieInterface(BaseDataInterface):
                 )
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-             The list for the 'Movies' key should correspond one to one to the movie files in the file_paths list.
-             If multiple movies need to be in the same ImageSeries, then supply the same value for "name" key.
-             Storing multiple movies in the same ImageSeries is only supported if 'external_mode'=True.
-        stub_test : bool, optional
-            If True, truncates the write operation for fast testing. The default is False.
-        external_mode : bool, optional
-            ImageSeries in NWBFiles may contain either explicit movie data or file paths to external movie files. If
-            True, this utilizes the more efficient method of merely encoding the file path linkage (recommended). For
-            data sharing, the video files must be contained in the same folder as the NWBFile. If the intention of this
-            NWBFile involves an upload to DANDI, the non-NWBFile types are not allowed so this flag would have to be
-            set to False. The default is True.
+            The list for the 'Movies' key should correspond one to the movie files in the file_paths list.
+            If multiple movies need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
+            Storing multiple movies in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
+        stub_test : bool
+            If ``True``, truncates the write operation for fast testing. The default is ``False``.
+        external_mode : bool
+            :py:class:`~pynwb.image.ImageSeries` in :py:class:`~pynwb.file.NWBFile` may contain either explicit movie
+            data or file paths to external movie files. If True, this utilizes the more efficient method of merely
+            encoding the file path linkage (recommended). For data sharing, the video files must be contained in the
+            same folder as the :py:class:`~pynwb.file.NWBFile`. If the intention of this :py:class:`~pynwb.file.NWBFile`
+            involves an upload to DANDI, the non-NWBFile types are not allowed so this flag would have to be set to
+            ``False``. The default is ``True``.
         starting_times : list, optional
             List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
             sequential order and are contiguous.
         timestamps : list, optional
             List of timestamps for the movies. If unspecified, timestamps are extracted from each movie data.
-        chunk_data : bool, optional
+        chunk_data : bool
             If True, uses a DataChunkIterator to read and write the movie, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
-            of 70 (from compression experiments). Based on experiements for a ~30 FPS system of ~400 x ~600 color
+            of 70 (from compression experiments). Based on experiments for a ~30 FPS system of ~400 x ~600 color
             frames, the equivalent uncompressed RAM usage is around 2GB per minute of video. The default is True.
         module_name: str, optional
             Name of the processing module to add the ImageSeries object to. Default behavior is to add as acquisition.
