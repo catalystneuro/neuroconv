@@ -1,5 +1,7 @@
+.. _conversion_gallery:
+
 Conversion Gallery
-======================
+==================
 
 The examples here are guaranteed to be running correctly with our testing suite.
 Their aim is to be a showcase of the library capabilities and to get you to hit the ground running with your own conversion.
@@ -18,6 +20,7 @@ Recording
     OpenEphys <conversion_examples_gallery/recording/openephys>
     Spikegadgets <conversion_examples_gallery/recording/spikegadgets>
     Spikelgx <conversion_examples_gallery/recording/spikeglx>
+    EDF <conversion_examples_gallery/recording/edf>
 
 Sorting
 -------
@@ -48,7 +51,14 @@ Segmentation
 .. toctree::
     :maxdepth: 1
 
-    Suite2P (TBD)
-    Caiman (TBD)
-    EXTRACT (TBD)
-    CNMFE (Tbd)
+    Suite2P <conversion_examples_gallery/segmentation/suit2p>
+    Caiman <conversion_examples_gallery/segmentation/caiman>
+    EXTRACT <conversion_examples_gallery/segmentation/extract>
+    CNMFE <conversion_examples_gallery/segmentation/cnmfe>
+
+Behavior
+--------
+.. toctree::
+    :maxdepth: 1
+
+    DeepLabCut <conversion_examples_gallery/behavior/deeplabcut>

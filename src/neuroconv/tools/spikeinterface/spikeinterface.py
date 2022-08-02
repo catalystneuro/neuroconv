@@ -1,5 +1,4 @@
-"""Author: Cody Baker."""
-from logging import warning
+"""Author: Heberto Mayorquin, Cody Baker."""
 import uuid
 import warnings
 import numpy as np
@@ -16,10 +15,12 @@ from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+import psutil
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from ..nwb_helpers import get_module, make_nwbfile_from_metadata, make_or_load_nwbfile
-from ...utils import dict_deep_update, OptionalFilePathType
+from ..nwb_helpers import get_module, make_or_load_nwbfile
+from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
+
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 SpikeInterfaceSorting = Union[BaseSorting, SortingExtractor]
@@ -458,9 +459,38 @@ def add_electrodes(
         warnings.warn(f"No information added to the electrodes table")
 
 
+def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording, segment_index: int = 0) -> None:
+    """Raises an error if the full traces of a recording extractor are larger than psutil.virtual_memory().available
+
+    Parameters
+    ----------
+    recording : SpikeInterfaceRecording
+        A recording extractor object from spikeinterface.
+    segment_index : int, optional
+        The segment index of the recording extractor object, by default 0
+
+    Raises
+    ------
+    MemoryError
+    """
+    element_size_in_bytes = recording.get_dtype().itemsize
+    num_channels = recording.get_num_channels()
+    num_frames = recording.get_num_frames(segment_index=segment_index)
+
+    traces_size_in_bytes = element_size_in_bytes * num_channels * num_frames
+    available_memory_in_bytes = psutil.virtual_memory().available
+
+    if traces_size_in_bytes > available_memory_in_bytes:
+        message = (
+            f"Memory error, full electrical series is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
+            f"({round(available_memory_in_bytes/1e9, 2)} GB are available. Use iterator_type='V2'"
+        )
+        raise MemoryError(message)
+
+
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
-    nwbfile=None,
+    nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
@@ -470,13 +500,11 @@ def add_electrical_series(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = None,
+    iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
     """
-    Auxiliary static method for nwbextractor.
-
-    Adds traces from recording object as ElectricalSeries to nwbfile object.
+    Adds traces from recording object as ElectricalSeries to an nwbfile object.
 
     Parameters
     ----------
@@ -494,10 +522,6 @@ def add_electrical_series(
         The recording segment to add to the NWBFile.
     starting_time: float (optional)
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times: bool (optional, defaults to False)
-        If True, the times are saved to the nwb file using recording.frame_to_time(). If False (defualut),
-        the sampling rate is used.
     write_as: str (optional, defaults to 'raw')
         How to save the traces data in the nwb file. Options:
         - 'raw' will save it in acquisition
@@ -505,8 +529,9 @@ def add_electrical_series(
         - 'lfp' will save it as LFP, in a processing module
     es_key: str (optional)
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_scaled: bool (optional, defaults to True)
-        If True, writes the scaled traces (return_scaled=True)
+    write_scaled: bool (optional, defaults to False)
+        If True, writes the traces in uV with the right conversion.
+        If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
     compression: str (optional, defaults to "gzip")
         Type of compression to use. Valid types are "gzip" and "lzf".
         Set to None to disable all compression.
@@ -527,19 +552,21 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    if use_times:
+        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
     else:
         checked_recording = recording
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
+
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
+
     assert compression is None or compression in [
         "gzip",
         "lzf",
     ], "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', or None."
 
-    if not nwbfile.electrodes:
-        add_electrodes(recording, nwbfile, metadata)
     assert write_as in [
         "raw",
         "processed",
@@ -556,19 +583,17 @@ def add_electrical_series(
     elif compression == "lzf" and compression_opts is not None:
         warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
         compression_opts = None
-    if iterator_opts is None:
-        iterator_opts = dict()
+
+    # Write as functionality
     if write_as == "raw":
         eseries_kwargs = dict(
             name="ElectricalSeries_raw",
             description="Raw acquired data",
-            comments="Generated from SpikeInterface::NwbRecordingExtractor",
         )
     elif write_as == "processed":
         eseries_kwargs = dict(
             name="ElectricalSeries_processed",
             description="Processed data",
-            comments="Generated from SpikeInterface::NwbRecordingExtractor",
         )
         ecephys_mod = get_module(
             nwbfile=nwbfile,
@@ -581,7 +606,6 @@ def add_electrical_series(
         eseries_kwargs = dict(
             name="ElectricalSeries_lfp",
             description="Processed data - LFP",
-            comments="Generated from SpikeInterface::NwbRecordingExtractor",
         )
         ecephys_mod = get_module(
             nwbfile=nwbfile,
@@ -590,9 +614,11 @@ def add_electrical_series(
         )
         if "LFP" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.LFP(name="LFP"))
+
     if metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
+
     if write_as == "raw":
         assert (
             eseries_kwargs["name"] not in nwbfile.acquisition
@@ -613,6 +639,8 @@ def add_electrical_series(
     else:
         channel_indices = checked_recording.ids_to_indices(channel_name_array)
 
+    add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
     table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_indices]
 
     electrode_table_region = nwbfile.create_electrode_table_region(
@@ -620,20 +648,31 @@ def add_electrical_series(
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
-    # channels gains - for RecordingExtractor, these are values to cast traces to uV.
-    # For nwb, the conversions (gains) cast the data to Volts.
-    # To get traces in Volts we take data*channel_conversion*conversion.
+    # Spikeinterface guarantee data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
+    # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
-    if write_scaled or channel_conversion is None:
-        eseries_kwargs.update(conversion=1e-6)
-    else:
-        if len(np.unique(channel_conversion)) == 1:  # if all gains are equal
-            eseries_kwargs.update(conversion=channel_conversion[0] * 1e-6)
-        else:
-            eseries_kwargs.update(conversion=1e-6)
-            eseries_kwargs.update(channel_conversion=channel_conversion)
-    if iterator_type is None or iterator_type == "v2":
+
+    unique_offset = np.unique(channel_offset)
+    if unique_offset.size > 1:
+        raise ValueError("Recording extractors with heterogeneous offsets are not supported")
+    unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
+
+    micro_to_volts_conversion_factor = 1e-6
+    eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
+
+    if not write_scaled:
+        eseries_kwargs.update(channel_conversion=channel_conversion)
+        eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
+
+    # Iterator
+    iterator_opts = dict() if iterator_opts is None else iterator_opts
+
+    if iterator_type is None:
+        check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)
+        ephys_data = checked_recording.get_traces(return_scaled=write_scaled, segment_index=segment_index)
+
+    elif iterator_type == "v2":
         ephys_data = SpikeInterfaceRecordingDataChunkIterator(
             recording=checked_recording,
             segment_index=segment_index,
@@ -653,35 +692,21 @@ def add_electrical_series(
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
     eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
 
-    if not use_times and starting_time is None:
-        eseries_kwargs.update(starting_time=float(checked_recording.get_times(segment_index=segment_index)[0]))
-    elif not use_times and starting_time is not None:
-        eseries_kwargs.update(starting_time=starting_time)
-    if not use_times:
-        eseries_kwargs.update(rate=float(recording.get_sampling_frequency()))
-    elif not use_times and starting_time is not None:
-        eseries_kwargs.update(rate=float(checked_recording.get_sampling_frequency()))
-    elif use_times and starting_time is not None:
-        eseries_kwargs.update(
-            timestamps=H5DataIO(
-                data=starting_time
-                + checked_recording.get_times()[
-                    np.arange(checked_recording.get_num_samples(segment_index=segment_index))
-                ],
-                compression=compression,
-                compression_opts=compression_opts,
-            )
+    # Timestamps vs rate
+    timestamps = checked_recording.get_times(segment_index=segment_index)
+    rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+
+    if rate:
+        eseries_kwargs.update(starting_time=starting_time, rate=checked_recording.get_sampling_frequency())
+    else:
+        starting_time = starting_time if starting_time is not None else 0
+        shifted_time_stamps = starting_time + timestamps
+        wrapped_timestamps = H5DataIO(
+            data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
         )
-    elif use_times and starting_time is None:
-        eseries_kwargs.update(
-            timestamps=H5DataIO(
-                data=checked_recording.get_times()[
-                    np.arange(checked_recording.get_num_samples(segment_index=segment_index))
-                ],
-                compression=compression,
-                compression_opts=compression_opts,
-            )
-        )
+        eseries_kwargs.update(timestamps=wrapped_timestamps)
+
+    # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
     if write_as == "raw":
         nwbfile.add_acquisition(es)
@@ -871,7 +896,7 @@ def write_recording(
     write_scaled: bool = False,
     compression: Optional[str] = None,
     compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = None,
+    iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):

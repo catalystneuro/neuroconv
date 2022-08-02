@@ -3,6 +3,8 @@ from typing import Optional
 from pathlib import Path
 
 from spikeinterface.extractors import BlackrockRecordingExtractor
+from spikeinterface.core.old_api_utils import OldToNewRecording
+
 import spikeextractors as se
 from pynwb.ecephys import ElectricalSeries
 
@@ -66,6 +68,8 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             self.source_data = dict(
                 file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
             )
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+
         else:
             super().__init__(file_path=file_path, verbose=verbose)
 
@@ -79,7 +83,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["NWBFile"] = dict()
         # Open file and extract headers
         basic_header = parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
@@ -127,7 +130,6 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["NWBFile"] = dict()
         # Open file and extract headers
         basic_header = parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:

@@ -36,10 +36,10 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,
+        use_times: bool = False,  # To-do to remove, deprecation
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = None,
+        iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
         save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):

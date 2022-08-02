@@ -4,6 +4,7 @@ from typing import Optional
 import pyopenephys
 import spikeextractors as se
 from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
+from spikeinterface.core.old_api_utils import OldToNewRecording
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -40,7 +41,9 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
             super().__init__(
                 folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
             )
-
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+            # Remove when spikeinterface 0.95 is released, this has an int sampling rate that causes problems
+            self.recording_extractor._sampling_frequency = float(self.recording_extractor.get_sampling_frequency())
         else:
             super().__init__(folder_path=folder_path, verbose=verbose)
 
@@ -51,14 +54,11 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = super().get_metadata()
 
-        if self.spikeextractors_backend:
-            session_start_time = self.recording_extractor._fileobj.experiments[0].datetime
-        else:
-            folder_path = self.source_data["folder_path"]
-            fileobj = pyopenephys.File(folder_path)
-            session_start_time = fileobj.experiments[0].datetime
+        folder_path = self.source_data["folder_path"]
+        fileobj = pyopenephys.File(folder_path)
+        session_start_time = fileobj.experiments[0].datetime
 
-        metadata["NWBFile"] = dict(session_start_time=session_start_time)
+        metadata["NWBFile"].update(session_start_time=session_start_time)
         return metadata
 
 
