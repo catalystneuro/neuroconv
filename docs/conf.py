@@ -15,6 +15,7 @@ extensions = [
     "sphinx_toggleprompt",
     "sphinx_copybutton",
     "sphinx.ext.intersphinx",
+    "sphinx_search.extension",
 ]
 
 templates_path = ["_templates"]
