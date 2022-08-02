@@ -14,6 +14,7 @@ extensions = [
     "myst_parser",
     "sphinx_toggleprompt",
     "sphinx_copybutton",
+    "sphinx.ext.intersphinx",
 ]
 
 templates_path = ["_templates"]
@@ -59,5 +60,9 @@ autodoc_default_options = {
 }
 add_module_names = False
 
+# Toggleprompt
 toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>) for the conversion gallery
 toggleprompt_default_hidden = "true"
+
+# Intersphinx
+intersphinx_mapping = {'hdmf': ('https://hdmf.readthedocs.io/en/stable/', None)}

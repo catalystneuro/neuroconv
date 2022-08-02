@@ -163,7 +163,8 @@ class MovieInterface(BaseDataInterface):
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
         compression: str, optional
-            Compression strategy to use for HFDataIO. For full list of currently supported filters, see
+            Compression strategy to use for :py:class:`hdmf.backends.hdf5.h5_utils.H5DataIO`. For full list of currently
+            supported filters, see
             https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
         compression_options: int, optional
             Parameter(s) for compression filter. Currently only supports the compression level (integer from 0 to 9) of
