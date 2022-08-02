@@ -63,9 +63,6 @@ class AbfInterface(BaseIcephysInterface):
         first_session_time = get_start_datetime(neo_reader=first_reader)
         session_start_time = first_session_time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
-        # NWBFile metadata
-        if "NWBFile" not in metadata:
-            metadata["NWBFile"] = dict()
         metadata["NWBFile"].update(
             session_start_time=session_start_time, experimenter=[metafile_data.get("experimenter", "")]
         )

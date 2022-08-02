@@ -60,3 +60,7 @@ Spikegadgets Recording
 SpikeGLX Recording
 ------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
+
+EDF Recording
+------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
