@@ -1,7 +1,7 @@
 Blackrock sorting data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Phy data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingInterface`.
+Convert Blackrock sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingInterface`.
 
 .. code-block:: python
 
