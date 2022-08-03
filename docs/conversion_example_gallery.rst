@@ -28,6 +28,7 @@ Sorting
 .. toctree::
     :maxdepth: 1
 
+    Blackrock  <conversion_examples_gallery/sorting/blackrock>
     Cell Explorer <conversion_examples_gallery/sorting/cellexplorer>
     Kilosort <conversion_examples_gallery/sorting/kilosort>
     Neuroscope <conversion_examples_gallery/sorting/neuroscope>

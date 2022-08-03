@@ -32,7 +32,7 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
-      - name: Install nwb-conversion-tools with minimal requirements
+      - name: Install neuroconv with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
         run: pytest tests/test_internals -n auto --dist loadscope

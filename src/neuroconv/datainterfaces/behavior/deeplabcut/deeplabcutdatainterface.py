@@ -1,4 +1,4 @@
-"""Heberto Mayorquin, Authors: Saksham Sharda, Cody Baker, Ben Dichter."""
+"""Authors: Saksham Sharda, Cody Baker, Ben Dichter and Heberto Mayorquin."""
 from typing import Optional
 from pathlib import Path
 

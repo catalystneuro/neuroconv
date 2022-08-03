@@ -37,6 +37,10 @@ Kilosort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
+Phy Sorting
+-----------
+.. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
+
 Neuralynx Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
@@ -49,9 +53,6 @@ OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
 
-Phy Sorting
------------
-.. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
 
 Spikegadgets Recording
 ----------------------
