@@ -1,18 +1,19 @@
 Blackrock sorting data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Phy data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingExtractorInterface`.
+Convert Phy data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
+    >>> from neuroconv import BlackrockSortingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.nev`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/blackrock/FileSpec2.3001.nev""
     >>> # Change the file_path to the location in your system
-    >>> interface = BlackrockRecordingExtractorInterface(file_path=file_path, verbose=False)
+    >>> interface = BlackrockSortingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()

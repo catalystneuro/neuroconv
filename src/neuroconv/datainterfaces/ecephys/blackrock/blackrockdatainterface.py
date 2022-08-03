@@ -108,7 +108,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return conversion_options
 
 
-class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
+class BlackrockSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Blackrock spiking data."""
 
     SX = BlackrockSortingExtractor
