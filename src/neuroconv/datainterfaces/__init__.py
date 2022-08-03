@@ -17,7 +17,7 @@ from .ecephys.ced.ceddatainterface import CEDRecordingInterface
 from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
 from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
+    BlackrockSortingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import (
     OpenEphysRecordingExtractorInterface,
@@ -68,7 +68,7 @@ interface_list = [
     CEDRecordingInterface,
     CellExplorerSortingInterface,
     BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
+    BlackrockSortingInterface,
     OpenEphysRecordingExtractorInterface,
     OpenEphysSortingExtractorInterface,
     PhySortingInterface,

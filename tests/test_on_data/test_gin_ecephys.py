@@ -35,7 +35,7 @@ from neuroconv import (
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
     BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
+    BlackrockSortingInterface,
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
     EDFRecordingInterface,
