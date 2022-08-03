@@ -11,8 +11,8 @@ Convert Blackrock sorting data to NWB using :py:class:`~neuroconv.datainterfaces
     >>> from neuroconv import BlackrockSortingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.nev`` file
-    >>> file_path = f"{ECEPHY_DATA_PATH}/blackrock/FileSpec2.3001.nev""
-    >>> # Change the file_path to the location in your system
+    >>> file_path = f"{ECEPHY_DATA_PATH}/blackrock/FileSpec2.3001.nev"
+    >>> # Change the file_path to the location of the file in your system
     >>> interface = BlackrockSortingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
