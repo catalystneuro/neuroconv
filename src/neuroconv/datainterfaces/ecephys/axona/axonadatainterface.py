@@ -1,4 +1,4 @@
-"""Authors: Steffen Buergers."""
+"""Authors: Heberto Mayorquin, Steffen Buergers."""
 import os
 import dateutil
 import numpy as np
@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Union
 
 import spikeextractors as se
-from spikeinterface.core.old_api_utils import OldToNewRecording
+from spikeinterface.extractors import AxonaRecordingExtractor
 
 from pynwb import NWBFile
 from pynwb.behavior import Position, SpatialSeries
@@ -18,7 +18,103 @@ from ....tools.nwb_helpers import get_module
 from ....utils import get_schema_from_method_signature, FilePathType
 
 
-# Helper functions for AxonaRecordingExtractorInterface
+class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
+    """Primary data interface class for converting a AxonaRecordingExtractor"""
+
+    RX = AxonaRecordingExtractor
+
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
+        super().__init__(file_path=file_path, all_annotations=True, verbose=verbose)
+        self.source_data = dict(file_path=file_path, verbose=verbose)
+        self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
+
+        # Set the channel groups
+        tetrode_id = self.recording_extractor.get_property("tetrode_id")
+        self.recording_extractor.set_channel_groups(tetrode_id)
+
+    def extract_nwb_file_metadata(self):
+
+        raw_annotations = self.recording_extractor.neo_reader.raw_annotations
+        session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
+        session_description = self.metadata_in_set_file["comments"]
+        experimenter = self.metadata_in_set_file["experimenter"]
+
+        nwbfile_metadata = dict(
+            session_start_time=session_start_time,
+            session_description=session_description,
+            experimenter=[experimenter],  # The schema expects an array of strings
+        )
+
+        # Filter empty values
+        nwbfile_metadata = {property: value for property, value in nwbfile_metadata.items() if value}
+
+        return nwbfile_metadata
+
+    def extract_ecephys_metadata(self):
+        unique_elec_group_names = set(self.recording_extractor.get_channel_groups())
+        sw_version = self.metadata_in_set_file["sw_version"]
+        description = f"Axona DacqUSB, sw_version={sw_version}"
+
+        ecephys_metadata = dict(
+            Device=[
+                dict(
+                    name="Axona",
+                    description=description,
+                    manufacturer="Axona",
+                ),
+            ],
+            ElectrodeGroup=[
+                dict(
+                    name=f"{group_name}",
+                    location="",  # Not sure if this should be here
+                    device="Axona",
+                    description=f"Group {group_name} electrodes.",
+                )
+                for group_name in unique_elec_group_names
+            ],
+        )
+
+        return ecephys_metadata
+
+    def get_metadata(self):
+
+        metadata = super().get_metadata()
+
+        nwbfile_metadata = self.extract_nwb_file_metadata()
+        metadata["NWBFile"].update(nwbfile_metadata)
+
+        ecephys_metadata = self.extract_ecephys_metadata()
+        metadata["Ecephys"] = ecephys_metadata
+
+        return metadata
+
+
+class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
+    """Primary data interface class for converting a AxonaRecordingExtractor"""
+
+    RX = se.AxonaUnitRecordingExtractor
+
+    @classmethod
+    def get_source_schema(cls):
+        return dict(
+            required=["file_path"],
+            properties=dict(
+                file_path=dict(
+                    type="string",
+                    format="file",
+                    description="Path to Axona file.",
+                ),
+                noise_std=dict(type="number"),
+            ),
+            type="object",
+        )
+
+    def __init__(self, file_path: FilePathType, noise_std: float = 3.5):
+        super().__init__(filename=file_path, noise_std=noise_std)
+        self.source_data = dict(file_path=file_path, noise_std=noise_std)
+
+
+# Helper functions for AxonaPositionDataInterface
 def parse_generic_header(file_path: FilePathType, params: Union[list, set]):
     """
     Given a binary file with phrases and line breaks, enters the
@@ -65,83 +161,6 @@ def read_axona_iso_datetime(set_file: FilePathType):
     return dateutil.parser.parse(date_string + " " + time_string).isoformat()
 
 
-class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a AxonaRecordingExtractor"""
-
-    RX = se.AxonaRecordingExtractor
-
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
-        super().__init__(filename=file_path, verbose=verbose)
-        self.source_data = dict(file_path=file_path, verbose=verbose)
-        self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-
-    def get_metadata(self):
-
-        # Extract information for specific parameters from .set file
-        params_of_interest = ["experimenter", "comments", "duration", "sw_version"]
-        set_file = self.source_data["file_path"].split(".")[0] + ".set"
-        par = parse_generic_header(set_file, params_of_interest)
-
-        # Extract information from AxonaRecordingExtractor
-        elec_group_names = self.recording_extractor.get_channel_groups()
-        unique_elec_group_names = set(elec_group_names)
-
-        # Add available metadata
-        metadata = super().get_metadata()
-        metadata["NWBFile"] = dict(
-            session_start_time=read_axona_iso_datetime(set_file),
-            session_description=par["comments"],
-            experimenter=[par["experimenter"]],
-        )
-
-        metadata["Ecephys"] = dict(
-            Device=[
-                dict(
-                    name="Axona",
-                    description="Axona DacqUSB, sw_version={}".format(par["sw_version"]),
-                    manufacturer="Axona",
-                ),
-            ],
-            ElectrodeGroup=[
-                dict(
-                    name=f"{group_name}",
-                    location="",
-                    device="Axona",
-                    description=f"Group {group_name} electrodes.",
-                )
-                for group_name in unique_elec_group_names
-            ],
-        )
-
-        return metadata
-
-
-class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
-    """Primary data interface class for converting a AxonaRecordingExtractor"""
-
-    RX = se.AxonaUnitRecordingExtractor
-
-    @classmethod
-    def get_source_schema(cls):
-        return dict(
-            required=["file_path"],
-            properties=dict(
-                file_path=dict(
-                    type="string",
-                    format="file",
-                    description="Path to Axona file.",
-                ),
-                noise_std=dict(type="number"),
-            ),
-            type="object",
-        )
-
-    def __init__(self, file_path: FilePathType, noise_std: float = 3.5):
-        super().__init__(filename=file_path, noise_std=noise_std)
-        self.source_data = dict(file_path=file_path, noise_std=noise_std)
-
-
-# Helper functions for AxonaPositionDataInterface
 def get_header_bstring(file: FilePathType):
     """
     Scan file for the occurrence of 'data_start' and return the header
