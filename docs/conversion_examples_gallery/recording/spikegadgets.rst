@@ -26,5 +26,4 @@ Convert spikegadgets data to NWB using :py:class:`~neuroconv.datainterfaces.ecep
     >>>
     >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
     >>> Path(nwbfile_path).is_file()
-
     True
