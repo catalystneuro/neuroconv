@@ -126,5 +126,16 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     SX = NeuralynxSortingExtractor
 
     def __init__(self, folder_path: FolderPathType, sampling_frequency: float = None, verbose: bool = True):
+        """_summary_
+
+        Parameters
+        ----------
+        folder_path : str, Path
+            The path to the folder/directory containing the data files for the session (nse, ntt, nse, nev)
+        sampling_frequency : float, optional
+            If a specific sampling_frequency is desired it can be set with this argument.
+        verbose : bool, optional
+            Enables verbosity
+        """
 
         super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)

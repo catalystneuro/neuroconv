@@ -10,7 +10,7 @@ jsonschema>=3.2.0
 psutil>=5.8.0
 dandi==0.39.6
 spikeextractors>=0.9.10
-spikeinterface @ git+https://github.com/catalystneuro/spikeinterface.git@shift_spike_times_with_t_start
+spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@4346eff5706408435e8aa8345be22fdd452afa27
 neo>=0.9.0
 roiextractors==0.4.18
 lxml>=4.6.5
