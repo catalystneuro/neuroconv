@@ -83,7 +83,6 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["NWBFile"] = dict()
         # Open file and extract headers
         basic_header = parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
@@ -131,7 +130,6 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        metadata["NWBFile"] = dict()
         # Open file and extract headers
         basic_header = parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
