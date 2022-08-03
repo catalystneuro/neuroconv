@@ -5,13 +5,13 @@ from natsort import natsorted
 from dateutil import parser
 import json
 
-from spikeinterface.extractors import NeuralynxRecordingExtractor
+from spikeinterface.extractors import NeuralynxRecordingExtractor, NeuralynxSortingExtractor
 from spikeinterface.core.old_api_utils import OldToNewRecording
-from spikeinterface import BaseRecording
 
 import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
 from ....utils.json_schema import dict_deep_update
 
@@ -120,3 +120,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         new_metadata = dict(NWBFile=get_metadata(self.source_data["folder_path"]))
         return dict_deep_update(super().get_metadata(), new_metadata)
+
+
+class NeuralynxSortingInterface(BaseSortingExtractorInterface):
+    SX = NeuralynxSortingExtractor
+
+    def __init__(self, folder_path: FolderPathType, sampling_frequency: float = None, verbose: bool = True):
+
+        super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)

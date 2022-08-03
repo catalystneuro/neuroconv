@@ -1199,7 +1199,15 @@ def add_units_table(
         unit_kwargs = dict(property_to_default_values)
         for property in properties_with_data:
             unit_kwargs[property] = data_to_add[property]["data"][row]
-        spike_times = checked_sorting.get_unit_spike_train(unit_id=units_ids[row], return_times=True)
+        spike_times = []
+
+        # Extract and cocatenate the spike times from multiple segments
+        for segment_index in range(checked_sorting.get_num_segments()):
+            segment_spike_times = checked_sorting.get_unit_spike_train(
+                unit_id=0, segment_index=segment_index, return_times=True
+            )
+            spike_times.append(segment_spike_times)
+        spike_times = np.concatenate(spike_times)
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
