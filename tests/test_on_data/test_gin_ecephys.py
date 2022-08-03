@@ -272,7 +272,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
         ),
         param(
-            data_interface=BlackrockSortingExtractorInterface,
+            data_interface=BlackrockSortingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
         ),
         param(
