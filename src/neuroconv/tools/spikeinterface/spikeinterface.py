@@ -1204,7 +1204,7 @@ def add_units_table(
         # Extract and cocatenate the spike times from multiple segments
         for segment_index in range(checked_sorting.get_num_segments()):
             segment_spike_times = checked_sorting.get_unit_spike_train(
-                unit_id=0, segment_index=segment_index, return_times=True
+                unit_id=units_ids[row], segment_index=segment_index, return_times=True
             )
             spike_times.append(segment_spike_times)
         spike_times = np.concatenate(spike_times)
