@@ -19,7 +19,7 @@ Convert Blackrock sorting data to NWB using :py:class:`~neuroconv.datainterfaces
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
-    >>> session_start_time = session_start_time.replace(tzinfo=tz.gettz("US/Pacific")).isoformat()
+    >>> session_start_time = session_start_time.replace(tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}" # This should be something like: "./saved_file.nwb"
