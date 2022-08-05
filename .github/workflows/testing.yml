@@ -100,6 +100,7 @@ jobs:
           datalad get -r ./cellexplorer/
           datalad get -r ./axon/
           datalad get -r ./edf/
+          datalad get - r ./tdt/aep_05/
           cd ..
       - if: steps.cache-ophys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
         name: "Force GIN: ophys download"

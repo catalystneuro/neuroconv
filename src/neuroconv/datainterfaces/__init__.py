@@ -33,6 +33,7 @@ from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterfac
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KilosortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
+from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
@@ -91,4 +92,5 @@ interface_list = [
     AbfInterface,
     ScanImageImagingInterface,
     EDFRecordingInterface,
+    TdtRecordingInterface,
 ]
