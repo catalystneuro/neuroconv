@@ -18,6 +18,7 @@
 * Allow writing of offsets to ElectricalSeries obects from SpikeInterface (requires PyNWB>=2.1.0). [PR #37](https://github.com/catalystneuro/neuroconv/pull/37)
 * Added conversion interface for EDF (European Data Format) data together with corresponding unit tests and a conversion example in the gallery. [PR #45](https://github.com/catalystneuro/neuroconv/pull/45)
 * Created ImagingExtractorDataChunkIterator, a data chunk iterator for `ImagingExtractor` objects. [PR #54](https://github.com/catalystneuro/neuroconv/pull/54)
+* Adde spikeinterface support for Blackrock sorting interface and the corresponding conversion gallery example [PR #59](https://github.com/catalystneuro/neuroconv/pull/59)
 
 ### Testing
 * Added unittests for correctly writing the scaling factors to the nwbfile in the `add_electrical_series` function of the spikeinterface module. [PR #37](https://github.com/catalystneuro/neuroconv/pull/37)
