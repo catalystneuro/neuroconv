@@ -683,7 +683,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_write_as_assertion(self):
+    def test_invalid_write_as_argument_assertion(self):
 
         write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
 
@@ -692,6 +692,85 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, reg_expression):
             add_electrical_series(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            )
+
+    def test_write_with_higher_gzip_level(self):
+        compression = "gzip"
+        compression_opts = 8
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            compression=compression,
+            compression_opts=compression_opts,
+        )
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression
+        assert compression_parameters["compression_opts"] == compression_opts
+
+    def test_out_of_range_gzip_compression_option_assertion(self):
+        compression = "gzip"
+        compression_opts = 15
+
+        reg_expression = (
+            f"Compression type is 'gzip', but specified compression_opts is not an integer between 0 and 9!"
+        )
+
+        with self.assertRaisesRegex(AssertionError, reg_expression):
+            add_electrical_series(
+                recording=self.test_recording_extractor,
+                nwbfile=self.nwbfile,
+                iterator_type=None,
+                compression=compression,
+                compression_opts=compression_opts,
+            )
+
+    def test_write_with_lzf_compression(self):
+        compression = "lzf"
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
+        )
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression
+        assert "compression_opts" not in compression_parameters
+
+    def test_lzf_compression_ignoring_compression_options_warning(self):
+        compression = "lzf"
+        compression_opts = 1
+
+        reg_expression = f"Compression_opts (.*?) were passed, but compression type is 'lzf'! Ignoring options."
+        with self.assertWarnsRegex(Warning, reg_expression):
+            add_electrical_series(
+                recording=self.test_recording_extractor,
+                nwbfile=self.nwbfile,
+                iterator_type=None,
+                compression=compression,
+                compression_opts=compression_opts,
+            )
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression
+        assert "compression_opts" not in compression_parameters
+
+    def test_invalid_compression_algorith_assertion(self):
+        compression = "and_invalid_compression_algorithm"
+
+        reg_expression = f"Invalid compression type (.*?) Choose one of 'gzip', 'lzf', None or True"
+
+        with self.assertRaisesRegex(AssertionError, reg_expression):
+            add_electrical_series(
+                recording=self.test_recording_extractor,
+                nwbfile=self.nwbfile,
+                iterator_type=None,
+                compression=compression,
             )
 
     def test_non_iterative_write(self):
