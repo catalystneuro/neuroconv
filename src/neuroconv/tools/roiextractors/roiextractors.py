@@ -7,6 +7,7 @@ from copy import deepcopy
 
 import numpy as np
 from hdmf.common import VectorData
+from hdmf.common.table import DynamicTableRegion
 
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile, NWBHDF5IO
@@ -19,7 +20,7 @@ from pynwb.ophys import (
     ImagingPlane,
     Fluorescence,
     OpticalChannel,
-    TwoPhotonSeries,
+    TwoPhotonSeries, RoiResponseSeries, DfOverF,
 )
 
 # from hdmf.commmon import VectorData
@@ -57,14 +58,26 @@ def get_default_ophys_metadata():
         optical_channel=[default_optical_channel],
     )
 
-    default_roi_response_series = dict(
+    default_fluorescence_roi_response_series = dict(
         name="RoiResponseSeries",
         description="array of raw fluorescence traces",
+        unit="n.a."
     )
 
     default_fluorescence = dict(
         name="Fluorescence",
-        roi_response_series=[default_roi_response_series],
+        roi_response_series=[default_fluorescence_roi_response_series],
+    )
+
+    default_dff_roi_response_series = dict(
+        name="DfOverF",
+        description="array of df/F traces",
+        unit="n.a."
+    )
+
+    default_df_over_f = dict(
+        name="DfOverF",
+        roi_response_series=[default_dff_roi_response_series],
     )
 
     default_two_photon_series = dict(
@@ -88,6 +101,7 @@ def get_default_ophys_metadata():
         Ophys=dict(
             Device=[default_device],
             Fluorescence=default_fluorescence,
+            DfOverF=default_df_over_f,
             ImageSegmentation=default_image_segmentation,
             ImagingPlane=[default_imaging_plane],
             TwoPhotonSeries=[default_two_photon_series],
@@ -136,6 +150,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     # remove what Segmentation extractor will input:
     _ = metadata["Ophys"].pop("ImageSegmentation")
     _ = metadata["Ophys"].pop("Fluorescence")
+    _ = metadata["Ophys"].pop("DfOverF")
     return metadata
 
 
@@ -406,8 +421,27 @@ def add_fluorescence_traces(
     default_metadata = get_default_ophys_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
+    # df/F metadata
+    dff_metadata = metadata_copy["Ophys"]["DfOverF"]
+    dff_name = dff_metadata["name"]
+
+    # Fluorescence traces metadata
     fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
     fluorescence_name = fluorescence_metadata["name"]
+
+    # Get traces from the segmentation extractor
+    traces_to_add = segmentation_extractor.get_traces_dict()
+
+    # Filter empty data
+    traces_to_add = {trace_name: trace for trace_name, trace in
+                     traces_to_add.items() if trace is not None}
+    # Filter all zero data
+    traces_to_add = {trace_name: trace for trace_name, trace in
+                     traces_to_add.items() if any(x != 0 for x in np.ravel(trace))}
+
+    # Early return if there is nothing to add
+    if not traces_to_add:
+        return nwbfile
 
     ophys = get_module(nwbfile, "ophys")
 
@@ -427,50 +461,70 @@ def add_fluorescence_traces(
         description=f"region for Imaging plane{plane_index}",
     )
 
-    # Create fluorescence container
-    if fluorescence_name in ophys.data_interfaces:
-        fluorescence = ophys.get_data_interface(fluorescence_name)
-    else:
-        fluorescence = Fluorescence(name=fluorescence_name)
-        # Add fluorescence to the ophys module
-        ophys.add(fluorescence)
-
-    # Get traces from the segmentation extractor
-    roi_response_dict = segmentation_extractor.get_traces_dict()
-
-    # Filter empty data
-    roi_response_dict = {trace_name: trace for trace_name, trace in roi_response_dict.items() if trace is not None}
-    # Filter all zero data
-    roi_response_dict = {trace_name: trace for trace_name, trace in roi_response_dict.items() if np.any(trace)}
-
     rate = (
         np.nan
         if segmentation_extractor.get_sampling_frequency() is None
         else float(segmentation_extractor.get_sampling_frequency())
     )
 
-    # Create the fluorescence response series
-    for response_series_name, response_series_data in roi_response_dict.items():
-        data = np.array(response_series_data)
-        trace_name = "RoiResponseSeries" if response_series_name == "raw" else response_series_name.capitalize()
+    roi_response_series_kwargs = dict(
+        rois=roi_table_region,
+        # TODO: timestamps or rate (for timestamps we need frame_to_time method)
+        # TODO: check for regularity, only use timestamps if irregular timing
+        starting_time=0.0,
+        rate=rate,
+        unit="n.a.",
+    )
+
+    for trace_name, trace in traces_to_add.items():
+        trace_name = "RoiResponseSeries" if trace_name == "raw" else trace_name.capitalize()
         trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
+
+        roi_response_series_kwargs.update(
+            name=trace_name,
+            data=np.array(trace).T,
+            rois=roi_table_region,
+
+        )
+
+        if "Dff" in trace_name:
+            # Create df/F container
+            if dff_name in ophys.data_interfaces:
+                dff = ophys.get_data_interface(dff_name)
+            else:
+                dff = DfOverF(name=dff_name)
+                # Add df/F container to the ophys module
+                ophys.add(dff)
+
+            if trace_name not in dff.roi_response_series:
+                response_series_metadata = dff_metadata["roi_response_series"]
+                trace_meta = [trace_metadata for trace_metadata in
+                              response_series_metadata if
+                              trace_name in trace_metadata["name"]]
+                if trace_meta:
+                    roi_response_series_kwargs.update(**trace_meta[0])
+
+                dff.create_roi_response_series(**roi_response_series_kwargs)
+
+            continue
+
+        # Create fluorescence container
+        if fluorescence_name in ophys.data_interfaces:
+            fluorescence = ophys.get_data_interface(fluorescence_name)
+        else:
+            fluorescence = Fluorescence(name=fluorescence_name)
+            # Add fluorescence container to the ophys module
+            ophys.add(fluorescence)
+
+        # duplication of the code above
         if trace_name not in fluorescence.roi_response_series:
-            trace_metadata = [
-                series
-                for series in fluorescence_metadata["roi_response_series"]
-                if series["name"] == response_series_name
-            ]
-            trace_metadata = trace_metadata[0] if trace_metadata else []
-            unit = trace_metadata["unit"] if "unit" in trace_metadata else "n.a"
-            description = trace_metadata["description"] if "description" in trace_metadata else "no description"
-            roi_response_series_kwargs = dict(
-                name=trace_name,
-                data=data.T,
-                rois=roi_table_region,
-                rate=rate,
-                unit=unit,
-                description=description,
-            )
+            # Add metadata to the roi response series
+            response_series_metadata = fluorescence_metadata["roi_response_series"]
+            # TODO: there must be a better way to do this
+            trace_meta = [trace_metadata for trace_metadata in response_series_metadata if trace_name in trace_metadata["name"]]
+            if trace_meta:
+                roi_response_series_kwargs.update(**trace_meta[0])
+
             fluorescence.create_roi_response_series(**roi_response_series_kwargs)
 
     return nwbfile

@@ -2,7 +2,6 @@ from tempfile import mkdtemp
 import unittest
 from pathlib import Path
 from datetime import datetime
-from copy import deepcopy
 
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -496,22 +495,22 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         cls.fluorescence_name = "fluorescence"
 
         cls.raw_roi_response_series_metadata = dict(
-            name="raw",
+            name="RoiResponseSeries",
             description="raw fluorescence signal",
         )
 
         cls.dff_roi_response_series_metadata = dict(
-            name="dff",
+            name="Dff",
             description="relative (df/f) fluorescence signal",
         )
 
         cls.deconvolved_roi_response_series_metadata = dict(
-            name="deconvolved",
+            name="Deconvolved",
             description="deconvolved fluorescence signal",
         )
 
         cls.neuropil_roi_response_series_metadata = dict(
-            name="neuropil",
+            name="Neuropil",
             description="neuropil fluorescence signal",
             unit="test_unit",
         )
