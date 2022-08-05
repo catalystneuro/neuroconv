@@ -29,7 +29,7 @@ from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
     AxonaUnitRecordingExtractorInterface,
 )
-from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface
+from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface, NeuralynxSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KilosortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
@@ -55,6 +55,7 @@ interface_list = [
     RecordingTutorialInterface,
     SortingTutorialInterface,
     NeuralynxRecordingInterface,
+    NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface,
