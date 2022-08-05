@@ -923,6 +923,74 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
             add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
 
+class TestWriteRecording(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # 3 samples in each segment
+        cls.num_channels = 3
+        cls.sampling_frequency = 1.0
+        cls.single_segment_recording_extractor = generate_recording(
+            sampling_frequency=cls.sampling_frequency, num_channels=cls.num_channels, durations=[3.0]
+        )
+        cls.multiple_segment_recording_extractor = generate_recording(
+            sampling_frequency=cls.sampling_frequency, num_channels=cls.num_channels, durations=[3.0, 3.0]
+        )
+
+        # Add gains and offsets
+        cls.gains_default = [1, 1, 1]
+        cls.offset_default = [0, 0, 0]
+
+        cls.single_segment_recording_extractor.set_channel_gains(cls.gains_default)
+        cls.single_segment_recording_extractor.set_channel_offsets(cls.offset_default)
+
+        cls.multiple_segment_recording_extractor.set_channel_gains(cls.gains_default)
+        cls.multiple_segment_recording_extractor.set_channel_offsets(cls.offset_default)
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable"""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+
+    def test_default_values_single_segment(self):
+
+        write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        acquisition_module = self.nwbfile.acquisition
+        assert "ElectricalSeries_raw" in acquisition_module
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+
+        assert isinstance(electrical_series.data, H5DataIO)
+
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == "gzip"
+        assert compression_parameters["compression_opts"] == 4
+
+        extracted_data = electrical_series.data[:]
+        expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    def test_write_multiple_segments(self):
+
+        write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        acquisition_module = self.nwbfile.acquisition
+        assert len(acquisition_module) == 2
+
+        assert "ElectricalSeries0_raw" in acquisition_module
+        assert "ElectricalSeries1_raw" in acquisition_module
+
+        electrical_series0 = acquisition_module["ElectricalSeries0_raw"]
+        extracted_data = electrical_series0.data[:]
+        expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+        electrical_series1 = acquisition_module["ElectricalSeries1_raw"]
+        extracted_data = electrical_series1.data[:]
+        expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
+        np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+
 class TestAddElectrodes(TestCase):
     @classmethod
     def setUpClass(cls):
