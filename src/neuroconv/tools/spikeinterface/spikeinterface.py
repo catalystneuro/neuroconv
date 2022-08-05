@@ -668,6 +668,7 @@ def add_electrical_series(
     rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
 
     if rate:
+        starting_time = starting_time + timestamps[0]
         eseries_kwargs.update(starting_time=starting_time, rate=checked_recording.get_sampling_frequency())
     else:
         starting_time = starting_time if starting_time is not None else 0
@@ -761,6 +762,93 @@ def add_electrodes_info(recording: RecordingExtractor, nwbfile: pynwb.NWBFile, m
     add_devices(nwbfile=nwbfile, metadata=metadata)
     add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+
+def add_all_to_nwbfile(
+    recording: SpikeInterfaceRecording,
+    nwbfile=None,
+    starting_time: Optional[float] = None,
+    use_times: bool = False,
+    metadata: dict = None,
+    write_as: str = "raw",
+    es_key: str = None,
+    write_electrical_series: bool = True,
+    write_scaled: bool = False,
+    compression: Optional[str] = "gzip",
+    compression_opts: Optional[int] = None,
+    iterator_type: Optional[str] = None,
+    iterator_opts: Optional[dict] = None,
+):
+    """
+    Auxiliary static method for nwbextractor.
+    Adds all recording related information from recording object and metadata to the nwbfile object.
+    Parameters
+    ----------
+    recording: SpikeInterfaceRecording
+    nwbfile: NWBFile
+        nwb file to which the recording information is to be added
+    starting_time: float (optional)
+        Sets the starting time of the ElectricalSeries to a manually set value.
+        Increments timestamps if use_times is True.
+    use_times: bool
+        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
+        the sampling rate is used.
+    metadata: dict
+        metadata info for constructing the nwb file (optional).
+        Check the auxiliary function docstrings for more information
+        about metadata format.
+    write_as: str (optional, defaults to 'raw')
+        How to save the traces data in the nwb file. Options:
+        - 'raw' will save it in acquisition
+        - 'processed' will save it as FilteredEphys, in a processing module
+        - 'lfp' will save it as LFP, in a processing module
+    es_key: str (optional)
+        Key in metadata dictionary containing metadata info for the specific electrical series
+    write_electrical_series: bool (optional)
+        If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+        and electrodes are written to NWB.
+    write_scaled: bool (optional, defaults to True)
+        If True, writes the scaled traces (return_scaled=True)
+    compression: str (optional, defaults to "gzip")
+        Type of compression to use. Valid types are "gzip" and "lzf".
+        Set to None to disable all compression.
+    compression_opts: int (optional, defaults to 4)
+        Only applies to compression="gzip". Controls the level of the GZIP.
+    iterator_type: str (optional, defaults to 'v2')
+        The type of DataChunkIterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_opts: dict (optional)
+        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2')
+        or DataChunkIterator (iterator_tpye='v1').
+        Valid options are
+            buffer_gb : float (optional, defaults to 1 GB, available for both 'v2' and 'v1')
+                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
+            chunk_mb : float (optional, defaults to 1 MB, only available for 'v2')
+                Should be below 1 MB. Automatically calculates suitable chunk shape.
+        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
+    """
+    if nwbfile is not None:
+        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+    add_electrodes_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+    if write_electrical_series:
+        add_electrical_series(
+            recording=recording,
+            nwbfile=nwbfile,
+            starting_time=starting_time,
+            use_times=use_times,
+            metadata=metadata,
+            write_as=write_as,
+            es_key=es_key,
+            write_scaled=write_scaled,
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )
+    if isinstance(recording, RecordingExtractor):
+        add_epochs(recording=recording, nwbfile=nwbfile)
 
 
 def write_recording(
@@ -909,19 +997,20 @@ def write_recording(
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
         metadata = get_nwb_metadata(recording=recording)
+
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
 
         # Convenience function to add device, electrode groups and electrodes info
-        add_electrodes_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
+        add_electrodes_info(recording=recording, nwbfile=nwbfile_out, metadata=metadata)
 
         if write_electrical_series:
             number_of_segments = recording.get_num_segments() if isinstance(recording, BaseRecording) else 1
             for segment_index in range(number_of_segments):
                 add_electrical_series(
                     recording=recording,
-                    nwbfile=nwbfile,
+                    nwbfile=nwbfile_out,
                     segment_index=segment_index,
                     starting_time=starting_time,
                     metadata=metadata,
@@ -936,7 +1025,7 @@ def write_recording(
 
         # For objects of the legacy spikeextractors we support adding epochs
         if isinstance(recording, RecordingExtractor):
-            add_epochs(recording=recording, nwbfile=nwbfile)
+            add_epochs(recording=recording, nwbfile=nwbfile_out)
     return nwbfile_out
 
 
