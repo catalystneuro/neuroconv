@@ -26,6 +26,7 @@ from neuroconv import (
     CEDRecordingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
+    NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
     NeuroscopeSortingInterface,
@@ -41,6 +42,7 @@ from neuroconv import (
     AxonaLFPDataInterface,
     EDFRecordingInterface,
 )
+
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 from .setup_paths import OUTPUT_PATH
@@ -305,6 +307,16 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 )
             ),
         ),
+        param(
+            data_interface=NeuralynxSortingInterface,
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data")),
+            case_name="mono_electrodes",
+        ),
+        param(
+            data_interface=NeuralynxSortingInterface,
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),
+            case_name="tetrodes",
+        ),
     ]
 
     for spikeextractors_backend in [False, True]:
@@ -357,8 +369,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
             nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
             check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
         else:
-            nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
-            check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
+            # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
+            if sorting.get_num_segments() == 1:
+                nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
+                check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
 
     @parameterized.expand(
         input=[
