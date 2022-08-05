@@ -3,7 +3,9 @@ from datetime import datetime
 from parameterized import parameterized, param
 
 from pynwb import NWBHDF5IO
-from neuroconv import NWBConverter, MovieInterface, DeepLabCutInterface
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces.behavior.movie import MovieInterface
+#from neuroconv.datainterfaces.behavior.deeplabcut import DeepLabCutInterface
 
 from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
@@ -13,15 +15,16 @@ class TestDeepLabCutInterface(unittest.TestCase):
 
     @parameterized.expand(
         [
-            param(
-                data_interface=DeepLabCutInterface,
-                interface_kwargs=dict(
-                    file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
-                    config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
-                    subject_name="ind1",
-                ),
-            )
-        ]
+            # param(
+            #     data_interface=DeepLabCutInterface,
+            #     interface_kwargs=dict(
+            #         file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
+            #         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
+            #         subject_name="ind1",
+            #     ),
+            # )
+        ],
+        skip_on_empty=True,
     )
     def test_convert_behaviordata_to_nwb(self, data_interface, interface_kwargs):
         nwbfile_path = self.savedir / f"{data_interface.__name__}.nwb"

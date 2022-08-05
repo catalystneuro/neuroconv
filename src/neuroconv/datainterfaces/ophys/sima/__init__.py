@@ -1,0 +1,1 @@
+from .simadatainterface import SimaSegmentationInterface

@@ -5,17 +5,16 @@ from parameterized import parameterized, param
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
-from neuroconv import (
-    NWBConverter,
-    ScanImageImagingInterface,
-    TiffImagingInterface,
-    Hdf5ImagingInterface,
-    SbxImagingInterface,
-    CaimanSegmentationInterface,
-    CnmfeSegmentationInterface,
-    ExtractSegmentationInterface,
-    Suite2pSegmentationInterface,
-)
+from neuroconv import NWBConverter
+
+from neuroconv.datainterfaces.ophys.scanimage import ScanImageImagingInterface
+from neuroconv.datainterfaces.ophys.tiff import TiffImagingInterface
+from neuroconv.datainterfaces.ophys.hdf5 import Hdf5ImagingInterface
+from neuroconv.datainterfaces.ophys.sbx import SbxImagingInterface
+from neuroconv.datainterfaces.ophys.caiman import CaimanSegmentationInterface
+from neuroconv.datainterfaces.ophys.cnmfe import CnmfeSegmentationInterface
+from neuroconv.datainterfaces.ophys.extract import ExtractSegmentationInterface
+from neuroconv.datainterfaces.ophys.suite2p import Suite2pSegmentationInterface
 
 from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 

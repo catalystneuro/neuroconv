@@ -8,7 +8,8 @@ import pytest
 import numpy.testing as npt
 from pynwb import NWBHDF5IO
 
-from neuroconv import NWBConverter, AbfInterface
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces.icephys.abf import AbfInterface
 from neuroconv.utils import load_dict_from_file
 from neuroconv.tools.neo import get_number_of_segments, get_number_of_electrodes
 

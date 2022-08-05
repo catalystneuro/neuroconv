@@ -1,0 +1,1 @@
+from .suite2pdatainterface import Suite2pSegmentationInterface

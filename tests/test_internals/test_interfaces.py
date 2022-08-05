@@ -13,14 +13,11 @@ from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
-from neuroconv import (
-    NWBConverter,
-    RecordingTutorialInterface,
-    SortingTutorialInterface,
-    SIPickleRecordingExtractorInterface,
-    SIPickleSortingExtractorInterface,
-    CEDRecordingInterface,
-)
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces.ecephys.ced import CEDRecordingInterface
+from neuroconv.datainterfaces.ecephys.spikeinterface.sipickledatainterfaces import SIPickleRecordingExtractorInterface, \
+    SIPickleSortingExtractorInterface
+from neuroconv.datainterfaces.ecephys.tutorial import RecordingTutorialInterface, SortingTutorialInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
 

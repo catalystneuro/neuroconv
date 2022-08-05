@@ -1,7 +1,7 @@
 from datetime import datetime
 import unittest
 
-from neuroconv import EDFRecordingInterface
+from neuroconv.datainterfaces.ecephys.edf import EDFRecordingInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

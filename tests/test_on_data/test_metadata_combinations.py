@@ -3,7 +3,8 @@ from datetime import datetime
 
 from parameterized import parameterized, param
 
-from neuroconv import Suite2pSegmentationInterface, TiffImagingInterface
+from neuroconv.datainterfaces.ophys.suite2p import Suite2pSegmentationInterface
+from neuroconv.datainterfaces.ophys.tiff import TiffImagingInterface
 from neuroconv import NWBConverter
 from .setup_paths import OPHYS_DATA_PATH
 

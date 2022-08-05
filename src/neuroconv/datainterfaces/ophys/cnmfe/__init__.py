@@ -1,0 +1,1 @@
+from .cnmfedatainterface import CnmfeSegmentationInterface

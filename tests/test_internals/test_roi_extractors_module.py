@@ -2,7 +2,6 @@ from tempfile import mkdtemp
 import unittest
 from pathlib import Path
 from datetime import datetime
-from copy import deepcopy
 
 import numpy as np
 from numpy.testing import assert_array_equal

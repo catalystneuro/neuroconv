@@ -6,7 +6,7 @@ import probeinterface as pi
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import get_session_start_time
-from neuroconv import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
+from neuroconv.datainterfaces.ecephys.spikeglx import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

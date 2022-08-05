@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from neuroconv import interface_list
+from neuroconv.datainterfaces.interface_list import interface_list
 from neuroconv.utils import load_dict_from_file
 
 

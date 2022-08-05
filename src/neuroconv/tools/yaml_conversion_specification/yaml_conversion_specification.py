@@ -1,7 +1,6 @@
 """Authors: Cody Baker, Alessio Buccino."""
 import sys
 from pathlib import Path
-from importlib import import_module
 from itertools import chain
 from jsonschema import validate, RefResolver
 from typing import Optional
@@ -12,7 +11,10 @@ from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
 from ...nwbconverter import NWBConverter
+from ...datainterfaces.interface_list import interface_list
 from ...utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
+
+interface_dict = {x.__name__: x for x in interface_list}
 
 
 @click.command()
@@ -110,10 +112,6 @@ def run_conversion_from_yaml(
 
     global_metadata = specification.get("metadata", dict())
     global_data_interfaces = specification.get("data_interfaces")
-    nwb_conversion_tools = import_module(
-        name=".",
-        package="neuroconv",  # relative import, but named and referenced as if it were absolute
-    )
     file_counter = 0
     for experiment in specification["experiments"].values():
         experiment_metadata = experiment.get("metadata", dict())
@@ -130,7 +128,7 @@ def run_conversion_from_yaml(
                 ]
             )
             for data_interface_name in data_interfaces_names_chain:
-                data_interface_classes.update({data_interface_name: getattr(nwb_conversion_tools, data_interface_name)})
+                data_interface_classes.update({data_interface_name: interface_dict[data_interface_name]})
             CustomNWBConverter = type(
                 "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
             )

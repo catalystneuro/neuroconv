@@ -8,7 +8,9 @@ from pathlib import Path
 import numpy as np
 from pynwb import NWBHDF5IO
 
-from neuroconv import NWBConverter, MovieInterface
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces.behavior.movie import MovieInterface
+
 
 try:
     import cv2

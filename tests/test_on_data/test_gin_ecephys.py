@@ -20,26 +20,35 @@ from spikeinterface.core import BaseRecording
 
 from pynwb import NWBHDF5IO
 
-from neuroconv import (
-    NWBConverter,
-    CellExplorerSortingInterface,
-    CEDRecordingInterface,
-    IntanRecordingInterface,
-    NeuralynxRecordingInterface,
-    NeuralynxSortingInterface,
-    NeuroscopeRecordingInterface,
-    NeuroscopeSortingInterface,
-    OpenEphysRecordingExtractorInterface,
-    PhySortingInterface,
-    KilosortSortingInterface,
-    SpikeGadgetsRecordingInterface,
-    SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
-    BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces.ecephys.axona import (
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
-    EDFRecordingInterface,
+)
+from neuroconv.datainterfaces.ecephys.blackrock import (
+    BlackrockSortingExtractorInterface,
+    BlackrockRecordingExtractorInterface
+)
+from neuroconv.datainterfaces.ecephys.cellexplorer import CellExplorerSortingInterface
+from neuroconv.datainterfaces.ecephys.ced import CEDRecordingInterface
+from neuroconv.datainterfaces.ecephys.edf import EDFRecordingInterface
+from neuroconv.datainterfaces.ecephys.intan import IntanRecordingInterface
+from neuroconv.datainterfaces.ecephys.neuralynx import (
+    NeuralynxRecordingInterface,
+    NeuralynxSortingInterface,
+)
+
+from neuroconv.datainterfaces.ecephys.neuroscope import (
+    NeuroscopeRecordingInterface,
+    NeuroscopeSortingInterface,
+)
+from neuroconv.datainterfaces.ecephys.openephys import OpenEphysRecordingExtractorInterface
+from neuroconv.datainterfaces.ecephys.phy import PhySortingInterface
+from neuroconv.datainterfaces.ecephys.kilosort import KilosortSortingInterface
+from neuroconv.datainterfaces.ecephys.spikegadgets import SpikeGadgetsRecordingInterface
+from neuroconv.datainterfaces.ecephys.spikeglx import (
+    SpikeGLXLFPInterface,
+    SpikeGLXRecordingInterface
 )
 
 
