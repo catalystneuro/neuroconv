@@ -27,7 +27,7 @@ from neuroconv.datainterfaces.ecephys.axona import (
 )
 from neuroconv.datainterfaces.ecephys.blackrock import (
     BlackrockSortingExtractorInterface,
-    BlackrockRecordingExtractorInterface
+    BlackrockRecordingExtractorInterface,
 )
 from neuroconv.datainterfaces.ecephys.cellexplorer import CellExplorerSortingInterface
 from neuroconv.datainterfaces.ecephys.ced import CEDRecordingInterface
@@ -46,10 +46,7 @@ from neuroconv.datainterfaces.ecephys.openephys import OpenEphysRecordingExtract
 from neuroconv.datainterfaces.ecephys.phy import PhySortingInterface
 from neuroconv.datainterfaces.ecephys.kilosort import KilosortSortingInterface
 from neuroconv.datainterfaces.ecephys.spikegadgets import SpikeGadgetsRecordingInterface
-from neuroconv.datainterfaces.ecephys.spikeglx import (
-    SpikeGLXLFPInterface,
-    SpikeGLXRecordingInterface
-)
+from neuroconv.datainterfaces.ecephys.spikeglx import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
 
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
