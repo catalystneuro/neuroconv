@@ -666,12 +666,12 @@ def add_electrical_series(
     # Timestamps vs rate
     timestamps = checked_recording.get_times(segment_index=segment_index)
     rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+    starting_time = starting_time if starting_time is not None else 0
 
     if rate:
         starting_time = starting_time + timestamps[0]
         eseries_kwargs.update(starting_time=starting_time, rate=checked_recording.get_sampling_frequency())
     else:
-        starting_time = starting_time if starting_time is not None else 0
         shifted_time_stamps = starting_time + timestamps
         wrapped_timestamps = H5DataIO(
             data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
