@@ -14,11 +14,10 @@ from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 import psutil
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from ..nwb_helpers import get_module, make_or_load_nwbfile
+from ..nwb_helpers import get_module, make_or_load_nwbfile, wrap_data_in_H5DataIO
 from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
 
 
@@ -562,27 +561,11 @@ def add_electrical_series(
 
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
 
-    assert compression is None or compression in [
-        "gzip",
-        "lzf",
-    ], "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', or None."
-
     assert write_as in [
         "raw",
         "processed",
         "lfp",
     ], f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
-
-    if compression == "gzip":
-        if compression_opts is None:
-            compression_opts = 4
-        else:
-            assert compression_opts in range(
-                10
-            ), "compression type is 'gzip', but specified compression_opts is not an integer between 0 and 9!"
-    elif compression == "lzf" and compression_opts is not None:
-        warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
-        compression_opts = None
 
     # Write as functionality
     if write_as == "raw":
@@ -690,7 +673,9 @@ def add_electrical_series(
             raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
     else:
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
-    eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
+    eseries_kwargs.update(
+        data=wrap_data_in_H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts)
+    )
 
     # Timestamps vs rate
     timestamps = checked_recording.get_times(segment_index=segment_index)
@@ -701,7 +686,7 @@ def add_electrical_series(
     else:
         starting_time = starting_time if starting_time is not None else 0
         shifted_time_stamps = starting_time + timestamps
-        wrapped_timestamps = H5DataIO(
+        wrapped_timestamps = wrap_data_in_H5DataIO(
             data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
         )
         eseries_kwargs.update(timestamps=wrapped_timestamps)

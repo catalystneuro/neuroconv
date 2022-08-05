@@ -9,6 +9,9 @@ from pathlib import Path
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.file import Subject
 
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+
+
 from ..utils import dict_deep_update, FilePathType
 
 
@@ -113,6 +116,58 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
     for dev in metadata[modality]["Device"]:
         if dev.get("name", defaults["name"]) not in nwbfile.devices:
             nwbfile.create_device(**dict(defaults, **dev))
+
+
+def wrap_data_in_H5DataIO(data, maxshape=None, chunks=None, compression=None, compression_opts=None) -> H5DataIO:
+    """
+    Auxiliar function to wrapp data in a :py:class:`hdmf.backends.hdf5.h5_utils.H5DataIO` class. This is used in
+    neuroconv to have a centralized place to check for valid parameter combinations.
+
+    Parameters
+    ----------
+    data : np.darray, list or iterable, optional
+        The data to wrapp
+    maxshape : tuple, optional
+        Dataset will be resizable up to this shape , by default None
+    chunks : bool, tuple, optional
+        Chunk shape or True to enable auto-chunking, by default None
+    compression : str, bool, optional
+        Compression strategy. If a bool is given, then gzip compression will be used by default.
+        http://docs.h5py.org/en/latest/high/dataset.html#dataset-compression, by default None
+    compression_opts : _type_, optional
+        Parameter for compression filter, by default None
+
+    Returns
+    -------
+    H5DataIO
+        The wrapped data in an H5DataIO object.
+    """
+
+    valid_options_for_compression = [
+        "gzip",
+        "lzf",
+        None,
+        True,
+    ]
+    assert_msg = "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', None or True."
+    assert compression in valid_options_for_compression, assert_msg
+
+    if compression == "gzip":
+        if compression_opts is None:
+            compression_opts = 4
+        else:
+            assert compression_opts in range(
+                10
+            ), "Compression type is 'gzip', but specified compression_opts is not an integer between 0 and 9!"
+    elif compression == "lzf" and compression_opts is not None:
+        warn(f"Compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
+        compression_opts = None
+
+    wrapped_data = H5DataIO(
+        data=data, maxshape=maxshape, chunks=chunks, compression=compression, compression_opts=compression_opts
+    )
+
+    return wrapped_data
 
 
 @contextmanager
