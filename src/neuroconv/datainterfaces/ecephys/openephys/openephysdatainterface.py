@@ -18,16 +18,6 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Path to directory containing OpenEphys files."
         return source_schema
 
-    def __new__(cls, **kwargs):  # noqa: D102
-        super().__new__(**kwargs)
-        if kwargs["spikeextractors_backend"]:
-            from spikeextractors import OpenEphysRecordingExtractor
-
-            cls.RX = OpenEphysRecordingExtractor
-        else:
-            from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
-
-            cls.RX = OpenEphysBinaryRecordingExtractor
 
     def __init__(
         self,
@@ -40,8 +30,10 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
     ):
         self.spikeextractors_backend = spikeextractors_backend
         if spikeextractors_backend:
+            from spikeextractors import OpenEphysRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
+            self.RX = OpenEphysRecordingExtractor
             super().__init__(
                 folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
             )
@@ -49,6 +41,9 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
             # Remove when spikeinterface 0.95 is released, this has an int sampling rate that causes problems
             self.recording_extractor._sampling_frequency = float(self.recording_extractor.get_sampling_frequency())
         else:
+            from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
+            
+            self.RX = OpenEphysBinaryRecordingExtractor
             super().__init__(folder_path=folder_path, verbose=verbose)
 
         if stub_test:
