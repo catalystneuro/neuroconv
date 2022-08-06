@@ -6,7 +6,7 @@ h5py>=2.10.0
 tqdm>=4.60.0
 natsort>=7.1.1
 PyYAML>=5.4
-jsonschema[format]>=3.2.0
+jsonschema[format]>=4.9.1
 psutil>=5.8.0
 dandi==0.39.6
 spikeextractors>=0.9.10

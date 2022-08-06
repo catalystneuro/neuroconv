@@ -1,5 +1,5 @@
 # behavior
-#from neuroconv.datainterfaces.behavior.deeplabcut import DeepLabCutInterface
+# from neuroconv.datainterfaces.behavior.deeplabcut import DeepLabCutInterface
 from neuroconv.datainterfaces.behavior.movie import MovieInterface
 
 # ecephys
@@ -9,7 +9,7 @@ from neuroconv.datainterfaces.ecephys.axona import (
 )
 from neuroconv.datainterfaces.ecephys.blackrock import (
     BlackrockSortingExtractorInterface,
-    BlackrockRecordingExtractorInterface
+    BlackrockRecordingExtractorInterface,
 )
 from neuroconv.datainterfaces.ecephys.cellexplorer import CellExplorerSortingInterface
 from neuroconv.datainterfaces.ecephys.ced import CEDRecordingInterface
@@ -28,10 +28,7 @@ from neuroconv.datainterfaces.ecephys.openephys import OpenEphysRecordingExtract
 from neuroconv.datainterfaces.ecephys.phy import PhySortingInterface
 from neuroconv.datainterfaces.ecephys.kilosort import KilosortSortingInterface
 from neuroconv.datainterfaces.ecephys.spikegadgets import SpikeGadgetsRecordingInterface
-from neuroconv.datainterfaces.ecephys.spikeglx import (
-    SpikeGLXLFPInterface,
-    SpikeGLXRecordingInterface
-)
+from neuroconv.datainterfaces.ecephys.spikeglx import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
 
 # icephys
 from neuroconv.datainterfaces.icephys.abf import AbfInterface
@@ -48,7 +45,7 @@ from neuroconv.datainterfaces.ophys.suite2p import Suite2pSegmentationInterface
 
 interface_list = [
     MovieInterface,
-    #DeepLabCutInterface,
+    # DeepLabCutInterface,
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
     BlackrockSortingExtractorInterface,
