@@ -32,6 +32,7 @@ Sorting
     Kilosort <conversion_examples_gallery/sorting/kilosort>
     Neuroscope <conversion_examples_gallery/sorting/neuroscope>
     Phy <conversion_examples_gallery/sorting/phy>
+    Neuralynx <conversion_examples_gallery/sorting/neuralynx>
 
 
 Imaging
