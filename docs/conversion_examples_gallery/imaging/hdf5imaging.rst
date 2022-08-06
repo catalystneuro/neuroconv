@@ -8,7 +8,7 @@ Convert HDF5 imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophy
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import Hdf5ImagingInterface
+    >>> from neuroconv.datainterfaces.ophys.hdf5 import Hdf5ImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"
     >>> interface = Hdf5ImagingInterface(file_path=file_path, verbose=False)

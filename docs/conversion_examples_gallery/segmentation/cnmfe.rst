@@ -9,7 +9,7 @@ Convert CNMFE segmentation data to NWB using :py:class:`~neuroconv.datainterface
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import CnmfeSegmentationInterface
+    >>> from neuroconv.datainterfaces.ophys.cnmfe import CnmfeSegmentationInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "cnmfe" / "2014_04_01_p203_m19_check01_cnmfeAnalysis.mat"
     >>> interface = CnmfeSegmentationInterface(file_path=file_path, verbose=False)

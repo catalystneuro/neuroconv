@@ -8,7 +8,7 @@ Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.edf.e
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import EDFRecordingInterface
+    >>> from neuroconv.datainterfaces.ecephys.edf import EDFRecordingInterface
     >>>
     >>> # For this interface we need to pass the specific path to the files.
     >>> file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"

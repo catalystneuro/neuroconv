@@ -8,7 +8,7 @@ Convert Neuralynx data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephy
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import NeuralynxRecordingInterface
+    >>> from neuroconv.datainterfaces.ecephys.neuralynx import NeuralynxRecordingInterface
     >>>
     >>> # For this data interface we need to pass the folder where the data is
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuralynx/Cheetah_v5.7.4/original_data"

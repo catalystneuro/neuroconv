@@ -8,7 +8,7 @@ Convert Scanbox imaging data to NWB using :py:class:`~neuroconv.datainterfaces.o
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import SbxImagingInterface
+    >>> from neuroconv.datainterfaces.ophys.sbx import SbxImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx"
     >>> interface = SbxImagingInterface(file_path=file_path, verbose=False)

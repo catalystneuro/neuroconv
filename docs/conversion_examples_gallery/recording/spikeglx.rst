@@ -8,7 +8,7 @@ Convert spikeglx data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import SpikeGLXRecordingInterface
+    >>> from neuroconv.datainterfaces.ecephys.spikeglx import SpikeGLXRecordingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.bin`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"

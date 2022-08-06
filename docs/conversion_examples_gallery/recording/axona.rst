@@ -8,7 +8,7 @@ Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axo
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import AxonaRecordingExtractorInterface
+    >>> from neuroconv.datainterfaces.ecephys.axona import AxonaRecordingExtractorInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.bin`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/axona/axona_raw.bin"

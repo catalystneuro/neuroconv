@@ -8,7 +8,7 @@ Convert Neuroscope sorting data to NWB using :py:class:`~neuroconv.datainterface
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import NeuroscopeSortingInterface
+    >>> from neuroconv.datainterfaces.ecephys.neuroscope import NeuroscopeSortingInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuroscope/dataset_1"
     >>> xml_file_path = folder_path + "/YutaMouse42-151117.xml"

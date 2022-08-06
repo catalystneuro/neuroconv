@@ -8,7 +8,7 @@ Convert Tiff imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophy
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import TiffImagingInterface
+    >>> from neuroconv.datainterfaces.ophys.tiff import TiffImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"
     >>> interface = TiffImagingInterface(file_path=file_path, sampling_frequency=15.0, verbose=False)

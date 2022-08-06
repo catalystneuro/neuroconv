@@ -8,7 +8,7 @@ Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfa
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import Suite2pSegmentationInterface
+    >>> from neuroconv.datainterfaces.ophys.suite2p import Suite2pSegmentationInterface
     >>>
     >>> folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
     >>> interface = Suite2pSegmentationInterface(folder_path=folder_path, verbose=False)

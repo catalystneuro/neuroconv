@@ -8,7 +8,7 @@ Convert CaImAn segmentation data to NWB using :py:class:`~neuroconv.datainterfac
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import CaimanSegmentationInterface
+    >>> from neuroconv.datainterfaces.ophys.caiman import CaimanSegmentationInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5"
     >>> interface = CaimanSegmentationInterface(file_path=file_path, verbose=False)

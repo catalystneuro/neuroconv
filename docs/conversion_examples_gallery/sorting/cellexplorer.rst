@@ -8,7 +8,7 @@ Convert cell explorer sorting data to NWB using :py:class:`~neuroconv.datainterf
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import CellExplorerSortingInterface
+    >>> from neuroconv.datainterfaces.ecephys.cellexplorer import CellExplorerSortingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``cellinfo.mat`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/cellexplorer/dataset_1/20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"

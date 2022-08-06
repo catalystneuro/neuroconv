@@ -9,7 +9,7 @@ Convert OpenEphys data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>>
-    >>> from neuroconv import OpenEphysRecordingExtractorInterface
+    >>> from neuroconv.datainterfaces.ecephys.openephys import OpenEphysRecordingExtractorInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/openephysbinary/v0.4.4.1_with_video_tracking"
     >>> # Change the folder_path to the appropiate location in your system

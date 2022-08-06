@@ -9,7 +9,7 @@ Convert Kilosort data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>>
-    >>> from neuroconv import KilosortSortingInterface
+    >>> from neuroconv.datainterfaces.ecephys.kilosort import KilosortSortingInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"
     >>> # Change the folder_path to the location of the data in your system

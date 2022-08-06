@@ -8,7 +8,7 @@ Convert ScanImage imaging data to NWB using :py:class:`~neuroconv.datainterfaces
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import ScanImageImagingInterface
+    >>> from neuroconv.datainterfaces.ophys.scanimage import ScanImageImagingInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"
     >>> interface = ScanImageImagingInterface(file_path=file_path, verbose=False)
