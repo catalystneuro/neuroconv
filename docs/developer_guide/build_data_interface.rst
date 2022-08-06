@@ -1,5 +1,5 @@
 Build a DataInterface
-------------------------------------------
+---------------------
 
 Building a new :code:`DataInterface` for a specific file format is as simple as creating a new
 subclass based on the predefined base classes provided in the
