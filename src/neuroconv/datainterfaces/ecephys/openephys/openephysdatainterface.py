@@ -1,11 +1,6 @@
 """Authors: Heberto Mayorquin, Luiz Tauffer."""
 from typing import Optional
 
-import pyopenephys
-import spikeextractors as se
-from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
-from spikeinterface.core.old_api_utils import OldToNewRecording
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import get_schema_from_method_signature, FolderPathType
@@ -13,8 +8,6 @@ from ....utils import get_schema_from_method_signature, FolderPathType
 
 class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a OpenEphysRecordingExtractor."""
-
-    RX = OpenEphysBinaryRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -24,6 +17,17 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         )
         source_schema["properties"]["folder_path"]["description"] = "Path to directory containing OpenEphys files."
         return source_schema
+
+    def __new__(cls, **kwargs):  # noqa: D102
+        super().__new__(**kwargs)
+        if kwargs["spikeextractors_backend"]:
+            from spikeextractors import OpenEphysRecordingExtractor
+
+            cls.RX = OpenEphysRecordingExtractor
+        else:
+            from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
+
+            cls.RX = OpenEphysBinaryRecordingExtractor
 
     def __init__(
         self,
@@ -36,7 +40,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
     ):
         self.spikeextractors_backend = spikeextractors_backend
         if spikeextractors_backend:
-            self.RX = se.OpenEphysRecordingExtractor
+            from spikeinterface.core.old_api_utils import OldToNewRecording
 
             super().__init__(
                 folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
@@ -52,10 +56,12 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
+        import pyopenephys
+
         metadata = super().get_metadata()
 
         folder_path = self.source_data["folder_path"]
-        fileobj = pyopenephys.File(folder_path)
+        fileobj = pyopenephys.File(foldername=folder_path)
         session_start_time = fileobj.experiments[0].datetime
 
         metadata["NWBFile"].update(session_start_time=session_start_time)
@@ -64,8 +70,6 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
 class OpenEphysSortingExtractorInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting OpenEphys spiking data."""
-
-    SX = se.OpenEphysSortingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -76,6 +80,11 @@ class OpenEphysSortingExtractorInterface(BaseSortingExtractorInterface):
         metadata_schema["properties"]["folder_path"].update(description="Path to directory containing OpenEphys files.")
         metadata_schema["additionalProperties"] = False
         return metadata_schema
+
+    def __new__(cls, **kwargs):  # noqa: D102
+        from spikeextractors import OpenEphysSortingExtractor
+
+        cls.SX = OpenEphysSortingExtractor
 
     def __init__(self, folder_path: FolderPathType, experiment_id: int = 0, recording_id: int = 0):
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)
