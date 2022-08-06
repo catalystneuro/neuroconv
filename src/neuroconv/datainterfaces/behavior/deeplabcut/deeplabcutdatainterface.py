@@ -28,6 +28,7 @@ class DeepLabCutInterface(BaseDataInterface):
     ):
         """
         Interface for writing DLC's h5 files to nwb using dlc2nwb.
+
         Parameters
         ----------
         file_path: FilePathType
@@ -35,9 +36,9 @@ class DeepLabCutInterface(BaseDataInterface):
         config_file_path: FilePathType
             path to .yml config file
         subject_name: str
-            the name of the subject for which the nwbfile is to be created.
+            the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
         verbose: bool
-            controls verbosiy. True by default.
+            controls verbosity. ``True`` by default.
         """
         file_path = Path(file_path)
         if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
