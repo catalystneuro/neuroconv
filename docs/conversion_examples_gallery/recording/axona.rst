@@ -20,7 +20,7 @@ Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axo
     >>> # For data provenance we add the time zone information to the conversion
     >>> tzinfo = tz.gettz("US/Pacific")
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo).isoformat())
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
