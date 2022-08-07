@@ -18,7 +18,6 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["folder_path"]["description"] = "Path to directory containing OpenEphys files."
         return source_schema
 
-
     def __init__(
         self,
         folder_path: FolderPathType,
@@ -42,7 +41,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
             self.recording_extractor._sampling_frequency = float(self.recording_extractor.get_sampling_frequency())
         else:
             from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
-            
+
             self.RX = OpenEphysBinaryRecordingExtractor
             super().__init__(folder_path=folder_path, verbose=verbose)
 
@@ -76,9 +75,8 @@ class OpenEphysSortingExtractorInterface(BaseSortingExtractorInterface):
         metadata_schema["additionalProperties"] = False
         return metadata_schema
 
-
     def __init__(self, folder_path: FolderPathType, experiment_id: int = 0, recording_id: int = 0):
         from spikeextractors import OpenEphysSortingExtractor
-        
+
         self.SX = OpenEphysSortingExtractor
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)
