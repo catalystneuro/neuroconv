@@ -13,7 +13,7 @@ class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
     modules_to_import: Optional[List[str]] = None
-    loaded_modules: Optional[Dict[importlib.types.ModuleType]] = None
+    loaded_modules: Optional[Dict[str, importlib.types.ModuleType]] = None
 
     @classmethod
     def get_source_schema(cls):

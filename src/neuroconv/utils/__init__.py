@@ -19,5 +19,5 @@ from .json_schema import (
     get_metadata_schema_for_icephys,
 )
 from .globbing import decompose_f_string, parse_f_string
-
 from .checks import calculate_regular_series_rate
+from .imports import safe_import
