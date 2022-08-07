@@ -2,4 +2,4 @@ Project Structure
 =================
 
 
-.. image:: /img/nwb_conversion_tools_uml.svg
+.. image:: /img/neuroconv_uml.svg

@@ -10,5 +10,6 @@ The most common contribution is for a user/developer to help us integrate a new 
 
     Build a Data Interface <developer_guide/build_data_interface>
     Project Structure <developer_guide/project_structure>
+    Coding Style <developer_guide/style_guide>
 
 Or feel free to raise a bug report or feature request for our maintainers to prioritize!

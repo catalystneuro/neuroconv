@@ -559,61 +559,31 @@ def add_electrical_series(
     else:
         checked_recording = recording
 
-    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
-
     assert write_as in [
         "raw",
         "processed",
         "lfp",
     ], f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
+    default_name = f"ElectricalSeries_{write_as}"
+    default_description = dict(raw="Raw acquired data", lfp="Processed data - LFP", processed="Processed data")
+    eseries_kwargs = dict(name=default_name, description=default_description[write_as])
+
     # Write as functionality
-    if write_as == "raw":
-        eseries_kwargs = dict(
-            name="ElectricalSeries_raw",
-            description="Raw acquired data",
-        )
-    elif write_as == "processed":
-        eseries_kwargs = dict(
-            name="ElectricalSeries_processed",
-            description="Processed data",
-        )
+    if write_as in ["lfp", "processed"]:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
         )
-        if "Processed" not in ecephys_mod.data_interfaces:
-            ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
-    elif write_as == "lfp":
-        eseries_kwargs = dict(
-            name="ElectricalSeries_lfp",
-            description="Processed data - LFP",
-        )
-        ecephys_mod = get_module(
-            nwbfile=nwbfile,
-            name="ecephys",
-            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
-        )
-        if "LFP" not in ecephys_mod.data_interfaces:
+        if write_as == "lfp" and "LFP" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.LFP(name="LFP"))
+        if write_as == "processed" and "Processed" not in ecephys_mod.data_interfaces:
+            ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
     if metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
-
-    if write_as == "raw":
-        assert (
-            eseries_kwargs["name"] not in nwbfile.acquisition
-        ), f"Raw ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
-    elif write_as == "processed":
-        assert (
-            eseries_kwargs["name"] not in nwbfile.processing["ecephys"].data_interfaces["Processed"].electrical_series
-        ), f"Processed ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
-    elif write_as == "lfp":
-        assert (
-            eseries_kwargs["name"] not in nwbfile.processing["ecephys"].data_interfaces["LFP"].electrical_series
-        ), f"LFP ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
 
     # Indexes by channel ids if they are integer or by indices otherwise.
     channel_name_array = checked_recording.get_channel_ids()
