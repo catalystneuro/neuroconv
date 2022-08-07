@@ -10,6 +10,25 @@ from pynwb.behavior import Position, SpatialSeries
 from ....utils import FilePathType
 
 
+def get_eeg_sampling_frequency(file_path: FilePathType):
+    """
+    Read sampling frequency from .eegX or .egfX file header.
+    Parameters:
+    -----------
+    file_path : Path or str
+        Full file_path of Axona `.eegX` or `.egfX` file.
+    Returns:
+    --------
+    Fs : int
+        Sampling frequency
+    """
+    Fs_entry = parse_generic_header(file_path, ["sample_rate"])
+    Fs = int(float(Fs_entry.get("sample_rate").split(" ")[0]))
+
+    return Fs
+
+
+# Helper functions for AxonaLFPDataInterface
 def read_eeg_file_lfp_data(file_path: FilePathType):
     """
     Read LFP data from Axona `.eegX` or `.egfX` file.
@@ -64,9 +83,40 @@ def get_all_file_paths(file_path: FilePathType):
     suffix = Path(file_path).suffix[0:4]
     current_path = Path(file_path).parent
 
-    path_list = [cur_path.name for cur_path in Path(file_path).parent.rglob("*" + suffix + "*")]
+    path_list = [cur_path.name for cur_path in current_path.rglob("*" + suffix + "*")]
 
     return path_list
+
+
+def read_all_eeg_file_lfp_data(file_path: FilePathType):
+    """
+    Read LFP data from all Axona `.eeg` or `.egf` files in file_path's directory.
+    E.g. if file_path='/my/directory/my_file.eeg', all .eeg channels will be conactenated
+    to a single np.array (chans x nobs). For .egf files substitude the file suffix.
+    Parameters:
+    -------
+    file_path (Path or Str):
+        Full file_path of Axona `.eeg` or `.egf` file.
+    Returns:
+    -------
+    np.array (chans x obs)
+    """
+
+    file_path_list = get_all_file_paths(file_path)
+    parent_path = Path(file_path).parent
+
+    eeg_memmaps = list()
+    sampling_rates = set()
+    for fname in file_path_list:
+
+        sampling_rates.add(get_eeg_sampling_frequency(parent_path / fname))
+
+        eeg_memmaps.append(read_eeg_file_lfp_data(parent_path / fname))
+    assert len(sampling_rates) < 2, "File headers specify different sampling rates. Cannot combine EEG data."
+
+    eeg_data = np.concatenate(eeg_memmaps, axis=0)
+
+    return eeg_data
 
 
 # Helper functions for AxonaPositionDataInterface
