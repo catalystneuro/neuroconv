@@ -4,6 +4,7 @@ Spikegadgets data conversion
 Convert spikegadgets data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface.SpikeGadgetsRecordingInterface`.
 
 .. code-block:: python
+
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
