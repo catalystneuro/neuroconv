@@ -1,15 +1,19 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import abstractmethod, ABC
 import uuid
-from typing import Optional
+import importlib
+from abc import abstractmethod, ABC
+from typing import Optional, List, Dict
 
 from pynwb import NWBFile
 
-from .utils import get_base_schema, get_schema_from_method_signature
+from .utils import get_base_schema, get_schema_from_method_signature, safe_import
 
 
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
+
+    modules_to_import: Optional[List[str]] = None
+    loaded_modules: Optional[Dict[importlib.types.ModuleType]] = None
 
     @classmethod
     def get_source_schema(cls):
@@ -23,6 +27,10 @@ class BaseDataInterface(ABC):
 
     def __init__(self, **source_data):
         self.source_data = source_data
+        if self.modules_to_import:
+            self.loaded_modules = {
+                module_name: safe_import(module_name=module_name) for module_name in self.modules_to_import
+            }
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
