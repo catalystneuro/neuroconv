@@ -21,8 +21,8 @@ Blackrock Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface
 
-CED Recording
--------------
+Cambridge Electronic Design (CED) Recording
+-------------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.ced.ceddatainterface
 
 CellExplorer Sorting
@@ -37,8 +37,8 @@ Kilosort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
-Neuralynx Recording
--------------------
+Neuralynx Recording & Sorting
+-----------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
 
 Neuroscope Recording & Sorting
@@ -60,3 +60,7 @@ Spikegadgets Recording
 SpikeGLX Recording
 ------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
+
+European Data Format (EDF) Recording
+------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface

@@ -1,7 +1,7 @@
 ScanImage data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert ScanImage imaging data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageImagingInterface`.
+Convert ScanImage imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageImagingInterface`.
 
 .. code-block:: python
 
@@ -14,7 +14,6 @@ Convert ScanImage imaging data to NWB using :py:class:`~nwb_conversion_tools.dat
     >>> interface = ScanImageImagingInterface(file_path=file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> metadata.update(NWBFile=dict())
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)

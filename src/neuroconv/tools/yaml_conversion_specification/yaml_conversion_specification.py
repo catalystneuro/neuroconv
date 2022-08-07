@@ -138,7 +138,10 @@ def run_conversion_from_yaml(
             source_data = session["source_data"]
             for interface_name, interface_source_data in session["source_data"].items():
                 for key, value in interface_source_data.items():
-                    source_data[interface_name].update({key: str(Path(data_folder_path) / value)})
+                    if key == "file_paths":
+                        source_data[interface_name].update({key: [str(Path(data_folder_path) / x) for x in value]})
+                    else:
+                        source_data[interface_name].update({key: str(Path(data_folder_path) / value)})
             converter = CustomNWBConverter(source_data=source_data)
             metadata = converter.get_metadata()
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:

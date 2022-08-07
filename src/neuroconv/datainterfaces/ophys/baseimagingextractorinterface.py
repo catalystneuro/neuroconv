@@ -60,7 +60,6 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
         metadata = super().get_metadata()
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
         metadata = dict_deep_update(default_metadata, metadata)
-        _ = metadata.pop("NWBFile")
 
         # fix troublesome data types
         if "TwoPhotonSeries" in metadata["Ophys"]:

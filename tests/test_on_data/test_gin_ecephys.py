@@ -8,13 +8,15 @@ import numpy.testing as npt
 
 from parameterized import parameterized, param
 
-from spikeextractors import NwbRecordingExtractor, NwbSortingExtractor, RecordingExtractor, SortingExtractor
-from spikeextractors.testing import check_recordings_equal, check_sortings_equal
+from spikeextractors import NwbSortingExtractor, RecordingExtractor, SortingExtractor
+from spikeextractors.testing import check_sortings_equal
 
-from spikeinterface.core.testing import check_recordings_equal as check_recordings_equal_si
+from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
-from spikeinterface.extractors import NwbRecordingExtractor as NwbRecordingExtractorSI
+from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
+
+from spikeinterface.core import BaseRecording
 
 from pynwb import NWBHDF5IO
 
@@ -24,6 +26,7 @@ from neuroconv import (
     CEDRecordingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
+    NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeSortingInterface,
     OpenEphysRecordingExtractorInterface,
@@ -36,7 +39,9 @@ from neuroconv import (
     BlackrockSortingExtractorInterface,
     AxonaRecordingExtractorInterface,
     AxonaLFPDataInterface,
+    EDFRecordingInterface,
 )
+
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 from .setup_paths import OUTPUT_PATH
@@ -106,6 +111,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=CEDRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
             case_name="smrx",
+        ),
+        param(
+            data_interface=EDFRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf")),
+            case_name="artificial_data",
         ),
     ]
     for spikeextractors_backend in [True, False]:
@@ -240,40 +250,23 @@ class TestEcephysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
-        if isinstance(recording, RecordingExtractor):
-            # Do the comparison with spikeextractors method
-            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-            if "offset_to_uV" in nwb_recording.get_shared_channel_property_names():
-                nwb_recording.set_channel_offsets(
-                    offsets=[
-                        nwb_recording.get_channel_property(channel_id=channel_id, property_name="offset_to_uV")
-                        for channel_id in nwb_recording.get_channel_ids()
-                    ]
-                )
+        if not isinstance(recording, BaseRecording):
+            raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
-            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=False)
-            check_recordings_equal(RX1=recording, RX2=nwb_recording, check_times=False, return_scaled=True)
-
-            # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
-            # For GIN test data, sizes should be OK to load all into RAM even on CI
-            npt.assert_array_equal(
-                x=recording.get_traces(return_scaled=False), y=nwb_recording.get_traces(return_scaled=False)
-            )
+        # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
+        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+        if "channel_name" in recording.get_property_keys():
+            renamed_channel_ids = recording.get_property("channel_name")
         else:
-            # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-            nwb_recording = NwbRecordingExtractorSI(file_path=nwbfile_path)
-            if "channel_name" in recording.get_property_keys():
-                renamed_channel_ids = recording.get_property("channel_name")
-            else:
-                renamed_channel_ids = recording.get_channel_ids().astype("str")
-            recording = recording.channel_slice(
-                channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
-            )
+            renamed_channel_ids = recording.get_channel_ids().astype("str")
+        recording = recording.channel_slice(
+            channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
+        )
 
-            check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=False)
-            # This can only be tested if both gain and offset are present
-            if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
-                check_recordings_equal_si(RX1=recording, RX2=nwb_recording, return_scaled=True)
+        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
+        # This can only be tested if both gain and offset are present
+        if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
     parameterized_sorting_list = [
         param(
@@ -305,6 +298,16 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
                 )
             ),
+        ),
+        param(
+            data_interface=NeuralynxSortingInterface,
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data")),
+            case_name="mono_electrodes",
+        ),
+        param(
+            data_interface=NeuralynxSortingInterface,
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),
+            case_name="tetrodes",
         ),
     ]
 
@@ -358,8 +361,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
             nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
             check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
         else:
-            nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
-            check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
+            # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
+            if sorting.get_num_segments() == 1:
+                nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
+                check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
 
     @parameterized.expand(
         input=[
@@ -388,9 +393,9 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_conversion = nwbfile.acquisition["ElectricalSeries_raw"].conversion
-            output_gain = output_conversion * 1e6
-            self.assertEqual(first=input_gain, second=output_gain)
+            output_channel_conversion = nwbfile.acquisition["ElectricalSeries_raw"].channel_conversion[:]
+            input_gain_array = np.ones_like(output_channel_conversion) * input_gain
+            np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
 
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             nwb_recording_gains = nwb_recording.get_channel_gains()

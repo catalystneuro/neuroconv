@@ -77,7 +77,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
-            metadata["NWBFile"] = dict(session_start_time=extracted_session_start_time)
+            metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
 
         # Extract many scan image properties and attach them as dic in the description
         ophys_metadata = metadata["Ophys"]

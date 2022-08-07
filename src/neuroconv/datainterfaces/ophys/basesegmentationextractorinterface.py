@@ -1,5 +1,6 @@
-"""Authors: Cody Baker and Ben Dichter."""
+"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from abc import ABC
+from typing import Optional
 
 from pynwb import NWBFile
 from pynwb.device import Device
@@ -10,6 +11,7 @@ from ...tools.roiextractors import write_segmentation, get_nwb_segmentation_meta
 from ...utils import (
     get_schema_from_hdmf_class,
     fill_defaults,
+    OptionalFilePathType,
     get_base_schema,
 )
 
@@ -54,8 +56,23 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
     def get_metadata(self):
         metadata = super().get_metadata()
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
-        _ = metadata.pop("NWBFile")
         return metadata
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict, overwrite: bool = False):
-        write_segmentation(self.segmentation_extractor, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite)
+    def run_conversion(
+        self,
+        nwbfile_path: OptionalFilePathType = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        save_path: OptionalFilePathType = None,
+    ):
+
+        write_segmentation(
+            self.segmentation_extractor,
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            verbose=self.verbose,
+            save_path=save_path,
+        )

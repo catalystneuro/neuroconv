@@ -1,7 +1,7 @@
 Tif data conversion
 ^^^^^^^^^^^^^^^^^^^
 
-Convert Tiff imaging data to NWB using :py:class:`~nwb_conversion_tools.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`.
+Convert Tiff imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`.
 
 .. code-block:: python
 

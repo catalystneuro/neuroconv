@@ -29,9 +29,10 @@ from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
     AxonaUnitRecordingExtractorInterface,
 )
-from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface
+from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface, NeuralynxSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KilosortSortingInterface
+from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
@@ -45,6 +46,7 @@ from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 
 from .behavior.movie.moviedatainterface import MovieInterface
+from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 
 from .icephys.abf.abfdatainterface import AbfInterface
 
@@ -53,6 +55,7 @@ interface_list = [
     RecordingTutorialInterface,
     SortingTutorialInterface,
     NeuralynxRecordingInterface,
+    NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,
     NeuroscopeMultiRecordingTimeInterface,
     NeuroscopeSortingInterface,
@@ -84,6 +87,8 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     MovieInterface,
+    DeepLabCutInterface,
     AbfInterface,
     ScanImageImagingInterface,
+    EDFRecordingInterface,
 ]
