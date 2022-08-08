@@ -5,7 +5,7 @@ from parameterized import parameterized, param
 from pynwb import NWBHDF5IO
 from neuroconv import NWBConverter, MovieInterface
 
-from neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutinterface import DeepLabCutInterface
+from neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 
 from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
