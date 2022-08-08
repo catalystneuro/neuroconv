@@ -61,7 +61,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == "gzip"
-        assert compression_parameters["compression_opts"] == 4
 
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
@@ -109,7 +108,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_write_as_assertion(self):
+    def test_invalid_write_as_argument_assertion(self):
 
         write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
 
@@ -119,6 +118,35 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             add_electrical_series(
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
             )
+
+    def test_write_with_higher_gzip_level(self):
+        compression = "gzip"
+        compression_opts = 8
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            compression=compression,
+            compression_opts=compression_opts,
+        )
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression
+        assert compression_parameters["compression_opts"] == compression_opts
+
+    def test_write_with_lzf_compression(self):
+        compression = "lzf"
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
+        )
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression
+        assert "compression_opts" not in compression_parameters
 
     def test_non_iterative_write(self):
 

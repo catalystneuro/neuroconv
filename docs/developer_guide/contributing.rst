@@ -34,12 +34,13 @@ Did you find a bug? or Do you intend to add a new feature or change an existing 
 
 Did you write a patch that fixes a bug or implements a new feature?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-See the ``Contributing Patches and Changes`` section below for details.
+See the :ref:`sec-contributing` section below for details.
 
 Do you have questions about the NWB format?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Ask questions on our `Slack workspace <https://nwb-users.slack.com>`_ or sign up for our `NWB mailing list <http://visitor.r20.constantcontact.com/manage/optin?v=001nQUq2GTjwCjZxK_V2-6RLElLJO1HMVtoNLJ-wGyDCukZQZxu2AFJmNh6NS0_lGMsWc2w9hZpeNn74HuWdv5RtLX9qX0o0Hy1P0hOgMrkm2NoGAX3VoY25wx8HAtIZwredcCuM0nCUGodpvoaue3SzQ%3D%3D>`_ for updates.
+Ask questions on our `NWB helpdesk <https://github.com/NeurodataWithoutBorders/helpdesk/discussions>`_ or sign up for our
+`NWB mailing list <http://visitor.r20.constantcontact.com/manage/optin?v=001nQUq2GTjwCjZxK_V2-6RLElLJO1HMVtoNLJ-wGyDCukZQZxu2AFJmNh6NS0_lGMsWc2w9hZpeNn74HuWdv5RtLX9qX0o0Hy1P0hOgMrkm2NoGAX3VoY25wx8HAtIZwredcCuM0nCUGodpvoaue3SzQ%3D%3D>`_ for updates.
 
 Informal discussions between developers and users?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
