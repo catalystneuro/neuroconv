@@ -46,7 +46,8 @@ from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 
 from .behavior.movie.moviedatainterface import MovieInterface
-from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+
+# from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface  # Causing problem on M1 macs. See PR #71
 
 from .icephys.abf.abfdatainterface import AbfInterface
 
@@ -87,7 +88,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     MovieInterface,
-    DeepLabCutInterface,
+    # DeepLabCutInterface,
     AbfInterface,
     ScanImageImagingInterface,
     EDFRecordingInterface,
