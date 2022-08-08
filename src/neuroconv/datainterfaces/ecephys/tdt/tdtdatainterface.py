@@ -22,6 +22,10 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, True by default
             Allows verbose.
         """
+
+        if stream_id is None:
+            stream_id = "0"  # LFP for gin data. Other streams seem non-electrical.
+
         super().__init__(
             folder_path=folder_path,
             stream_id=stream_id,
