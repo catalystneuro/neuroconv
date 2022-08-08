@@ -8,8 +8,6 @@ from copy import deepcopy
 
 import numpy as np
 from hdmf.common import VectorData
-from hdmf.common.table import DynamicTableRegion
-from hdmf.container import MultiContainerInterface
 
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile, NWBHDF5IO
