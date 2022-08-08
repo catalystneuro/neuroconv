@@ -9,8 +9,7 @@ Convert DeepLabCut imaging data to NWB using :py:class:`~neuroconv.datainterface
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>> from neuroconv import DeepLabCutInterface
-    Loading DLC 2.2.1.1...
-    DLC loaded in light mode; you cannot use any GUI (labeling, relabeling and standalone GUI)
+    ...
     >>>
     >>> file_path = BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"
     >>> config_file_path = BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"
