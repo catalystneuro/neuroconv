@@ -750,15 +750,22 @@ def _create_roi_table_region(
     return roi_table_region
 
 
-def _get_ophys_data_interface(nwbfile: NWBFile, ophys_data_interface_name: str):
-    ophys_module = get_module(nwbfile, "ophys")
+def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str):
+    """Private method to get the container for the segmentation data.
+    If the container does not exist, it is created."""
+    ophys = get_module(nwbfile, "ophys")
 
-    if ophys_data_interface_name in ophys_module.data_interfaces:
-        return ophys_module.get(ophys_data_interface_name)
+    if data_interface_name in ophys.data_interfaces:
+        return ophys.get(data_interface_name)
 
-    data_interface = eval(ophys_data_interface_name)(name=ophys_data_interface_name)
+    if data_interface_name.capitalize() == "Dff":
+        data_interface = DfOverF(name=data_interface_name)
+    else:
+        data_interface = Fluorescence(name=data_interface_name)
 
-    ophys_module.add(data_interface)
+    # Add the data interface to the ophys module
+    ophys.add(data_interface)
+
     return data_interface
 
 
