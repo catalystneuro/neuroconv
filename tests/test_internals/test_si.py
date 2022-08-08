@@ -137,23 +137,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         assert compression_parameters["compression"] == compression
         assert compression_parameters["compression_opts"] == compression_opts
 
-    def test_out_of_range_gzip_compression_option_assertion(self):
-        compression = "gzip"
-        compression_opts = 15
-
-        reg_expression = (
-            f"Compression type is 'gzip', but specified compression_opts is not an integer between 0 and 9!"
-        )
-
-        with self.assertRaisesRegex(AssertionError, reg_expression):
-            add_electrical_series(
-                recording=self.test_recording_extractor,
-                nwbfile=self.nwbfile,
-                iterator_type=None,
-                compression=compression,
-                compression_opts=compression_opts,
-            )
-
     def test_write_with_lzf_compression(self):
         compression = "lzf"
         add_electrical_series(
@@ -165,39 +148,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == compression
         assert "compression_opts" not in compression_parameters
-
-    def test_lzf_compression_ignoring_compression_options_warning(self):
-        compression = "lzf"
-        compression_opts = 1
-
-        reg_expression = f"Compression_opts (.*?) were passed, but compression type is 'lzf'! Ignoring options."
-        with self.assertWarnsRegex(Warning, reg_expression):
-            add_electrical_series(
-                recording=self.test_recording_extractor,
-                nwbfile=self.nwbfile,
-                iterator_type=None,
-                compression=compression,
-                compression_opts=compression_opts,
-            )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert "compression_opts" not in compression_parameters
-
-    def test_invalid_compression_algorith_assertion(self):
-        compression = "and_invalid_compression_algorithm"
-
-        reg_expression = f"Invalid compression type (.*?) Choose one of 'gzip', 'lzf', None or True"
-
-        with self.assertRaisesRegex(AssertionError, reg_expression):
-            add_electrical_series(
-                recording=self.test_recording_extractor,
-                nwbfile=self.nwbfile,
-                iterator_type=None,
-                compression=compression,
-            )
 
     def test_non_iterative_write(self):
 

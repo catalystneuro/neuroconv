@@ -26,7 +26,7 @@ from pynwb.ophys import (
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module, wrap_data_in_H5DataIO
+from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
 from ...utils import (
     FilePathType,
     OptionalFilePathType,
@@ -291,7 +291,7 @@ def add_two_photon_series(
         for i in range(imaging.get_num_frames()):
             yield imaging.get_frames(frame_idxs=[i]).squeeze().T
 
-    data = wrap_data_in_H5DataIO(
+    data = H5DataIO(
         data=DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
         compression=True,
     )
@@ -307,7 +307,7 @@ def add_two_photon_series(
     if rate:
         two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
     else:
-        two_p_series_kwargs.update(timestamps=wrap_data_in_H5DataIO(data=timestamps, compression="gzip"))
+        two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"))
         two_p_series_kwargs["rate"] = None
 
     # Add the TwoPhotonSeries to the nwbfile

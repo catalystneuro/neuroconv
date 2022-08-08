@@ -14,10 +14,11 @@ from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator
+from hdmf.backends.hdf5.h5_utils import H5DataIO
 import psutil
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
-from ..nwb_helpers import get_module, make_or_load_nwbfile, wrap_data_in_H5DataIO
+from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
 
 
@@ -643,9 +644,7 @@ def add_electrical_series(
             raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
     else:
         raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
-    eseries_kwargs.update(
-        data=wrap_data_in_H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts)
-    )
+    eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
 
     # Timestamps vs rate
     timestamps = checked_recording.get_times(segment_index=segment_index)
@@ -656,7 +655,7 @@ def add_electrical_series(
     else:
         starting_time = starting_time if starting_time is not None else 0
         shifted_time_stamps = starting_time + timestamps
-        wrapped_timestamps = wrap_data_in_H5DataIO(
+        wrapped_timestamps = H5DataIO(
             data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
         )
         eseries_kwargs.update(timestamps=wrapped_timestamps)
