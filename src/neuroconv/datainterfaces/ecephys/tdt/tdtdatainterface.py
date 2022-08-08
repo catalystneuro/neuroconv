@@ -1,5 +1,5 @@
 """Author: Heberto Mayorquin"""
-
+from typing import Optional
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from spikeinterface.extractors import TdtRecordingExtractor
 
