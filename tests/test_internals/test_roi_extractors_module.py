@@ -493,6 +493,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         cls.session_start_time = datetime.now().astimezone()
 
         cls.fluorescence_name = "fluorescence"
+        cls.dff_name = "dff"
 
         cls.raw_roi_response_series_metadata = dict(
             name="RoiResponseSeries",
@@ -542,7 +543,15 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             )
         )
 
+        dff_metadata = dict(
+            DfOverF=dict(
+                name=self.dff_name,
+                roi_response_series=[self.dff_roi_response_series_metadata],
+            )
+        )
+
         self.metadata["Ophys"].update(fluorescence_metadata)
+        self.metadata["Ophys"].update(dff_metadata)
 
     def test_add_fluorescence_traces(self):
         """Test fluorescence traces are added correctly to the nwbfile."""
@@ -558,17 +567,14 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         fluorescence = ophys.get(self.fluorescence_name)
 
         self.assertEqual(fluorescence.name, self.fluorescence_name)
-        self.assertEqual(len(fluorescence.roi_response_series), 4)
+        self.assertEqual(len(fluorescence.roi_response_series), 3)
 
         self.assertEqual(
             fluorescence["RoiResponseSeries"].description,
             self.raw_roi_response_series_metadata["description"],
         )
 
-        self.assertEqual(
-            fluorescence["Dff"].description,
-            self.dff_roi_response_series_metadata["description"],
-        )
+        assert self.dff_roi_response_series_metadata["name"] not in fluorescence.roi_response_series
 
         self.assertEqual(
             fluorescence["Deconvolved"].description,
