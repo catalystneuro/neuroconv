@@ -13,12 +13,10 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, folder_path: FolderPathType, stream_id: Optional[str] = None, verbose: bool = True):
         """
-        Load and prepare data for TDT
-
         Parameters
         ----------
         folder_path: str or Path
-            Path to the TDT file
+            Path to the folder or directory with the corresponding files (TSQ, TBK, TEV, SEV)
         stream_id: str, optional
             Select from multiple streams.
         verbose: bool, True by default

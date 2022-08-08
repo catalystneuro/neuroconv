@@ -1,5 +1,5 @@
-European Data Format (EDF) conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+European Data Format (EDF) data conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface`.
 
