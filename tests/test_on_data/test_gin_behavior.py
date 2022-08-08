@@ -1,12 +1,12 @@
 import unittest
 from datetime import datetime
-from parameterized import parameterized, param
+from parameterized import parameterized
 
 from pynwb import NWBHDF5IO
+
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.movie import MovieInterface
-
-# from neuroconv.datainterfaces.behavior.deeplabcut import DeepLabCutInterface
+from neuroconv import DeepLabCutInterface
 
 from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
