@@ -61,7 +61,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == "gzip"
-        assert compression_parameters["compression_opts"] == 4
 
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
