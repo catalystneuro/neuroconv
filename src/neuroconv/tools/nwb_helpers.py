@@ -9,9 +9,6 @@ from pathlib import Path
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.file import Subject
 
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-
-
 from ..utils import dict_deep_update, FilePathType
 
 
