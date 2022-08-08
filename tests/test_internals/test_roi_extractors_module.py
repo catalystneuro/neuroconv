@@ -630,7 +630,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_add_fluorescence_one_of_the_traces_is_none(self):
         """Test that roi response series with None values are not added to the
-        nwbfile. """
+        nwbfile."""
 
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
@@ -654,7 +654,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_add_fluorescence_one_of_the_traces_is_all_zeros(self):
         """Test that roi response series with all zero values are not added to the
-        nwbfile. """
+        nwbfile."""
 
         self.segmentation_extractor._roi_response_deconvolved = np.zeros((self.num_rois, self.num_frames))
 
@@ -671,7 +671,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_no_traces_are_added(self):
         """Test that no traces are added to the nwbfile if they are all zeros or
-        None. """
+        None."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,
@@ -683,8 +683,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             has_neuropil_signal=False,
         )
 
-        segmentation_extractor._roi_response_raw = np.zeros(
-            (self.num_rois, self.num_frames))
+        segmentation_extractor._roi_response_raw = np.zeros((self.num_rois, self.num_frames))
 
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
@@ -697,7 +696,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_not_overwriting_fluorescence_if_same_name(self):
         """Test that adding fluorescence traces container with the same name will not
-        overwrite the existing fluorescence container in nwbfile. """
+        overwrite the existing fluorescence container in nwbfile."""
 
         add_fluorescence_traces(
             segmentation_extractor=self.segmentation_extractor,
