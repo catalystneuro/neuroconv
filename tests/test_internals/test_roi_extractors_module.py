@@ -536,7 +536,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
                 name=self.fluorescence_name,
                 roi_response_series=[
                     self.raw_roi_response_series_metadata,
-                    self.dff_roi_response_series_metadata,
                     self.deconvolved_roi_response_series_metadata,
                     self.neuropil_roi_response_series_metadata,
                 ],
@@ -594,7 +593,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         traces = self.segmentation_extractor.get_traces_dict()
 
         assert_array_equal(fluorescence["RoiResponseSeries"].data, traces["raw"].T)
-        assert_array_equal(fluorescence["Dff"].data, traces["dff"].T)
         assert_array_equal(fluorescence["Deconvolved"].data, traces["deconvolved"].T)
         assert_array_equal(fluorescence["Neuropil"].data, traces["neuropil"].T)
 
