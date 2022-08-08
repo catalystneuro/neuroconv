@@ -3,7 +3,9 @@ from datetime import datetime
 from parameterized import parameterized, param
 
 from pynwb import NWBHDF5IO
-from neuroconv import NWBConverter, MovieInterface, DeepLabCutInterface
+from neuroconv import NWBConverter, MovieInterface
+
+from neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutinterface import DeepLabCutInterface
 
 from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
