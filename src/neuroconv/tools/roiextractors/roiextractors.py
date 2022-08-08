@@ -616,7 +616,8 @@ def add_fluorescence_traces(
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
-    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"]
+    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"].
+    The df/F traces that are added are the one located in metadata["Ophys"]["DfOverF"].
 
     Parameters
     ----------
@@ -685,23 +686,27 @@ def add_fluorescence_traces(
         unit="n.a.",
     )
 
-    # Logic for extracting the containers
-    if "dff" in traces_to_add:
-        dff = _get_ophys_data_interface(nwbfile, "DfOverF")
-
-    remaining_traces = [trace_name for trace_name in traces_to_add.keys() if
-                        trace_name != "dff"]
-    if remaining_traces:
-        fluorescence = _get_ophys_data_interface(nwbfile, "Fluorescence")
+    container = defaultdict(
+        lambda: _get_segmentation_data_interface(
+            nwbfile=nwbfile,
+            data_interface_name=fluorescence_name,
+        ),
+        # we expect that the df/F trace name is "Dff"
+        Dff=_get_segmentation_data_interface(
+            nwbfile=nwbfile,
+            data_interface_name=dff_name,
+        ),
+    )
 
     for trace_name, trace in traces_to_add.items():
         # Extract the response series metadata
         trace_name = "RoiResponseSeries" if trace_name == "raw" else trace_name.capitalize()
         trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
-        container = dff if trace_name == "Dff" else fluorescence
-        if trace_name in container.roi_response_series:
+
+        if trace_name in container[trace_name].roi_response_series:
             continue
 
+        metadata = dff_metadata if trace_name == "Dff" else fluorescence_metadata
         response_series_metadata = metadata["roi_response_series"]
         trace_metadata = next(
             trace_metadata for trace_metadata in response_series_metadata if
@@ -716,7 +721,7 @@ def add_fluorescence_traces(
         roi_response_series = RoiResponseSeries(**roi_response_series_kwargs)
 
         # Add it to the container
-        container.add_roi_response_series(roi_response_series)
+        container[trace_name].add_roi_response_series(roi_response_series)
 
     return nwbfile
 
@@ -727,7 +732,7 @@ def _create_roi_table_region(
         metadata: dict,
         plane_index: int,
 ):
-    """Abstract method to create ROI table region."""
+    """Private method to create ROI table region."""
     add_plane_segmentation(segmentation_extractor=segmentation_extractor,
                            nwbfile=nwbfile, metadata=metadata)
 
