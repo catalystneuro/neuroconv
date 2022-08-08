@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl"""
 import os
+from collections import defaultdict
 from pathlib import Path
 from warnings import warn
 from typing import Optional
@@ -8,6 +9,7 @@ from copy import deepcopy
 import numpy as np
 from hdmf.common import VectorData
 from hdmf.common.table import DynamicTableRegion
+from hdmf.container import MultiContainerInterface
 
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile, NWBHDF5IO
@@ -20,7 +22,9 @@ from pynwb.ophys import (
     ImagingPlane,
     Fluorescence,
     OpticalChannel,
-    TwoPhotonSeries, RoiResponseSeries, DfOverF,
+    TwoPhotonSeries,
+    RoiResponseSeries,
+    DfOverF,
 )
 
 # from hdmf.commmon import VectorData
@@ -602,6 +606,160 @@ def add_plane_segmentation(
         image_segmentation.create_plane_segmentation(**plane_segmentation_kwargs)
 
     return nwbfile
+
+
+def add_fluorescence_traces(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    plane_index: int = 0,
+) -> NWBFile:
+    """
+    Adds the fluorescence traces specified by the metadata to the nwb file.
+    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"]
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get the traces from.
+    nwbfile : NWBFile
+        The nwbfile to add the fluorescence traces to.
+    metadata : dict
+        The metadata for the fluorescence traces.
+    plane_index : int, optional
+        The index of the plane to add the fluorescence traces to.
+
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the fluorescence traces added.
+    """
+
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = get_default_ophys_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    # df/F metadata
+    dff_metadata = metadata_copy["Ophys"]["DfOverF"]
+    dff_name = dff_metadata["name"]
+
+    # Fluorescence traces metadata
+    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
+    fluorescence_name = fluorescence_metadata["name"]
+
+    # Get traces from the segmentation extractor
+    traces_to_add = segmentation_extractor.get_traces_dict()
+
+    # Filter empty data
+    traces_to_add = {trace_name: trace for trace_name, trace in
+                     traces_to_add.items() if trace is not None}
+    # Filter all zero data
+    traces_to_add = {trace_name: trace for trace_name, trace in
+                     traces_to_add.items() if any(x != 0 for x in np.ravel(trace))}
+
+    # Early return if there is nothing to add
+    if not traces_to_add:
+        return nwbfile
+
+    # Create a reference for ROIs from the plane segmentation
+    roi_table_region = _create_roi_table_region(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata_copy,
+        plane_index=plane_index,
+    )
+
+    rate = (
+        np.nan
+        if segmentation_extractor.get_sampling_frequency() is None
+        else float(segmentation_extractor.get_sampling_frequency())
+    )
+
+    roi_response_series_kwargs = dict(
+        rois=roi_table_region,
+        # TODO: timestamps or rate (for timestamps we need frame_to_time method)
+        # TODO: check for regularity, only use timestamps if irregular timing
+        starting_time=0.0,
+        rate=rate,
+        unit="n.a.",
+    )
+
+    # Logic for extracting the containers
+    if "dff" in traces_to_add:
+        dff = _get_ophys_data_interface(nwbfile, "DfOverF")
+
+    remaining_traces = [trace_name for trace_name in traces_to_add.keys() if
+                        trace_name != "dff"]
+    if remaining_traces:
+        fluorescence = _get_ophys_data_interface(nwbfile, "Fluorescence")
+
+    for trace_name, trace in traces_to_add.items():
+        # Extract the response series metadata
+        trace_name = "RoiResponseSeries" if trace_name == "raw" else trace_name.capitalize()
+        trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
+        container = dff if trace_name == "Dff" else fluorescence
+        if trace_name in container.roi_response_series:
+            continue
+
+        response_series_metadata = metadata["roi_response_series"]
+        trace_metadata = next(
+            trace_metadata for trace_metadata in response_series_metadata if
+            trace_name == trace_metadata["name"])
+
+        # Build the roi response series
+        roi_response_series_kwargs.update(
+            data=np.array(trace).T,
+            rois=roi_table_region,
+            **trace_metadata,
+        )
+        roi_response_series = RoiResponseSeries(**roi_response_series_kwargs)
+
+        # Add it to the container
+        container.add_roi_response_series(roi_response_series)
+
+    return nwbfile
+
+
+def _create_roi_table_region(
+        segmentation_extractor: SegmentationExtractor,
+        nwbfile: NWBFile,
+        metadata: dict,
+        plane_index: int,
+):
+    """Abstract method to create ROI table region."""
+    add_plane_segmentation(segmentation_extractor=segmentation_extractor,
+                           nwbfile=nwbfile, metadata=metadata)
+
+    # Get plane segmentation from the image segmentation
+    image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
+    image_segmentation_name = image_segmentation_metadata["name"]
+    ophys = get_module(nwbfile, "ophys")
+    image_segmentation = ophys.get_data_interface(image_segmentation_name)
+
+    plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][0][
+        "name"]
+    plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
+
+    # Create a reference for ROIs from the plane segmentation
+    roi_table_region = plane_segmentation.create_roi_table_region(
+        region=segmentation_extractor.get_roi_ids(),
+        description=f"region for Imaging plane{plane_index}",
+    )
+
+    return roi_table_region
+
+
+def _get_ophys_data_interface(nwbfile: NWBFile, ophys_data_interface_name: str):
+    ophys_module = get_module(nwbfile, "ophys")
+
+    if ophys_data_interface_name in ophys_module.data_interfaces:
+        return ophys_module.get(ophys_data_interface_name)
+
+    data_interface = eval(ophys_data_interface_name)(name=ophys_data_interface_name)
+
+    ophys_module.add(data_interface)
+    return data_interface
 
 
 def add_summary_images(
