@@ -63,9 +63,7 @@ def get_default_ophys_metadata():
     )
 
     default_fluorescence_roi_response_series = dict(
-        name="RoiResponseSeries",
-        description="array of raw fluorescence traces",
-        unit="n.a."
+        name="RoiResponseSeries", description="array of raw fluorescence traces", unit="n.a."
     )
 
     default_fluorescence = dict(
@@ -73,11 +71,7 @@ def get_default_ophys_metadata():
         roi_response_series=[default_fluorescence_roi_response_series],
     )
 
-    default_dff_roi_response_series = dict(
-        name="DfOverF",
-        description="array of df/F traces",
-        unit="n.a."
-    )
+    default_dff_roi_response_series = dict(name="DfOverF", description="array of df/F traces", unit="n.a.")
 
     default_df_over_f = dict(
         name="DfOverF",
@@ -653,11 +647,11 @@ def add_fluorescence_traces(
     traces_to_add = segmentation_extractor.get_traces_dict()
 
     # Filter empty data
-    traces_to_add = {trace_name: trace for trace_name, trace in
-                     traces_to_add.items() if trace is not None}
+    traces_to_add = {trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None}
     # Filter all zero data
-    traces_to_add = {trace_name: trace for trace_name, trace in
-                     traces_to_add.items() if any(x != 0 for x in np.ravel(trace))}
+    traces_to_add = {
+        trace_name: trace for trace_name, trace in traces_to_add.items() if any(x != 0 for x in np.ravel(trace))
+    }
 
     # Early return if there is nothing to add
     if not traces_to_add:
@@ -709,8 +703,8 @@ def add_fluorescence_traces(
         metadata = dff_metadata if trace_name == "Dff" else fluorescence_metadata
         response_series_metadata = metadata["roi_response_series"]
         trace_metadata = next(
-            trace_metadata for trace_metadata in response_series_metadata if
-            trace_name == trace_metadata["name"])
+            trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
+        )
 
         # Build the roi response series
         roi_response_series_kwargs.update(
@@ -727,14 +721,13 @@ def add_fluorescence_traces(
 
 
 def _create_roi_table_region(
-        segmentation_extractor: SegmentationExtractor,
-        nwbfile: NWBFile,
-        metadata: dict,
-        plane_index: int,
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: dict,
+    plane_index: int,
 ):
     """Private method to create ROI table region."""
-    add_plane_segmentation(segmentation_extractor=segmentation_extractor,
-                           nwbfile=nwbfile, metadata=metadata)
+    add_plane_segmentation(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata)
 
     # Get plane segmentation from the image segmentation
     image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
@@ -742,8 +735,7 @@ def _create_roi_table_region(
     ophys = get_module(nwbfile, "ophys")
     image_segmentation = ophys.get_data_interface(image_segmentation_name)
 
-    plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][0][
-        "name"]
+    plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][0]["name"]
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
     # Create a reference for ROIs from the plane segmentation
