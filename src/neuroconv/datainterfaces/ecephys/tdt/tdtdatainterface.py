@@ -11,20 +11,22 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = TdtRecordingExtractor
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, stream_id: Optional[str] = None, verbose: bool = True):
         """
         Load and prepare data for TDT
 
         Parameters
         ----------
         folder_path: str or Path
-            Path to the edf file
+            Path to the TDT file
+        stream_id: str, optional
+            Select from multiple streams.
         verbose: bool, True by default
             Allows verbose.
         """
         super().__init__(
             folder_path=folder_path,
-            stream_id="0",
+            stream_id=stream_id,
             verbose=verbose,
         )
 
