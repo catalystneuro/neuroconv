@@ -925,44 +925,12 @@ def write_segmentation(
                 ),
             )
 
-            plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"]
-            plane_segmentation_name = plane_segmentation_metadata[0]["name"]
-            plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
-
-            # Fluorescence Traces - This should be a function on its own.
-            if "Flourescence" not in ophys.data_interfaces:
-                fluorescence = Fluorescence()
-                ophys.add(fluorescence)
-            else:
-                fluorescence = ophys.data_interfaces["Fluorescence"]
-
-            roi_table_region = plane_segmentation.create_roi_table_region(
-                description=f"region for Imaging plane{plane_no_loop}",
-                region=list(range(segext_obj.get_num_rois())),
+            # Add fluorescence traces:
+            add_fluorescence_traces(
+                segmentation_extractor=segext_obj,
+                nwbfile=nwbfile_out,
+                metadata=metadata,
             )
-
-            roi_response_dict = segext_obj.get_traces_dict()
-
-            rate = np.nan if segext_obj.get_sampling_frequency() is None else segext_obj.get_sampling_frequency()
-
-            # Filter empty data
-            roi_response_dict = {key: value for key, value in roi_response_dict.items() if value is not None}
-            for signal, response_series in roi_response_dict.items():
-
-                not_all_data_is_zero = any(x != 0 for x in np.ravel(response_series))
-                if not_all_data_is_zero:
-                    data = np.asarray(response_series)
-                    trace_name = "RoiResponseSeries" if signal == "raw" else signal.capitalize()
-                    trace_name = trace_name if plane_no_loop == 0 else trace_name + f"_Plane{plane_no_loop}"
-                    input_kwargs = dict(
-                        name=trace_name,
-                        data=data.T,
-                        rois=roi_table_region,
-                        rate=rate,
-                        unit="n.a.",
-                    )
-                    if trace_name not in fluorescence.roi_response_series:
-                        fluorescence.create_roi_response_series(**input_kwargs)
 
             # Adding summary images (mean and correlation)
             images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
