@@ -16,7 +16,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         folder_path: str or Path
-            Path to the TDT file
+            Path to the folder or directory with the corresponding files (TSQ, TBK, TEV, SEV)
         stream_id: str, "0" by default
             Select from multiple streams.
         verbose: bool, True by default
