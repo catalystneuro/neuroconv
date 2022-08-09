@@ -560,30 +560,15 @@ def add_electrical_series(
     else:
         checked_recording = recording
 
-    assert compression is None or compression in [
-        "gzip",
-        "lzf",
-    ], "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', or None."
-
     assert write_as in [
         "raw",
         "processed",
         "lfp",
     ], f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
-    if compression == "gzip":
-        if compression_opts is None:
-            compression_opts = 4
-        else:
-            assert compression_opts in range(
-                10
-            ), "compression type is 'gzip', but specified compression_opts is not an integer between 0 and 9!"
-    elif compression == "lzf" and compression_opts is not None:
-        warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
-        compression_opts = None
+    segment_signature = "" if checked_recording.get_num_segments() == 1 else segment_index
+    default_name = f"ElectricalSeries{segment_signature}_{write_as}"
 
-    segment_name_signature = "" if checked_recording.get_num_segments() == 1 else segment_index
-    default_name = f"ElectricalSeries{segment_name_signature}_{write_as}"
     default_description = dict(raw="Raw acquired data", lfp="Processed data - LFP", processed="Processed data")
 
     eseries_kwargs = dict(name=default_name, description=default_description[write_as])
