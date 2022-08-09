@@ -12,7 +12,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True):
         """
-        
+
         Parameters
         ----------
         folder_path: str or Path
