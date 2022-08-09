@@ -96,8 +96,6 @@ class TestEcephysNwbConversions(unittest.TestCase):
             nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
-            nwb_lfp_conversion_vector = nwb_lfp_electrical_series.channel_conversion[:]
-            nwb_lfp_offset = nwb_lfp_electrical_series.offset
             # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
             # For GIN test data, sizes should be OK to load all into RAM even on CI
             if isinstance(recording, RecordingExtractor):
@@ -109,6 +107,8 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
                 # This can only be tested if both gain and offest are present
                 if recording.has_scaled_traces():
+                    nwb_lfp_conversion_vector = nwb_lfp_electrical_series.channel_conversion[:]
+                    nwb_lfp_offset = nwb_lfp_electrical_series.offset
                     recording_data_volts = recording.get_traces(return_scaled=True) * 1e-6
                     nwb_data_volts = nwb_lfp_unscaled * nwb_lfp_conversion_vector * nwb_lfp_conversion + nwb_lfp_offset
                     npt.assert_array_almost_equal(x=recording_data_volts, y=nwb_data_volts)
