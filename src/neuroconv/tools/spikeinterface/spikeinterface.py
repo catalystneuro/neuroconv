@@ -488,6 +488,43 @@ def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording
         raise MemoryError(message)
 
 
+def iterize_recording_traces(
+    recording: BaseRecording,
+    segment_index: int = None,
+    return_scaled: bool = False,
+    iterator_type: str = "v2",
+    iterator_opts: dict = None,
+):
+    supported_values = ["v1", "v2", None]
+    if iterator_type not in supported_values:
+        raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1', 'v2' (recommended) or None")
+
+    iterator_opts = dict() if iterator_opts is None else iterator_opts
+
+    if iterator_type is None:
+        check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
+        traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
+
+    elif iterator_type == "v2":
+        traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
+            recording=recording,
+            segment_index=segment_index,
+            return_scaled=return_scaled,
+            **iterator_opts,
+        )
+    elif iterator_type == "v1":
+        if isinstance(recording.get_traces(end_frame=5, return_scaled=return_scaled), np.memmap) and np.all(
+            recording.get_channel_offsets() == 0
+        ):
+            traces_as_iterator = DataChunkIterator(
+                data=recording.get_traces(return_scaled=return_scaled), **iterator_opts
+            )
+        else:
+            raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
+
+    return traces_as_iterator
+
+
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
     nwbfile: pynwb.NWBFile,
@@ -540,9 +577,9 @@ def add_electrical_series(
     iterator_type: str (optional, defaults to 'v2')
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
     iterator_opts: dict (optional)
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
+        Dictionary of options for the iterator.
         Valid options are
             buffer_gb: float (optional, defaults to 1 GB)
                 Recommended to be as much free RAM as available. Automatically calculates suitable buffer shape.
@@ -620,31 +657,15 @@ def add_electrical_series(
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
     # Iterator
-    iterator_opts = dict() if iterator_opts is None else iterator_opts
-
-    if iterator_type is None:
-        check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)
-        ephys_data = checked_recording.get_traces(return_scaled=write_scaled, segment_index=segment_index)
-
-    elif iterator_type == "v2":
-        ephys_data = SpikeInterfaceRecordingDataChunkIterator(
-            recording=checked_recording,
-            segment_index=segment_index,
-            return_scaled=write_scaled,
-            **iterator_opts,
-        )
-    elif iterator_type == "v1":
-        if isinstance(checked_recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
-            channel_offset == 0
-        ):
-            ephys_data = DataChunkIterator(
-                data=checked_recording.get_traces(return_scaled=write_scaled), **iterator_opts
-            )
-        else:
-            raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
-    else:
-        raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
-    eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
+    ephys_data_iterator = iterize_recording_traces(
+        recording=checked_recording,
+        segment_index=segment_index,
+        iterator_type=iterator_type,
+        iterator_opts=iterator_opts,
+    )
+    eseries_kwargs.update(
+        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+    )
 
     # Timestamps vs rate
     timestamps = checked_recording.get_times(segment_index=segment_index)
