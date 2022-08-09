@@ -635,10 +635,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         self.assertEqual(df_over_f[trace_name].unit, "n.a.")
 
-        self.assertEqual(
-            df_over_f[trace_name].rate,
-            segmentation_extractor.get_sampling_frequency()
-        )
+        self.assertEqual(df_over_f[trace_name].rate, segmentation_extractor.get_sampling_frequency())
 
         traces = segmentation_extractor.get_traces_dict()
 

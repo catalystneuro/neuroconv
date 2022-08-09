@@ -689,9 +689,7 @@ def add_fluorescence_traces(
         trace_to_data_interface.default_factory = lambda: fluorescence_data_interface
 
     if "dff" in traces_to_add:
-        df_over_f_data_interface = _get_segmentation_data_interface(
-            nwbfile=nwbfile, data_interface_name=df_over_f_name
-        )
+        df_over_f_data_interface = _get_segmentation_data_interface(nwbfile=nwbfile, data_interface_name=df_over_f_name)
         trace_to_data_interface.update(Dff=df_over_f_data_interface)
 
     for trace_name, trace in traces_to_add.items():
