@@ -634,8 +634,8 @@ def add_fluorescence_traces(
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     # df/F metadata
-    dff_metadata = metadata_copy["Ophys"]["DfOverF"]
-    dff_name = dff_metadata["name"]
+    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
+    df_over_f_name = df_over_f_metadata["name"]
 
     # Fluorescence traces metadata
     fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
@@ -678,27 +678,31 @@ def add_fluorescence_traces(
         unit="n.a.",
     )
 
-    container = defaultdict(
-        lambda: _get_segmentation_data_interface(
-            nwbfile=nwbfile,
-            data_interface_name=fluorescence_name,
-        ),
-        # we expect that the df/F trace name is "Dff"
-        Dff=_get_segmentation_data_interface(
-            nwbfile=nwbfile,
-            data_interface_name=dff_name,
-        ),
-    )
+    trace_to_data_interface = defaultdict()
+    traces_to_add_to_fluorescence_data_interface = [
+        trace_name for trace_name in traces_to_add.keys() if trace_name != "dff"
+    ]
+    if traces_to_add_to_fluorescence_data_interface:
+        fluorescence_data_interface = _get_segmentation_data_interface(
+            nwbfile=nwbfile, data_interface_name=fluorescence_name
+        )
+        trace_to_data_interface.default_factory = lambda: fluorescence_data_interface
+
+    if "dff" in traces_to_add:
+        df_over_f_data_interface = _get_segmentation_data_interface(
+            nwbfile=nwbfile, data_interface_name=df_over_f_name
+        )
+        trace_to_data_interface.update(Dff=df_over_f_data_interface)
 
     for trace_name, trace in traces_to_add.items():
         # Extract the response series metadata
         trace_name = "RoiResponseSeries" if trace_name == "raw" else trace_name.capitalize()
         trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
 
-        if trace_name in container[trace_name].roi_response_series:
+        if trace_name in trace_to_data_interface[trace_name].roi_response_series:
             continue
 
-        metadata = dff_metadata if trace_name == "Dff" else fluorescence_metadata
+        metadata = df_over_f_metadata if trace_name == "Dff" else fluorescence_metadata
         response_series_metadata = metadata["roi_response_series"]
         trace_metadata = next(
             trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
@@ -712,8 +716,8 @@ def add_fluorescence_traces(
         )
         roi_response_series = RoiResponseSeries(**roi_response_series_kwargs)
 
-        # Add it to the container
-        container[trace_name].add_roi_response_series(roi_response_series)
+        # Add trace to the data interface
+        trace_to_data_interface[trace_name].add_roi_response_series(roi_response_series)
 
     return nwbfile
 
@@ -753,7 +757,7 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
     if data_interface_name in ophys.data_interfaces:
         return ophys.get(data_interface_name)
 
-    if data_interface_name.capitalize() == "Dff":
+    if data_interface_name == "DfOverF":
         data_interface = DfOverF(name=data_interface_name)
     else:
         data_interface = Fluorescence(name=data_interface_name)
