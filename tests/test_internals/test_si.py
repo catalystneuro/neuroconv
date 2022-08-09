@@ -407,7 +407,7 @@ class TestWriteRecording(unittest.TestCase):
         )
 
     def test_default_values_single_segment(self):
-
+        """This test that the names are written appropiately for the single segment case (numbers not added)"""
         write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -418,7 +418,6 @@ class TestWriteRecording(unittest.TestCase):
 
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == "gzip"
-        assert compression_parameters["compression_opts"] == 4
 
         extracted_data = electrical_series.data[:]
         expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
