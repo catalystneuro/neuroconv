@@ -1,5 +1,4 @@
 """Author: Heberto Mayorquin"""
-from typing import Optional
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from spikeinterface.extractors import TdtRecordingExtractor
 
@@ -11,22 +10,19 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
     RX = TdtRecordingExtractor
 
-    def __init__(self, folder_path: FolderPathType, stream_id: Optional[str] = None, verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True):
         """
-        Load and prepare data for TDT
 
         Parameters
         ----------
         folder_path: str or Path
             Path to the TDT file
-        stream_id: str, optional
+        stream_id: str, "0" by default
             Select from multiple streams.
         verbose: bool, True by default
             Allows verbose.
         """
-
-        if stream_id is None:
-            stream_id = "0"  # LFP for gin data. Other streams seem non-electrical.
+        # Note: stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
 
         super().__init__(
             folder_path=folder_path,
