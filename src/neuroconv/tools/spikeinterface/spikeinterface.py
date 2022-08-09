@@ -13,7 +13,7 @@ from spikeinterface import BaseRecording, BaseSorting
 from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 import psutil
 
@@ -494,7 +494,36 @@ def iterize_recording_traces(
     return_scaled: bool = False,
     iterator_type: str = "v2",
     iterator_opts: dict = None,
-):
+) -> AbstractDataChunkIterator:
+    """Function to wrap traces of spikeinterface recording extractors on an iterator.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        A recording extractor from spikeinterface
+    segment_index : int, optional
+        The recording segment to add to the NWBFile.
+    return_scaled : bool, defaults to False
+        When True recording extractor objects from spikeinterface return their traces in microvolts.
+    iterator_type: str (optional, defaults to 'v2')
+        The type of DataChunkIterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+    iterator_opts: dict (optional)
+        Dictionary of options for the iterator.
+        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+
+    Returns
+    -------
+    traces_as_iterator: AbstractDataChunkIterator
+        The traces of the recording extractor wrapped in an iterator object.
+
+    Raises
+    ------
+    ValueError
+        If the iterator_type is not 'v1', 'v2' or None.
+    """
 
     supported_iterator_types = ["v1", "v2", None]
     if iterator_type not in supported_iterator_types:
@@ -542,6 +571,7 @@ def add_electrical_series(
     Parameters
     ----------
     recording: SpikeInterfaceRecording
+        A recording extractor from spikeinterface
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
     metadata: dict
@@ -576,12 +606,9 @@ def add_electrical_series(
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
     iterator_opts: dict (optional)
         Dictionary of options for the iterator.
-        Valid options are
-            buffer_gb: float (optional, defaults to 1 GB)
-                Recommended to be as much free RAM as available. Automatically calculates suitable buffer shape.
-            chunk_mb: float (optional, defaults to 1 MB)
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
+        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
