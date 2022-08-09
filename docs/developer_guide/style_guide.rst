@@ -35,6 +35,6 @@ DataInterface conventions
 Other conventions
 -----------------
 #. Whenever possible, use the type dictionary constructor :code:`dictionary = dict(foo=bar)`  instead of the brace
-   notation :code:`dictionary={foo: bar}`. Notable exceptions that do not led themselves to this constructor are the
+   notation :code:`dictionary={foo: bar}`. Notable exceptions that do not lend themselves to this constructor are the
    use of  non-valid python expressions as keys (e.g :code:`1key` can not be used as a key because of the number at the beginning)
    or and the use of non-mutable objects as keys.
