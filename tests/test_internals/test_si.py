@@ -361,7 +361,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         """Use common recording objects and values."""
         cls.sampling_frequency = 1.0
         cls.num_channels = 3
-        cls.num_frames = 100
+        cls.num_frames = 20
         cls.channel_ids = ["a", "b", "c"]
         cls.traces_list = [np.ones(shape=(cls.num_frames, cls.num_channels))]
         # Flat traces [1, 1, 1] per channel
@@ -370,8 +370,8 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         )
 
         # Combinations of gains and default
-        cls.gains_default = [1, 1, 1]
-        cls.offset_default = [0, 0, 0]
+        cls.gains_default = [2, 2, 2]
+        cls.offset_default = [1, 1, 1]
 
         cls.test_recording_extractor.set_channel_gains(gains=cls.gains_default)
         cls.test_recording_extractor.set_channel_offsets(offsets=cls.offset_default)
@@ -389,9 +389,13 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeries_raw"]
         h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_as_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
 
-        assert isinstance(electrical_series_data_as_iterator, SpikeInterfaceRecordingDataChunkIterator)
+        assert isinstance(electrical_series_data_iterator, SpikeInterfaceRecordingDataChunkIterator)
+
+        extracted_data = np.concatenate([data_chunk.data for data_chunk in electrical_series_data_iterator])
+        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_iterator_opts_propagation(self):
         iterator_opts = dict(chunk_shape=(10, 3))
@@ -402,22 +406,33 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeries_raw"]
         h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_as_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
 
-        assert electrical_series_data_as_iterator.chunk_shape == iterator_opts["chunk_shape"]
+        assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
-    def test_old_iterator(self):
+    def test_hdfm_iterator(self):
 
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeries_raw"]
         h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_as_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
 
-        assert isinstance(electrical_series_data_as_iterator, DataChunkIterator)
+        assert isinstance(electrical_series_data_iterator, DataChunkIterator)
+
+        extracted_data = np.concatenate([data_chunk.data for data_chunk in electrical_series_data_iterator])
+        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_non_iterative_write(self):
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        isinstance(electrical_series.data, np.ndarray)
+
+    def test_non_iterative_write_assertion(self):
 
         # Estimate num of frames required to exceed memory capabilities
         dtype = self.test_recording_extractor.get_dtype()
@@ -439,6 +454,16 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
         with self.assertRaisesRegex(MemoryError, reg_expression):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
+
+    def test_invalid_iterator_type_assertion(self):
+
+        iterator_type = "invalid_iterator_type"
+
+        reg_expression = "iterator_type (.*?)"
+        with self.assertRaisesRegex(ValueError, reg_expression):
+            add_electrical_series(
+                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=iterator_type
+            )
 
 
 class TestAddElectrodes(TestCase):

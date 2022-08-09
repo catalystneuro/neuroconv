@@ -495,16 +495,17 @@ def iterize_recording_traces(
     iterator_type: str = "v2",
     iterator_opts: dict = None,
 ):
-    supported_values = ["v1", "v2", None]
-    if iterator_type not in supported_values:
-        raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1', 'v2' (recommended) or None")
+
+    supported_iterator_types = ["v1", "v2", None]
+    if iterator_type not in supported_iterator_types:
+        message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
+        raise ValueError(message)
 
     iterator_opts = dict() if iterator_opts is None else iterator_opts
 
     if iterator_type is None:
         check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
         traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
-
     elif iterator_type == "v2":
         traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
             recording=recording,
@@ -513,14 +514,9 @@ def iterize_recording_traces(
             **iterator_opts,
         )
     elif iterator_type == "v1":
-        if isinstance(recording.get_traces(end_frame=5, return_scaled=return_scaled), np.memmap) and np.all(
-            recording.get_channel_offsets() == 0
-        ):
-            traces_as_iterator = DataChunkIterator(
-                data=recording.get_traces(return_scaled=return_scaled), **iterator_opts
-            )
-        else:
-            raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
+        traces_as_iterator = DataChunkIterator(
+            data=recording.get_traces(return_scaled=return_scaled, segment_index=segment_index), **iterator_opts
+        )
 
     return traces_as_iterator
 
