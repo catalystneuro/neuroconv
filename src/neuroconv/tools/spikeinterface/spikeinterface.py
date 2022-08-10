@@ -349,7 +349,7 @@ def add_electrodes(
             group_name_array = data_to_add["group"]["data"].astype("str", copy=False)
         else:
             default_group_name = "default_group"
-            group_name_array = np.full_like(channel_ids, fill_value=default_group_name)
+            group_name_array = np.full_like(channel_name_array, fill_value=default_group_name)
 
     group_name_array[group_name_array == ""] = "default_group"
     data_to_add["group_name"].update(description="group_name", data=group_name_array, index=False)
