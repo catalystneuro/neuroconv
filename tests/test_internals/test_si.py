@@ -354,6 +354,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, reg_expression):
             add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
+
 class TestAddElectricalSeriesChunking(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -465,6 +466,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=iterator_type
             )
 
+
 class TestWriteRecording(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -490,7 +492,6 @@ class TestWriteRecording(unittest.TestCase):
 
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable"""
-
 
     def test_default_values_single_segment(self):
         """This test that the names are written appropiately for the single segment case (numbers not added)"""
