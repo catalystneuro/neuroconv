@@ -491,7 +491,11 @@ class TestWriteRecording(unittest.TestCase):
         cls.multiple_segment_recording_extractor.set_channel_offsets(cls.offset_default)
 
     def setUp(self):
-        """Start with a fresh NWBFile, ElectrodeTable"""
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
 
     def test_default_values_single_segment(self):
         """This test that the names are written appropiately for the single segment case (numbers not added)"""
