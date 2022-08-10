@@ -11,6 +11,8 @@ import pynwb.ecephys
 from spikeinterface.core.testing_tools import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+from hdmf.data_utils import DataChunkIterator
+
 from hdmf.testing import TestCase
 
 
@@ -26,7 +28,6 @@ from neuroconv.tools.spikeinterface import (
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-from neuroconv.utils import FilePathType
 from neuroconv.tools.nwb_helpers import get_module
 
 testing_session_time = datetime.now().astimezone()
@@ -61,7 +62,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == "gzip"
-        assert compression_parameters["compression_opts"] == 4
 
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
@@ -109,7 +109,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_write_as_assertion(self):
+    def test_invalid_write_as_argument_assertion(self):
 
         write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
 
@@ -120,31 +120,37 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
             )
 
-    def test_non_iterative_write(self):
+    def test_write_with_higher_gzip_level(self):
+        compression = "gzip"
+        compression_opts = 8
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            compression=compression,
+            compression_opts=compression_opts,
+        )
 
-        # Estimate num of frames required to exceed memory capabilities
-        dtype = self.test_recording_extractor.get_dtype()
-        element_size_in_bytes = dtype.itemsize
-        num_channels = self.test_recording_extractor.get_num_channels()
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression
+        assert compression_parameters["compression_opts"] == compression_opts
 
-        available_memory_in_bytes = psutil.virtual_memory().available
+    def test_write_with_lzf_compression(self):
+        compression = "lzf"
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
+        )
 
-        excess = 1.5  # Of what is available in memory
-        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * num_channels)
-
-        # Mock recording extractor with as much frames as necessary to overflow memory
-        mock_recorder = Mock()
-        mock_recorder.get_dtype.return_value = dtype
-        mock_recorder.get_num_channels.return_value = num_channels
-        mock_recorder.get_num_frames.return_value = num_frames_to_overflow
-
-        reg_expression = f"Memory error, full electrical series is (.*?) GB are available. Use iterator_type='V2'"
-
-        with self.assertRaisesRegex(MemoryError, reg_expression):
-            check_if_recording_traces_fit_into_memory(recording=mock_recorder)
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression
+        assert "compression_opts" not in compression_parameters
 
 
-class TestAddElectricalSeriesSavingTimestampsvsRates(unittest.TestCase):
+class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Use common recording objects and values."""
@@ -349,6 +355,118 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
             add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
 
+class TestAddElectricalSeriesChunking(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.sampling_frequency = 1.0
+        cls.num_channels = 3
+        cls.num_frames = 20
+        cls.channel_ids = ["a", "b", "c"]
+        cls.traces_list = [np.ones(shape=(cls.num_frames, cls.num_channels))]
+        # Flat traces [1, 1, 1] per channel
+        cls.test_recording_extractor = NumpyRecording(
+            cls.traces_list, cls.sampling_frequency, channel_ids=cls.channel_ids
+        )
+
+        # Combinations of gains and default
+        cls.gains_default = [2, 2, 2]
+        cls.offset_default = [1, 1, 1]
+
+        cls.test_recording_extractor.set_channel_gains(gains=cls.gains_default)
+        cls.test_recording_extractor.set_channel_offsets(offsets=cls.offset_default)
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+
+    def test_default_chunking(self):
+
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        h5dataiowrapped_electrical_series = electrical_series.data
+        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+
+        assert isinstance(electrical_series_data_iterator, SpikeInterfaceRecordingDataChunkIterator)
+
+        extracted_data = np.concatenate([data_chunk.data for data_chunk in electrical_series_data_iterator])
+        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    def test_iterator_opts_propagation(self):
+        iterator_opts = dict(chunk_shape=(10, 3))
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_opts=iterator_opts
+        )
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        h5dataiowrapped_electrical_series = electrical_series.data
+        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+
+        assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
+
+    def test_hdfm_iterator(self):
+
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        h5dataiowrapped_electrical_series = electrical_series.data
+        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+
+        assert isinstance(electrical_series_data_iterator, DataChunkIterator)
+
+        extracted_data = np.concatenate([data_chunk.data for data_chunk in electrical_series_data_iterator])
+        expected_data = self.test_recording_extractor.get_traces(segment_index=0)
+        np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    def test_non_iterative_write(self):
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        isinstance(electrical_series.data, np.ndarray)
+
+    def test_non_iterative_write_assertion(self):
+
+        # Estimate num of frames required to exceed memory capabilities
+        dtype = self.test_recording_extractor.get_dtype()
+        element_size_in_bytes = dtype.itemsize
+        num_channels = self.test_recording_extractor.get_num_channels()
+
+        available_memory_in_bytes = psutil.virtual_memory().available
+
+        excess = 1.5  # Of what is available in memory
+        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * num_channels)
+
+        # Mock recording extractor with as much frames as necessary to overflow memory
+        mock_recorder = Mock()
+        mock_recorder.get_dtype.return_value = dtype
+        mock_recorder.get_num_channels.return_value = num_channels
+        mock_recorder.get_num_frames.return_value = num_frames_to_overflow
+
+        reg_expression = f"Memory error, full electrical series is (.*?) GB are available. Use iterator_type='V2'"
+
+        with self.assertRaisesRegex(MemoryError, reg_expression):
+            check_if_recording_traces_fit_into_memory(recording=mock_recorder)
+
+    def test_invalid_iterator_type_assertion(self):
+
+        iterator_type = "invalid_iterator_type"
+
+        reg_expression = "iterator_type (.*?)"
+        with self.assertRaisesRegex(ValueError, reg_expression):
+            add_electrical_series(
+                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=iterator_type
+            )
+
+
 class TestWriteRecording(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -373,13 +491,14 @@ class TestWriteRecording(unittest.TestCase):
         cls.multiple_segment_recording_extractor.set_channel_offsets(cls.offset_default)
 
     def setUp(self):
-        """Start with a fresh NWBFile, ElectrodeTable"""
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
 
     def test_default_values_single_segment(self):
-
+        """This test that the names are written appropiately for the single segment case (numbers not added)"""
         write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -390,7 +509,6 @@ class TestWriteRecording(unittest.TestCase):
 
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == "gzip"
-        assert compression_parameters["compression_opts"] == 4
 
         extracted_data = electrical_series.data[:]
         expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
