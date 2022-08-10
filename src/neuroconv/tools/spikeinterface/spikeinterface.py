@@ -488,14 +488,14 @@ def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording
         raise MemoryError(message)
 
 
-def iterize_recording_traces(
+def _recording_traces_to_hdmf_iterator(
     recording: BaseRecording,
     segment_index: int = None,
     return_scaled: bool = False,
     iterator_type: str = "v2",
     iterator_opts: dict = None,
 ) -> AbstractDataChunkIterator:
-    """Function to wrap traces of spikeinterface recording extractors on an iterator.
+    """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
 
     Parameters
     ----------
@@ -630,7 +630,7 @@ def add_electrical_series(
     default_description = dict(raw="Raw acquired data", lfp="Processed data - LFP", processed="Processed data")
     eseries_kwargs = dict(name=default_name, description=default_description[write_as])
 
-    # Write as functionality
+    # Select and/or create module if lfp or processed data is to be stored.
     if write_as in ["lfp", "processed"]:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
@@ -662,7 +662,7 @@ def add_electrical_series(
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
-    # Spikeinterface guarantee data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
+    # Spikeinterface guarantees data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
     # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
@@ -680,7 +680,7 @@ def add_electrical_series(
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
     # Iterator
-    ephys_data_iterator = iterize_recording_traces(
+    ephys_data_iterator = _recording_traces_to_hdmf_iterator(
         recording=checked_recording,
         segment_index=segment_index,
         iterator_type=iterator_type,
