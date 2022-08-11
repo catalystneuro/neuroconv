@@ -19,11 +19,11 @@ def get_eeg_sampling_frequency(file_path: FilePathType):
         Full file_path of Axona `.eegX` or `.egfX` file.
     Returns:
     --------
-    Fs : int
+    Fs : float
         Sampling frequency
     """
     Fs_entry = parse_generic_header(file_path, ["sample_rate"])
-    Fs = int(float(Fs_entry.get("sample_rate").split(" ")[0]))
+    Fs = float(Fs_entry.get("sample_rate").split(" ")[0])
 
     return Fs
 
