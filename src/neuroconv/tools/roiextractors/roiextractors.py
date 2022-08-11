@@ -69,7 +69,7 @@ def get_default_ophys_metadata():
         roi_response_series=[default_fluorescence_roi_response_series],
     )
 
-    default_dff_roi_response_series = dict(name="DfOverF", description="array of df/F traces", unit="n.a.")
+    default_dff_roi_response_series = dict(name="Dff", description="array of df/F traces", unit="n.a.")
 
     default_df_over_f = dict(
         name="DfOverF",
