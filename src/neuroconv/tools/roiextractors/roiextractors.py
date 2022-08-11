@@ -690,18 +690,22 @@ def add_fluorescence_traces(
 
     if "dff" in traces_to_add:
         df_over_f_data_interface = _get_segmentation_data_interface(nwbfile=nwbfile, data_interface_name=df_over_f_name)
-        trace_to_data_interface.update(Dff=df_over_f_data_interface)
+        trace_to_data_interface.update(dff=df_over_f_data_interface)
 
     for trace_name, trace in traces_to_add.items():
+        # Decide which data interface to use based on the trace name
+        data_interface = trace_to_data_interface[trace_name]
         # Extract the response series metadata
-        trace_name = "RoiResponseSeries" if trace_name == "raw" else trace_name.capitalize()
+        # The name of the roi_response_series is "RoiResponseSeries" for raw and df/F traces,
+        # otherwise it is capitalized trace_name.
+        trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
         trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
 
-        if trace_name in trace_to_data_interface[trace_name].roi_response_series:
+        if trace_name in data_interface.roi_response_series:
             continue
 
-        metadata = df_over_f_metadata if trace_name == "Dff" else fluorescence_metadata
-        response_series_metadata = metadata["roi_response_series"]
+        data_interface_metadata = df_over_f_metadata if isinstance(data_interface, DfOverF) else fluorescence_metadata
+        response_series_metadata = data_interface_metadata["roi_response_series"]
         trace_metadata = next(
             trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
         )
@@ -715,7 +719,7 @@ def add_fluorescence_traces(
         roi_response_series = RoiResponseSeries(**roi_response_series_kwargs)
 
         # Add trace to the data interface
-        trace_to_data_interface[trace_name].add_roi_response_series(roi_response_series)
+        data_interface.add_roi_response_series(roi_response_series)
 
     return nwbfile
 
