@@ -49,6 +49,9 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"].pop(
             "maxItems"
         )
+        metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
+            "properties"
+        ]["Fluorescence"]
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
