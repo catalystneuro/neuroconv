@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
 
 from pynwb import NWBFile, NWBHDF5IO
@@ -501,7 +501,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         )
 
         cls.dff_roi_response_series_metadata = dict(
-            name="Dff",
+            name="RoiResponseSeries",
             description="relative (df/f) fluorescence signal",
         )
 
@@ -574,7 +574,10 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.raw_roi_response_series_metadata["description"],
         )
 
-        assert self.dff_roi_response_series_metadata["name"] not in fluorescence.roi_response_series
+        self.assertNotEqual(
+            fluorescence["RoiResponseSeries"].description,
+            self.dff_roi_response_series_metadata["description"],
+        )
 
         self.assertEqual(
             fluorescence["Deconvolved"].description,
@@ -596,6 +599,14 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         assert_array_equal(fluorescence["RoiResponseSeries"].data, traces["raw"].T)
         assert_array_equal(fluorescence["Deconvolved"].data, traces["deconvolved"].T)
         assert_array_equal(fluorescence["Neuropil"].data, traces["neuropil"].T)
+        # Check that df/F trace data is not being written to the Fluorescence container
+        df_over_f = ophys.get(self.df_over_f_name)
+        assert_raises(
+            AssertionError,
+            assert_array_equal,
+            fluorescence["RoiResponseSeries"].data,
+            df_over_f["RoiResponseSeries"].data,
+        )
 
     def test_add_df_over_f_trace(self):
         """Test df/f traces are added to the nwbfile."""
