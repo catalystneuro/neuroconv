@@ -132,7 +132,8 @@ class TestOphysNwbConversions(unittest.TestCase):
         name_func=custom_name_func,
     )
     def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+        extractor_name = data_interface.SegX.extractor_name
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{extractor_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestSegmentation=data_interface)
