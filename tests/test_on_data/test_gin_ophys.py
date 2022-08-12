@@ -113,7 +113,20 @@ class TestOphysNwbConversions(unittest.TestCase):
                         / "segmentation_datasets"
                         / "extract"
                         / "2014_04_01_p203_m19_check01_extractAnalysis.mat"
-                    )
+                    ),
+                    sampling_frequency=15.0,  # typically provided by user
+                ),
+            ),
+            param(
+                data_interface=ExtractSegmentationInterface,
+                interface_kwargs=dict(
+                    file_path=str(
+                        OPHYS_DATA_PATH
+                        / "segmentation_datasets"
+                        / "extract"
+                        / "extract_public_output.mat"
+                    ),
+                    sampling_frequency=15.0,  # typically provided by user
                 ),
             ),
             param(
