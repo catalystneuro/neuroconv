@@ -36,7 +36,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "Fluorescence", "ImageSegmentation"]
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
 
         # Temporary fixes until centralized definition of metadata schemas
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
@@ -49,6 +49,9 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"].pop(
             "maxItems"
         )
+        metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
+            "properties"
+        ]["Fluorescence"]
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema

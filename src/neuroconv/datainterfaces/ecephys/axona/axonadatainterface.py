@@ -1,7 +1,7 @@
 """Authors: Heberto Mayorquin, Steffen Buergers."""
 
 import spikeextractors as se
-from spikeinterface.extractors import AxonaRecordingExtractor
+from spikeinterface.extractors import AxonaRecordingExtractor, NumpyRecording
 
 from pynwb import NWBFile
 
@@ -113,7 +113,7 @@ class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     """..."""
 
-    RX = se.NumpyRecordingExtractor
+    RX = NumpyRecording
 
     @classmethod
     def get_source_schema(cls):
@@ -125,9 +125,11 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
         )
 
     def __init__(self, file_path: FilePathType):
-        super().__init__(
-            timeseries=read_all_eeg_file_lfp_data(file_path), sampling_frequency=get_eeg_sampling_frequency(file_path)
-        )
+
+        data = read_all_eeg_file_lfp_data(file_path).T
+        sampling_frequency = get_eeg_sampling_frequency(file_path)
+        super().__init__(traces_list=[data], sampling_frequency=sampling_frequency)
+
         self.source_data = dict(file_path=file_path)
 
 
