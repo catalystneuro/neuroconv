@@ -2,10 +2,9 @@ from tempfile import mkdtemp
 import unittest
 from pathlib import Path
 from datetime import datetime
-from copy import deepcopy
 
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
 
 from pynwb import NWBFile, NWBHDF5IO
@@ -23,6 +22,7 @@ from neuroconv.tools.roiextractors import (
     add_plane_segmentation,
     add_image_segmentation,
     add_summary_images,
+    add_fluorescence_traces,
 )
 
 
@@ -480,6 +480,317 @@ class TestAddPlaneSegmentation(unittest.TestCase):
 
         assert second_plane_segmentation.name == second_plane_segmentation_name
         assert second_plane_segmentation.description == second_plane_segmentation_description
+
+
+class TestAddFluorescenceTraces(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.num_rois = 10
+        cls.num_frames = 20
+        cls.num_rows = 25
+        cls.num_columns = 20
+
+        cls.session_start_time = datetime.now().astimezone()
+
+        cls.fluorescence_name = "Fluorescence"
+        cls.df_over_f_name = "DfOverF"
+
+        cls.raw_roi_response_series_metadata = dict(
+            name="RoiResponseSeries",
+            description="raw fluorescence signal",
+        )
+
+        cls.dff_roi_response_series_metadata = dict(
+            name="RoiResponseSeries",
+            description="relative (df/f) fluorescence signal",
+        )
+
+        cls.deconvolved_roi_response_series_metadata = dict(
+            name="Deconvolved",
+            description="deconvolved fluorescence signal",
+        )
+
+        cls.neuropil_roi_response_series_metadata = dict(
+            name="Neuropil",
+            description="neuropil fluorescence signal",
+            unit="test_unit",
+        )
+
+    def setUp(self):
+        self.segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        fluorescence_metadata = dict(
+            Fluorescence=dict(
+                name=self.fluorescence_name,
+                roi_response_series=[
+                    self.raw_roi_response_series_metadata,
+                    self.deconvolved_roi_response_series_metadata,
+                    self.neuropil_roi_response_series_metadata,
+                ],
+            )
+        )
+
+        dff_metadata = dict(
+            DfOverF=dict(
+                name=self.df_over_f_name,
+                roi_response_series=[self.dff_roi_response_series_metadata],
+            )
+        )
+
+        self.metadata["Ophys"].update(fluorescence_metadata)
+        self.metadata["Ophys"].update(dff_metadata)
+
+    def test_add_fluorescence_traces(self):
+        """Test fluorescence traces are added correctly to the nwbfile."""
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        assert self.fluorescence_name in ophys.data_interfaces
+
+        fluorescence = ophys.get(self.fluorescence_name)
+
+        self.assertEqual(fluorescence.name, self.fluorescence_name)
+        self.assertEqual(len(fluorescence.roi_response_series), 3)
+
+        self.assertEqual(
+            fluorescence["RoiResponseSeries"].description,
+            self.raw_roi_response_series_metadata["description"],
+        )
+
+        self.assertNotEqual(
+            fluorescence["RoiResponseSeries"].description,
+            self.dff_roi_response_series_metadata["description"],
+        )
+
+        self.assertEqual(
+            fluorescence["Deconvolved"].description,
+            self.deconvolved_roi_response_series_metadata["description"],
+        )
+
+        self.assertEqual(
+            fluorescence["Neuropil"].unit,
+            self.neuropil_roi_response_series_metadata["unit"],
+        )
+
+        self.assertEqual(
+            fluorescence["Neuropil"].rate,
+            self.segmentation_extractor.get_sampling_frequency(),
+        )
+
+        traces = self.segmentation_extractor.get_traces_dict()
+
+        assert_array_equal(fluorescence["RoiResponseSeries"].data, traces["raw"].T)
+        assert_array_equal(fluorescence["Deconvolved"].data, traces["deconvolved"].T)
+        assert_array_equal(fluorescence["Neuropil"].data, traces["neuropil"].T)
+        # Check that df/F trace data is not being written to the Fluorescence container
+        df_over_f = ophys.get(self.df_over_f_name)
+        assert_raises(
+            AssertionError,
+            assert_array_equal,
+            fluorescence["RoiResponseSeries"].data,
+            df_over_f["RoiResponseSeries"].data,
+        )
+
+    def test_add_df_over_f_trace(self):
+        """Test df/f traces are added to the nwbfile."""
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_raw_signal=True,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+        segmentation_extractor._roi_response_raw = None
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        assert self.df_over_f_name in ophys.data_interfaces
+
+        assert self.fluorescence_name not in ophys.data_interfaces
+
+        df_over_f = ophys.get(self.df_over_f_name)
+
+        self.assertEqual(df_over_f.name, self.df_over_f_name)
+        self.assertEqual(len(df_over_f.roi_response_series), 1)
+
+        trace_name = self.dff_roi_response_series_metadata["name"]
+        self.assertEqual(
+            df_over_f[trace_name].description,
+            self.dff_roi_response_series_metadata["description"],
+        )
+
+        self.assertEqual(df_over_f[trace_name].unit, "n.a.")
+
+        self.assertEqual(df_over_f[trace_name].rate, segmentation_extractor.get_sampling_frequency())
+
+        traces = segmentation_extractor.get_traces_dict()
+
+        assert_array_equal(df_over_f[trace_name].data, traces["dff"].T)
+
+    def test_add_fluorescence_one_of_the_traces_is_none(self):
+        """Test that roi response series with None values are not added to the
+        nwbfile."""
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_neuropil_signal=False,
+        )
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        assert "Neuropil" not in roi_response_series
+
+        self.assertEqual(len(roi_response_series), 2)
+
+    def test_add_fluorescence_one_of_the_traces_is_all_zeros(self):
+        """Test that roi response series with all zero values are not added to the
+        nwbfile."""
+
+        self.segmentation_extractor._roi_response_deconvolved = np.zeros((self.num_rois, self.num_frames))
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        assert "Deconvolved" not in roi_response_series
+        self.assertEqual(len(roi_response_series), 2)
+
+    def test_no_traces_are_added(self):
+        """Test that no traces are added to the nwbfile if they are all zeros or
+        None."""
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_raw_signal=True,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        segmentation_extractor._roi_response_raw = np.zeros((self.num_rois, self.num_frames))
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        assert self.fluorescence_name not in ophys.data_interfaces
+        assert self.df_over_f_name not in ophys.data_interfaces
+
+    def test_not_overwriting_fluorescence_if_same_name(self):
+        """Test that adding fluorescence traces container with the same name will not
+        overwrite the existing fluorescence container in nwbfile."""
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        self.deconvolved_roi_response_series_metadata["description"] = "second description"
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        self.assertNotEqual(roi_response_series["Deconvolved"].description, "second description")
+
+    def test_add_fluorescence_traces_to_existing_container(self):
+        """Test that new traces can be added to an existing fluorescence container."""
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_raw_signal=True,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        self.assertEqual(len(roi_response_series), 1)
+
+        self.raw_roi_response_series_metadata["description"] = "second description"
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        self.assertEqual(len(roi_response_series), 3)
+
+        # check that raw traces are not overwritten
+        self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
 
 
 class TestAddTwoPhotonSeries(unittest.TestCase):
