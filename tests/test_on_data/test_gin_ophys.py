@@ -120,12 +120,7 @@ class TestOphysNwbConversions(unittest.TestCase):
             param(
                 data_interface=ExtractSegmentationInterface,
                 interface_kwargs=dict(
-                    file_path=str(
-                        OPHYS_DATA_PATH
-                        / "segmentation_datasets"
-                        / "extract"
-                        / "extract_public_output.mat"
-                    ),
+                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "extract" / "extract_public_output.mat"),
                     sampling_frequency=15.0,  # typically provided by user
                 ),
             ),
