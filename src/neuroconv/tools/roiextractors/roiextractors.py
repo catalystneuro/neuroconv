@@ -47,12 +47,12 @@ def get_default_ophys_metadata():
     default_optical_channel = dict(
         name="OpticalChannel",
         emission_lambda=np.nan,
-        description="no description",
+        description="An optical channel of the microscope.",
     )
 
     default_imaging_plane = dict(
         name="ImagingPlane",
-        description="no description",
+        description="The plane or volume being imaged by the microscope.",
         excitation_lambda=np.nan,
         indicator="unknown",
         location="unknown",
@@ -61,7 +61,7 @@ def get_default_ophys_metadata():
     )
 
     default_fluorescence_roi_response_series = dict(
-        name="RoiResponseSeries", description="array of raw fluorescence traces", unit="n.a."
+        name="RoiResponseSeries", description="Array of raw fluorescence traces.", unit="n.a."
     )
 
     default_fluorescence = dict(
@@ -69,7 +69,7 @@ def get_default_ophys_metadata():
         roi_response_series=[default_fluorescence_roi_response_series],
     )
 
-    default_dff_roi_response_series = dict(name="RoiResponseSeries", description="array of df/F traces", unit="n.a.")
+    default_dff_roi_response_series = dict(name="RoiResponseSeries", description="Array of df/F traces.", unit="n.a.")
 
     default_df_over_f = dict(
         name="DfOverF",
@@ -78,8 +78,7 @@ def get_default_ophys_metadata():
 
     default_two_photon_series = dict(
         name="TwoPhotonSeries",
-        description="no description",
-        comments="Generalized from RoiInterface",
+        description="Imaging data from two-photon excitation microscopy.",
         unit="n.a.",
     )
 
@@ -116,11 +115,12 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     imgextractor: ImagingExtractor
     """
     metadata = get_default_ophys_metadata()
-    # Optical Channel name:
-    channel_name_list = imgextractor.get_channel_names()
-    if channel_name_list is None:
-        channel_name_list = ["OpticalChannel"] * imgextractor.get_num_channels()
 
+    channel_name_list = imgextractor.get_channel_names() or (
+        ["OpticalChannel"]
+        if imgextractor.get_num_channels() == 1
+        else [f"OpticalChannel{idx}" for idx in range(imgextractor.get_num_channels())]
+    )
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
             metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][index]["name"] = channel_name
@@ -129,7 +129,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
                 dict(
                     name=channel_name,
                     emission_lambda=np.nan,
-                    description=f"{channel_name} description",
+                    description="An optical channel of the microscope.",
                 )
             )
     # set imaging plane rate:
