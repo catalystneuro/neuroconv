@@ -119,7 +119,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     # Optical Channel name:
     channel_name_list = imgextractor.get_channel_names()
     if channel_name_list is None:
-        channel_name_list = ["generic_name"] * imgextractor.get_num_channels()
+        channel_name_list = ["OpticalChannel"] * imgextractor.get_num_channels()
 
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
