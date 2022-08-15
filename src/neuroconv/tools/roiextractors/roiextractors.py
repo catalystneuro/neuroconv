@@ -29,6 +29,7 @@ from pynwb.ophys import (
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
+from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
 from ...utils import (
     FilePathType,
@@ -272,16 +273,30 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
 
 
 def add_two_photon_series(
-    imaging, nwbfile, metadata, buffer_size=10, use_times=False, two_photon_series_index: int = 0
+    imaging,
+    nwbfile,
+    metadata,
+    two_photon_series_index: int = 0,
+    use_times=False,
+    buffer_size: Optional[int] = None,
+    iterator_type: Optional[str] = None,
+    iterator_options: Optional[dict] = None,
 ):
     """
     Auxiliary static method for nwbextractor.
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+    if buffer_size:
+        warn(
+            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
+            "Specify as a key in the new 'iterator_options' dictionary instead."
+        )
+    iterator_type = iterator_type or "v2"
+    assert iterator_type in ["v1", "v2"], "'iterator_type' must be either 'v1' or 'v2' (recommended)."
+    iterator_options = iterator_options or dict()
 
     metadata_copy = deepcopy(metadata)
     metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy, append_list=False)
@@ -301,16 +316,26 @@ def add_two_photon_series(
     two_photon_series_metadata.update(imaging_plane=imaging_plane)
 
     # Add the data
-    def data_generator(imaging):
-        for i in range(imaging.get_num_frames()):
-            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
-
-    data = H5DataIO(
-        data=DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
-        compression=True,
-    )
     two_p_series_kwargs = two_photon_series_metadata
-    two_p_series_kwargs.update(data=data)
+    if iterator_type == "v2":
+        data = H5DataIO(
+            data=ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options),
+            compression=True,
+        )
+        two_p_series_kwargs.update(data=data)
+    else:
+
+        def data_generator(imaging):
+            for i in range(imaging.get_num_frames()):
+                yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+
+        if "buffer_size" not in iterator_options:
+            iterator_options.update(buffer_size=10)
+        data = H5DataIO(
+            data=DataChunkIterator(data_generator(imaging), **iterator_options),
+            compression=True,
+        )
+        two_p_series_kwargs.update(data=data)
 
     # Add dimension
     two_p_series_kwargs.update(dimension=imaging.get_image_size())
