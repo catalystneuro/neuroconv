@@ -116,7 +116,7 @@ If you have multiple ABF files for the same experimental session, one file per s
     >>>             "path_to/my_file_3.abf",
     >>>             "path_to/my_file_4.abf",
     >>>             "path_to/my_file_5.abf",
-    >>>             "path_to/my_file_6.abf",                    
+    >>>             "path_to/my_file_6.abf",
     >>>         ],
     >>>         icephys_metadata=icephys_metadata
     >>>     )
