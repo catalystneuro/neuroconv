@@ -114,12 +114,10 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         return video_shape
 
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
+        print(f"{selection}")
         data = self.imaging_extractor.get_video(
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
         )
-
-        print(f"selection: {selection}")
-        print(f"data_shape: {data.shape}")
-
-        return data.transpose((0, 2, 1))[(slice(0, self.buffer_shape[0]),) + selection[1:]]
+        tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
+        return data.transpose(tranpose_axes)[(slice(0, self.buffer_shape[0]),) + selection[1:]]
