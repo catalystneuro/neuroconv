@@ -117,7 +117,7 @@ class TestOphysNwbConversions(unittest.TestCase):
                     ),
                     sampling_frequency=15.0,  # typically provided by user
                 ),
-                case_name="LegacyExtractSegmentation"
+                case_name="LegacyExtractSegmentation",
             ),
             param(
                 data_interface=ExtractSegmentationInterface,
@@ -125,7 +125,7 @@ class TestOphysNwbConversions(unittest.TestCase):
                     file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "extract" / "extract_public_output.mat"),
                     sampling_frequency=15.0,  # typically provided by user
                 ),
-                case_name="NewExtractSegmentation"
+                case_name="NewExtractSegmentation",
             ),
             param(
                 data_interface=Suite2pSegmentationInterface,
