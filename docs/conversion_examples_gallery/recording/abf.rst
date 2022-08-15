@@ -10,7 +10,7 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     >>> # Define the Data Interfaces for your converter
     >>> class MyIcephysConverter(NWBConverter):
     >>>     data_interface_classes = dict(AbfInterface=AbfInterface)
-    >>> 
+    >>>
     >>> # Metadata info
     >>> icephys_metadata = {
     >>>     "cell_id": "20220512001",
@@ -25,7 +25,7 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     >>>         }
     >>>     ]
     >>> }
-    >>> 
+    >>>
     >>> # Source data
     >>> source_data = dict(
     >>>     AbfInterface=dict(
@@ -33,10 +33,10 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     >>>         icephys_metadata=icephys_metadata
     >>>     )
     >>> )
-    >>> 
+    >>>
     >>> # Initialize converter
     >>> converter = MyIcephysConverter(source_data=source_data)
-    >>> 
+    >>>
     >>> # Get metadata from source data and modify any values you want
     >>> metadata = converter.get_metadata()
     >>> metadata['NWBFile']['identifier'] = "ID12345"
@@ -50,6 +50,6 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     >>>     sex="M",
     >>>     date_of_birth="2022-03-15T00:00:00"
     >>> )
-    >>> 
+    >>>
     >>> # Run conversion
     >>> converter.run_conversion(metadata=metadata, nwbfile_path='converted_icephys.nwb')
