@@ -24,6 +24,7 @@ def custom_name_func(testcase_func, param_num, param):
     return (
         f"{testcase_func.__name__}_{param_num}_"
         f"{parameterized.to_safe_name(param.kwargs['data_interface'].__name__)}"
+        f"_{param.kwargs.get('case_name', '')}"
     )
 
 
@@ -116,6 +117,7 @@ class TestOphysNwbConversions(unittest.TestCase):
                     ),
                     sampling_frequency=15.0,  # typically provided by user
                 ),
+                case_name="LegacyExtractSegmentation"
             ),
             param(
                 data_interface=ExtractSegmentationInterface,
@@ -123,6 +125,7 @@ class TestOphysNwbConversions(unittest.TestCase):
                     file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "extract" / "extract_public_output.mat"),
                     sampling_frequency=15.0,  # typically provided by user
                 ),
+                case_name="NewExtractSegmentation"
             ),
             param(
                 data_interface=Suite2pSegmentationInterface,
@@ -131,9 +134,8 @@ class TestOphysNwbConversions(unittest.TestCase):
         ],
         name_func=custom_name_func,
     )
-    def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs):
-        extractor_name = data_interface.SegX.extractor_name
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{extractor_name}.nwb")
+    def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestSegmentation=data_interface)
