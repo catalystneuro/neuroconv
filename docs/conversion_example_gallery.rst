@@ -12,6 +12,7 @@ Recording
 .. toctree::
     :maxdepth: 1
 
+    ABF <conversion_examples_gallery/recording/abf>
     Axona <conversion_examples_gallery/recording/axona>
     Blackrock <conversion_examples_gallery/recording/blackrock>
     Intan <conversion_examples_gallery/recording/intan>
