@@ -39,13 +39,10 @@ class AbfInterface(BaseIcephysInterface):
             description="Array of paths to ABF files.",
         )
         source_schema["properties"]["icephys_metadata"] = dict(
-            type="object", 
-            description="Metadata for this experiment."
+            type="object", description="Metadata for this experiment."
         )
         source_schema["properties"]["icephys_metadata_file_path"] = dict(
-            type="string", 
-            format="file", 
-            description="Path to JSON file containing metadata for this experiment."
+            type="string", format="file", description="Path to JSON file containing metadata for this experiment."
         )
         return source_schema
 
