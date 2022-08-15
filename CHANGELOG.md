@@ -21,7 +21,7 @@
 * Added package for viewing source code in the neuroconv documentation [PR #62](https://github.com/catalystneuro/neuroconv/pull/62)
 * Added Contributing guide for the Developer section of readthedocs. [PR #73](https://github.com/catalystneuro/neuroconv/pull/73)
 * Added style guide to the readthedocs [PR #28](https://github.com/catalystneuro/neuroconv/pull/28)
-* Added ABF data conversion tutorial [PR #89](https://github.com/catalystneuro/neuroconv/pull/89)
+* Added ABF data conversion tutorial @luiztauffer [PR #89](https://github.com/catalystneuro/neuroconv/pull/89)
 
 ### Features
 * Added conversion interface for Neuralynx sorting data together with gin data test and a conversion example in the gallery. [PR #58](https://github.com/catalystneuro/neuroconv/pull/58)
