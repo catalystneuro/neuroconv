@@ -6,7 +6,7 @@ from datetime import datetime
 import numpy as np
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
-from numpy.testing import assert_array_equal, assert_raises, assert_array_almost_equal
+from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
 
 from pynwb import NWBFile, NWBHDF5IO
@@ -861,7 +861,7 @@ class TestAddTwoPhotonSeries(TestCase):
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
         expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
-        assert_array_almost_equal(two_photon_series_extracted, expected_two_photon_series_data)
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
         # Check device
         devices = self.nwbfile.devices
@@ -908,7 +908,7 @@ class TestAddTwoPhotonSeries(TestCase):
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
         expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
-        assert_array_almost_equal(two_photon_series_extracted, expected_two_photon_series_data)
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
     def test_iterator_options_propagation(self):
         """Test that iterator options are propagated to the data chunk iterator."""
