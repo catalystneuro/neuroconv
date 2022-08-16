@@ -295,7 +295,6 @@ def add_two_photon_series(
             "Specify as a key in the new 'iterator_options' dictionary instead."
         )
     iterator_type = iterator_type or "v2"
-    assert iterator_type in ["v1", "v2"], "'iterator_type' must be either 'v1' or 'v2' (recommended)."
     iterator_options = iterator_options or dict()
 
     metadata_copy = deepcopy(metadata)
@@ -317,25 +316,16 @@ def add_two_photon_series(
 
     # Add the data
     two_p_series_kwargs = two_photon_series_metadata
-    if iterator_type == "v2":
-        data = H5DataIO(
-            data=ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options),
-            compression=True,
-        )
-        two_p_series_kwargs.update(data=data)
-    else:
-
-        def data_generator(imaging):
-            for i in range(imaging.get_num_frames()):
-                yield imaging.get_frames(frame_idxs=[i]).squeeze().T
-
-        if "buffer_size" not in iterator_options:
-            iterator_options.update(buffer_size=10)
-        data = H5DataIO(
-            data=DataChunkIterator(data_generator(imaging), **iterator_options),
-            compression=True,
-        )
-        two_p_series_kwargs.update(data=data)
+    frames_to_iterator = _imaging_frames_to_hdmf_iterator(
+        imaging=imaging,
+        iterator_type=iterator_type,
+        **iterator_options
+    )
+    data = H5DataIO(
+        data=frames_to_iterator,
+        compression=True,
+    )
+    two_p_series_kwargs.update(data=data)
 
     # Add dimension
     two_p_series_kwargs.update(dimension=imaging.get_image_size())
@@ -354,6 +344,47 @@ def add_two_photon_series(
     nwbfile.add_acquisition(two_photon_series)
 
     return nwbfile
+
+
+def _imaging_frames_to_hdmf_iterator(
+        imaging: ImagingExtractor,
+        iterator_type: str = "v2",
+        iterator_options: Optional[dict] = None,
+):
+    """Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The imaging extractor to get the data from.
+    iterator_type : str (optional, defaults to 'v2')
+        The type of iterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
+        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+        For 'v1' this is the same as the options for the DataChunkIterator.
+        For 'v2', see https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+
+    Returns
+    -------
+    DataChunkIterator
+        The frames of the imaging extractor wrapped in an iterator object."""
+    def data_generator(imaging):
+        for i in range(imaging.get_num_frames()):
+            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+
+    assert iterator_type in ["v1", "v2"], "'iterator_type' must be either 'v1' or 'v2' (recommended)."
+    iterator_options = dict() if iterator_options is None else iterator_options
+
+    if iterator_type == "v1":
+        if "buffer_size" not in iterator_options:
+            iterator_options.update(buffer_size=10)
+        return DataChunkIterator(data=data_generator(imaging), **iterator_options)
+
+    return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
 
 def add_epochs(imaging, nwbfile):
