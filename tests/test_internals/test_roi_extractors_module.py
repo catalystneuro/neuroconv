@@ -847,8 +847,8 @@ class TestAddTwoPhotonSeries(TestCase):
             self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
         )
 
-    def test_default_iterator(self):
-        """Test adding two photon series with default iterator."""
+    def test_default_values(self):
+        """Test adding two photon series with default values."""
         add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
 
         # Check data
