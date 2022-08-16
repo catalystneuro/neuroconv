@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 import numpy as np
+from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
 
@@ -865,6 +866,18 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         imaging_planes_in_file = self.nwbfile.imaging_planes
         assert self.imaging_plane_name in imaging_planes_in_file
         assert len(imaging_planes_in_file) == 1
+
+    def test_invalid_iterator_type_raises_error(self):
+        with self.assertRaisesWith(
+                AssertionError,
+                "'iterator_type' must be either 'v1' or 'v2' (recommended).",
+        ):
+            add_two_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                iterator_type="invalid",
+            )
 
     def test_add_two_photon_series_roundtrip(self):
 
