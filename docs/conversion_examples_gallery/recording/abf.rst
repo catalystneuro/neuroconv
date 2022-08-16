@@ -55,7 +55,7 @@ If you have multiple ABF files for the same experimental session, one file per s
 .. code-block:: python
 
     >>> from neuroconv import AbfInterface
-    >>> 
+    >>>
     >>> # Metadata info
     >>> icephys_metadata = {
     ...     "cell_id": "20220512001",
