@@ -899,7 +899,7 @@ class TestAddTwoPhotonSeries(TestCase):
 
             # Check data
             acquisition_modules = read_nwbfile.acquisition
-            self.two_photon_series_name in acquisition_modules
+            assert self.two_photon_series_name in acquisition_modules
             two_photon_series = acquisition_modules[self.two_photon_series_name].data
 
             # NWB stores images as num_columns x num_rows
