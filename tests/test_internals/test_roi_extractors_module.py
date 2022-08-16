@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 import numpy as np
+from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
@@ -847,6 +848,7 @@ class TestAddTwoPhotonSeries(TestCase):
         )
 
     def test_default_iterator(self):
+        """Test adding two photon series with default iterator."""
         add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
 
         # Check data
@@ -872,6 +874,7 @@ class TestAddTwoPhotonSeries(TestCase):
         assert len(imaging_planes_in_file) == 1
 
     def test_invalid_iterator_type_raises_error(self):
+        """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
                 AssertionError,
                 "'iterator_type' must be either 'v1' or 'v2' (recommended).",
@@ -882,6 +885,28 @@ class TestAddTwoPhotonSeries(TestCase):
                 metadata=self.metadata,
                 iterator_type="invalid",
             )
+
+    def test_v1_iterator(self):
+        """Test adding two photon series with using DataChunkIterator as iterator type."""
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type="v1",
+        )
+
+        # Check data
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        assert isinstance(data_chunk_iterator, DataChunkIterator)
+        self.assertEqual(data_chunk_iterator.buffer_size, 10)
+
+        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
+        # NWB stores images as num_columns x num_rows
+        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
 
     def test_add_two_photon_series_roundtrip(self):
 
