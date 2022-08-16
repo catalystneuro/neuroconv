@@ -317,9 +317,7 @@ def add_two_photon_series(
     # Add the data
     two_p_series_kwargs = two_photon_series_metadata
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
-        imaging=imaging,
-        iterator_type=iterator_type,
-        **iterator_options
+        imaging=imaging, iterator_type=iterator_type, **iterator_options
     )
     data = H5DataIO(
         data=frames_to_iterator,
@@ -347,9 +345,9 @@ def add_two_photon_series(
 
 
 def _imaging_frames_to_hdmf_iterator(
-        imaging: ImagingExtractor,
-        iterator_type: str = "v2",
-        iterator_options: Optional[dict] = None,
+    imaging: ImagingExtractor,
+    iterator_type: str = "v2",
+    iterator_options: Optional[dict] = None,
 ):
     """Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
 
@@ -372,6 +370,7 @@ def _imaging_frames_to_hdmf_iterator(
     -------
     DataChunkIterator
         The frames of the imaging extractor wrapped in an iterator object."""
+
     def data_generator(imaging):
         for i in range(imaging.get_num_frames()):
             yield imaging.get_frames(frame_idxs=[i]).squeeze().T
