@@ -908,6 +908,25 @@ class TestAddTwoPhotonSeries(TestCase):
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
 
+    def test_iterator_options_propagation(self):
+        """Test that iterator options are propagated to the data chunk iterator."""
+        buffer_shape = (20, 5, 5)
+        chunk_shape = (10, 5, 5)
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type="v2",
+            iterator_options=dict(buffer_shape=buffer_shape, chunk_shape=chunk_shape),
+        )
+
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        self.assertEqual(data_chunk_iterator.buffer_shape, buffer_shape)
+        self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
+
     def test_add_two_photon_series_roundtrip(self):
 
         metadata = self.metadata
