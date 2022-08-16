@@ -794,9 +794,17 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
 
 
-class TestAddTwoPhotonSeries(unittest.TestCase):
+class TestAddTwoPhotonSeries(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.session_start_time = datetime.now().astimezone()
+        cls.device_name = "optical_device"
+        cls.num_frames = 30
+        cls.num_rows = 10
+        cls.num_columns = 15
+
     def setUp(self):
-        self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
             session_description="session_description",
             identifier="file_id",
@@ -804,7 +812,6 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         )
         self.metadata = dict(Ophys=dict())
 
-        self.device_name = "optical_device"
         self.device_metadata = dict(name=self.device_name)
         self.metadata["Ophys"].update(Device=[self.device_metadata])
 
@@ -829,13 +836,10 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
 
         self.two_photon_series_name = "two_photon_series_name"
         self.two_photon_series_metadata = dict(
-            name=self.two_photon_series_name, imaging_plane=self.imaging_plane_name, unit="unknown"
+            name=self.two_photon_series_name, imaging_plane=self.imaging_plane_name, unit="n.a."
         )
         self.metadata["Ophys"].update(TwoPhotonSeries=[self.two_photon_series_metadata])
 
-        self.num_frames = 30
-        self.num_rows = 10
-        self.num_columns = 15
         self.imaging_extractor = generate_dummy_imaging_extractor(
             self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
         )
