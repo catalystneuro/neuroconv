@@ -6,7 +6,7 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
 .. code-block:: python
 
     >>> from neuroconv import AbfInterface
-    >>> 
+    >>>
     >>> # Metadata info
     >>> icephys_metadata = {
     ...     "cell_id": "20220512001",
@@ -21,13 +21,13 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     ...         }
     ...     ]
     ... }
-    >>> 
+    >>>
     >>> # Instantiate data interface
     >>> interface = AbfInterface(
-    ...     file_paths=["path_to/my_file.abf"], 
+    ...     file_paths=["path_to/my_file.abf"],
     ...     icephys_metadata=icephys_metadata
     ... )
-    >>> 
+    >>>
     >>> # Get metadata from source data and modify any values you want
     >>> metadata = interface.get_metadata()
     >>> metadata['NWBFile'].update(
@@ -43,7 +43,7 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     ...     sex="M",
     ...     date_of_birth="2022-03-15T00:00:00"
     ... )
-    >>> 
+    >>>
     >>> # Run conversion
     >>> interface.run_conversion(metadata=metadata, save_path='converted_icephys.nwb')
 
