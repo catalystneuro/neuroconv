@@ -26,8 +26,7 @@ from neuroconv.tools.roiextractors import (
     add_summary_images,
     add_fluorescence_traces,
 )
-from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import \
-    ImagingExtractorDataChunkIterator
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 
 
 class TestAddDevices(unittest.TestCase):
@@ -798,7 +797,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
 
 class TestAddTwoPhotonSeries(TestCase):
-
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now().astimezone()
@@ -878,8 +876,8 @@ class TestAddTwoPhotonSeries(TestCase):
     def test_invalid_iterator_type_raises_error(self):
         """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
-                AssertionError,
-                "'iterator_type' must be either 'v1' or 'v2' (recommended).",
+            AssertionError,
+            "'iterator_type' must be either 'v1' or 'v2' (recommended).",
         ):
             add_two_photon_series(
                 imaging=self.imaging_extractor,
