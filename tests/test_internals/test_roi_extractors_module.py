@@ -25,6 +25,8 @@ from neuroconv.tools.roiextractors import (
     add_summary_images,
     add_fluorescence_traces,
 )
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import \
+    ImagingExtractorDataChunkIterator
 
 
 class TestAddDevices(unittest.TestCase):
@@ -844,19 +846,17 @@ class TestAddTwoPhotonSeries(TestCase):
             self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
         )
 
-    def test_add_two_photon_series(self):
-
-        metadata = self.metadata
-
-        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
+    def test_default_iterator(self):
+        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
 
         # Check data
         acquisition_modules = self.nwbfile.acquisition
-        self.two_photon_series_name in acquisition_modules
+        assert self.two_photon_series_name in acquisition_modules
         data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
         data_chunk_iterator = data_in_hdfm_data_io.data
-        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
+        assert isinstance(data_chunk_iterator, ImagingExtractorDataChunkIterator)
 
+        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
