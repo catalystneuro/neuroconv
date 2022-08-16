@@ -5,12 +5,8 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
 
 .. code-block:: python
 
-    >>> from neuroconv import NWBConverter, AbfInterface
-
-    >>> # Define the Data Interfaces for your converter
-    >>> class MyIcephysConverter(NWBConverter):
-    >>>     data_interface_classes = dict(AbfInterface=AbfInterface)
-    >>>
+    >>> from neuroconv import AbfInterface
+    >>> 
     >>> # Metadata info
     >>> icephys_metadata = {
     >>>     "cell_id": "20220512001",
@@ -25,34 +21,31 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     >>>         }
     >>>     ]
     >>> }
-    >>>
-    >>> # Source data
-    >>> source_data = dict(
-    >>>     AbfInterface=dict(
-    >>>         file_paths=["path_to/my_file.abf"],
-    >>>         icephys_metadata=icephys_metadata
-    >>>     )
+    >>> 
+    >>> # Instantiate data interface
+    >>> interface = AbfInterface(
+    >>>     file_paths=["path_to/my_file.abf"], 
+    >>>     icephys_metadata=icephys_metadata
     >>> )
-    >>>
-    >>> # Initialize converter
-    >>> converter = MyIcephysConverter(source_data=source_data)
-    >>>
+    >>> 
     >>> # Get metadata from source data and modify any values you want
-    >>> metadata = converter.get_metadata()
-    >>> metadata['NWBFile']['identifier'] = "ID12345"
-    >>> metadata['NWBFile']['session_description'] = "Intracellular electrophysiology experiment."
-    >>> metadata['NWBFile']['lab'] = "My lab name"
-    >>> metadata['NWBFile']['institution'] = "My University"
-    >>> metadata['NWBFile']['experimenter'] = ["John Doe", "Jane Doe"]
+    >>> metadata = interface.get_metadata()
+    >>> metadata['NWBFile'].update(
+    >>>     identifier="ID1234",
+    >>>     session_description="Intracellular electrophysiology experiment.",
+    >>>     lab="my lab name",                       # <-- optional
+    >>>     institution="My University",             # <-- optional
+    >>>     experimenter=["John Doe", "Jane Doe"],   # <-- optional
+    >>> )
     >>> metadata["Subject"] = dict(
     >>>     subject_id="subject_ID123",
     >>>     species="Mus musculus",
     >>>     sex="M",
     >>>     date_of_birth="2022-03-15T00:00:00"
     >>> )
-    >>>
+    >>> 
     >>> # Run conversion
-    >>> converter.run_conversion(metadata=metadata, nwbfile_path='converted_icephys.nwb')
+    >>> interface.run_conversion(metadata=metadata, save_path='converted_icephys.nwb')
 
 
 
@@ -61,12 +54,8 @@ If you have multiple ABF files for the same experimental session, one file per s
 
 .. code-block:: python
 
-    >>> from neuroconv import NWBConverter, AbfInterface
-
-    >>> # Define the Data Interfaces for your converter
-    >>> class MyIcephysConverter(NWBConverter):
-    >>>     data_interface_classes = dict(AbfInterface=AbfInterface)
-    >>>
+    >>> from neuroconv import AbfInterface
+    >>> 
     >>> # Metadata info
     >>> icephys_metadata = {
     >>>     "cell_id": "20220512001",
@@ -107,31 +96,28 @@ If you have multiple ABF files for the same experimental session, one file per s
     >>>     ]
     >>> }
     >>>
-    >>> # Source data
-    >>> source_data = dict(
-    >>>     AbfInterface=dict(
-    >>>         file_paths=[
-    >>>             "path_to/my_file_1.abf",
-    >>>             "path_to/my_file_2.abf",
-    >>>             "path_to/my_file_3.abf",
-    >>>             "path_to/my_file_4.abf",
-    >>>             "path_to/my_file_5.abf",
-    >>>             "path_to/my_file_6.abf",
-    >>>         ],
-    >>>         icephys_metadata=icephys_metadata
-    >>>     )
+    >>> # Instantiate data interface
+    >>> interface = AbfInterface(
+    >>>     file_paths=[
+    >>>         "path_to/my_file_1.abf",
+    >>>         "path_to/my_file_2.abf",
+    >>>         "path_to/my_file_3.abf",
+    >>>         "path_to/my_file_4.abf",
+    >>>         "path_to/my_file_5.abf",
+    >>>         "path_to/my_file_6.abf",
+    >>>     ],
+    >>>     icephys_metadata=icephys_metadata
     >>> )
     >>>
-    >>> # Initialize converter
-    >>> converter = MyIcephysConverter(source_data=source_data)
-    >>>
     >>> # Get metadata from source data and modify any values you want
-    >>> metadata = converter.get_metadata()
-    >>> metadata['NWBFile']['identifier'] = "ID12345"
-    >>> metadata['NWBFile']['session_description'] = "Intracellular electrophysiology experiment."
-    >>> metadata['NWBFile']['lab'] = "My lab name"
-    >>> metadata['NWBFile']['institution'] = "My University"
-    >>> metadata['NWBFile']['experimenter'] = ["John Doe", "Jane Doe"]
+    >>> metadata = interface.get_metadata()
+    >>> metadata['NWBFile'].update(
+    >>>     identifier="ID1234",
+    >>>     session_description="Intracellular electrophysiology experiment.",
+    >>>     lab="my lab name",                       # <-- optional
+    >>>     institution="My University",             # <-- optional
+    >>>     experimenter=["John Doe", "Jane Doe"],   # <-- optional
+    >>> )
     >>> metadata["Subject"] = dict(
     >>>     subject_id="subject_ID123",
     >>>     species="Mus musculus",
@@ -140,4 +126,4 @@ If you have multiple ABF files for the same experimental session, one file per s
     >>> )
     >>>
     >>> # Run conversion
-    >>> converter.run_conversion(metadata=metadata, nwbfile_path='converted_icephys.nwb')
+    >>> interface.run_conversion(metadata=metadata, save_path='converted_icephys.nwb')
