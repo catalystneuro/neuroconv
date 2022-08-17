@@ -32,7 +32,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Cody Baker, Szonja Weigl, Heberto Mayorquin, Luiz Tauffer, and Ben Dichter.",
-    author_email="ben.dichter@gmail.com",
+    author_email="ben.dichter@catalystneuro.com",
     url="https://github.com/catalystneuro/neuroconv",
     keywords="nwb",
     packages=find_packages(where="src"),
