@@ -8,15 +8,15 @@ body:
       value: |
         ## Thank you for your suggestion!
 
-        We welcome any ideas about how to make **nwb-conversion-tools** better for the community.
+        We welcome any ideas about how to make **NeuroConv** better for the community.
 
         Please keep in mind that new features may not get implemented immediately.
   - type: textarea
     id: summary
     attributes:
-      label: What would you like to see added to nwb-conversion-tools?
+      label: What would you like to see added to NeuroConv?
       description: |
-        What are you trying to achieve with **nwb-conversion-tools**?
+        What are you trying to achieve with **NeuroConv**?
 
         Is this a more convenient way to do something that is already possible, or is a workaround currently unfeasible?
     validations:
@@ -43,7 +43,7 @@ body:
       description: |
         We appreciate any help you can offer!
 
-        For information on how to contribute, please refer to our [developer guide](https://nwb-conversion-tools.readthedocs.io/en/master/developer_guide.html).
+        For information on how to contribute, please refer to our [developer guide](https://neuroconv.readthedocs.io/en/master/developer_guide.html).
       options:
         - Yes.
         - Yes, but I would need guidance.
@@ -54,9 +54,9 @@ body:
     id: terms
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/.github/CODE_OF_CONDUCT.rst)
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/catalystneuro/neuroconv/blob/main/.github/CODE_OF_CONDUCT.rst)
       options:
-        - label: I agree to follow this project's [Code of Conduct](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/.github/CODE_OF_CONDUCT.rst)
+        - label: I agree to follow this project's [Code of Conduct](https://github.com/catalystneuro/neuroconv/blob/main/.github/CODE_OF_CONDUCT.rst)
           required: true
-        - label: Have you ensured this bug was not already [reported](https://github.com/catalystneuro/nwb-conversion-tools/issues)?
+        - label: Have you ensured this bug was not already [reported](https://github.com/catalystneuro/neuroconv/issues)?
           required: true
