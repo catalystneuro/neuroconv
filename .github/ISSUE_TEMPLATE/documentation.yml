@@ -25,7 +25,7 @@ body:
       description: |
         We appreciate any help you can offer!
 
-        For information on how to contribute, please refer to our [developer guide](https://nwb-conversion-tools.readthedocs.io/en/master/developer_guide.html).
+        For information on how to contribute, please refer to our [developer guide](https://neuroconv.readthedocs.io/en/main/developer_guide.html).
       options:
         - Yes.
         - Yes, but I would need guidance.
