@@ -277,10 +277,10 @@ def add_two_photon_series(
     nwbfile,
     metadata,
     two_photon_series_index: int = 0,
-    use_times=False,
-    buffer_size: Optional[int] = None,
-    iterator_type: Optional[str] = None,
+    iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    use_times=False,  # TODO: to be removed
+    buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
     Auxiliary static method for nwbextractor.
@@ -294,7 +294,7 @@ def add_two_photon_series(
             "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
             "Specify as a key in the new 'iterator_options' dictionary instead."
         )
-    iterator_type = iterator_type or "v2"
+
     iterator_options = iterator_options or dict()
 
     metadata_copy = deepcopy(metadata)
@@ -319,10 +319,7 @@ def add_two_photon_series(
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging, iterator_type=iterator_type, **iterator_options
     )
-    data = H5DataIO(
-        data=frames_to_iterator,
-        compression=True,
-    )
+    data = H5DataIO(data=frames_to_iterator, compression=True)
     two_p_series_kwargs.update(data=data)
 
     # Add dimension
@@ -346,10 +343,11 @@ def add_two_photon_series(
 
 def _imaging_frames_to_hdmf_iterator(
     imaging: ImagingExtractor,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
 ):
-    """Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
+    """
+    Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
 
     Parameters
     ----------
@@ -363,20 +361,25 @@ def _imaging_frames_to_hdmf_iterator(
     iterator_options : dict, optional
         Dictionary of options for the iterator.
         For 'v1' this is the same as the options for the DataChunkIterator.
-        For 'v2', see https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        For 'v2', see
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
 
     Returns
     -------
     DataChunkIterator
-        The frames of the imaging extractor wrapped in an iterator object."""
+        The frames of the imaging extractor wrapped in an iterator object.
+    """
 
     def data_generator(imaging):
         for i in range(imaging.get_num_frames()):
             yield imaging.get_frames(frame_idxs=[i]).squeeze().T
 
-    assert iterator_type in ["v1", "v2"], "'iterator_type' must be either 'v1' or 'v2' (recommended)."
+    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v1', 'v2' (recommended), or None."
     iterator_options = dict() if iterator_options is None else iterator_options
+
+    if iterator_type is None:
+        return
 
     if iterator_type == "v1":
         if "buffer_size" not in iterator_options:
@@ -421,8 +424,10 @@ def write_imaging(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    buffer_size: int = 10,
-    use_times=False,
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+    use_times=False,  # TODO: to be removed
+    buffer_size: Optional[int] = None,  # TODO: to be removed
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
@@ -452,13 +457,30 @@ def write_imaging(
         The default is True.
     num_chunks: int
         Number of chunks for writing data to file
+    iterator_type : str (optional, defaults to 'v2')
+        The type of iterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
+        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+        For 'v1' this is the same as the options for the DataChunkIterator.
+        For 'v2', see
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
+    iterator_options = iterator_options or dict()
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+    if buffer_size:
+        warn(
+            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
+            "Specify as a key in the new 'iterator_options' dictionary instead."
+        )
 
     # TODO on or after August 1st, 2022, remove argument and deprecation warnings
     if save_path is not None:
@@ -492,7 +514,13 @@ def write_imaging(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         add_devices(nwbfile=nwbfile_out, metadata=metadata)
-        add_two_photon_series(imaging=imaging, nwbfile=nwbfile_out, metadata=metadata, buffer_size=buffer_size)
+        add_two_photon_series(
+            imaging=imaging,
+            nwbfile=nwbfile_out,
+            metadata=metadata,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
         add_epochs(imaging=imaging, nwbfile=nwbfile_out)
     return nwbfile_out
 

@@ -77,11 +77,12 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         stub_test: bool = False,
+        stub_frames: int = 100,
         save_path: OptionalFilePathType = None,
     ):
 
         if stub_test:
-            stub_frames = min([100, self.imaging_extractor.get_num_frames()])
+            stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
             imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
         else:
             imaging_extractor = self.imaging_extractor
