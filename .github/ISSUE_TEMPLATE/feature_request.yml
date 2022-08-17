@@ -26,16 +26,6 @@ body:
     attributes:
       label: Is your feature request related to a problem?
       description: A clear and concise description of what the problem is.
-  - type: textarea
-    id: solution
-    attributes:
-      label: What solution would you like?
-      description: |
-        A clear and concise description of what you want to happen.
-
-        Describe alternative solutions you have considered.
-    validations:
-      required: true
   - type: dropdown
     id: interest
     attributes:
@@ -43,7 +33,7 @@ body:
       description: |
         We appreciate any help you can offer!
 
-        For information on how to contribute, please refer to our [developer guide](https://neuroconv.readthedocs.io/en/master/developer_guide.html).
+        For information on how to contribute, please refer to our [developer guide](https://neuroconv.readthedocs.io/en/main/developer_guide.html).
       options:
         - Yes.
         - Yes, but I would need guidance.
