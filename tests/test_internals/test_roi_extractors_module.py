@@ -4,6 +4,8 @@ from pathlib import Path
 from datetime import datetime
 
 import numpy as np
+from hdmf.data_utils import DataChunkIterator
+from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
 
@@ -24,6 +26,7 @@ from neuroconv.tools.roiextractors import (
     add_summary_images,
     add_fluorescence_traces,
 )
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 
 
 class TestAddDevices(unittest.TestCase):
@@ -793,9 +796,16 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
 
 
-class TestAddTwoPhotonSeries(unittest.TestCase):
+class TestAddTwoPhotonSeries(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.session_start_time = datetime.now().astimezone()
+        cls.device_name = "optical_device"
+        cls.num_frames = 30
+        cls.num_rows = 10
+        cls.num_columns = 15
+
     def setUp(self):
-        self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
             session_description="session_description",
             identifier="file_id",
@@ -803,7 +813,6 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         )
         self.metadata = dict(Ophys=dict())
 
-        self.device_name = "optical_device"
         self.device_metadata = dict(name=self.device_name)
         self.metadata["Ophys"].update(Device=[self.device_metadata])
 
@@ -828,33 +837,31 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
 
         self.two_photon_series_name = "two_photon_series_name"
         self.two_photon_series_metadata = dict(
-            name=self.two_photon_series_name, imaging_plane=self.imaging_plane_name, unit="unknown"
+            name=self.two_photon_series_name, imaging_plane=self.imaging_plane_name, unit="n.a."
         )
         self.metadata["Ophys"].update(TwoPhotonSeries=[self.two_photon_series_metadata])
 
-        self.num_frames = 30
-        self.num_rows = 10
-        self.num_columns = 15
         self.imaging_extractor = generate_dummy_imaging_extractor(
             self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
         )
 
-    def test_add_two_photon_series(self):
-
-        metadata = self.metadata
-
-        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
+    def test_default_values(self):
+        """Test adding two photon series with default values."""
+        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
 
         # Check data
         acquisition_modules = self.nwbfile.acquisition
-        self.two_photon_series_name in acquisition_modules
+        assert self.two_photon_series_name in acquisition_modules
         data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
         data_chunk_iterator = data_in_hdfm_data_io.data
-        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
+        assert isinstance(data_chunk_iterator, ImagingExtractorDataChunkIterator)
 
+        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
+        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
         # Check device
         devices = self.nwbfile.devices
@@ -865,6 +872,62 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         imaging_planes_in_file = self.nwbfile.imaging_planes
         assert self.imaging_plane_name in imaging_planes_in_file
         assert len(imaging_planes_in_file) == 1
+
+    def test_invalid_iterator_type_raises_error(self):
+        """Test error is raised when adding two photon series with invalid iterator type."""
+        with self.assertRaisesWith(
+            AssertionError,
+            "'iterator_type' must be either 'v1' or 'v2' (recommended).",
+        ):
+            add_two_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                iterator_type="invalid",
+            )
+
+    def test_v1_iterator(self):
+        """Test adding two photon series with using DataChunkIterator as iterator type."""
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type="v1",
+        )
+
+        # Check data
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        assert isinstance(data_chunk_iterator, DataChunkIterator)
+        self.assertEqual(data_chunk_iterator.buffer_size, 10)
+
+        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
+        # NWB stores images as num_columns x num_rows
+        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
+        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
+
+    def test_iterator_options_propagation(self):
+        """Test that iterator options are propagated to the data chunk iterator."""
+        buffer_shape = (20, 5, 5)
+        chunk_shape = (10, 5, 5)
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type="v2",
+            iterator_options=dict(buffer_shape=buffer_shape, chunk_shape=chunk_shape),
+        )
+
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        self.assertEqual(data_chunk_iterator.buffer_shape, buffer_shape)
+        self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
 
     def test_add_two_photon_series_roundtrip(self):
 
@@ -882,7 +945,7 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
 
             # Check data
             acquisition_modules = read_nwbfile.acquisition
-            self.two_photon_series_name in acquisition_modules
+            assert self.two_photon_series_name in acquisition_modules
             two_photon_series = acquisition_modules[self.two_photon_series_name].data
 
             # NWB stores images as num_columns x num_rows
