@@ -20,6 +20,7 @@ else:
     # Use DANDIHub at hub.dandiarchive.org for open, free use of data found in the /shared/catalystneuro/ directory
     LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")
+
 BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
 if not BEHAVIOR_DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {BEHAVIOR_DATA_PATH}!")
