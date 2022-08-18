@@ -9,22 +9,22 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     >>>
     >>> # Metadata info
     >>> icephys_metadata = {
-    ...     "cell_id": "20220512001",
-    ...     "slice_id": "20220512001",
+    ...     "cell_id": "20220818001",
+    ...     "slice_id": "20220818001",
     ...     "targeted_layer": "L2-3(medial)",
     ...     "inferred_layer": "",
     ...     "recording_sessions": [
     ...         {
-    ...             "abf_file_name": "my_file.abf",
-    ...             "stimulus_type": "Long_Square_currentClamp_-50 to100_step10pA",
-    ...             "icephys_experiment_type": "current_clamp"
+    ...             "abf_file_name": "File_axon_5.abf",
+    ...             "stimulus_type": "long_square",
+    ...             "icephys_experiment_type": "voltage_clamp"
     ...         }
     ...     ]
     ... }
     >>>
     >>> # Instantiate data interface
     >>> interface = AbfInterface(
-    ...     file_paths=["path_to/my_file.abf"],
+    ...     file_paths=[f"{ECEPHY_DATA_PATH}/axon/File_axon_5.abf"],
     ...     icephys_metadata=icephys_metadata
     ... )
     >>>
@@ -49,7 +49,7 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
 
 
 
-If you have multiple ABF files for the same experimental session, one file per stimulus type, you can organize a multi-file conversion as such:
+If you have multiple ABF files for the same experiment, one file per recording stimulus type, you can organize a multi-file conversion as such:
 
 
 .. code-block:: python
@@ -58,40 +58,20 @@ If you have multiple ABF files for the same experimental session, one file per s
     >>>
     >>> # Metadata info
     >>> icephys_metadata = {
-    ...     "cell_id": "20220512001",
-    ...     "slice_id": "20220512001",
+    ...     "cell_id": "20220818001",
+    ...     "slice_id": "20220818001",
     ...     "targeted_layer": "L2-3(medial)",
     ...     "inferred_layer": "",
     ...     "recording_sessions": [
     ...         {
-    ...             "abf_file_name": "my_file_1.abf",
-    ...             "stimulus_type": "Long_Square_currentClamp_-50 to100_step10pA",
-    ...             "icephys_experiment_type": "current_clamp"
+    ...             "abf_file_name": "File_axon_5.abf",
+    ...             "stimulus_type": "long_square",
+    ...             "icephys_experiment_type": "voltage_clamp"
     ...         },
     ...         {
-    ...             "abf_file_name": "my_file_2.abf",
-    ...             "stimulus_type": "short_Square_100pAstepMa1500pA",
-    ...             "icephys_experiment_type": "current_clamp"
-    ...         },
-    ...         {
-    ...             "abf_file_name": "my_file_3.abf",
-    ...             "stimulus_type": "Ramp_250pA",
-    ...             "icephys_experiment_type": "current_clamp"
-    ...         },
-    ...         {
-    ...             "abf_file_name": "my_file_4.abf",
-    ...             "stimulus_type": "Long_Square_currentClamp_-50 to100_step10pA",
-    ...             "icephys_experiment_type": "current_clamp"
-    ...         },
-    ...         {
-    ...             "abf_file_name": "my_file_5.abf",
-    ...             "stimulus_type": "short_Square_100pAstepMa1500pA",
-    ...             "icephys_experiment_type": "current_clamp"
-    ...         },
-    ...         {
-    ...             "abf_file_name": "my_file_6.abf",
-    ...             "stimulus_type": "Ramp_250pA",
-    ...             "icephys_experiment_type": "current_clamp"
+    ...             "abf_file_name": "File_axon_6.abf",
+    ...             "stimulus_type": "short_square",
+    ...             "icephys_experiment_type": "voltage_clamp"
     ...         }
     ...     ]
     ... }
@@ -99,12 +79,8 @@ If you have multiple ABF files for the same experimental session, one file per s
     >>> # Instantiate data interface
     >>> interface = AbfInterface(
     ...     file_paths=[
-    ...         "path_to/my_file_1.abf",
-    ...         "path_to/my_file_2.abf",
-    ...         "path_to/my_file_3.abf",
-    ...         "path_to/my_file_4.abf",
-    ...         "path_to/my_file_5.abf",
-    ...         "path_to/my_file_6.abf",
+    ...         f"{ECEPHY_DATA_PATH}/axon/File_axon_5.abf",
+    ...         f"{ECEPHY_DATA_PATH}/axon/File_axon_6.abf",
     ...     ],
     ...     icephys_metadata=icephys_metadata
     ... )
