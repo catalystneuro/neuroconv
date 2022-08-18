@@ -15,6 +15,7 @@ class LazyExtractorClass(type(BaseRecordingExtractorInterface), type):
             _test_sonpy_installation()
             spikeinterface = get_package(package_name="spikeinterface")
             RX = spikeinterface.extractors.CedRecordingExtractor
+            self.RX = RX
 
             return RX
         return super().__getattribute__(name)
@@ -35,11 +36,17 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface, object, metaclass=L
         """Retrieve and inspect necessary channel information prior to initialization."""
         return cls.RX.get_all_channels_info(file_path=file_path)
 
+    def __new__(cls, *args, **kwargs):
+        getattr(cls, "RX")
+        return object.__new__(cls)
+
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         stream_id = None
         if Path(file_path).suffix == ".smr":
             stream_id = "1"
 
+        # object.__getattribute__(self, "RX")
+        # super(BaseRecordingExtractorInterface, self).__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
         super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
 
         # Subset raw channel properties
