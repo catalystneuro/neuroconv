@@ -402,7 +402,7 @@ def _imaging_frames_to_hdmf_iterator(
 
     if iterator_type is None:
         check_if_imaging_fits_into_memory(imaging=imaging)
-        return imaging.get_video()
+        return imaging.get_video().transpose((0, 2, 1))
 
     if iterator_type == "v1":
         if "buffer_size" not in iterator_options:
