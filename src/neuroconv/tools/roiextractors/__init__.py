@@ -11,4 +11,5 @@ from .roiextractors import (
     get_nwb_segmentation_metadata,
     add_summary_images,
     write_segmentation,
+    check_if_imaging_fits_into_memory,
 )
