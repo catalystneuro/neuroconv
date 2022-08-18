@@ -928,7 +928,7 @@ class TestAddTwoPhotonSeries(TestCase):
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
         expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
         assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
-            
+
     def test_v1_iterator(self):
         """Test adding two photon series with using DataChunkIterator as iterator type."""
         add_two_photon_series(
