@@ -28,6 +28,7 @@ from neuroconv import (
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,
+    NeuroscopeLFPInterface,
     NeuroscopeSortingInterface,
     OpenEphysRecordingExtractorInterface,
     PhySortingInterface,
@@ -66,6 +67,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=AxonaLFPDataInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg")),
         ),
+        param(
+            data_interface=NeuroscopeLFPInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
+                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+            ),
+        ),
     ]
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
@@ -85,22 +93,20 @@ class TestEcephysNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            nwb_lfp_unscaled = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].data
-            nwb_lfp_conversion = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].conversion
-            # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
-            # For GIN test data, sizes should be OK to load all into RAM even on CI
-            if isinstance(recording, RecordingExtractor):
-                npt.assert_array_equal(x=recording.get_traces(return_scaled=False).T, y=nwb_lfp_unscaled)
-                npt.assert_array_almost_equal(
-                    x=recording.get_traces(return_scaled=True).T * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
-                )
-            else:
-                npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
-                # This can only be tested if both gain and offest are present
-                if recording.has_scaled_traces():
-                    npt.assert_array_almost_equal(
-                        x=recording.get_traces(return_scaled=True) * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
-                    )
+            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"]
+            nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
+            nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
+            if not isinstance(recording, BaseRecording):
+                raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
+
+            npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
+            # This can only be tested if both gain and offest are present
+            if recording.has_scaled_traces():
+                nwb_lfp_conversion_vector = nwb_lfp_electrical_series.channel_conversion[:]
+                nwb_lfp_offset = nwb_lfp_electrical_series.offset
+                recording_data_volts = recording.get_traces(return_scaled=True) * 1e-6
+                nwb_data_volts = nwb_lfp_unscaled * nwb_lfp_conversion_vector * nwb_lfp_conversion + nwb_lfp_offset
+                npt.assert_array_almost_equal(x=recording_data_volts, y=nwb_data_volts)
 
     parameterized_recording_list = [
         param(

@@ -4,5 +4,5 @@ contact_links:
     url: https://www.nwb.org/contact-us/
     about: Have a bunch of really specific questions? Just looking to learn more about NWB? Connect with the greater NWB community!
   - name: NWB Best Practices
-    url: https://www.nwb.org/best-practices/
+    url: https://nwbinspector.readthedocs.io/en/dev/best_practices/best_practices_index.html
     about: Check out the full list of Best Practices for making NWBFiles.
