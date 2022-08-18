@@ -1,18 +1,15 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl"""
-import os
+"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl."""
 from collections import defaultdict
-from pathlib import Path
 from warnings import warn
 from typing import Optional
 from copy import deepcopy
 
+import psutil
 import numpy as np
 from hdmf.common import VectorData
-
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBFile
 from pynwb.base import Images
-from pynwb.file import Subject
 from pynwb.image import GrayscaleImage
 from pynwb.device import Device
 from pynwb.ophys import (
@@ -31,12 +28,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
-from ...utils import (
-    FilePathType,
-    OptionalFilePathType,
-    dict_deep_update,
-    calculate_regular_series_rate,
-)
+from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
 
 
 def get_default_ophys_metadata():
@@ -343,6 +335,34 @@ def add_two_photon_series(
     return nwbfile
 
 
+def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
+    """
+    Raise an error if the full traces of an imaging extractor are larger than available memory.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        An imaging extractor object from roiextractors.
+
+    Raises
+    ------
+    MemoryError
+    """
+    element_size_in_bytes = imaging.get_dtype().itemsize
+    image_size = imaging.get_image_size()
+    num_frames = imaging.get_num_frames()
+
+    traces_size_in_bytes = num_frames * np.prod(image_size) * element_size_in_bytes
+    available_memory_in_bytes = psutil.virtual_memory().available
+
+    if traces_size_in_bytes > available_memory_in_bytes:
+        message = (
+            f"Memory error, full TwoPhotonSeries data is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
+            f"({round(available_memory_in_bytes/1e9, 2)} GB are available! Please use iterator_type='v2'."
+        )
+        raise MemoryError(message)
+
+
 def _imaging_frames_to_hdmf_iterator(
     imaging: ImagingExtractor,
     iterator_type: Optional[str] = "v2",
@@ -381,7 +401,8 @@ def _imaging_frames_to_hdmf_iterator(
     iterator_options = dict() if iterator_options is None else iterator_options
 
     if iterator_type is None:
-        return
+        check_if_imaging_fits_into_memory(imaging=imaging)
+        return imaging.get_video()
 
     if iterator_type == "v1":
         if "buffer_size" not in iterator_options:
