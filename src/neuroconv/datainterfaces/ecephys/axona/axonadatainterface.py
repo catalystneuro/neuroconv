@@ -1,17 +1,14 @@
 """Authors: Heberto Mayorquin, Steffen Buergers."""
-
 import spikeextractors as se
+from pynwb import NWBFile
 from spikeinterface.extractors import AxonaRecordingExtractor, NumpyRecording
 
-from pynwb import NWBFile
-
+from .axona_utils import read_all_eeg_file_lfp_data, get_eeg_sampling_frequency, get_position_object
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
 from ....utils import get_schema_from_method_signature, FilePathType
-
-from .axona_utils import read_all_eeg_file_lfp_data, get_eeg_sampling_frequency, get_position_object
 
 
 class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):

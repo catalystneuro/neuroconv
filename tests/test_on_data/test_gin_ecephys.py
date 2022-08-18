@@ -5,23 +5,18 @@ import itertools
 
 import numpy as np
 import numpy.testing as npt
-
+from pynwb import NWBHDF5IO
 from parameterized import parameterized, param
-
-from spikeextractors import NwbSortingExtractor, RecordingExtractor, SortingExtractor
+from spikeextractors import NwbSortingExtractor, SortingExtractor
 from spikeextractors.testing import check_sortings_equal
-
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
 from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
-
 from spikeinterface.core import BaseRecording
 
-from pynwb import NWBHDF5IO
-
-from neuroconv import (
-    NWBConverter,
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import (
     CellExplorerSortingInterface,
     CEDRecordingInterface,
     IntanRecordingInterface,

@@ -5,8 +5,8 @@ from parameterized import parameterized, param
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
-from neuroconv import (
-    NWBConverter,
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import (
     ScanImageImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,

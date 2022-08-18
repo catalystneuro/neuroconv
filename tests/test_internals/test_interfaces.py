@@ -13,8 +13,8 @@ from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
-from neuroconv import (
-    NWBConverter,
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import (
     RecordingTutorialInterface,
     SortingTutorialInterface,
     SIPickleRecordingExtractorInterface,

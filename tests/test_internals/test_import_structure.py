@@ -25,6 +25,8 @@ class TestImportStructure(TestCase):
         expected_structure = [
             # Sub-modules
             "nwbconverter",
+            "basedatainterface",
+            "datainterfaces",
             "tools",
             "utils",
             # Exposed attributes

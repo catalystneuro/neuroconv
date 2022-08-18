@@ -5,12 +5,16 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, FilePathType, get_package
 
 
-def _get_sonpy():
-    return get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
+def _test_sonpy_installation() -> None:
+    get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
 
 
 class CEDRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
+
+    _test_sonpy_installation()
+    spikeinterface = get_package(package_name="spikeinterface")
+    RX = spikeinterface.extractors.CedRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -22,19 +26,13 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_all_channels_info(cls, file_path: FilePathType):
         """Retrieve and inspect necessary channel information prior to initialization."""
-        sonpy = _get_sonpy()
         return cls.RX.get_all_channels_info(file_path=file_path)
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
-        sonpy = _get_sonpy()
-
-        from spikeinterface.extractors import CedRecordingExtractor
-
         stream_id = None
         if Path(file_path).suffix == ".smr":
             stream_id = "1"
 
-        self.RX = CedRecordingExtractor
         super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
 
         # Subset raw channel properties
