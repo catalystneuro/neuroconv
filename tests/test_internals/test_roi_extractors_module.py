@@ -886,6 +886,49 @@ class TestAddTwoPhotonSeries(TestCase):
                 iterator_type="invalid",
             )
 
+    def test_non_iterative_write_assertion(self):
+
+        # Estimate num of frames required to exceed memory capabilities
+        dtype = self.imaging_extractor.get_dtype()
+        element_size_in_bytes = dtype.itemsize
+        image_size = self.imaging_extractor.get_image_size()
+
+        available_memory_in_bytes = psutil.virtual_memory().available
+
+        excess = 1.5  # Of what is available in memory
+        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * np.prod(image_size))
+
+        # Mock recording extractor with as much frames as necessary to overflow memory
+        mock_imaging = Mock()
+        mock_imaging.get_dtype.return_value = dtype
+        mock_imaging.get_image_size.return_value = image_size
+        mock_imaging.get_num_frames.return_value = num_frames_to_overflow
+
+        reg_expression = f"Memory error, full TwoPhotonSeries data is (.*?) GB are available! Please use iterator_type='v2'"
+
+        with self.assertRaisesRegex(MemoryError, reg_expression):
+            check_if_imaging_fits_into_memory(imaging=mock_imaging)
+
+   def test_non_iterative_two_photon(self):
+        """Test adding two photon series with using DataChunkIterator as iterator type."""
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type=None,
+        )
+
+        # Check data
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdmf_data_io = acquisition_modules[self.two_photon_series_name].data
+
+        # NWB stores images as num_columns x num_rows
+        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
+        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
+            
     def test_v1_iterator(self):
         """Test adding two photon series with using DataChunkIterator as iterator type."""
         add_two_photon_series(
