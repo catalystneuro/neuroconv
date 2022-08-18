@@ -9,7 +9,7 @@ def _test_sonpy_installation() -> None:
     get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
 
 
-class LazyExtractorClass(type):
+class LazyExtractorClass(type(BaseRecordingExtractorInterface), type):
     def __getattribute__(self, name):
         if name == "RX":
             _test_sonpy_installation()
@@ -20,7 +20,7 @@ class LazyExtractorClass(type):
         return super().__getattribute__(name)
 
 
-class CEDRecordingInterface(BaseRecordingExtractorInterface, metaclass=LazyExtractorClass):
+class CEDRecordingInterface(BaseRecordingExtractorInterface, object, metaclass=LazyExtractorClass):
     """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
 
     @classmethod
