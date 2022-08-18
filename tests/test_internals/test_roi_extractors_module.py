@@ -877,7 +877,7 @@ class TestAddTwoPhotonSeries(TestCase):
         """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
             AssertionError,
-            "'iterator_type' must be either 'v1' or 'v2' (recommended).",
+            "'iterator_type' must be either 'v1', 'v2' (recommended), or None.",
         ):
             add_two_photon_series(
                 imaging=self.imaging_extractor,

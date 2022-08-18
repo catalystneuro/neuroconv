@@ -317,7 +317,7 @@ def add_two_photon_series(
     # Add the data
     two_p_series_kwargs = two_photon_series_metadata
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
-        imaging=imaging, iterator_type=iterator_type, **iterator_options
+        imaging=imaging, iterator_type=iterator_type, iterator_options=iterator_options,
     )
     data = H5DataIO(data=frames_to_iterator, compression=True)
     two_p_series_kwargs.update(data=data)
