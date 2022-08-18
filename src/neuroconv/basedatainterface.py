@@ -8,7 +8,7 @@ from pynwb import NWBFile
 from .utils import get_base_schema, get_schema_from_method_signature
 
 
-class BaseDataInterface(ABC):
+class BaseDataInterface(object):
     """Abstract class defining the structure of all DataInterfaces."""
 
     @classmethod

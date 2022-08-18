@@ -14,7 +14,7 @@ from ...tools.spikeinterface import write_recording
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
-class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
+class BaseRecordingExtractorInterface(BaseDataInterface):
     """Primary class for all RecordingExtractorInterfaces."""
 
     RX = None

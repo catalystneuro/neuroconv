@@ -9,12 +9,19 @@ def _test_sonpy_installation() -> None:
     get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
 
 
-class CEDRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
+class LazyExtractorClass(type):
+    def __getattribute__(self, name):
+        if name == "RX":
+            _test_sonpy_installation()
+            spikeinterface = get_package(package_name="spikeinterface")
+            RX = spikeinterface.extractors.CedRecordingExtractor
 
-    _test_sonpy_installation()
-    spikeinterface = get_package(package_name="spikeinterface")
-    RX = spikeinterface.extractors.CedRecordingExtractor
+            return RX
+        return super().__getattribute__(name)
+
+
+class CEDRecordingInterface(BaseRecordingExtractorInterface, metaclass=LazyExtractorClass):
+    """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
 
     @classmethod
     def get_source_schema(cls):
