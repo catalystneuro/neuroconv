@@ -1,7 +1,7 @@
 name: Updated Caches and Upload to S3
-on:
-  schedule:
-    - cron: "0 0 * * *"
+on: push
+  #schedule:
+  #  - cron: "0 0 * * *"
 jobs:
   run:
     name: Update cache on ${{ matrix.os }} with Python ${{ matrix.python-version }}
