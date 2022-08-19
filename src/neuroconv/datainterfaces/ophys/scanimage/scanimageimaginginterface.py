@@ -26,7 +26,7 @@ def extract_extra_metadata(file_path):
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
-    IX = ScanImageTiffImagingExtractor
+    IXName = "ScanImageTiffImagingExtractor"
 
     @classmethod
     def get_source_schema(cls):

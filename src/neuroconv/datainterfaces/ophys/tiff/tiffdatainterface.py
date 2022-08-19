@@ -7,8 +7,6 @@ from ....utils import FilePathType, FloatType, ArrayType
 class TiffImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for TiffImagingExtractor."""
 
-    IX = TiffImagingExtractor
-
     @classmethod
     def get_source_schema(cls):
         source_schema = super().get_source_schema()
