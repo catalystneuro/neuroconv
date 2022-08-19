@@ -9,12 +9,14 @@ with open(root / "README.md") as f:
     long_description = f.read()
 with open(root / "requirements-minimal.txt") as f:
     install_requires = f.readlines()
-with open(root / "requirements-full.txt") as f:
-    full_dependencies = set(f.readlines())
 with open(root / "requirements-rtd.txt") as f:
     documentation_dependencies = f.readlines()
 with open(root / "requirements-testing.txt") as f:
     testing_suite_dependencies = f.readlines()
+
+full_dependencies = set(install_requires)
+with open(root / "requirements-full.txt") as f:
+    full_dependencies.update(f.readlines())
 
 extras_require = defaultdict(list)
 subpaths = (root / "src" / "neuroconv" / "datainterfaces").rglob("*/requirements.txt")
