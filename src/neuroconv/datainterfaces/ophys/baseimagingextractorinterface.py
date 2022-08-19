@@ -27,6 +27,8 @@ class _LazyImagingExtractor(type(BaseDataInterface), type):
 
 
 class BaseImagingExtractorInterface(BaseDataInterface, metaclass=_LazyImagingExtractor):
+    """Parent class for all ImagingExtractorInterfaces."""
+
     IXModule: Optional[str] = None  # Defaults to "roiextractors". Manually override in subclass if needed.
     IXName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor"). Manually override if needed.
     IX: ImagingExtractor = None  # Loads dynamically on first access attempt

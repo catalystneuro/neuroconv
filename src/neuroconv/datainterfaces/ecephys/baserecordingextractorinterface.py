@@ -1,5 +1,4 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import ABC
 from typing import Optional
 
 import numpy as np
@@ -11,13 +10,27 @@ from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.spikeinterface import write_recording
-from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
+from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType, get_package
 
 
-class BaseRecordingExtractorInterface(BaseDataInterface):
-    """Primary class for all RecordingExtractorInterfaces."""
+class _LazyRecordingExtractor(type(BaseDataInterface), type):
+    def __getattribute__(self, name):
+        if name == "RX":
+            extractor_module = get_package(package_name=self.RXModule or "spikeinterface.extractors")
+            return getattr(extractor_module, self.RXName or self.__name__.replace("Interface", "Extractor"))
+        return super().__getattribute__(name)
 
-    RX = None
+
+class BaseRecordingExtractorInterface(BaseDataInterface, metaclass=_LazyRecordingExtractor):
+    """Parent class for all RecordingExtractorInterfaces."""
+
+    RXModule: Optional[str] = None  # Defaults to "spikeinterface.extractors". Manually override in subclass if needed.
+    RXName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor"). Manually override if needed.
+    RX = None  # Loads dynamically on first access attempt
+
+    def __new__(cls, *args, **kwargs):
+        cls.RX = getattr(cls, "RX")
+        return object.__new__(cls)
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)

@@ -9,19 +9,9 @@ def _test_sonpy_installation() -> None:
     get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
 
 
-class LazyExtractorClass(type(BaseRecordingExtractorInterface), type):
-    def __getattribute__(self, name):
-        if name == "RX":
-            _test_sonpy_installation()
-            spikeinterface = get_package(package_name="spikeinterface")
-            RX = spikeinterface.extractors.CedRecordingExtractor
-            self.RX = RX
-
-            return RX
-        return super().__getattribute__(name)
-
-
-class CEDRecordingInterface(BaseRecordingExtractorInterface, object, metaclass=LazyExtractorClass):
+class CEDRecordingInterface(
+    BaseRecordingExtractorInterface,
+):
     """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
 
     @classmethod
@@ -34,13 +24,13 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface, object, metaclass=L
     @classmethod
     def get_all_channels_info(cls, file_path: FilePathType):
         """Retrieve and inspect necessary channel information prior to initialization."""
+        _test_sonpy_installation()
+        getattr(cls, "RX")  # Required to trigger dynamic access in case this method is called first
         return cls.RX.get_all_channels_info(file_path=file_path)
 
-    def __new__(cls, *args, **kwargs):
-        getattr(cls, "RX")
-        return object.__new__(cls)
-
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        _test_sonpy_installation()
+
         stream_id = None
         if Path(file_path).suffix == ".smr":
             stream_id = "1"

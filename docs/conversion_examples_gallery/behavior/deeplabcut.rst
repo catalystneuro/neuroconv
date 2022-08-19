@@ -14,7 +14,7 @@ Convert DeepLabCut imaging data to NWB using :py:class:`~neuroconv.datainterface
     >>> config_file_path = BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"
 
     >>> interface = DeepLabCutInterface(file_path=file_path, config_file_path=config_file_path, subject_name="ind1", verbose=False)
-     Loading...
+    Loading...
 
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion

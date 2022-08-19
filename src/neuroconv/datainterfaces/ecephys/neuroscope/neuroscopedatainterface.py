@@ -73,7 +73,7 @@ def add_recording_extractor_properties(
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
 
-    RX = NeuroScopeRecordingExtractor
+    RXName = "NeuroScopeRecordingExtractor"
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str):

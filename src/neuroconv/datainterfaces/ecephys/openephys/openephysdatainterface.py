@@ -9,6 +9,8 @@ from ....utils import get_schema_from_method_signature, FolderPathType
 class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a OpenEphysRecordingExtractor."""
 
+    RXName = "OpenEphysBinaryRecordingExtractor"
+
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""

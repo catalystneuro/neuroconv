@@ -1,23 +1,34 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
-from abc import ABC
 from typing import Optional
 
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
+from roiextractors import SegmentationExtractor
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.roiextractors import write_segmentation, get_nwb_segmentation_metadata
-from ...utils import (
-    get_schema_from_hdmf_class,
-    fill_defaults,
-    OptionalFilePathType,
-    get_base_schema,
-)
+from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePathType, get_base_schema, get_package
 
 
-class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
-    SegX = None
+class _LazySegmentationExtractor(type(BaseDataInterface), type):
+    def __getattribute__(self, name):
+        if name == "SegX":
+            roiextractors = get_package(package_name=self.SegXModule or "roiextractors")
+            return getattr(roiextractors, self.SegXName or self.__name__.replace("Interface", "Extractor"))
+        return super().__getattribute__(name)
+
+
+class BaseSegmentationExtractorInterface(BaseDataInterface, metaclass=_LazySegmentationExtractor):
+    """Parent class for all ImagingExtractorInterfaces."""
+
+    SegXModule: Optional[str] = None  # Defaults to "roiextractors". Manually override in subclass if needed.
+    SegXName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor").
+    SegX: SegmentationExtractor = None  # Loads dynamically on first access attempt
+
+    def __new__(cls, *args, **kwargs):
+        cls.SegX = getattr(cls, "SegX")
+        return object.__new__(cls)
 
     def __init__(self, **source_data):
         super().__init__(**source_data)

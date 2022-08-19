@@ -1,5 +1,3 @@
-from roiextractors import TiffImagingExtractor
-
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType, FloatType, ArrayType
 
