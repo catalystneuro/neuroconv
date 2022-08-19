@@ -4,23 +4,20 @@ on: push
   #  - cron: "0 0 * * *"
 jobs:
   run:
-    name: Update cache on ${{ matrix.os }} with Python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+    name: Update cache and upload to S3
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-          os: ubuntu-latest
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
       - run: git fetch --prune --unshallow --tags
-      - name: Setup Python ${{ matrix.python-version }}
+      - name: Setup Python
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
 
-      - if: ${{ matrix.os == 'ubuntu-latest' }}
-        name: Get datalad - Linux
+      - name: Install datalad
         run: conda install -c conda-forge datalad==0.16.3
 
       - name: Setup Environment
