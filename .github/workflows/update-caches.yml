@@ -80,7 +80,7 @@ jobs:
           cd ..
       - name: Upload ephys dataset to S3
         # if: steps.cache-ephys-datasets.outputs.cache-hit == false
-      - uses: jakejarvis/s3-sync-action@master
+        uses: jakejarvis/s3-sync-action@master
         with:
           args: --exclude '*' --include 'neuroscope'
         env:
