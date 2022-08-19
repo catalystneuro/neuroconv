@@ -113,7 +113,7 @@ jobs:
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: sync
-          source: /behavior_testing_data/
+          source: ./behavior_testing_data/
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
           flags: --follow-symlinks --exclude '.git/*' --exclude '.gitattributes/*' --exclude "*.gitignore" --exclude '.datalad/*'
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
