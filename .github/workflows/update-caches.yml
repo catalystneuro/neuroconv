@@ -79,7 +79,7 @@ jobs:
           datalad get -r ./cellexplorer/
           cd ..
       - name: Upload ephys dataset to S3
-        if: steps.cache-ephys-datasets.outputs.cache-hit == false
+        #if: steps.cache-ephys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: sync
@@ -106,7 +106,7 @@ jobs:
           aws_region: us-east-2
 
       - name: "Force GIN: behavior download"
-        if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        #if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
       - name: Upload behavior dataset to S3
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
