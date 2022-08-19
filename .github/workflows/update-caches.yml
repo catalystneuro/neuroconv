@@ -1,4 +1,4 @@
-name: Updated Caches
+name: Updated Caches and Upload to S3
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -94,3 +94,13 @@ jobs:
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+
+      - name: Upload ophys dataset to S3
+        uses: keithweaver/aws-s3-github-action@v1.0.0
+        with:
+          command: cp
+          source: ./ophys_testing_data
+          destination: ${{ secrets.S3_GIN_BUCKET }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: us-east-2
