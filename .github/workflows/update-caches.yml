@@ -112,10 +112,13 @@ jobs:
         #if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: sync
-          source: behavior_testing_data
+          command: |
+            cd behavior_testing_data
+            sync
+            cd ..
+          source: .
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
-          flags: --delete
+          flags: --exclude "*.*"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
