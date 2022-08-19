@@ -45,8 +45,6 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface, object, metaclass=L
         if Path(file_path).suffix == ".smr":
             stream_id = "1"
 
-        # object.__getattribute__(self, "RX")
-        # super(BaseRecordingExtractorInterface, self).__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
         super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
 
         # Subset raw channel properties
