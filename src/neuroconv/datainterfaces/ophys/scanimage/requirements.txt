@@ -1,0 +1,1 @@
+scanimage-tiff-reader>=1.4.1
