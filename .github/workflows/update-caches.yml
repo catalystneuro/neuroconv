@@ -115,7 +115,7 @@ jobs:
           command: sync
           source: behavior_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
-          flags: --exclude "behavior_testing_data/.gitignore" --exclude ".gitignore" --exclude "/.gitignore" --exclude "./.gitignore" --exclude "*/.gitignore" --exclude "*.gitignore" 
+          flags: --delete
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
