@@ -82,10 +82,10 @@ jobs:
         #if: steps.cache-ephys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: cp
+          command: sync
           source: ./ephy_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
-          flags: "--recursive"
+          flags: "--follow-symlinks --exclude='.git/*' --exclude='.gitattributes/*' --exclude='.gitignore' --exclude='*.py' --exclude='*.md' --only-show-errors"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
