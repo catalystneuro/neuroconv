@@ -1,6 +1,7 @@
 """Author: Luiz Tauffer."""
 from abc import ABC
 from typing import Optional
+from warnings import warn
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
@@ -73,27 +74,28 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
     def run_conversion(
         self,
         nwbfile: NWBFile = None,
+        nwbfile_path: OptionalFilePathType = None,
         metadata: dict = None,
         stub_test: bool = False,
-        save_path: OptionalFilePathType = None,
         overwrite: bool = False,
         icephys_experiment_type: Optional[str] = None,
         skip_electrodes: tuple = (),
+        save_path: OptionalFilePathType = None,  # TODO: to be removed
     ):
         """
-        Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
+        Primary function for converting raw (unprocessed) intracellular data to the NWB standard.
 
         Parameters
         ----------
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
+        nwbfile_path: FilePathType
+            Path for where to write or load (if overwrite=False) the NWBFile.
+            If specified, the context will always write to this location.
         metadata: dict
             metadata info for constructing the nwb file (optional).
             Should be of the format
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
-        use_times: bool
-            If True, the times are saved to the nwb file using recording.frame_to_time(). If False (default),
-            the sampling rate is used.
         save_path: PathType
             Required if an nwbfile is not passed. Must be the path to the nwbfile
             being appended, otherwise one is created and written.
@@ -109,6 +111,29 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         """
         if nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata)
+
+        # TODO on or after August 1st, 2022, remove argument and deprecation warnings
+        if save_path is not None:
+            will_be_removed_str = "will be removed on or after October 1st, 2022. Please use 'nwbfile_path' instead."
+            if nwbfile_path is not None:
+                if save_path == nwbfile_path:
+                    warn(
+                        "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
+                        f"'save_path' {will_be_removed_str}",
+                        DeprecationWarning,
+                    )
+                else:
+                    warn(
+                        "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
+                        f"'save_path' {will_be_removed_str}",
+                        DeprecationWarning,
+                    )
+            else:
+                warn(
+                    f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
+                    DeprecationWarning,
+                )
+                nwbfile_path = save_path
 
         if (
             HAVE_NDX_DANDI_ICEPHYS
