@@ -80,14 +80,15 @@ jobs:
           cd ..
       - name: Upload ephys dataset to S3
         # if: steps.cache-ephys-datasets.outputs.cache-hit == false
-        uses: jakejarvis/s3-sync-action@master
+        uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          args: --exclude '*' --include 'ephy_testing_data/neuroscope/*'
-        env:
-          AWS_S3_BUCKET: ${{ secrets.S3_GIN_BUCKET_ARN }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: "us-east-2"
+          command: sync
+          source: .
+          destination: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
+          flags: --dryrun --exclude '*' --include 'ephy_testing_data/neuroscope/*'
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: us-east-2
 
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
