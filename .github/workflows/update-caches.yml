@@ -107,9 +107,8 @@ jobs:
 
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        run: |
-          datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
-          cd behavior_testing_data
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+      - run: cd behavior_testing_data
       - name: Upload behavior dataset to S3
         #if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
