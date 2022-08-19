@@ -94,7 +94,7 @@ jobs:
         with:
           command: cp
           source: ./ophys_testing_data
-          destination: ${{ secrets.S3_GIN_BUCKET }}
+          destination: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
           flags: "--recursive"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
