@@ -265,9 +265,9 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
 
 
 def add_two_photon_series(
-    imaging,
-    nwbfile,
-    metadata,
+    imaging: ImagingExtractor,
+    nwbfile: NWBFile,
+    metadata: dict,
     two_photon_series_index: int = 0,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
@@ -548,7 +548,7 @@ def write_imaging(
     return nwbfile_out
 
 
-def get_nwb_segmentation_metadata(sgmextractor):
+def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
     """
     Convert metadata from the segmentation into nwb specific metadata.
 
