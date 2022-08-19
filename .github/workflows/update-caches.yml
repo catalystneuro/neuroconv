@@ -24,14 +24,14 @@ jobs:
           git config --global user.name "CI Almighty"
 
       - name: Get ephy_testing_data current head hash
-        id: ecephys
+        id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
-      - name: Cache ephys dataset - ${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+      - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
         uses: actions/cache@v2
-        id: cache-ecephys-datasets
+        id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ecephys-datasets-041422-ubuntu-latest-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-041422-ubuntu-latest-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
 
       - name: Get ophys_testing_data current head hash
         id: ophys
@@ -56,11 +56,11 @@ jobs:
 
 
       - name: Install datalad if needed
-        if: steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
+        if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         run: conda install -c conda-forge datalad==0.16.3
 
       - name: "Force GIN: ecephys download"
-        if: steps.cache-ecephys-datasets.outputs.cache-hit == false
+        if: steps.cache-ephys-datasets.outputs.cache-hit == false
         run: |
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           cd ephy_testing_data
@@ -78,23 +78,43 @@ jobs:
           datalad get -r ./axona/
           datalad get -r ./cellexplorer/
           cd ..
+      - name: Upload ephys dataset to S3
+        #if: steps.cache-ephys-datasets.outputs.cache-hit == false
+        uses: keithweaver/aws-s3-github-action@v1.0.0
+        with:
+          command: cp
+          source: ./ephy_testing_data
+          destination: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
+          flags: "--recursive"
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: us-east-2
 
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-
-      - name: "Force GIN: behavior download"
-        if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
-
-
-
       - name: Upload ophys dataset to S3
+        if: steps.cache-ophys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: cp
           source: ./ophys_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
+          flags: "--recursive"
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: us-east-2
+
+      - name: "Force GIN: behavior download"
+        if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+      - name: Upload behavior dataset to S3
+        #if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        uses: keithweaver/aws-s3-github-action@v1.0.0
+        with:
+          command: cp
+          source: ./behavior_testing_data
+          destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
           flags: "--recursive"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
