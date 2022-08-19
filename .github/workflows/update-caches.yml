@@ -107,18 +107,18 @@ jobs:
 
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+        run: |
+          datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+          cd behavior_testing_data
       - name: Upload behavior dataset to S3
         #if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: |
-            cd behavior_testing_data
-            sync
-            cd ..
+          command: sync
           source: .
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
-          flags: --exclude "*.*"
+          flags: --exclude "*.*" --exclude "/.*" --exclude ".*"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
+      - run: cd ..
