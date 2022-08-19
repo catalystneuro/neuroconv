@@ -46,8 +46,6 @@ def add_recording_extractor_properties(recording_extractor: BaseRecording):
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
 
-    RX = SpikeGLXRecordingExtractor
-
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
@@ -163,6 +161,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
+
+    RXName = "SpikeGLXRecordingExtractor"
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()

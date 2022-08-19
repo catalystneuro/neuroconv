@@ -14,6 +14,8 @@ class CEDRecordingInterface(
 ):
     """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
 
+    RXName = "CedRecordingExtractor"
+
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["smrx_channel_ids"])

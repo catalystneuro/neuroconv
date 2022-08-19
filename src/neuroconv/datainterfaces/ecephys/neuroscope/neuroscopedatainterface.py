@@ -165,7 +165,8 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
     """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
 
-    RX = se.NeuroscopeMultiRecordingTimeExtractor
+    RXModule = "spikeextractors"
+    RXName = "NeuroscopeMultiRecordingTimeExtractor"
 
     def __init__(
         self,
@@ -212,7 +213,7 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
-    RX = NeuroScopeRecordingExtractor
+    RXName = "NeuroScopeRecordingExtractor"
 
     def __init__(
         self,
