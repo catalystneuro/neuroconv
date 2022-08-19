@@ -59,7 +59,7 @@ jobs:
         if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         run: conda install -c conda-forge datalad==0.16.3
 
-      - name: "Force GIN: ecephys download"
+      - name: "Force GIN: ephys download"
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
         run: |
           datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
@@ -79,10 +79,10 @@ jobs:
           datalad get -r ./cellexplorer/
           cd ..
       - name: Upload ephys dataset to S3
-        #if: steps.cache-ephys-datasets.outputs.cache-hit == false
+        if: steps.cache-ephys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: cp
+          command: sync
           source: ./ephy_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
           flags: "--recursive"
@@ -97,7 +97,7 @@ jobs:
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: cp
+          command: sync
           source: ./ophys_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
           flags: "--recursive"
@@ -109,10 +109,10 @@ jobs:
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
       - name: Upload behavior dataset to S3
-        #if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: cp
+          command: sync
           source: ./behavior_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
           flags: "--recursive"
