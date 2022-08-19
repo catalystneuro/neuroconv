@@ -32,10 +32,17 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
-      - name: Install nwb-conversion-tools with minimal requirements
+
+      - name: Install with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
-        run: pytest tests/test_internals -n auto --dist loadscope
+        run: pytest tests/test_minimal -n auto --dist loadscope
+
+      - name: Install with ophys requirements
+        run: pip install .[ophys]
+      - name: Run ophys tests
+        run: pytest tests/test_ophys -n auto --dist loadscope
+
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
 
