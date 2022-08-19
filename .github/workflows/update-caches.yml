@@ -82,10 +82,10 @@ jobs:
         #if: steps.cache-ephys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: sync
+          command: cp
           source: ./ephy_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
-          flags: "--follow-symlinks"
+          flags: "--recursive"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
@@ -97,9 +97,10 @@ jobs:
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: sync
+          command: cp
           source: ./ophys_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
+          flags: "--recursive"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
@@ -111,9 +112,10 @@ jobs:
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: sync
+          command: cp
           source: ./behavior_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
+          flags: "--recursive"
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
