@@ -20,7 +20,7 @@ from ...utils import (
 
 class _LazyImagingExtractor(type(BaseDataInterface), type):
     def __getattribute__(self, name):
-        if name == "IX":
+        if name == "IX" and super().__getattribute__("IX") is None:
             roiextractors = get_package(package_name=self.IXModule or "roiextractors")
             return getattr(roiextractors, self.IXName or self.__name__.replace("Interface", "Extractor"))
         return super().__getattribute__(name)

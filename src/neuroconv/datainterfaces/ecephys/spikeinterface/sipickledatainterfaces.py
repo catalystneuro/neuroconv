@@ -9,7 +9,7 @@ from ....utils import FilePathType
 class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary interface for reading and converting SpikeInterface Recording objects through .pkl files."""
 
-    RX = None
+    RX = load_extractor_from_pickle
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         self.recording_extractor = load_extractor_from_pickle(pkl_file=file_path)
@@ -20,8 +20,6 @@ class SIPickleRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
 class SIPickleSortingExtractorInterface(BaseSortingExtractorInterface):
     """Primary interface for reading and converting SpikeInterface Sorting objects through .pkl files."""
-
-    SX = None
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         self.sorting_extractor = load_extractor_from_pickle(pkl_file=file_path)

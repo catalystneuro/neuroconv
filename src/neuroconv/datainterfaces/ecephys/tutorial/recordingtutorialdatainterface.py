@@ -33,6 +33,7 @@ class RecordingTutorialInterface(BaseRecordingExtractorInterface):
     """High-pass recording data interface for demonstrating NWB Conversion Tools usage in tutorials."""
 
     RX = TutorialRecordingExtractor
+    dynamic_load = False
 
     def __init__(self, duration: float = 10.0, num_channels: int = 4, sampling_frequency: float = 30000.0):
         """

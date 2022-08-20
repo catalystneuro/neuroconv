@@ -15,7 +15,7 @@ from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePa
 
 class _LazyRecordingExtractor(type(BaseDataInterface), type):
     def __getattribute__(self, name):
-        if name == "RX":
+        if name == "RX" and super().__getattribute__("RX") is None:
             extractor_module = get_package(package_name=self.RXModule or "spikeinterface.extractors")
             return getattr(extractor_module, self.RXName or self.__name__.replace("Interface", "Extractor"))
         return super().__getattribute__(name)

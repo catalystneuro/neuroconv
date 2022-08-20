@@ -13,7 +13,7 @@ from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePath
 
 class _LazySegmentationExtractor(type(BaseDataInterface), type):
     def __getattribute__(self, name):
-        if name == "SegX":
+        if name == "SegX" and super().__getattribute__("SegX") is None:
             roiextractors = get_package(package_name=self.SegXModule or "roiextractors")
             return getattr(roiextractors, self.SegXName or self.__name__.replace("Interface", "Extractor"))
         return super().__getattribute__(name)
