@@ -2,7 +2,7 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
-  push:
+  pull_request:
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
@@ -32,7 +32,7 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
-      - name: Install nwb-conversion-tools with minimal requirements
+      - name: Install neuroconv with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
         run: pytest tests/test_internals -n auto --dist loadscope
@@ -88,7 +88,7 @@ jobs:
         with:
           command: cp
           source: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
-          destination: .
+          destination: ./ophys_testing_data
           flags: --recursive
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -99,7 +99,7 @@ jobs:
         with:
           command: cp
           source: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
-          destination: .
+          destination: ./behavior_testing_data
           flags: --recursive
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
