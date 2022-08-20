@@ -9,8 +9,9 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...basedatainterface import BaseDataInterface
+from ...tools import get_package
 from ...tools.spikeinterface import write_recording
-from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType, get_package
+from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
 class _LazyRecordingExtractor(type(BaseDataInterface), type):

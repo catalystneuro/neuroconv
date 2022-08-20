@@ -7,8 +7,9 @@ from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhoton
 from roiextractors import SegmentationExtractor
 
 from ...basedatainterface import BaseDataInterface
+from ...tools import get_package
 from ...tools.roiextractors import write_segmentation, get_nwb_segmentation_metadata
-from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePathType, get_base_schema, get_package
+from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePathType, get_base_schema
 
 
 class _LazySegmentationExtractor(type(BaseDataInterface), type):

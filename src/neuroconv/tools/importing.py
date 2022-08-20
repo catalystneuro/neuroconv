@@ -1,9 +1,11 @@
+"""Tool functions for performaing imports."""
 import sys
 import importlib.util
 from platform import python_version
-from packaging import version
 from types import ModuleType
 from typing import Optional, Dict, List
+
+from packaging import version
 
 
 def get_package(
@@ -14,12 +16,28 @@ def get_package(
 ) -> ModuleType:
     """
     Check if package is installed and return module if so.
+
     Otherwise, raise informative error describing how to perform the installation.
     Inspired by https://docs.python.org/3/library/importlib.html#checking-if-a-module-can-be-imported.
+
     Parameters
     ----------
-    name : str
-        Name of the package to be installed.
+    package_name : str
+        Name of the package to be imported.
+    installation_source : str, optional
+        Name of the installation source of the package.
+        Typically either "pip" or "conda".
+        Defaults to "pip".
+    package_installation_display : str, optional
+        Name of the package to be installed via the 'installation_source', in case it differs from the import name.
+        Defaults to 'package_name'.
+    excluded_platforms_and_python_versions : dict mapping string platform names to a list of string versions, optional
+        In case some combinations of platforms or Python versions are not allowed for the given package, specify
+        this dictionary to raise a more specific error to that issue.
+        For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an informative error
+        when running on MacOS with Python version 3.7.
+        Allows all platforms and Python versions used by default.
+
     Raises
     ------
     ModuleNotFoundError
@@ -34,9 +52,6 @@ def get_package(
         return importlib.import_module(name=package_name)
 
     for excluded_version in excluded_platforms_and_python_versions.get(sys.platform, list()):
-        print(version.parse(excluded_version))
-        print(version.parse(python_version()))
-
         if version.parse(python_version()).minor == version.parse(excluded_version).minor:
             raise ModuleNotFoundError(
                 f"\nThe package '{package_installation_display}' is not available on the {sys.platform} platform for "

@@ -3,7 +3,8 @@ from dateutil.parser import parse as dateparse
 from typing import Optional
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, get_package
+from ....tools import get_package
+from ....utils import FilePathType
 
 
 def extract_extra_metadata(file_path):

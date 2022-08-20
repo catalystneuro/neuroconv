@@ -6,7 +6,8 @@ from pynwb.file import NWBFile
 
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import dict_deep_update, FilePathType, OptionalFilePathType, get_package
+from ....tools import get_package
+from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
 
 
 class DeepLabCutInterface(BaseDataInterface):

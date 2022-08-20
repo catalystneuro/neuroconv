@@ -7,12 +7,12 @@ from pynwb.ecephys import ElectricalSeries
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....tools import get_package
 from ....utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     FilePathType,
     OptionalFilePathType,
-    get_package,
 )
 
 
