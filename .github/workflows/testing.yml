@@ -76,8 +76,8 @@ jobs:
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: cp
-          destination: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
-          source: ./ephy_testing_data
+          source: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
+          destination: ./ephy_testing_data
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
@@ -86,8 +86,8 @@ jobs:
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: cp
-          destination: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
-          source: ./ophys_testing_data
+          source: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
+          destination: ./ophys_testing_data
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
@@ -96,8 +96,8 @@ jobs:
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: cp
-          destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
-          source: ./behavior_testing_data
+          source: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
+          destination: ./behavior_testing_data
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
