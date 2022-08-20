@@ -2,7 +2,7 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
-  pull_request:
+  push:
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
