@@ -2,7 +2,7 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
-  pull_request:
+  push:
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
@@ -77,7 +77,8 @@ jobs:
         with:
           command: cp
           source: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
-          destination: ./ephy_testing_data
+          destination: .
+          flags: --recursive
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
@@ -87,7 +88,8 @@ jobs:
         with:
           command: cp
           source: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
-          destination: ./ophys_testing_data
+          destination: .
+          flags: --recursive
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
@@ -97,7 +99,8 @@ jobs:
         with:
           command: cp
           source: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
-          destination: ./behavior_testing_data
+          destination: .
+          flags: --recursive
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
