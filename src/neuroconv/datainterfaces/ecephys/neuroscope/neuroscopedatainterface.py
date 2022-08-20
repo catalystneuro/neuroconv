@@ -73,7 +73,7 @@ def add_recording_extractor_properties(
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
 
-    RX = NeuroScopeRecordingExtractor
+    RXName = "NeuroScopeRecordingExtractor"
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str):
@@ -165,7 +165,8 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
 class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
     """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
 
-    RX = se.NeuroscopeMultiRecordingTimeExtractor
+    RXModule = "spikeextractors"
+    RXName = "NeuroscopeMultiRecordingTimeExtractor"
 
     def __init__(
         self,
@@ -212,7 +213,7 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
-    RX = NeuroScopeRecordingExtractor
+    RXName = "NeuroScopeRecordingExtractor"
 
     def __init__(
         self,

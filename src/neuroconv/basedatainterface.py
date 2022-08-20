@@ -1,5 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import abstractmethod, ABC
+from abc import abstractmethod, ABC, ABCMeta
 import uuid
 from typing import Optional
 
@@ -8,7 +8,7 @@ from pynwb import NWBFile
 from .utils import get_base_schema, get_schema_from_method_signature
 
 
-class BaseDataInterface(ABC):
+class BaseDataInterface(ABC, metaclass=ABCMeta):
     """Abstract class defining the structure of all DataInterfaces."""
 
     @classmethod

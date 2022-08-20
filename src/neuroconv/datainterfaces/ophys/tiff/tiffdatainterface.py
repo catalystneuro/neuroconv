@@ -1,13 +1,9 @@
-from roiextractors import TiffImagingExtractor
-
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType, FloatType, ArrayType
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for TiffImagingExtractor."""
-
-    IX = TiffImagingExtractor
 
     @classmethod
     def get_source_schema(cls):

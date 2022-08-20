@@ -9,12 +9,12 @@ def _test_sonpy_installation() -> None:
     get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
 
 
-class CEDRecordingInterface(BaseRecordingExtractorInterface):
+class CEDRecordingInterface(
+    BaseRecordingExtractorInterface,
+):
     """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
 
-    _test_sonpy_installation()
-    spikeinterface = get_package(package_name="spikeinterface")
-    RX = spikeinterface.extractors.CedRecordingExtractor
+    RXName = "CedRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls):
@@ -26,9 +26,13 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_all_channels_info(cls, file_path: FilePathType):
         """Retrieve and inspect necessary channel information prior to initialization."""
+        _test_sonpy_installation()
+        getattr(cls, "RX")  # Required to trigger dynamic access in case this method is called first
         return cls.RX.get_all_channels_info(file_path=file_path)
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        _test_sonpy_installation()
+
         stream_id = None
         if Path(file_path).suffix == ".smr":
             stream_id = "1"

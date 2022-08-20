@@ -19,6 +19,8 @@ from ....utils import (
 class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a BlackrockRecordingExtractor."""
 
+    RXName = "BlackrockRecordingExtractor"
+
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(

@@ -1,10 +1,10 @@
 """Author: Ben Dichter."""
 from typing import Optional
-from abc import ABC
 
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
+from roiextractors import ImagingExtractor
 
 from ...basedatainterface import BaseDataInterface
 from ...tools.roiextractors import write_imaging, get_nwb_imaging_metadata
@@ -14,11 +14,28 @@ from ...utils import (
     get_base_schema,
     OptionalFilePathType,
     dict_deep_update,
+    get_package,
 )
 
 
-class BaseImagingExtractorInterface(BaseDataInterface, ABC):
-    IX = None
+class _LazyImagingExtractor(type(BaseDataInterface), type):
+    def __getattribute__(self, name):
+        if name == "IX" and super().__getattribute__("IX") is None:
+            roiextractors = get_package(package_name=self.IXModule or "roiextractors")
+            return getattr(roiextractors, self.IXName or self.__name__.replace("Interface", "Extractor"))
+        return super().__getattribute__(name)
+
+
+class BaseImagingExtractorInterface(BaseDataInterface, metaclass=_LazyImagingExtractor):
+    """Parent class for all ImagingExtractorInterfaces."""
+
+    IXModule: Optional[str] = None  # Defaults to "roiextractors". Manually override in subclass if needed.
+    IXName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor"). Manually override if needed.
+    IX: ImagingExtractor = None  # Loads dynamically on first access attempt
+
+    def __new__(cls, *args, **kwargs):
+        cls.IX = getattr(cls, "IX")
+        return object.__new__(cls)
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)

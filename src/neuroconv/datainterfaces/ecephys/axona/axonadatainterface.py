@@ -1,7 +1,5 @@
 """Authors: Heberto Mayorquin, Steffen Buergers."""
-import spikeextractors as se
 from pynwb import NWBFile
-from spikeinterface.extractors import AxonaRecordingExtractor, NumpyRecording
 
 from .axona_utils import read_all_eeg_file_lfp_data, get_eeg_sampling_frequency, get_position_object
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -11,10 +9,8 @@ from ....tools.nwb_helpers import get_module
 from ....utils import get_schema_from_method_signature, FilePathType
 
 
-class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
+class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a AxonaRecordingExtractor"""
-
-    RX = AxonaRecordingExtractor
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         super().__init__(file_path=file_path, all_annotations=True, verbose=verbose)
@@ -82,10 +78,8 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
+class AxonaUnitRecordingInterface(AxonaRecordingInterface):
     """Primary data interface class for converting a AxonaRecordingExtractor"""
-
-    RX = se.AxonaUnitRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -108,9 +102,7 @@ class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
 
 
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
-    """..."""
-
-    RX = NumpyRecording
+    RXName = "NumpyRecording"
 
     @classmethod
     def get_source_schema(cls):

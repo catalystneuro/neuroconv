@@ -33,7 +33,7 @@ from neuroconv.datainterfaces import (
     SpikeGLXLFPInterface,
     BlackrockRecordingExtractorInterface,
     BlackrockSortingExtractorInterface,
-    AxonaRecordingExtractorInterface,
+    AxonaRecordingInterface,
     AxonaLFPDataInterface,
     EDFRecordingInterface,
 )
@@ -105,7 +105,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     parameterized_recording_list = [
         param(
-            data_interface=AxonaRecordingExtractorInterface,
+            data_interface=AxonaRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
         param(
