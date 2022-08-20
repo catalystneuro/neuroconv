@@ -2,7 +2,7 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
-  push:
+  pull_request:
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
@@ -71,14 +71,14 @@ jobs:
 
 
 
-      - if: steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
+      - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         name: Install and configure AWS CLI
         run: |
           pip install awscli==1.25.27
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         
-      - if: steps.cache-ecephys-datasets.outputs.cache-hit == false
+      - if: steps.cache-ephys-datasets.outputs.cache-hit == false
         name: Download ephys dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
       - if: steps.cache-ophys-datasets.outputs.cache-hit == false
