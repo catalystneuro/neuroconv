@@ -49,7 +49,7 @@ jobs:
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ephys-datasets-2022-08-19-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
@@ -58,7 +58,7 @@ jobs:
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
-          key: ophys-datasets-2022-08-03-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+          key: ophys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: Get behavior_testing_data current head hash
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
@@ -67,50 +67,26 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-2022-07-29-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
 
 
+      - if: steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
+        name: Install and configure AWS CLI
+        run: |
+          pip install awscli==1.25.27
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        
       - if: steps.cache-ecephys-datasets.outputs.cache-hit == false
         name: Download ephys dataset from S3
-        #uses: keithweaver/aws-s3-github-action@v1.0.0
-        #with:
-        #  command: cp
-        #  source: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
-        #  destination: ./ephy_testing_data
-        #  flags: --recursive
-        #  aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        #  aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        #  aws_region: us-east-2
-        uses: prewk/s3-cp-action@v2
-        with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          source: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
-          dest: ./ephy_testing_data
-          flags: --recursive
+        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
       - if: steps.cache-ophys-datasets.outputs.cache-hit == false
         name: Download ophys dataset from S3
-        uses: keithweaver/aws-s3-github-action@v1.0.0
-        with:
-          command: cp
-          source: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
-          destination: ./ophys_testing_data
-          flags: --recursive
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: us-east-2
+        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data ./ophys_testing_data
       - if: steps.cache-behavior-datasets.outputs.cache-hit == false
         name: Download behavior dataset from S3
-        uses: keithweaver/aws-s3-github-action@v1.0.0
-        with:
-          command: cp
-          source: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
-          destination: ./behavior_testing_data
-          flags: --recursive
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: us-east-2
+        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 
 
 
