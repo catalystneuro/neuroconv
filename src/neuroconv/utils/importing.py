@@ -6,17 +6,6 @@ from types import ModuleType
 from typing import Optional, Dict, List
 
 
-HAVE_SONPY = True
-try:
-    import sonpy
-except ImportError:
-    HAVE_SONPY = False
-INSTALL_MESSAGE = "Please install sonpy to use this interface (pip install sonpy)!"
-if sys.platform == "darwin" and version.parse(python_version()) < version.parse("3.8"):
-    HAVE_SONPY = False
-    INSTALL_MESSAGE = "The sonpy package (CED dependency) is not available on Mac for Python versions below 3.8!"
-
-
 def get_package(
     package_name: str,
     installation_source: str = "pip",
@@ -47,11 +36,14 @@ def get_package(
     if importlib.util.find_spec(package_name) is not None:
         return importlib.import_module(name=package_name)
 
-    for excluded_versions in excluded_platforms_and_python_versions.get(sys.platform, list()):
-        if version.parse(python_version()) == version.parse(excluded_versions):
+    for excluded_version in excluded_platforms_and_python_versions.get(sys.platform, list()):
+        print(version.parse(excluded_version))
+        print(version.parse(python_version()))
+
+        if version.parse(python_version()) == version.parse(excluded_version):
             raise ModuleNotFoundError(
-                f"\nThe package {package_installation_display} is not available on the {sys.platform} platform for "
-                f"Python versions {excluded_platforms_and_python_versions[sys.platform]}!"
+                f"\nThe package '{package_installation_display}' is not available on the {sys.platform} platform for "
+                f"Python version {excluded_version}!"
             )
 
     raise ModuleNotFoundError(
