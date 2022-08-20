@@ -24,7 +24,7 @@ from neuroconv import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
 
-@pytest.mark.skipif( not(platform == "darwin" and version.parse(python_version()) < version.parse("3.8")), reason="Not testing on MacOSX with Python<3.8!")
+@pytest.mark.skipif( platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"), reason="Not testing on MacOSX with Python<3.8!")
 class TestAssertions(TestCase):
     def test_import_assertions(self):
         with self.assertRaisesWith(
