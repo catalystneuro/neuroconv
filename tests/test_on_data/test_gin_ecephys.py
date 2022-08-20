@@ -117,7 +117,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             case_name="artificial_data",
         ),
     ]
-    if not (platform == "darwin" and and version.parse(python_version()) < version.parse("3.8")):
+    if platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,
