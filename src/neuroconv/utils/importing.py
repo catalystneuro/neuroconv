@@ -48,7 +48,7 @@ def get_package(
         return importlib.import_module(name=package_name)
 
     for excluded_versions in excluded_platforms_and_python_versions.get(sys.platform, list()):
-        if version.parse(python_version()) < version.parse(excluded_versions):
+        if version.parse(python_version()) == version.parse(excluded_versions):
             raise ModuleNotFoundError(
                 f"\nThe package {package_installation_display} is not available on the {sys.platform} platform for "
                 f"Python versions {excluded_platforms_and_python_versions[sys.platform]}!"
