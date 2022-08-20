@@ -77,7 +77,7 @@ jobs:
         with:
           command: cp
           source: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
-          destination: ./ephys_testing_data
+          destination: ./ephy_testing_data
           flags: --recursive
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
