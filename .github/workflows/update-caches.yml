@@ -1,7 +1,7 @@
 name: Updated Caches and Upload to S3
-on: push
-  #schedule:
-  #  - cron: "0 0 * * *"
+on:
+  schedule:
+    - cron: "0 0 * * *"
 jobs:
   run:
     name: Update cache and upload to S3
@@ -65,7 +65,7 @@ jobs:
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
       - name: Upload ephys dataset to S3
-        # if: steps.cache-ephys-datasets.outputs.cache-hit == false
+        if: steps.cache-ephys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: sync
