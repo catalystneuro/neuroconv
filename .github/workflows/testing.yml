@@ -75,7 +75,7 @@ jobs:
         name: Download ephys dataset from S3
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: sync
+          command: cp
           destination: ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data
           source: ./ephy_testing_data
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -85,7 +85,7 @@ jobs:
         name: Download ophys dataset from S3
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: sync
+          command: cp
           destination: ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data
           source: ./ophys_testing_data
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -95,7 +95,7 @@ jobs:
         name: Download behavior dataset from S3
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
-          command: sync
+          command: cp
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
           source: ./behavior_testing_data
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
