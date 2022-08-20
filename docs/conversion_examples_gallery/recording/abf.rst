@@ -45,7 +45,7 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
     ... )
     >>>
     >>> # Run conversion
-    >>> interface.run_conversion(metadata=metadata, save_path='converted_icephys.nwb')
+    >>> interface.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata)
 
 
 
@@ -102,4 +102,4 @@ If you have multiple ABF files for the same experiment, one file per recording s
     ... )
     >>>
     >>> # Run conversion
-    >>> interface.run_conversion(metadata=metadata, save_path='converted_icephys.nwb')
+    >>> interface.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata)
