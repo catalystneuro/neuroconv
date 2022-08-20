@@ -40,7 +40,7 @@ def get_package(
         print(version.parse(excluded_version))
         print(version.parse(python_version()))
 
-        if version.parse(python_version()) == version.parse(excluded_version):
+        if version.parse(python_version()).minor == version.parse(excluded_version).minor:
             raise ModuleNotFoundError(
                 f"\nThe package '{package_installation_display}' is not available on the {sys.platform} platform for "
                 f"Python version {excluded_version}!"
