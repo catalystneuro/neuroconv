@@ -1,11 +1,11 @@
 Intracellular electrophysiology
 ===================
 
-Base Recording
+Base Interface
 --------------
 .. automodule:: neuroconv.datainterfaces.icephys.baseicephysinterface
 
 
-Abf Recording
+Abf Interface
 -------------------
 .. automodule:: neuroconv.datainterfaces.icephys.abf.abfdatainterface
