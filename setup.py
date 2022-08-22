@@ -19,17 +19,18 @@ with open(root / "requirements-full.txt") as f:
     full_dependencies.update(f.readlines())
 
 extras_require = defaultdict(list)
-subpaths = (root / "src" / "neuroconv" / "datainterfaces").rglob("*/requirements.txt")
-for subpath in subpaths:
-    with open(subpath) as f:
-        subpath_requirements = f.readlines()
-    extras_require[subpath.parent.name].extend(subpath_requirements)
-    full_dependencies.update(subpath_requirements)
-
-    if "ophys" in subpath.parts:
-        extras_require["ophys"].extend(subpath_requirements)
-
-
+modality_to_glob = dict()
+for modality in ["ophys", "ecephys", "icephys", "behavior"]:
+    modality_to_glob.update(
+        {modality: (root / "src" / "neuroconv" / "datainterfaces" / "ophys").rglob("*/requirements.txt")}
+    )
+for modality, modality_subpaths in modality_to_glob.items():
+    for modality_subpath in modality_subpaths:
+        with open(modality_subpath) as f:
+            subpath_requirements = f.readlines()
+        full_dependencies.update(subpath_requirements)
+        extras_require[modality].extend(subpath_requirements)
+        extras_require[modality_subpath.parent.name].extend(subpath_requirements)
 extras_require.update(full=list(full_dependencies), test=testing_suite_dependencies, docs=documentation_dependencies)
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
