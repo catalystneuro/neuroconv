@@ -10,7 +10,7 @@ from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
 
 def get_start_datetime(neo_reader):
-    """Get start datetime for .abf file."""
+    """Get start datetime for Abf file."""
     if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
         startDate = str(neo_reader._axon_info["uFileStartDate"])
         startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
@@ -50,10 +50,14 @@ class AbfInterface(BaseIcephysInterface):
         """
         ABF IcephysInterface based on Neo AxonIO.
 
-        Args:
-            file_paths (list): List of files to be converted to the same nwb file.
-            icephys_metadata (dict, optional): Dictionary containing the Icephys-specific metadata. Defaults to None.
-            icephys_metadata_file_path (str, optional): JSON file containing the Icephys-specific metadata. Defaults to None.
+        Parameters
+        ----------
+            file_paths: list
+                List of files to be converted to the same nwb file.
+            icephys_metadata: dict, optional
+                Dictionary containing the Icephys-specific metadata. Defaults to None.
+            icephys_metadata_file_path: str, optional
+                JSON file containing the Icephys-specific metadata. Defaults to None.
         """
         super().__init__(file_paths=file_paths)
         self.source_data["icephys_metadata"] = icephys_metadata

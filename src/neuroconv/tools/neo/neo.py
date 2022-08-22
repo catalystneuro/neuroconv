@@ -229,7 +229,8 @@ def add_icephys_recordings(
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         The default is 'voltage_clamp'.
     stimulus_type : str
-    skip_electrodes: tuple
+    skip_electrodes: tuple, optional
+        Electrode IDs to skip. Defaults to ().
     compression: str | bool
     """
     n_segments = get_number_of_segments(neo_reader, block=0)
@@ -404,7 +405,8 @@ def add_all_to_nwbfile(
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
     stimulus_type: str, optional
-    skip_electrodes: str, optional
+    skip_electrodes: tuple, optional
+        Electrode IDs to skip. Defaults to ().
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -493,6 +495,8 @@ def write_neo_to_nwb(
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
+    skip_electrodes: tuple, optional
+        Electrode IDs to skip. Defaults to ().
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"

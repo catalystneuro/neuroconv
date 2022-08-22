@@ -1,6 +1,6 @@
 """Author: Luiz Tauffer."""
 from abc import ABC
-from typing import Optional
+from typing import Optional, Tuple
 from warnings import warn
 
 from pynwb import NWBFile, NWBHDF5IO
@@ -76,10 +76,9 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         nwbfile: NWBFile = None,
         nwbfile_path: OptionalFilePathType = None,
         metadata: dict = None,
-        stub_test: bool = False,
         overwrite: bool = False,
         icephys_experiment_type: Optional[str] = None,
-        skip_electrodes: tuple = (),
+        skip_electrodes: Tuple[int] = (),
         save_path: OptionalFilePathType = None,  # TODO: to be removed
     ):
         """
@@ -94,20 +93,13 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
             If specified, the context will always write to this location.
         metadata: dict
             metadata info for constructing the nwb file (optional).
-            Should be of the format
-                metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
-        save_path: PathType
-            Required if an nwbfile is not passed. Must be the path to the nwbfile
-            being appended, otherwise one is created and written.
         overwrite: bool
-            If using save_path, whether or not to overwrite the NWBFile if it already exists.
-        stub_test: bool, optional (default False)
-            If True, will truncate the data to run the conversion faster and take up less memory.
+            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         icephys_experiment_type: str (optional)
             Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero' (all current and amplifier settings turned off).
             If no value is passed, 'voltage_clamp' is used as default.
-        skip_electrodes: tuple
-
+        skip_electrodes: tuple, optional
+            Electrode IDs to skip. Defaults to ().
         """
         if nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata)
