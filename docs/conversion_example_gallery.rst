@@ -16,12 +16,13 @@ Recording
     Axona <conversion_examples_gallery/recording/axona>
     Blackrock <conversion_examples_gallery/recording/blackrock>
     Intan <conversion_examples_gallery/recording/intan>
+    European Data Format (EDF) <conversion_examples_gallery/recording/edf>
     Neuralynx <conversion_examples_gallery/recording/neuralynx>
     Neuroscope <conversion_examples_gallery/recording/neuroscope>
     OpenEphys <conversion_examples_gallery/recording/openephys>
     Spikegadgets <conversion_examples_gallery/recording/spikegadgets>
     Spikelgx <conversion_examples_gallery/recording/spikeglx>
-    EDF <conversion_examples_gallery/recording/edf>
+    Tucker-Davis Technologies (TDT) <conversion_examples_gallery/recording/tdt>
 
 Sorting
 -------

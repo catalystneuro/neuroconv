@@ -62,5 +62,9 @@ SpikeGLX Recording
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
 
 European Data Format (EDF) Recording
-------------------
+------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
+
+Tucker-Davis Technologies (TDT) Recording
+-----------------------------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface
