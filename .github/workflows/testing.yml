@@ -32,22 +32,24 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
-      - name: Install nwb-conversion-tools with minimal requirements
+      - name: Install neuroconv with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
         run: pytest tests/test_internals -n auto --dist loadscope
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
 
+
+
       - name: Get ephy_testing_data current head hash
-        id: ecephys
+        id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
-      - name: Cache ephys dataset - ${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+      - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
         uses: actions/cache@v2
-        id: cache-ecephys-datasets
+        id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ecephys-datasets-2022-08-03-${{ matrix.os }}-${{ steps.ecephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
@@ -56,7 +58,7 @@ jobs:
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
-          key: ophys-datasets-2022-08-03-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+          key: ophys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: Get behavior_testing_data current head hash
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
@@ -65,51 +67,30 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-2022-07-29-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
-      - if: ${{ (steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false) && matrix.os == 'ubuntu-latest' }}
-        name: Get datalad - Linux
-        run: conda install -c conda-forge datalad==0.16.3
-      - if: ${{ (steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false) && matrix.os == 'windows-latest' }}
-        name: Get git-annex - Windows
-        uses: crazy-max/ghaction-chocolatey@v1.6.0
-        with:
-          args: install git-annex --ignore-checksums
-      - if: ${{ (steps.cache-ecephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false) && matrix.os == 'windows-latest' }}
-        name: Get datalad - Windows
-        run: pip install datalad==0.16.3
+          key: behavior-datasets-2022-08-18-${{ matrix.os }}-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
-      - if: steps.cache-ecephys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
-        name: "Force GIN: ecephys download"
+
+
+      - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
+        name: Install and configure AWS CLI
         run: |
-          datalad install https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-          cd ephy_testing_data
-          datalad get -r ./neuralynx/Cheetah_v5.4.0/original_data/
-          datalad get -r ./neuralynx/Cheetah_v5.5.1/original_data/
-          datalad get -r ./neuralynx/Cheetah_v5.6.3/original_data/
-          datalad get -r ./neuralynx/Cheetah_v5.7.4/original_data/
-          datalad get -r ./neuroscope/
-          datalad get -r ./openephysbinary/v0.4.4.1_with_video_tracking/
-          datalad get -r ./blackrock/
-          datalad get -r ./intan/
-          datalad get -r ./spikegadgets/
-          datalad get -r ./spike2/
-          datalad get -r ./spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/
-          datalad get -r ./spikeglx/TEST_20210920_0_g0/
-          datalad get -r ./phy/phy_example_0/
-          datalad get -r ./axona/
-          datalad get -r ./cellexplorer/
-          datalad get -r ./axon/
-          datalad get -r ./edf/
-          cd ..
-      - if: steps.cache-ophys-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
-        name: "Force GIN: ophys download"
-        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-      - if: steps.cache-behavior-datasets.outputs.cache-hit == false && (matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest')
-        name: "Force GIN: behavior download"
-        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+          pip install awscli==1.25.27
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest'}}
-        name: Run full pytest with coverage
+      - if: steps.cache-ephys-datasets.outputs.cache-hit == false
+        name: Download ephys dataset from S3
+        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
+      - if: steps.cache-ophys-datasets.outputs.cache-hit == false
+        name: Download ophys dataset from S3
+        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data ./ophys_testing_data
+      - if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        name: Download behavior dataset from S3
+        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
+
+
+
+      - name: Run full pytest with coverage
         run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         name: Upload full coverage to Codecov
