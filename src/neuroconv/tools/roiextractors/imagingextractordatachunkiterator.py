@@ -1,3 +1,4 @@
+"""General purpose iterator for all ImagingExtractor data."""
 from typing import Tuple, Optional
 
 import numpy as np
@@ -6,9 +7,7 @@ from roiextractors import ImagingExtractor
 
 
 class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
-    """
-    DataChunkIterator for ImagingExtractor objects primarily used when writing imaging data to an NWB file.
-    """
+    """DataChunkIterator for ImagingExtractor objects primarily used when writing imaging data to an NWB file."""
 
     def __init__(
         self,
@@ -83,10 +82,10 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         )
 
     def _get_scaled_buffer_shape(self, buffer_gb: float, chunk_shape: tuple) -> tuple:
-        """Select the buffer_shape with size in GB less than the threshold of buffer_gb
-        and as a multiplier of chunk_shape."""
+        """Select the buffer_shape less than the threshold of buffer_gb that is also a multiple of the chunk_shape."""
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
+
         image_size = self._get_maxshape()[1:]
         min_buffer_shape = tuple([chunk_shape[0]]) + image_size
         scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape) * self._get_dtype().itemsize)))
@@ -97,19 +96,25 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
                 for dimension_index, dimension_length in enumerate(max_buffer_shape)
             ]
         )
-
         return scaled_buffer_shape
 
     def _get_dtype(self) -> np.dtype:
         return self.imaging_extractor.get_dtype()
 
     def _get_maxshape(self) -> tuple:
-        return (self.imaging_extractor.get_num_frames(),) + self.imaging_extractor.get_image_size()[::-1]
+        video_shape = (self.imaging_extractor.get_num_frames(),)
+        image_shape = self.imaging_extractor.get_image_size()
+        width, height = image_shape[1], image_shape[0]  # ROIExtractors convention is flipped
+        video_shape += (width, height)
+        if len(image_shape) == 3:
+            depth = image_shape[2]
+            video_shape += (depth,)
+        return video_shape
 
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:
         data = self.imaging_extractor.get_video(
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
         )
-
-        return data.transpose((0, 2, 1))[(slice(0, self.buffer_shape[0]),) + selection[1:]]
+        tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
+        return data.transpose(tranpose_axes)[(slice(0, self.buffer_shape[0]),) + selection[1:]]

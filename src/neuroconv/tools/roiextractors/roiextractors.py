@@ -1,18 +1,15 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl"""
-import os
+"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl."""
 from collections import defaultdict
-from pathlib import Path
 from warnings import warn
 from typing import Optional
 from copy import deepcopy
 
+import psutil
 import numpy as np
 from hdmf.common import VectorData
-
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBFile
 from pynwb.base import Images
-from pynwb.file import Subject
 from pynwb.image import GrayscaleImage
 from pynwb.device import Device
 from pynwb.ophys import (
@@ -29,13 +26,9 @@ from pynwb.ophys import (
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
+from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
-from ...utils import (
-    FilePathType,
-    OptionalFilePathType,
-    dict_deep_update,
-    calculate_regular_series_rate,
-)
+from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
 
 
 def get_default_ophys_metadata():
@@ -272,16 +265,29 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
 
 
 def add_two_photon_series(
-    imaging, nwbfile, metadata, buffer_size=10, use_times=False, two_photon_series_index: int = 0
+    imaging: ImagingExtractor,
+    nwbfile: NWBFile,
+    metadata: dict,
+    two_photon_series_index: int = 0,
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+    use_times=False,  # TODO: to be removed
+    buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
     Auxiliary static method for nwbextractor.
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+    if buffer_size:
+        warn(
+            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
+            "Specify as a key in the new 'iterator_options' dictionary instead."
+        )
+
+    iterator_options = iterator_options or dict()
 
     metadata_copy = deepcopy(metadata)
     metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy, append_list=False)
@@ -301,15 +307,13 @@ def add_two_photon_series(
     two_photon_series_metadata.update(imaging_plane=imaging_plane)
 
     # Add the data
-    def data_generator(imaging):
-        for i in range(imaging.get_num_frames()):
-            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
-
-    data = H5DataIO(
-        data=DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
-        compression=True,
-    )
     two_p_series_kwargs = two_photon_series_metadata
+    frames_to_iterator = _imaging_frames_to_hdmf_iterator(
+        imaging=imaging,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+    )
+    data = H5DataIO(data=frames_to_iterator, compression=True)
     two_p_series_kwargs.update(data=data)
 
     # Add dimension
@@ -329,6 +333,83 @@ def add_two_photon_series(
     nwbfile.add_acquisition(two_photon_series)
 
     return nwbfile
+
+
+def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
+    """
+    Raise an error if the full traces of an imaging extractor are larger than available memory.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        An imaging extractor object from roiextractors.
+
+    Raises
+    ------
+    MemoryError
+    """
+    element_size_in_bytes = imaging.get_dtype().itemsize
+    image_size = imaging.get_image_size()
+    num_frames = imaging.get_num_frames()
+
+    traces_size_in_bytes = num_frames * np.prod(image_size) * element_size_in_bytes
+    available_memory_in_bytes = psutil.virtual_memory().available
+
+    if traces_size_in_bytes > available_memory_in_bytes:
+        message = (
+            f"Memory error, full TwoPhotonSeries data is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
+            f"({round(available_memory_in_bytes/1e9, 2)} GB are available! Please use iterator_type='v2'."
+        )
+        raise MemoryError(message)
+
+
+def _imaging_frames_to_hdmf_iterator(
+    imaging: ImagingExtractor,
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+):
+    """
+    Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The imaging extractor to get the data from.
+    iterator_type : str (optional, defaults to 'v2')
+        The type of iterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
+        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+        For 'v1' this is the same as the options for the DataChunkIterator.
+        For 'v2', see
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+
+    Returns
+    -------
+    DataChunkIterator
+        The frames of the imaging extractor wrapped in an iterator object.
+    """
+
+    def data_generator(imaging):
+        for i in range(imaging.get_num_frames()):
+            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+
+    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v1', 'v2' (recommended), or None."
+    iterator_options = dict() if iterator_options is None else iterator_options
+
+    if iterator_type is None:
+        check_if_imaging_fits_into_memory(imaging=imaging)
+        return imaging.get_video().transpose((0, 2, 1))
+
+    if iterator_type == "v1":
+        if "buffer_size" not in iterator_options:
+            iterator_options.update(buffer_size=10)
+        return DataChunkIterator(data=data_generator(imaging), **iterator_options)
+
+    return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
 
 def add_epochs(imaging, nwbfile):
@@ -366,8 +447,10 @@ def write_imaging(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    buffer_size: int = 10,
-    use_times=False,
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+    use_times=False,  # TODO: to be removed
+    buffer_size: Optional[int] = None,  # TODO: to be removed
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
@@ -397,13 +480,30 @@ def write_imaging(
         The default is True.
     num_chunks: int
         Number of chunks for writing data to file
+    iterator_type : str (optional, defaults to 'v2')
+        The type of iterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
+        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+        For 'v1' this is the same as the options for the DataChunkIterator.
+        For 'v2', see
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
+    iterator_options = iterator_options or dict()
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+    if buffer_size:
+        warn(
+            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
+            "Specify as a key in the new 'iterator_options' dictionary instead."
+        )
 
     # TODO on or after August 1st, 2022, remove argument and deprecation warnings
     if save_path is not None:
@@ -437,12 +537,18 @@ def write_imaging(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         add_devices(nwbfile=nwbfile_out, metadata=metadata)
-        add_two_photon_series(imaging=imaging, nwbfile=nwbfile_out, metadata=metadata, buffer_size=buffer_size)
+        add_two_photon_series(
+            imaging=imaging,
+            nwbfile=nwbfile_out,
+            metadata=metadata,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
         add_epochs(imaging=imaging, nwbfile=nwbfile_out)
     return nwbfile_out
 
 
-def get_nwb_segmentation_metadata(sgmextractor):
+def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
     """
     Convert metadata from the segmentation into nwb specific metadata.
 
