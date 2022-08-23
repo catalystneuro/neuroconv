@@ -1,3 +1,6 @@
+import os
+from glob import glob
+
 from setuptools import setup, find_packages
 from pathlib import Path
 from shutil import copy
@@ -21,16 +24,21 @@ with open(root / "requirements-full.txt") as f:
 extras_require = defaultdict(list)
 modality_to_glob = dict()
 for modality in ["ophys", "ecephys", "icephys", "behavior"]:
-    modality_to_glob.update(
-        {modality: (root / "src" / "neuroconv" / "datainterfaces" / "ophys").rglob("*/requirements.txt")}
-    )
-for modality, modality_subpaths in modality_to_glob.items():
-    for modality_subpath in modality_subpaths:
-        with open(modality_subpath) as f:
-            subpath_requirements = f.readlines()
-        full_dependencies.update(subpath_requirements)
-        extras_require[modality].extend(subpath_requirements)
-        extras_require[modality_subpath.parent.name].extend(subpath_requirements)
+    modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
+
+    for source_type_path in glob(os.path.join(modality_path, "*", "")):
+        if "__pycache__" in source_type_path:
+            continue
+        source_type_requirements_path = Path(source_type_path) / "requirements.txt"
+        if os.path.exists(source_type_requirements_path):
+            with open(source_type_requirements_path) as f:
+                source_type_requirements = f.read().splitlines()
+        else:
+            source_type_requirements = []
+        full_dependencies.update(source_type_requirements)
+        extras_require[modality].extend(source_type_requirements)
+        extras_require[Path(source_type_path).name].extend(source_type_requirements)
+
 extras_require.update(full=list(full_dependencies), test=testing_suite_dependencies, docs=documentation_dependencies)
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
