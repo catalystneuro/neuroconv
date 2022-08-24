@@ -1,5 +1,3 @@
-from .ecephys.tutorial.recordingtutorialdatainterface import RecordingTutorialInterface
-from .ecephys.tutorial.sortingtutorialdatainterface import SortingTutorialInterface
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
@@ -52,8 +50,6 @@ from .icephys.abf.abfdatainterface import AbfInterface
 
 
 interface_list = [
-    RecordingTutorialInterface,
-    SortingTutorialInterface,
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,

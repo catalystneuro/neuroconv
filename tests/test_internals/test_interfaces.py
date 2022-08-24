@@ -13,14 +13,8 @@ from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
-from neuroconv import (
-    NWBConverter,
-    RecordingTutorialInterface,
-    SortingTutorialInterface,
-    SIPickleRecordingExtractorInterface,
-    SIPickleSortingExtractorInterface,
-    CEDRecordingInterface,
-)
+from neuroconv import NWBConverter, CEDRecordingInterface
+from neuroconv import SIPickleRecordingExtractorInterface, SIPickleSortingExtractorInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
 
@@ -35,56 +29,6 @@ class TestAssertions(TestCase):
             exc_msg="The sonpy package (CED dependency) is not available on Mac for Python versions below 3.8!",
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
-
-
-def test_tutorials():
-    class TutorialNWBConverter(NWBConverter):
-        data_interface_classes = dict(
-            RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
-        )
-
-    duration = 10.0  # Seconds
-    num_channels = 4
-    num_units = 10
-    sampling_frequency = 30000.0  # Hz
-    stub_test = False
-    test_dir = Path(mkdtemp())
-    nwbfile_path = str(test_dir / "TestTutorial.nwb")
-    source_data = dict(
-        RecordingTutorial=dict(duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency),
-        SortingTutorial=dict(duration=duration, num_units=num_units, sampling_frequency=sampling_frequency),
-    )
-    converter = TutorialNWBConverter(source_data=source_data)
-    metadata = converter.get_metadata()
-    metadata["NWBFile"]["session_description"] = "NWB Conversion Tools tutorial."
-    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-    metadata["NWBFile"]["experimenter"] = ["My name"]
-    metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
-    conversion_options = dict(RecordingTutorial=dict(stub_test=stub_test), SortingTutorial=dict())
-    converter.run_conversion(
-        nwbfile_path=nwbfile_path,
-        metadata=metadata,
-        overwrite=True,
-        conversion_options=conversion_options,
-    )
-
-
-def test_tutorial_interfaces():
-    class TutorialNWBConverter(NWBConverter):
-        data_interface_classes = dict(
-            RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
-        )
-
-    test_dir = Path(mkdtemp())
-    nwbfile_path = str(test_dir / "TestTutorial.nwb")
-    source_data = dict(
-        RecordingTutorial=dict(),
-        SortingTutorial=dict(),
-    )
-    converter = TutorialNWBConverter(source_data=source_data)
-    metadata = converter.get_metadata()
-    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-    converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
 
 def test_pkl_interface():
