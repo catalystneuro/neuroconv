@@ -25,8 +25,8 @@ from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseS
 class TestAssertions(TestCase):
     def test_import_assertions(self):
         with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg="The sonpy package (CED dependency) is not available on Mac for Python versions below 3.8!",
+            exc_type=ModuleNotFoundError,
+            exc_msg="The package 'sonpy' is not available on the darwin platform for Python version 3.7!",
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
