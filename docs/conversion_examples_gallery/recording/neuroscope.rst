@@ -8,12 +8,12 @@ Convert Neuroscope data to NWB using :py:class:`~neuroconv.datainterfaces.ecephy
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import NeuroscopeRecordingInterface
+    >>> from neuroconv.datainterfaces import NeuroScopeRecordingInterface
     >>>
     >>> # For Neuroscope we need to pass the location of the `.dat` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/neuroscope/test1/test1.dat"
     >>> # Change the file_path to the location in your system
-    >>> interface = NeuroscopeRecordingInterface(file_path=file_path, verbose=False)
+    >>> interface = NeuroScopeRecordingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
