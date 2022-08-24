@@ -1,19 +1,23 @@
 import unittest
+import itertools
 from pathlib import Path
 from datetime import datetime
-import itertools
+from platform import python_version
+from sys import platform
 
 import numpy as np
 import numpy.testing as npt
 from pynwb import NWBHDF5IO
+from packaging import version
 from parameterized import parameterized, param
-from spikeextractors import NwbSortingExtractor, SortingExtractor
+from spikeextractors import NwbSortingExtractor, RecordingExtractor, SortingExtractor
 from spikeextractors.testing import check_sortings_equal
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
 from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
 from spikeinterface.core import BaseRecording
+
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
@@ -109,16 +113,19 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
         param(
-            data_interface=CEDRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-            case_name="smrx",
-        ),
-        param(
             data_interface=EDFRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf")),
             case_name="artificial_data",
         ),
     ]
+    if platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"):
+        parameterized_recording_list.append(
+            param(
+                data_interface=CEDRecordingInterface,
+                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
+                case_name="smrx",
+            )
+        )
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
