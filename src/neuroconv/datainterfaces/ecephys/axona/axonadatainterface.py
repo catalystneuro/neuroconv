@@ -102,7 +102,7 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 
 
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
-    RXName = "NumpyRecording"
+    ExtractorName = "NumpyRecording"
 
     @classmethod
     def get_source_schema(cls):

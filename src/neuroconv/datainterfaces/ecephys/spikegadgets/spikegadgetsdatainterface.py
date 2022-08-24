@@ -50,7 +50,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         if spikeextractors_backend:
-            self.RX = se.SpikeGadgetsRecordingExtractor
+            self.Extractor = se.SpikeGadgetsRecordingExtractor
             if probe_file_path is not None:
                 self.recording_extractor = se.load_probe_file(
                     recording=self.recording_extractor, probe_file=probe_file_path

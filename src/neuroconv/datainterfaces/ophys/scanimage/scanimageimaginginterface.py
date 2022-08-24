@@ -9,7 +9,7 @@ from ....utils import FilePathType
 
 def extract_extra_metadata(file_path):
     ScanImageTiffReader = get_package(
-        package_name="ScanImageTiffReader", package_installation_display="scanimage-tiff-reader"
+        package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
     )
 
     description = ScanImageTiffReader.ScanImageTiffReader(str(file_path)).description(iframe=0)
@@ -19,7 +19,7 @@ def extract_extra_metadata(file_path):
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
-    IXName = "ScanImageTiffImagingExtractor"
+    ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
     def get_source_schema(cls):

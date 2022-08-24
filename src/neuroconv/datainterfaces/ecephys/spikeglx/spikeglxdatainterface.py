@@ -63,7 +63,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
         if spikeextractors_backend:
-            self.RX = se.SpikeGLXRecordingExtractor
+            self.Extractor = se.SpikeGLXRecordingExtractor
             super().__init__(file_path=str(file_path), verbose=verbose)
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
             self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
@@ -161,8 +161,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
-
-    RXName = "SpikeGLXRecordingExtractor"
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()

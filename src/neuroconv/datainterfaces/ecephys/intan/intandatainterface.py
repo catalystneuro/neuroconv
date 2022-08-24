@@ -96,7 +96,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
         if spikeextractors_backend:
             assert HAVE_PYINTAN, INSTALL_MESSAGE
-            self.RX = se.IntanRecordingExtractor
+            self.Extractor = se.IntanRecordingExtractor
             super().__init__(file_path=file_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
             electrodes_metadata = extract_electrode_metadata_with_pyintan(file_path)

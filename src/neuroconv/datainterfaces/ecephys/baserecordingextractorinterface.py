@@ -2,40 +2,23 @@
 from typing import Optional
 
 import numpy as np
-import spikeextractors as se
-import spikeinterface as si
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
-from ...basedatainterface import BaseDataInterface
-from ...tools import get_package
+from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.spikeinterface import write_recording
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
-class _LazyRecordingExtractor(type(BaseDataInterface), type):
-    def __getattribute__(self, name):
-        if name == "RX" and super().__getattribute__("RX") is None:
-            extractor_module = get_package(package_name=self.RXModule or "spikeinterface.extractors")
-            return getattr(extractor_module, self.RXName or self.__name__.replace("Interface", "Extractor"))
-        return super().__getattribute__(name)
-
-
-class BaseRecordingExtractorInterface(BaseDataInterface, metaclass=_LazyRecordingExtractor):
+class BaseRecordingExtractorInterface(BaseExtractorInterface):
     """Parent class for all RecordingExtractorInterfaces."""
 
-    RXModule: Optional[str] = None  # Defaults to "spikeinterface.extractors". Manually override in subclass if needed.
-    RXName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor"). Manually override if needed.
-    RX = None  # Loads dynamically on first access attempt
-
-    def __new__(cls, *args, **kwargs):
-        cls.RX = getattr(cls, "RX")
-        return object.__new__(cls)
+    ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.recording_extractor = self.RX(**source_data)
+        self.recording_extractor = self.Extractor(**source_data)
         self.subset_channels = None
         self.verbose = verbose
 
@@ -91,17 +74,19 @@ class BaseRecordingExtractorInterface(BaseDataInterface, metaclass=_LazyRecordin
         ----------
         stub_test : bool, optional (default False)
         """
-        kwargs = dict()
+        from spikeextractors import RecordingExtractor, SubRecordingExtractor
+        from spikeinterface import BaseRecording
 
+        kwargs = dict()
         if stub_test:
             num_frames = 100
             end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
             kwargs.update(end_frame=end_frame)
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
-        if isinstance(self.recording_extractor, se.RecordingExtractor):
-            recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
-        elif isinstance(self.recording_extractor, si.BaseRecording):
+        if isinstance(self.recording_extractor, RecordingExtractor):
+            recording_extractor = SubRecordingExtractor(self.recording_extractor, **kwargs)
+        elif isinstance(self.recording_extractor, BaseRecording):
             recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         else:
             raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")

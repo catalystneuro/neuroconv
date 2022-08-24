@@ -16,10 +16,8 @@ from ....utils import (
 )
 
 
-class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
+class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a BlackrockRecordingExtractor."""
-
-    RXName = "BlackrockRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls):
@@ -63,7 +61,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             spikeextractors = get_package(package_name="spikeextractors")
             spikeinterface = get_package(package_name="spikeinterface")
 
-            self.RX = spikeextractors.BlackrockRecordingExtractor
+            self.Extractor = spikeextractors.BlackrockRecordingExtractor
             super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose)
             self.source_data = dict(
                 file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
@@ -113,7 +111,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return conversion_options
 
 
-class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
+class BlackrockSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Blackrock spiking data."""
 
     @classmethod
@@ -130,7 +128,7 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
     ):
         spikeextractors = get_package(package_name="spikeextractors")
 
-        self.SX = spikeextractors.BlackrockSortingExtractor
+        self.Extractor = spikeextractors.BlackrockSortingExtractor
         super().__init__(filename=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
         self.source_data = dict(file_path=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
 

@@ -6,10 +6,10 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import get_schema_from_method_signature, FolderPathType
 
 
-class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
+class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a OpenEphysRecordingExtractor."""
 
-    RXName = "OpenEphysBinaryRecordingExtractor"
+    ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls):
@@ -34,7 +34,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
             from spikeextractors import OpenEphysRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
-            self.RX = OpenEphysRecordingExtractor
+            self.Extractor = OpenEphysRecordingExtractor
             super().__init__(
                 folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
             )
@@ -64,7 +64,7 @@ class OpenEphysRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class OpenEphysSortingExtractorInterface(BaseSortingExtractorInterface):
+class OpenEphysSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting OpenEphys spiking data."""
 
     @classmethod
@@ -80,5 +80,5 @@ class OpenEphysSortingExtractorInterface(BaseSortingExtractorInterface):
     def __init__(self, folder_path: FolderPathType, experiment_id: int = 0, recording_id: int = 0):
         from spikeextractors import OpenEphysSortingExtractor
 
-        self.SX = OpenEphysSortingExtractor
+        self.Extractor = OpenEphysSortingExtractor
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)

@@ -73,7 +73,7 @@ def add_recording_extractor_properties(
 class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
 
-    RXName = "NeuroScopeRecordingExtractor"
+    ExtractorName = "NeuroScopeRecordingExtractor"
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str):
@@ -126,7 +126,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
         if spikeextractors_backend:
-            self.RX = se.NeuroscopeRecordingExtractor
+            self.Extractor = se.NeuroscopeRecordingExtractor
             super().__init__(file_path=file_path, xml_file_path=xml_file_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
@@ -213,7 +213,7 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
 class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
-    RXName = "NeuroScopeRecordingExtractor"
+    ExtractorName = "NeuroScopeRecordingExtractor"
 
     def __init__(
         self,
@@ -247,7 +247,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
         if spikeextractors_backend:
-            self.RX = se.NeuroscopeRecordingExtractor
+            self.Extractor = se.NeuroscopeRecordingExtractor
             super().__init__(file_path=file_path, xml_file_path=xml_file_path)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
@@ -273,7 +273,7 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
 class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
 
-    SX = NeuroScopeSortingExtractor
+    ExtractorName = "NeuroScopeSortingExtractor"
 
     def __init__(
         self,
@@ -323,7 +323,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         """
         assert HAVE_LXML, INSTALL_MESSAGE
         if spikeextractors_backend:
-            self.SX = se.NeuroscopeMultiSortingExtractor
+            self.Extractor = se.NeuroscopeMultiSortingExtractor
 
         super().__init__(
             folder_path=folder_path,
