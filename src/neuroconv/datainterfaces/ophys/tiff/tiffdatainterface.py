@@ -1,5 +1,5 @@
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, FloatType, ArrayType
+from ....utils import FilePathType, FloatType
 
 
 class TiffImagingInterface(BaseImagingExtractorInterface):
