@@ -5,7 +5,7 @@ Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroc
 
 .. code-block:: python
 
-    >>> from neuroconv import AbfInterface
+    >>> from neuroconv.datainterfaces import AbfInterface
     >>>
     >>> # Metadata info
     >>> icephys_metadata = {
@@ -54,7 +54,7 @@ If you have multiple ABF files for the same experiment, one file per recording s
 
 .. code-block:: python
 
-    >>> from neuroconv import AbfInterface
+    >>> from neuroconv.datainterfaces import AbfInterface
     >>>
     >>> # Metadata info
     >>> icephys_metadata = {

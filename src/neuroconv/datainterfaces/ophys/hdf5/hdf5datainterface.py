@@ -1,13 +1,9 @@
-from roiextractors import Hdf5ImagingExtractor
-
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType, FloatType, ArrayType
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for Hdf5ImagingExtractor."""
-
-    IX = Hdf5ImagingExtractor
 
     def __init__(
         self,

@@ -1,14 +1,9 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
+import json
 import warnings
 from pathlib import Path
 from natsort import natsorted
 from dateutil import parser
-import json
-
-from spikeinterface.extractors import NeuralynxRecordingExtractor, NeuralynxSortingExtractor
-from spikeinterface.core.old_api_utils import OldToNewRecording
-
-import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -84,13 +79,13 @@ def get_filtering(channel_path: FolderPathType) -> str:
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the Neuralynx format."""
 
-    RX = NeuralynxRecordingExtractor
-
     def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
 
         self.nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
 
         if spikeextractors_backend:
+            from spikeinterface.core.old_api_utils import OldToNewRecording
+
             self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
@@ -101,13 +96,15 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self.add_recording_extractor_properties()
 
     def initialize_in_spikeextractors(self, folder_path, verbose):
-        self.RX = se.MultiRecordingChannelExtractor
+        from spikeextractors import MultiRecordingChannelExtractor, NeuralynxRecordingExtractor
+
+        self.Extractor = MultiRecordingChannelExtractor
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path, verbose=verbose)
         self.verbose = verbose
 
-        extractors = [se.NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in self.nsc_files]
-        self.recording_extractor = self.RX(extractors)
+        extractors = [NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in self.nsc_files]
+        self.recording_extractor = self.Extractor(extractors)
 
         gains = [extractor.get_channel_gains()[0] for extractor in extractors]
         for extractor in extractors:
@@ -128,8 +125,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
-    SX = NeuralynxSortingExtractor
-
     def __init__(self, folder_path: FolderPathType, sampling_frequency: float = None, verbose: bool = True):
         """_summary_
 

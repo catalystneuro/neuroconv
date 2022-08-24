@@ -1,3 +1,4 @@
+# Ecephys
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
@@ -7,31 +8,37 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
 from .ecephys.spikeinterface.sipickledatainterfaces import (
-    SIPickleRecordingExtractorInterface,
-    SIPickleSortingExtractorInterface,
+    SIPickleRecordingInterface,
+    SIPickleSortingInterface,
 )
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.ced.ceddatainterface import CEDRecordingInterface
 from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
 from .ecephys.blackrock.blackrockdatainterface import (
-    BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
+    BlackrockRecordingInterface,
+    BlackrockSortingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import (
-    OpenEphysRecordingExtractorInterface,
-    OpenEphysSortingExtractorInterface,
+    OpenEphysRecordingInterface,
+    OpenEphysSortingInterface,
 )
 from .ecephys.axona.axonadatainterface import (
-    AxonaRecordingExtractorInterface,
+    AxonaRecordingInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,
-    AxonaUnitRecordingExtractorInterface,
+    AxonaUnitRecordingInterface,
 )
 from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface, NeuralynxSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KilosortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 
+
+# Icephys
+from .icephys.abf.abfdatainterface import AbfInterface
+
+
+# Ophys
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
@@ -43,13 +50,14 @@ from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 
+
+# Behavior
 from .behavior.movie.moviedatainterface import MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 
-from .icephys.abf.abfdatainterface import AbfInterface
-
 
 interface_list = [
+    # Ecephys
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,
@@ -59,21 +67,25 @@ interface_list = [
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
     SpikeGadgetsRecordingInterface,
-    SIPickleRecordingExtractorInterface,
-    SIPickleSortingExtractorInterface,
+    SIPickleRecordingInterface,
+    SIPickleSortingInterface,
     IntanRecordingInterface,
     CEDRecordingInterface,
     CellExplorerSortingInterface,
-    BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
-    OpenEphysRecordingExtractorInterface,
-    OpenEphysSortingExtractorInterface,
+    BlackrockRecordingInterface,
+    BlackrockSortingInterface,
+    OpenEphysRecordingInterface,
+    OpenEphysSortingInterface,
     PhySortingInterface,
     KilosortSortingInterface,
-    AxonaRecordingExtractorInterface,
+    AxonaRecordingInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,
-    AxonaUnitRecordingExtractorInterface,
+    AxonaUnitRecordingInterface,
+    EDFRecordingInterface,
+    # Icephys
+    AbfInterface,
+    # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     Suite2pSegmentationInterface,
@@ -82,9 +94,8 @@ interface_list = [
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
+    ScanImageImagingInterface,
+    # Behavior
     MovieInterface,
     DeepLabCutInterface,
-    AbfInterface,
-    ScanImageImagingInterface,
-    EDFRecordingInterface,
 ]

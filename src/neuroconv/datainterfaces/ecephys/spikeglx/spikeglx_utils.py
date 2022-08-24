@@ -1,11 +1,10 @@
 from datetime import datetime
 from pathlib import Path
 
-import spikeextractors as se
 from ....utils import FilePathType
 
 
-def _assert_single_shank_for_spike_extractors(recording: se.SpikeGLXRecordingExtractor):
+def _assert_single_shank_for_spike_extractors(recording):
     """Raises an exception for a se.SpikeGLXRecordingExtractor object intialized in a file
     with complex geometry as this is not (and will not be )supported in the old spikeextractors API.
 
@@ -29,7 +28,7 @@ def _assert_single_shank_for_spike_extractors(recording: se.SpikeGLXRecordingExt
         )
 
 
-def _fetch_metadata_dic_for_spikextractors_spikelgx_object(recording: se.SpikeGLXRecordingExtractor) -> dict:
+def _fetch_metadata_dic_for_spikextractors_spikelgx_object(recording) -> dict:
     """
     fetches the meta file from a se.SpikeGLXRecordingExtractor object.
     Parameters
@@ -43,8 +42,9 @@ def _fetch_metadata_dic_for_spikextractors_spikelgx_object(recording: se.SpikeGL
     dict
         a dictionary with the metadadata concerning the recording
     """
+    from spikeextractors import SubRecordingExtractor
 
-    if isinstance(recording, se.SubRecordingExtractor):
+    if isinstance(recording, SubRecordingExtractor):
         recording_metadata = recording._parent_recording._meta
     else:
         recording_metadata = recording._meta

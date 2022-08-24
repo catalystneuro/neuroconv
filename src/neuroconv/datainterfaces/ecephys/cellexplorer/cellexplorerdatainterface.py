@@ -19,7 +19,7 @@ except ImportError:
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
 
-    SX = se.CellExplorerSortingExtractor
+    ExtractorModuleName = "spikeextractors"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)

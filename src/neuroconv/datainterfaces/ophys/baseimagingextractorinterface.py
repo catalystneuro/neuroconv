@@ -1,12 +1,11 @@
 """Author: Ben Dichter."""
 from typing import Optional
-from abc import ABC
 
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
-from ...basedatainterface import BaseDataInterface
+from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.roiextractors import write_imaging, get_nwb_imaging_metadata
 from ...utils import (
     get_schema_from_hdmf_class,
@@ -17,12 +16,14 @@ from ...utils import (
 )
 
 
-class BaseImagingExtractorInterface(BaseDataInterface, ABC):
-    IX = None
+class BaseImagingExtractorInterface(BaseExtractorInterface):
+    """Parent class for all ImagingExtractorInterfaces."""
+
+    ExtractorModuleName: Optional[str] = "roiextractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.imaging_extractor = self.IX(**source_data)
+        self.imaging_extractor = self.Extractor(**source_data)
         self.verbose = verbose
 
     def get_metadata_schema(self):

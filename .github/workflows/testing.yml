@@ -35,7 +35,9 @@ jobs:
       - name: Install neuroconv with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
-        run: pytest tests/test_internals -n auto --dist loadscope
+        run: |
+          pytest tests/test_minimal -n auto --dist loadscope
+          pytest tests/test_spikeinterface  # TODO: when SI is not in minimal, make a subsequent job
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
 

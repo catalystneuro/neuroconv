@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
-
 from pynwb.behavior import Position, SpatialSeries
 
 from ....utils import FilePathType

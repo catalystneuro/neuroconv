@@ -18,8 +18,9 @@ from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
 from spikeinterface.core import BaseRecording
 
-from neuroconv import (
-    NWBConverter,
+
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import (
     CellExplorerSortingInterface,
     CEDRecordingInterface,
     IntanRecordingInterface,
@@ -28,15 +29,15 @@ from neuroconv import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
     NeuroscopeSortingInterface,
-    OpenEphysRecordingExtractorInterface,
+    OpenEphysRecordingInterface,
     PhySortingInterface,
     KilosortSortingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
-    BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
-    AxonaRecordingExtractorInterface,
+    BlackrockRecordingInterface,
+    BlackrockSortingInterface,
+    AxonaRecordingInterface,
     AxonaLFPDataInterface,
     EDFRecordingInterface,
 )
@@ -108,7 +109,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     parameterized_recording_list = [
         param(
-            data_interface=AxonaRecordingExtractorInterface,
+            data_interface=AxonaRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
         ),
         param(
@@ -140,7 +141,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
-                data_interface=OpenEphysRecordingExtractorInterface,
+                data_interface=OpenEphysRecordingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
                     spikeextractors_backend=spikeextractors_backend,
@@ -152,7 +153,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
-                data_interface=BlackrockRecordingExtractorInterface,
+                data_interface=BlackrockRecordingInterface,
                 interface_kwargs=dict(
                     file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
                     spikeextractors_backend=spikeextractors_backend,
@@ -281,7 +282,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
         ),
         param(
-            data_interface=BlackrockSortingExtractorInterface,
+            data_interface=BlackrockSortingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
         ),
         param(

@@ -9,10 +9,6 @@ Base Sorting
 ------------
 .. automodule:: neuroconv.datainterfaces.ecephys.basesortingextractorinterface
 
-Tutorial Recording & Sorting
-----------------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
-
 Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
