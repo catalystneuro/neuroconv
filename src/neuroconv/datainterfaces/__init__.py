@@ -1,5 +1,3 @@
-from .ecephys.tutorial.recordingtutorialdatainterface import RecordingTutorialInterface
-from .ecephys.tutorial.sortingtutorialdatainterface import SortingTutorialInterface
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroscopeRecordingInterface,
     NeuroscopeLFPInterface,
