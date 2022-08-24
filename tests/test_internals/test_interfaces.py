@@ -9,10 +9,12 @@ from datetime import datetime
 import numpy as np
 import pytest
 import spikeextractors as se
+from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
-from neuroconv import NWBConverter, RecordingTutorialInterface, SortingTutorialInterface, CEDRecordingInterface
+from neuroconv import NWBConverter, CEDRecordingInterface
+from neuroconv import SIPickleRecordingExtractorInterface, SIPickleSortingExtractorInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
 
@@ -29,36 +31,34 @@ class TestAssertions(TestCase):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
 
-def test_tutorials():
-    class TutorialNWBConverter(NWBConverter):
+def test_pkl_interface():
+    toy_data = se.example_datasets.toy_example()
+    test_dir = Path(mkdtemp())
+    output_folder = test_dir / "test_pkl"
+    nwbfile_path = str(test_dir / "test_pkl_files.nwb")
+
+    se.save_si_object(object_name="test_recording", si_object=toy_data[0], output_folder=output_folder)
+    se.save_si_object(object_name="test_sorting", si_object=toy_data[1], output_folder=output_folder)
+
+    class SpikeInterfaceTestNWBConverter(NWBConverter):
         data_interface_classes = dict(
-            RecordingTutorial=RecordingTutorialInterface, SortingTutorial=SortingTutorialInterface
+            Recording=SIPickleRecordingExtractorInterface, Sorting=SIPickleSortingExtractorInterface
         )
 
-    duration = 10.0  # Seconds
-    num_channels = 4
-    num_units = 10
-    sampling_frequency = 30000.0  # Hz
-    stub_test = False
-    test_dir = Path(mkdtemp())
-    nwbfile_path = str(test_dir / "TestTutorial.nwb")
     source_data = dict(
-        RecordingTutorial=dict(duration=duration, num_channels=num_channels, sampling_frequency=sampling_frequency),
-        SortingTutorial=dict(duration=duration, num_units=num_units, sampling_frequency=sampling_frequency),
+        Recording=dict(file_path=str(test_dir / "test_pkl" / "test_recording.pkl")),
+        Sorting=dict(file_path=str(test_dir / "test_pkl" / "test_sorting.pkl")),
     )
-    converter = TutorialNWBConverter(source_data=source_data)
+    converter = SpikeInterfaceTestNWBConverter(source_data=source_data)
     metadata = converter.get_metadata()
-    metadata["NWBFile"]["session_description"] = "NWB Conversion Tools tutorial."
     metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-    metadata["NWBFile"]["experimenter"] = ["My name"]
-    metadata["Subject"] = dict(subject_id="Name of imaginary testing subject (required for DANDI upload)")
-    conversion_options = dict(RecordingTutorial=dict(stub_test=stub_test), SortingTutorial=dict())
-    converter.run_conversion(
-        nwbfile_path=nwbfile_path,
-        metadata=metadata,
-        overwrite=True,
-        conversion_options=conversion_options,
-    )
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+    nwb_recording = se.NwbRecordingExtractor(file_path=nwbfile_path)
+    nwb_sorting = se.NwbSortingExtractor(file_path=nwbfile_path)
+    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording)
+    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording, return_scaled=False)
+    check_sortings_equal(SX1=toy_data[1], SX2=nwb_sorting)
 
 
 class TestSortingInterface(unittest.TestCase):

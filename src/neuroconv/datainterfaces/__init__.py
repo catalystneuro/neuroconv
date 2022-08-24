@@ -50,8 +50,6 @@ from .icephys.abf.abfdatainterface import AbfInterface
 
 
 interface_list = [
-    RecordingTutorialInterface,
-    SortingTutorialInterface,
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
     NeuroscopeRecordingInterface,
