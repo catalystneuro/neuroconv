@@ -42,18 +42,18 @@ def get_package(
     installation_instructions = installation_instructions or f"pip install {package_name}"
     excluded_platforms_and_python_versions = excluded_platforms_and_python_versions or dict()
 
-    if package_name in sys.modules:
-        return sys.modules[package_name]
-
-    if importlib.util.find_spec(package_name) is not None:
-        return importlib.import_module(name=package_name)
-
     for excluded_version in excluded_platforms_and_python_versions.get(sys.platform, list()):
         if version.parse(python_version()).minor == version.parse(excluded_version).minor:
             raise ModuleNotFoundError(
                 f"\nThe package '{package_name}' is not available on the {sys.platform} platform for "
                 f"Python version {excluded_version}!"
             )
+
+    if package_name in sys.modules:
+        return sys.modules[package_name]
+
+    if importlib.util.find_spec(package_name) is not None:
+        return importlib.import_module(name=package_name)
 
     raise ModuleNotFoundError(
         f"\nThe required package'{package_name}' is not installed!\n"

@@ -26,7 +26,7 @@ class TestAssertions(TestCase):
     def test_import_assertions(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
-            exc_msg=r"The package 'sonpy' is not available on the darwin platform for Python version 3.7!",
+            exc_msg="\nThe package 'sonpy' is not available on the darwin platform for Python version 3.7!",
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
