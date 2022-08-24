@@ -22,7 +22,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbose.
         """
         _ = get_package(package_name="pyedflib")
-        
+
         super().__init__(file_path=file_path, verbose=verbose)
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 

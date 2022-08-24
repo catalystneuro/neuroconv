@@ -53,7 +53,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = True,
     ):
         from probeinterface import read_spikeglx
-      
+
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
