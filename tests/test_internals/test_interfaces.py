@@ -24,16 +24,17 @@ from neuroconv.datainterfaces import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
 
+@pytest.mark.skipif(
+    platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"),
+    reason="Only testing on MacOSX with Python 3.7!",
+)
 class TestAssertions(TestCase):
     def test_import_assertions(self):
-        if platform == "darwin" and version.parse(python_version()) < version.parse("3.8"):
-            with self.assertRaisesWith(
-                exc_type=ModuleNotFoundError,
-                exc_msg=("\nThe package 'sonpy' is not available on the darwin platform for Python version 3.7!"),
-            ):
-                CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
-        else:
-            pytest.skip("Not testing on MacOSX with Python<3.8!")
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="The sonpy package (CED dependency) is not available on Mac for Python versions below 3.8!",
+        ):
+            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
 
 def test_tutorials():
