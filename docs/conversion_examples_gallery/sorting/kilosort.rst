@@ -1,7 +1,7 @@
-Kilosort data conversion
+KiloSort data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Kilosort data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface.KilosortSortingInterface`.
+Convert KiloSort data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface.KiloSortSortingInterface`.
 
 .. code-block:: python
 
