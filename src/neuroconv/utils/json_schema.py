@@ -161,8 +161,9 @@ def get_schema_from_hdmf_class(hdmf_class):
         schema_arg = {docval_arg["name"]: dict(description=docval_arg["doc"])}
 
         # type float
-        if docval_arg["type"] == "float" or (
-            isinstance(docval_arg["type"], tuple) and any([it in docval_arg["type"] for it in [float, "float"]])
+        if docval_arg["type"] in (float, "float", int, "int") or (
+            isinstance(docval_arg["type"], tuple)
+            and any([it in docval_arg["type"] for it in [float, "float", int, "int"]])
         ):
             schema_arg[docval_arg["name"]].update(type="number")
         # type string
@@ -295,14 +296,10 @@ def get_metadata_schema_for_icephys():
     schema["properties"] = dict(
         Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
         Electrode=dict(
-            type="array",
-            minItems=1,
-            items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
+            type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
         ),
         Sessions=dict(
-            type="array",
-            minItems=1,
-            items={"$ref": "#/properties/Icephys/properties/definitions/Sessions"},
+            type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Sessions"},
         ),
     )
 
