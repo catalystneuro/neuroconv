@@ -1,8 +1,9 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
+import json
 from pathlib import Path
 from typing import Optional
-import json
 
+import dateutil
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -87,9 +88,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self, tzinfo: Optional[Union[str, dateutil.zoneinfo.tzfile]] = None):
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
+        if session_start_time and tzinfo:
+            tzinfo_object = dateutil.tz.gettz(tzinfo) if isinstance(tzinfo, str) else tzinfo
+            session_start_time.replace(tzinfo=tzinfo_object)
         if session_start_time:
             metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=str(session_start_time))))
 
@@ -169,8 +173,8 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
-        metadata = super().get_metadata()
+    def get_metadata(self, tzinfo: Optional[Union[str, dateutil.zoneinfo.tzfile]] = None):
+        metadata = super().get_metadata(tzinfo=tzinfo)
         del metadata["Ecephys"]["ElectricalSeries_raw"]
         metadata["Ecephys"].update(
             ElectricalSeries_lfp=dict(
