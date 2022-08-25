@@ -172,6 +172,6 @@ def make_or_load_nwbfile(
                 io.write(nwbfile)
 
                 if verbose:
-                    print(f"NWB file saved at {nwbfile_path}!")
+                    print(f"NWBFile saved at {nwbfile_path}!")
             finally:
                 io.close()

@@ -26,8 +26,4 @@ Convert spikeglx data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    Source data is valid!
-    Metadata is valid!
-    Conversion options are valid!
-    
     NWBFile saved at ...
