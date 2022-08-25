@@ -54,10 +54,8 @@ def add_recording_extractor_properties(recording_extractor, xml_file_path: str, 
     )
 
 
-class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
+class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
-
-    ExtractorName = "NeuroScopeRecordingExtractor"
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str):
@@ -139,7 +137,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
         metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         metadata["Ecephys"].update(
             ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
         )
@@ -149,7 +147,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
+class NeuroScopeMultiRecordingTimeInterface(NeuroScopeRecordingInterface):
     """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
 
     RXModule = "spikeextractors"
@@ -185,7 +183,7 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=folder_path)
-        super(NeuroscopeRecordingInterface, self).__init__(
+        super(NeuroScopeRecordingInterface, self).__init__(
             folder_path=folder_path,
             gain=gain,
             xml_file_path=xml_file_path,
@@ -198,7 +196,7 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
 
 
-class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
+class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
     ExtractorName = "NeuroScopeRecordingExtractor"
@@ -257,14 +255,12 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
         metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         return metadata
 
 
-class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
+class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
-
-    ExtractorName = "NeuroScopeSortingExtractor"
 
     def __init__(
         self,
@@ -335,7 +331,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
-        metadata = dict(Ecephys=NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata = dict(Ecephys=NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
 
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:

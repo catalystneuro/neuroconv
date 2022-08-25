@@ -1,9 +1,9 @@
 # Ecephys
 from .ecephys.neuroscope.neuroscopedatainterface import (
-    NeuroscopeRecordingInterface,
-    NeuroscopeLFPInterface,
-    NeuroscopeMultiRecordingTimeInterface,
-    NeuroscopeSortingInterface,
+    NeuroScopeRecordingInterface,
+    NeuroScopeLFPInterface,
+    NeuroScopeMultiRecordingTimeInterface,
+    NeuroScopeSortingInterface,
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
@@ -30,7 +30,7 @@ from .ecephys.axona.axonadatainterface import (
 )
 from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface, NeuralynxSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
-from .ecephys.kilosort.kilosortdatainterface import KilosortSortingInterface
+from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 
 
@@ -60,10 +60,10 @@ interface_list = [
     # Ecephys
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
-    NeuroscopeRecordingInterface,
-    NeuroscopeMultiRecordingTimeInterface,
-    NeuroscopeSortingInterface,
-    NeuroscopeLFPInterface,
+    NeuroScopeRecordingInterface,
+    NeuroScopeMultiRecordingTimeInterface,
+    NeuroScopeSortingInterface,
+    NeuroScopeLFPInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
     SpikeGadgetsRecordingInterface,
@@ -77,7 +77,7 @@ interface_list = [
     OpenEphysRecordingInterface,
     OpenEphysSortingInterface,
     PhySortingInterface,
-    KilosortSortingInterface,
+    KiloSortSortingInterface,
     AxonaRecordingInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,
