@@ -6,7 +6,6 @@ from .roiextractors import (
     add_plane_segmentation,
     add_fluorescence_traces,
     add_two_photon_series,
-    add_epochs,
     write_imaging,
     get_nwb_segmentation_metadata,
     add_summary_images,
