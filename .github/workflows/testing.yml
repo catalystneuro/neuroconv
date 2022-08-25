@@ -40,7 +40,10 @@ jobs:
           pytest tests/test_spikeinterface  # TODO: when SI is not in minimal, make a subsequent job
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
-
+        
+        
+      - name: Gallery - install dev PyNWB
+        run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
 
 
       - name: Get ephy_testing_data current head hash
