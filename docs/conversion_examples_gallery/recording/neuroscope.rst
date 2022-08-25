@@ -1,7 +1,7 @@
 NeuroScope data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Neuroscope data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeRecordingInterface`.
+Convert NeuroScope data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeRecordingInterface`.
 
 .. code-block:: python
 
