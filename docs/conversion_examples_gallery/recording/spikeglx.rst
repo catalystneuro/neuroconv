@@ -29,5 +29,5 @@ Convert spikeglx data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     Source data is valid!
     Metadata is valid!
     Conversion options are valid!
-    
+
     NWBFile saved at ...
