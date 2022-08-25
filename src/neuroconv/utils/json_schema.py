@@ -296,10 +296,14 @@ def get_metadata_schema_for_icephys():
     schema["properties"] = dict(
         Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
         Electrode=dict(
-            type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
+            type="array",
+            minItems=1,
+            items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
         ),
         Sessions=dict(
-            type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Sessions"},
+            type="array",
+            minItems=1,
+            items={"$ref": "#/properties/Icephys/properties/definitions/Sessions"},
         ),
     )
 
