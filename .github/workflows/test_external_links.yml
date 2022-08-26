@@ -1,0 +1,21 @@
+name: Testing External Links
+on: pull_request
+jobs:
+  build-and-test:
+    name: Testing External Links
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - run: git fetch --prune --unshallow --tags
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install sphinx Dependencies
+        run: pip install -r requirements-rtd.txt
+      - name: Install package for API docs
+        run: pip install -e .
+      - name: Test External Links
+        run: sphinx-build -b linkcheck ./docs ./test_build
