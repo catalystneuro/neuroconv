@@ -49,8 +49,8 @@ jobs:
 
       - name: Install with icephys requirements
         run: pip install .[icephys]
-      - name: Run icephys tests
-        run: pytest tests/test_icephys -n auto --dist loadscope
+      #- name: Run icephys tests  # There are no icephys specific tests without data
+      #  run: pytest tests/test_icephys -n auto --dist loadscope
 
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
