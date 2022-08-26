@@ -17,7 +17,7 @@ from spikeextractors.testing import (
     get_default_nwbfile_metadata,
 )
 
-from neuroconv import spikeinterface  # testing aliased import
+# from neuroconv import spikeinterface  # TODO: testing aliased import; possibly remove
 from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
@@ -135,12 +135,12 @@ class TestExtractors(unittest.TestCase):
     def test_write_recording(self):
         path = self.test_dir + "/test.nwb"
 
-        spikeinterface.write_recording(self.RX, path, metadata=self.placeholder_metadata)  # testing aliased import
-        RX_nwb = se.NwbRecordingExtractor(path)
-        check_recording_return_types(RX_nwb)
-        check_recordings_equal(self.RX, RX_nwb)
-        check_dumping(RX_nwb)
-        del RX_nwb
+        # spikeinterface.write_recording(self.RX, path, metadata=self.placeholder_metadata)  # testing aliased import
+        # RX_nwb = se.NwbRecordingExtractor(path)
+        # check_recording_return_types(RX_nwb)
+        # check_recordings_equal(self.RX, RX_nwb)
+        # check_dumping(RX_nwb)
+        # del RX_nwb
 
         write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
         RX_nwb = se.NwbRecordingExtractor(path)
@@ -288,12 +288,12 @@ class TestExtractors(unittest.TestCase):
         path = self.test_dir + "/test.nwb"
         sf = self.RX.get_sampling_frequency()
 
-        # Append sorting to existing file
-        write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
-        spikeinterface.write_sorting(sorting=self.SX, nwbfile_path=path, overwrite=False)  # testing aliased import
-        SX_nwb = se.NwbSortingExtractor(path)
-        check_sortings_equal(self.SX, SX_nwb)
-        check_dumping(SX_nwb)
+        # # Append sorting to existing file
+        # write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
+        # spikeinterface.write_sorting(sorting=self.SX, nwbfile_path=path, overwrite=False)  # testing aliased import
+        # SX_nwb = se.NwbSortingExtractor(path)
+        # check_sortings_equal(self.SX, SX_nwb)
+        # check_dumping(SX_nwb)
 
         # Test for handling unit property descriptions argument
         property_descriptions = dict(stability="This is a description of stability.")
