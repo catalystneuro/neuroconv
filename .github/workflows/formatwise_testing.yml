@@ -1,8 +1,8 @@
 name: Minimal and Full Tests
 on:
   schedule:
-    - cron: "0 16 * * *"  # Daily at noon EST
-  pull_request:
+    - cron: "0 16 * * 1"  # Every Monday at noon EST
+  pull_request:  # TODO, swap to manual dispatch
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
@@ -13,9 +13,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
+      matrix: # Should we perhaps par this down for this gallery? Perhaps only ubuntu-latest with 3.9?
         python-version: [3.7, 3.8, 3.9]
         os: [ubuntu-latest, macos-latest, windows-latest]
+        format: [neuroscope]  # can add all the others here
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
@@ -32,43 +33,12 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
-
-
-
       - name: Install neuroconv with minimal requirements
-        run: pip install .[test]
-      - name: Run minimal tests
-        run: pytest tests/test_minimal -n auto --dist loadscope
+        run: pip install .[test]  # Safe to start with this as base for all
 
 
 
-      - name: Install with behavior requirements
-        run: pip install .[behavior]
-      - name: Run behavior tests
-        run: pytest tests/test_behavior -n auto --dist loadscope
-
-      - name: Install with icephys requirements
-        run: pip install .[icephys]
-      - name: Run icephys tests
-        run: pytest tests/test_icephys -n auto --dist loadscope
-
-      - name: Install with ecephys requirements
-        run: pip install .[ecephys]
-      - name: Run ecephys tests
-        run: pytest tests/test_ecephys -n auto --dist loadscope
-
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -n auto --dist loadscope
-
-
-
-      - name: Install full requirements (-e needed for codecov report)
-        run: pip install -e .[full]
-
-
-
+      # Only rely on caches in matrix - absolutely no S3 transfer in a matrix this large.
       - name: Get ephy_testing_data current head hash
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
@@ -99,33 +69,7 @@ jobs:
 
 
 
-      - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
-        name: Install and configure AWS CLI
-        run: |
-          pip install awscli==1.25.27
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - if: steps.cache-ephys-datasets.outputs.cache-hit == false
-        name: Download ephys dataset from S3
-        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
-      - if: steps.cache-ophys-datasets.outputs.cache-hit == false
-        name: Download ophys dataset from S3
-        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data ./ophys_testing_data
-      - if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        name: Download behavior dataset from S3
-        run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
-
-
-
-      - name: Run full pytest with coverage
-        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
-      - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
-        name: Upload full coverage to Codecov
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./codecov.xml
-          flags: unittests
-          name: codecov-umbrella
-          yml: ./codecov.yml
+      - name: Install a specific format
+        run: pip install .[${{ matrix.format }}]
+      - name: Run that particular file in the doctest gallery
+        # run: pytest docs/??? or something
