@@ -1,7 +1,7 @@
 name: Minimal and Full Tests
 on:
   schedule:
-    - cron: "0 16 * * *"  # Daily at noon EST
+    - cron: "0 16 * * 1"  # Every Monday at noon EST
   pull_request:
 
 env:
@@ -42,8 +42,12 @@ jobs:
         run: pip install -e .[full]
 
 
-      - name: Gallery - install dev PyNWB
+
+      - name: Dev gallery - HDMF
+        run: pip install git+https://github.com/hdmf-dev/hdmf@dev
+      - name: Dev gallery - PyNWB
         run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+
 
 
       - name: Get ephy_testing_data current head hash
