@@ -18,11 +18,15 @@ with open(root / "requirements-full.txt") as f:  # TODO: remove entirely
 
 extras_require = defaultdict(list)
 for modality in ["ophys", "ecephys", "icephys", "behavior"]:
-    format_subpaths = [
-        path
-        for path in (root / "src" / "neuroconv" / "datainterfaces" / modality).iterdir()
-        if path.is_dir() and path.name != "__pycache__"
-    ]
+    modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
+    modality_requirement_file = modality_path / "requirements.txt"
+    if modality_requirement_file.exists():
+        with open(modality_requirement_file) as f:
+            modality_requirements = f.readlines()
+            full_dependencies.extend(modality_requirements)
+            extras_require[modality].extend(modality_requirements)
+
+    format_subpaths = [path for path in modality_path.iterdir() if path.is_dir() and path.name != "__pycache__"]
     for format_subpath in format_subpaths:
         format_requirement_file = format_subpath / "requirements.txt"
         if format_requirement_file.exists():
