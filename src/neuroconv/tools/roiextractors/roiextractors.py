@@ -412,34 +412,6 @@ def _imaging_frames_to_hdmf_iterator(
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
 
-def add_epochs(imaging, nwbfile):
-    """
-    Auxiliary static method for nwbextractor.
-
-    Adds epochs from recording object to nwbfile object.
-    """
-    # add/update epochs
-    for (name, ep) in imaging._epochs.items():
-        if nwbfile.epochs is None:
-            nwbfile.add_epoch(
-                start_time=imaging.frame_to_time(ep["start_frame"]),
-                stop_time=imaging.frame_to_time(ep["end_frame"]),
-                tags=name,
-            )
-        else:
-            if [name] in nwbfile.epochs["tags"][:]:
-                ind = nwbfile.epochs["tags"][:].index([name])
-                nwbfile.epochs["start_time"].data[ind] = imaging.frame_to_time(ep["start_frame"])
-                nwbfile.epochs["stop_time"].data[ind] = imaging.frame_to_time(ep["end_frame"])
-            else:
-                nwbfile.add_epoch(
-                    start_time=imaging.frame_to_time(ep["start_frame"]),
-                    stop_time=imaging.frame_to_time(ep["end_frame"]),
-                    tags=name,
-                )
-    return nwbfile
-
-
 def write_imaging(
     imaging: ImagingExtractor,
     nwbfile_path: OptionalFilePathType = None,
@@ -544,7 +516,6 @@ def write_imaging(
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
-        add_epochs(imaging=imaging, nwbfile=nwbfile_out)
     return nwbfile_out
 
 
