@@ -167,11 +167,14 @@ def make_or_load_nwbfile(
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         yield nwbfile
     finally:
+        success = False
         if nwbfile_path:
             try:
                 io.write(nwbfile)
 
-                if verbose:
-                    print(f"NWB file saved at {nwbfile_path}!")
+                success = True
             finally:
                 io.close()
+
+                if success and verbose:
+                    print(f"NWB file saved at {nwbfile_path}!")

@@ -29,6 +29,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
+from ...tools.hdmf import SliceableDataChunkIterator
 from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
 
 
@@ -603,7 +604,7 @@ def add_plane_segmentation(
     metadata: Optional[dict],
     plane_segmentation_index: int = 0,
     include_roi_centroids: bool = True,
-    mask_type: str = "image",  # Literal["image", "pixel"]
+    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
@@ -647,15 +648,14 @@ def add_plane_segmentation(
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
-    assert mask_type in [
-        "image",
-        "pixel",
-        "voxel",
-    ], f"Keyword argument 'mask_type' must be one of either 'image', 'pixel', or 'voxel'! Received '{mask_type}'."
+    assert mask_type in ["image", "pixel", "voxel", "None"], (
+        "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', "
+        f"or None (to not write any masks)! Received '{mask_type}'."
+    )
     if iterator_options is None:
         iterator_options = dict()
     if compression_options is None:
-        compression_options = dict()
+        compression_options = dict(compression="gzip")
 
     def image_mask_iterator():
         for roi_id in segmentation_extractor.get_roi_ids():
@@ -696,37 +696,22 @@ def add_plane_segmentation(
         imaging_plane_name = imaging_plane_metadata["name"]
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
 
-        plane_segmentation = PlaneSegmentation(**plane_segmentation_metadata, imaging_plane=imaging_plane, id=roi_ids)
-        if True:  # np.any(accepted_ids != 1):
-            plane_segmentation.add_column(
-                name="Accepted",
-                description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
-                data=H5DataIO(accepted_ids, **compression_options),
-            )
-        if True:  # np.any(rejected_ids):
-            plane_segmentation.add_column(
-                name="Rejected",
-                description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation",
-                data=H5DataIO(rejected_ids, **compression_options),
-            )
-        if include_roi_centroids:
-            tranpose_roi_location_axes = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
-            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_roi_location_axes, :]
+        plane_segmentation_kwargs = dict(**plane_segmentation_metadata, imaging_plane=imaging_plane)
+        if mask_type != "pixel" and mask_type != "voxel":  # roi_ids will not be written row-wise
+            plane_segmentation_kwargs.update(id=roi_ids)
+        plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
 
-            plane_segmentation.add_column(
-                name="RoiCentroid", description="The x, y, (z) centroids of each ROI.", data=roi_locations
-            )
-        if mask_type == "image":
+        if mask_type is not "None" and mask_type == "image":
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
                 data=H5DataIO(DataChunkIterator(image_mask_iterator(), **iterator_options), **compression_options),
             )
-        elif mask_type == "pixel" or mask_type == "voxel":
+        elif mask_type is not "None" and (mask_type == "pixel" or mask_type == "voxel"):
             pixel_masks = segmentation_extractor.get_roi_pixel_masks()
-            num_pixel_dims = pixel_masks[0][1]
+            num_pixel_dims = pixel_masks[0].shape[1]
 
-            assert num_pixel_dims in [3, 4,], (
+            assert num_pixel_dims in [3, 4], (
                 "The segmentation extractor returned a pixel mask that is not 3- or 4- dimensional! "
                 "Please open a ticket with https://github.com/catalystneuro/roiextractors/issues"
             )
@@ -743,8 +728,35 @@ def add_plane_segmentation(
                 )
                 mask_type = "pixel"
 
-            for pixel_mask in pixel_masks:
-                plane_segmentation.add_roi(**{f"{mask_type}_mask": pixel_mask})
+            mask_type_kwarg = f"{mask_type}_mask"
+            for roi_id, pixel_mask in zip(roi_ids, pixel_masks):
+                plane_segmentation.add_roi(**{id: roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
+            # plane_segmentation.add_column(
+            #     name=mask_type_kwarg,
+            #     description=f"{mask_type}.capitalize() masks for each ROI.",
+            #     data=[[tuple(x) for x in pixel_mask] for pixel_mask in pixel_masks],
+            #     index=2,
+            # )
+        if np.any(accepted_ids != 1):
+            plane_segmentation.add_column(
+                name="Accepted",
+                description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
+                data=H5DataIO(accepted_ids, **compression_options),
+            )
+        if np.any(rejected_ids):
+            plane_segmentation.add_column(
+                name="Rejected",
+                description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation",
+                data=H5DataIO(rejected_ids, **compression_options),
+            )
+        if include_roi_centroids:
+            tranpose_roi_location_axes = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_roi_location_axes, :]
+
+            plane_segmentation.add_column(
+                name="RoiCentroid", description="The x, y, (z) centroids of each ROI.", data=roi_locations
+            )
+
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
@@ -754,6 +766,8 @@ def add_fluorescence_traces(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_index: int = 0,
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -771,12 +785,21 @@ def add_fluorescence_traces(
         The metadata for the fluorescence traces.
     plane_index : int, optional
         The index of the plane to add the fluorescence traces to.
+    iterator_options : dict, optional
+        The options to use when iterating over the image masks of the segmentation extractor.
+    compression_options : dict, optional
+        The options to use when compressing the image masks of the segmentation extractor.
 
     Returns
     -------
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
+    if iterator_options is None:
+        iterator_options = dict()
+    if compression_options is None:
+        compression_options = dict(compression="gzip")
+
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
     default_metadata = get_default_ophys_metadata()
@@ -861,7 +884,7 @@ def add_fluorescence_traces(
 
         # Build the roi response series
         roi_response_series_kwargs.update(
-            data=np.array(trace).T,
+            data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
             rois=roi_table_region,
             **trace_metadata,
         )
@@ -969,6 +992,8 @@ def write_segmentation(
     mask_type: str = "image",  # Literal["image", "pixel"]
     buffer_size: int = 10,
     plane_num: int = 0,
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """Primary method for writing an SegmentationExtractor object to an NWBFile.
@@ -1012,16 +1037,25 @@ def write_segmentation(
         The buffer size in GB, by default 10
     plane_num : int, optional
         The plane number to be extracted, by default 0
+    iterator_options : dict, optional
+        The options to use when iterating over the image masks of the segmentation extractor.
+    compression_options : dict, optional
+        The options to use when compressing the image masks of the segmentation extractor.
+
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
+    if iterator_options is None:
+        iterator_options = dict()
+    if compression_options is None:
+        compression_options = dict(compression="gzip")
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segext_obj, MultiSegmentationExtractor):
         segext_objs = segext_obj.segmentations
         if metadata is not None:
-            assert isinstance(metadata, list), (
-                "For MultiSegmentationExtractor enter 'metadata' as a list of " "SegmentationExtractor metadata"
-            )
+            assert isinstance(
+                metadata, list
+            ), "For MultiSegmentationExtractor enter 'metadata' as a list of SegmentationExtractor metadata"
             assert len(metadata) == len(segext_objs), (
                 "The 'metadata' argument should be a list with the same "
                 "number of elements as the segmentations in the "
@@ -1089,11 +1123,8 @@ def write_segmentation(
                 metadata=metadata,
                 include_roi_centroids=include_roi_centroids,
                 mask_type=mask_type,
-                iterator_options=dict(buffer_size=buffer_size),
-                compression_options=dict(
-                    compression=True,
-                    compression_opts=9,
-                ),
+                iterator_options=iterator_options,
+                compression_options=compression_options,
             )
 
             # Add fluorescence traces:
@@ -1101,6 +1132,8 @@ def write_segmentation(
                 segmentation_extractor=segext_obj,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
+                iterator_options=iterator_options,
+                compression_options=compression_options,
             )
 
             # Adding summary images (mean and correlation)
