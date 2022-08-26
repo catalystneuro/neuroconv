@@ -3,13 +3,6 @@ from pathlib import Path
 from typing import Optional
 import json
 
-import spikeextractors as se
-import probeinterface as pi
-
-from spikeinterface import BaseRecording
-from spikeinterface.extractors import SpikeGLXRecordingExtractor
-from spikeinterface.core.old_api_utils import OldToNewRecording
-
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -23,7 +16,7 @@ from .spikeglx_utils import (
 )
 
 
-def add_recording_extractor_properties(recording_extractor: BaseRecording):
+def add_recording_extractor_properties(recording_extractor):
     """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
 
     probe = recording_extractor.get_probe()
@@ -46,8 +39,6 @@ def add_recording_extractor_properties(recording_extractor: BaseRecording):
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
 
-    RX = SpikeGLXRecordingExtractor
-
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
@@ -61,11 +52,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend: Optional[bool] = False,
         verbose: bool = True,
     ):
+        from probeinterface import read_spikeglx
+
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
         if spikeextractors_backend:
-            self.RX = se.SpikeGLXRecordingExtractor
+            from spikeextractors import SpikeGLXRecordingExtractor
+            from spikeinterface.core.old_api_utils import OldToNewRecording
+
+            self.Extractor = SpikeGLXRecordingExtractor
             super().__init__(file_path=str(file_path), verbose=verbose)
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
             self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
@@ -79,7 +75,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         # Mount the probe
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
-        probe = pi.read_spikeglx(meta_filename)
+        probe = read_spikeglx(meta_filename)
         self.recording_extractor.set_probe(probe, in_place=True)
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)

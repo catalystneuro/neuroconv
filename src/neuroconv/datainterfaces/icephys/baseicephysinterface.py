@@ -1,24 +1,16 @@
 """Author: Luiz Tauffer."""
-from abc import ABC
 from typing import Optional, Tuple
 from warnings import warn
 
 from pynwb import NWBFile, NWBHDF5IO
-from pynwb.device import Device
-from pynwb.icephys import IntracellularElectrode
 
-from ...basedatainterface import BaseDataInterface
-from ...tools.neo import (
-    get_number_of_electrodes,
-    get_number_of_segments,
-    write_neo_to_nwb,
-)
+from ...baseextractorinterface import BaseExtractorInterface
+from ...tools.neo import get_number_of_electrodes, get_number_of_segments, write_neo_to_nwb
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
     OptionalFilePathType,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
-    get_base_schema,
     get_metadata_schema_for_icephys,
 )
 
@@ -32,10 +24,10 @@ except ImportError:
     HAVE_NDX_DANDI_ICEPHYS = False
 
 
-class BaseIcephysInterface(BaseDataInterface, ABC):
+class BaseIcephysInterface(BaseExtractorInterface):
     """Primary class for all intracellular NeoInterfaces."""
 
-    neo_class = None
+    ExtractorModuleName = "neo"
 
     @classmethod
     def get_source_schema(cls):
@@ -47,13 +39,14 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
 
         self.readers_list = list()
         for f in file_paths:
-            self.readers_list.append(self.neo_class(filename=f))
+            self.readers_list.append(self.Extractor(filename=f))
 
         self.subset_channels = None
         self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
 
     def get_metadata_schema(self):
+
         metadata_schema = super().get_metadata_schema()
         if DandiIcephysMetadata:
             metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(DandiIcephysMetadata)

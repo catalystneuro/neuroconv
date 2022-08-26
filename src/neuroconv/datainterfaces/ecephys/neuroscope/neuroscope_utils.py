@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime
 from dateutil import parser
 
-from lxml import etree as et
+from ....tools import get_package
 
 
 def get_xml_file_path(data_file_path: str):
@@ -18,10 +18,12 @@ def get_xml_file_path(data_file_path: str):
 
 def get_xml(xml_file_path: str):
     """Auxiliary function for retrieving root of xml."""
-    return et.parse(xml_file_path).getroot()
+    lxml = get_package(package_name="lxml")
+
+    return lxml.etree.parse(xml_file_path).getroot()
 
 
-def safe_find(root: et._Element, key: str, findall: bool = False):
+def safe_find(root, key: str, findall: bool = False):
     """Auxiliary function for safe retrieval of single key from next level of lxml tree."""
     if root is not None:
         if findall:
@@ -30,7 +32,7 @@ def safe_find(root: et._Element, key: str, findall: bool = False):
             return root.find(key)
 
 
-def safe_nested_find(root: et._Element, keys: list):
+def safe_nested_find(root, keys: list):
     """Auxiliary function for safe retrieval of keys at multiple depths in lxml tree."""
     for key in keys:
         root = safe_find(root, key)

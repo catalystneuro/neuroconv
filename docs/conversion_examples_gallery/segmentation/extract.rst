@@ -8,7 +8,7 @@ Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfa
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import ExtractSegmentationInterface
+    >>> from neuroconv.datainterfaces import ExtractSegmentationInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "extract"/ "2014_04_01_p203_m19_check01_extractAnalysis.mat"
     >>> sampling_frequency = 20.0 # The sampling frequency in units of Hz

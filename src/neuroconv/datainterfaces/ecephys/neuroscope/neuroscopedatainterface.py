@@ -2,31 +2,17 @@
 from pathlib import Path
 from typing import Optional
 
-import spikeextractors as se
-from spikeinterface.core.old_api_utils import OldToNewRecording
 from pynwb.ecephys import ElectricalSeries
 
-from spikeinterface import BaseRecording
-from spikeinterface.extractors import NeuroScopeRecordingExtractor, NeuroScopeSortingExtractor
-
+from .neuroscope_utils import get_xml_file_path, get_channel_groups, get_shank_channels, get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....tools import get_package
 from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class, dict_deep_update
-from .neuroscope_utils import get_session_start_time
-
-try:
-    import lxml
-    from .neuroscope_utils import get_xml_file_path, get_channel_groups, get_shank_channels
-
-    HAVE_LXML = True
-
-except ImportError:
-    HAVE_LXML = False
-INSTALL_MESSAGE = "Please install lxml to use this interface!"
 
 
-def subset_shank_channels(recording_extractor: BaseRecording, xml_file_path: str) -> BaseRecording:
+def subset_shank_channels(recording_extractor, xml_file_path: str):
     """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
     shank_channels = get_shank_channels(xml_file_path=xml_file_path)
 
@@ -40,9 +26,7 @@ def subset_shank_channels(recording_extractor: BaseRecording, xml_file_path: str
     return sub_recording
 
 
-def add_recording_extractor_properties(
-    recording_extractor: BaseRecording, xml_file_path: str, gain: Optional[float] = None
-) -> BaseRecording:
+def add_recording_extractor_properties(recording_extractor, xml_file_path: str, gain: Optional[float] = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
@@ -70,10 +54,8 @@ def add_recording_extractor_properties(
     )
 
 
-class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
+class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
-
-    RX = NeuroScopeRecordingExtractor
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str):
@@ -120,13 +102,16 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
-        assert HAVE_LXML, INSTALL_MESSAGE
+        get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
         if spikeextractors_backend:
-            self.RX = se.NeuroscopeRecordingExtractor
+            from spikeextractors import NeuroscopeRecordingExtractor
+            from spikeinterface.core.old_api_utils import OldToNewRecording
+
+            self.Extractor = NeuroscopeRecordingExtractor
             super().__init__(file_path=file_path, xml_file_path=xml_file_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
@@ -152,7 +137,7 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
         metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         metadata["Ecephys"].update(
             ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
         )
@@ -162,10 +147,11 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
+class NeuroScopeMultiRecordingTimeInterface(NeuroScopeRecordingInterface):
     """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
 
-    RX = se.NeuroscopeMultiRecordingTimeExtractor
+    RXModule = "spikeextractors"
+    RXName = "NeuroscopeMultiRecordingTimeExtractor"
 
     def __init__(
         self,
@@ -192,11 +178,12 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
         """
-        assert HAVE_LXML, INSTALL_MESSAGE
+        get_package(package_name="lxml")
+        from spikeinterface.core.old_api_utils import OldToNewRecording
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=folder_path)
-        super(NeuroscopeRecordingInterface, self).__init__(
+        super(NeuroScopeRecordingInterface, self).__init__(
             folder_path=folder_path,
             gain=gain,
             xml_file_path=xml_file_path,
@@ -209,10 +196,10 @@ class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
 
 
-class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
+class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
-    RX = NeuroScopeRecordingExtractor
+    ExtractorName = "NeuroScopeRecordingExtractor"
 
     def __init__(
         self,
@@ -240,13 +227,16 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
-        assert HAVE_LXML, INSTALL_MESSAGE
+        get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
         if spikeextractors_backend:
-            self.RX = se.NeuroscopeRecordingExtractor
+            from spikeextractors import NeuroscopeRecordingExtractor
+            from spikeinterface.core.old_api_utils import OldToNewRecording
+
+            self.Extractor = NeuroscopeRecordingExtractor
             super().__init__(file_path=file_path, xml_file_path=xml_file_path)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
@@ -265,14 +255,12 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
         metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         return metadata
 
 
-class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
+class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
-
-    SX = NeuroScopeSortingExtractor
 
     def __init__(
         self,
@@ -320,9 +308,11 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
-        assert HAVE_LXML, INSTALL_MESSAGE
+        get_package(package_name="lxml")
+        from spikeextractors import NeuroscopeMultiSortingExtractor
+
         if spikeextractors_backend:
-            self.SX = se.NeuroscopeMultiSortingExtractor
+            self.Extractor = NeuroscopeMultiSortingExtractor
 
         super().__init__(
             folder_path=folder_path,
@@ -341,7 +331,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
-        metadata = dict(Ecephys=NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata = dict(Ecephys=NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
 
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:

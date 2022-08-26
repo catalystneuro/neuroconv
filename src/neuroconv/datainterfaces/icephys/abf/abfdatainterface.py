@@ -1,9 +1,7 @@
 """Author: Luiz Tauffer."""
-from datetime import datetime, timedelta
-from pathlib import Path
-from warnings import warn
 import json
-from neo import AxonIO
+from datetime import datetime, timedelta
+from warnings import warn
 
 from ..baseicephysinterface import BaseIcephysInterface
 from ....tools.neo import get_number_of_electrodes, get_number_of_segments
@@ -27,7 +25,7 @@ def get_start_datetime(neo_reader):
 
 class AbfInterface(BaseIcephysInterface):
 
-    neo_class = AxonIO
+    ExtractorName = "AxonIO"
 
     @classmethod
     def get_source_schema(cls):
