@@ -13,25 +13,25 @@ with open(root / "requirements-rtd.txt") as f:
     documentation_dependencies = f.readlines()
 with open(root / "requirements-testing.txt") as f:
     testing_suite_dependencies = f.readlines()
-
-full_dependencies = set(install_requires)
-with open(root / "requirements-full.txt") as f:
-    full_dependencies.update(f.readlines())
+with open(root / "requirements-full.txt") as f:  # TODO: remove entirely
+    full_dependencies = f.readlines()
 
 extras_require = defaultdict(list)
-modality_to_glob = dict()
 for modality in ["ophys", "ecephys", "icephys", "behavior"]:
-    modality_to_glob.update(
-        {modality: (root / "src" / "neuroconv" / "datainterfaces" / "ophys").rglob("*/requirements.txt")}
-    )
-for modality, modality_subpaths in modality_to_glob.items():
-    for modality_subpath in modality_subpaths:
-        with open(modality_subpath) as f:
-            subpath_requirements = f.readlines()
-        full_dependencies.update(subpath_requirements)
-        extras_require[modality].extend(subpath_requirements)
-        extras_require[modality_subpath.parent.name].extend(subpath_requirements)
-extras_require.update(full=list(full_dependencies), test=testing_suite_dependencies, docs=documentation_dependencies)
+    format_subpaths = [
+        path
+        for path in (root / "src" / "neuroconv" / "datainterfaces" / modality).iterdir()
+        if path.is_dir() and path.name != "__pycache__"
+    ]
+    for format_subpath in format_subpaths:
+        format_requirement_file = format_subpath / "requirements.txt"
+        if format_requirement_file.exists():
+            with open(format_requirement_file) as f:
+                format_requirements = f.readlines()
+                full_dependencies.extend(format_requirements)
+                extras_require[modality].extend(format_requirements)
+                extras_require[format_subpath.name].extend(format_requirements)
+extras_require.update(full=full_dependencies, test=testing_suite_dependencies, docs=documentation_dependencies)
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
 gin_config_file_base = Path("./base_gin_test_config.json")
