@@ -15,6 +15,7 @@ from pynwb.device import Device
 from pynwb.ophys import (
     ImageSegmentation,
     ImagingPlane,
+    PlaneSegmentation,
     Fluorescence,
     OpticalChannel,
     TwoPhotonSeries,
@@ -146,6 +147,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
 def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     Add optical physiology devices from metadata.
+
     The metadata concerning the optical physiology should be stored in metadata["Ophys]["Device"]
     This function handles both a text specification of the device to be built and an actual pynwb.Device object.
 
@@ -167,6 +169,7 @@ def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
 def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata: dict) -> ImagingPlane:
     """
     Private auxiliar function to create an ImagingPlane object from pynwb using the imaging_plane_metadata
+
     Parameters
     ----------
     nwbfile : NWBFile
@@ -196,6 +199,7 @@ def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata
 def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int = 0) -> NWBFile:
     """
     Adds the imaging plane specificied by the metadata to the nwb file.
+
     The imaging plane that is added is the one located in metadata["Ophys"]["ImagingPlane"][imaging_plane_index]
 
     Parameters
@@ -236,6 +240,7 @@ def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int
 def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     Adds the image segmentation specified by the metadata to the nwb file.
+
     Parameters
     ----------
     nwbfile : NWBFile
@@ -573,16 +578,16 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
     # set roi_response_series rate:
     rate = np.nan if sgmextractor.get_sampling_frequency() is None else sgmextractor.get_sampling_frequency()
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
-        if trace_name == "raw":
-            if trace_data is not None:
-                metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=rate)
-            continue
+        # if trace_name == "raw":
+        #     if trace_data is not None:
+        #         metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=rate)
+        #     continue
         if trace_data is not None and len(trace_data.shape) != 0:
             metadata["Ophys"]["Fluorescence"]["roi_response_series"].append(
                 dict(
                     name=trace_name.capitalize(),
                     description=f"description of {trace_name} traces",
-                    rate=rate,
+                    # rate=rate,
                 )
             )
     # adding imaging_rate:
@@ -597,11 +602,14 @@ def add_plane_segmentation(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_index: int = 0,
+    include_roi_centroids: bool = True,
+    mask_type: str = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
+
     If the plane segmentation already exists in the image segmentation, it is not added again.
 
     Parameters
@@ -614,6 +622,21 @@ def add_plane_segmentation(
         The metadata for the plane segmentation.
     plane_segmentation_index: int, optional
         The index of the plane segmentation to add.
+    include_roi_centroids : bool, optional
+        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
+    mask_type : str, optional
+        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
+        Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+            of pixels in each ROI.
+        Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+            of voxels in each ROI.
+        Specify your choice between these two as mask_type='image', 'pixel', or 'voxel'.
+        Defaults to 'image'.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
     compression_options : dict, optional
@@ -624,6 +647,11 @@ def add_plane_segmentation(
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
+    assert mask_type in [
+        "image",
+        "pixel",
+        "voxel",
+    ], f"Keyword argument 'mask_type' must be one of either 'image', 'pixel', or 'voxel'! Received '{mask_type}'."
     if iterator_options is None:
         iterator_options = dict()
     if compression_options is None:
@@ -664,45 +692,60 @@ def add_plane_segmentation(
         accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
         rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
 
-        roi_locations = segmentation_extractor.get_roi_locations().T
-
         imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][plane_segmentation_index]
         imaging_plane_name = imaging_plane_metadata["name"]
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
 
-        plane_segmentation_kwargs = dict(
-            **plane_segmentation_metadata,
-            imaging_plane=imaging_plane,
-            columns=[
-                VectorData(
-                    data=H5DataIO(
-                        DataChunkIterator(image_mask_iterator(), **iterator_options),
-                        **compression_options,
-                    ),
-                    name="image_mask",
-                    description="image masks",
-                ),
-                VectorData(
-                    data=roi_locations,
-                    name="RoiCentroid",
-                    description="x,y location of centroid of the roi in image_mask",
-                ),
-                VectorData(
-                    data=accepted_ids,
-                    name="Accepted",
-                    description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
-                ),
-                VectorData(
-                    data=rejected_ids,
-                    name="Rejected",
-                    description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation",
-                ),
-            ],
-            id=roi_ids,
-        )
+        plane_segmentation = PlaneSegmentation(**plane_segmentation_metadata, imaging_plane=imaging_plane, id=roi_ids)
+        if True:  # np.any(accepted_ids != 1):
+            plane_segmentation.add_column(
+                name="Accepted",
+                description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
+                data=H5DataIO(accepted_ids, **compression_options),
+            )
+        if True:  # np.any(rejected_ids):
+            plane_segmentation.add_column(
+                name="Rejected",
+                description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation",
+                data=H5DataIO(rejected_ids, **compression_options),
+            )
+        if include_roi_centroids:
+            tranpose_roi_location_axes = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_roi_location_axes, :]
 
-        image_segmentation.create_plane_segmentation(**plane_segmentation_kwargs)
+            plane_segmentation.add_column(
+                name="RoiCentroid", description="The x, y, (z) centroids of each ROI.", data=roi_locations
+            )
+        if mask_type == "image":
+            plane_segmentation.add_column(
+                name="image_mask",
+                description="Image masks for each ROI.",
+                data=H5DataIO(DataChunkIterator(image_mask_iterator(), **iterator_options), **compression_options),
+            )
+        elif mask_type == "pixel" or mask_type == "voxel":
+            pixel_masks = segmentation_extractor.get_roi_pixel_masks()
+            num_pixel_dims = pixel_masks[0][1]
 
+            assert num_pixel_dims in [3, 4,], (
+                "The segmentation extractor returned a pixel mask that is not 3- or 4- dimensional! "
+                "Please open a ticket with https://github.com/catalystneuro/roiextractors/issues"
+            )
+            if mask_type == "pixel" and num_pixel_dims == 4:
+                warn(
+                    "Specified mask_type='pixel', but ROIExtractors returned 4-dimensional masks. "
+                    "Using mask_type='voxel' instead."
+                )
+                mask_type = "voxel"
+            if mask_type == "voxel" and num_pixel_dims == 3:
+                warn(
+                    "Specified mask_type='voxel', but ROIExtractors returned 3-dimensional masks. "
+                    "Using mask_type='pixel' instead."
+                )
+                mask_type = "pixel"
+
+            for pixel_mask in pixel_masks:
+                plane_segmentation.add_roi(**{f"{mask_type}_mask": pixel_mask})
+        image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
 
@@ -714,6 +757,7 @@ def add_fluorescence_traces(
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
+
     The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"].
     The df/F traces that are added are the one located in metadata["Ophys"]["DfOverF"].
 
@@ -733,7 +777,6 @@ def add_fluorescence_traces(
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
-
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
     default_metadata = get_default_ophys_metadata()
@@ -896,7 +939,6 @@ def add_summary_images(
     NWBFile
         The nwbfile passed as an input with the summary images added.
     """
-
     images_dict = segmentation_extractor.get_images_dict()
     images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
     if not images_to_add:
@@ -923,6 +965,8 @@ def write_segmentation(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
+    include_roi_centroids: bool = True,
+    mask_type: str = "image",  # Literal["image", "pixel"]
     buffer_size: int = 10,
     plane_num: int = 0,
     save_path: OptionalFilePathType = None,  # TODO: to be removed
@@ -951,6 +995,19 @@ def write_segmentation(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
+    include_roi_centroids : bool, optional
+        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
+    mask_type : str, optional
+        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
+        ImageMasks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        PixelMasks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+            of pixels in each ROI.
+        Specify your choice between these two as mask_type='image' or mask_type='pixel'.
+        Defaults to 'image'.
     buffer_size : int, optional
         The buffer size in GB, by default 10
     plane_num : int, optional
@@ -1030,6 +1087,8 @@ def write_segmentation(
                 segmentation_extractor=segext_obj,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
+                include_roi_centroids=include_roi_centroids,
+                mask_type=mask_type,
                 iterator_options=dict(buffer_size=buffer_size),
                 compression_options=dict(
                     compression=True,

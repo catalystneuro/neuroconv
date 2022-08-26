@@ -63,6 +63,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        include_roi_centroids: bool = True,
+        mask_type: str = "image",  # Literal["image", "pixel"]
         save_path: OptionalFilePathType = None,
     ):
 
@@ -73,5 +75,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
+            include_roi_centroids=include_roi_centroids,
+            mask_type=mask_type,
             save_path=save_path,
         )
