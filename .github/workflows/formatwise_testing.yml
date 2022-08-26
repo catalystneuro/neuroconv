@@ -72,4 +72,4 @@ jobs:
       - name: Install a specific format
         run: pip install .[${{ matrix.format }}]
       - name: Run that particular file in the doctest gallery
-        # run: pytest docs/??? or something
+        run: pytest docs/??? or something
