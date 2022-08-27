@@ -2,6 +2,7 @@ from unittest import TestCase
 
 import neuroconv
 from neuroconv import datainterfaces
+from neuroconv import tools
 
 
 def _strip_magic_module_attributes(dictionary: dict) -> dict:
@@ -32,10 +33,23 @@ class TestImportStructure(TestCase):
             "utils",
             # Exposed attributes
             "NWBConverter",
+            "run_conversion_from_yaml",
+        ]
+        self.assertCountEqual(first=current_structure, second=expected_structure)
+
+    def test_tools_import_structure(self):
+        current_structure = _strip_magic_module_attributes(dictionary=tools.__dict__)
+        expected_structure = [
+            # Sub-modules
+            "neo",
             "spikeinterface",
             "roiextractors",
-            "neo",
-            "run_conversion_from_yaml",
+            # Helper functions
+            "get_package",
+            "importing",
+            # Other stuff that I don't know why it is here (for PR)
+            "nwb_helpers",
+            "yaml_conversion_specification",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
