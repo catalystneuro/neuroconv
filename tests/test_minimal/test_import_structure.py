@@ -50,6 +50,8 @@ class TestImportStructure(TestCase):
             # Other stuff that I don't know why it is here (for PR)
             "nwb_helpers",
             "yaml_conversion_specification",
+            "hdmf",
+            "data_transfers",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
