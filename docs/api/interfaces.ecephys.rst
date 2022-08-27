@@ -9,10 +9,6 @@ Base Sorting
 ------------
 .. automodule:: neuroconv.datainterfaces.ecephys.basesortingextractorinterface
 
-Tutorial Recording & Sorting
-----------------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
-
 Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
@@ -33,7 +29,7 @@ Intan Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
 
-Kilosort Sorting
+KiloSort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
@@ -41,7 +37,7 @@ Neuralynx Recording & Sorting
 -----------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
 
-Neuroscope Recording & Sorting
+NeuroScope Recording & Sorting
 ------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface
 

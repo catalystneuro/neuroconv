@@ -1,17 +1,15 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl"""
-import os
-from pathlib import Path
+"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl."""
+from collections import defaultdict
 from warnings import warn
 from typing import Optional
 from copy import deepcopy
 
+import psutil
 import numpy as np
 from hdmf.common import VectorData
-
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBFile
 from pynwb.base import Images
-from pynwb.file import Subject
 from pynwb.image import GrayscaleImage
 from pynwb.device import Device
 from pynwb.ophys import (
@@ -20,19 +18,17 @@ from pynwb.ophys import (
     Fluorescence,
     OpticalChannel,
     TwoPhotonSeries,
+    RoiResponseSeries,
+    DfOverF,
 )
 
 # from hdmf.commmon import VectorData
 from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-from ..nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile, get_module
-from ...utils import (
-    FilePathType,
-    OptionalFilePathType,
-    dict_deep_update,
-    calculate_regular_series_rate,
-)
+from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
+from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
+from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
 
 
 def get_default_ophys_metadata():
@@ -44,12 +40,12 @@ def get_default_ophys_metadata():
     default_optical_channel = dict(
         name="OpticalChannel",
         emission_lambda=np.nan,
-        description="no description",
+        description="An optical channel of the microscope.",
     )
 
     default_imaging_plane = dict(
         name="ImagingPlane",
-        description="no description",
+        description="The plane or volume being imaged by the microscope.",
         excitation_lambda=np.nan,
         indicator="unknown",
         location="unknown",
@@ -57,17 +53,25 @@ def get_default_ophys_metadata():
         optical_channel=[default_optical_channel],
     )
 
-    default_roi_response_series = dict(
-        name="RoiResponseSeries",
-        description="array of raw fluorescence traces",
+    default_fluorescence_roi_response_series = dict(
+        name="RoiResponseSeries", description="Array of raw fluorescence traces.", unit="n.a."
     )
 
-    default_fluoresence = dict(roi_response_series=[default_roi_response_series])
+    default_fluorescence = dict(
+        name="Fluorescence",
+        roi_response_series=[default_fluorescence_roi_response_series],
+    )
+
+    default_dff_roi_response_series = dict(name="RoiResponseSeries", description="Array of df/F traces.", unit="n.a.")
+
+    default_df_over_f = dict(
+        name="DfOverF",
+        roi_response_series=[default_dff_roi_response_series],
+    )
 
     default_two_photon_series = dict(
         name="TwoPhotonSeries",
-        description="no description",
-        comments="Generalized from RoiInterface",
+        description="Imaging data from two-photon excitation microscopy.",
         unit="n.a.",
     )
 
@@ -84,7 +88,8 @@ def get_default_ophys_metadata():
     metadata.update(
         Ophys=dict(
             Device=[default_device],
-            Fluorescence=default_fluoresence,
+            Fluorescence=default_fluorescence,
+            DfOverF=default_df_over_f,
             ImageSegmentation=default_image_segmentation,
             ImagingPlane=[default_imaging_plane],
             TwoPhotonSeries=[default_two_photon_series],
@@ -103,11 +108,12 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     imgextractor: ImagingExtractor
     """
     metadata = get_default_ophys_metadata()
-    # Optical Channel name:
-    channel_name_list = imgextractor.get_channel_names()
-    if channel_name_list is None:
-        channel_name_list = ["generic_name"] * imgextractor.get_num_channels()
 
+    channel_name_list = imgextractor.get_channel_names() or (
+        ["OpticalChannel"]
+        if imgextractor.get_num_channels() == 1
+        else [f"OpticalChannel{idx}" for idx in range(imgextractor.get_num_channels())]
+    )
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
             metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][index]["name"] = channel_name
@@ -116,7 +122,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
                 dict(
                     name=channel_name,
                     emission_lambda=np.nan,
-                    description=f"{channel_name} description",
+                    description="An optical channel of the microscope.",
                 )
             )
     # set imaging plane rate:
@@ -133,6 +139,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
     # remove what Segmentation extractor will input:
     _ = metadata["Ophys"].pop("ImageSegmentation")
     _ = metadata["Ophys"].pop("Fluorescence")
+    _ = metadata["Ophys"].pop("DfOverF")
     return metadata
 
 
@@ -258,16 +265,29 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
 
 
 def add_two_photon_series(
-    imaging, nwbfile, metadata, buffer_size=10, use_times=False, two_photon_series_index: int = 0
+    imaging: ImagingExtractor,
+    nwbfile: NWBFile,
+    metadata: dict,
+    two_photon_series_index: int = 0,
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+    use_times=False,  # TODO: to be removed
+    buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
     Auxiliary static method for nwbextractor.
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+    if buffer_size:
+        warn(
+            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
+            "Specify as a key in the new 'iterator_options' dictionary instead."
+        )
+
+    iterator_options = iterator_options or dict()
 
     metadata_copy = deepcopy(metadata)
     metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy, append_list=False)
@@ -287,15 +307,13 @@ def add_two_photon_series(
     two_photon_series_metadata.update(imaging_plane=imaging_plane)
 
     # Add the data
-    def data_generator(imaging):
-        for i in range(imaging.get_num_frames()):
-            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
-
-    data = H5DataIO(
-        DataChunkIterator(data_generator(imaging), buffer_size=buffer_size),
-        compression=True,
-    )
     two_p_series_kwargs = two_photon_series_metadata
+    frames_to_iterator = _imaging_frames_to_hdmf_iterator(
+        imaging=imaging,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+    )
+    data = H5DataIO(data=frames_to_iterator, compression=True)
     two_p_series_kwargs.update(data=data)
 
     # Add dimension
@@ -307,7 +325,7 @@ def add_two_photon_series(
     if rate:
         two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
     else:
-        two_p_series_kwargs.update(timestamps=H5DataIO(timestamps, compression="gzip"))
+        two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"))
         two_p_series_kwargs["rate"] = None
 
     # Add the TwoPhotonSeries to the nwbfile
@@ -317,32 +335,81 @@ def add_two_photon_series(
     return nwbfile
 
 
-def add_epochs(imaging, nwbfile):
+def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
     """
-    Auxiliary static method for nwbextractor.
+    Raise an error if the full traces of an imaging extractor are larger than available memory.
 
-    Adds epochs from recording object to nwbfile object.
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        An imaging extractor object from roiextractors.
+
+    Raises
+    ------
+    MemoryError
     """
-    # add/update epochs
-    for (name, ep) in imaging._epochs.items():
-        if nwbfile.epochs is None:
-            nwbfile.add_epoch(
-                start_time=imaging.frame_to_time(ep["start_frame"]),
-                stop_time=imaging.frame_to_time(ep["end_frame"]),
-                tags=name,
-            )
-        else:
-            if [name] in nwbfile.epochs["tags"][:]:
-                ind = nwbfile.epochs["tags"][:].index([name])
-                nwbfile.epochs["start_time"].data[ind] = imaging.frame_to_time(ep["start_frame"])
-                nwbfile.epochs["stop_time"].data[ind] = imaging.frame_to_time(ep["end_frame"])
-            else:
-                nwbfile.add_epoch(
-                    start_time=imaging.frame_to_time(ep["start_frame"]),
-                    stop_time=imaging.frame_to_time(ep["end_frame"]),
-                    tags=name,
-                )
-    return nwbfile
+    element_size_in_bytes = imaging.get_dtype().itemsize
+    image_size = imaging.get_image_size()
+    num_frames = imaging.get_num_frames()
+
+    traces_size_in_bytes = num_frames * np.prod(image_size) * element_size_in_bytes
+    available_memory_in_bytes = psutil.virtual_memory().available
+
+    if traces_size_in_bytes > available_memory_in_bytes:
+        message = (
+            f"Memory error, full TwoPhotonSeries data is {round(traces_size_in_bytes/1e9, 2)} GB) but only"
+            f"({round(available_memory_in_bytes/1e9, 2)} GB are available! Please use iterator_type='v2'."
+        )
+        raise MemoryError(message)
+
+
+def _imaging_frames_to_hdmf_iterator(
+    imaging: ImagingExtractor,
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+):
+    """
+    Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The imaging extractor to get the data from.
+    iterator_type : str (optional, defaults to 'v2')
+        The type of iterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
+        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+        For 'v1' this is the same as the options for the DataChunkIterator.
+        For 'v2', see
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+
+    Returns
+    -------
+    DataChunkIterator
+        The frames of the imaging extractor wrapped in an iterator object.
+    """
+
+    def data_generator(imaging):
+        for i in range(imaging.get_num_frames()):
+            yield imaging.get_frames(frame_idxs=[i]).squeeze().T
+
+    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v1', 'v2' (recommended), or None."
+    iterator_options = dict() if iterator_options is None else iterator_options
+
+    if iterator_type is None:
+        check_if_imaging_fits_into_memory(imaging=imaging)
+        return imaging.get_video().transpose((0, 2, 1))
+
+    if iterator_type == "v1":
+        if "buffer_size" not in iterator_options:
+            iterator_options.update(buffer_size=10)
+        return DataChunkIterator(data=data_generator(imaging), **iterator_options)
+
+    return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
 
 def write_imaging(
@@ -352,8 +419,10 @@ def write_imaging(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    buffer_size: int = 10,
-    use_times=False,
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+    use_times=False,  # TODO: to be removed
+    buffer_size: Optional[int] = None,  # TODO: to be removed
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
@@ -383,13 +452,30 @@ def write_imaging(
         The default is True.
     num_chunks: int
         Number of chunks for writing data to file
+    iterator_type : str (optional, defaults to 'v2')
+        The type of iterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
+        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+    iterator_options : dict, optional
+        Dictionary of options for the iterator.
+        For 'v1' this is the same as the options for the DataChunkIterator.
+        For 'v2', see
+        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
+    iterator_options = iterator_options or dict()
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
+    if buffer_size:
+        warn(
+            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
+            "Specify as a key in the new 'iterator_options' dictionary instead."
+        )
 
     # TODO on or after August 1st, 2022, remove argument and deprecation warnings
     if save_path is not None:
@@ -423,12 +509,17 @@ def write_imaging(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         add_devices(nwbfile=nwbfile_out, metadata=metadata)
-        add_two_photon_series(imaging=imaging, nwbfile=nwbfile_out, metadata=metadata, buffer_size=buffer_size)
-        add_epochs(imaging=imaging, nwbfile=nwbfile_out)
+        add_two_photon_series(
+            imaging=imaging,
+            nwbfile=nwbfile_out,
+            metadata=metadata,
+            iterator_type=iterator_type,
+            iterator_options=iterator_options,
+        )
     return nwbfile_out
 
 
-def get_nwb_segmentation_metadata(sgmextractor):
+def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
     """
     Convert metadata from the segmentation into nwb specific metadata.
 
@@ -584,6 +675,176 @@ def add_plane_segmentation(
         image_segmentation.create_plane_segmentation(**plane_segmentation_kwargs)
 
     return nwbfile
+
+
+def add_fluorescence_traces(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict],
+    plane_index: int = 0,
+) -> NWBFile:
+    """
+    Adds the fluorescence traces specified by the metadata to the nwb file.
+    The fluorescence traces that are added are the one located in metadata["Ophys"]["Fluorescence"].
+    The df/F traces that are added are the one located in metadata["Ophys"]["DfOverF"].
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get the traces from.
+    nwbfile : NWBFile
+        The nwbfile to add the fluorescence traces to.
+    metadata : dict
+        The metadata for the fluorescence traces.
+    plane_index : int, optional
+        The index of the plane to add the fluorescence traces to.
+
+    Returns
+    -------
+    NWBFile
+        The nwbfile passed as an input with the fluorescence traces added.
+    """
+
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = get_default_ophys_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    # df/F metadata
+    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
+    df_over_f_name = df_over_f_metadata["name"]
+
+    # Fluorescence traces metadata
+    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
+    fluorescence_name = fluorescence_metadata["name"]
+
+    # Get traces from the segmentation extractor
+    traces_to_add = segmentation_extractor.get_traces_dict()
+
+    # Filter empty data
+    traces_to_add = {trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None}
+    # Filter all zero data
+    traces_to_add = {
+        trace_name: trace for trace_name, trace in traces_to_add.items() if any(x != 0 for x in np.ravel(trace))
+    }
+
+    # Early return if there is nothing to add
+    if not traces_to_add:
+        return nwbfile
+
+    # Create a reference for ROIs from the plane segmentation
+    roi_table_region = _create_roi_table_region(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata_copy,
+        plane_index=plane_index,
+    )
+
+    rate = (
+        np.nan
+        if segmentation_extractor.get_sampling_frequency() is None
+        else float(segmentation_extractor.get_sampling_frequency())
+    )
+
+    roi_response_series_kwargs = dict(
+        rois=roi_table_region,
+        # TODO: timestamps or rate (for timestamps we need frame_to_time method)
+        # TODO: check for regularity, only use timestamps if irregular timing
+        starting_time=0.0,
+        rate=rate,
+        unit="n.a.",
+    )
+
+    trace_to_data_interface = defaultdict()
+    traces_to_add_to_fluorescence_data_interface = [
+        trace_name for trace_name in traces_to_add.keys() if trace_name != "dff"
+    ]
+    if traces_to_add_to_fluorescence_data_interface:
+        fluorescence_data_interface = _get_segmentation_data_interface(
+            nwbfile=nwbfile, data_interface_name=fluorescence_name
+        )
+        trace_to_data_interface.default_factory = lambda: fluorescence_data_interface
+
+    if "dff" in traces_to_add:
+        df_over_f_data_interface = _get_segmentation_data_interface(nwbfile=nwbfile, data_interface_name=df_over_f_name)
+        trace_to_data_interface.update(dff=df_over_f_data_interface)
+
+    for trace_name, trace in traces_to_add.items():
+        # Decide which data interface to use based on the trace name
+        data_interface = trace_to_data_interface[trace_name]
+        # Extract the response series metadata
+        # The name of the roi_response_series is "RoiResponseSeries" for raw and df/F traces,
+        # otherwise it is capitalized trace_name.
+        trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
+        trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
+
+        if trace_name in data_interface.roi_response_series:
+            continue
+
+        data_interface_metadata = df_over_f_metadata if isinstance(data_interface, DfOverF) else fluorescence_metadata
+        response_series_metadata = data_interface_metadata["roi_response_series"]
+        trace_metadata = next(
+            trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
+        )
+
+        # Build the roi response series
+        roi_response_series_kwargs.update(
+            data=np.array(trace).T,
+            rois=roi_table_region,
+            **trace_metadata,
+        )
+        roi_response_series = RoiResponseSeries(**roi_response_series_kwargs)
+
+        # Add trace to the data interface
+        data_interface.add_roi_response_series(roi_response_series)
+
+    return nwbfile
+
+
+def _create_roi_table_region(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: dict,
+    plane_index: int,
+):
+    """Private method to create ROI table region."""
+    add_plane_segmentation(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata)
+
+    # Get plane segmentation from the image segmentation
+    image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
+    image_segmentation_name = image_segmentation_metadata["name"]
+    ophys = get_module(nwbfile, "ophys")
+    image_segmentation = ophys.get_data_interface(image_segmentation_name)
+
+    plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][0]["name"]
+    plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
+
+    # Create a reference for ROIs from the plane segmentation
+    roi_table_region = plane_segmentation.create_roi_table_region(
+        region=segmentation_extractor.get_roi_ids(),
+        description=f"region for Imaging plane{plane_index}",
+    )
+
+    return roi_table_region
+
+
+def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str):
+    """Private method to get the container for the segmentation data.
+    If the container does not exist, it is created."""
+    ophys = get_module(nwbfile, "ophys")
+
+    if data_interface_name in ophys.data_interfaces:
+        return ophys.get(data_interface_name)
+
+    if data_interface_name == "DfOverF":
+        data_interface = DfOverF(name=data_interface_name)
+    else:
+        data_interface = Fluorescence(name=data_interface_name)
+
+    # Add the data interface to the ophys module
+    ophys.add(data_interface)
+
+    return data_interface
 
 
 def add_summary_images(
@@ -747,44 +1008,12 @@ def write_segmentation(
                 ),
             )
 
-            plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"]
-            plane_segmentation_name = plane_segmentation_metadata[0]["name"]
-            plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
-
-            # Fluorescence Traces - This should be a function on its own.
-            if "Flourescence" not in ophys.data_interfaces:
-                fluorescence = Fluorescence()
-                ophys.add(fluorescence)
-            else:
-                fluorescence = ophys.data_interfaces["Fluorescence"]
-
-            roi_table_region = plane_segmentation.create_roi_table_region(
-                description=f"region for Imaging plane{plane_no_loop}",
-                region=list(range(segext_obj.get_num_rois())),
+            # Add fluorescence traces:
+            add_fluorescence_traces(
+                segmentation_extractor=segext_obj,
+                nwbfile=nwbfile_out,
+                metadata=metadata,
             )
-
-            roi_response_dict = segext_obj.get_traces_dict()
-
-            rate = np.nan if segext_obj.get_sampling_frequency() is None else segext_obj.get_sampling_frequency()
-
-            # Filter empty data
-            roi_response_dict = {key: value for key, value in roi_response_dict.items() if value is not None}
-            for signal, response_series in roi_response_dict.items():
-
-                not_all_data_is_zero = any(x != 0 for x in np.ravel(response_series))
-                if not_all_data_is_zero:
-                    data = np.asarray(response_series)
-                    trace_name = "RoiResponseSeries" if signal == "raw" else signal.capitalize()
-                    trace_name = trace_name if plane_no_loop == 0 else trace_name + f"_Plane{plane_no_loop}"
-                    input_kwargs = dict(
-                        name=trace_name,
-                        data=data.T,
-                        rois=roi_table_region,
-                        rate=rate,
-                        unit="n.a.",
-                    )
-                    if trace_name not in fluorescence.roi_response_series:
-                        fluorescence.create_roi_response_series(**input_kwargs)
 
             # Adding summary images (mean and correlation)
             images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"

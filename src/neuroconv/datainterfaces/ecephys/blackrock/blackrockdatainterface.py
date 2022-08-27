@@ -2,15 +2,12 @@
 from typing import Optional
 from pathlib import Path
 
-from spikeinterface.extractors import BlackrockRecordingExtractor
-from spikeinterface.core.old_api_utils import OldToNewRecording
-
-import spikeextractors as se
 from pynwb.ecephys import ElectricalSeries
 
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....tools import get_package
 from ....utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
@@ -19,10 +16,8 @@ from ....utils import (
 )
 
 
-class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
+class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a BlackrockRecordingExtractor."""
-
-    RX = BlackrockRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -40,7 +35,7 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend: bool = False,
     ):
         """
-        Load and prepare data corresponding to Blackrock interface
+        Load and prepare data corresponding to Blackrock interface.
 
         Parameters
         ----------
@@ -63,14 +58,22 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
             self.file_path = file_path
 
         if spikeextractors_backend:
-            self.RX = se.BlackrockRecordingExtractor
+            spikeextractors = get_package(package_name="spikeextractors")
+            spikeinterface = get_package(package_name="spikeinterface")
+
+            self.Extractor = spikeextractors.BlackrockRecordingExtractor
             super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose)
             self.source_data = dict(
                 file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
             )
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
+            self.recording_extractor = spikeinterface.core.old_api_utils.OldToNewRecording(
+                oldapi_recording_extractor=self.recording_extractor
+            )
 
         else:
+            spikeinterface = get_package(package_name="spikeinterface")
+
+            self.RX = spikeinterface.extractors.BlackrockRecordingExtractor
             super().__init__(file_path=file_path, verbose=verbose)
 
     def get_metadata_schema(self):
@@ -108,10 +111,8 @@ class BlackrockRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return conversion_options
 
 
-class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
+class BlackrockSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Blackrock spiking data."""
-
-    SX = se.BlackrockSortingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -125,6 +126,9 @@ class BlackrockSortingExtractorInterface(BaseSortingExtractorInterface):
     def __init__(
         self, file_path: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
     ):
+        spikeextractors = get_package(package_name="spikeextractors")
+
+        self.Extractor = spikeextractors.BlackrockSortingExtractor
         super().__init__(filename=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
         self.source_data = dict(file_path=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
 

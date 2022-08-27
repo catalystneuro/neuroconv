@@ -1,16 +1,10 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-from typing import Optional
-
-from spikeinterface.extractors import KiloSortSortingExtractor
-
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
 
 
-class KilosortSortingInterface(BaseSortingExtractorInterface):
+class KiloSortSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a KiloSortingExtractor from spikeinterface."""
-
-    SX = KiloSortSortingExtractor
 
     def __init__(self, folder_path: FolderPathType, keep_good_only: bool = False, verbose: bool = True):
         """

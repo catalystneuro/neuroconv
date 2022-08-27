@@ -1,27 +1,23 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
-from abc import ABC
 from typing import Optional
 
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
-from ...basedatainterface import BaseDataInterface
+from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.roiextractors import write_segmentation, get_nwb_segmentation_metadata
-from ...utils import (
-    get_schema_from_hdmf_class,
-    fill_defaults,
-    OptionalFilePathType,
-    get_base_schema,
-)
+from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePathType, get_base_schema
 
 
-class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
-    SegX = None
+class BaseSegmentationExtractorInterface(BaseExtractorInterface):
+    """Parent class for all SegmentationExtractorInterfaces."""
+
+    ExtractorModuleName: Optional[str] = "roiextractors"
 
     def __init__(self, **source_data):
         super().__init__(**source_data)
-        self.segmentation_extractor = self.SegX(**source_data)
+        self.segmentation_extractor = self.Extractor(**source_data)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -36,7 +32,7 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
         )
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "Fluorescence", "ImageSegmentation"]
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
 
         # Temporary fixes until centralized definition of metadata schemas
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
@@ -49,6 +45,9 @@ class BaseSegmentationExtractorInterface(BaseDataInterface, ABC):
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"].pop(
             "maxItems"
         )
+        metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
+            "properties"
+        ]["Fluorescence"]
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema

@@ -1,12 +1,11 @@
 """Author: Ben Dichter."""
 from typing import Optional
-from abc import ABC
 
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
-from ...basedatainterface import BaseDataInterface
+from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.roiextractors import write_imaging, get_nwb_imaging_metadata
 from ...utils import (
     get_schema_from_hdmf_class,
@@ -17,12 +16,14 @@ from ...utils import (
 )
 
 
-class BaseImagingExtractorInterface(BaseDataInterface, ABC):
-    IX = None
+class BaseImagingExtractorInterface(BaseExtractorInterface):
+    """Parent class for all ImagingExtractorInterfaces."""
+
+    ExtractorModuleName: Optional[str] = "roiextractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.imaging_extractor = self.IX(**source_data)
+        self.imaging_extractor = self.Extractor(**source_data)
         self.verbose = verbose
 
     def get_metadata_schema(self):
@@ -77,11 +78,12 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         stub_test: bool = False,
+        stub_frames: int = 100,
         save_path: OptionalFilePathType = None,
     ):
 
         if stub_test:
-            stub_frames = min([100, self.imaging_extractor.get_num_frames()])
+            stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
             imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
         else:
             imaging_extractor = self.imaging_extractor

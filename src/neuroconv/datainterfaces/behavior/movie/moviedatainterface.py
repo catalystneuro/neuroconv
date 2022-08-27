@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from .movie_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
+from ....tools import get_package
 from ....tools.nwb_helpers import get_module
 from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate
 
@@ -64,6 +65,8 @@ class MovieInterface(BaseDataInterface):
             Many movie storage formats segment a sequence of movies over the course of the experiment.
             Pass the file paths for this movies as a list in sorted, consecutive order.
         """
+        get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):

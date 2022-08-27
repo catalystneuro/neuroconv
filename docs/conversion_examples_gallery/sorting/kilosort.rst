@@ -1,7 +1,7 @@
-Kilosort data conversion
+KiloSort data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert Kilosort data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface.KilosortSortingInterface`.
+Convert KiloSort data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface.KiloSortSortingInterface`.
 
 .. code-block:: python
 
@@ -9,11 +9,11 @@ Convert Kilosort data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>>
-    >>> from neuroconv import KilosortSortingInterface
+    >>> from neuroconv.datainterfaces import KiloSortSortingInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"
     >>> # Change the folder_path to the location of the data in your system
-    >>> interface = KilosortSortingInterface(folder_path=folder_path, verbose=False)
+    >>> interface = KiloSortSortingInterface(folder_path=folder_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()

@@ -1,43 +1,43 @@
 import unittest
+import itertools
 from pathlib import Path
 from datetime import datetime
-import itertools
+from platform import python_version
+from sys import platform
 
 import numpy as np
 import numpy.testing as npt
-
+from pynwb import NWBHDF5IO
+from packaging import version
 from parameterized import parameterized, param
-
 from spikeextractors import NwbSortingExtractor, RecordingExtractor, SortingExtractor
 from spikeextractors.testing import check_sortings_equal
-
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
 from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
-
 from spikeinterface.core import BaseRecording
 
-from pynwb import NWBHDF5IO
 
-from neuroconv import (
-    NWBConverter,
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import (
     CellExplorerSortingInterface,
     CEDRecordingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
-    NeuroscopeRecordingInterface,
-    NeuroscopeSortingInterface,
-    OpenEphysRecordingExtractorInterface,
+    NeuroScopeRecordingInterface,
+    NeuroScopeLFPInterface,
+    NeuroScopeSortingInterface,
+    OpenEphysRecordingInterface,
     PhySortingInterface,
-    KilosortSortingInterface,
+    KiloSortSortingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
-    BlackrockRecordingExtractorInterface,
-    BlackrockSortingExtractorInterface,
-    AxonaRecordingExtractorInterface,
+    BlackrockRecordingInterface,
+    BlackrockSortingInterface,
+    AxonaRecordingInterface,
     AxonaLFPDataInterface,
     EDFRecordingInterface,
 )
@@ -66,6 +66,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=AxonaLFPDataInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg")),
         ),
+        param(
+            data_interface=NeuroScopeLFPInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
+                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+            ),
+        ),
     ]
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
@@ -85,32 +92,25 @@ class TestEcephysNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            nwb_lfp_unscaled = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].data
-            nwb_lfp_conversion = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"].conversion
-            # Technically, check_recordings_equal only tests a snippet of data. Above tests are for metadata mostly.
-            # For GIN test data, sizes should be OK to load all into RAM even on CI
-            if isinstance(recording, RecordingExtractor):
-                npt.assert_array_equal(x=recording.get_traces(return_scaled=False).T, y=nwb_lfp_unscaled)
-                npt.assert_array_almost_equal(
-                    x=recording.get_traces(return_scaled=True).T * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
-                )
-            else:
-                npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
-                # This can only be tested if both gain and offest are present
-                if recording.has_scaled_traces():
-                    npt.assert_array_almost_equal(
-                        x=recording.get_traces(return_scaled=True) * 1e-6, y=nwb_lfp_unscaled * nwb_lfp_conversion
-                    )
+            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"]
+            nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
+            nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
+            if not isinstance(recording, BaseRecording):
+                raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
+
+            npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
+            # This can only be tested if both gain and offest are present
+            if recording.has_scaled_traces():
+                nwb_lfp_conversion_vector = nwb_lfp_electrical_series.channel_conversion[:]
+                nwb_lfp_offset = nwb_lfp_electrical_series.offset
+                recording_data_volts = recording.get_traces(return_scaled=True) * 1e-6
+                nwb_data_volts = nwb_lfp_unscaled * nwb_lfp_conversion_vector * nwb_lfp_conversion + nwb_lfp_offset
+                npt.assert_array_almost_equal(x=recording_data_volts, y=nwb_data_volts)
 
     parameterized_recording_list = [
         param(
-            data_interface=AxonaRecordingExtractorInterface,
+            data_interface=AxonaRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
-        ),
-        param(
-            data_interface=CEDRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-            case_name="smrx",
         ),
         param(
             data_interface=EDFRecordingInterface,
@@ -118,6 +118,14 @@ class TestEcephysNwbConversions(unittest.TestCase):
             case_name="artificial_data",
         ),
     ]
+    if platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"):
+        parameterized_recording_list.append(
+            param(
+                data_interface=CEDRecordingInterface,
+                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
+                case_name="smrx",
+            )
+        )
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
@@ -133,7 +141,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
-                data_interface=OpenEphysRecordingExtractorInterface,
+                data_interface=OpenEphysRecordingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
                     spikeextractors_backend=spikeextractors_backend,
@@ -145,7 +153,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
-                data_interface=BlackrockRecordingExtractorInterface,
+                data_interface=BlackrockRecordingInterface,
                 interface_kwargs=dict(
                     file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
                     spikeextractors_backend=spikeextractors_backend,
@@ -223,7 +231,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
-                data_interface=NeuroscopeRecordingInterface,
+                data_interface=NeuroScopeRecordingInterface,
                 interface_kwargs=dict(
                     file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
                     spikeextractors_backend=spikeextractors_backend,
@@ -270,11 +278,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
     parameterized_sorting_list = [
         param(
-            data_interface=KilosortSortingInterface,
+            data_interface=KiloSortSortingInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
         ),
         param(
-            data_interface=BlackrockSortingExtractorInterface,
+            data_interface=BlackrockSortingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
         ),
         param(
@@ -314,7 +322,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [False, True]:
         parameterized_sorting_list.append(
             param(
-                data_interface=NeuroscopeSortingInterface,
+                data_interface=NeuroScopeSortingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
                     xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
@@ -382,7 +390,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         nwbfile_path = str(self.savedir / f"test_neuroscope_gains_{name}.nwb")
 
         class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
+            data_interface_classes = dict(TestRecording=NeuroScopeRecordingInterface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
         metadata = converter.get_metadata()
@@ -416,7 +424,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         nwbfile_path = str(self.savedir / f"test_neuroscope_dtype_{name}.nwb")
 
         class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
+            data_interface_classes = dict(TestRecording=NeuroScopeRecordingInterface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
         metadata = converter.get_metadata()
@@ -434,7 +442,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         nwbfile_path = str(self.savedir / "testing_start_time.nwb")
 
         class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestRecording=NeuroscopeRecordingInterface)
+            data_interface_classes = dict(TestRecording=NeuroScopeRecordingInterface)
 
         converter = TestConverter(
             source_data=dict(TestRecording=dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat")))

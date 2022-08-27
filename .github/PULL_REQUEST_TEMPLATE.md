@@ -14,4 +14,3 @@ Show here how to reproduce the new behavior (can be a bug fix or a new feature)
 - [ ] Have you checked to ensure that there aren't other open or previously closed [Pull Requests](https://github.com/catalystneuro/neuroconv/pulls) for the same change?
 - [ ] If this PR fixes an issue, is the first line of the PR description `fix #XXX` where `XXX` is the issue number?
 - [ ] Did you update the [CHANGLOG.md](https://github.com/catalystneuro/neuroconv/blob/main/CHANGELOG.md) file on your branch to describe your changes?
-- [ ] Did you bump the appropriate version number in [setup.py](https://github.com/catalystneuro/neuroconv/blob/main/setup.py#L30) on your branch?

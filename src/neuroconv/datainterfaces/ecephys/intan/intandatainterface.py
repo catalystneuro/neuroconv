@@ -1,30 +1,20 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
 
-from spikeinterface.core.old_api_utils import OldToNewRecording
-from spikeinterface import BaseRecording
-from spikeinterface.extractors import IntanRecordingExtractor
-
-import spikeextractors as se
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....tools import get_package
 from ....utils import get_schema_from_hdmf_class, FilePathType
-
-try:
-    from pyintan.intan import read_rhd, read_rhs
-
-    HAVE_PYINTAN = True
-except ImportError:
-    HAVE_PYINTAN = False
-INSTALL_MESSAGE = "Please install pyintan (https://pypi.org/project/pyintan/) to use this interface!"
 
 
 def extract_electrode_metadata_with_pyintan(file_path):
+    pyintan = get_package(package_name="pyintan")
+
     if ".rhd" in Path(file_path).suffixes:
-        intan_file_metadata = read_rhd(file_path)[1]
+        intan_file_metadata = pyintan.intan.read_rhd(file_path)[1]
     else:
-        intan_file_metadata = read_rhs(file_path)[1]
+        intan_file_metadata = pyintan.intan.read_rhs(file_path)[1]
 
     exclude_chan_types = ["AUX", "ADC", "VDD", "_STIM", "ANALOG"]
 
@@ -47,7 +37,7 @@ def extract_electrode_metadata_with_pyintan(file_path):
     return electrodes_metadata
 
 
-def extract_electrode_metadata(recording_extractor: BaseRecording):
+def extract_electrode_metadata(recording_extractor):
 
     channel_name_array = recording_extractor.get_property("channel_name")
 
@@ -68,8 +58,6 @@ def extract_electrode_metadata(recording_extractor: BaseRecording):
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting a IntanRecordingExtractor."""
-
-    RX = IntanRecordingExtractor
 
     def __init__(
         self,
@@ -95,8 +83,11 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         if spikeextractors_backend:
-            assert HAVE_PYINTAN, INSTALL_MESSAGE
-            self.RX = se.IntanRecordingExtractor
+            _ = get_package(package_name="pyintan")
+            from spikeextractors import IntanRecordingExtractor
+            from spikeinterface.core.old_api_utils import OldToNewRecording
+
+            self.Extractor = IntanRecordingExtractor
             super().__init__(file_path=file_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
             electrodes_metadata = extract_electrode_metadata_with_pyintan(file_path)
