@@ -945,7 +945,9 @@ def write_segmentation(
         segmentation_extractors = [segmentation_extractor]
         if metadata is not None and not isinstance(metadata, list):
             metadata = [metadata]
-    metadata_base_list = [get_nwb_segmentation_metadata(segmentation_extractor) for segmentation_extractor in segmentation_extractors]
+    metadata_base_list = [
+        get_nwb_segmentation_metadata(segmentation_extractor) for segmentation_extractor in segmentation_extractors
+    ]
 
     # updating base metadata with new:
     for num, data in enumerate(metadata_base_list):
@@ -981,7 +983,9 @@ def write_segmentation(
     ) as nwbfile_out:
 
         ophys = get_module(nwbfile=nwbfile_out, name="ophys", description="contains optical physiology processed data")
-        for plane_no_loop, (segmentation_extractor, metadata) in enumerate(zip(segmentation_extractors, metadata_base_list)):
+        for plane_no_loop, (segmentation_extractor, metadata) in enumerate(
+            zip(segmentation_extractors, metadata_base_list)
+        ):
 
             # Add device:
             add_devices(nwbfile=nwbfile_out, metadata=metadata)
@@ -1017,6 +1021,8 @@ def write_segmentation(
 
             # Adding summary images (mean and correlation)
             images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
-            add_summary_images(nwbfile=nwbfile_out, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name)
+            add_summary_images(
+                nwbfile=nwbfile_out, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+            )
 
     return nwbfile_out
