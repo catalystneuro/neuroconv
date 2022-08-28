@@ -730,7 +730,7 @@ def add_plane_segmentation(
 
             mask_type_kwarg = f"{mask_type}_mask"
             for roi_id, pixel_mask in zip(roi_ids, pixel_masks):
-                plane_segmentation.add_roi(**{id: roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
+                plane_segmentation.add_roi(**{"id": roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
             # plane_segmentation.add_column(
             #     name=mask_type_kwarg,
             #     description=f"{mask_type}.capitalize() masks for each ROI.",
