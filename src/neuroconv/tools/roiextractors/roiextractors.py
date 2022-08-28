@@ -737,7 +737,7 @@ def add_plane_segmentation(
             #     data=[[tuple(x) for x in pixel_mask] for pixel_mask in pixel_masks],
             #     index=2,
             # )
-        if np.any(accepted_ids != 1):
+        if not np.all(accepted_ids):
             plane_segmentation.add_column(
                 name="Accepted",
                 description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
