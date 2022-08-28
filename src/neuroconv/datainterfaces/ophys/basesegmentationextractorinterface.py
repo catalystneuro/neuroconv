@@ -63,11 +63,18 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        stub_test: bool = False,
+        stub_frames: int = 100,
         save_path: OptionalFilePathType = None,
     ):
+        if stub_test:
+            stub_frames = min([stub_frames, self.segmentation_extraction.get_num_frames()])
+            segmentation_extractor = self.segmentation_extraction.frame_slice(start_frame=0, end_frame=stub_frames)
+        else:
+            segmentation_extractor = self.segmentation_extraction
 
         write_segmentation(
-            self.segmentation_extractor,
+            segmentation_extractor=segmentation_extractor,
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
