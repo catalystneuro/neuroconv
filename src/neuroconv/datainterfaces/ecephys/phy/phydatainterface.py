@@ -18,5 +18,5 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         if spikeextractors_backend:
             from spikeextractors import PhySortingExtractor
 
-            self.SX = PhySortingExtractor
+            self.Extractor = PhySortingExtractor
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
