@@ -68,10 +68,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         save_path: OptionalFilePathType = None,
     ):
         if stub_test:
-            stub_frames = min([stub_frames, self.segmentation_extraction.get_num_frames()])
-            segmentation_extractor = self.segmentation_extraction.frame_slice(start_frame=0, end_frame=stub_frames)
+            stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
+            segmentation_extractor = self.segmentation_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
         else:
-            segmentation_extractor = self.segmentation_extraction
+            segmentation_extractor = self.segmentation_extractor
 
         write_segmentation(
             segmentation_extractor=segmentation_extractor,
