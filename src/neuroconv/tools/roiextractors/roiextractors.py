@@ -804,7 +804,7 @@ def add_fluorescence_traces(
 
         # Build the roi response series
         roi_response_series_kwargs.update(
-            data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
+            data=H5DataIO(SliceableDataChunkIterator(trace.T, **iterator_options), **compression_options),
             rois=roi_table_region,
             **trace_metadata,
         )
