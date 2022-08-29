@@ -34,7 +34,7 @@ jobs:
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
       - name: Install neuroconv with minimal requirements
-        run: pip install .[test]  # Safe to start with this as base for all
+        run: pip install .[test]
 
 
 
@@ -73,4 +73,4 @@ jobs:
       - name: Install a specific format
         run: pip install .[${{ matrix.format }}]
       - name: Run that particular file in the doctest gallery
-        run: pytest docs/??? or something
+        run: pytest --doctest-glob="*.rst" docs/conversion_examples_gallery/recording/${{ matrix.format }}.rst
