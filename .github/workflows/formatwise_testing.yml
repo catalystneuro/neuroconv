@@ -15,8 +15,8 @@ jobs:
       fail-fast: false
       matrix:
         # Disabling these due to multiplicative nature
-        # python-version: [3.7, 3.8, 3.9]
-        # os: [ubuntu-latest]
+        python-version: [3.9]
+        os: [ubuntu-latest]
         format: [{type: recording, name: neuroscope}] #, [sorting, neuroscope], [sorting, cellexplorer]]  # missing: ced gallery
     steps:
       - uses: s-weigand/setup-conda@v1
