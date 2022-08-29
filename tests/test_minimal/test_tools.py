@@ -1,9 +1,11 @@
 import os
 import unittest
+from unittest.mock import patch
 from datetime import datetime
 from tempfile import mkdtemp
 from pathlib import Path
 from shutil import rmtree
+from io import StringIO
 
 import pytest
 from pynwb import NWBHDF5IO, ProcessingModule, TimeSeries
@@ -277,6 +279,16 @@ class TestMakeOrLoadNWBFile(TestCase):
                 nwbfile_path=nwbfile_path, nwbfile=make_nwbfile_from_metadata(metadata=self.metadata), overwrite=False
             ) as nwbfile:
                 nwbfile.add_acquisition(self.time_series_1)
+
+    def test_make_or_load_nwbfile_no_print_on_error_in_context(self):
+        """Test the expected stdout in case an error occurs during the context."""
+        with patch("sys.stdout", new=StringIO()) as fake_out:
+            try:
+                with make_or_load_nwbfile(nwbfile_path=self.tmpdir / "doesnt_matter.nwb", metadata=self.metadata) as _:
+                    raise ValueError("test")
+            except ValueError:
+                pass
+            self.assertEqual(fake_out.getvalue(), "")
 
     def test_make_or_load_nwbfile_write(self):
         nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_write.nwb"

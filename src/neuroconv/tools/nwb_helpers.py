@@ -153,6 +153,7 @@ def make_or_load_nwbfile(
     )
 
     load_kwargs = dict()
+    success = True
     if nwbfile_path:
         load_kwargs.update(path=nwbfile_path)
         if nwbfile_path_in.is_file() and not overwrite:
@@ -166,12 +167,15 @@ def make_or_load_nwbfile(
         elif nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         yield nwbfile
+    except Exception as e:
+        success = False
+        raise e
     finally:
         if nwbfile_path:
             try:
                 io.write(nwbfile)
 
-                if verbose:
+                if success and verbose:
                     print(f"NWB file saved at {nwbfile_path}!")
             finally:
                 io.close()
