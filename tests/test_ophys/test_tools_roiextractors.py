@@ -679,7 +679,14 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         traces = segmentation_extractor.get_traces_dict()
 
-        assert_array_equal(df_over_f[trace_name].data, traces["dff"].T)
+        series_outer_data = df_over_f[trace_name].data
+        assert_array_equal(series_outer_data.data.data, traces["dff"].T)
+        
+        # Check compression options are set
+        assert isinstance(series_outer_data, H5DataIO)
+
+        compression_parameters = series_outer_data.get_io_params()
+        assert compression_parameters["compression"] == "gzip"
 
     def test_add_fluorescence_one_of_the_traces_is_none(self):
         """Test that roi response series with None values are not added to the
