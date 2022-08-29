@@ -17,7 +17,7 @@ jobs:
         # Disabling these due to multiplicative nature
         python-version: [3.9]
         os: [ubuntu-latest]
-        format: [{type: recording, name: neuroscope}] #, [sorting, neuroscope], [sorting, cellexplorer]]  # missing: ced gallery
+        format: [{name: neuroscope, type: recording}, {name: neuroscope, type: sorting}, {name: cellexplorer, type: sorting}]  # missing: ced recording gallery
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
