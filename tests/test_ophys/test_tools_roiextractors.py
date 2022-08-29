@@ -10,7 +10,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBFile, NWBHDF5IO, H5DataIO
 from pynwb.device import Device
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
@@ -616,9 +616,18 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         traces = self.segmentation_extractor.get_traces_dict()
 
-        assert_array_equal(fluorescence["RoiResponseSeries"].data, traces["raw"].T)
-        assert_array_equal(fluorescence["Deconvolved"].data, traces["deconvolved"].T)
-        assert_array_equal(fluorescence["Neuropil"].data, traces["neuropil"].T)
+        for nwb_series_name, roiextractors_name in zip(
+            ["RoiResponseSeries", "Deconvolved", "Neuropil"], ["raw", "deconvolved", "neuropil"]
+        ):
+            series_outer_data = fluorescence[nwb_series_name].data
+            assert_array_equal(series_outer_data.data.data, traces[roiextractors_name].T)
+
+            # Check compression options are set
+            assert isinstance(series_outer_data, H5DataIO)
+
+            compression_parameters = series_outer_data.get_io_params()
+            assert compression_parameters["compression"] == "gzip"
+
         # Check that df/F trace data is not being written to the Fluorescence container
         df_over_f = ophys.get(self.df_over_f_name)
         assert_raises(

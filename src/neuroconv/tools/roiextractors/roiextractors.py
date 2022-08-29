@@ -28,6 +28,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
+from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
 from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
 
@@ -606,7 +607,7 @@ def add_plane_segmentation(
     if iterator_options is None:
         iterator_options = dict()
     if compression_options is None:
-        compression_options = dict()
+        compression_options = dict(compression="gzip")
 
     def image_mask_iterator():
         for roi_id in segmentation_extractor.get_roi_ids():
@@ -690,6 +691,8 @@ def add_fluorescence_traces(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_index: int = 0,
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -712,6 +715,10 @@ def add_fluorescence_traces(
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
+    if iterator_options is None:
+        iterator_options = dict()
+    if compression_options is None:
+        compression_options = dict(compression="gzip")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -797,7 +804,7 @@ def add_fluorescence_traces(
 
         # Build the roi response series
         roi_response_series_kwargs.update(
-            data=np.array(trace).T,
+            data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
             rois=roi_table_region,
             **trace_metadata,
         )
@@ -905,6 +912,8 @@ def write_segmentation(
     buffer_size: int = 10,
     plane_num: int = 0,
     include_roi_centroids: bool = True,
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
     save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
@@ -943,6 +952,10 @@ def write_segmentation(
         Defaults to True.
     """
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
+    if iterator_options is None:
+        iterator_options = dict()
+    if compression_options is None:
+        compression_options = dict(compression="gzip")
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segext_obj, MultiSegmentationExtractor):
@@ -1017,11 +1030,8 @@ def write_segmentation(
                 nwbfile=nwbfile_out,
                 metadata=metadata,
                 include_roi_centroids=include_roi_centroids,
-                iterator_options=dict(buffer_size=buffer_size),
-                compression_options=dict(
-                    compression=True,
-                    compression_opts=9,
-                ),
+                iterator_options=iterator_options,
+                compression_options=compression_options,
             )
 
             # Add fluorescence traces:
@@ -1029,6 +1039,8 @@ def write_segmentation(
                 segmentation_extractor=segext_obj,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
+                iterator_options=iterator_options,
+                compression_options=compression_options,
             )
 
             # Adding summary images (mean and correlation)

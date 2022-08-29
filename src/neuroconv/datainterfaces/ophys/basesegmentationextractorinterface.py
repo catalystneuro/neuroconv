@@ -65,6 +65,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         include_roi_centroids: bool = True,
+        iterator_options: Optional[dict] = None,
+        compression_options: Optional[dict] = None,
         save_path: OptionalFilePathType = None,
     ):
         from ...tools.roiextractors import write_segmentation
@@ -77,5 +79,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             include_roi_centroids=include_roi_centroids,
+            iterator_options=iterator_options,
+            compression_options=compression_options,
             save_path=save_path,
         )
