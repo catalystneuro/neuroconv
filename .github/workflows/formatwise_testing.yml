@@ -2,7 +2,7 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * 1"  # Every Monday at noon EST
-  pull_request:  # TODO, swap to manual dispatch
+  pull_request:  # TODO, swap to manual dispatch?
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
@@ -13,10 +13,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix: # Should we perhaps par this down for this gallery? Perhaps only ubuntu-latest with 3.9?
-        python-version: [3.7, 3.8, 3.9]
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        format: [neuroscope]  # can add all the others here
+      matrix:
+        # Disabling these due to multiplicative nature
+        # python-version: [3.7, 3.8, 3.9]
+        # os: [ubuntu-latest]
+        format: [{type: recording, name: neuroscope}] #, [sorting, neuroscope], [sorting, cellexplorer]]  # missing: ced gallery
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
@@ -71,6 +72,6 @@ jobs:
 
 
       - name: Install a specific format
-        run: pip install .[${{ matrix.format }}]
+        run: pip install .[${{ matrix.format.name }}]
       - name: Run that particular file in the doctest gallery
-        run: pytest --doctest-glob="*.rst" docs/conversion_examples_gallery/recording/${{ matrix.format }}.rst
+        run: pytest --doctest-glob="*.rst" docs/conversion_examples_gallery/${{ matrix.format.type }}/${{ matrix.format.name }}.rst
