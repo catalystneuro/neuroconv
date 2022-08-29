@@ -6,7 +6,6 @@ from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.roiextractors import write_imaging, get_nwb_imaging_metadata
 from ...utils import (
     get_schema_from_hdmf_class,
     fill_defaults,
@@ -58,6 +57,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
+        from ...tools.roiextractors import get_nwb_imaging_metadata
+
         metadata = super().get_metadata()
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
         metadata = dict_deep_update(default_metadata, metadata)
@@ -81,6 +82,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         stub_frames: int = 100,
         save_path: OptionalFilePathType = None,
     ):
+        from ...tools.roiextractors import write_imaging
 
         if stub_test:
             stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])

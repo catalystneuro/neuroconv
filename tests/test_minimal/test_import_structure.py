@@ -32,9 +32,9 @@ class TestImportStructure(TestCase):
             "utils",
             # Exposed attributes
             "NWBConverter",
-            "spikeinterface",
-            "roiextractors",
-            "neo",
+            # "spikeinterface",  # TODO: decide what to do here
+            # "roiextractors",
+            # "neo",
             "run_conversion_from_yaml",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)

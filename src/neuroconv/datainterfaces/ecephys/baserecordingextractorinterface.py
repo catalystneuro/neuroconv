@@ -7,7 +7,6 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.spikeinterface import write_recording
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
@@ -158,6 +157,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                     Should be below 1 MB. Automatically calculates suitable chunk shape.
             If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
         """
+        from ...tools.spikeinterface import write_recording
+
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
