@@ -17,7 +17,7 @@ jobs:
         # Disabling these due to multiplicative nature
         python-version: [3.9]
         os: [ubuntu-latest]
-        format: [ {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope} ]  # missing: ced recording gallery
+        format: [ {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope}, {type: imaging, name: scanimage}, {type: imaging, name: tiff}, {type: behavior, name: deeplabcut}, {type: behavior, name: movie} ]  # missing: ced recording gallery
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
