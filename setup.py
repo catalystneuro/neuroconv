@@ -28,6 +28,7 @@ for modality in ["ophys", "ecephys", "icephys", "behavior"]:
     format_subpaths = [path for path in modality_path.iterdir() if path.is_dir() and path.name != "__pycache__"]
     for format_subpath in format_subpaths:
         format_requirement_file = format_subpath / "requirements.txt"
+        extras_require[format_subpath.name].extend(modality_requirements)
         if format_requirement_file.exists():
             with open(format_requirement_file) as f:
                 format_requirements = f.readlines()
