@@ -1,22 +1,19 @@
-name: Minimal and Full Tests
+name: Formwatwise gallery tests
 on:
   schedule:
     - cron: "0 16 * * 1"  # Every Monday at noon EST
   workflow_dispatch:
 
-env:
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
-
 jobs:
   run:
-    name: Minimal and full tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    name: Formatwise gallery tests for ${{ format.type }}:${{ format.name }} on ${{ matrix.os }} with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         # Disabling these due to multiplicative nature
-        python-version: [3.9]
-        os: [ubuntu-latest]
+        python-version: [3.7, 3.8, 3.9]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         format: [ {type: recording, name: spikeglx}, {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope}, {type: imaging, name: scanimage}, {type: imaging, name: tiff}, {type: behavior, name: deeplabcut} ]  # SpikeGLX is the test of the 'empty' requirements functionality - missing: ced recording gallery and movie behavior gallery
     steps:
       - uses: s-weigand/setup-conda@v1
