@@ -681,7 +681,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         series_outer_data = df_over_f[trace_name].data
         assert_array_equal(series_outer_data.data.data, traces["dff"].T)
-        
+
         # Check compression options are set
         assert isinstance(series_outer_data, H5DataIO)
 
