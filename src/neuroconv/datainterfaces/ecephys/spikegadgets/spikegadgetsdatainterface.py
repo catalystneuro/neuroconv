@@ -1,17 +1,10 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-
-import spikeextractors as se
-from spikeinterface.extractors import SpikeGadgetsRecordingExtractor
-from spikeinterface.core.old_api_utils import OldToNewRecording
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the SpikeGadgets format."""
-
-    RX = SpikeGadgetsRecordingExtractor
 
     @classmethod
     def get_source_schema(cls):
@@ -50,9 +43,12 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         if spikeextractors_backend:
-            self.RX = se.SpikeGadgetsRecordingExtractor
+            from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
+            from spikeinterface.core.old_api_utils import OldToNewRecording
+
+            self.Extractor = SpikeGadgetsRecordingExtractor
             if probe_file_path is not None:
-                self.recording_extractor = se.load_probe_file(
+                self.recording_extractor = load_probe_file(
                     recording=self.recording_extractor, probe_file=probe_file_path
                 )
 

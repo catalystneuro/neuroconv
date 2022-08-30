@@ -80,9 +80,9 @@ body:
     id: terms
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/.github/CODE_OF_CONDUCT.rst)
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/catalystneuro/neuroconv/blob/main/.github/CODE_OF_CONDUCT.rst)
       options:
-        - label: I agree to follow this project's [Code of Conduct](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/.github/CODE_OF_CONDUCT.rst)
+        - label: I agree to follow this project's [Code of Conduct](https://github.com/catalystneuro/neuroconv/blob/main/.github/CODE_OF_CONDUCT.rst)
           required: true
-        - label: Have you ensured this bug was not already [reported](https://github.com/catalystneuro/nwb-conversion-tools/issues)?
+        - label: Have you ensured this bug was not already [reported](https://github.com/catalystneuro/neuroconv/issues)?
           required: true

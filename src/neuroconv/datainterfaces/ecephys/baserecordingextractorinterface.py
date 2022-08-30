@@ -1,27 +1,23 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import ABC
 from typing import Optional
 
 import numpy as np
-import spikeextractors as se
-import spikeinterface as si
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
-from ...basedatainterface import BaseDataInterface
-from ...tools.spikeinterface import write_recording
+from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
-class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
-    """Primary class for all RecordingExtractorInterfaces."""
+class BaseRecordingExtractorInterface(BaseExtractorInterface):
+    """Parent class for all RecordingExtractorInterfaces."""
 
-    RX = None
+    ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.recording_extractor = self.RX(**source_data)
+        self.recording_extractor = self.Extractor(**source_data)
         self.subset_channels = None
         self.verbose = verbose
 
@@ -77,17 +73,19 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         ----------
         stub_test : bool, optional (default False)
         """
-        kwargs = dict()
+        from spikeextractors import RecordingExtractor, SubRecordingExtractor
+        from spikeinterface import BaseRecording
 
+        kwargs = dict()
         if stub_test:
             num_frames = 100
             end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
             kwargs.update(end_frame=end_frame)
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
-        if isinstance(self.recording_extractor, se.RecordingExtractor):
-            recording_extractor = se.SubRecordingExtractor(self.recording_extractor, **kwargs)
-        elif isinstance(self.recording_extractor, si.BaseRecording):
+        if isinstance(self.recording_extractor, RecordingExtractor):
+            recording_extractor = SubRecordingExtractor(self.recording_extractor, **kwargs)
+        elif isinstance(self.recording_extractor, BaseRecording):
             recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         else:
             raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")
@@ -109,7 +107,6 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
-        save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -159,6 +156,8 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
                     Should be below 1 MB. Automatically calculates suitable chunk shape.
             If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
         """
+        from ...tools.spikeinterface import write_recording
+
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
@@ -180,5 +179,4 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
-            save_path=save_path,  # TODO: to be removed, depreceation applied at tools level
         )

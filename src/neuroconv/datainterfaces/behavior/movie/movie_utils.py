@@ -5,23 +5,16 @@ import numpy as np
 from tqdm import tqdm
 from hdmf.data_utils import GenericDataChunkIterator
 
+from ....tools import get_package
 from ....utils import FilePathType
-
-
-try:
-    import cv2
-
-    HAVE_OPENCV = True
-except ImportError:
-    HAVE_OPENCV = False
-INSTALL_MESSAGE = "Please install opencv to use the VideoCaptureContext class! (pip install opencv-python)"
 
 
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager."""
 
     def __init__(self, file_path: FilePathType):
-        assert HAVE_OPENCV, INSTALL_MESSAGE
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+
         self.vc = cv2.VideoCapture(filename=file_path)
         self.file_path = file_path
         self._current_frame = 0
@@ -30,6 +23,8 @@ class VideoCaptureContext:
 
     def get_movie_timestamps(self):
         """Return numpy array of the timestamps(s) for a movie file."""
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+
         timestamps = []
         for _ in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
             success, _ = self.vc.read()
@@ -75,6 +70,8 @@ class VideoCaptureContext:
 
     @staticmethod
     def get_cv_attribute(attribute_name: str):
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+
         if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
             return getattr(cv2.cv, "CV_" + attribute_name)
         return getattr(cv2, attribute_name)
@@ -132,6 +129,8 @@ class VideoCaptureContext:
             raise StopIteration
 
     def __enter__(self):
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+
         self.vc = cv2.VideoCapture(self.file_path)
         return self
 

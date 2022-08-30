@@ -1,19 +1,11 @@
 numpy>=1.21.0;python_version<'3.8'
 numpy>=1.22.0;python_version>='3.8'
-pynwb>=1.4.0
-hdmf>=3.2.1
-h5py>=2.10.0
-tqdm>=4.60.0
-natsort>=7.1.1
-PyYAML>=5.4
 jsonschema>=3.2.0
-psutil>=5.8.0
-dandi==0.39.6
-spikeextractors>=0.9.10
-spikeinterface>=0.94.0
-neo>=0.9.0
-roiextractors==0.4.18
-lxml>=4.6.5
+PyYAML>=5.4
 scipy>=1.4.1
-click  # must be unspecified version to handle platform/pyVersion
-pyopenephys>=1.1.2
+h5py>=2.10.0
+hdmf>=3.2.1
+pynwb>=1.4.0
+psutil>=5.8.0
+tqdm>=4.60.0
+dandi>=0.39.6

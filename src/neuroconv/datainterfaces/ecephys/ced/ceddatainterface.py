@@ -1,30 +1,21 @@
 """Authors: Heberto Mayorquin, Luiz Tauffer."""
 from pathlib import Path
-from platform import python_version
-from sys import platform
-from packaging import version
-
-from spikeinterface.extractors import CedRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....tools import get_package
 from ....utils import get_schema_from_method_signature, FilePathType
 
-HAVE_SONPY = True
-try:
-    import sonpy
-except ImportError:
-    HAVE_SONPY = False
-INSTALL_MESSAGE = "Please install sonpy to use this interface (pip install sonpy)!"
-if platform == "darwin" and version.parse(python_version()) < version.parse("3.8"):
-    HAVE_SONPY = False
-    INSTALL_MESSAGE = "The sonpy package (CED dependency) is not available on Mac for Python versions below 3.8!"
+
+def _test_sonpy_installation() -> None:
+    get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
 
 
-class CEDRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting data from CED (Cambridge Electronic Design)
-    ."""
+class CEDRecordingInterface(
+    BaseRecordingExtractorInterface,
+):
+    """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
 
-    RX = CedRecordingExtractor
+    ExtractorName = "CedRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls):
@@ -36,14 +27,17 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_all_channels_info(cls, file_path: FilePathType):
         """Retrieve and inspect necessary channel information prior to initialization."""
-        assert HAVE_SONPY, INSTALL_MESSAGE
+        _test_sonpy_installation()
+        getattr(cls, "RX")  # Required to trigger dynamic access in case this method is called first
         return cls.RX.get_all_channels_info(file_path=file_path)
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
-        assert HAVE_SONPY, INSTALL_MESSAGE
+        _test_sonpy_installation()
+
         stream_id = None
         if Path(file_path).suffix == ".smr":
             stream_id = "1"
+
         super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
 
         # Subset raw channel properties

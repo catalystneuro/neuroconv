@@ -9,10 +9,6 @@ Base Sorting
 ------------
 .. automodule:: neuroconv.datainterfaces.ecephys.basesortingextractorinterface
 
-Tutorial Recording & Sorting
-----------------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
-
 Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
@@ -21,8 +17,8 @@ Blackrock Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface
 
-CED Recording
--------------
+Cambridge Electronic Design (CED) Recording
+-------------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.ced.ceddatainterface
 
 CellExplorer Sorting
@@ -33,15 +29,15 @@ Intan Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
 
-Kilosort Sorting
+KiloSort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
-Neuralynx Recording
--------------------
+Neuralynx Recording & Sorting
+-----------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
 
-Neuroscope Recording & Sorting
+NeuroScope Recording & Sorting
 ------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface
 
@@ -60,3 +56,7 @@ Spikegadgets Recording
 SpikeGLX Recording
 ------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
+
+European Data Format (EDF) Recording
+------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface

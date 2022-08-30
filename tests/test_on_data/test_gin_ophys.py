@@ -5,8 +5,8 @@ from parameterized import parameterized, param
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
-from neuroconv import (
-    NWBConverter,
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import (
     ScanImageImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
@@ -24,6 +24,7 @@ def custom_name_func(testcase_func, param_num, param):
     return (
         f"{testcase_func.__name__}_{param_num}_"
         f"{parameterized.to_safe_name(param.kwargs['data_interface'].__name__)}"
+        f"_{param.kwargs.get('case_name', '')}"
     )
 
 
@@ -113,8 +114,18 @@ class TestOphysNwbConversions(unittest.TestCase):
                         / "segmentation_datasets"
                         / "extract"
                         / "2014_04_01_p203_m19_check01_extractAnalysis.mat"
-                    )
+                    ),
+                    sampling_frequency=15.0,  # typically provided by user
                 ),
+                case_name="LegacyExtractSegmentation",
+            ),
+            param(
+                data_interface=ExtractSegmentationInterface,
+                interface_kwargs=dict(
+                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "extract" / "extract_public_output.mat"),
+                    sampling_frequency=15.0,  # typically provided by user
+                ),
+                case_name="NewExtractSegmentation",
             ),
             param(
                 data_interface=Suite2pSegmentationInterface,
@@ -123,8 +134,8 @@ class TestOphysNwbConversions(unittest.TestCase):
         ],
         name_func=custom_name_func,
     )
-    def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
+    def test_convert_segmentation_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
             data_interface_classes = dict(TestSegmentation=data_interface)

@@ -1,17 +1,13 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
+import json
 import warnings
 from pathlib import Path
+
 from natsort import natsorted
 from dateutil import parser
-import json
-
-from spikeinterface.extractors import NeuralynxRecordingExtractor
-from spikeinterface.core.old_api_utils import OldToNewRecording
-from spikeinterface import BaseRecording
-
-import spikeextractors as se
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
 from ....utils.json_schema import dict_deep_update
 
@@ -30,9 +26,11 @@ def get_metadata(folder_path: FolderPathType) -> dict:
     """
     Parse the header of one of the .ncs files to get the session start time (without
     timezone) and the session_id.
+
     Parameters
     ----------
     folder_path: str or Path
+
     Returns
     -------
     dict
@@ -55,11 +53,14 @@ def get_metadata(folder_path: FolderPathType) -> dict:
 
 
 def get_filtering(channel_path: FolderPathType) -> str:
-    """Get the filtering metadata from an .nsc file.
+    """
+    Get the filtering metadata from an .nsc file.
+
     Parameters
     ----------
     channel_path: str or Path
         Filepath for an .nsc file
+
     Returns
     -------
     str:
@@ -79,13 +80,13 @@ def get_filtering(channel_path: FolderPathType) -> str:
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the Neuralynx format."""
 
-    RX = NeuralynxRecordingExtractor
-
     def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
 
         self.nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
 
         if spikeextractors_backend:
+            from spikeinterface.core.old_api_utils import OldToNewRecording
+
             self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
@@ -96,13 +97,15 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self.add_recording_extractor_properties()
 
     def initialize_in_spikeextractors(self, folder_path, verbose):
-        self.RX = se.MultiRecordingChannelExtractor
+        from spikeextractors import MultiRecordingChannelExtractor, NeuralynxRecordingExtractor
+
+        self.Extractor = MultiRecordingChannelExtractor
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path, verbose=verbose)
         self.verbose = verbose
 
-        extractors = [se.NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in self.nsc_files]
-        self.recording_extractor = self.RX(extractors)
+        extractors = [NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in self.nsc_files]
+        self.recording_extractor = self.Extractor(extractors)
 
         gains = [extractor.get_channel_gains()[0] for extractor in extractors]
         for extractor in extractors:
@@ -120,3 +123,20 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         new_metadata = dict(NWBFile=get_metadata(self.source_data["folder_path"]))
         return dict_deep_update(super().get_metadata(), new_metadata)
+
+
+class NeuralynxSortingInterface(BaseSortingExtractorInterface):
+    def __init__(self, folder_path: FolderPathType, sampling_frequency: float = None, verbose: bool = True):
+        """_summary_
+
+        Parameters
+        ----------
+        folder_path : str, Path
+            The path to the folder/directory containing the data files for the session (nse, ntt, nse, nev)
+        sampling_frequency : float, optional
+            If a specific sampling_frequency is desired it can be set with this argument.
+        verbose : bool, optional
+            Enables verbosity
+        """
+
+        super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)

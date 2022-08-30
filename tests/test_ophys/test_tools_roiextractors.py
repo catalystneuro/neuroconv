@@ -1,13 +1,15 @@
-from tempfile import mkdtemp
 import unittest
+from unittest.mock import Mock
+from tempfile import mkdtemp
 from pathlib import Path
 from datetime import datetime
-from copy import deepcopy
 
+import psutil
 import numpy as np
-from numpy.testing import assert_array_equal
+from hdmf.data_utils import DataChunkIterator
+from hdmf.testing import TestCase
+from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
-
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.device import Device
 from roiextractors.testing import (
@@ -23,7 +25,10 @@ from neuroconv.tools.roiextractors import (
     add_plane_segmentation,
     add_image_segmentation,
     add_summary_images,
+    add_fluorescence_traces,
+    check_if_imaging_fits_into_memory,
 )
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 
 
 class TestAddDevices(unittest.TestCase):
@@ -339,8 +344,8 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation_num_rois = len(plane_segmentation.id)
         self.assertEqual(plane_segmentation_num_rois, self.num_rois)
 
-        plane_segmentation_roi_centroid_data = plane_segmentation["RoiCentroid"].data
-        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations().T
+        plane_segmentation_roi_centroid_data = plane_segmentation["ROICentroids"].data
+        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations()[(1, 0), :].T
 
         assert_array_equal(plane_segmentation_roi_centroid_data, expected_roi_centroid_data)
 
@@ -353,6 +358,21 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         # transpose to num_rois x image_width x image_height
         expected_image_masks = self.segmentation_extractor.get_roi_image_masks().T
         assert_array_equal(data_chunks, expected_image_masks)
+
+    def test_do_not_include_roi_centroids(self):
+        """Test that setting `include_roi_centroids=False` prevents the centroids from being calculated and added."""
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            include_roi_centroids=False,
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        assert "ROICentroids" not in plane_segmentation
 
     @parameterized.expand(
         [
@@ -482,9 +502,327 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert second_plane_segmentation.description == second_plane_segmentation_description
 
 
-class TestAddTwoPhotonSeries(unittest.TestCase):
+class TestAddFluorescenceTraces(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.num_rois = 10
+        cls.num_frames = 20
+        cls.num_rows = 25
+        cls.num_columns = 20
+
+        cls.session_start_time = datetime.now().astimezone()
+
+        cls.fluorescence_name = "Fluorescence"
+        cls.df_over_f_name = "DfOverF"
+
+        cls.raw_roi_response_series_metadata = dict(
+            name="RoiResponseSeries",
+            description="raw fluorescence signal",
+        )
+
+        cls.dff_roi_response_series_metadata = dict(
+            name="RoiResponseSeries",
+            description="relative (df/f) fluorescence signal",
+        )
+
+        cls.deconvolved_roi_response_series_metadata = dict(
+            name="Deconvolved",
+            description="deconvolved fluorescence signal",
+        )
+
+        cls.neuropil_roi_response_series_metadata = dict(
+            name="Neuropil",
+            description="neuropil fluorescence signal",
+            unit="test_unit",
+        )
+
     def setUp(self):
-        self.session_start_time = datetime.now().astimezone()
+        self.segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        self.nwbfile = NWBFile(
+            session_description="session_description",
+            identifier="file_id",
+            session_start_time=self.session_start_time,
+        )
+
+        self.metadata = dict(Ophys=dict())
+
+        fluorescence_metadata = dict(
+            Fluorescence=dict(
+                name=self.fluorescence_name,
+                roi_response_series=[
+                    self.raw_roi_response_series_metadata,
+                    self.deconvolved_roi_response_series_metadata,
+                    self.neuropil_roi_response_series_metadata,
+                ],
+            )
+        )
+
+        dff_metadata = dict(
+            DfOverF=dict(
+                name=self.df_over_f_name,
+                roi_response_series=[self.dff_roi_response_series_metadata],
+            )
+        )
+
+        self.metadata["Ophys"].update(fluorescence_metadata)
+        self.metadata["Ophys"].update(dff_metadata)
+
+    def test_add_fluorescence_traces(self):
+        """Test fluorescence traces are added correctly to the nwbfile."""
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        assert self.fluorescence_name in ophys.data_interfaces
+
+        fluorescence = ophys.get(self.fluorescence_name)
+
+        self.assertEqual(fluorescence.name, self.fluorescence_name)
+        self.assertEqual(len(fluorescence.roi_response_series), 3)
+
+        self.assertEqual(
+            fluorescence["RoiResponseSeries"].description,
+            self.raw_roi_response_series_metadata["description"],
+        )
+
+        self.assertNotEqual(
+            fluorescence["RoiResponseSeries"].description,
+            self.dff_roi_response_series_metadata["description"],
+        )
+
+        self.assertEqual(
+            fluorescence["Deconvolved"].description,
+            self.deconvolved_roi_response_series_metadata["description"],
+        )
+
+        self.assertEqual(
+            fluorescence["Neuropil"].unit,
+            self.neuropil_roi_response_series_metadata["unit"],
+        )
+
+        self.assertEqual(
+            fluorescence["Neuropil"].rate,
+            self.segmentation_extractor.get_sampling_frequency(),
+        )
+
+        traces = self.segmentation_extractor.get_traces_dict()
+
+        assert_array_equal(fluorescence["RoiResponseSeries"].data, traces["raw"].T)
+        assert_array_equal(fluorescence["Deconvolved"].data, traces["deconvolved"].T)
+        assert_array_equal(fluorescence["Neuropil"].data, traces["neuropil"].T)
+        # Check that df/F trace data is not being written to the Fluorescence container
+        df_over_f = ophys.get(self.df_over_f_name)
+        assert_raises(
+            AssertionError,
+            assert_array_equal,
+            fluorescence["RoiResponseSeries"].data,
+            df_over_f["RoiResponseSeries"].data,
+        )
+
+    def test_add_df_over_f_trace(self):
+        """Test df/f traces are added to the nwbfile."""
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_raw_signal=True,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+        segmentation_extractor._roi_response_raw = None
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        assert self.df_over_f_name in ophys.data_interfaces
+
+        assert self.fluorescence_name not in ophys.data_interfaces
+
+        df_over_f = ophys.get(self.df_over_f_name)
+
+        self.assertEqual(df_over_f.name, self.df_over_f_name)
+        self.assertEqual(len(df_over_f.roi_response_series), 1)
+
+        trace_name = self.dff_roi_response_series_metadata["name"]
+        self.assertEqual(
+            df_over_f[trace_name].description,
+            self.dff_roi_response_series_metadata["description"],
+        )
+
+        self.assertEqual(df_over_f[trace_name].unit, "n.a.")
+
+        self.assertEqual(df_over_f[trace_name].rate, segmentation_extractor.get_sampling_frequency())
+
+        traces = segmentation_extractor.get_traces_dict()
+
+        assert_array_equal(df_over_f[trace_name].data, traces["dff"].T)
+
+    def test_add_fluorescence_one_of_the_traces_is_none(self):
+        """Test that roi response series with None values are not added to the
+        nwbfile."""
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_neuropil_signal=False,
+        )
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        assert "Neuropil" not in roi_response_series
+
+        self.assertEqual(len(roi_response_series), 2)
+
+    def test_add_fluorescence_one_of_the_traces_is_all_zeros(self):
+        """Test that roi response series with all zero values are not added to the
+        nwbfile."""
+
+        self.segmentation_extractor._roi_response_deconvolved = np.zeros((self.num_rois, self.num_frames))
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        assert "Deconvolved" not in roi_response_series
+        self.assertEqual(len(roi_response_series), 2)
+
+    def test_no_traces_are_added(self):
+        """Test that no traces are added to the nwbfile if they are all zeros or
+        None."""
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_raw_signal=True,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        segmentation_extractor._roi_response_raw = np.zeros((self.num_rois, self.num_frames))
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        assert self.fluorescence_name not in ophys.data_interfaces
+        assert self.df_over_f_name not in ophys.data_interfaces
+
+    def test_not_overwriting_fluorescence_if_same_name(self):
+        """Test that adding fluorescence traces container with the same name will not
+        overwrite the existing fluorescence container in nwbfile."""
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        self.deconvolved_roi_response_series_metadata["description"] = "second description"
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        self.assertNotEqual(roi_response_series["Deconvolved"].description, "second description")
+
+    def test_add_fluorescence_traces_to_existing_container(self):
+        """Test that new traces can be added to an existing fluorescence container."""
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+            has_raw_signal=True,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        self.assertEqual(len(roi_response_series), 1)
+
+        self.raw_roi_response_series_metadata["description"] = "second description"
+
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        self.assertEqual(len(roi_response_series), 3)
+
+        # check that raw traces are not overwritten
+        self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
+
+
+class TestAddTwoPhotonSeries(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.session_start_time = datetime.now().astimezone()
+        cls.device_name = "optical_device"
+        cls.num_frames = 30
+        cls.num_rows = 10
+        cls.num_columns = 15
+
+    def setUp(self):
         self.nwbfile = NWBFile(
             session_description="session_description",
             identifier="file_id",
@@ -492,7 +830,6 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         )
         self.metadata = dict(Ophys=dict())
 
-        self.device_name = "optical_device"
         self.device_metadata = dict(name=self.device_name)
         self.metadata["Ophys"].update(Device=[self.device_metadata])
 
@@ -517,33 +854,31 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
 
         self.two_photon_series_name = "two_photon_series_name"
         self.two_photon_series_metadata = dict(
-            name=self.two_photon_series_name, imaging_plane=self.imaging_plane_name, unit="unknown"
+            name=self.two_photon_series_name, imaging_plane=self.imaging_plane_name, unit="n.a."
         )
         self.metadata["Ophys"].update(TwoPhotonSeries=[self.two_photon_series_metadata])
 
-        self.num_frames = 30
-        self.num_rows = 10
-        self.num_columns = 15
         self.imaging_extractor = generate_dummy_imaging_extractor(
             self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
         )
 
-    def test_add_two_photon_series(self):
-
-        metadata = self.metadata
-
-        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
+    def test_default_values(self):
+        """Test adding two photon series with default values."""
+        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
 
         # Check data
         acquisition_modules = self.nwbfile.acquisition
-        self.two_photon_series_name in acquisition_modules
+        assert self.two_photon_series_name in acquisition_modules
         data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
         data_chunk_iterator = data_in_hdfm_data_io.data
-        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
+        assert isinstance(data_chunk_iterator, ImagingExtractorDataChunkIterator)
 
+        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
         # NWB stores images as num_columns x num_rows
         expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
         assert two_photon_series_extracted.shape == expected_two_photon_series_shape
+        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
 
         # Check device
         devices = self.nwbfile.devices
@@ -554,6 +889,107 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
         imaging_planes_in_file = self.nwbfile.imaging_planes
         assert self.imaging_plane_name in imaging_planes_in_file
         assert len(imaging_planes_in_file) == 1
+
+    def test_invalid_iterator_type_raises_error(self):
+        """Test error is raised when adding two photon series with invalid iterator type."""
+        with self.assertRaisesWith(
+            AssertionError,
+            "'iterator_type' must be either 'v1', 'v2' (recommended), or None.",
+        ):
+            add_two_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                iterator_type="invalid",
+            )
+
+    def test_non_iterative_write_assertion(self):
+
+        # Estimate num of frames required to exceed memory capabilities
+        dtype = self.imaging_extractor.get_dtype()
+        element_size_in_bytes = dtype.itemsize
+        image_size = self.imaging_extractor.get_image_size()
+
+        available_memory_in_bytes = psutil.virtual_memory().available
+
+        excess = 1.5  # Of what is available in memory
+        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * np.prod(image_size))
+
+        # Mock recording extractor with as much frames as necessary to overflow memory
+        mock_imaging = Mock()
+        mock_imaging.get_dtype.return_value = dtype
+        mock_imaging.get_image_size.return_value = image_size
+        mock_imaging.get_num_frames.return_value = num_frames_to_overflow
+
+        reg_expression = (
+            f"Memory error, full TwoPhotonSeries data is (.*?) GB are available! Please use iterator_type='v2'"
+        )
+
+        with self.assertRaisesRegex(MemoryError, reg_expression):
+            check_if_imaging_fits_into_memory(imaging=mock_imaging)
+
+    def test_non_iterative_two_photon(self):
+        """Test adding two photon series with using DataChunkIterator as iterator type."""
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type=None,
+        )
+
+        # Check data
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        two_photon_series_extracted = acquisition_modules[self.two_photon_series_name].data
+
+        # NWB stores images as num_columns x num_rows
+        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
+        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
+
+    def test_v1_iterator(self):
+        """Test adding two photon series with using DataChunkIterator as iterator type."""
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type="v1",
+        )
+
+        # Check data
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        assert isinstance(data_chunk_iterator, DataChunkIterator)
+        self.assertEqual(data_chunk_iterator.buffer_size, 10)
+
+        two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
+        # NWB stores images as num_columns x num_rows
+        expected_two_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+        assert two_photon_series_extracted.shape == expected_two_photon_series_shape
+        expected_two_photon_series_data = self.imaging_extractor.get_video().transpose((0, 2, 1))
+        assert_array_equal(two_photon_series_extracted, expected_two_photon_series_data)
+
+    def test_iterator_options_propagation(self):
+        """Test that iterator options are propagated to the data chunk iterator."""
+        buffer_shape = (20, 5, 5)
+        chunk_shape = (10, 5, 5)
+        add_two_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            iterator_type="v2",
+            iterator_options=dict(buffer_shape=buffer_shape, chunk_shape=chunk_shape),
+        )
+
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        self.assertEqual(data_chunk_iterator.buffer_shape, buffer_shape)
+        self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
 
     def test_add_two_photon_series_roundtrip(self):
 
@@ -571,7 +1007,7 @@ class TestAddTwoPhotonSeries(unittest.TestCase):
 
             # Check data
             acquisition_modules = read_nwbfile.acquisition
-            self.two_photon_series_name in acquisition_modules
+            assert self.two_photon_series_name in acquisition_modules
             two_photon_series = acquisition_modules[self.two_photon_series_name].data
 
             # NWB stores images as num_columns x num_rows

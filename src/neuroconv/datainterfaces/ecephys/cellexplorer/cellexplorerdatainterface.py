@@ -1,27 +1,22 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
 
-import spikeextractors as se
+import scipy
 import numpy as np
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....tools import get_package
 from ....utils import FilePathType
-
-try:
-    import scipy.io
-    import hdf5storage
-
-    HAVE_SCIPY_AND_HDF5STORAGE = True
-except ImportError:
-    HAVE_SCIPY_AND_HDF5STORAGE = False
 
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
 
-    SX = se.CellExplorerSortingExtractor
+    ExtractorModuleName = "spikeextractors"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        hdf5storage = get_package(package_name="hdf5storage")
+
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)

@@ -2,31 +2,24 @@ import json
 from dateutil.parser import parse as dateparse
 from typing import Optional
 
-from roiextractors import ScanImageTiffImagingExtractor
-
-try:
-    from ScanImageTiffReader import ScanImageTiffReader
-
-    HAVE_SCAN_IMAGE_TIFF = True
-except ImportError:
-    HAVE_SCAN_IMAGE_TIFF = False
-
-
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....tools import get_package
 from ....utils import FilePathType
 
 
 def extract_extra_metadata(file_path):
+    ScanImageTiffReader = get_package(
+        package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
+    )
 
-    description = ScanImageTiffReader(str(file_path)).description(iframe=0)
+    description = ScanImageTiffReader.ScanImageTiffReader(str(file_path)).description(iframe=0)
     extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in description.split("\r") if "=" in x}
 
     return extra_metadata
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
-
-    IX = ScanImageTiffImagingExtractor
+    ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
     def get_source_schema(cls):
@@ -52,10 +45,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
         """
-
-        assert (
-            HAVE_SCAN_IMAGE_TIFF
-        ), "To use the ScanImageTiffExtractor install scanimage-tiff-reader: \n\n pip install scanimage-tiff-reader\n\n"
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
         if "state.acq.frameRate" in self.image_metadata:
@@ -77,7 +66,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
-            metadata["NWBFile"] = dict(session_start_time=extracted_session_start_time)
+            metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
 
         # Extract many scan image properties and attach them as dic in the description
         ophys_metadata = metadata["Ophys"]

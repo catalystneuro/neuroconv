@@ -1,13 +1,11 @@
 """Author: Ben Dichter."""
 from typing import Optional
-from abc import ABC
 
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
-from ...basedatainterface import BaseDataInterface
-from ...tools.roiextractors import write_imaging, get_nwb_imaging_metadata
+from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     get_schema_from_hdmf_class,
     fill_defaults,
@@ -17,12 +15,14 @@ from ...utils import (
 )
 
 
-class BaseImagingExtractorInterface(BaseDataInterface, ABC):
-    IX = None
+class BaseImagingExtractorInterface(BaseExtractorInterface):
+    """Parent class for all ImagingExtractorInterfaces."""
+
+    ExtractorModuleName: Optional[str] = "roiextractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.imaging_extractor = self.IX(**source_data)
+        self.imaging_extractor = self.Extractor(**source_data)
         self.verbose = verbose
 
     def get_metadata_schema(self):
@@ -57,10 +57,11 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
         return metadata_schema
 
     def get_metadata(self):
+        from ...tools.roiextractors import get_nwb_imaging_metadata
+
         metadata = super().get_metadata()
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
         metadata = dict_deep_update(default_metadata, metadata)
-        _ = metadata.pop("NWBFile")
 
         # fix troublesome data types
         if "TwoPhotonSeries" in metadata["Ophys"]:
@@ -78,11 +79,12 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         stub_test: bool = False,
-        save_path: OptionalFilePathType = None,
+        stub_frames: int = 100,
     ):
+        from ...tools.roiextractors import write_imaging
 
         if stub_test:
-            stub_frames = min([100, self.imaging_extractor.get_num_frames()])
+            stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
             imaging_extractor = self.imaging_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
         else:
             imaging_extractor = self.imaging_extractor
@@ -94,5 +96,4 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
-            save_path=save_path,
         )

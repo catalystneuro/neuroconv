@@ -13,7 +13,7 @@ from spikeinterface import BaseRecording, BaseSorting
 from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
-from hdmf.data_utils import DataChunkIterator
+from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 import psutil
 
@@ -349,7 +349,7 @@ def add_electrodes(
             group_name_array = data_to_add["group"]["data"].astype("str", copy=False)
         else:
             default_group_name = "default_group"
-            group_name_array = np.full_like(channel_ids, fill_value=default_group_name)
+            group_name_array = np.full_like(channel_name_array, fill_value=default_group_name)
 
     group_name_array[group_name_array == ""] = "default_group"
     data_to_add["group_name"].update(description="group_name", data=group_name_array, index=False)
@@ -488,6 +488,68 @@ def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording
         raise MemoryError(message)
 
 
+def _recording_traces_to_hdmf_iterator(
+    recording: BaseRecording,
+    segment_index: int = None,
+    return_scaled: bool = False,
+    iterator_type: str = "v2",
+    iterator_opts: dict = None,
+) -> AbstractDataChunkIterator:
+    """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
+
+    Parameters
+    ----------
+    recording : BaseRecording
+        A recording extractor from spikeinterface
+    segment_index : int, optional
+        The recording segment to add to the NWBFile.
+    return_scaled : bool, defaults to False
+        When True recording extractor objects from spikeinterface return their traces in microvolts.
+    iterator_type: str (optional, defaults to 'v2')
+        The type of DataChunkIterator to use.
+        'v1' is the original DataChunkIterator of the hdmf data_utils.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+    iterator_opts: dict (optional)
+        Dictionary of options for the iterator.
+        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+
+    Returns
+    -------
+    traces_as_iterator: AbstractDataChunkIterator
+        The traces of the recording extractor wrapped in an iterator object.
+
+    Raises
+    ------
+    ValueError
+        If the iterator_type is not 'v1', 'v2' or None.
+    """
+
+    supported_iterator_types = ["v1", "v2", None]
+    if iterator_type not in supported_iterator_types:
+        message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
+        raise ValueError(message)
+
+    iterator_opts = dict() if iterator_opts is None else iterator_opts
+
+    if iterator_type is None:
+        check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
+        traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
+    elif iterator_type == "v2":
+        traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
+            recording=recording,
+            segment_index=segment_index,
+            return_scaled=return_scaled,
+            **iterator_opts,
+        )
+    elif iterator_type == "v1":
+        traces_as_iterator = DataChunkIterator(
+            data=recording.get_traces(return_scaled=return_scaled, segment_index=segment_index), **iterator_opts
+        )
+
+    return traces_as_iterator
+
+
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
     nwbfile: pynwb.NWBFile,
@@ -509,6 +571,7 @@ def add_electrical_series(
     Parameters
     ----------
     recording: SpikeInterfaceRecording
+        A recording extractor from spikeinterface
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
     metadata: dict
@@ -540,15 +603,12 @@ def add_electrical_series(
     iterator_type: str (optional, defaults to 'v2')
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
     iterator_opts: dict (optional)
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-        Valid options are
-            buffer_gb: float (optional, defaults to 1 GB)
-                Recommended to be as much free RAM as available. Automatically calculates suitable buffer shape.
-            chunk_mb: float (optional, defaults to 1 MB)
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
+        Dictionary of options for the iterator.
+        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
+        for the full list of options.
+
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
@@ -560,77 +620,34 @@ def add_electrical_series(
     else:
         checked_recording = recording
 
-    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile!"
-
-    assert compression is None or compression in [
-        "gzip",
-        "lzf",
-    ], "Invalid compression type ({compression})! Choose one of 'gzip', 'lzf', or None."
-
     assert write_as in [
         "raw",
         "processed",
         "lfp",
     ], f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
-    if compression == "gzip":
-        if compression_opts is None:
-            compression_opts = 4
-        else:
-            assert compression_opts in range(
-                10
-            ), "compression type is 'gzip', but specified compression_opts is not an integer between 0 and 9!"
-    elif compression == "lzf" and compression_opts is not None:
-        warn(f"compression_opts ({compression_opts}) were passed, but compression type is 'lzf'! Ignoring options.")
-        compression_opts = None
+    segment_signature = "" if checked_recording.get_num_segments() == 1 else segment_index
+    default_name = f"ElectricalSeries{segment_signature}_{write_as}"
 
-    # Write as functionality
-    if write_as == "raw":
-        eseries_kwargs = dict(
-            name="ElectricalSeries_raw",
-            description="Raw acquired data",
-        )
-    elif write_as == "processed":
-        eseries_kwargs = dict(
-            name="ElectricalSeries_processed",
-            description="Processed data",
-        )
+    default_description = dict(raw="Raw acquired data", lfp="Processed data - LFP", processed="Processed data")
+
+    eseries_kwargs = dict(name=default_name, description=default_description[write_as])
+
+    # Select and/or create module if lfp or processed data is to be stored.
+    if write_as in ["lfp", "processed"]:
         ecephys_mod = get_module(
             nwbfile=nwbfile,
             name="ecephys",
             description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
         )
-        if "Processed" not in ecephys_mod.data_interfaces:
-            ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
-    elif write_as == "lfp":
-        eseries_kwargs = dict(
-            name="ElectricalSeries_lfp",
-            description="Processed data - LFP",
-        )
-        ecephys_mod = get_module(
-            nwbfile=nwbfile,
-            name="ecephys",
-            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
-        )
-        if "LFP" not in ecephys_mod.data_interfaces:
+        if write_as == "lfp" and "LFP" not in ecephys_mod.data_interfaces:
             ecephys_mod.add(pynwb.ecephys.LFP(name="LFP"))
+        if write_as == "processed" and "Processed" not in ecephys_mod.data_interfaces:
+            ecephys_mod.add(pynwb.ecephys.FilteredEphys(name="Processed"))
 
     if metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
-
-    if write_as == "raw":
-        assert (
-            eseries_kwargs["name"] not in nwbfile.acquisition
-        ), f"Raw ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
-    elif write_as == "processed":
-        assert (
-            eseries_kwargs["name"] not in nwbfile.processing["ecephys"].data_interfaces["Processed"].electrical_series
-        ), f"Processed ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
-    elif write_as == "lfp":
-        assert (
-            eseries_kwargs["name"] not in nwbfile.processing["ecephys"].data_interfaces["LFP"].electrical_series
-        ), f"LFP ElectricalSeries '{eseries_kwargs['name']}' is already written in the NWBFile!"
 
     # Indexes by channel ids if they are integer or by indices otherwise.
     channel_name_array = checked_recording.get_channel_ids()
@@ -648,7 +665,7 @@ def add_electrical_series(
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
-    # Spikeinterface guarantee data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
+    # Spikeinterface guarantees data in micro volts when return_scaled=True. This multiplies by gain and adds offsets
     # In nwb to get traces in Volts we take data*channel_conversion*conversion + offset
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
@@ -666,40 +683,25 @@ def add_electrical_series(
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
     # Iterator
-    iterator_opts = dict() if iterator_opts is None else iterator_opts
-
-    if iterator_type is None:
-        check_if_recording_traces_fit_into_memory(recording=checked_recording, segment_index=segment_index)
-        ephys_data = checked_recording.get_traces(return_scaled=write_scaled, segment_index=segment_index)
-
-    elif iterator_type == "v2":
-        ephys_data = SpikeInterfaceRecordingDataChunkIterator(
-            recording=checked_recording,
-            segment_index=segment_index,
-            return_scaled=write_scaled,
-            **iterator_opts,
-        )
-    elif iterator_type == "v1":
-        if isinstance(checked_recording.get_traces(end_frame=5, return_scaled=write_scaled), np.memmap) and np.all(
-            channel_offset == 0
-        ):
-            ephys_data = DataChunkIterator(
-                data=checked_recording.get_traces(return_scaled=write_scaled), **iterator_opts
-            )
-        else:
-            raise ValueError("iterator_type='v1' only supports memmapable trace types! Use iterator_type='v2' instead.")
-    else:
-        raise NotImplementedError(f"iterator_type ({iterator_type}) should be either 'v1' or 'v2' (recommended)!")
-    eseries_kwargs.update(data=H5DataIO(data=ephys_data, compression=compression, compression_opts=compression_opts))
+    ephys_data_iterator = _recording_traces_to_hdmf_iterator(
+        recording=checked_recording,
+        segment_index=segment_index,
+        iterator_type=iterator_type,
+        iterator_opts=iterator_opts,
+    )
+    eseries_kwargs.update(
+        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+    )
 
     # Timestamps vs rate
     timestamps = checked_recording.get_times(segment_index=segment_index)
     rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+    starting_time = starting_time if starting_time is not None else 0
 
     if rate:
+        starting_time = starting_time + timestamps[0]
         eseries_kwargs.update(starting_time=starting_time, rate=checked_recording.get_sampling_frequency())
     else:
-        starting_time = starting_time if starting_time is not None else 0
         shifted_time_stamps = starting_time + timestamps
         wrapped_timestamps = H5DataIO(
             data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
@@ -809,9 +811,7 @@ def add_all_to_nwbfile(
 ):
     """
     Auxiliary static method for nwbextractor.
-
     Adds all recording related information from recording object and metadata to the nwbfile object.
-
     Parameters
     ----------
     recording: SpikeInterfaceRecording
@@ -889,7 +889,7 @@ def write_recording(
     overwrite: bool = False,
     verbose: bool = True,
     starting_time: Optional[float] = None,
-    use_times: bool = False,
+    use_times: bool = False,  # TODO: to be removed
     write_as: Optional[str] = None,
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
@@ -898,7 +898,6 @@ def write_recording(
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
-    save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -914,7 +913,7 @@ def write_recording(
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
     metadata: dict, optional
         metadata info for constructing the nwb file (optional). Should be
@@ -1000,51 +999,39 @@ def write_recording(
     write_as = "raw" if write_as is None else write_as
     compression = "gzip" if compression is None else compression
 
-    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-    if save_path is not None:
-        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
-        if nwbfile_path is not None:
-            if save_path == nwbfile_path:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-            else:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-        else:
-            warn(
-                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
-                DeprecationWarning,
-            )
-            nwbfile_path = save_path
-
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
         metadata = get_nwb_metadata(recording=recording)
+
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        add_all_to_nwbfile(
-            recording=recording,
-            nwbfile=nwbfile_out,
-            metadata=metadata,
-            starting_time=starting_time,
-            use_times=use_times,
-            write_as=write_as,
-            es_key=es_key,
-            write_scaled=write_scaled,
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
-            write_electrical_series=write_electrical_series,
-        )
+
+        # Convenience function to add device, electrode groups and electrodes info
+        add_electrodes_info(recording=recording, nwbfile=nwbfile_out, metadata=metadata)
+
+        if write_electrical_series:
+            number_of_segments = recording.get_num_segments() if isinstance(recording, BaseRecording) else 1
+            for segment_index in range(number_of_segments):
+                add_electrical_series(
+                    recording=recording,
+                    nwbfile=nwbfile_out,
+                    segment_index=segment_index,
+                    starting_time=starting_time,
+                    metadata=metadata,
+                    write_as=write_as,
+                    es_key=es_key,
+                    write_scaled=write_scaled,
+                    compression=compression,
+                    compression_opts=compression_opts,
+                    iterator_type=iterator_type,
+                    iterator_opts=iterator_opts,
+                )
+
+        # For objects of the legacy spikeextractors we support adding epochs
+        if isinstance(recording, RecordingExtractor):
+            add_epochs(recording=recording, nwbfile=nwbfile_out)
     return nwbfile_out
 
 
@@ -1068,7 +1055,7 @@ def add_units_table(
     skip_properties: Optional[List[str]] = None,
     skip_features: Optional[List[str]] = None,
     units_table_name: str = "units",
-    unit_table_description: str = "Autogenerated by nwb_conversion_tools.",
+    unit_table_description: str = "Autogenerated by neuroconv.",
     write_in_processing_module: bool = False,
     write_waveforms: bool = False,
 ):
@@ -1199,7 +1186,15 @@ def add_units_table(
         unit_kwargs = dict(property_to_default_values)
         for property in properties_with_data:
             unit_kwargs[property] = data_to_add[property]["data"][row]
-        spike_times = checked_sorting.get_unit_spike_train(unit_id=units_ids[row], return_times=True)
+        spike_times = []
+
+        # Extract and cocatenate the spike times from multiple segments
+        for segment_index in range(checked_sorting.get_num_segments()):
+            segment_spike_times = checked_sorting.get_unit_spike_train(
+                unit_id=units_ids[row], segment_index=segment_index, return_times=True
+            )
+            spike_times.append(segment_spike_times)
+        spike_times = np.concatenate(spike_times)
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
@@ -1349,8 +1344,7 @@ def write_sorting(
     skip_features: Optional[List[str]] = None,
     write_as: str = "units",
     units_name: str = "units",
-    units_description: str = "Autogenerated by nwb_conversion_tools.",
-    save_path: OptionalFilePathType = None,  # TODO: to be removed
+    units_description: str = "Autogenerated by neuroconv.",
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -1366,7 +1360,7 @@ def write_sorting(
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
@@ -1392,7 +1386,9 @@ def write_sorting(
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
     units_description : str (optional)
     """
-    assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
+    assert (
+        nwbfile_path is None or nwbfile is None
+    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be a pynwb.NWBFile object!"
 
@@ -1403,29 +1399,6 @@ def write_sorting(
     if write_as == "units":
         assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
     write_in_processing_module = False if write_as == "units" else True
-
-    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-    if save_path is not None:
-        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
-        if nwbfile_path is not None:
-            if save_path == nwbfile_path:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-            else:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-        else:
-            warn(
-                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
-                DeprecationWarning,
-            )
-            nwbfile_path = save_path
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose

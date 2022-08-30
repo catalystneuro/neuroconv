@@ -110,10 +110,7 @@ def run_conversion_from_yaml(
 
     global_metadata = specification.get("metadata", dict())
     global_data_interfaces = specification.get("data_interfaces")
-    nwb_conversion_tools = import_module(
-        name=".",
-        package="neuroconv",  # relative import, but named and referenced as if it were absolute
-    )
+    neuroconv_datainterfaces = import_module(name=".datainterfaces", package="neuroconv")
     file_counter = 0
     for experiment in specification["experiments"].values():
         experiment_metadata = experiment.get("metadata", dict())
@@ -130,7 +127,9 @@ def run_conversion_from_yaml(
                 ]
             )
             for data_interface_name in data_interfaces_names_chain:
-                data_interface_classes.update({data_interface_name: getattr(nwb_conversion_tools, data_interface_name)})
+                data_interface_classes.update(
+                    {data_interface_name: getattr(neuroconv_datainterfaces, data_interface_name)}
+                )
             CustomNWBConverter = type(
                 "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
             )
