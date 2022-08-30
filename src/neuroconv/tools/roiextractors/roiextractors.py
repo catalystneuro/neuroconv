@@ -15,6 +15,7 @@ from pynwb.device import Device
 from pynwb.ophys import (
     ImageSegmentation,
     ImagingPlane,
+    PlaneSegmentation,
     Fluorescence,
     OpticalChannel,
     TwoPhotonSeries,
@@ -546,11 +547,13 @@ def add_plane_segmentation(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_index: int = 0,
+    include_roi_centroids: bool = True,
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
+
     If the plane segmentation already exists in the image segmentation, it is not added again.
 
     Parameters
@@ -563,6 +566,11 @@ def add_plane_segmentation(
         The metadata for the plane segmentation.
     plane_segmentation_index: int, optional
         The index of the plane segmentation to add.
+    include_roi_centroids : bool, optional
+        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
     compression_options : dict, optional
@@ -632,11 +640,6 @@ def add_plane_segmentation(
                     description="image masks",
                 ),
                 VectorData(
-                    data=roi_locations,
-                    name="RoiCentroid",
-                    description="x,y location of centroid of the roi in image_mask",
-                ),
-                VectorData(
                     data=accepted_ids,
                     name="Accepted",
                     description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
@@ -649,9 +652,15 @@ def add_plane_segmentation(
             ],
             id=roi_ids,
         )
-
-        image_segmentation.create_plane_segmentation(**plane_segmentation_kwargs)
-
+        plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
+        if include_roi_centroids:
+            # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
+            tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :]
+            plane_segmentation.add_column(
+                name="ROICentroids", description="The x, y, (z) centroids of each ROI.", data=roi_locations.T
+            )
+        image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
 
@@ -874,8 +883,10 @@ def write_segmentation(
     verbose: bool = True,
     buffer_size: int = 10,
     plane_num: int = 0,
+    include_roi_centroids: bool = True,
 ):
-    """Primary method for writing an SegmentationExtractor object to an NWBFile.
+    """
+    Primary method for writing an SegmentationExtractor object to an NWBFile.
 
     Parameters
     ----------
@@ -903,6 +914,11 @@ def write_segmentation(
         The buffer size in GB, by default 10
     plane_num : int, optional
         The plane number to be extracted, by default 0
+    include_roi_centroids : bool, optional
+        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
     """
     assert (
         nwbfile_path is None or nwbfile is None
@@ -961,6 +977,7 @@ def write_segmentation(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
+                include_roi_centroids=include_roi_centroids,
                 iterator_options=dict(buffer_size=buffer_size),
                 compression_options=dict(
                     compression=True,
