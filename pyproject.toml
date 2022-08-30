@@ -29,4 +29,3 @@ doctest_optionflags = "ELLIPSIS"
 [tool.pylint.'SPELLING']
 spelling-dict = "en_US"
 spelling-private-dict-file = "exclude-spelling.txt"
-
