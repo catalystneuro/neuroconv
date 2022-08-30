@@ -154,9 +154,10 @@ def make_or_load_nwbfile(
 
     load_kwargs = dict()
     success = True
-    if nwbfile_path:
-        load_kwargs.update(path=nwbfile_path)
-        if nwbfile_path_in.is_file() and not overwrite:
+    file_initially_exists = nwbfile_path_in.is_file()
+    if nwbfile_path_in:
+        load_kwargs.update(path=nwbfile_path_in)
+        if file_initially_exists and not overwrite:
             load_kwargs.update(mode="r+", load_namespaces=True)
         else:
             load_kwargs.update(mode="w")
@@ -171,11 +172,15 @@ def make_or_load_nwbfile(
         success = False
         raise e
     finally:
-        if nwbfile_path:
+        if nwbfile_path_in:
             try:
-                io.write(nwbfile)
+                if success:
+                    io.write(nwbfile)
 
-                if success and verbose:
-                    print(f"NWB file saved at {nwbfile_path}!")
+                    if verbose:
+                        print(f"NWB file saved at {nwbfile_path_in}!")
             finally:
                 io.close()
+
+                if not success and not file_initially_exists:
+                    nwbfile_path_in.unlink()
