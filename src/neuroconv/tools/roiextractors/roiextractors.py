@@ -875,7 +875,7 @@ def add_summary_images(
 
 
 def write_segmentation(
-    segext_obj: SegmentationExtractor,
+    segmentation_extractor: SegmentationExtractor,
     nwbfile_path: OptionalFilePathType = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
@@ -890,7 +890,7 @@ def write_segmentation(
 
     Parameters
     ----------
-    segext_obj: SegmentationExtractor
+    segmentation_extractor: SegmentationExtractor
         The segentation extractor object to be written to nwb
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
@@ -925,8 +925,8 @@ def write_segmentation(
     ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
-    if isinstance(segext_obj, MultiSegmentationExtractor):
-        segext_objs = segext_obj.segmentations
+    if isinstance(segmentation_extractor, MultiSegmentationExtractor):
+        segmentation_extractors = segmentation_extractor.segmentations
         if metadata is not None:
             assert isinstance(metadata, list), (
                 "For MultiSegmentationExtractor enter 'metadata' as a list of " "SegmentationExtractor metadata"
@@ -937,10 +937,12 @@ def write_segmentation(
                 "MultiSegmentationExtractor"
             )
     else:
-        segext_objs = [segext_obj]
+        segmentation_extractors = [segmentation_extractor]
         if metadata is not None and not isinstance(metadata, list):
             metadata = [metadata]
-    metadata_base_list = [get_nwb_segmentation_metadata(sgobj) for sgobj in segext_objs]
+    metadata_base_list = [
+        get_nwb_segmentation_metadata(segmentation_extractor) for segmentation_extractor in segmentation_extractors
+    ]
 
     # updating base metadata with new:
     for num, data in enumerate(metadata_base_list):
@@ -953,7 +955,9 @@ def write_segmentation(
     ) as nwbfile_out:
 
         ophys = get_module(nwbfile=nwbfile_out, name="ophys", description="contains optical physiology processed data")
-        for plane_no_loop, (segext_obj, metadata) in enumerate(zip(segext_objs, metadata_base_list)):
+        for plane_no_loop, (segmentation_extractor, metadata) in enumerate(
+            zip(segmentation_extractors, metadata_base_list)
+        ):
 
             # Add device:
             add_devices(nwbfile=nwbfile_out, metadata=metadata)
@@ -970,7 +974,7 @@ def write_segmentation(
 
             # PlaneSegmentation:
             add_plane_segmentation(
-                segmentation_extractor=segext_obj,
+                segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
                 include_roi_centroids=include_roi_centroids,
@@ -983,13 +987,15 @@ def write_segmentation(
 
             # Add fluorescence traces:
             add_fluorescence_traces(
-                segmentation_extractor=segext_obj,
+                segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
             )
 
             # Adding summary images (mean and correlation)
             images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
-            add_summary_images(nwbfile=nwbfile_out, segmentation_extractor=segext_obj, images_set_name=images_set_name)
+            add_summary_images(
+                nwbfile=nwbfile_out, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+            )
 
     return nwbfile_out
