@@ -64,7 +64,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        save_path: OptionalFilePathType = None,
     ):
         from ...tools.roiextractors import write_segmentation
 
@@ -75,5 +74,4 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
-            save_path=save_path,
         )
