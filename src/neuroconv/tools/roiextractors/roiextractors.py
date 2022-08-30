@@ -676,10 +676,11 @@ def add_plane_segmentation(
         )
         plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
         if include_roi_centroids:
-            tranpose_roi_location_axes = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
-            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_roi_location_axes, :].T
+            # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
+            tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :]
             plane_segmentation.add_column(
-                name="ROICentroids", description="The x, y, (z) centroids of each ROI.", data=roi_locations
+                name="ROICentroids", description="The x, y, (z) centroids of each ROI.", data=roi_locations.T
             )
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
