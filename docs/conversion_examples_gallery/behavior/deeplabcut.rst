@@ -1,13 +1,13 @@
 DeepLabCut data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First, install NeuroConv with the additional dependencies necessary for reading DeepLabCut data.
+Install NeuroConv with the additional dependencies necessary for reading DeepLabCut data.
 
 .. code-block:: bash
 
     pip install neuroconv[deeplabcut]
 
-Then, convert DeepLabCut pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`.
+Convert DeepLabCut pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`.
 
 .. code-block:: python
 
