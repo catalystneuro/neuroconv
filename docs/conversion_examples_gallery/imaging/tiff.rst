@@ -1,7 +1,13 @@
-Tif data conversion
+TIFF data conversion
 ^^^^^^^^^^^^^^^^^^^
 
-Convert Tiff imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`.
+Install NeuroConv with the additional dependencies necessary for reading TIFF data.
+
+.. code-block:: bash
+
+    pip install neuroconv[tiff]
+
+Convert TIFF imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`.
 
 .. code-block:: python
 
