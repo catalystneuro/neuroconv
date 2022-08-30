@@ -37,24 +37,6 @@ class TestImportStructure(TestCase):
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
-    def test_tools_import_structure(self):
-        current_structure = _strip_magic_module_attributes(dictionary=tools.__dict__)
-        expected_structure = [
-            # Sub-modules
-            "neo",
-            "spikeinterface",
-            "roiextractors",
-            # Helper functions
-            "get_package",
-            "importing",
-            # Other stuff that I don't know why it is here (for PR)
-            "nwb_helpers",
-            "yaml_conversion_specification",
-            "hdmf",
-            "data_transfers",
-        ]
-        self.assertCountEqual(first=current_structure, second=expected_structure)
-
     def test_datainterfaces_import_structure(self):
         current_structure = _strip_magic_module_attributes(dictionary=datainterfaces.__dict__)
         expected_structure = [

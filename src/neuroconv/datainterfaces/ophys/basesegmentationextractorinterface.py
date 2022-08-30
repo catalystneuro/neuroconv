@@ -6,7 +6,6 @@ from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.roiextractors import write_segmentation, get_nwb_segmentation_metadata
 from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePathType, get_base_schema
 
 
@@ -53,6 +52,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
+        from ...tools.roiextractors import get_nwb_segmentation_metadata
+
         metadata = super().get_metadata()
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
         return metadata
@@ -65,6 +66,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         save_path: OptionalFilePathType = None,
     ):
+        from ...tools.roiextractors import write_segmentation
 
         write_segmentation(
             self.segmentation_extractor,

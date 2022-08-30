@@ -5,7 +5,6 @@ from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...tools.spikeinterface import write_recording
 from ...utils import get_schema_from_hdmf_class, OptionalFilePathType
 
 OptionalPathType = Optional[Union[str, Path]]
@@ -43,6 +42,8 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         iterator_opts: Optional[dict] = None,
         save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
+        from ...tools.spikeinterface import write_recording
+
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:

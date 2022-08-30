@@ -32,12 +32,38 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
+
+
+
       - name: Install neuroconv with minimal requirements
         run: pip install .[test]
       - name: Run minimal tests
-        run: |
-          pytest tests/test_minimal -n auto --dist loadscope
-          pytest tests/test_spikeinterface  # TODO: when SI is not in minimal, make a subsequent job
+        run: pytest tests/test_minimal -n auto --dist loadscope
+
+
+
+      - name: Install with behavior requirements
+        run: pip install .[behavior]
+      - name: Run behavior tests
+        run: pytest tests/test_behavior -n auto --dist loadscope
+
+      - name: Install with icephys requirements
+        run: pip install .[icephys]
+      #- name: Run icephys tests  # There are no icephys specific tests without data
+      #  run: pytest tests/test_icephys -n auto --dist loadscope
+
+      - name: Install with ecephys requirements
+        run: pip install .[ecephys]
+      - name: Run ecephys tests
+        run: pytest tests/test_ecephys -n auto --dist loadscope
+
+      - name: Install with ophys requirements
+        run: pip install .[ophys]
+      - name: Run ophys tests
+        run: pytest tests/test_ophys -n auto --dist loadscope
+
+
+
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
 
