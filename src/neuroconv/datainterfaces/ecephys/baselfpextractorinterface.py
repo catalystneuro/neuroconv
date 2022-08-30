@@ -40,7 +40,6 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
-        save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
         from ...tools.spikeinterface import write_recording
 
@@ -63,5 +62,4 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
-            save_path=save_path,  # TODO: to be removed, depreceation applied at tools level
         )

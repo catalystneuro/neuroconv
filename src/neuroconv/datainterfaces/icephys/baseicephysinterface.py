@@ -75,7 +75,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
         overwrite: bool = False,
         icephys_experiment_type: Optional[str] = None,
         skip_electrodes: Tuple[int] = (),
-        save_path: OptionalFilePathType = None,  # TODO: to be removed
+        # TODO: to be removed
+        save_path: OptionalFilePathType = None,  # pragma: no cover
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.
@@ -104,7 +105,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
             nwbfile = make_nwbfile_from_metadata(metadata)
 
         # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-        if save_path is not None:
+        if save_path is not None:  # pragma: no cover
             will_be_removed_str = "will be removed on or after October 1st, 2022. Please use 'nwbfile_path' instead."
             if nwbfile_path is not None:
                 if save_path == nwbfile_path:

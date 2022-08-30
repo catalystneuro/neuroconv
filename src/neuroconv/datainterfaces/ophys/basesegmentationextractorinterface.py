@@ -64,15 +64,22 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        stub_test: bool = False,
+        stub_frames: int = 100,
         include_roi_centroids: bool = True,
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
-        save_path: OptionalFilePathType = None,
     ):
         from ...tools.roiextractors import write_segmentation
 
+        if stub_test:
+            stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
+            segmentation_extractor = self.segmentation_extractor.frame_slice(start_frame=0, end_frame=stub_frames)
+        else:
+            segmentation_extractor = self.segmentation_extractor
+
         write_segmentation(
-            self.segmentation_extractor,
+            segmentation_extractor=segmentation_extractor,
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -81,5 +88,4 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             include_roi_centroids=include_roi_centroids,
             iterator_options=iterator_options,
             compression_options=compression_options,
-            save_path=save_path,
         )
