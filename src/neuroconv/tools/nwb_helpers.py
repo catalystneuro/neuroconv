@@ -154,7 +154,7 @@ def make_or_load_nwbfile(
 
     load_kwargs = dict()
     success = True
-    file_initially_exists = nwbfile_path_in.is_file()
+    file_initially_exists = nwbfile_path_in.is_file() if nwbfile_path_in is not None else None
     if nwbfile_path_in:
         load_kwargs.update(path=nwbfile_path_in)
         if file_initially_exists and not overwrite:
