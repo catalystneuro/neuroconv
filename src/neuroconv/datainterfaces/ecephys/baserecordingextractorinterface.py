@@ -107,7 +107,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
-        save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -180,5 +179,4 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
-            save_path=save_path,  # TODO: to be removed, depreceation applied at tools level
         )

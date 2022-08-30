@@ -345,7 +345,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         self.assertEqual(plane_segmentation_num_rois, self.num_rois)
 
         plane_segmentation_roi_centroid_data = plane_segmentation["ROICentroids"].data
-        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations().T
+        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations()[(1, 0), :].T
 
         assert_array_equal(plane_segmentation_roi_centroid_data, expected_roi_centroid_data)
 
