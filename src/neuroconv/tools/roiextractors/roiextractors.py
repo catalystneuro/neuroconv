@@ -424,7 +424,6 @@ def write_imaging(
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
     buffer_size: Optional[int] = None,  # TODO: to be removed
-    save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
     Primary method for writing an ImagingExtractor object to an NWBFile.
@@ -441,7 +440,7 @@ def write_imaging(
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
@@ -465,7 +464,9 @@ def write_imaging(
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
     """
-    assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
+    assert (
+        nwbfile_path is None or nwbfile is None
+    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -477,29 +478,6 @@ def write_imaging(
             "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
             "Specify as a key in the new 'iterator_options' dictionary instead."
         )
-
-    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-    if save_path is not None:
-        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
-        if nwbfile_path is not None:
-            if save_path == nwbfile_path:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-            else:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-        else:
-            warn(
-                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
-                DeprecationWarning,
-            )
-            nwbfile_path = save_path
 
     if metadata is None:
         metadata = dict()
@@ -906,7 +884,6 @@ def write_segmentation(
     buffer_size: int = 10,
     plane_num: int = 0,
     include_roi_centroids: bool = True,
-    save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
     Primary method for writing an SegmentationExtractor object to an NWBFile.
@@ -923,7 +900,7 @@ def write_segmentation(
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
@@ -943,7 +920,9 @@ def write_segmentation(
             faster write speeds.
         Defaults to True.
     """
-    assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
+    assert (
+        nwbfile_path is None or nwbfile is None
+    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
@@ -952,7 +931,7 @@ def write_segmentation(
             assert isinstance(metadata, list), (
                 "For MultiSegmentationExtractor enter 'metadata' as a list of " "SegmentationExtractor metadata"
             )
-            assert len(metadata) == len(segext_objs), (
+            assert len(metadata) == len(segmentation_extractor), (
                 "The 'metadata' argument should be a list with the same "
                 "number of elements as the segmentations in the "
                 "MultiSegmentationExtractor"
@@ -970,29 +949,6 @@ def write_segmentation(
         metadata_input = metadata[num] if metadata else {}
         metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input, append_list=False)
     metadata_base_common = metadata_base_list[0]
-
-    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-    if save_path is not None:
-        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
-        if nwbfile_path is not None:
-            if save_path == nwbfile_path:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-            else:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-        else:
-            warn(
-                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
-                DeprecationWarning,
-            )
-            nwbfile_path = save_path
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata_base_common, overwrite=overwrite, verbose=verbose
