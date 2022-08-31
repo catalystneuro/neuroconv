@@ -1,6 +1,12 @@
 Neuralynx data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Install NeuroConv with the additional dependencies necessary for reading Neuralynx data.
+
+.. code-block:: bash
+
+    pip install neuroconv[neuralynx]
+
 Convert Neuralynx data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxRecordingInterface`.
 
 .. code-block:: python

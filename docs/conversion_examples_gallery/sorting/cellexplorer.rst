@@ -1,7 +1,13 @@
 Cell Explorer data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert cell explorer sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface.CellExplorerSortingInterface`.
+Install NeuroConv with the additional dependencies necessary for reading CellExplorer data.
+
+.. code-block:: bash
+
+    pip install neuroconv[cellexplorer]
+
+Convert CellExplorer sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface.CellExplorerSortingInterface`.
 
 .. code-block:: python
 

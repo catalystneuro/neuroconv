@@ -1,5 +1,11 @@
-Open Ephys data conversion
+OpenEphys data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Install NeuroConv with the additional dependencies necessary for reading OpenEphys data.
+
+.. code-block:: bash
+
+    pip install neuroconv[openephys]
 
 Convert OpenEphys data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface.OpenEphysRecordingExtractorInterface`.
 
