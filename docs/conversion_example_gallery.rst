@@ -53,7 +53,7 @@ Segmentation
 .. toctree::
     :maxdepth: 1
 
-    Suite2P <conversion_examples_gallery/segmentation/suit2p>
+    Suite2P <conversion_examples_gallery/segmentation/suite2p>
     Caiman <conversion_examples_gallery/segmentation/caiman>
     EXTRACT <conversion_examples_gallery/segmentation/extract>
     CNMFE <conversion_examples_gallery/segmentation/cnmfe>
