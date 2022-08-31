@@ -1,6 +1,12 @@
 Scanbox data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^
 
+Install NeuroConv with the additional dependencies necessary for reading Scanbox data.
+
+.. code-block:: bash
+
+    pip install neuroconv[scanbox]
+
 Convert Scanbox imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.sbx.sbxdatainterface.SbxImagingInterface`.
 
 .. code-block:: python

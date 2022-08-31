@@ -1,7 +1,13 @@
 DeepLabCut data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Convert DeepLabCut imaging data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`.
+Install NeuroConv with the additional dependencies necessary for reading DeepLabCut data.
+
+.. code-block:: bash
+
+    pip install neuroconv[deeplabcut]
+
+Convert DeepLabCut pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface.DeepLabCutInterface`.
 
 .. code-block:: python
 
