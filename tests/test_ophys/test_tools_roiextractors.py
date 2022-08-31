@@ -620,7 +620,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             ["RoiResponseSeries", "Deconvolved", "Neuropil"], ["raw", "deconvolved", "neuropil"]
         ):
             series_outer_data = fluorescence[nwb_series_name].data
-            assert_array_equal(series_outer_data.data.data, traces[roiextractors_name].T)
+            assert_array_equal(series_outer_data.data.data, traces[roiextractors_name])
 
             # Check compression options are set
             assert isinstance(series_outer_data, H5DataIO)
@@ -680,7 +680,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         traces = segmentation_extractor.get_traces_dict()
 
         series_outer_data = df_over_f[trace_name].data
-        assert_array_equal(series_outer_data.data.data, traces["dff"].T)
+        assert_array_equal(series_outer_data.data.data, traces["dff"])
 
         # Check compression options are set
         assert isinstance(series_outer_data, H5DataIO)
