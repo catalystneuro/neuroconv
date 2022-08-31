@@ -1,6 +1,12 @@
 NeuroScope data conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Install NeuroConv with the additional dependencies necessary for reading NeuroScope data.
+
+.. code-block:: bash
+
+    pip install neuroconv[neuroscope]
+
 Convert NeuroScope data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeRecordingInterface`.
 
 .. code-block:: python

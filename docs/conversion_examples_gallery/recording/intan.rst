@@ -1,5 +1,12 @@
 Intan data conversion
 ^^^^^^^^^^^^^^^^^^^^^
+
+Install NeuroConv with the additional dependencies necessary for reading Intan data.
+
+.. code-block:: bash
+
+    pip install neuroconv[intan]
+
 Convert Intan data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandatainterface.IntanRecordingInterface`.
 
 .. code-block:: python
