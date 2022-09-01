@@ -5,7 +5,7 @@ from neuroconv import datainterfaces
 from neuroconv import tools
 
 
-def _strip_magic_module_attributes(dictionary: dict) -> dict:
+def _strip_magic_module_attributes(ls: list) -> list:
     exclude_keys = [
         "__name__",
         "__doc__",
@@ -17,12 +17,12 @@ def _strip_magic_module_attributes(dictionary: dict) -> dict:
         "__cached__",
         "__builtins__",
     ]
-    return {k: v for k, v in dictionary.items() if k not in exclude_keys}
+    return list(filter(lambda key: key not in exclude_keys, ls))
 
 
 class TestImportStructure(TestCase):
     def test_outer_import_structure(self):
-        current_structure = _strip_magic_module_attributes(dictionary=neuroconv.__dict__)
+        current_structure = _strip_magic_module_attributes(ls=dir(neuroconv))
         expected_structure = [
             # Sub-modules
             "nwbconverter",
@@ -38,25 +38,20 @@ class TestImportStructure(TestCase):
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
     def test_tools_import_structure(self):
-        current_structure = _strip_magic_module_attributes(dictionary=tools.__dict__)
-        expected_structure = [
+        """Python dir() calls (and __dict__ as well) update dynamically based on global imports."""
+        current_structure = _strip_magic_module_attributes(ls=dir(tools))
+        minimal_expected_structure = [
             # Sub-modules
-            "neo",
-            "spikeinterface",
-            "roiextractors",
+            "importing",
+            "yaml_conversion_specification",  # imported by outer level __init__
             # Helper functions
             "get_package",
-            "importing",
-            # Other stuff that I don't know why it is here (for PR)
-            "nwb_helpers",
-            "yaml_conversion_specification",
-            "hdmf",
-            "data_transfers",
         ]
-        self.assertCountEqual(first=current_structure, second=expected_structure)
+        for member in minimal_expected_structure:
+            self.assertIn(member=member, container=current_structure)
 
     def test_datainterfaces_import_structure(self):
-        current_structure = _strip_magic_module_attributes(dictionary=datainterfaces.__dict__)
+        current_structure = _strip_magic_module_attributes(ls=dir(datainterfaces))
         expected_structure = [
             # Sub-modules
             "behavior",
