@@ -432,7 +432,7 @@ def add_all_to_nwbfile(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: OptionalFilePathType = None,
+    save_path: OptionalFilePathType = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,

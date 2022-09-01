@@ -1,6 +1,12 @@
 HDF5 data conversion
 ^^^^^^^^^^^^^^^^^^^^
 
+Install NeuroConv with the additional dependencies necessary for reading HDF5 data.
+
+.. code-block:: bash
+
+    pip install neuroconv[hdf5]
+
 Convert HDF5 imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface.Hdf5ImagingInterface`.
 
 .. code-block:: python
