@@ -582,10 +582,8 @@ def add_plane_segmentation(
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
-    if iterator_options is None:
-        iterator_options = dict()
-    if compression_options is None:
-        compression_options = dict(compression="gzip")
+    iterator_options = iterator_options or dict()
+    compression_options = compression_options or dict(compression="gzip")
 
     def image_mask_iterator():
         for roi_id in segmentation_extractor.get_roi_ids():
@@ -694,10 +692,8 @@ def add_fluorescence_traces(
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
-    if iterator_options is None:
-        iterator_options = dict()
-    if compression_options is None:
-        compression_options = dict(compression="gzip")
+    iterator_options = iterator_options or dict()
+    compression_options = compression_options or dict(compression="gzip")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -933,10 +929,8 @@ def write_segmentation(
         nwbfile_path is None or nwbfile is None
     ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
 
-    if iterator_options is None:
-        iterator_options = dict()
-    if compression_options is None:
-        compression_options = dict(compression="gzip")
+    iterator_options = iterator_options or dict()
+    compression_options = compression_options or dict(compression="gzip")
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
