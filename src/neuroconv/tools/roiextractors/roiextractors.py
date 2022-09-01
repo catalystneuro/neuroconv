@@ -15,6 +15,7 @@ from pynwb.device import Device
 from pynwb.ophys import (
     ImageSegmentation,
     ImagingPlane,
+    PlaneSegmentation,
     Fluorescence,
     OpticalChannel,
     TwoPhotonSeries,
@@ -423,7 +424,6 @@ def write_imaging(
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
     buffer_size: Optional[int] = None,  # TODO: to be removed
-    save_path: OptionalFilePathType = None,  # TODO: to be removed
 ):
     """
     Primary method for writing an ImagingExtractor object to an NWBFile.
@@ -440,7 +440,7 @@ def write_imaging(
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
@@ -464,7 +464,9 @@ def write_imaging(
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
     """
-    assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
+    assert (
+        nwbfile_path is None or nwbfile is None
+    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
@@ -476,29 +478,6 @@ def write_imaging(
             "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
             "Specify as a key in the new 'iterator_options' dictionary instead."
         )
-
-    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-    if save_path is not None:
-        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
-        if nwbfile_path is not None:
-            if save_path == nwbfile_path:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-            else:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-        else:
-            warn(
-                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
-                DeprecationWarning,
-            )
-            nwbfile_path = save_path
 
     if metadata is None:
         metadata = dict()
@@ -568,11 +547,13 @@ def add_plane_segmentation(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_segmentation_index: int = 0,
+    include_roi_centroids: bool = True,
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
+
     If the plane segmentation already exists in the image segmentation, it is not added again.
 
     Parameters
@@ -585,6 +566,11 @@ def add_plane_segmentation(
         The metadata for the plane segmentation.
     plane_segmentation_index: int, optional
         The index of the plane segmentation to add.
+    include_roi_centroids : bool, optional
+        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
     compression_options : dict, optional
@@ -654,11 +640,6 @@ def add_plane_segmentation(
                     description="image masks",
                 ),
                 VectorData(
-                    data=roi_locations,
-                    name="RoiCentroid",
-                    description="x,y location of centroid of the roi in image_mask",
-                ),
-                VectorData(
                     data=accepted_ids,
                     name="Accepted",
                     description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
@@ -671,9 +652,15 @@ def add_plane_segmentation(
             ],
             id=roi_ids,
         )
-
-        image_segmentation.create_plane_segmentation(**plane_segmentation_kwargs)
-
+        plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
+        if include_roi_centroids:
+            # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
+            tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :]
+            plane_segmentation.add_column(
+                name="ROICentroids", description="The x, y, (z) centroids of each ROI.", data=roi_locations.T
+            )
+        image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
 
 
@@ -896,9 +883,10 @@ def write_segmentation(
     verbose: bool = True,
     buffer_size: int = 10,
     plane_num: int = 0,
-    save_path: OptionalFilePathType = None,  # TODO: to be removed
+    include_roi_centroids: bool = True,
 ):
-    """Primary method for writing an SegmentationExtractor object to an NWBFile.
+    """
+    Primary method for writing an SegmentationExtractor object to an NWBFile.
 
     Parameters
     ----------
@@ -912,7 +900,7 @@ def write_segmentation(
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
-        If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
@@ -926,8 +914,15 @@ def write_segmentation(
         The buffer size in GB, by default 10
     plane_num : int, optional
         The plane number to be extracted, by default 0
+    include_roi_centroids : bool, optional
+        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
     """
-    assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
+    assert (
+        nwbfile_path is None or nwbfile is None
+    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
@@ -936,7 +931,7 @@ def write_segmentation(
             assert isinstance(metadata, list), (
                 "For MultiSegmentationExtractor enter 'metadata' as a list of " "SegmentationExtractor metadata"
             )
-            assert len(metadata) == len(segext_objs), (
+            assert len(metadata) == len(segmentation_extractor), (
                 "The 'metadata' argument should be a list with the same "
                 "number of elements as the segmentations in the "
                 "MultiSegmentationExtractor"
@@ -954,29 +949,6 @@ def write_segmentation(
         metadata_input = metadata[num] if metadata else {}
         metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input, append_list=False)
     metadata_base_common = metadata_base_list[0]
-
-    # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-    if save_path is not None:
-        will_be_removed_str = "will be removed on or after August 1st, 2022. Please use 'nwbfile_path' instead."
-        if nwbfile_path is not None:
-            if save_path == nwbfile_path:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path', but both are equivalent! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-            else:
-                warn(
-                    "Passed both 'save_path' and 'nwbfile_path' - using only the 'nwbfile_path'! "
-                    f"'save_path' {will_be_removed_str}",
-                    DeprecationWarning,
-                )
-        else:
-            warn(
-                f"The keyword argument 'save_path' to 'spikeinterface.write_recording' {will_be_removed_str}",
-                DeprecationWarning,
-            )
-            nwbfile_path = save_path
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata_base_common, overwrite=overwrite, verbose=verbose
@@ -1005,6 +977,7 @@ def write_segmentation(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
+                include_roi_centroids=include_roi_centroids,
                 iterator_options=dict(buffer_size=buffer_size),
                 compression_options=dict(
                     compression=True,

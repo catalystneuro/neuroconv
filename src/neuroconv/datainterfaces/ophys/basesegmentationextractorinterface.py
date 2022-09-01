@@ -66,7 +66,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
-        save_path: OptionalFilePathType = None,
+        include_roi_centroids: bool = True,
     ):
         from ...tools.roiextractors import write_segmentation
 
@@ -83,5 +83,5 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
-            save_path=save_path,
+            include_roi_centroids=include_roi_centroids,
         )

@@ -8,4 +8,4 @@ hdmf>=3.2.1
 pynwb>=1.4.0
 psutil>=5.8.0
 tqdm>=4.60.0
-dandi>=0.39.6
+dandi>=0.46.2

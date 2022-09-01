@@ -1,7 +1,13 @@
 Extract
 ^^^^^^^
 
-Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.extract.extractdatainterface.ExtractSegmentationInterface`.
+Install NeuroConv with the additional dependencies necessary for reading EXTRACT data.
+
+.. code-block:: bash
+
+    pip install neuroconv[extract]
+
+Convert EXTRACT segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.extract.extractdatainterface.ExtractSegmentationInterface`.
 
 .. code-block:: python
 
