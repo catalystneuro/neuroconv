@@ -6,11 +6,11 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for ExtractSegmentationExtractor."""
 
     def __init__(
-            self,
-            file_path: FilePathType,
-            sampling_frequency: FloatType,
-            output_struct_name: str = "output",
-            verbose: bool = True,
+        self,
+        file_path: FilePathType,
+        sampling_frequency: FloatType,
+        output_struct_name: str = "output",
+        verbose: bool = True,
     ):
         self.verbose = verbose
         super().__init__(
