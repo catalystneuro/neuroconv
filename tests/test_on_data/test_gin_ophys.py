@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime
 
+from hdmf.testing import TestCase
 from parameterized import parameterized, param
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
@@ -28,7 +29,7 @@ def custom_name_func(testcase_func, param_num, param):
     )
 
 
-class TestOphysNwbConversions(unittest.TestCase):
+class TestOphysNwbConversions(TestCase):
     savedir = OUTPUT_PATH
 
     imaging_interface_list = [
@@ -147,6 +148,17 @@ class TestOphysNwbConversions(unittest.TestCase):
         segmentation = converter.data_interface_objects["TestSegmentation"].segmentation_extractor
         nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
         check_segmentations_equal(segmentation, nwb_segmentation)
+
+    def test_extract_segmentation_interface_non_default_output_struct_name(self):
+        """Test that the value for 'output_struct_name' is propagated to the extractor level
+        where an error is raised."""
+        file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "extract" / "extract_public_output.mat"
+        with self.assertRaisesWith(KeyError, '''"Unable to open object (object 'filters' doesn't exist)"'''):
+            ExtractSegmentationInterface(
+                file_path=str(file_path),
+                sampling_frequency=15.0,
+                output_struct_name="not_output",
+            )
 
 
 if __name__ == "__main__":
