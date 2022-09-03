@@ -37,6 +37,11 @@ jobs:
 
       - name: Install neuroconv with minimal requirements
         run: pip install .[test]
+      - name: Run import tests
+        run: |
+          pytest tests/imports.py::TestImportStructure::test_top_level
+          pytest tests/imports.py::TestImportStructure::test_tools
+          pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
         run: pytest tests/test_minimal -n auto --dist loadscope
 
@@ -49,6 +54,7 @@ jobs:
 
       - name: Install with icephys requirements
         run: pip install .[icephys]
+
       #- name: Run icephys tests  # There are no icephys specific tests without data
       #  run: pytest tests/test_icephys -n auto --dist loadscope
 
