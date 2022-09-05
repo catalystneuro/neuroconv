@@ -153,7 +153,7 @@ class TestOphysNwbConversions(TestCase):
         """Test that the value for 'output_struct_name' is propagated to the extractor level
         where an error is raised."""
         file_path = OPHYS_DATA_PATH / "segmentation_datasets" / "extract" / "extract_public_output.mat"
-        with self.assertRaisesWith(KeyError, '''"Unable to open object (object 'filters' doesn't exist)"'''):
+        with self.assertRaisesWith(AssertionError, "Output struct name 'not_output' not found in file."):
             ExtractSegmentationInterface(
                 file_path=str(file_path),
                 sampling_frequency=15.0,
