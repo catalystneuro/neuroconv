@@ -855,7 +855,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_add_fluorescence_traces_regular_timestamps(self):
         """Test that adding traces with regular timestamps, the 'timestamps' are not added
-         to the NWB file, instead 'rate' and 'starting_time' is used."""
+        to the NWB file, instead 'rate' and 'starting_time' is used."""
 
         times = np.arange(0, 5)
         segmentation_extractor = generate_dummy_segmentation_extractor(
