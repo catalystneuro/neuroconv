@@ -116,21 +116,26 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        metadata_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["block_index", "seg_index"]
-        )
+        metadata_schema = get_schema_from_method_signature(class_method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
         return metadata_schema
 
-    def __init__(
-        self, file_path: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
-    ):
-        spikeextractors = get_package(package_name="spikeextractors")
+    def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):
+        """
+        Parameters
+        ----------
+        file_path : str, Path
+            The file path to the ``.nev`` data
+        sampling_frequency: float,
+            The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
+        used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
+        this extractor to be initialized.
+        verbose : bool, optional
+            Enables verbosity
+        """
 
-        self.Extractor = spikeextractors.BlackrockSortingExtractor
-        super().__init__(filename=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
-        self.source_data = dict(file_path=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
+        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self):
         metadata = super().get_metadata()
