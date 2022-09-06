@@ -62,8 +62,8 @@ def test_spikelgx_recording_property_addition():
     probe = pi.read_spikeglx(meta_filename)
     n_channels = probe.device_channel_indices.size
 
-    expected_shank_electrode_number = [int(contact_id.split(":")[1][1:]) for contact_id in probe.contact_ids]
-    expected_group_name = [contact_id.split(":")[0] for contact_id in probe.contact_ids]
+    expected_shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
+    expected_group_name = [contact_id.split("e")[0] for contact_id in probe.contact_ids]
     expected_contact_shapes = ["square"] * n_channels
 
     # Initialize the interface and get the added properties
