@@ -1,4 +1,4 @@
 neo>=0.11
 spikeinterface>=0.95.1
 spikeextractors>=0.9.10
-probeinterface<=0.2.9 # https://github.com/catalystneuro/neuroconv/issues/127
+probeinterface>=0.2.10
