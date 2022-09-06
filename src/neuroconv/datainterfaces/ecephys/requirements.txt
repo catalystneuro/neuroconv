@@ -1,4 +1,2 @@
-neo>=0.11.0
 spikeinterface>=0.95.1
 spikeextractors>=0.9.10
-probeinterface>=0.2.10
