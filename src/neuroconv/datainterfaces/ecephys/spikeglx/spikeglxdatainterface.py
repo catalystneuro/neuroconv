@@ -23,8 +23,8 @@ def add_recording_extractor_properties(recording_extractor):
     channel_ids = recording_extractor.get_channel_ids()
 
     if probe.get_shank_count() > 1:
-        group_name = [contact_id.split(":")[0] for contact_id in probe.contact_ids]
-        shank_electrode_number = [int(contact_id.split(":")[1][1:]) for contact_id in probe.contact_ids]
+        group_name = [contact_id.split("e")[0] for contact_id in probe.contact_ids]
+        shank_electrode_number = [int(contact_id.split("e")[1]) for contact_id in probe.contact_ids]
     else:
         shank_electrode_number = recording_extractor.ids_to_indices(channel_ids)
         group_name = ["s0"] * len(channel_ids)
