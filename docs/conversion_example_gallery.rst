@@ -20,7 +20,7 @@ Recording
     NeuroScope <conversion_examples_gallery/recording/neuroscope>
     OpenEphys <conversion_examples_gallery/recording/openephys>
     Spikegadgets <conversion_examples_gallery/recording/spikegadgets>
-    Spikelgx <conversion_examples_gallery/recording/spikeglx>
+    SpikeGLX <conversion_examples_gallery/recording/spikeglx>
     EDF <conversion_examples_gallery/recording/edf>
 
 Sorting
@@ -29,6 +29,7 @@ Sorting
 .. toctree::
     :maxdepth: 1
 
+    Blackrock  <conversion_examples_gallery/sorting/blackrock>
     Cell Explorer <conversion_examples_gallery/sorting/cellexplorer>
     KiloSort <conversion_examples_gallery/sorting/kilosort>
     NeuroScope <conversion_examples_gallery/sorting/neuroscope>
