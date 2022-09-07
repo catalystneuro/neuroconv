@@ -1,3 +1,5 @@
+from typing import Optional
+
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 from ....utils import FilePathType, FloatType
 
@@ -9,7 +11,7 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
         self,
         file_path: FilePathType,
         sampling_frequency: FloatType,
-        output_struct_name: str = "output",
+        output_struct_name: Optional[str] = None,
         verbose: bool = True,
     ):
         self.verbose = verbose
