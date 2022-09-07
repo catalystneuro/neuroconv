@@ -12,7 +12,7 @@ Convert Phy data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.phy.
     >>> from neuroconv.datainterfaces import PhySortingInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"
-    >>> # Change the file_path to the location of the data in your system
+    >>> # Change the folder_path to the location of the data in your system
     >>> interface = PhySortingInterface(folder_path=folder_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
