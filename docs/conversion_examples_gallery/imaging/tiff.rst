@@ -20,7 +20,6 @@ Convert TIFF imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophy
     >>> interface = TiffImagingInterface(file_path=file_path, sampling_frequency=15.0, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> metadata.update(NWBFile=dict())
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
