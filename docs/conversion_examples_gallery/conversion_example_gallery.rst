@@ -24,6 +24,7 @@ Recording
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
     EDF <recording/edf>
+    Tucker-Davis Technologies (TDT) <recording/tdt>
 
 Sorting
 ~~~~~~~

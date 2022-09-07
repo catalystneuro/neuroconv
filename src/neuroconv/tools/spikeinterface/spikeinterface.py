@@ -348,10 +348,10 @@ def add_electrodes(
         if "group" in data_to_add:
             group_name_array = data_to_add["group"]["data"].astype("str", copy=False)
         else:
-            default_group_name = "default_group"
-            group_name_array = np.full_like(channel_name_array, fill_value=default_group_name)
+            default_group_name = "ElectrodeGroup"
+            group_name_array = np.full(channel_name_array.size, fill_value=default_group_name)
 
-    group_name_array[group_name_array == ""] = "default_group"
+    group_name_array[group_name_array == ""] = "ElectrodeGroup"
     data_to_add["group_name"].update(description="group_name", data=group_name_array, index=False)
 
     # Add missing groups to the nwb file
