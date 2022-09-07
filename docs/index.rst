@@ -19,8 +19,8 @@ of proprietary formats to the Neurodata Without Borders (NWB) standard.
   :maxdepth: 2
   :caption: Contents
 
-  user_guide
-  conversion_example_gallery
+  user_guide/user_guide
+  conversion_example_gallery/conversion_example_gallery
   developer_guide
 
 .. toctree::
