@@ -15,15 +15,15 @@ Recording
 .. toctree::
     :maxdepth: 1
 
-    Axona <conversion_examples_gallery/recording/axona>
-    Blackrock <conversion_examples_gallery/recording/blackrock>
-    Intan <conversion_examples_gallery/recording/intan>
-    Neuralynx <conversion_examples_gallery/recording/neuralynx>
-    NeuroScope <conversion_examples_gallery/recording/neuroscope>
-    OpenEphys <conversion_examples_gallery/recording/openephys>
-    Spikegadgets <conversion_examples_gallery/recording/spikegadgets>
-    SpikeGLX <conversion_examples_gallery/recording/spikeglx>
-    EDF <conversion_examples_gallery/recording/edf>
+    Axona <recording/axona>
+    Blackrock <recording/blackrock>
+    Intan <recording/intan>
+    Neuralynx <recording/neuralynx>
+    NeuroScope <recording/neuroscope>
+    OpenEphys <recording/openephys>
+    Spikegadgets <recording/spikegadgets>
+    SpikeGLX <recording/spikeglx>
+    EDF <recording/edf>
 
 Sorting
 ~~~~~~~
@@ -31,12 +31,12 @@ Sorting
 .. toctree::
     :maxdepth: 1
 
-    Blackrock  <conversion_examples_gallery/sorting/blackrock>
-    Cell Explorer <conversion_examples_gallery/sorting/cellexplorer>
-    KiloSort <conversion_examples_gallery/sorting/kilosort>
-    NeuroScope <conversion_examples_gallery/sorting/neuroscope>
-    Phy <conversion_examples_gallery/sorting/phy>
-    Neuralynx <conversion_examples_gallery/sorting/neuralynx>
+    Blackrock  <sorting/blackrock>
+    Cell Explorer <sorting/cellexplorer>
+    KiloSort <sorting/kilosort>
+    NeuroScope <sorting/neuroscope>
+    Phy <sorting/phy>
+    Neuralynx <sorting/neuralynx>
 
 Intracellular electrophysiology
 -------------------------------
@@ -44,7 +44,7 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    ABF <conversion_examples_gallery/recording/abf>
+    ABF <recording/abf>
 
 Optical physiology
 ------------------
@@ -55,10 +55,10 @@ Imaging
 .. toctree::
     :maxdepth: 1
 
-    Tiff <conversion_examples_gallery/imaging/tiff>
-    HDF5 <conversion_examples_gallery/imaging/hdf5imaging>
-    Scanbox <conversion_examples_gallery/imaging/scanbox>
-    ScanImage <conversion_examples_gallery/imaging/scanimage>
+    Tiff <imaging/tiff>
+    HDF5 <imaging/hdf5imaging>
+    Scanbox <imaging/scanbox>
+    ScanImage <imaging/scanimage>
 
 Segmentation
 ~~~~~~~~~~~~
@@ -66,10 +66,10 @@ Segmentation
 .. toctree::
     :maxdepth: 1
 
-    Suite2P <conversion_examples_gallery/segmentation/suite2p>
-    Caiman <conversion_examples_gallery/segmentation/caiman>
-    EXTRACT <conversion_examples_gallery/segmentation/extract>
-    CNMFE <conversion_examples_gallery/segmentation/cnmfe>
+    Suite2P <segmentation/suite2p>
+    Caiman <segmentation/caiman>
+    EXTRACT <segmentation/extract>
+    CNMFE <segmentation/cnmfe>
 
 Behavior
 --------
@@ -77,4 +77,4 @@ Behavior
 .. toctree::
     :maxdepth: 1
 
-    DeepLabCut <conversion_examples_gallery/behavior/deeplabcut>
+    DeepLabCut <behavior/deeplabcut>
