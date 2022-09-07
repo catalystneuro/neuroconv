@@ -57,7 +57,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def get_metadata(self):
         metadata = super().get_metadata()
         unique_groups = np.unique(self.recording_extractor.get_channel_groups())
-        channel_groups = unique_groups if unique_groups else ["ElectrodeGroup"]
+        channel_groups = unique_groups if unique_groups is not None else ["ElectrodeGroup"]
 
         metadata["Ecephys"] = dict(
             Device=[dict(name="Device_ecephys", description="no description")],
