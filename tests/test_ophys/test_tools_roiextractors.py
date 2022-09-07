@@ -609,9 +609,10 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.neuropil_roi_response_series_metadata["unit"],
         )
 
-        self.assertEqual(
+        self.assertAlmostEqual(
             fluorescence["Neuropil"].rate,
             self.segmentation_extractor.get_sampling_frequency(),
+            places=3,
         )
 
         traces = self.segmentation_extractor.get_traces_dict()
@@ -675,7 +676,11 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         self.assertEqual(df_over_f[trace_name].unit, "n.a.")
 
-        self.assertEqual(df_over_f[trace_name].rate, segmentation_extractor.get_sampling_frequency())
+        self.assertAlmostEqual(
+            df_over_f[trace_name].rate,
+            segmentation_extractor.get_sampling_frequency(),
+            places=3,
+        )
 
         traces = segmentation_extractor.get_traces_dict()
 
