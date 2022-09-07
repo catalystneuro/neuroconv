@@ -156,8 +156,8 @@ jobs:
       - name: Run full pytest with coverage
         if: steps.source-changed.outputs.SOURCE_CHANGED == 'true'
         run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
-      - if: steps.source-changed.outputs.SOURCE_CHANGED == 'true' && ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
-        name: Upload full coverage to Codecov
+      - name: Upload full coverage to Codecov
+        if: steps.source-changed.outputs.SOURCE_CHANGED == 'true' && (${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}})
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
