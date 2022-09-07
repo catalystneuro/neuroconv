@@ -45,7 +45,7 @@ jobs:
               echo "Source changed"
               echo "::set-output name=SOURCE_CHANGED::true"
             fi
-          done 
+          done
 
 
       - name: Install neuroconv with minimal requirements
