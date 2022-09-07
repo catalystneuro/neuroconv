@@ -9,6 +9,7 @@ Install NeuroConv with the additional dependencies necessary for reading TDT dat
 Convert TDT data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface.TdtRecordingInterface`.
 
 .. code-block:: python
+
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
