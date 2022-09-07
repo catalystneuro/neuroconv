@@ -20,7 +20,6 @@ Convert CaImAn segmentation data to NWB using :py:class:`~neuroconv.datainterfac
     >>> interface = CaimanSegmentationInterface(file_path=file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> metadata.update(NWBFile=dict())
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
