@@ -6,13 +6,15 @@ Conversion Gallery
 The examples here are guaranteed to be running correctly with our testing suite.
 Their aim is to be a showcase of the library capabilities and to get you to hit the ground running with your own conversion.
 
+Extracellular electrophysiology
+-------------------------------
+
 Recording
----------
+~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
 
-    ABF <conversion_examples_gallery/recording/abf>
     Axona <conversion_examples_gallery/recording/axona>
     Blackrock <conversion_examples_gallery/recording/blackrock>
     Intan <conversion_examples_gallery/recording/intan>
@@ -24,7 +26,7 @@ Recording
     EDF <conversion_examples_gallery/recording/edf>
 
 Sorting
--------
+~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -36,9 +38,19 @@ Sorting
     Phy <conversion_examples_gallery/sorting/phy>
     Neuralynx <conversion_examples_gallery/sorting/neuralynx>
 
+Intracellular electrophysiology
+-------------------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    ABF <conversion_examples_gallery/recording/abf>
+
+Optical physiology
+------------------
 
 Imaging
--------
+~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -49,7 +61,7 @@ Imaging
     ScanImage <conversion_examples_gallery/imaging/scanimage>
 
 Segmentation
-------------
+~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
@@ -61,6 +73,7 @@ Segmentation
 
 Behavior
 --------
+
 .. toctree::
     :maxdepth: 1
 
