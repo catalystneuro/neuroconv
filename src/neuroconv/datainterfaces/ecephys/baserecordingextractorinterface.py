@@ -1,4 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
+from abc import ABC
 from typing import Optional
 
 import numpy as np
@@ -10,7 +11,7 @@ from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
-class BaseRecordingExtractorInterface(BaseExtractorInterface):
+class BaseRecordingExtractorInterface(BaseExtractorInterface, ABC):
     """Parent class for all RecordingExtractorInterfaces."""
 
     ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
