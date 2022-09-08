@@ -60,8 +60,8 @@ autodoc_default_options = {
     "show-inheritance": False,
     "toctree": True,
     # The new BaseExtractorInterface uses a dynamic __new__; skip this in API docs and only use the __init__
-    #"special-members": "__init__",
-    #"exclude-members": "__new__",
+    "special-members": "__init__",
+    "exclude-members": "__new__",
     "class-doc-from": "init",
 }
 add_module_names = False
