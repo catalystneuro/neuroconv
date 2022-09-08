@@ -19,10 +19,9 @@ Blackrock Recording
 
 Cambridge Electronic Design (CED) Recording
 -------------------------------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.ced.ceddatainterface
-   :members:
-
-   .. automethod:: __init__
+.. autoclass:: neuroconv.datainterfaces.ecephys.ced.ceddatainterface.CEDRecordingInterface
+    :members:
+    :class-doc-from: "init"
 
 CellExplorer Sorting
 --------------------
