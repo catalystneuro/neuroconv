@@ -9,73 +9,81 @@ Their aim is to be a showcase of the library capabilities and to get you to hit 
 Extracellular electrophysiology
 -------------------------------
 
-Recording
-~~~~~~~~~
+.. grid:: 2
 
-.. toctree::
-    :maxdepth: 1
+    .. grid-item-card::  Recording
 
-    Axona <recording/axona>
-    Blackrock <recording/blackrock>
-    Intan <recording/intan>
-    Neuralynx <recording/neuralynx>
-    NeuroScope <recording/neuroscope>
-    OpenEphys <recording/openephys>
-    Spikegadgets <recording/spikegadgets>
-    SpikeGLX <recording/spikeglx>
-    EDF <recording/edf>
-    Tucker-Davis Technologies (TDT) <recording/tdt>
+        .. toctree::
+            :maxdepth: 1
 
-Sorting
-~~~~~~~
+            Axona <recording/axona>
+            Blackrock <recording/blackrock>
+            Intan <recording/intan>
+            Neuralynx <recording/neuralynx>
+            NeuroScope <recording/neuroscope>
+            OpenEphys <recording/openephys>
+            Spikegadgets <recording/spikegadgets>
+            SpikeGLX <recording/spikeglx>
+            EDF <recording/edf>
+            Tucker-Davis Technologies (TDT) <recording/tdt>
 
-.. toctree::
-    :maxdepth: 1
+    .. grid-item-card::  Sorting
 
-    Blackrock  <sorting/blackrock>
-    Cell Explorer <sorting/cellexplorer>
-    KiloSort <sorting/kilosort>
-    NeuroScope <sorting/neuroscope>
-    Phy <sorting/phy>
-    Neuralynx <sorting/neuralynx>
+        Sorting
+        ^^^^^^^
+
+        .. toctree::
+            :maxdepth: 1
+
+            Blackrock  <sorting/blackrock>
+            Cell Explorer <sorting/cellexplorer>
+            KiloSort <sorting/kilosort>
+            NeuroScope <sorting/neuroscope>
+            Phy <sorting/phy>
+            Neuralynx <sorting/neuralynx>
 
 Intracellular electrophysiology
 -------------------------------
+.. grid:: 1
 
-.. toctree::
-    :maxdepth: 1
+    .. grid-item-card::
 
-    ABF <recording/abf>
+        .. toctree::
+            :maxdepth: 1
+
+            ABF <recording/abf>
 
 Optical physiology
 ------------------
+.. grid:: 2
 
-Imaging
-~~~~~~~
+    .. grid-item-card:: Imaging
+        :img-bottom: ../img/imaging.png
 
-.. toctree::
-    :maxdepth: 1
+        .. toctree::
+            :maxdepth: 1
 
-    Tiff <imaging/tiff>
-    HDF5 <imaging/hdf5imaging>
-    Scanbox <imaging/scanbox>
-    ScanImage <imaging/scanimage>
+            Tiff <imaging/tiff>
+            HDF5 <imaging/hdf5imaging>
+            Scanbox <imaging/scanbox>
+            ScanImage <imaging/scanimage>
 
-Segmentation
-~~~~~~~~~~~~
+    .. grid-item-card:: Segmentation
+        :img-bottom: ../img/segmentation.png
 
-.. toctree::
-    :maxdepth: 1
+        .. toctree::
+            :maxdepth: 1
 
-    Suite2P <segmentation/suite2p>
-    Caiman <segmentation/caiman>
-    EXTRACT <segmentation/extract>
-    CNMFE <segmentation/cnmfe>
+            Suite2P <segmentation/suite2p>
+            Caiman <segmentation/caiman>
+            EXTRACT <segmentation/extract>
+            CNMFE <segmentation/cnmfe>
 
 Behavior
 --------
 
-.. toctree::
-    :maxdepth: 1
 
-    DeepLabCut <behavior/deeplabcut>
+    .. toctree::
+        :maxdepth: 1
+
+        DeepLabCut <behavior/deeplabcut>
