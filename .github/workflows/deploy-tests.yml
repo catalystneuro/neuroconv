@@ -4,12 +4,10 @@ on:
   pull_request:
 
 jobs:
-  job1:
+  assess-file-changes:
     uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@disable_tests_if_no_changes
 
-  job2:
+  run-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
     uses: catalystneuro/neuroconv/.github/workflows/testing.yml@disable_tests_if_no_changes
-    needs: job1
-    if: ${{ needs.job1.outputs.SOURCE_CHANGED == 'true' }}
-    with:
-      SOURCE_CHANGED: ${{ needs.job1.outputs.SOURCE_CHANGED }}
