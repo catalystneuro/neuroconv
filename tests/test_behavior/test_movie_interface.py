@@ -3,6 +3,7 @@ import unittest
 from hdmf.testing import TestCase
 import tempfile
 from datetime import datetime
+from dateutil.tz import gettz
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +27,7 @@ class TestMovieInterface(TestCase):
         self.movie_files = self.create_movies()
         self.nwb_converter = self.create_movie_converter()
         self.metadata = self.nwb_converter.get_metadata()
-        self.metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+        self.metadata["NWBFile"].update(session_start_time=datetime.now(tz=gettz(name="US/Pacific")))
         self.nwbfile_path = self.test_dir / "movie_test.nwb"
         self.starting_times = [0.0, 50.0]
 
@@ -248,11 +249,10 @@ class TestMovieInterface(TestCase):
             Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
         )
 
-        rate = 1.0 / np.round(timestamps[1] - timestamps[0], 9)
         fps = 25.0
         expected_warn_msg = (
-            f"The fps={fps} from movie data is unequal to the difference in "
-            f"regular timestamps. Using fps={rate} from timestamps instead."
+            "The fps=25.0 from movie data is unequal to the difference in "
+            "regular timestamps. Using fps=5.0 from timestamps instead."
         )
 
         with self.assertWarnsWith(warn_type=UserWarning, exc_msg=expected_warn_msg):
