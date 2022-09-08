@@ -24,7 +24,7 @@ jobs:
             fi
           done
 
-  call-workflow-passing-data:
-    uses: catalystneuro/neuroconv/.github/workflows/testing.yml@disable_tests_if_no_changes
-    with:
-      SOURCE_CHANGED: ${{ steps.source-changed.outputs.SOURCE_CHANGED }}
+#  call-workflow-passing-data:
+#    uses: catalystneuro/neuroconv/.github/workflows/testing.yml@disable_tests_if_no_changes
+#    with:
+#      SOURCE_CHANGED: ${{ steps.source-changed.outputs.SOURCE_CHANGED }}
