@@ -11,6 +11,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Map the job outputs to step outputs
+    outputs:
+      SOURCE_CHANGED: ${{ steps.source-changed.outputs.SOURCE_CHANGED }}
+
     name: Test changed-files
     steps:
       - uses: actions/checkout@v3
