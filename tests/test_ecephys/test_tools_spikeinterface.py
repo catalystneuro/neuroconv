@@ -55,8 +55,8 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        assert "ElectricalSeries_raw" in acquisition_module
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        assert "ElectricalSeriesRaw" in acquisition_module
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         assert isinstance(electrical_series.data, H5DataIO)
 
@@ -81,9 +81,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         lfp_container = ecephys_module.data_interfaces["LFP"]
         assert isinstance(lfp_container, pynwb.ecephys.LFP)
-        assert "ElectricalSeries_lfp" in lfp_container.electrical_series
+        assert "ElectricalSeriesLfp" in lfp_container.electrical_series
 
-        electrical_series = lfp_container.electrical_series["ElectricalSeries_lfp"]
+        electrical_series = lfp_container.electrical_series["ElectricalSeriesLfp"]
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
@@ -102,9 +102,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         filtered_ephys_container = ecephys_module.data_interfaces["Processed"]
         assert isinstance(filtered_ephys_container, pynwb.ecephys.FilteredEphys)
-        assert "ElectricalSeries_processed" in filtered_ephys_container.electrical_series
+        assert "ElectricalSeriesProcessed" in filtered_ephys_container.electrical_series
 
-        electrical_series = filtered_ephys_container.electrical_series["ElectricalSeries_processed"]
+        electrical_series = filtered_ephys_container.electrical_series["ElectricalSeriesProcessed"]
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
@@ -132,7 +132,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == compression
         assert compression_parameters["compression_opts"] == compression_opts
@@ -144,7 +144,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == compression
         assert "compression_opts" not in compression_parameters
@@ -171,7 +171,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         expected_rate = self.sampling_frequency
         extracted_rate = electrical_series.rate
@@ -184,7 +184,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         assert electrical_series.rate is None
 
@@ -231,7 +231,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
@@ -261,7 +261,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
@@ -291,7 +291,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
@@ -319,7 +319,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
@@ -388,7 +388,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
         h5dataiowrapped_electrical_series = electrical_series.data
         electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
 
@@ -405,7 +405,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         )
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
         h5dataiowrapped_electrical_series = electrical_series.data
         electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
 
@@ -416,7 +416,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
         h5dataiowrapped_electrical_series = electrical_series.data
         electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
 
@@ -430,7 +430,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
         isinstance(electrical_series.data, np.ndarray)
 
     def test_non_iterative_write_assertion(self):
@@ -502,8 +502,8 @@ class TestWriteRecording(unittest.TestCase):
         write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        assert "ElectricalSeries_raw" in acquisition_module
-        electrical_series = acquisition_module["ElectricalSeries_raw"]
+        assert "ElectricalSeriesRaw" in acquisition_module
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
         assert isinstance(electrical_series.data, H5DataIO)
 
@@ -521,15 +521,15 @@ class TestWriteRecording(unittest.TestCase):
         acquisition_module = self.nwbfile.acquisition
         assert len(acquisition_module) == 2
 
-        assert "ElectricalSeries0_raw" in acquisition_module
-        assert "ElectricalSeries1_raw" in acquisition_module
+        assert "ElectricalSeriesRaw0" in acquisition_module
+        assert "ElectricalSeriesRaw1" in acquisition_module
 
-        electrical_series0 = acquisition_module["ElectricalSeries0_raw"]
+        electrical_series0 = acquisition_module["ElectricalSeriesRaw0"]
         extracted_data = electrical_series0.data[:]
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-        electrical_series1 = acquisition_module["ElectricalSeries1_raw"]
+        electrical_series1 = acquisition_module["ElectricalSeriesRaw1"]
         extracted_data = electrical_series1.data[:]
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)

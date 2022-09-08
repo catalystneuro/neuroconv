@@ -114,7 +114,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
@@ -149,7 +149,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             Electrodes=[
                 dict(name="group_name", description="The name of the ElectrodeGroup this electrode is a part of.")
             ],
-            ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces."),
+            ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces."),
         )
 
         # Add group electrode number if available

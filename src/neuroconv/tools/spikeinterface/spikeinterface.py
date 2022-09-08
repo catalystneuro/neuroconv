@@ -627,7 +627,7 @@ def add_electrical_series(
     ], f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
     segment_signature = "" if checked_recording.get_num_segments() == 1 else segment_index
-    default_name = f"ElectricalSeries{segment_signature}_{write_as}"
+    default_name = f"ElectricalSeries{write_as.capitalize()}{segment_signature}"
 
     default_description = dict(raw="Raw acquired data", lfp="Processed data - LFP", processed="Processed data")
 

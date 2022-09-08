@@ -128,7 +128,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
@@ -139,7 +139,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         metadata["Ecephys"].update(
-            ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
+            ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces.")
         )
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:

@@ -93,7 +93,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"]
+            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLfp"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
             if not isinstance(recording, BaseRecording):
@@ -409,7 +409,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_channel_conversion = nwbfile.acquisition["ElectricalSeries_raw"].channel_conversion[:]
+            output_channel_conversion = nwbfile.acquisition["ElectricalSeriesRaw"].channel_conversion[:]
             input_gain_array = np.ones_like(output_channel_conversion) * input_gain
             np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
 
@@ -443,7 +443,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_dtype = nwbfile.acquisition["ElectricalSeries_raw"].data.dtype
+            output_dtype = nwbfile.acquisition["ElectricalSeriesRaw"].data.dtype
             self.assertEqual(first=output_dtype, second=np.dtype("int16"))
 
     def test_neuroscope_starting_time(self):
@@ -467,7 +467,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeries_raw"].starting_time)
+            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeriesRaw"].starting_time)
 
 
 if __name__ == "__main__":
