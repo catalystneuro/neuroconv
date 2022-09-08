@@ -18,4 +18,4 @@ jobs:
       - name: Install package for API docs
         run: pip install -e .[docs]
       - name: Test External Links
-        run: sphinx-build -b linkcheck ./docs ./docs/_build/ 
+        run: sphinx-build -b linkcheck ./docs ./docs/_build/
