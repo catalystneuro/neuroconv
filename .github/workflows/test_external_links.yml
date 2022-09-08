@@ -16,6 +16,6 @@ jobs:
       - name: Install sphinx Dependencies
         run: pip install -r requirements-rtd.txt
       - name: Install package for API docs
-        run: pip install -e .
+        run: pip install -e .[docs]
       - name: Test External Links
         run: sphinx-build -b linkcheck ./docs ./test_build
