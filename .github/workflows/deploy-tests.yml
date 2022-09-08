@@ -1,0 +1,31 @@
+name: Deploy tests
+on: pull_request
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Test changed-files
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v29.0.4
+        
+      - name: Assess Source Code Changes
+        id: source-changed
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [ $file == *"/src/"* ]; then
+              echo "Source changed"
+              echo "::set-output name=SOURCE_CHANGED::true"
+            fi
+          done
+        
+  call-workflow-passing-data:
+    steps:
+      - if: steps.source-changed.outputs.SOURCE_CHANGED == 'true'
+        uses: catalystneuro/neuroconv/.github/workflows/testing.yml@main
+        
