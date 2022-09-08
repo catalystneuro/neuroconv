@@ -1,0 +1,32 @@
+name: Assess file changes
+
+on:
+  workflow_call:
+    # Map the workflow outputs to job outputs
+    outputs:
+      SOURCE_CHANGED:
+        description: "Whether or not the files under /src/ were changed."
+        value: ${{ jobs.build.outputs.SOURCE_CHANGED }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Test changed-files
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v29.0.4
+
+      - name: Assess Source Code Changes
+        id: source-changed
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [ $file == *"/src/"* ]; then
+              echo "Source changed"
+              echo "::set-output name=SOURCE_CHANGED::true"
+            fi
+          done
