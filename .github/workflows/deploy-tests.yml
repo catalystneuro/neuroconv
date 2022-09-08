@@ -10,5 +10,6 @@ jobs:
   job2:
     uses: catalystneuro/neuroconv/.github/workflows/testing.yml@disable_tests_if_no_changes
     needs: job1
+    if: ${{ needs.job1.outputs.SOURCE_CHANGED == 'true' }}
     with:
       SOURCE_CHANGED: ${{ needs.job1.outputs.SOURCE_CHANGED }}
