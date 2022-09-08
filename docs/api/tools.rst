@@ -1,10 +1,6 @@
 Tools
 =====
 
-.. automodule:: neuroconv
-    :members:
-    :no-undoc-members:
-
 .. toctree::
     :maxdepth: 4
 

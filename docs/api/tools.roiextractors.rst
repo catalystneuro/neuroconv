@@ -1,4 +1,7 @@
 
+ROI extractors
+==============
+
 Interface with roiextractors
 ----------------------------
 .. automodule:: neuroconv.tools.roiextractors.roiextractors
