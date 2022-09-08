@@ -5,6 +5,6 @@ Tools
     :maxdepth: 4
 
     Spike Interface <tools.spikeinterface>
-    ROI extractors <tools.roiextractors>
+    tools.roiextractors
     tools.yaml_to_nwb_conversion
     tools.neo

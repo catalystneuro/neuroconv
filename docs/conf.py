@@ -50,9 +50,9 @@ napoleon_include_private_with_doc = True
 napoleon_include_special_with_doc = True
 
 # Autodoc
-autoclass_content = "both"
-autodoc_member_order = "bysource"
-autodata_content = "both"
+autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
+autodoc_member_order = "bysource"  # Displays classes and methods by their order in source code
+autodata_content = "both"  #
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",

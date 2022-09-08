@@ -6,6 +6,7 @@ Interface with roiextractors
 ----------------------------
 .. automodule:: neuroconv.tools.roiextractors.roiextractors
 
-Imaging exctractor iterator
----------------------------
+
+Imaging extractor iterator
+--------------------------
 .. automodule:: neuroconv.tools.roiextractors.imagingextractordatachunkiterator
