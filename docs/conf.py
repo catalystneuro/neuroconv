@@ -66,7 +66,7 @@ add_module_names = False
 
 def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
     if what == "class":
-        signature = str(inspect.signature(obj))
+        signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
     return (signature, return_annotation)
 
 
