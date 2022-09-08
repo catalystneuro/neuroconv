@@ -251,8 +251,8 @@ class TestMovieInterface(TestCase):
 
         fps = 25.0
         expected_warn_msg = (
-            "The fps=25.0 from movie data is unequal to the difference in "
-            "regular timestamps. Using fps=5.0 from timestamps instead."
+            "The fps=25 from movie data is unequal to the difference in "
+            "regular timestamps. Using fps=5 from timestamps instead."
         )
 
         with self.assertWarnsWith(warn_type=UserWarning, exc_msg=expected_warn_msg):
