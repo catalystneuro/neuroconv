@@ -14,7 +14,7 @@ extensions = [
     "sphinx_toggleprompt",  # Used to control >>> behavior in the conversion gallery example doctests
     "sphinx_copybutton",  # Used to control the copy button behavior in the conversion gallery doctsts
     "sphinx.ext.intersphinx",  # Allows links to other sphinx project documentation sites
-    "sphinx_search.extension",  # Alows for auto search function the documentation
+    "sphinx_search.extension",  # Allows for auto search function the documentation
     "sphinx.ext.viewcode",  # Shows source code in the documentation
     "sphinx.ext.extlinks",  # Allows to use shorter external links defined in the extlinks variable.
 ]
