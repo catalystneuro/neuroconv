@@ -103,7 +103,6 @@ jobs:
           key: ephys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
         if: inputs.SOURCE_CHANGED == 'true'
-        if: steps.source-changed.outputs.SOURCE_CHANGED == 'true'
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
