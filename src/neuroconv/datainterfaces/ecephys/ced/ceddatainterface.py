@@ -13,7 +13,8 @@ def _test_sonpy_installation() -> None:
 class CEDRecordingInterface(
     BaseRecordingExtractorInterface,
 ):
-    """Primary data interface class for converting data from CED (Cambridge Electronic Design)."""
+    """Primary data interface class for converting data from CED (Cambridge Electronic
+    Design) using the :py:class:`~spikeinterface.extractors.CedRecordingExtractor`."""
 
     ExtractorName = "CedRecordingExtractor"
 

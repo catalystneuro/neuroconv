@@ -78,7 +78,8 @@ def get_filtering(channel_path: FolderPathType) -> str:
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting the Neuralynx format."""
+    """Primary data interface for converting Neuralynx data. Uses
+    :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
     def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
 

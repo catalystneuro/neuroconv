@@ -55,7 +55,8 @@ def add_recording_extractor_properties(recording_extractor, xml_file_path: str, 
 
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
+    """Primary data interface for converting a NeuroScope data. Uses
+    :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str):
