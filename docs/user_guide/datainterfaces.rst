@@ -53,18 +53,14 @@ can be edited to include data not available in the source files.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 This metadata can also be stored in a YAML file.
 
-For guidance on metadata format check out NWBInspector
-:nwbinspector:`file metadata <best_practices/nwbfile_metadata.html#file-metadata>`
-best practices.
+For guidance on metadata format check out the recommended
+:nwbinspector:`Best Practices for file metadata <best_practices/nwbfile_metadata.html#file-metadata>`.
 
 .. code-block:: yaml
 
     NWBFile:
       related_publications: >
-      One of the following formats:
-      DOI: ####
-      https://doi.org/### link
-      PA or MLA citation of the publication
+      related_publications: 'doi: ### or https://doi.org/### or an APA/MLA citation of the publication'
       session_description: >
         A rich text description of the experiment. Can also just be the abstract of the publication.
       institution: My Institution
@@ -89,7 +85,7 @@ using the :meth:`~neuroconv.utils.dict.dict_deep_update` method with your metada
     from neuroconv.utils.dict import load_dict_from_file, dict_deep_update
 
     metadata_path = "my_lab_metadata.yml"
-    metadata_from_yaml = load_dict_from_file(metadata_path)
+    metadata_from_yaml = load_dict_from_file(file_path=metadata_path)
 
     metadata = spikeglx_interface.get_metadata()
     metadata = dict_deep_update(metadata, metadata_from_yaml)
