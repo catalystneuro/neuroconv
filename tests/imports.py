@@ -94,6 +94,7 @@ class TestImportStructure(TestCase):
             "SpikeGadgetsRecordingInterface",
             "SIPickleRecordingInterface",
             "SIPickleSortingInterface",
+            "TdtRecordingInterface",
             # Icephys
             "AbfInterface",
             # Ophys

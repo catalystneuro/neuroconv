@@ -32,7 +32,7 @@ from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterfac
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
-
+from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -83,6 +83,7 @@ interface_list = [
     AxonaLFPDataInterface,
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
+    TdtRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
