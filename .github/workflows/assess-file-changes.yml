@@ -29,8 +29,12 @@ jobs:
         id: source-changed
         run: |
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            if [ $file == *"/src/"* ]; then
+            if [ $file == *"/src/"* ]
+            then
               echo "Source changed"
               echo "::set-output name=SOURCE_CHANGED::true"
+            else
+              echo "Source not changed"
+              echo "::set-output name=SOURCE_CHANGED::false"
             fi
           done
