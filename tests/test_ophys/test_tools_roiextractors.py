@@ -10,7 +10,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBFile, NWBHDF5IO, H5DataIO
 from pynwb.device import Device
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
@@ -344,8 +344,8 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation_num_rois = len(plane_segmentation.id)
         self.assertEqual(plane_segmentation_num_rois, self.num_rois)
 
-        plane_segmentation_roi_centroid_data = plane_segmentation["RoiCentroid"].data
-        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations().T
+        plane_segmentation_roi_centroid_data = plane_segmentation["ROICentroids"].data
+        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations()[(1, 0), :].T
 
         assert_array_equal(plane_segmentation_roi_centroid_data, expected_roi_centroid_data)
 
@@ -358,6 +358,21 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         # transpose to num_rois x image_width x image_height
         expected_image_masks = self.segmentation_extractor.get_roi_image_masks().T
         assert_array_equal(data_chunks, expected_image_masks)
+
+    def test_do_not_include_roi_centroids(self):
+        """Test that setting `include_roi_centroids=False` prevents the centroids from being calculated and added."""
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            include_roi_centroids=False,
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        assert "ROICentroids" not in plane_segmentation
 
     @parameterized.expand(
         [
@@ -601,9 +616,18 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         traces = self.segmentation_extractor.get_traces_dict()
 
-        assert_array_equal(fluorescence["RoiResponseSeries"].data, traces["raw"].T)
-        assert_array_equal(fluorescence["Deconvolved"].data, traces["deconvolved"].T)
-        assert_array_equal(fluorescence["Neuropil"].data, traces["neuropil"].T)
+        for nwb_series_name, roiextractors_name in zip(
+            ["RoiResponseSeries", "Deconvolved", "Neuropil"], ["raw", "deconvolved", "neuropil"]
+        ):
+            series_outer_data = fluorescence[nwb_series_name].data
+            assert_array_equal(series_outer_data.data.data, traces[roiextractors_name])
+
+            # Check compression options are set
+            assert isinstance(series_outer_data, H5DataIO)
+
+            compression_parameters = series_outer_data.get_io_params()
+            assert compression_parameters["compression"] == "gzip"
+
         # Check that df/F trace data is not being written to the Fluorescence container
         df_over_f = ophys.get(self.df_over_f_name)
         assert_raises(
@@ -655,7 +679,14 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         traces = segmentation_extractor.get_traces_dict()
 
-        assert_array_equal(df_over_f[trace_name].data, traces["dff"].T)
+        series_outer_data = df_over_f[trace_name].data
+        assert_array_equal(series_outer_data.data.data, traces["dff"])
+
+        # Check compression options are set
+        assert isinstance(series_outer_data, H5DataIO)
+
+        compression_parameters = series_outer_data.get_io_params()
+        assert compression_parameters["compression"] == "gzip"
 
     def test_add_fluorescence_one_of_the_traces_is_none(self):
         """Test that roi response series with None values are not added to the

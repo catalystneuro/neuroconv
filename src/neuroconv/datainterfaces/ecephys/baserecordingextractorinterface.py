@@ -7,7 +7,6 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.spikeinterface import write_recording
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
@@ -57,13 +56,19 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
+
+        channel_groups_array = self.recording_extractor.get_channel_groups()
+        unique_channel_groups = set(channel_groups_array) if channel_groups_array is not None else ["ElectrodeGroup"]
+        electrode_metadata = [
+            dict(name=str(group_id), description="no description", location="unknown", device="Device_ecephys")
+            for group_id in unique_channel_groups
+        ]
+
         metadata["Ecephys"] = dict(
             Device=[dict(name="Device_ecephys", description="no description")],
-            ElectrodeGroup=[
-                dict(name=str(group_id), description="no description", location="unknown", device="Device_ecephys")
-                for group_id in np.unique(self.recording_extractor.get_channel_groups())
-            ],
+            ElectrodeGroup=electrode_metadata,
         )
+
         return metadata
 
     def subset_recording(self, stub_test: bool = False):
@@ -108,7 +113,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
-        save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -158,6 +162,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                     Should be below 1 MB. Automatically calculates suitable chunk shape.
             If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
         """
+        from ...tools.spikeinterface import write_recording
+
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
@@ -179,5 +185,4 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
-            save_path=save_path,  # TODO: to be removed, depreceation applied at tools level
         )

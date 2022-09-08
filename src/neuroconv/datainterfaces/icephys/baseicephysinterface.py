@@ -5,7 +5,6 @@ from warnings import warn
 from pynwb import NWBFile, NWBHDF5IO
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.neo import get_number_of_electrodes, get_number_of_segments, write_neo_to_nwb
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
     OptionalFilePathType,
@@ -35,6 +34,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
         return source_schema
 
     def __init__(self, file_paths: list):
+        from ...tools.neo import get_number_of_electrodes, get_number_of_segments
+
         super().__init__(file_paths=file_paths)
 
         self.readers_list = list()
@@ -54,6 +55,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_metadata(self):
+        from ...tools.neo import get_number_of_electrodes
+
         metadata = super().get_metadata()
         metadata["Icephys"] = dict(
             Device=[dict(name="DeviceIcephys", description="no description")],
@@ -72,7 +75,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
         overwrite: bool = False,
         icephys_experiment_type: Optional[str] = None,
         skip_electrodes: Tuple[int] = (),
-        save_path: OptionalFilePathType = None,  # TODO: to be removed
+        # TODO: to be removed
+        save_path: OptionalFilePathType = None,  # pragma: no cover
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.
@@ -89,16 +93,19 @@ class BaseIcephysInterface(BaseExtractorInterface):
         overwrite: bool
             Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         icephys_experiment_type: str (optional)
-            Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero' (all current and amplifier settings turned off).
+            Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp',
+                and 'izero' (all current and amplifier settings turned off).
             If no value is passed, 'voltage_clamp' is used as default.
         skip_electrodes: tuple, optional
             Electrode IDs to skip. Defaults to ().
         """
+        from ...tools.neo import write_neo_to_nwb
+
         if nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata)
 
         # TODO on or after August 1st, 2022, remove argument and deprecation warnings
-        if save_path is not None:
+        if save_path is not None:  # pragma: no cover
             will_be_removed_str = "will be removed on or after October 1st, 2022. Please use 'nwbfile_path' instead."
             if nwbfile_path is not None:
                 if save_path == nwbfile_path:

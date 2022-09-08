@@ -1,5 +1,11 @@
-Extract
+Suite2p
 ^^^^^^^
+
+Install NeuroConv with the additional dependencies necessary for reading suite2p data.
+
+.. code-block:: bash
+
+    pip install neuroconv[suite2p]
 
 Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`.
 
@@ -14,7 +20,6 @@ Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfa
     >>> interface = Suite2pSegmentationInterface(folder_path=folder_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> metadata.update(NWBFile=dict())
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)

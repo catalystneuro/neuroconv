@@ -1,7 +1,13 @@
 Extract
 ^^^^^^^
 
-Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.extract.extractdatainterface.ExtractSegmentationInterface`.
+Install NeuroConv with the additional dependencies necessary for reading EXTRACT data.
+
+.. code-block:: bash
+
+    pip install neuroconv[extract]
+
+Convert EXTRACT segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.extract.extractdatainterface.ExtractSegmentationInterface`.
 
 .. code-block:: python
 
@@ -15,7 +21,6 @@ Convert Extract segmentation data to NWB using :py:class:`~neuroconv.datainterfa
     >>> interface = ExtractSegmentationInterface(file_path=file_path, sampling_frequency=sampling_frequency, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> metadata.update(NWBFile=dict())
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)

@@ -17,7 +17,7 @@ from spikeextractors.testing import (
     get_default_nwbfile_metadata,
 )
 
-from neuroconv import spikeinterface  # testing aliased import
+from neuroconv.tools import spikeinterface  # testing aliased import
 from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
