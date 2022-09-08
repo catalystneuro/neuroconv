@@ -2,6 +2,12 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
+  workflow_call:
+    inputs:
+      SOURCE_CHANGED:
+        required: false
+        default: 'true'  # for the daily run
+        type: string
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
@@ -33,83 +39,86 @@ jobs:
           pip install wheel # Needed for scan image
 
 
-      - name: Get Changed Files
-        id: changed-files
-        uses: tj-actions/changed-files@v17.2
-      - name: Assess Source Code Changes
-        id: source-changed
-        run: |
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            if [ $file == *"/src/"* ]; then
-              echo "Source changed"
-              echo "::set-output name=SOURCE_CHANGED::true"
-            fi
-          done
-
 
       - name: Install neuroconv with minimal requirements
         run: pip install .[test]
       - name: Run import tests
+        if: inputs.SOURCE_CHANGED == 'true'
         run: |
           pytest tests/imports.py::TestImportStructure::test_top_level
           pytest tests/imports.py::TestImportStructure::test_tools
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pytest tests/test_minimal -n auto --dist loadscope
 
 
 
       - name: Install with behavior requirements
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pip install .[behavior]
       - name: Run behavior tests
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pytest tests/test_behavior -n auto --dist loadscope
 
       - name: Install with icephys requirements
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pip install .[icephys]
 
       #- name: Run icephys tests  # There are no icephys specific tests without data
       #  run: pytest tests/test_icephys -n auto --dist loadscope
 
       - name: Install with ecephys requirements
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pip install .[ecephys]
       - name: Run ecephys tests
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pytest tests/test_ecephys -n auto --dist loadscope
 
       - name: Install with ophys requirements
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pip install .[ophys]
       - name: Run ophys tests
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pytest tests/test_ophys -n auto --dist loadscope
 
 
 
       - name: Install full requirements (-e needed for codecov report)
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pip install -e .[full]
 
 
 
       - name: Get ephy_testing_data current head hash
+        if: inputs.SOURCE_CHANGED == 'true'
         id: ephys
         run: echo "::set-output name=HASH_EPHY_DATASET::$(git ls-remote https://gin.g-node.org/NeuralEnsemble/ephy_testing_data.git HEAD | cut -f1)"
       - name: Cache ephys dataset - ${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+        if: inputs.SOURCE_CHANGED == 'true'
         uses: actions/cache@v2
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
           key: ephys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
       - name: Get ophys_testing_data current head hash
+        if: inputs.SOURCE_CHANGED == 'true'
         if: steps.source-changed.outputs.SOURCE_CHANGED == 'true'
         id: ophys
         run: echo "::set-output name=HASH_OPHYS_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/ophys_testing_data.git HEAD | cut -f1)"
       - name: Cache ophys dataset - ${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+        if: inputs.SOURCE_CHANGED == 'true'
         uses: actions/cache@v2
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
           key: ophys-datasets-2022-08-18-${{ matrix.os }}-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
       - name: Get behavior_testing_data current head hash
+        if: inputs.SOURCE_CHANGED == 'true'
         id: behavior
         run: echo "::set-output name=HASH_BEHAVIOR_DATASET::$(git ls-remote https://gin.g-node.org/CatalystNeuro/behavior_testing_data.git HEAD | cut -f1)"
       - name: Cache behavior dataset - ${{ steps.behavior.outputs.HASH_BEHAVIOR_DATASET }}
+        if: inputs.SOURCE_CHANGED == 'true'
         uses: actions/cache@v2
         id: cache-behavior-datasets
         with:
@@ -118,28 +127,29 @@ jobs:
 
 
 
-      - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
+      - if: inputs.SOURCE_CHANGED == 'true' && (steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false)
         name: Install and configure AWS CLI
         run: |
           pip install awscli==1.25.27
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      - if: steps.cache-ephys-datasets.outputs.cache-hit == false
+      - if: inputs.SOURCE_CHANGED == 'true' && steps.cache-ephys-datasets.outputs.cache-hit == false
         name: Download ephys dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
-      - if: steps.cache-ophys-datasets.outputs.cache-hit == false
+      - if: inputs.SOURCE_CHANGED == 'true' && steps.cache-ophys-datasets.outputs.cache-hit == false
         name: Download ophys dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ophys_testing_data ./ophys_testing_data
-      - if: steps.cache-behavior-datasets.outputs.cache-hit == false
+      - if: inputs.SOURCE_CHANGED == 'true' && steps.cache-behavior-datasets.outputs.cache-hit == false
         name: Download behavior dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data ./behavior_testing_data
 
 
 
       - name: Run full pytest with coverage
+        if: inputs.SOURCE_CHANGED == 'true'
         run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
-        if: (${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}})
+        if: ${{  inputs.SOURCE_CHANGED == 'true' && matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
