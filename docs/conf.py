@@ -17,7 +17,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_search.extension",
     "sphinx.ext.viewcode",
-    "sphinx.ext.extlinks",
+    "sphinx.ext.extlinks",  # Allows to use shorter external links defined in the extlinks variable.
 ]
 
 templates_path = ["_templates"]
