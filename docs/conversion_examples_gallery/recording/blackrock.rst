@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading Blackro
 
     pip install neuroconv[blackrock]
 
-Convert Blackrock data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockRecordingExtractorInterface`.
+Convert Blackrock data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockRecordingInterface`.
 
 .. code-block:: python
 
