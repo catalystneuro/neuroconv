@@ -17,6 +17,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_search.extension",
     "sphinx.ext.viewcode",
+    "sphinx.ext.extlinks",
 ]
 
 templates_path = ["_templates"]
@@ -70,4 +71,10 @@ toggleprompt_default_hidden = "true"
 intersphinx_mapping = {
     "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
     "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
+}
+
+# To shorten external links
+extlinks = {
+    "pynwb": ("https://pynwb.readthedocs.io/en/stable/%s", ""),
+    "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/%s", ""),
 }
