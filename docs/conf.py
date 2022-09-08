@@ -16,6 +16,7 @@ extensions = [
     "sphinx.ext.intersphinx",  # Allows links to other sphinx project documentation sites
     "sphinx_search.extension",  # Alows for auto search function the documentation
     "sphinx.ext.viewcode",  # Shows source code in the documentation
+    "sphinx.ext.extlinks",  # Allows to use shorter external links defined in the extlinks variable.
 ]
 
 templates_path = ["_templates"]
@@ -69,4 +70,11 @@ toggleprompt_default_hidden = "true"
 intersphinx_mapping = {
     "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
     "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
+    "neuroconv": ("https://neuroconv.readthedocs.io/en/main/", None),
+}
+
+# To shorten external links
+extlinks = {
+    "pynwb": ("https://pynwb.readthedocs.io/en/stable/%s", ""),
+    "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/%s", ""),
 }
