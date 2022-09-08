@@ -28,4 +28,3 @@ jobs:
     steps:
       - if: steps.source-changed.outputs.SOURCE_CHANGED == 'true'
         uses: catalystneuro/neuroconv/.github/workflows/testing.yml@main
-
