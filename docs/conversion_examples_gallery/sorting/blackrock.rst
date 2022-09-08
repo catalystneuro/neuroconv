@@ -9,6 +9,7 @@ Install NeuroConv with the additional dependencies necessary for reading Blackro
 Convert Blackrock sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingInterface`.
 
 .. code-block:: python
+
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
