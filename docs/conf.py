@@ -54,16 +54,17 @@ napoleon_include_special_with_doc = True
 autoclass_content = "both"
 autodoc_member_order = "bysource"
 autodata_content = "both"
-autodoc_default_options = {
-    "members": True,
-    "member-order": "bysource",
-    "private-members": True,
-    "show-inheritance": False,
-    "toctree": True,
+autodoc_default_options = dict(
+    members=True,
+    member-order="bysource",
+    private-members=True,
+    show-inheritance=False,
+    toctree=True,
     # The new BaseExtractorInterface uses a dynamic __new__; skip this in API docs and only use the __init__
-    "special-members": "__init__",
-    "exclude-members": "__new__",
-}
+    special-members="__init__",
+    exclude-members="__new__",
+    class-doc-from="__init__",
+)
 add_module_names = False
 
 # Toggleprompt
