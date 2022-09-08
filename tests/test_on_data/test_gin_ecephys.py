@@ -40,6 +40,7 @@ from neuroconv.datainterfaces import (
     AxonaRecordingInterface,
     AxonaLFPDataInterface,
     EDFRecordingInterface,
+    TdtRecordingInterface,
 )
 
 
@@ -116,6 +117,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=EDFRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf")),
             case_name="artificial_data",
+        ),
+        param(
+            data_interface=TdtRecordingInterface,
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "tdt" / "aep_05")),
+            case_name="multi_segment",
         ),
     ]
     if platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"):
@@ -261,20 +267,22 @@ class TestEcephysNwbConversions(unittest.TestCase):
         if not isinstance(recording, BaseRecording):
             raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
-        # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-        if "channel_name" in recording.get_property_keys():
-            renamed_channel_ids = recording.get_property("channel_name")
-        else:
-            renamed_channel_ids = recording.get_channel_ids().astype("str")
-        recording = recording.channel_slice(
-            channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
-        )
+        # NWBRecordingExtractor on spikeinterface does not yet support loading data written from multiple segment.
+        if recording.get_num_segments() == 1:
 
-        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
-        # This can only be tested if both gain and offset are present
-        if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
-            check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
+            # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
+            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+            if "channel_name" in recording.get_property_keys():
+                renamed_channel_ids = recording.get_property("channel_name")
+            else:
+                renamed_channel_ids = recording.get_channel_ids().astype("str")
+            recording = recording.channel_slice(
+                channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
+            )
+
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
+            if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
+                check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
     parameterized_sorting_list = [
         param(
