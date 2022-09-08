@@ -1,6 +1,3 @@
-Spike Interface
-===============
-
 Interface with spikeinterface
 -----------------------------
 .. automodule:: neuroconv.tools.spikeinterface.spikeinterface

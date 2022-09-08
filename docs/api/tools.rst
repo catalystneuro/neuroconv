@@ -8,7 +8,7 @@ Tools
 .. toctree::
     :maxdepth: 4
 
-    tools.spikeinterface
-    tools.roiextractors
+    Spike Interface <tools.spikeinterface>
+    ROI extractors <tools.roiextractors>
     tools.yaml_to_nwb_conversion
     tools.neo
