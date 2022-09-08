@@ -49,6 +49,47 @@ can be edited to include data not available in the source files.
     metadata["experimenter"] = ["Darwin, Charles"]
 
 
+3.1. Load metadata from YAML
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This metadata can also be stored in a YAML file.
+
+For guidance on metadata format check out the recommended
+:nwbinspector:`Best Practices for file metadata <best_practices/nwbfile_metadata.html#file-metadata>`.
+
+.. code-block:: yaml
+
+    NWBFile:
+      related_publications: >
+      related_publications: 'doi: ### or https://doi.org/### or an APA/MLA citation of the publication'
+      session_description: >
+        A rich text description of the experiment. Can also just be the abstract of the publication.
+      institution: My Institution
+      lab: My Lab
+      experimenter:
+        - Last, First Middle
+        - Last, First Middle
+    Subject:
+      species: Rattus norvegicus
+
+For a complete view on NWBFile metadata check out the API documentation for :pynwb:`pynwb.file.NWBFile <pynwb.file.html#pynwb.file.NWBFile>`
+and :pynwb:`pynwb.file.Subject <pynwb.file.html#pynwb.file.Subject>` for Subject metadata.
+
+The content of the YAML file can be loaded as a dictionary using a utility method
+:meth:`~neuroconv.utils.dict.load_dict_from_file`.
+
+The metadata that is automatically fetched from the source data can be updated
+using the :meth:`~neuroconv.utils.dict.dict_deep_update` method with your metadata.
+
+.. code-block:: python
+
+    from neuroconv.utils.dict import load_dict_from_file, dict_deep_update
+
+    metadata_path = "my_lab_metadata.yml"
+    metadata_from_yaml = load_dict_from_file(file_path=metadata_path)
+
+    metadata = spikeglx_interface.get_metadata()
+    metadata = dict_deep_update(metadata, metadata_from_yaml)
+
 4. Run conversion
 ~~~~~~~~~~~~~~~~~
 The ``.run_conversion`` method takes the (edited) metadata dictionary and
