@@ -730,20 +730,18 @@ def add_fluorescence_traces(
         plane_index=plane_index,
     )
 
-    rate = (
-        np.nan
-        if segmentation_extractor.get_sampling_frequency() is None
-        else float(segmentation_extractor.get_sampling_frequency())
-    )
-
     roi_response_series_kwargs = dict(
         rois=roi_table_region,
-        # TODO: timestamps or rate (for timestamps we need frame_to_time method)
-        # TODO: check for regularity, only use timestamps if irregular timing
-        starting_time=0.0,
-        rate=rate,
         unit="n.a.",
     )
+
+    # Add timestamps or rate
+    timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
+    rate = calculate_regular_series_rate(series=timestamps)
+    if rate:
+        roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    else:
+        roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
