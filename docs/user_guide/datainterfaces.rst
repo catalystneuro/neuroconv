@@ -71,14 +71,14 @@ For guidance on metadata format check out the recommended
     Subject:
       species: Rattus norvegicus
 
-For a complete view on NWBFile metadata check out the API documentation for :pynwb:`pynwb.file.NWBFile <pynwb.file.html#pynwb.file.NWBFile>`
-and :pynwb:`pynwb.file.Subject <pynwb.file.html#pynwb.file.Subject>` for Subject metadata.
+For a complete view on NWBFile metadata check out the API documentation for :py:class:`~pynwb.file.NWBFile`
+and :py:class:`~pynwb.file.Subject` for Subject metadata.
 
 The content of the YAML file can be loaded as a dictionary using a utility method
-:meth:`~neuroconv.utils.dict.load_dict_from_file`.
+:py:meth:`~neuroconv.utils.dict.load_dict_from_file`.
 
 The metadata that is automatically fetched from the source data can be updated
-using the :meth:`~neuroconv.utils.dict.dict_deep_update` method with your metadata.
+using the :py:meth:`~neuroconv.utils.dict.dict_deep_update` method with your metadata.
 
 .. code-block:: python
 
