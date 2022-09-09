@@ -93,7 +93,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLfp"]
+            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
             if not isinstance(recording, BaseRecording):

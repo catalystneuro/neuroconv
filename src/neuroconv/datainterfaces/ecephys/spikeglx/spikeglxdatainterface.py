@@ -165,7 +165,7 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
 
         del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeriesRaw"]
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesLfp=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesLFP=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
@@ -173,13 +173,13 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
         metadata = super().get_metadata()
         del metadata["Ecephys"]["ElectricalSeriesRaw"]
         metadata["Ecephys"].update(
-            ElectricalSeriesLfp=dict(
-                name="ElectricalSeriesLfp", description="LFP traces for the processed (lf) SpikeGLX data."
+            ElectricalSeriesLFP=dict(
+                name="ElectricalSeriesLFP", description="LFP traces for the processed (lf) SpikeGLX data."
             )
         )
 
         return metadata
 
     def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesLfp", stub_test=False)
+        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesLFP", stub_test=False)
         return conversion_options

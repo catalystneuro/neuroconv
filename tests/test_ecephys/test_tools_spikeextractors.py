@@ -164,6 +164,10 @@ class TestExtractors(unittest.TestCase):
             assert len(nwbfile.electrodes) == self.RX.get_num_channels()
         # Writing multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
+        # Re-mapping from spikextractors metadata to new standard (we probably should get rid of this test)
+        metadata["Ecephys"]["ElectricalSeriesRaw"] = metadata["Ecephys"]["ElectricalSeries_raw"]
+        metadata["Ecephys"]["ElectricalSeriesLFP"] = metadata["Ecephys"]["ElectricalSeries_lfp"]
+        metadata["Ecephys"]["ElectricalSeriesProcessed"] = metadata["Ecephys"]["ElectricalSeries_processed"]
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
@@ -185,7 +189,7 @@ class TestExtractors(unittest.TestCase):
             nwbfile_path=path_multi,
             metadata=metadata,
             write_as="lfp",
-            es_key="ElectricalSeriesLfp",
+            es_key="ElectricalSeriesLFP",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
