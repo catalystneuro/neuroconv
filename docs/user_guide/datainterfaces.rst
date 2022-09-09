@@ -59,7 +59,6 @@ For guidance on metadata format check out the recommended
 .. code-block:: yaml
 
     NWBFile:
-      related_publications: >
       related_publications: 'doi: ### or https://doi.org/### or an APA/MLA citation of the publication'
       session_description: >
         A rich text description of the experiment. Can also just be the abstract of the publication.
