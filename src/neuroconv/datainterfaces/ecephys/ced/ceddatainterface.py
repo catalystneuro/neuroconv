@@ -10,9 +10,8 @@ def _test_sonpy_installation() -> None:
     get_package(package_name="sonpy", excluded_platforms_and_python_versions=dict(darwin=["3.7"]))
 
 
-class CEDRecordingInterface(
-    BaseRecordingExtractorInterface,
-):
+
+class CEDRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting data from CED (Cambridge Electronic
     Design) using the :py:class:`~spikeinterface.extractors.CedRecordingExtractor`."""
 
