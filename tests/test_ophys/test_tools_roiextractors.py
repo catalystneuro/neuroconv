@@ -609,9 +609,10 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.neuropil_roi_response_series_metadata["unit"],
         )
 
-        self.assertEqual(
+        self.assertAlmostEqual(
             fluorescence["Neuropil"].rate,
             self.segmentation_extractor.get_sampling_frequency(),
+            places=3,
         )
 
         traces = self.segmentation_extractor.get_traces_dict()
@@ -675,7 +676,11 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         self.assertEqual(df_over_f[trace_name].unit, "n.a.")
 
-        self.assertEqual(df_over_f[trace_name].rate, segmentation_extractor.get_sampling_frequency())
+        self.assertAlmostEqual(
+            df_over_f[trace_name].rate,
+            segmentation_extractor.get_sampling_frequency(),
+            places=3,
+        )
 
         traces = segmentation_extractor.get_traces_dict()
 
@@ -827,6 +832,57 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         # check that raw traces are not overwritten
         self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
+
+    def test_add_fluorescence_traces_irregular_timestamps(self):
+        """Test adding traces with irregular timestamps."""
+
+        times = [0.0, 0.12, 0.15, 0.19, 0.1]
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=2,
+            num_frames=5,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        segmentation_extractor.set_times(times)
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+        for series_name in roi_response_series.keys():
+            self.assertEqual(roi_response_series[series_name].rate, None)
+            self.assertEqual(roi_response_series[series_name].starting_time, None)
+            assert_array_equal(roi_response_series[series_name].timestamps.data, times)
+
+    def test_add_fluorescence_traces_regular_timestamps(self):
+        """Test that adding traces with regular timestamps, the 'timestamps' are not added
+        to the NWB file, instead 'rate' and 'starting_time' is used."""
+
+        times = np.arange(0, 5)
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=2,
+            num_frames=5,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        segmentation_extractor.set_times(times)
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+        for series_name in roi_response_series.keys():
+            self.assertEqual(roi_response_series[series_name].rate, 1.0)
+            self.assertEqual(roi_response_series[series_name].starting_time, times[0])
+            self.assertEqual(roi_response_series[series_name].timestamps, None)
 
 
 class TestAddTwoPhotonSeries(TestCase):
