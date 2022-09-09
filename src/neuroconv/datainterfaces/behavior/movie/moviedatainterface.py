@@ -302,8 +302,8 @@ class MovieInterface(BaseDataInterface):
             if rate is not None:
                 if fps != rate:
                     warn(
-                        f"The fps={fps} from movie data is unequal to the difference in "
-                        f"regular timestamps. Using fps={rate} from timestamps instead.",
+                        f"The fps={fps:.2g} from movie data is unequal to the difference in "
+                        f"regular timestamps. Using fps={rate:.2g} from timestamps instead.",
                         UserWarning,
                     )
                 image_series_kwargs.update(starting_time=starting_times[j], rate=rate)
