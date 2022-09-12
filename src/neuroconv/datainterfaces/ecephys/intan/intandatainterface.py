@@ -57,7 +57,8 @@ def extract_electrode_metadata(recording_extractor):
 
 
 class IntanRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a IntanRecordingExtractor."""
+    """Primary data interface class for converting Intan data using the
+    :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`."""
 
     def __init__(
         self,

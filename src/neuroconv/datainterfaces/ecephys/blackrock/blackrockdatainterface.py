@@ -17,7 +17,8 @@ from ....utils import (
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a BlackrockRecordingExtractor."""
+    """Primary data interface class for converting Blackrock data using a
+    :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
 
     @classmethod
     def get_source_schema(cls):

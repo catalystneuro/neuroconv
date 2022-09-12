@@ -82,6 +82,7 @@ toggleprompt_default_hidden = "true"
 intersphinx_mapping = {
     "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
     "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
+    "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
 }
 
 # To shorten external links
