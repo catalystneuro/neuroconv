@@ -81,9 +81,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         lfp_container = ecephys_module.data_interfaces["LFP"]
         assert isinstance(lfp_container, pynwb.ecephys.LFP)
-        assert "ElectricalSeriesLfp" in lfp_container.electrical_series
+        assert "ElectricalSeriesLFP" in lfp_container.electrical_series
 
-        electrical_series = lfp_container.electrical_series["ElectricalSeriesLfp"]
+        electrical_series = lfp_container.electrical_series["ElectricalSeriesLFP"]
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
