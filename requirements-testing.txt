@@ -2,4 +2,3 @@ pytest
 pytest-cov
 ndx-events>=0.2.0  # for special tests to ensure load_namespaces is set to allow NWBFile load at all timess
 parameterized>=0.8.1
-pre-commit >= 2.20.0
