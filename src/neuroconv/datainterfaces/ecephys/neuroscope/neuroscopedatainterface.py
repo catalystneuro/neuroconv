@@ -64,9 +64,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
-                dict(
-                    name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="Device_ecephys"
-                )
+                dict(name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="DeviceEcephys")
                 for n, _ in enumerate(channel_groups)
             ],
             Electrodes=[
