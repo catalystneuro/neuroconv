@@ -581,7 +581,8 @@ def add_plane_segmentation(
             of pixels in each ROI.
         Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
             of voxels in each ROI.
-        Specify your choice between these two as mask_type='image', 'pixel', or 'voxel'.
+        Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
+        If None, the mask information is not written to the NWB file.
         Defaults to 'image'.
     iterator_options : dict, optional
         The options to use when iterating over the image masks of the segmentation extractor.
@@ -640,42 +641,19 @@ def add_plane_segmentation(
         imaging_plane_name = imaging_plane_metadata["name"]
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
 
-        plane_segmentation_kwargs = dict(
-            **plane_segmentation_metadata,
-            imaging_plane=imaging_plane,
-            columns=[
-                VectorData(
-                    data=accepted_ids,
-                    name="Accepted",
-                    description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation",
-                ),
-                VectorData(
-                    data=rejected_ids,
-                    name="Rejected",
-                    description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation",
-                ),
-            ],
-        )
-        if mask_type != "pixel" and mask_type != "voxel":  # roi_ids will not be written row-wise
+        plane_segmentation_kwargs = dict(**plane_segmentation_metadata, imaging_plane=imaging_plane)
+        if not (mask_type == "pixel" or mask_type == "voxel"):  # If roi_ids will not be written row-wise
             plane_segmentation_kwargs.update(id=roi_ids)
 
         plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
 
-        if include_roi_centroids:
-            # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
-            tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
-            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :]
-            plane_segmentation.add_column(
-                name="ROICentroids", description="The x, y, (z) centroids of each ROI.", data=roi_locations.T
-            )
-
-        if mask_type is not "None" and mask_type == "image":
+        if mask_type is not None and mask_type == "image":
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
                 data=H5DataIO(DataChunkIterator(image_mask_iterator(), **iterator_options), **compression_options),
             )
-        elif mask_type is not "None" and (mask_type == "pixel" or mask_type == "voxel"):
+        elif mask_type is not None and (mask_type == "pixel" or mask_type == "voxel"):
             pixel_masks = segmentation_extractor.get_roi_pixel_masks()
             num_pixel_dims = pixel_masks[0].shape[1]
 
@@ -699,12 +677,27 @@ def add_plane_segmentation(
             mask_type_kwarg = f"{mask_type}_mask"
             for roi_id, pixel_mask in zip(roi_ids, pixel_masks):
                 plane_segmentation.add_roi(**{"id": roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
-            # plane_segmentation.add_column(
-            #     name=mask_type_kwarg,
-            #     description=f"{mask_type}.capitalize() masks for each ROI.",
-            #     data=[[tuple(x) for x in pixel_mask] for pixel_mask in pixel_masks],
-            #     index=2,
-            # )
+
+        if include_roi_centroids:
+            # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
+            tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
+            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :]
+            plane_segmentation.add_column(
+                name="ROICentroids",
+                description="The x, y, (z) centroids of each ROI.",
+                data=H5DataIO(roi_locations.T, **compression_options()),
+            )
+
+        plane_segmentation.add_column(
+            name="Accepted",
+            description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
+            data=H5DataIO(accepted_ids, **compression_options()),
+        )
+        plane_segmentation.add_column(
+            name="Rejected",
+            description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
+            data=H5DataIO(rejected_ids, **compression_options()),
+        )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
@@ -932,6 +925,7 @@ def write_segmentation(
     buffer_size: int = 10,
     plane_num: int = 0,
     include_roi_centroids: bool = True,
+    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ):
@@ -969,6 +963,17 @@ def write_segmentation(
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
         Defaults to True.
+    mask_type : str, optional
+        There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
+        Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+        Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+            of pixels in each ROI.
+        Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+            of voxels in each ROI.
+        Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
+        If None, the mask information is not written to the NWB file.
+        Defaults to 'image'.
     """
     assert (
         nwbfile_path is None or nwbfile is None
@@ -1007,7 +1012,7 @@ def write_segmentation(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata_base_common, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
 
-        ophys = get_module(nwbfile=nwbfile_out, name="ophys", description="contains optical physiology processed data")
+        _ = get_module(nwbfile=nwbfile_out, name="ophys", description="contains optical physiology processed data")
         for plane_no_loop, (segmentation_extractor, metadata) in enumerate(
             zip(segmentation_extractors, metadata_base_list)
         ):
@@ -1016,11 +1021,11 @@ def write_segmentation(
             add_devices(nwbfile=nwbfile_out, metadata=metadata)
 
             # ImageSegmentation:
-            image_segmentation_name = (
-                "ImageSegmentation" if plane_no_loop == 0 else f"ImageSegmentation_Plane{plane_no_loop}"
-            )
-            add_image_segmentation(nwbfile=nwbfile_out, metadata=metadata)
-            image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
+            # image_segmentation_name = (
+            #     "ImageSegmentation" if plane_no_loop == 0 else f"ImageSegmentation_Plane{plane_no_loop}"
+            # )
+            # add_image_segmentation(nwbfile=nwbfile_out, metadata=metadata)
+            # image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
 
             # Add imaging plane
             add_imaging_plane(nwbfile=nwbfile_out, metadata=metadata)
@@ -1031,6 +1036,7 @@ def write_segmentation(
                 nwbfile=nwbfile_out,
                 metadata=metadata,
                 include_roi_centroids=include_roi_centroids,
+                mask_type=mask_type,
                 iterator_options=iterator_options,
                 compression_options=compression_options,
             )
