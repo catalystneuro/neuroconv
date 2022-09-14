@@ -602,11 +602,6 @@ def add_plane_segmentation(
     iterator_options = iterator_options or dict()
     compression_options = compression_options or dict(compression="gzip")
 
-    def image_mask_iterator():
-        for roi_id in segmentation_extractor.get_roi_ids():
-            image_masks = segmentation_extractor.get_roi_image_masks(roi_ids=[roi_id]).T.squeeze()
-            yield image_masks
-
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
     default_metadata = get_default_ophys_metadata()

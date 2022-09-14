@@ -3,9 +3,11 @@ from unittest.mock import Mock
 from tempfile import mkdtemp
 from pathlib import Path
 from datetime import datetime
+from typing import Optional, List
 
 import psutil
 import numpy as np
+from numpy.typing import ArrayLike
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
@@ -427,6 +429,44 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         accepted_roi_ids = list(np.logical_not(np.array(expected_rejected_roi_ids)).astype(int))
         plane_segmentation_accepted_roi_ids = plane_segmentation["Accepted"].data
         assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
+
+    def test_voxel_masks(self):
+        """Test the voxel mask option for writing a plane segementation table."""
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        import types
+
+        def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
+            pixel_masks = list()
+            roi_ids = roi_ids or range(self.get_num_rois())
+
+            for idx, _ in enumerate(roi_ids, start=1):
+                pixel_masks.append(np.arange(idx, idx + 4 * idx, dtype=np.dtype("uint8")).reshape(-1, 4))
+            return pixel_masks
+
+        segmentation_extractor.get_roi_pixel_masks = types.MethodType(get_roi_pixel_masks, segmentation_extractor)
+
+        add_plane_segmentation(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            mask_type="voxel",
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        true_voxel_masks = list()
+        for idx in range(1, self.num_rois + 1):
+            per_roi_voxels = np.arange(idx, idx + 4 * idx, dtype=np.dtype("uint8")).reshape(-1, 4)
+            true_voxel_masks.append([tuple(x) for x in per_roi_voxels])
+        assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
 
     def test_not_overwriting_plane_segmentation_if_same_name(self):
         """Test that adding a plane segmentation with the same name will not overwrite
