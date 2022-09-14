@@ -16,14 +16,14 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesLFP=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
         metadata["Ecephys"].update(
-            ElectricalSeries_lfp=dict(name="ElectricalSeries_lfp", description="Local field potential signal.")
+            ElectricalSeriesLFP=dict(name="ElectricalSeriesLFP", description="Local field potential signal.")
         )
         return metadata
 
@@ -57,7 +57,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             starting_time=starting_time,
             use_times=use_times,
             write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            es_key="ElectricalSeriesLFP",
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,

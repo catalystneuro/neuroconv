@@ -25,6 +25,10 @@ CellExplorer Sorting
 --------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface
 
+European Data Format (EDF) Recording
+------------------------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
+
 Intan Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
@@ -57,6 +61,7 @@ SpikeGLX Recording
 ------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
 
-European Data Format (EDF) Recording
-------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
+
+Tucker-Davis Technologies (TDT) Recording
+-----------------------------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface

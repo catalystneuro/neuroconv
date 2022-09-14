@@ -17,7 +17,7 @@ from spikeextractors.testing import (
     get_default_nwbfile_metadata,
 )
 
-# from neuroconv import spikeinterface  # TODO: testing aliased import; possibly remove
+from neuroconv.tools import spikeinterface  # testing aliased import
 from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
@@ -135,12 +135,12 @@ class TestExtractors(unittest.TestCase):
     def test_write_recording(self):
         path = self.test_dir + "/test.nwb"
 
-        # spikeinterface.write_recording(self.RX, path, metadata=self.placeholder_metadata)  # testing aliased import
-        # RX_nwb = se.NwbRecordingExtractor(path)
-        # check_recording_return_types(RX_nwb)
-        # check_recordings_equal(self.RX, RX_nwb)
-        # check_dumping(RX_nwb)
-        # del RX_nwb
+        spikeinterface.write_recording(self.RX, path, metadata=self.placeholder_metadata)  # testing aliased import
+        RX_nwb = se.NwbRecordingExtractor(path)
+        check_recording_return_types(RX_nwb)
+        check_recordings_equal(self.RX, RX_nwb)
+        check_dumping(RX_nwb)
+        del RX_nwb
 
         write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
         RX_nwb = se.NwbRecordingExtractor(path)
@@ -164,6 +164,10 @@ class TestExtractors(unittest.TestCase):
             assert len(nwbfile.electrodes) == self.RX.get_num_channels()
         # Writing multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
+        # Re-mapping from spikextractors metadata to new standard (we probably should get rid of this test)
+        metadata["Ecephys"]["ElectricalSeriesRaw"] = metadata["Ecephys"]["ElectricalSeries_raw"]
+        metadata["Ecephys"]["ElectricalSeriesLFP"] = metadata["Ecephys"]["ElectricalSeries_lfp"]
+        metadata["Ecephys"]["ElectricalSeriesProcessed"] = metadata["Ecephys"]["ElectricalSeries_processed"]
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
@@ -171,21 +175,21 @@ class TestExtractors(unittest.TestCase):
             nwbfile_path=path_multi,
             metadata=metadata,
             write_as="raw",
-            es_key="ElectricalSeries_raw",
+            es_key="ElectricalSeriesRaw",
         )
         write_recording(
             recording=self.RX2,
             nwbfile_path=path_multi,
             metadata=metadata,
             write_as="processed",
-            es_key="ElectricalSeries_processed",
+            es_key="ElectricalSeriesProcessed",
         )
         write_recording(
             recording=self.RX3,
             nwbfile_path=path_multi,
             metadata=metadata,
             write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            es_key="ElectricalSeriesLFP",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -203,7 +207,7 @@ class TestExtractors(unittest.TestCase):
         compression = "gzip"
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -221,7 +225,7 @@ class TestExtractors(unittest.TestCase):
         )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -240,7 +244,7 @@ class TestExtractors(unittest.TestCase):
         )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -259,7 +263,7 @@ class TestExtractors(unittest.TestCase):
         )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -274,7 +278,7 @@ class TestExtractors(unittest.TestCase):
         write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            chunks_out = nwbfile.acquisition["ElectricalSeries_raw"].data.chunks
+            chunks_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.chunks
         test_iterator = SpikeInterfaceRecordingDataChunkIterator(recording=self.RX)
         self.assertEqual(
             chunks_out,
@@ -288,12 +292,12 @@ class TestExtractors(unittest.TestCase):
         path = self.test_dir + "/test.nwb"
         sf = self.RX.get_sampling_frequency()
 
-        # # Append sorting to existing file
-        # write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
-        # spikeinterface.write_sorting(sorting=self.SX, nwbfile_path=path, overwrite=False)  # testing aliased import
-        # SX_nwb = se.NwbSortingExtractor(path)
-        # check_sortings_equal(self.SX, SX_nwb)
-        # check_dumping(SX_nwb)
+        # Append sorting to existing file
+        write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
+        spikeinterface.write_sorting(sorting=self.SX, nwbfile_path=path, overwrite=False)  # testing aliased import
+        SX_nwb = se.NwbSortingExtractor(path)
+        check_sortings_equal(self.SX, SX_nwb)
+        check_dumping(SX_nwb)
 
         # Test for handling unit property descriptions argument
         property_descriptions = dict(stability="This is a description of stability.")

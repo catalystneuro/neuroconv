@@ -10,7 +10,7 @@ from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from parameterized import parameterized, param
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBFile, NWBHDF5IO, H5DataIO
 from pynwb.device import Device
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
@@ -609,16 +609,26 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             self.neuropil_roi_response_series_metadata["unit"],
         )
 
-        self.assertEqual(
+        self.assertAlmostEqual(
             fluorescence["Neuropil"].rate,
             self.segmentation_extractor.get_sampling_frequency(),
+            places=3,
         )
 
         traces = self.segmentation_extractor.get_traces_dict()
 
-        assert_array_equal(fluorescence["RoiResponseSeries"].data, traces["raw"].T)
-        assert_array_equal(fluorescence["Deconvolved"].data, traces["deconvolved"].T)
-        assert_array_equal(fluorescence["Neuropil"].data, traces["neuropil"].T)
+        for nwb_series_name, roiextractors_name in zip(
+            ["RoiResponseSeries", "Deconvolved", "Neuropil"], ["raw", "deconvolved", "neuropil"]
+        ):
+            series_outer_data = fluorescence[nwb_series_name].data
+            assert_array_equal(series_outer_data.data.data, traces[roiextractors_name])
+
+            # Check compression options are set
+            assert isinstance(series_outer_data, H5DataIO)
+
+            compression_parameters = series_outer_data.get_io_params()
+            assert compression_parameters["compression"] == "gzip"
+
         # Check that df/F trace data is not being written to the Fluorescence container
         df_over_f = ophys.get(self.df_over_f_name)
         assert_raises(
@@ -666,11 +676,22 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         self.assertEqual(df_over_f[trace_name].unit, "n.a.")
 
-        self.assertEqual(df_over_f[trace_name].rate, segmentation_extractor.get_sampling_frequency())
+        self.assertAlmostEqual(
+            df_over_f[trace_name].rate,
+            segmentation_extractor.get_sampling_frequency(),
+            places=3,
+        )
 
         traces = segmentation_extractor.get_traces_dict()
 
-        assert_array_equal(df_over_f[trace_name].data, traces["dff"].T)
+        series_outer_data = df_over_f[trace_name].data
+        assert_array_equal(series_outer_data.data.data, traces["dff"])
+
+        # Check compression options are set
+        assert isinstance(series_outer_data, H5DataIO)
+
+        compression_parameters = series_outer_data.get_io_params()
+        assert compression_parameters["compression"] == "gzip"
 
     def test_add_fluorescence_one_of_the_traces_is_none(self):
         """Test that roi response series with None values are not added to the
@@ -811,6 +832,57 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         # check that raw traces are not overwritten
         self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
+
+    def test_add_fluorescence_traces_irregular_timestamps(self):
+        """Test adding traces with irregular timestamps."""
+
+        times = [0.0, 0.12, 0.15, 0.19, 0.1]
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=2,
+            num_frames=5,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        segmentation_extractor.set_times(times)
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+        for series_name in roi_response_series.keys():
+            self.assertEqual(roi_response_series[series_name].rate, None)
+            self.assertEqual(roi_response_series[series_name].starting_time, None)
+            assert_array_equal(roi_response_series[series_name].timestamps.data, times)
+
+    def test_add_fluorescence_traces_regular_timestamps(self):
+        """Test that adding traces with regular timestamps, the 'timestamps' are not added
+        to the NWB file, instead 'rate' and 'starting_time' is used."""
+
+        times = np.arange(0, 5)
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=2,
+            num_frames=5,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+        segmentation_extractor.set_times(times)
+
+        add_fluorescence_traces(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+        for series_name in roi_response_series.keys():
+            self.assertEqual(roi_response_series[series_name].rate, 1.0)
+            self.assertEqual(roi_response_series[series_name].starting_time, times[0])
+            self.assertEqual(roi_response_series[series_name].timestamps, None)
 
 
 class TestAddTwoPhotonSeries(TestCase):

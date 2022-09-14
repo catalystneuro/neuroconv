@@ -1,5 +1,5 @@
 Intracellular electrophysiology
-===================
+===============================
 
 Base Interface
 --------------

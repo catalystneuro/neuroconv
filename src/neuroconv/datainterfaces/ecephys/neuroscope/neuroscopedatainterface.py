@@ -55,7 +55,8 @@ def add_recording_extractor_properties(recording_extractor, xml_file_path: str, 
 
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
+    """Primary data interface for converting a NeuroScope data. Uses
+    :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
     @staticmethod
     def get_ecephys_metadata(xml_file_path: str):
@@ -63,9 +64,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
-                dict(
-                    name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="Device_ecephys"
-                )
+                dict(name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="DeviceEcephys")
                 for n, _ in enumerate(channel_groups)
             ],
             Electrodes=[
@@ -128,7 +127,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
@@ -139,7 +138,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         metadata["Ecephys"].update(
-            ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
+            ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="Raw acquisition traces.")
         )
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
