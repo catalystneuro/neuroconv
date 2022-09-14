@@ -651,7 +651,7 @@ def add_plane_segmentation(
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
-                data=H5DataIO(DataChunkIterator(image_mask_iterator(), **iterator_options), **compression_options),
+                data=H5DataIO(segmentation_extractor.get_roi_image_masks().T, **compression_options),
             )
         elif mask_type is not None and (mask_type == "pixel" or mask_type == "voxel"):
             pixel_masks = segmentation_extractor.get_roi_pixel_masks()
@@ -681,11 +681,11 @@ def add_plane_segmentation(
         if include_roi_centroids:
             # ROIExtractors uses height x width x (depth), but NWB uses width x height x depth
             tranpose_image_convention = (1, 0) if len(segmentation_extractor.get_image_size()) == 2 else (1, 0, 2)
-            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :]
+            roi_locations = segmentation_extractor.get_roi_locations()[tranpose_image_convention, :].T
             plane_segmentation.add_column(
                 name="ROICentroids",
                 description="The x, y, (z) centroids of each ROI.",
-                data=H5DataIO(roi_locations.T, **compression_options()),
+                data=H5DataIO(roi_locations, **compression_options),
             )
 
         plane_segmentation.add_column(

@@ -349,15 +349,9 @@ class TestAddPlaneSegmentation(unittest.TestCase):
 
         assert_array_equal(plane_segmentation_roi_centroid_data, expected_roi_centroid_data)
 
-        image_mask_iterator = plane_segmentation["image_mask"].data
-
-        data_chunks = np.zeros((self.num_rois, self.num_columns, self.num_rows))
-        for data_chunk in image_mask_iterator:
-            data_chunks[data_chunk.selection] = data_chunk.data
-
         # transpose to num_rois x image_width x image_height
         expected_image_masks = self.segmentation_extractor.get_roi_image_masks().T
-        assert_array_equal(data_chunks, expected_image_masks)
+        assert_array_equal(plane_segmentation["image_mask"], expected_image_masks)
 
     def test_do_not_include_roi_centroids(self):
         """Test that setting `include_roi_centroids=False` prevents the centroids from being calculated and added."""
