@@ -691,12 +691,12 @@ def add_plane_segmentation(
         plane_segmentation.add_column(
             name="Accepted",
             description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-            data=H5DataIO(accepted_ids, **compression_options()),
+            data=H5DataIO(accepted_ids, **compression_options),
         )
         plane_segmentation.add_column(
             name="Rejected",
             description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-            data=H5DataIO(rejected_ids, **compression_options()),
+            data=H5DataIO(rejected_ids, **compression_options),
         )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
@@ -770,18 +770,19 @@ def add_fluorescence_traces(
         plane_index=plane_index,
     )
 
-    roi_response_series_kwargs = dict(
-        rois=roi_table_region,
-        unit="n.a.",
-    )
+    roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
 
     # Add timestamps or rate
-    timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
-    rate = calculate_regular_series_rate(series=timestamps)
-    if rate:
-        roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    if getattr(segmentation_extractor, "_times") is None:
+        rate = segmentation_extractor.get_sampling_frequency()
+        roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
     else:
-        roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
+        timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
+        rate = calculate_regular_series_rate(series=timestamps)
+        if rate:
+            roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+        else:
+            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
@@ -814,7 +815,6 @@ def add_fluorescence_traces(
         trace_metadata = next(
             trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
         )
-
         # Build the roi response series
         roi_response_series_kwargs.update(
             data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
