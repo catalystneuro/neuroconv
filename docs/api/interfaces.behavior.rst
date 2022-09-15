@@ -8,3 +8,7 @@ Movie Data
 DeepLabCut
 ----------
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface
+
+Behavior
+--------
+.. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface
