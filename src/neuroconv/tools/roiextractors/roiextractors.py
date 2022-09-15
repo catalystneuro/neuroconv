@@ -594,7 +594,7 @@ def add_plane_segmentation(
     NWBFile
         The nwbfile passed as an input with the plane segmentation added.
     """
-    assert mask_type in ["image", "pixel", "voxel", "None"], (
+    assert mask_type in ["image", "pixel", "voxel", None], (
         "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', "
         f"or None (to not write any masks)! Received '{mask_type}'."
     )
@@ -611,16 +611,8 @@ def add_plane_segmentation(
     plane_segmentation_metadata = image_segmentation_metadata["plane_segmentations"][plane_segmentation_index]
     plane_segmentation_name = plane_segmentation_metadata["name"]
 
-    add_imaging_plane(
-        nwbfile=nwbfile,
-        metadata=metadata_copy,
-        imaging_plane_index=plane_segmentation_index,
-    )
-
-    add_image_segmentation(
-        nwbfile=nwbfile,
-        metadata=metadata_copy,
-    )
+    add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_index=plane_segmentation_index)
+    add_image_segmentation(nwbfile=nwbfile, metadata=metadata_copy)
 
     ophys = get_module(nwbfile, "ophys")
     image_segmentation_name = image_segmentation_metadata["name"]
@@ -637,18 +629,16 @@ def add_plane_segmentation(
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
 
         plane_segmentation_kwargs = dict(**plane_segmentation_metadata, imaging_plane=imaging_plane)
-        if not (mask_type == "pixel" or mask_type == "voxel"):  # If roi_ids will not be written row-wise
-            plane_segmentation_kwargs.update(id=roi_ids)
-
-        plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
-
-        if mask_type is not None and mask_type == "image":
+        if mask_type is None:
+            plane_segmentation = PlaneSegmentation(id=roi_ids, **plane_segmentation_kwargs)
+        elif mask_type == "image":
+            plane_segmentation = PlaneSegmentation(id=roi_ids, **plane_segmentation_kwargs)
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
                 data=H5DataIO(segmentation_extractor.get_roi_image_masks().T, **compression_options),
             )
-        elif mask_type is not None and (mask_type == "pixel" or mask_type == "voxel"):
+        elif mask_type == "pixel" or mask_type == "voxel":
             pixel_masks = segmentation_extractor.get_roi_pixel_masks()
             num_pixel_dims = pixel_masks[0].shape[1]
 
@@ -670,6 +660,7 @@ def add_plane_segmentation(
                 mask_type = "pixel"
 
             mask_type_kwarg = f"{mask_type}_mask"
+            plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
             for roi_id, pixel_mask in zip(roi_ids, pixel_masks):
                 plane_segmentation.add_roi(**{"id": roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
 
@@ -768,16 +759,12 @@ def add_fluorescence_traces(
     roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
 
     # Add timestamps or rate
-    if getattr(segmentation_extractor, "_times") is None:
-        rate = segmentation_extractor.get_sampling_frequency()
-        roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
+    timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
+    rate = calculate_regular_series_rate(series=timestamps)
+    if rate:
+        roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
     else:
-        timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate:
-            roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
-        else:
-            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
+        roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
