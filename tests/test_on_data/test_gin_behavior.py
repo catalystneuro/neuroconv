@@ -95,7 +95,6 @@ class TestSleapInterface(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            # nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"]["track=track_0"].pose_estimation_series
             # Test matching number of processing modules
             number_of_videos = len(labels.videos)
             assert len(nwbfile.processing) == number_of_videos
