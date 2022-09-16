@@ -5,21 +5,20 @@ from datetime import datetime
 from parameterized import parameterized, param
 from pynwb import NWBHDF5IO
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import MovieInterface, DeepLabCutInterface, SleapInterface
+from neuroconv.datainterfaces import MovieInterface, DeepLabCutInterface, SLEAPInterface
+
+from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 import sleap_io
 
 
-from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
-
-
-class TestSleapInterface(unittest.TestCase):
+class TestSLEAPInterface(unittest.TestCase):
 
     savedir = OUTPUT_PATH
 
     @parameterized.expand(
         [
             param(
-                data_interface=SleapInterface,
+                data_interface=SLEAPInterface,
                 interface_kwargs=dict(
                     file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp")
                 ),
@@ -29,19 +28,16 @@ class TestSleapInterface(unittest.TestCase):
     def test_sleap_to_nwb_interface(self, data_interface, interface_kwargs):
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
-        interface = SleapInterface(**interface_kwargs)
+        interface = SLEAPInterface(**interface_kwargs)
         metadata = interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-
-        import sleap_io
 
         slp_predictions_path = interface_kwargs["file_path"]
         labels = sleap_io.load_slp(slp_predictions_path)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            # nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"]["track=track_0"].pose_estimation_series
             # Test matching number of processing modules
             number_of_videos = len(labels.videos)
             assert len(nwbfile.processing) == number_of_videos
@@ -76,7 +72,7 @@ class TestSleapInterface(unittest.TestCase):
     @parameterized.expand(
         [
             param(
-                data_interface=SleapInterface,
+                data_interface=SLEAPInterface,
                 interface_kwargs=dict(
                     file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp")
                 ),
@@ -94,14 +90,11 @@ class TestSleapInterface(unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-        import sleap_io
-
         slp_predictions_path = interface_kwargs["file_path"]
         labels = sleap_io.load_slp(slp_predictions_path)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            # nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"]["track=track_0"].pose_estimation_series
             # Test matching number of processing modules
             number_of_videos = len(labels.videos)
             assert len(nwbfile.processing) == number_of_videos
