@@ -66,5 +66,3 @@ class SLEAPInterface(BaseDataInterface):
 
             labels = self.sleap_io.load_slp(self.file_path)
             nwbfile_out = self.sleap_io.append_labels_data_to_nwb(labels, nwbfile_out)
-
-        return nwbfile_out

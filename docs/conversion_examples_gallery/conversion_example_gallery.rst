@@ -79,3 +79,4 @@ Behavior
     :maxdepth: 1
 
     DeepLabCut <behavior/deeplabcut>
+    SLEAP <behavior/sleap>
