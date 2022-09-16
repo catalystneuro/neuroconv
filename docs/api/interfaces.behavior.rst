@@ -9,6 +9,6 @@ DeepLabCut
 ----------
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface
 
-Behavior
+SLEAP
 --------
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface
