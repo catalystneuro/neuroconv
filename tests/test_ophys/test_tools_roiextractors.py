@@ -281,6 +281,22 @@ class TestAddImageSegmentation(unittest.TestCase):
         self.assertEqual(image_segmentation.name, self.image_segmentation_name)
 
 
+def _generate_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+    masks = list()
+    size = 3 if mask_type == "pixel" else 4
+    for idx in range(1, num_rois + 1):
+        masks.append(np.arange(idx, idx + size * idx, dtype=np.dtype("uint8")).reshape(-1, size))
+    return masks
+
+
+def _generate_casted_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+    original_mask = _generate_test_masks(num_rois=num_rois, mask_type=mask_type)
+    casted_masks = list()
+    for per_roi_mask in original_mask:
+        casted_masks.append([tuple(x) for x in per_roi_mask])
+    return casted_masks
+
+
 class TestAddPlaneSegmentation(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -441,11 +457,8 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         )
 
         def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
-            pixel_masks = list()
             roi_ids = roi_ids or range(self.get_num_rois())
-
-            for idx, _ in enumerate(roi_ids, start=1):
-                pixel_masks.append(np.arange(idx, idx + 3 * idx, dtype=np.dtype("uint8")).reshape(-1, 3))
+            pixel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="pixel")
             return pixel_masks
 
         segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
@@ -462,10 +475,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
 
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
-        true_pixel_masks = list()
-        for idx in range(1, self.num_rois + 1):
-            per_roi_pixels = np.arange(idx, idx + 3 * idx, dtype=np.dtype("uint8")).reshape(-1, 3)
-            true_pixel_masks.append([tuple(x) for x in per_roi_pixels])
+        true_pixel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
         assert_array_equal(plane_segmentation["pixel_mask"], true_pixel_masks)
 
     def test_voxel_masks(self):
@@ -478,12 +488,9 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         )
 
         def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
-            pixel_masks = list()
             roi_ids = roi_ids or range(self.get_num_rois())
-
-            for idx, _ in enumerate(roi_ids, start=1):
-                pixel_masks.append(np.arange(idx, idx + 4 * idx, dtype=np.dtype("uint8")).reshape(-1, 4))
-            return pixel_masks
+            voxel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="voxel")
+            return voxel_masks
 
         segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
 
@@ -499,10 +506,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
 
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
-        true_voxel_masks = list()
-        for idx in range(1, self.num_rois + 1):
-            per_roi_voxels = np.arange(idx, idx + 4 * idx, dtype=np.dtype("uint8")).reshape(-1, 4)
-            true_voxel_masks.append([tuple(x) for x in per_roi_voxels])
+        true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
         assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
 
     def test_none_masks(self):
@@ -525,6 +529,80 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert "image_mask" not in plane_segmentation
         assert "pixel_mask" not in plane_segmentation
         assert "voxel_mask" not in plane_segmentation
+
+    def test_pixel_masks_auto_switch(self):
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+
+        def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
+            roi_ids = roi_ids or range(self.get_num_rois())
+            pixel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="pixel")
+            return pixel_masks
+
+        segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
+
+        with self.assertWarnsRegex(
+            expected_warning=UserWarning,
+            expected_regex=(
+                "Specified mask_type='voxel', but ROIExtractors returned 3-dimensional masks. "
+                "Using mask_type='pixel' instead."
+            ),
+        ):
+            add_plane_segmentation(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                mask_type="voxel",
+            )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
+        assert_array_equal(plane_segmentation["pixel_mask"], true_voxel_masks)
+
+    def test_voxel_masks_auto_switch(self):
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=self.num_rois,
+            num_frames=self.num_frames,
+            num_rows=self.num_rows,
+            num_columns=self.num_columns,
+        )
+
+        def get_roi_pixel_masks(self, roi_ids: Optional[ArrayLike] = None) -> List[np.ndarray]:
+            roi_ids = roi_ids or range(self.get_num_rois())
+            voxel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="voxel")
+            return voxel_masks
+
+        segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
+
+        with self.assertWarnsRegex(
+            expected_warning=UserWarning,
+            expected_regex=(
+                "Specified mask_type='pixel', but ROIExtractors returned 4-dimensional masks. "
+                "Using mask_type='voxel' instead."
+            ),
+        ):
+            add_plane_segmentation(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                mask_type="pixel",
+            )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
+        assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
 
     def test_not_overwriting_plane_segmentation_if_same_name(self):
         """Test that adding a plane segmentation with the same name will not overwrite
