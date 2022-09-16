@@ -54,7 +54,7 @@ from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 # Behavior
 from .behavior.movie.moviedatainterface import MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
-from .behavior.sleap.sleapdatainterface import SleapInterface
+from .behavior.sleap.sleapdatainterface import SLEAPInterface
 
 interface_list = [
     # Ecephys
@@ -99,5 +99,5 @@ interface_list = [
     # Behavior
     MovieInterface,
     DeepLabCutInterface,
-    SleapInterface,
+    SLEAPInterface,
 ]

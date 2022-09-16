@@ -10,8 +10,8 @@ from ....tools import get_package
 from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
 
 
-class SleapInterface(BaseDataInterface):
-    """Data interface for Sleap datasets."""
+class SLEAPInterface(BaseDataInterface):
+    """Data interface for SLEAP datasets."""
 
     def __init__(
         self,
