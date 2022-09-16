@@ -1,5 +1,5 @@
 SLEAP data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading sleap data.
 
@@ -7,19 +7,19 @@ Install NeuroConv with the additional dependencies necessary for reading sleap d
 
     pip install neuroconv[sleap]
 
-Convert SLEAP pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SleapInterface`.
+Convert SLEAP pose estimation data to NWB using :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import SleapInterface
+    >>> from neuroconv.datainterfaces import SLEAPInterface
     >>>
     >>> # Change the file_path so it points to the slp file in your system
     >>> file_path = BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"
     >>>
-    >>> interface = SleapInterface(file_path=file_path, verbose=False)
+    >>> interface = SLEAPInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
