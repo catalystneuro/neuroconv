@@ -46,30 +46,30 @@ jobs:
           pytest tests/imports.py::TestImportStructure::test_tools
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
-        run: pytest tests/test_minimal -n auto --dist loadscope
+        run: pytest tests/test_minimal -rsx -n auto --dist loadscope
 
 
 
       - name: Install with behavior requirements
         run: pip install .[behavior]
       - name: Run behavior tests
-        run: pytest tests/test_behavior -n auto --dist loadscope
+        run: pytest tests/test_behavior -rsx -n auto --dist loadscope
 
       - name: Install with icephys requirements
         run: pip install .[icephys]
 
       #- name: Run icephys tests  # There are no icephys specific tests without data
-      #  run: pytest tests/test_icephys -n auto --dist loadscope
+      #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
 
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
       - name: Run ecephys tests
-        run: pytest tests/test_ecephys -n auto --dist loadscope
+        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
 
       - name: Install with ophys requirements
         run: pip install .[ophys]
       - name: Run ophys tests
-        run: pytest tests/test_ophys -n auto --dist loadscope
+        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
 
 
 
@@ -127,7 +127,7 @@ jobs:
 
 
       - name: Run full pytest with coverage
-        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
+        run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
         uses: codecov/codecov-action@v1
