@@ -1,4 +1,5 @@
 import sys
+import inspect
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -10,7 +11,7 @@ author = "Cody Baker, Heberto Mayorquin, Szonja Weigl and Ben Dichter"
 extensions = [
     "sphinx.ext.napoleon",  # Support for NumPy and Google style docstrings
     "sphinx.ext.autodoc",  # Includes documentation from docstrings in docs/api
-    "sphinx.ext.autosummary", # To-add
+    "sphinx.ext.autosummary",  # To-add
     "sphinx_toggleprompt",  # Used to control >>> behavior in the conversion gallery example doctests
     "sphinx_copybutton",  # Used to control the copy button behavior in the conversion gallery doctsts
     "sphinx.ext.intersphinx",  # Allows links to other sphinx project documentation sites
@@ -62,6 +63,17 @@ autodoc_default_options = {
 }
 add_module_names = False
 
+
+def _correct_signatures(app, what, name, obj, options, signature, return_annotation):
+    if what == "class":
+        signature = str(inspect.signature(obj.__init__)).replace("self, ", "")
+    return (signature, return_annotation)
+
+
+def setup(app):
+    app.connect("autodoc-process-signature", _correct_signatures)
+
+
 # Toggleprompt
 toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>) for the conversion gallery
 toggleprompt_default_hidden = "true"
@@ -70,11 +82,10 @@ toggleprompt_default_hidden = "true"
 intersphinx_mapping = {
     "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
     "pynwb": ("https://pynwb.readthedocs.io/en/stable/", None),
-    "neuroconv": ("https://neuroconv.readthedocs.io/en/main/", None),
+    "spikeinterface": ("https://spikeinterface.readthedocs.io/en/latest/", None),
 }
 
 # To shorten external links
 extlinks = {
-    "pynwb": ("https://pynwb.readthedocs.io/en/stable/%s", ""),
     "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/%s", ""),
 }

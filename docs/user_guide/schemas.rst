@@ -141,8 +141,8 @@ For example, the ``EcephysDataInterface`` could return a metadata schema similar
           "required": [],
           "properties": {
             "Device": {"$ref": "#/definitions/Device"},
-            "ElectricalSeries_raw": {"$ref": "#/definitions/ElectricalSeries"},
-            "ElectricalSeries_processed": {"$ref": "#/definitions/ElectricalSeries"},
+            "ElectricalSeriesRaw": {"$ref": "#/definitions/ElectricalSeries"},
+            "ElectricalSeriesProcessed": {"$ref": "#/definitions/ElectricalSeries"},
             "ElectrodeGroup": {"$ref": "#/definitions/ElectrodeGroup"}
           }
         }
