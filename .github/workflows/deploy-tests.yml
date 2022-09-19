@@ -13,3 +13,9 @@ jobs:
     uses: catalystneuro/neuroconv/.github/workflows/testing.yml@disable_tests_if_no_changes
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+
+
+  run-doctest:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' || needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' }}
+    uses: catalystneuro/neuroconv/.github/workflows/doctests.yml@disable_tests_if_no_changes
