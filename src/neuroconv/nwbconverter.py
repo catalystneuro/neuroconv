@@ -19,7 +19,7 @@ from .utils import (
 
 from .utils.json_schema import NWBMetaDataEncoder
 
-# Dummy change
+
 class NWBConverter:
     """Primary class for all NWB conversion classes."""
 
