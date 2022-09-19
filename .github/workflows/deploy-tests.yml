@@ -11,3 +11,5 @@ jobs:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
     uses: catalystneuro/neuroconv/.github/workflows/testing.yml@disable_tests_if_no_changes
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
