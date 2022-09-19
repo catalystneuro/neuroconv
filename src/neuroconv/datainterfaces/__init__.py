@@ -49,7 +49,7 @@ from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
-
+from .ophys.miniscope.miniscopedatainterface import MiniscopeImagingInterface
 
 # Behavior
 from .behavior.movie.moviedatainterface import MovieInterface
@@ -96,6 +96,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
+    MiniscopeImagingInterface,
     # Behavior
     MovieInterface,
     DeepLabCutInterface,
