@@ -38,4 +38,4 @@ of the other examples in our conversion gallery (insert link to recorders and so
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"test.nwb"
-    >>> nwfile = converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+    >>> nwbfile = converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
