@@ -1,4 +1,4 @@
-comment: 
+comment:
   layout: "reach, diff, flags, files"
   behavior: new
   require_changes: true  # if true: only post the comment if coverage changes
