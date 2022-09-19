@@ -1,9 +1,9 @@
-comment: false
-#  layout: "reach, diff, flags, files"
-#  behavior: new
-#  require_changes: true  # if true: only post the comment if coverage changes
-#  require_base: no        # [yes :: must have a base report to post]
-#  require_head: yes       # [yes :: must have a head report to post]
+comment: 
+  layout: "reach, diff, flags, files"
+  behavior: new
+  require_changes: true  # if true: only post the comment if coverage changes
+  require_base: no        # [yes :: must have a base report to post]
+  require_head: yes       # [yes :: must have a head report to post]
 
 codecov:
   notify:
