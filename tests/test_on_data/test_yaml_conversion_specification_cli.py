@@ -31,7 +31,7 @@ class TestYAMLConversionSpecification(TestCase):
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
             assert nwbfile.subject.subject_id == "1"
-            assert "ElectricalSeries_raw" in nwbfile.acquisition
+            assert "ElectricalSeriesRaw" in nwbfile.acquisition
         with NWBHDF5IO(path=self.test_folder / "example_converter_spec_2.nwb", mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
@@ -67,7 +67,7 @@ class TestYAMLConversionSpecification(TestCase):
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
             assert nwbfile.subject.subject_id == "Mouse 1"
-            assert "ElectricalSeries_raw" in nwbfile.acquisition
+            assert "ElectricalSeriesRaw" in nwbfile.acquisition
         with NWBHDF5IO(path=self.test_folder / "example_defined_name.nwb", mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."

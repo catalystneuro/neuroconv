@@ -7,7 +7,8 @@ from ....utils import get_schema_from_method_signature, FolderPathType
 
 
 class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a OpenEphysRecordingExtractor."""
+    """Primary data interface for converting OpenEphys data. Uses
+    :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`."""
 
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 

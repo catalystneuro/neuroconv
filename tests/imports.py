@@ -68,6 +68,7 @@ class TestImportStructure(TestCase):
             # Behavior
             "DeepLabCutInterface",
             "MovieInterface",
+            "SLEAPInterface",
             # Ecephys
             "AxonaRecordingInterface",
             "AxonaPositionDataInterface",
@@ -94,6 +95,7 @@ class TestImportStructure(TestCase):
             "SpikeGadgetsRecordingInterface",
             "SIPickleRecordingInterface",
             "SIPickleSortingInterface",
+            "TdtRecordingInterface",
             # Icephys
             "AbfInterface",
             # Ophys

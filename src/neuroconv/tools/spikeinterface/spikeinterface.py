@@ -348,10 +348,10 @@ def add_electrodes(
         if "group" in data_to_add:
             group_name_array = data_to_add["group"]["data"].astype("str", copy=False)
         else:
-            default_group_name = "default_group"
-            group_name_array = np.full_like(channel_name_array, fill_value=default_group_name)
+            default_group_name = "ElectrodeGroup"
+            group_name_array = np.full(channel_name_array.size, fill_value=default_group_name)
 
-    group_name_array[group_name_array == ""] = "default_group"
+    group_name_array[group_name_array == ""] = "ElectrodeGroup"
     data_to_add["group_name"].update(description="group_name", data=group_name_array, index=False)
 
     # Add missing groups to the nwb file
@@ -627,8 +627,8 @@ def add_electrical_series(
     ], f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
     segment_signature = "" if checked_recording.get_num_segments() == 1 else segment_index
-    default_name = f"ElectricalSeries{segment_signature}_{write_as}"
-
+    modality_signature = write_as.upper() if write_as == "lfp" else write_as.capitalize()
+    default_name = f"ElectricalSeries{modality_signature}{segment_signature}"
     default_description = dict(raw="Raw acquired data", lfp="Processed data - LFP", processed="Processed data")
 
     eseries_kwargs = dict(name=default_name, description=default_description[write_as])
