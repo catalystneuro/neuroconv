@@ -27,7 +27,7 @@ of the other examples in our conversion gallery (insert link to recorders and so
     >>>
     >>>  # Now that we have defined the two interfaces we pass them to the NWBConverter which will coordinate the
     >>>  # concurrent conversion of the data
-    >>> converter = NWBConverter(data_interfaces=[interface_spikeglx, interface_phy])
+    >>> converter = NWBConverter(data_interfaces=[interface_spikeglx, interface_phy], verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
