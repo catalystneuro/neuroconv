@@ -28,7 +28,7 @@ jobs:
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
       - name: Install neuroconv with minimal requirements
-        run: pip install .[test]
+        run: pip install .[full,test]
 
 
 
