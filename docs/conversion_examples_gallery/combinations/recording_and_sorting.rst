@@ -14,9 +14,7 @@ of the other examples in our conversion gallery (insert link to recorders and so
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import SpikeGLXRecordingInterface
     >>> from neuroconv.datainterfaces import PhySortingInterface
-    >>>
     >>> from neuroconv import NWBConverter
-    >>> ECEPHY_DATA_PATH = Path("/home/heberto/ephy_testing_data/")
     >>>
     >>> # For this interface we need to pass the location of the ``.bin`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"
