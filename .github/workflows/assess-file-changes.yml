@@ -7,6 +7,9 @@ on:
       SOURCE_CHANGED:
         description: "Whether or not the files under /src/ were changed."
         value: ${{ jobs.build.outputs.SOURCE_CHANGED }}
+      CONVERSION_GALLERY_CHANGED:
+        description: "Whether or not the files under /docs/conversion_examples_gallery/ were changed."
+        value: ${{ jobs.build.outputs.CONVERSION_GALLERY_CHANGED }}
 
 jobs:
   build:
@@ -14,6 +17,7 @@ jobs:
     # Map the job outputs to step outputs
     outputs:
       SOURCE_CHANGED: ${{ steps.source-changed.outputs.SOURCE_CHANGED }}
+      CONVERSION_GALLERY_CHANGED: ${{ steps.source-changed.outputs.CONVERSION_GALLERY_CHANGED }}
 
     name: Test changed-files
     steps:
@@ -29,12 +33,20 @@ jobs:
         id: source-changed
         run: |
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            if [[ $file == "src/"* ]]
+            if [[ $file == "src/"* || $file == "requirements-"* || $file == "setup.py" ]]
             then
               echo "Source changed"
               echo "::set-output name=SOURCE_CHANGED::true"
             else
               echo "Source not changed"
               echo "::set-output name=SOURCE_CHANGED::false"
+            fi
+            if [[ $file == "docs/conversion_examples_gallery/"* ]]
+            then
+              echo "Conversion gallery changed"
+              echo "::set-output name=CONVERSION_GALLERY_CHANGED::true"
+            else
+              echo "Conversion gallery not changed"
+              echo "::set-output name=CONVERSION_GALLERY_CHANGED::false"
             fi
           done
