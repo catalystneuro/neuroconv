@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 import json
 from jsonschema import validate
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from pathlib import Path
 
 from pynwb import NWBFile
@@ -60,15 +60,27 @@ class NWBConverter:
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
+    def __init__(self, source_data: Dict[str, dict] = None, data_interfaces: List = None, verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
-        self._validate_source_data(source_data=source_data, verbose=self.verbose)
-        self.data_interface_objects = {
-            name: data_interface(**source_data[name])
-            for name, data_interface in self.data_interface_classes.items()
-            if name in source_data
-        }
+
+        if source_data is not None:
+            self._validate_source_data(source_data=source_data, verbose=self.verbose)
+
+            self.data_interface_objects = {
+                name: data_interface(**source_data[name])
+                for name, data_interface in self.data_interface_classes.items()
+                if name in source_data
+            }
+
+        elif data_interfaces is not None:
+
+            self.data_interface_objects = {
+                f"{interface.__class__.__name__}{index}": interface for index, interface in enumerate(data_interfaces)
+            }
+
+        else:
+            raise IOError("Need to pass either source_data or a list with initialized data interfaces")
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
@@ -166,9 +178,12 @@ class NWBConverter:
 
         if conversion_options is None:
             conversion_options = dict()
+
         default_conversion_options = self.get_conversion_options()
         conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
-        self.validate_conversion_options(conversion_options=conversion_options_to_run)
+
+        if self.data_interface_classes is not None:
+            self.validate_conversion_options(conversion_options=conversion_options_to_run)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,

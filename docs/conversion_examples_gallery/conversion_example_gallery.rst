@@ -80,3 +80,12 @@ Behavior
 
     DeepLabCut <behavior/deeplabcut>
     SLEAP <behavior/sleap>
+
+Examples of common interface combinations
+-----------------------------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    Combine electrophysiological recordings and spike sorting <combinations/recording_and_sorting>
+    SLEAP <behavior/sleap>
