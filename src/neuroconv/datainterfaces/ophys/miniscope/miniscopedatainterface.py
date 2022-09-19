@@ -32,7 +32,10 @@ class MiniscopeImagingInterface(BaseDataInterface):
         behav_files = natsorted(glob(os.path.join(data_dir, "behavCam*.avi")))
 
         with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite,
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
         ) as nwb:
 
             nwb.add_device(miniscope)
