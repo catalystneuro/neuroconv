@@ -108,5 +108,6 @@ class TestImportStructure(TestCase):
             "SimaSegmentationInterface",
             "Suite2pSegmentationInterface",
             "TiffImagingInterface",
+            "MiniscopeImagingInterface",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
