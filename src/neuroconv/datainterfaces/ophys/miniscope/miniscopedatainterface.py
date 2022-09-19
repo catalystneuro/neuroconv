@@ -8,6 +8,7 @@ from pynwb.image import ImageSeries
 
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import make_or_load_nwbfile
+from ....utils import FolderPathType
 
 
 class MiniscopeImagingInterface(BaseDataInterface):
@@ -24,7 +25,7 @@ class MiniscopeImagingInterface(BaseDataInterface):
     ):
         from ndx_miniscope import read_settings, read_notes, read_miniscope_timestamps, get_starting_frames
 
-        data_dir = self.source_data["data_dir"]
+        data_dir = self.source_data["folder_path"]
         miniscope = read_settings()
         annotations = read_notes(data_dir)
 
