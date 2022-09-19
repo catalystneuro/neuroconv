@@ -11,8 +11,8 @@ from ....tools.nwb_helpers import make_or_load_nwbfile
 
 
 class MiniscopeImagingInterface(BaseDataInterface):
-    def __init__(self, data_dir: str):
-        super().__init__(data_dir=data_dir)
+    def __init__(self, folder_path: FolderPathType):
+        super().__init__(folder_path=folder_path)
 
     def run_conversion(
         self,
