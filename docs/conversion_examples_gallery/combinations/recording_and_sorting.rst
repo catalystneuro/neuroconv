@@ -1,10 +1,10 @@
-Conversion combining electrophysiological recordings and spike sorting data
+spikeGLX & Phy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A common workflow is to record electrophysiological data and then extract spiking units from the stream. The following is an
 example of how to combine electrophysiological recordings and spike sorting data in the same conversion.
 
-Note that for this specific example were using SpikeGLXRecordingInterface (insert link) and PhySortingInterface (insert link)but any
+Note that for this specific example were using :py:class:`~neuroconv.datainterfaces.ecephys.spikeglxrecordingingerface.SpikeGLXRecordingInterface` and PhySortingInterface (insert link)but any
 of the other examples in our conversion gallery (insert link to recorders and sorters) can be combined in this way.
 
 .. code-block:: python
