@@ -81,13 +81,14 @@ class NWBConverter:
         elif data_interfaces is not None:
             if isinstance(data_interfaces, list):
                 # Create unique names for each interface
-                counter = {interface: 0 for interface in data_interfaces}
-                total_counts = Counter(data_interfaces)
+                counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
+                total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
                 self.data_interface_objects = dict()
                 for interface in data_interfaces:
-                    counter[interface] += 1
-                    unique_signature = f"{counter[interface]:03}" if total_counts[interface] > 1 else ""
-                    interface_name = f"{interface.__class__.__name__}{unique_signature}"
+                    class_name = interface.__class__.__name__
+                    counter[class_name] += 1
+                    unique_signature = f"{counter[class_name]:03}" if total_counts[class_name] > 1 else ""
+                    interface_name = f"{class_name}{unique_signature}"
                     self.data_interface_objects[interface_name] = interface
             elif isinstance(data_interfaces, dict):
                 self.data_interface_objects = data_interfaces
