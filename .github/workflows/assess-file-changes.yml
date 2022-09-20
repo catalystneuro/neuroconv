@@ -32,14 +32,16 @@ jobs:
       - name: Assess Source Code Changes
         id: source-changed
         run: |
+          echo "::set-output name=SOURCE_CHANGED::false"
+          echo "::set-output name=CONVERSION_GALLERY_CHANGED::false"
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo $file
             if [[ $file == "src/"* || $file == "requirements-"* || $file == "setup.py" ]]
             then
               echo "Source changed"
               echo "::set-output name=SOURCE_CHANGED::true"
             else
               echo "Source not changed"
-              echo "::set-output name=SOURCE_CHANGED::false"
             fi
             if [[ $file == "docs/conversion_examples_gallery/"* ]]
             then
@@ -47,6 +49,5 @@ jobs:
               echo "::set-output name=CONVERSION_GALLERY_CHANGED::true"
             else
               echo "Conversion gallery not changed"
-              echo "::set-output name=CONVERSION_GALLERY_CHANGED::false"
             fi
           done
