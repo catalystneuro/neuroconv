@@ -40,6 +40,7 @@ class NWBConverter:
             source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
+    @classmethod
     def get_conversion_options_schema(self):
         """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(
@@ -84,22 +85,21 @@ class NWBConverter:
                 counter = {interface: 0 for interface in data_interfaces}
                 total_counts = Counter(data_interfaces)
                 self.data_interface_objects = dict()
-                self.data_interface_classes = dict()
-
                 for interface in data_interfaces:
                     counter[interface] += 1
                     unique_signature = f"{counter[interface]:03}" if total_counts[interface] > 1 else ""
                     interface_name = f"{interface.__class__.__name__}{unique_signature}"
                     self.data_interface_objects[interface_name] = interface
-                    self.data_interface_classes[interface_name] = interface.__class__
             elif isinstance(data_interfaces, dict):
                 self.data_interface_objects = data_interfaces
-                self.data_interface_classes = {
-                    name: interface.__class__ for name, interface in self.data_interface_objects.items()
-                }
+
             else:
                 ValueError("data_interfaces musts be a list or a dict")
 
+            # Build the data interface classess on the move
+            self.data_interface_classes = {
+                name: interface.__class__ for name, interface in self.data_interface_objects.items()
+            }
         else:
             raise ValueError("Need to pass either source_data or a list with initialized data interfaces")
 
