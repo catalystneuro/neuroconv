@@ -1,7 +1,8 @@
 """Authors: Cody Baker and Ben Dichter."""
 import json
 from jsonschema import validate
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union
+from collections import Counter
 from pathlib import Path
 
 from pynwb import NWBFile
@@ -39,8 +40,7 @@ class NWBConverter:
             source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
-    @classmethod
-    def get_conversion_options_schema(cls):
+    def get_conversion_options_schema(self):
         """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(
             root=True,
@@ -49,7 +49,7 @@ class NWBConverter:
             description="Schema for the conversion options",
             version="0.1.0",
         )
-        for interface_name, data_interface in cls.data_interface_classes.items():
+        for interface_name, data_interface in self.data_interface_classes.items():
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
@@ -60,9 +60,14 @@ class NWBConverter:
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def __init__(self, source_data: Dict[str, dict] = None, data_interfaces: List = None, verbose: bool = True):
+    def __init__(
+        self, source_data: Dict[str, dict] = None, data_interfaces: Union[List, Dict] = None, verbose: bool = True
+    ):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
+
+        assert_msg = "Received both data_interfaces and source_data passed as arguments. Specify only one of them"
+        assert source_data is None or data_interfaces is None, assert_msg
 
         if source_data is not None:
             self._validate_source_data(source_data=source_data, verbose=self.verbose)
@@ -74,13 +79,25 @@ class NWBConverter:
             }
 
         elif data_interfaces is not None:
+            if isinstance(data_interfaces, list):
+                # Create unique names for each interface
+                counter = {interface: 0 for interface in data_interfaces}
+                total_counts = Counter(data_interfaces)
+                interface_names = dict()
+                for interface in data_interfaces:
+                    counter[interface] += 1
+                    unique_signature = f"{counter[interface]:03}" if total_counts[interface] > 1 else ""
+                    interface_name = f"{interface.__class__.__name__}{unique_signature}"
+                    interface_names[interface] = interface_name
 
-            self.data_interface_objects = {
-                f"{interface.__class__.__name__}{index}": interface for index, interface in enumerate(data_interfaces)
-            }
+                self.data_interface_objects = {name: interface for interface, name in interface_names.items()}
+            else:
+                self.data_interface_objects = data_interfaces
+
+            self.data_interface_classes = {name: interface.__class__ for interface, name in interface_names.items()}
 
         else:
-            raise IOError("Need to pass either source_data or a list with initialized data interfaces")
+            raise ValueError("Need to pass either source_data or a list with initialized data interfaces")
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
@@ -182,8 +199,7 @@ class NWBConverter:
         default_conversion_options = self.get_conversion_options()
         conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
 
-        if self.data_interface_classes is not None:
-            self.validate_conversion_options(conversion_options=conversion_options_to_run)
+        self.validate_conversion_options(conversion_options=conversion_options_to_run)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
