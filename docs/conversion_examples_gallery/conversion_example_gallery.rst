@@ -81,11 +81,11 @@ Behavior
     DeepLabCut <behavior/deeplabcut>
     SLEAP <behavior/sleap>
 
-Examples of common interface combinations
------------------------------------------
+Common interface combinations
+-----------------------------
 
 .. toctree::
     :maxdepth: 1
 
-    spikeGLX & Phy <combinations/recording_and_sorting>
-    Tiff & Suite2P <combinations/iamging_and_segmentation>
+    spikeGLX & Phy <combinations/spikeglx_and_phy>
+    Tiff & Suite2P <combinations/tiff_and_suite2p>

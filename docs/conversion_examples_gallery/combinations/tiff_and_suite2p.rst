@@ -1,18 +1,17 @@
 Tiff & Suit2P
-^^^^^^^^^^^^^
+-------------
 
-A common workflow in ptical physiology is to record images with a microscope (imaging) and then use a segmentation algorithm to produce
-regions of interest and optical traces. The following is an example of who to implement this workflow in neuroconv.
-
-Note that for this specific example were using TiffImagingInterface for imaging and Suit2P for segmentation but any
-of the other optical physiology examples in our conversion gallery can be combined in this way.
+A common workflow in optical physiology is to record images with a microscope (imaging) and then use a segmentation
+algorithm to produce regions of interest and fluorescence traces. The following is an example of who to implement this
+workflow in neuroconv for Tiff imaging files segmented using suite2p, using the classes
+:py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` and
+:py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`.
 
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
-    >>> from pathlib import Path
     >>> from neuroconv import NWBConverter
     >>> from neuroconv.datainterfaces import TiffImagingInterface, Suite2pSegmentationInterface
     >>>
@@ -28,7 +27,7 @@ of the other optical physiology examples in our conversion gallery can be combin
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> tzinfo = tz.gettz("US/Pacific")
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
