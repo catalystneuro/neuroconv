@@ -32,6 +32,5 @@ of the other optical physiology examples in our conversion gallery can be combin
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> path_to_save_nwbfile = "test.nwb"
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> nwbfile_out = converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)

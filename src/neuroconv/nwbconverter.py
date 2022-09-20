@@ -40,7 +40,6 @@ class NWBConverter:
             source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
-    @classmethod
     def get_conversion_options_schema(self):
         """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(

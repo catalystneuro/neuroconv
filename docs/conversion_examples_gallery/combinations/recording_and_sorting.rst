@@ -39,5 +39,5 @@ of the other examples in our conversion gallery can be combined in this way.
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"test.nwb"
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> nwbfile = converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
