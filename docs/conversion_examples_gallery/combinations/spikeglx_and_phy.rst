@@ -1,4 +1,4 @@
-spikeGLX & Phy
+SpikeGLX & Phy
 --------------
 
 A common workflow is to record electrophysiology data and then extract spiking units. The following is an example of

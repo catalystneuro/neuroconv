@@ -87,5 +87,5 @@ Common interface combinations
 .. toctree::
     :maxdepth: 1
 
-    spikeGLX & Phy <combinations/spikeglx_and_phy>
-    Tiff & Suite2P <combinations/tiff_and_suite2p>
+    combinations/spikeglx_and_phy
+    combinations/tiff_and_suite2p

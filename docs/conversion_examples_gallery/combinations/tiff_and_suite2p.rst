@@ -1,9 +1,9 @@
-Tiff & Suit2P
--------------
+Tiff & suite2p
+--------------
 
 A common workflow in optical physiology is to record images with a microscope (imaging) and then use a segmentation
 algorithm to produce regions of interest and fluorescence traces. The following is an example of who to implement this
-workflow in neuroconv for Tiff imaging files segmented using suite2p, using the classes
+workflow in neuroconv for Tiff imaging files segmented using suite2p. This conversion uses the classes
 :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` and
 :py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`.
 
