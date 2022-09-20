@@ -1,5 +1,5 @@
-Spikeglx data converison
-^^^^^^^^^^^^^^^^^^^^^^^^
+Spikeglx data conversion
+------------------------
 
 Install NeuroConv with the additional dependencies necessary for reading SpikeGLX data.
 
