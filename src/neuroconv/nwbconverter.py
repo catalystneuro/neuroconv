@@ -83,18 +83,22 @@ class NWBConverter:
                 # Create unique names for each interface
                 counter = {interface: 0 for interface in data_interfaces}
                 total_counts = Counter(data_interfaces)
-                interface_names = dict()
+                self.data_interface_objects = dict()
+                self.data_interface_classes = dict()
+
                 for interface in data_interfaces:
                     counter[interface] += 1
                     unique_signature = f"{counter[interface]:03}" if total_counts[interface] > 1 else ""
                     interface_name = f"{interface.__class__.__name__}{unique_signature}"
-                    interface_names[interface] = interface_name
-
-                self.data_interface_objects = {name: interface for interface, name in interface_names.items()}
-            else:
+                    self.data_interface_objects[interface_name] = interface
+                    self.data_interface_classes[interface_name] = interface.__class__
+            elif isinstance(data_interfaces, dict):
                 self.data_interface_objects = data_interfaces
-
-            self.data_interface_classes = {name: interface.__class__ for interface, name in interface_names.items()}
+                self.data_interface_classes = {
+                    name: interface.__class__ for name, interface in self.data_interface_objects.items()
+                }
+            else:
+                ValueError("data_interfaces musts be a list or a dict")
 
         else:
             raise ValueError("Need to pass either source_data or a list with initialized data interfaces")
