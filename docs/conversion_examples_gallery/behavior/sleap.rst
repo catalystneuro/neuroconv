@@ -18,7 +18,6 @@ Convert SLEAP pose estimation data to NWB using :py:class:`~neuroconv.datainterf
     >>>
     >>> # Change the file_path so it points to the slp file in your system
     >>> file_path = BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"
-    >>>
     >>> interface = SLEAPInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files

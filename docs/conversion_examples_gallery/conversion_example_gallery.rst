@@ -89,3 +89,4 @@ Common interface combinations
 
     combinations/spikeglx_and_phy
     combinations/tiff_and_suite2p
+    combinations/ecephys_pose_estimation
