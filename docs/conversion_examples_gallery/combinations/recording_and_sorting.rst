@@ -1,11 +1,12 @@
 spikeGLX & Phy
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 A common workflow is to record electrophysiological data and then extract spiking units from the stream. The following is an
 example of how to combine electrophysiological recordings and spike sorting data in the same conversion.
 
-Note that for this specific example were using :py:class:`~neuroconv.datainterfaces.ecephys.spikeglxrecordingingerface.SpikeGLXRecordingInterface` and PhySortingInterface (insert link)but any
-of the other examples in our conversion gallery (insert link to recorders and sorters) can be combined in this way.
+Note that for this specific example were using :py:class:`~neuroconv.datainterfaces.ecephys.spikeglxrecordingingerface.SpikeGLXRecordingInterface` as a recorder
+and :py:class:`~.neuroconv.datainterfaces.ecephys.phy.phydatainterface.PhySortingInterface` as a sorter but any
+of the other examples in our conversion gallery can be combined in this way.
 
 .. code-block:: python
 
@@ -33,7 +34,8 @@ of the other examples in our conversion gallery (insert link to recorders and so
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> tzinfo = tz.gettz("US/Pacific")
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
+    >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
+    >>> session_start_time = session_start_time.replace(tzinfo=tzinfo).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion

@@ -88,4 +88,4 @@ Examples of common interface combinations
     :maxdepth: 1
 
     spikeGLX & Phy <combinations/recording_and_sorting>
-    SLEAP <behavior/sleap>
+    Tiff & Suite2P <combinations/iamging_and_segmentation>
