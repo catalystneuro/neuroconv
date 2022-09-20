@@ -40,7 +40,8 @@ class NWBConverter:
             source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
-    def get_conversion_options_schema(self):
+    @classmethod
+    def get_conversion_options_schema(cls):
         """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(
             root=True,
@@ -49,7 +50,7 @@ class NWBConverter:
             description="Schema for the conversion options",
             version="0.1.0",
         )
-        for interface_name, data_interface in self.data_interface_classes.items():
+        for interface_name, data_interface in cls.data_interface_classes.items():
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
@@ -97,7 +98,7 @@ class NWBConverter:
                 ValueError("data_interfaces musts be a list or a dict")
 
             # Build the data interface classess on the move
-            self.data_interface_classes = {
+            type(self).data_interface_classes = {
                 name: interface.__class__ for name, interface in self.data_interface_objects.items()
             }
         else:
