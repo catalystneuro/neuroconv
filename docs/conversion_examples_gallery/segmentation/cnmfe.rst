@@ -1,5 +1,5 @@
 CNMFE
-^^^^^
+-----
 
 Install NeuroConv with the additional dependencies necessary for reading CNMF-E data.
 
