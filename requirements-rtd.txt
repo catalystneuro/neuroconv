@@ -4,6 +4,3 @@ sphinx_rtd_theme==1.0.0
 readthedocs-sphinx-search==0.1.2
 sphinx-toggleprompt==0.2.0
 sphinx-copybutton==0.5.0
-spikeinterface>=0.95.1  # Necessary to display tools.spikeinterface
-spikeextractors>=0.9.10 # Necessary to display tools.spikeinterface
-roiextractors>=0.5.0  # Necessary to displays tools.roiextractors
