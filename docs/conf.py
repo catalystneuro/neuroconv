@@ -53,7 +53,7 @@ napoleon_include_special_with_doc = True
 # Autodoc
 autoclass_content = "both"  # Concatenates docstring of the class with that of its __init__
 autodoc_member_order = "bysource"  # Displays classes and methods by their order in source code
-autodata_content = "both"  #
+autodata_content = "both"
 autodoc_default_options = {
     "members": True,
     "member-order": "bysource",
@@ -70,7 +70,7 @@ def _correct_signatures(app, what, name, obj, options, signature, return_annotat
     return (signature, return_annotation)
 
 
-def setup(app):
+def setup(app):  # This makes the data-interfaces display, they don't otherwise
     app.connect("autodoc-process-signature", _correct_signatures)
 
 
