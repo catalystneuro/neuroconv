@@ -1,7 +1,14 @@
 NeuroScope sorting data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------
 
-Convert NeuroScope sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeSortingInterface`.
+Install NeuroConv with the additional dependencies necessary for reading neuroscope data.
+
+.. code-block:: bash
+
+    pip install neuroconv[neuroscope]
+
+Convert NeuroScope sorting data to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeSortingInterface`.
 
 .. code-block:: python
 
