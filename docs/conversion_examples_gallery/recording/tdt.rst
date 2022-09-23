@@ -1,5 +1,6 @@
 Tucker-Davis Technologies (TDT) data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------------------------------
+
 Install NeuroConv with the additional dependencies necessary for reading TDT data.
 
 .. code-block:: bash
