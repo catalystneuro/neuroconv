@@ -6,7 +6,6 @@ from copy import deepcopy
 
 import psutil
 import numpy as np
-from hdmf.common import VectorData
 from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 from pynwb import NWBFile
 from pynwb.base import Images

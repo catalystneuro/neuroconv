@@ -3,7 +3,7 @@ import inspect
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import GenericDataChunkIterator
+from neuroconv.tools.roiextractors import *
 
 project = "NeuroConv"
 copyright = "2022, CatalystNeuro"
