@@ -83,7 +83,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
@@ -91,7 +91,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=str(session_start_time))))
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
 
         # Device metadata
         device = self.get_device_metadata()
@@ -116,13 +116,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             dict(name="contact_shapes", description="The shape of the electrode"),
         ]
 
-        metadata["Ecephys"]["ElectricalSeries_raw"] = dict(
-            name="ElectricalSeries_raw", description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
+        metadata["Ecephys"]["ElectricalSeriesRaw"] = dict(
+            name="ElectricalSeriesRaw", description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
         )
         return metadata
 
     def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeries_raw", stub_test=False)
+        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesRaw", stub_test=False)
         return conversion_options
 
     def get_device_metadata(self) -> dict:
@@ -163,23 +163,23 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
 
-        del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeries_raw"]
+        del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeriesRaw"]
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesLFP=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        del metadata["Ecephys"]["ElectricalSeries_raw"]
+        del metadata["Ecephys"]["ElectricalSeriesRaw"]
         metadata["Ecephys"].update(
-            ElectricalSeries_lfp=dict(
-                name="ElectricalSeries_lfp", description="LFP traces for the processed (lf) SpikeGLX data."
+            ElectricalSeriesLFP=dict(
+                name="ElectricalSeriesLFP", description="LFP traces for the processed (lf) SpikeGLX data."
             )
         )
 
         return metadata
 
     def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeries_lfp", stub_test=False)
+        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesLFP", stub_test=False)
         return conversion_options

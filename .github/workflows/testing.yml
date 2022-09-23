@@ -2,7 +2,10 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
-  pull_request:
+  workflow_call:
+    secrets:
+      DANDI_API_KEY:
+        required: true
 
 env:
   DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
@@ -43,30 +46,30 @@ jobs:
           pytest tests/imports.py::TestImportStructure::test_tools
           pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
-        run: pytest tests/test_minimal -n auto --dist loadscope
+        run: pytest tests/test_minimal -rsx -n auto --dist loadscope
 
 
 
       - name: Install with behavior requirements
         run: pip install .[behavior]
       - name: Run behavior tests
-        run: pytest tests/test_behavior -n auto --dist loadscope
+        run: pytest tests/test_behavior -rsx -n auto --dist loadscope
 
       - name: Install with icephys requirements
         run: pip install .[icephys]
 
       #- name: Run icephys tests  # There are no icephys specific tests without data
-      #  run: pytest tests/test_icephys -n auto --dist loadscope
+      #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
 
       - name: Install with ecephys requirements
         run: pip install .[ecephys]
       - name: Run ecephys tests
-        run: pytest tests/test_ecephys -n auto --dist loadscope
+        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
 
       - name: Install with ophys requirements
         run: pip install .[ophys]
       - name: Run ophys tests
-        run: pytest tests/test_ophys -n auto --dist loadscope
+        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
 
 
 
@@ -111,7 +114,6 @@ jobs:
           pip install awscli==1.25.27
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false
         name: Download ephys dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
@@ -125,9 +127,9 @@ jobs:
 
 
       - name: Run full pytest with coverage
-        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
-      - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
-        name: Upload full coverage to Codecov
+        run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
+      - name: Upload full coverage to Codecov
+        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
