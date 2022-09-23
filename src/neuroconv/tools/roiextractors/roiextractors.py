@@ -169,6 +169,7 @@ def add_devices(nwbfile: NWBFile, metadata: dict) -> NWBFile:
 def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata: dict) -> ImagingPlane:
     """
     Private auxiliar function to create an ImagingPlane object from pynwb using the imaging_plane_metadata
+
     Parameters
     ----------
     nwbfile : NWBFile
