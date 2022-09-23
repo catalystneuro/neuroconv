@@ -16,7 +16,7 @@ Convert Intan data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.int
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import IntanRecordingInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/intan/intan_{suffix}_test_1.rhd" # This can also be .rhs
+    >>> file_path = f"{ECEPHY_DATA_PATH}/intan/intan_rhd_test_1.rhd" # This can also be .rhs
     >>> interface = IntanRecordingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
