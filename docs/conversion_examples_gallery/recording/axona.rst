@@ -1,4 +1,4 @@
-Axona data converison
+Axona data conversion
 ^^^^^^^^^^^^^^^^^^^^^
 
 Install NeuroConv with the additional dependencies necessary for reading Axona data.
@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading Axona d
 
     pip install neuroconv[axona]
 
-Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingExtractorInterface`.
+Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingInterface`.
 
 .. code-block:: python
 
