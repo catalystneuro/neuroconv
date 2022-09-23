@@ -35,6 +35,8 @@ html_theme_options = {
     "collapse_navigation": False,
 }
 
+linkcheck_anchors = False
+
 # --------------------------------------------------
 # Extension configuration
 # --------------------------------------------------
