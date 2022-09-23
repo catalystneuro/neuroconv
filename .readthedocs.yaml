@@ -22,5 +22,4 @@ python:
       path: .
       extra_requirements:
         - docs
-        - ecephys
-        - ophys
+        - full
