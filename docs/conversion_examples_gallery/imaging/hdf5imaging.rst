@@ -1,5 +1,5 @@
 HDF5 data conversion
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 Install NeuroConv with the additional dependencies necessary for reading HDF5 data.
 

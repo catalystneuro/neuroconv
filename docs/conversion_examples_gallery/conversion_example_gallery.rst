@@ -35,9 +35,9 @@ Sorting
     Blackrock  <sorting/blackrock>
     Cell Explorer <sorting/cellexplorer>
     KiloSort <sorting/kilosort>
+    Neuralynx <sorting/neuralynx>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
-    Neuralynx <sorting/neuralynx>
 
 Intracellular electrophysiology
 -------------------------------

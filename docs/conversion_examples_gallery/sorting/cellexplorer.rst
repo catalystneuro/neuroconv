@@ -1,5 +1,5 @@
-Cell Explorer data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CellExplorer data conversion
+-----------------------------
 
 Install NeuroConv with the additional dependencies necessary for reading CellExplorer data.
 

@@ -1,4 +1,4 @@
-SpikeGadgets data conversion
+Spikegadgets data conversion
 ----------------------------
 
 Install NeuroConv with the additional dependencies necessary for reading SpikeGadgets data.
@@ -7,7 +7,9 @@ Install NeuroConv with the additional dependencies necessary for reading SpikeGa
 
     pip install neuroconv[spikegadgets]
 
-Convert SpikeGadgets data to NWB using
+
+Convert spikegadgets data to NWB using
+
 :py:class:`~neuroconv.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface.SpikeGadgetsRecordingInterface`.
 
 .. code-block:: python
@@ -25,7 +27,7 @@ Convert SpikeGadgets data to NWB using
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion

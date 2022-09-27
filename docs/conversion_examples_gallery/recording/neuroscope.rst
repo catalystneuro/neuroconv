@@ -7,7 +7,8 @@ Install NeuroConv with the additional dependencies necessary for reading NeuroSc
 
     pip install neuroconv[neuroscope]
 
-Convert NeuroScope data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeRecordingInterface`.
+Convert NeuroScope data to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeRecordingInterface`.
 
 .. code-block:: python
 

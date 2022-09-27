@@ -1,5 +1,5 @@
-Extract
-^^^^^^^
+EXTRACT
+-------
 
 Install NeuroConv with the additional dependencies necessary for reading EXTRACT data.
 
