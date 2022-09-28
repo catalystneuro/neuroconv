@@ -17,7 +17,7 @@ from .utils import (
     unroot_schema,
     fill_defaults,
 )
-
+from .basedatainterface import BaseDataInterface
 from .utils.json_schema import NWBMetaDataEncoder
 
 
