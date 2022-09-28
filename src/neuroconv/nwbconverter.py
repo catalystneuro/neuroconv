@@ -203,7 +203,7 @@ class NWBConverterPipe(NWBConverter):
             )
         return conversion_options_schema
 
-    def __init__(self, data_interfaces, verbose=True):
+    def __init__(self, data_interfaces: Union[List, Dict], verbose=True):
         self.verbose = verbose
         if isinstance(data_interfaces, list):
             # Create unique names for each interface
