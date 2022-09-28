@@ -61,48 +61,15 @@ class NWBConverter:
         """Validate source_data against Converter source_schema."""
         cls._validate_source_data(source_data=source_data, verbose=verbose)
 
-    def __init__(
-        self, source_data: Dict[str, dict] = None, data_interfaces: Union[List, Dict] = None, verbose: bool = True
-    ):
+    def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
         self.verbose = verbose
-
-        assert_msg = "Received both data_interfaces and source_data passed as arguments. Specify only one of them"
-        assert source_data is None or data_interfaces is None, assert_msg
-
-        if source_data is not None:
-            self._validate_source_data(source_data=source_data, verbose=self.verbose)
-
-            self.data_interface_objects = {
-                name: data_interface(**source_data[name])
-                for name, data_interface in self.data_interface_classes.items()
-                if name in source_data
-            }
-
-        elif data_interfaces is not None:
-            if isinstance(data_interfaces, list):
-                # Create unique names for each interface
-                counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
-                total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
-                self.data_interface_objects = dict()
-                for interface in data_interfaces:
-                    class_name = interface.__class__.__name__
-                    counter[class_name] += 1
-                    unique_signature = f"{counter[class_name]:03}" if total_counts[class_name] > 1 else ""
-                    interface_name = f"{class_name}{unique_signature}"
-                    self.data_interface_objects[interface_name] = interface
-            elif isinstance(data_interfaces, dict):
-                self.data_interface_objects = data_interfaces
-
-            else:
-                ValueError("data_interfaces musts be a list or a dict")
-
-            # Build the data interface classess on the move
-            type(self).data_interface_classes = {
-                name: interface.__class__ for name, interface in self.data_interface_objects.items()
-            }
-        else:
-            raise ValueError("Need to pass either source_data or a list with initialized data interfaces")
+        self._validate_source_data(source_data=source_data, verbose=self.verbose)
+        self.data_interface_objects = {
+            name: data_interface(**source_data[name])
+            for name, data_interface in self.data_interface_classes.items()
+            if name in source_data
+        }
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
@@ -169,7 +136,6 @@ class NWBConverter:
     ) -> NWBFile:
         """
         Run the NWB conversion over all the instantiated data interfaces.
-
         Parameters
         ----------
         nwbfile_path: FilePathType
@@ -188,7 +154,6 @@ class NWBConverter:
         conversion_options: dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
-
         Returns
         -------
         nwbfile: NWBFile
@@ -200,10 +165,8 @@ class NWBConverter:
 
         if conversion_options is None:
             conversion_options = dict()
-
         default_conversion_options = self.get_conversion_options()
         conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
-
         self.validate_conversion_options(conversion_options=conversion_options_to_run)
 
         with make_or_load_nwbfile(
@@ -220,3 +183,42 @@ class NWBConverter:
                 )
 
         return nwbfile_out
+
+
+class NWBConverterPipe(NWBConverter):
+    """Takes pre-initialized interfaces as arguments to build an NWBConverter class"""
+
+    def get_conversion_options_schema(self):
+        """Compile conversion option schemas from each of the data interface classes."""
+        conversion_options_schema = get_base_schema(
+            root=True,
+            id_="conversion_options.schema.json",
+            title="Conversion options schema",
+            description="Schema for the conversion options",
+            version="0.1.0",
+        )
+        for interface_name, data_interface in self.data_interface_classes.items():
+            conversion_options_schema["properties"].update(
+                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
+            )
+        return conversion_options_schema
+
+    def __init__(self, data_interfaces, verbose=True):
+        self.verbose = verbose
+        if isinstance(data_interfaces, list):
+            # Create unique names for each interface
+            counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
+            total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
+            self.data_interface_objects = dict()
+            for interface in data_interfaces:
+                class_name = interface.__class__.__name__
+                counter[class_name] += 1
+                unique_signature = f"{counter[class_name]:03}" if total_counts[class_name] > 1 else ""
+                interface_name = f"{class_name}{unique_signature}"
+                self.data_interface_objects[interface_name] = interface
+        elif isinstance(data_interfaces, dict):
+            self.data_interface_objects = data_interfaces
+
+        self.data_interface_classes = {
+            name: interface.__class__ for name, interface in self.data_interface_objects.items()
+        }

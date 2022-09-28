@@ -32,7 +32,7 @@ class TestImportStructure(TestCase):
             "utils",  # Attached to namesapce by NWBconverter import
             # Exposed attributes
             "NWBConverter",
-            "run_conversion_from_yaml",
+            "NWBConverterPipe" "run_conversion_from_yaml",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 

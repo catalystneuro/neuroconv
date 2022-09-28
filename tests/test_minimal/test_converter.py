@@ -6,7 +6,7 @@ import unittest
 
 from pynwb import NWBFile
 
-from neuroconv import NWBConverter
+from neuroconv import NWBConverter, NWBConverterPipe
 from neuroconv.basedatainterface import BaseDataInterface
 
 try:
@@ -45,7 +45,7 @@ def test_converter():
         rmtree(test_dir)
 
 
-class TestNWBConverterInitialization(unittest.TestCase):
+class TestNWBConverterAndPipeInitialization(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         class InterfaceA(BaseDataInterface):
@@ -79,12 +79,12 @@ class TestNWBConverterInitialization(unittest.TestCase):
         assert converter.data_interface_classes["InterfaceA"] is self.InterfaceA
         assert converter.data_interface_classes["InterfaceB"] is self.InterfaceB
 
-    def test_init_with_data_interfaces_argument_list(self):
+    def test_pipe_list_init(self):
 
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_list = [interface_a, interface_b]
-        converter = NWBConverter(data_interfaces=data_interfaces_list)
+        converter = NWBConverterPipe(data_interfaces=data_interfaces_list)
 
         data_interface_names = converter.data_interface_classes.keys()
         assert ["InterfaceA", "InterfaceB"] == list(data_interface_names)
@@ -95,12 +95,12 @@ class TestNWBConverterInitialization(unittest.TestCase):
         assert converter.data_interface_objects["InterfaceA"] is interface_a
         assert converter.data_interface_objects["InterfaceB"] is interface_b
 
-    def test_init_with_data_interfaces_argument_dict(self):
+    def test_pipe_list_dict(self):
 
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_dict = dict(InterfaceA=interface_a, InterfaceB=interface_b)
-        converter = NWBConverter(data_interfaces=data_interfaces_dict)
+        converter = NWBConverterPipe(data_interfaces=data_interfaces_dict)
 
         data_interface_names = converter.data_interface_classes.keys()
         assert ["InterfaceA", "InterfaceB"] == list(data_interface_names)
@@ -111,7 +111,7 @@ class TestNWBConverterInitialization(unittest.TestCase):
         assert converter.data_interface_objects["InterfaceA"] is interface_a
         assert converter.data_interface_objects["InterfaceB"] is interface_b
 
-    def test_method_equivalence(self):
+    def test_consistent_init_pipe_vs_nwb(self):
         class NWBConverterChild(NWBConverter):
             data_interface_classes = dict(InterfaceA=self.InterfaceA, InterfaceB=self.InterfaceB)
 
@@ -121,7 +121,7 @@ class TestNWBConverterInitialization(unittest.TestCase):
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_dict = dict(InterfaceA=interface_a, InterfaceB=interface_b)
-        converter_arguments = NWBConverter(data_interfaces=data_interfaces_dict)
+        converter_arguments = NWBConverterPipe(data_interfaces=data_interfaces_dict)
 
         assert converter_arguments.data_interface_classes == converter_child_class.data_interface_classes
 
@@ -131,7 +131,7 @@ class TestNWBConverterInitialization(unittest.TestCase):
         interface_a2 = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_list = [interface_a, interface_b, interface_a2]
-        converter = NWBConverter(data_interfaces=data_interfaces_list)
+        converter = NWBConverterPipe(data_interfaces=data_interfaces_list)
 
         data_interface_names = list(converter.data_interface_objects.keys())
         expected_interface_names = ["InterfaceA001", "InterfaceB", "InterfaceA002"]
