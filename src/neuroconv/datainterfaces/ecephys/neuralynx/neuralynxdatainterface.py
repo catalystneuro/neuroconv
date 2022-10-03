@@ -15,18 +15,15 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
-    def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False,
-                 verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
 
-        self.ncs_files = natsorted(
-            [str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
+        self.ncs_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
 
         if spikeextractors_backend:
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
             self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(
-                oldapi_recording_extractor=self.recording_extractor)
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
             self.recording_extractor.neo_readers = self.neo_readers
         else:
             super().__init__(folder_path=folder_path, verbose=verbose)
@@ -43,8 +40,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self.verbose = verbose
 
         # generate extractors for first segments across all files
-        recordings = [NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in
-                      self.ncs_files]
+        recordings = [NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in self.ncs_files]
 
         max_seg = max([r.neo_reader.segment_count(block_index=0) for r in recordings])
         # add extractors for additional segments
@@ -52,8 +48,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             for i, filename in enumerate(self.ncs_files):
                 n_seg = recordings[i].neo_reader.segment_count(block_index=0)
                 if seg_idx <= n_seg:
-                    recordings.append(
-                        NeuralynxRecordingExtractor(filename=filename, seg_index=seg_idx))
+                    recordings.append(NeuralynxRecordingExtractor(filename=filename, seg_index=seg_idx))
                 else:
                     # Use None as placeholder if the segment does not exist for requested ncs file
                     recordings.append(None)
@@ -67,12 +62,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_channel_gains(gains=gains)
 
     def add_recording_extractor_properties(self):
-        if hasattr(self.recording_extractor, 'neo_reader'):
+        if hasattr(self.recording_extractor, "neo_reader"):
             filtering = get_filtering_multi_channel(self.recording_extractor.neo_reader)
-        elif hasattr(self.recording_extractor, 'neo_readers'):
+        elif hasattr(self.recording_extractor, "neo_readers"):
             filtering = get_filtering_single_channels(self.recording_extractor.neo_readers)
         else:
-            raise ValueError('Unable to identify neo readers')
+            raise ValueError("Unable to identify neo readers")
 
         try:
             self.recording_extractor.set_property(key="filtering", values=filtering)
@@ -81,37 +76,34 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         # extracting general session metadata exemplary from first recording
-        if hasattr(self.recording_extractor, 'neo_reader'):
+        if hasattr(self.recording_extractor, "neo_reader"):
             neo_metadata = extract_metadata_single_reader(self.recording_extractor.neo_reader)
-        elif hasattr(self.recording_extractor, 'neo_readers'):
+        elif hasattr(self.recording_extractor, "neo_readers"):
             neo_metadata = extract_metadata_multi_reader(self.recording_extractor.neo_readers)
         else:
-            raise ValueError('Unable to idenfity neo reader')
+            raise ValueError("Unable to idenfity neo reader")
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
         neo_metadata = {k: v for k, v in neo_metadata.items() if not k.lower().startswith("dsp")}
 
         # map Neuralynx metadata to NWB
-        nwb_metadata = {'NWBFile': {},
-                        'Ecephys': {'Device': []}}
-        if 'session_id' in neo_metadata:
-            session_id = neo_metadata.pop('session_id', None)
+        nwb_metadata = {"NWBFile": {}, "Ecephys": {"Device": []}}
+        if "session_id" in neo_metadata:
+            session_id = neo_metadata.pop("session_id", None)
             if session_id is not None:
-                nwb_metadata['NWBFile']['session_id'] = neo_metadata.pop('session_id')
-        if 'SessionUUID' in neo_metadata:
-            nwb_metadata['NWBFile']['identifier'] = neo_metadata.pop('SessionUUID')
-        if 'recording_opened' in neo_metadata:
-            nwb_metadata['NWBFile']['session_start_time'] = neo_metadata.pop('recording_opened')
-        if 'AcquisitionSystem' in neo_metadata:
-            nwb_metadata['Ecephys']['Device'].append(
-                {'name': neo_metadata.pop('AcquisitionSystem')})
-            if 'ApplicationName' in neo_metadata or 'ApplicationVersion' in neo_metadata:
-                description = neo_metadata.pop('ApplicationName', '') + str(
-                    neo_metadata.pop('ApplicationVersion', ''))
-                nwb_metadata['Ecephys']['Device'][-1]['description'] = description
+                nwb_metadata["NWBFile"]["session_id"] = neo_metadata.pop("session_id")
+        if "SessionUUID" in neo_metadata:
+            nwb_metadata["NWBFile"]["identifier"] = neo_metadata.pop("SessionUUID")
+        if "recording_opened" in neo_metadata:
+            nwb_metadata["NWBFile"]["session_start_time"] = neo_metadata.pop("recording_opened")
+        if "AcquisitionSystem" in neo_metadata:
+            nwb_metadata["Ecephys"]["Device"].append({"name": neo_metadata.pop("AcquisitionSystem")})
+            if "ApplicationName" in neo_metadata or "ApplicationVersion" in neo_metadata:
+                description = neo_metadata.pop("ApplicationName", "") + str(neo_metadata.pop("ApplicationVersion", ""))
+                nwb_metadata["Ecephys"]["Device"][-1]["description"] = description
 
         neo_metadata = {k: str(v) for k, v in neo_metadata.items()}
-        nwb_metadata['NWBFile']['notes'] = json.dumps(neo_metadata, ensure_ascii=True)
+        nwb_metadata["NWBFile"]["notes"] = json.dumps(neo_metadata, ensure_ascii=True)
 
         return dict_deep_update(super().get_metadata(), nwb_metadata)
 
@@ -159,7 +151,7 @@ def get_filtering_multi_channel(neo_reader) -> list[str]:
         stream_annotations = stream_info["__array_annotations__"]
         filter_dict = {k: v for k, v in stream_annotations.items() if k.lower().startswith("dsp")}
         # iterate across channels in stream
-        for chan_idx in range(len(stream_info['__array_annotations__']['channel_names'])):
+        for chan_idx in range(len(stream_info["__array_annotations__"]["channel_names"])):
             channel_filter_dict = {k: v[chan_idx] for k, v in filter_dict.items()}
             # conversion to string values
             for key, value in channel_filter_dict.items():
@@ -230,10 +222,8 @@ def extract_metadata_single_reader(neo_reader) -> dict:
         headers = []
         neo_annotations = neo_reader.raw_annotations
         for stream_annotations in neo_annotations["blocks"][0]["segments"][0]["signals"]:
-            for chan_idx in range(
-                    len(stream_annotations['__array_annotations__']['channel_names'])):
-                headers.append({k: v[chan_idx] for k, v in
-                                stream_annotations['__array_annotations__'].items()})
+            for chan_idx in range(len(stream_annotations["__array_annotations__"]["channel_names"])):
+                headers.append({k: v[chan_idx] for k, v in stream_annotations["__array_annotations__"].items()})
 
     # extract common attributes across channels
     common_header = _dict_intersection(headers)
@@ -266,7 +256,7 @@ def extract_metadata_multi_reader(neo_readers) -> dict:
     # use metadata provided as array_annotations for each channel (neo version <0.11.0)
     else:
         neo_annotations = [r.raw_annotations for r in neo_readers]
-        headers = [anno["blocks"][0]["segments"][0]["signals"][0]['__array_annotations__'] for anno in neo_annotations]
+        headers = [anno["blocks"][0]["segments"][0]["signals"][0]["__array_annotations__"] for anno in neo_annotations]
 
     common_header = _dict_intersection(headers)
     return common_header
@@ -291,6 +281,7 @@ def _dict_intersection(dictionaries):
         return dictionaries[0]
 
     common_keys = list(set.intersection(*[set(h.keys()) for h in dictionaries]))
-    common_header = {k: dictionaries[0][k] for k in common_keys if
-                     all([dictionaries[0][k] == h[k] for h in dictionaries])}
+    common_header = {
+        k: dictionaries[0][k] for k in common_keys if all([dictionaries[0][k] == h[k] for h in dictionaries])
+    }
     return common_header
