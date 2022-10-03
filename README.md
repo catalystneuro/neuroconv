@@ -93,7 +93,7 @@ In a clean environment run:
 ```shell
 git clone https://github.com/catalystneuro/neuroconv
 cd neuroconv
-pip install .[test, full]
+pip install .[test,full]
 ```
 
 ### Downloading the data
