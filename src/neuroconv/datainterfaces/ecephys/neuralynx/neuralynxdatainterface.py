@@ -125,7 +125,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
 
-def get_filtering_multi_channel(neo_reader) -> list[str]:
+def get_filtering_multi_channel(neo_reader) -> list:
     """
     Get the filtering metadata from neo reader containing a multiple channels.
 
