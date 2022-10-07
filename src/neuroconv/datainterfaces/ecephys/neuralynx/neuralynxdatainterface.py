@@ -2,6 +2,7 @@
 import json
 import warnings
 from pathlib import Path
+from typing import List
 
 from natsort import natsorted
 
@@ -125,7 +126,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
 
-def get_filtering_multi_channel(neo_reader) -> list:
+def get_filtering_multi_channel(neo_reader) -> List[str]:
     """
     Get the filtering metadata from neo reader containing a multiple channels.
 
