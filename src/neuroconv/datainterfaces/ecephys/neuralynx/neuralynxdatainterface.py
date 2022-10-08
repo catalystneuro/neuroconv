@@ -158,7 +158,9 @@ def get_filtering_multi_channel(neo_reader) -> List[str]:
             channel_filter_dict = {k: v[chan_idx] for k, v in filter_dict.items()}
             # conversion to string values
             for key, value in channel_filter_dict.items():
-                channel_filter_dict[key] = " ".join(value)
+                if not isinstance(value, str):
+                    value = " ".join(value)
+                channel_filter_dict[key] = value
             filter_info.append(json.dumps(channel_filter_dict, ensure_ascii=True))
 
     return filter_info
