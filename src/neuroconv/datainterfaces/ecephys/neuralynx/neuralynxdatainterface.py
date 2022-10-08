@@ -89,10 +89,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         # map Neuralynx metadata to NWB
         nwb_metadata = {"NWBFile": {}, "Ecephys": {"Device": []}}
-        if "session_id" in neo_metadata:
-            session_id = neo_metadata.pop("session_id", None)
-            if session_id is not None:
-                nwb_metadata["NWBFile"]["session_id"] = neo_metadata.pop("session_id")
         if "SessionUUID" in neo_metadata:
             # note: SessionUUID can not be used as 'identifier' as this requires uuid4
             nwb_metadata["NWBFile"]["session_id"] = neo_metadata.pop("SessionUUID")
