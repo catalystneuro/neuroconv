@@ -94,7 +94,8 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if session_id is not None:
                 nwb_metadata["NWBFile"]["session_id"] = neo_metadata.pop("session_id")
         if "SessionUUID" in neo_metadata:
-            nwb_metadata["NWBFile"]["identifier"] = neo_metadata.pop("SessionUUID")
+            # note: SessionUUID can not be used as 'identifier' as this requires uuid4
+            nwb_metadata["NWBFile"]["session_id"] = neo_metadata.pop("SessionUUID")
         if "recording_opened" in neo_metadata:
             nwb_metadata["NWBFile"]["session_start_time"] = neo_metadata.pop("recording_opened")
         if "AcquisitionSystem" in neo_metadata:
