@@ -97,12 +97,14 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             nwb_metadata["NWBFile"]["session_start_time"] = neo_metadata.pop("recording_opened")
         if "AcquisitionSystem" in neo_metadata:
             neuralynx_device = {"name": neo_metadata.pop("AcquisitionSystem")}
-        elif 'HardwareSubSystemType' in neo_metadata:
+        elif "HardwareSubSystemType" in neo_metadata:
             neuralynx_device = {"name": neo_metadata.pop("HardwareSubSystemType")}
         if neuralynx_device is not None:
             if "ApplicationName" in neo_metadata or "ApplicationVersion" in neo_metadata:
-                description = neo_metadata.pop("ApplicationName", "") + ' ' + str(neo_metadata.pop("ApplicationVersion", ""))
-                neuralynx_device['description'] = description
+                description = (
+                    neo_metadata.pop("ApplicationName", "") + " " + str(neo_metadata.pop("ApplicationVersion", ""))
+                )
+                neuralynx_device["description"] = description
             nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
         neo_metadata = {k: str(v) for k, v in neo_metadata.items()}
@@ -221,7 +223,7 @@ def extract_metadata_single_reader(neo_reader) -> dict:
     # check if neuralynx file header objects are present and use these metadata extraction
     if hasattr(neo_reader, "file_headers"):
         # use only ncs files as only continuous signals are extracted
-        headers = [header for filename, header in neo_reader.file_headers.items() if filename.lower().endswith('.ncs')]
+        headers = [header for filename, header in neo_reader.file_headers.items() if filename.lower().endswith(".ncs")]
 
     # use metadata provided as array_annotations for each channel (neo version <0.11.0)
     else:
@@ -236,10 +238,10 @@ def extract_metadata_single_reader(neo_reader) -> dict:
 
     # reintroduce recording times as these are typically not exactly identical
     # use minimal recording_opened and max recording_closed value
-    if 'recording_opened' not in common_header and all(['recording_opened' in h for h in headers]):
-        common_header['recording_opened'] = min([h['recording_opened'] for h in headers])
-    if 'recording_closed' not in common_header and all(['recording_closed' in h for h in headers]):
-        common_header['recording_closed'] = max([h['recording_closed'] for h in headers])
+    if "recording_opened" not in common_header and all(["recording_opened" in h for h in headers]):
+        common_header["recording_opened"] = min([h["recording_opened"] for h in headers])
+    if "recording_closed" not in common_header and all(["recording_closed" in h for h in headers]):
+        common_header["recording_closed"] = max([h["recording_closed"] for h in headers])
 
     return common_header
 
