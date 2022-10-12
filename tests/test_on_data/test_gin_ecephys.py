@@ -132,17 +132,15 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
-            param(
-                data_interface=NeuralynxRecordingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
-            )
+    parameterized_recording_list.append(
+        param(
+            data_interface=NeuralynxRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+            ),
+            case_name=f"",
         )
+    )
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
