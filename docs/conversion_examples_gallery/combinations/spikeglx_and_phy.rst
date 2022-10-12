@@ -12,7 +12,7 @@ were are combining a SpikeGLX recording with Phy sorting results using the
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import NWBConverterPipe
+    >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.bin`` file. Change the file_path to the location in your system
@@ -22,9 +22,9 @@ were are combining a SpikeGLX recording with Phy sorting results using the
     >>> folder_path = f"{ECEPHY_DATA_PATH}/phy/phy_example_0"  # Change the folder_path to the location of the data in your system
     >>> interface_phy = PhySortingInterface(folder_path=folder_path, verbose=False)
     >>>
-    >>>  # Now that we have defined the two interfaces we pass them to the NWBConverterPipe which will coordinate the
+    >>>  # Now that we have defined the two interfaces we pass them to the ConverterPipe which will coordinate the
     >>>  # concurrent conversion of the data
-    >>> converter = NWBConverterPipe(data_interfaces=[interface_spikeglx, interface_phy], verbose=False)
+    >>> converter = ConverterPipe(data_interfaces=[interface_spikeglx, interface_phy], verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()

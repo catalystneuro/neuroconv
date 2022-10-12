@@ -6,7 +6,7 @@ import unittest
 
 from pynwb import NWBFile
 
-from neuroconv import NWBConverter, NWBConverterPipe
+from neuroconv import NWBConverter, ConverterPipe
 from neuroconv.basedatainterface import BaseDataInterface
 
 try:
@@ -84,7 +84,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_list = [interface_a, interface_b]
-        converter = NWBConverterPipe(data_interfaces=data_interfaces_list)
+        converter = ConverterPipe(data_interfaces=data_interfaces_list)
 
         data_interface_names = converter.data_interface_classes.keys()
         assert ["InterfaceA", "InterfaceB"] == list(data_interface_names)
@@ -100,7 +100,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_dict = dict(InterfaceA=interface_a, InterfaceB=interface_b)
-        converter = NWBConverterPipe(data_interfaces=data_interfaces_dict)
+        converter = ConverterPipe(data_interfaces=data_interfaces_dict)
 
         data_interface_names = converter.data_interface_classes.keys()
         assert ["InterfaceA", "InterfaceB"] == list(data_interface_names)
@@ -121,7 +121,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_dict = dict(InterfaceA=interface_a, InterfaceB=interface_b)
-        converter_arguments = NWBConverterPipe(data_interfaces=data_interfaces_dict)
+        converter_arguments = ConverterPipe(data_interfaces=data_interfaces_dict)
 
         assert converter_arguments.data_interface_classes == converter_child_class.data_interface_classes
 
@@ -131,7 +131,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         interface_a2 = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_list = [interface_a, interface_b, interface_a2]
-        converter = NWBConverterPipe(data_interfaces=data_interfaces_list)
+        converter = ConverterPipe(data_interfaces=data_interfaces_list)
 
         data_interface_names = list(converter.data_interface_objects.keys())
         expected_interface_names = ["InterfaceA001", "InterfaceB", "InterfaceA002"]

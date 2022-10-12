@@ -13,7 +13,7 @@ For this specific example were are combining a OpenEphys recording with KiloSort
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import NWBConverterPipe
+    >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import BlackrockRecordingInterface, KiloSortSortingInterface, SLEAPInterface
     >>>
     >>>
@@ -29,9 +29,9 @@ For this specific example were are combining a OpenEphys recording with KiloSort
     >>> file_path = BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"
     >>> interface_sleap = SLEAPInterface(file_path=file_path, verbose=False)
     >>>
-    >>>  # Now that we have defined the two interfaces we pass them to the NWBConverterPipe which will coordinate the
+    >>>  # Now that we have defined the two interfaces we pass them to the ConverterPipe which will coordinate the
     >>>  # concurrent conversion of the data
-    >>> converter = NWBConverterPipe(data_interfaces=[interface_blackrock, interface_kilosort, interface_sleap], verbose=False)
+    >>> converter = ConverterPipe(data_interfaces=[interface_blackrock, interface_kilosort, interface_sleap], verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()

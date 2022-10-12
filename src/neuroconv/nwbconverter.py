@@ -185,8 +185,8 @@ class NWBConverter:
         return nwbfile_out
 
 
-class NWBConverterPipe(NWBConverter):
-    """Takes pre-initialized interfaces as arguments to build an NWBConverter class"""
+class ConverterPipe(NWBConverter):
+    """Takes a list or dict of pre-initialized interfaces as arguments to build an NWBConverter class"""
 
     def get_conversion_options_schema(self):
         """Compile conversion option schemas from each of the data interface classes."""
@@ -202,6 +202,12 @@ class NWBConverterPipe(NWBConverter):
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
         return conversion_options_schema
+
+    def get_source_schema(self):
+        raise NotImplementedError("Source data not available with previously intialized classes")
+
+    def validate_source(self):
+        raise NotImplementedError("Source data not available with previously intialized classes")
 
     def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
         self.verbose = verbose

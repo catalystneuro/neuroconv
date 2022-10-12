@@ -12,7 +12,7 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
 
     >>> from datetime import datetime
     >>> from dateutil import tz
-    >>> from neuroconv import NWBConverterPipe
+    >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import TiffImagingInterface, Suite2pSegmentationInterface
     >>>
     >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"
@@ -21,9 +21,9 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
     >>> folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
     >>> interface_suit2p = Suite2pSegmentationInterface(folder_path=folder_path, verbose=False)
     >>>
-    >>> # Now that we have defined the two interfaces we pass them to the NWBConverterPipe which will coordinate the
+    >>> # Now that we have defined the two interfaces we pass them to the ConverterPipe which will coordinate the
     >>> # concurrent conversion of the data
-    >>> converter = NWBConverterPipe(data_interfaces=[interface_tiff, interface_suit2p], verbose=False)
+    >>> converter = ConverterPipe(data_interfaces=[interface_tiff, interface_suit2p], verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
