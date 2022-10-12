@@ -225,7 +225,7 @@ def extract_metadata_single_reader(neo_reader) -> dict:
         # use only ncs files as only continuous signals are extracted
         headers = [header for filename, header in neo_reader.file_headers.items() if filename.lower().endswith(".ncs")]
 
-    # use metadata provided as array_annotations for each channel (neo version <0.11.0)
+    # use metadata provided as array_annotations for each channel (neo version <=0.11.0)
     else:
         headers = []
         neo_annotations = neo_reader.raw_annotations
@@ -268,7 +268,7 @@ def extract_metadata_multi_reader(neo_readers) -> dict:
     if hasattr(neo_readers[0], "file_headers"):
         headers = [list(reader.file_headers.values())[0] for reader in neo_readers]
 
-    # use metadata provided as array_annotations for each channel (neo version <0.11.0)
+    # use metadata provided as array_annotations for each channel (neo version <=0.11.0)
     else:
         neo_annotations = [r.raw_annotations for r in neo_readers]
         headers = [anno["blocks"][0]["segments"][0]["signals"][0]["__array_annotations__"] for anno in neo_annotations]
