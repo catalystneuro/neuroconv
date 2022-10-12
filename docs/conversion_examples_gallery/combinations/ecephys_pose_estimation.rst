@@ -29,14 +29,13 @@ For this specific example were are combining a OpenEphys recording with KiloSort
     >>> file_path = BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"
     >>> interface_sleap = SLEAPInterface(file_path=file_path, verbose=False)
     >>>
-    >>>  # Now that we have defined the two interfaces we pass them to the ConverterPipe which will coordinate the
-    >>>  # concurrent conversion of the data
+    >>> # Now that we have defined the two interfaces we pass them to the ConverterPipe which will coordinate the
+    >>> # concurrent conversion of the data
     >>> converter = ConverterPipe(data_interfaces=[interface_blackrock, interface_kilosort, interface_sleap], verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> tzinfo = tz.gettz("US/Pacific")
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>

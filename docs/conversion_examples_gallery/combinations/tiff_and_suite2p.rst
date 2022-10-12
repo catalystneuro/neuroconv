@@ -28,7 +28,6 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> tzinfo = tz.gettz("US/Pacific")
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
