@@ -12,6 +12,7 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
 
     >>> from datetime import datetime
     >>> from dateutil import tz
+    >>> from pathlib import Path
     >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import TiffImagingInterface, Suite2pSegmentationInterface
     >>>
@@ -33,4 +34,7 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> nwbfile_out = converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+    root pynwb.file.NWBFile ...
+    >>> Path(nwbfile_path).is_file()
+    True
