@@ -107,6 +107,7 @@ class MovieInterface(BaseDataInterface):
         stub_test: bool = False,
         external_mode: bool = True,
         starting_times: Optional[list] = None,
+        starting_frames: Optional[list] = None,
         timestamps: Optional[list] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
@@ -155,6 +156,9 @@ class MovieInterface(BaseDataInterface):
         starting_times : list, optional
             List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
             sequential order and are contiguous.
+        starting_times : list, optional
+            List of start frames for each movie written using external mode.
+            Required if more than one path is specified per ImageSeries in external mode.
         timestamps : list, optional
             List of timestamps for the movies. If unspecified, timestamps are extracted from each movie data.
         chunk_data : bool
@@ -219,6 +223,17 @@ class MovieInterface(BaseDataInterface):
         for j, (image_series_kwargs, file_list) in enumerate(zip(movies_metadata_unique, file_paths_list)):
 
             if external_mode:
+                num_files = len(file_list)
+                if num_files > 1 and starting_frames is None:
+                    raise TypeError("Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!")
+                elif num_files > 1 and num_files != len(starting_frames[j]):
+                    raise ValueError(
+                        f"Multiple paths ({num_files}) were specified for ImageSeries index {j}, "
+                        f"but the length of starting_frames ({len(starting_frames[j])}) did not match the number of paths!"
+                    )
+                elif num_files > 1:
+                    image_series_kwargs.update(starting_frame=starting_frames[j])
+                    
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
                     if timestamps is None:
