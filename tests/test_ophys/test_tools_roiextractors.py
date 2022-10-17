@@ -1068,7 +1068,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         metadata = deepcopy(self.metadata)
         metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=1.23)
-        
+
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
