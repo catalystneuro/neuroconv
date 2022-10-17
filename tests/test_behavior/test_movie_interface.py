@@ -276,7 +276,7 @@ class TestMovieInterface(TestCase):
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
 
-        with self.assertRaisesWith(exc_type=TypeError, exc_msg="ABC"):
+        with self.assertRaisesWith(exc_type=TypeError, exc_msg="Multiple paths were specified for ImageSeries index 0, but no starting_frames were specified!"):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
                 overwrite=True,
@@ -290,7 +290,7 @@ class TestMovieInterface(TestCase):
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
 
-        with self.assertRaisesWith(exc_type=ValueError, exc_msg="ABC"):
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="Multiple paths (2) were specified for ImageSeries index 0, but the length of starting_frames (1) did not match the number of paths!"):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
                 overwrite=True,
