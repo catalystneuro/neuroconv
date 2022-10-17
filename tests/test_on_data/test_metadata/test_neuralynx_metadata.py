@@ -70,7 +70,7 @@ def test_neuralynx_cheetah_v540_metadata():
     assert '"recording_closed": "2001-01-01 00:00:00"' in file_metadata["notes"]
     assert '"ADMaxValue": "32767"' in file_metadata["notes"]
 
-   # the sampling rate and device is only exposed on neo dev as of now. TODO: Remove if after neo >=0.12
+    # the sampling rate and device is only exposed on neo dev as of now. TODO: Remove if after neo >=0.12
     if version.LooseVersion(neo.__version__) > version.LooseVersion("0.11.0"):
         assert '"sampling_rate": "1017.375"' in file_metadata["notes"]
 
