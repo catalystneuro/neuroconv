@@ -81,37 +81,14 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
-    def __init__(self, folder_path: FolderPathType, spikeextractors_backend: bool = False, verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
 
         self.nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
 
-        if spikeextractors_backend:
-            from spikeinterface.core.old_api_utils import OldToNewRecording
+        super().__init__(folder_path=folder_path, verbose=verbose)
+        self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
 
-            self.initialize_in_spikeextractors(folder_path=folder_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(folder_path=folder_path, verbose=verbose)
-            self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
-
-        # General
         self.add_recording_extractor_properties()
-
-    def initialize_in_spikeextractors(self, folder_path, verbose):
-        from spikeextractors import MultiRecordingChannelExtractor, NeuralynxRecordingExtractor
-
-        self.Extractor = MultiRecordingChannelExtractor
-        self.subset_channels = None
-        self.source_data = dict(folder_path=folder_path, verbose=verbose)
-        self.verbose = verbose
-
-        extractors = [NeuralynxRecordingExtractor(filename=filename, seg_index=0) for filename in self.nsc_files]
-        self.recording_extractor = self.Extractor(extractors)
-
-        gains = [extractor.get_channel_gains()[0] for extractor in extractors]
-        for extractor in extractors:
-            extractor.clear_channel_gains()
-        self.recording_extractor.set_channel_gains(gains=gains)
 
     def add_recording_extractor_properties(self):
 

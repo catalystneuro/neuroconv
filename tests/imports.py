@@ -68,6 +68,7 @@ class TestImportStructure(TestCase):
             # Behavior
             "DeepLabCutInterface",
             "MovieInterface",
+            "SLEAPInterface",
             # Ecephys
             "AxonaRecordingInterface",
             "AxonaPositionDataInterface",
