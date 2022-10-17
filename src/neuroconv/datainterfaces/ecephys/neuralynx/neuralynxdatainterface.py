@@ -135,7 +135,7 @@ def extract_neo_header_metadata(neo_reader) -> dict:
         headers = [header for filename, header in neo_reader.file_headers.items() if filename.lower().endswith(".ncs")]
 
     # use metadata provided as array_annotations for each channel (neo version <=0.11.0)
-    else:
+    else:  # TODO: Remove else after dependency update to neo >=0.12
         headers = []
         neo_annotations = neo_reader.raw_annotations
         for stream_annotations in neo_annotations["blocks"][0]["segments"][0]["signals"]:
