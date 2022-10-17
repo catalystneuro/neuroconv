@@ -21,7 +21,7 @@ class MiniscopeImagingInterface(BaseDataInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        verbose=False,
+        verbose: bool = False,
     ):
         from ndx_miniscope import read_settings, read_notes, read_miniscope_timestamps, get_starting_frames
 
