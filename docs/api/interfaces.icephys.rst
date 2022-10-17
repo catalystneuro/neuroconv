@@ -7,5 +7,5 @@ Base Interface
 
 
 Abf Interface
--------------------
+-------------
 .. automodule:: neuroconv.datainterfaces.icephys.abf.abfdatainterface

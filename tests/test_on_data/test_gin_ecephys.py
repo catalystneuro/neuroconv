@@ -123,6 +123,20 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(folder_path=str(DATA_PATH / "tdt" / "aep_05")),
             case_name="multi_segment",
         ),
+        param(
+            data_interface=BlackrockRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns5"),
+            ),
+            case_name=f"multi_stream_case_ns5",
+        ),
+        param(
+            data_interface=BlackrockRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2"),
+            ),
+            case_name=f"multi_stream_case_ns2",
+        ),
     ]
     if platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"):
         parameterized_recording_list.append(
@@ -132,17 +146,15 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
-            param(
-                data_interface=NeuralynxRecordingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
-            )
+    parameterized_recording_list.append(
+        param(
+            data_interface=NeuralynxRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+            ),
+            case_name=f"",
         )
+    )
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
@@ -264,6 +276,8 @@ class TestEcephysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
+        es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
+        electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
             raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
@@ -271,7 +285,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         if recording.get_num_segments() == 1:
 
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
+            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path, electrical_series_name=electrical_series_name)
             if "channel_name" in recording.get_property_keys():
                 renamed_channel_ids = recording.get_property("channel_name")
             else:
