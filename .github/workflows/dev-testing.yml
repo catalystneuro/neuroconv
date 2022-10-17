@@ -51,6 +51,8 @@ jobs:
         run: pip install git+https://github.com/SpikeInterface/spikeinterface@master
       - name: Dev gallery - NEO
         run: pip install git+https://github.com/NeuralEnsemble/python-neo@master
+      - name: Dev gallery - ROIExtractors
+        run: pip install git+https://github.com/CatalystNeuro/roiextractors@master
 
 
 
