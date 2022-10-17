@@ -225,7 +225,9 @@ class MovieInterface(BaseDataInterface):
             if external_mode:
                 num_files = len(file_list)
                 if num_files > 1 and starting_frames is None:
-                    raise TypeError(f"Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!")
+                    raise TypeError(
+                        f"Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!"
+                    )
                 elif num_files > 1 and num_files != len(starting_frames[j]):
                     raise ValueError(
                         f"Multiple paths ({num_files}) were specified for ImageSeries index {j}, "
