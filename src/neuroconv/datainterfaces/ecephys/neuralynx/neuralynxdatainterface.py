@@ -2,7 +2,7 @@
 import json
 import warnings
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
 from natsort import natsorted
 
@@ -166,26 +166,25 @@ def extract_metadata_single_reader(neo_reader) -> dict:
     return common_header
 
 
-def _dict_intersection(dictionaries):
+def _dict_intersection(dict_list: List) -> Dict:
     """
-    Intersect dictionaries and return only common keys and values
-
+    Intersect dict_list and return only common keys and values
     Parameters
     ----------
-    dictionaries: list of dictionaries
-
+    dict_list: list of dicitionaries each representing a header
     Returns
     -------
     dict:
-        Dictionary containing key-value pairs common to all input dictionaries
+        Dictionary containing key-value pairs common to all input dicitionary_list
     """
-    if len(dictionaries) == 0:
+    if len(dict_list) == 0:
         return {}
-    if len(dictionaries) == 1:
-        return dictionaries[0]
 
-    common_keys = list(set.intersection(*[set(h.keys()) for h in dictionaries]))
-    common_header = {
-        k: dictionaries[0][k] for k in common_keys if all([dictionaries[0][k] == h[k] for h in dictionaries])
-    }
+    # Collect keys appearing in all dictionaries
+    common_keys = list(set.intersection(*[set(h.keys()) for h in dict_list]))
+
+    # Add values for common keys if the value is identical across all headers (dict_list)
+    first_dict = dict_list[0]
+    all_dicts_have_same_value_for = lambda key: all([first_dict[key] == dict[key] for dict in dict_list])
+    common_header = {key: first_dict[key] for key in common_keys if all_dicts_have_same_value_for(key)}
     return common_header
