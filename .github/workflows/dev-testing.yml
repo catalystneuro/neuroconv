@@ -42,7 +42,7 @@ jobs:
 
 
       - name: Install full requirements (-e needed for codecov report)
-        run: pip install -e .[full]
+        run: pip install -e .[full,test]
 
 
       - name: Dev gallery - ROIExtractors
