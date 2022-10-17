@@ -92,7 +92,7 @@ jobs:
           rm -rf ./ephy_testing_data/.git/
           rm -rf ./ephy_testing_data/.gitattributes
           rm -rf ./ephy_testing_data/.gitignore
-          rm -rf ./ephy_testing_data/README.md  
+          rm -rf ./ephy_testing_data/README.md
       - name: Upload ophys dataset to S3
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
@@ -112,7 +112,7 @@ jobs:
           rm -rf ./ephy_testing_data/.git/
           rm -rf ./ephy_testing_data/.gitattributes
           rm -rf ./ephy_testing_data/.gitignore
-          rm -rf ./ephy_testing_data/README.md  
+          rm -rf ./ephy_testing_data/README.md
       - name: Upload behavior dataset to S3
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
