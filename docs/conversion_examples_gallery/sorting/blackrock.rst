@@ -1,12 +1,14 @@
 Blackrock sorting data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------
+
 Install NeuroConv with the additional dependencies necessary for reading Blackrock sorting data.
 
 .. code-block:: bash
 
     pip install neuroconv[blackrock]
 
-Convert Blackrock sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingInterface`.
+Convert Blackrock sorting data to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockSortingInterface`.
 
 .. code-block:: python
 
@@ -15,7 +17,6 @@ Convert Blackrock sorting data to NWB using :py:class:`~neuroconv.datainterfaces
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import BlackrockSortingInterface
     >>>
-    >>> # For this interface we need to pass the location of the ``.nev`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/blackrock/FileSpec2.3001.nev"
     >>> # Change the file_path to the location of the file in your system
     >>> interface = BlackrockSortingInterface(file_path=file_path, verbose=False)

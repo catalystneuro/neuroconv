@@ -75,7 +75,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             spikeinterface = get_package(package_name="spikeinterface")
 
             self.RX = spikeinterface.extractors.BlackrockRecordingExtractor
-            super().__init__(file_path=file_path, verbose=verbose)
+            super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()

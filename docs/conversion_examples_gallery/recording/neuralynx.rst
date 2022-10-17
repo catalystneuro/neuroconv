@@ -1,5 +1,5 @@
 Neuralynx data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
 Install NeuroConv with the additional dependencies necessary for reading Neuralynx data.
 
@@ -7,7 +7,8 @@ Install NeuroConv with the additional dependencies necessary for reading Neuraly
 
     pip install neuroconv[neuralynx]
 
-Convert Neuralynx data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxRecordingInterface`.
+Convert Neuralynx data to NWB using
+:py:class:`~.neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxRecordingInterface`.
 
 .. code-block:: python
 
@@ -25,7 +26,7 @@ Convert Neuralynx data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephy
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")).isoformat()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion
