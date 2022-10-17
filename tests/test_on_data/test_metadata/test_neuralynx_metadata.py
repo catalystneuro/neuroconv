@@ -26,7 +26,7 @@ def test_neuralynx_cheetah_v574_metadata():
     assert '"FileType": "NCS"' in file_metadata["notes"]
     assert '"recording_closed": "2017-02-16 18:01:18"' in file_metadata["notes"]
     assert '"ADMaxValue": "32767"' in file_metadata["notes"]
-    # the sampling rate and device is part of the file headers exposed for neo > 0.11.0
+    # the sampling rate and device is only exposed on neo dev as of now. TODO: Remove if after neo >=0.12
     if version.LooseVersion(neo.__version__) > version.LooseVersion("0.11.0"):
         assert '"sampling_rate": "32000.0"' in file_metadata["notes"]
 
