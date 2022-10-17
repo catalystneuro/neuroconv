@@ -44,7 +44,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="neuroconv",
-    version="0.2.0",
+    version="0.2.1",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",

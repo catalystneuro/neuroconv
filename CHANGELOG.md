@@ -1,5 +1,13 @@
 # Upcoming
 
+# v0.2.1
+
+### Fixes
+
+* Updated `BlackrockRecordingInterface` to support multi stream file and added gin corresponding gin tests [PR #176](https://github.com/SpikeInterface/spikeinterface/issues/923). [PR #132](https://github.com/catalystneuro/neuroconv/pull/176)
+
+
+
 # v0.2.0
 
 ### Back-compatability break
