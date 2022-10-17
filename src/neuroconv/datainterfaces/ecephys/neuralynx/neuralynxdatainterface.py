@@ -28,16 +28,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self.add_recording_extractor_properties()
 
     def add_recording_extractor_properties(self):
-        filtering = get_filtering_multi_channel(self.recording_extractor.neo_reader)
-
-        try:
-            self.recording_extractor.set_property(key="filtering", values=filtering)
-        except Exception:
-            warnings.warn("filtering could not be extracted.")
+        filtering = get_filtering(self.recording_extractor.neo_reader)
+        self.recording_extractor.set_property(key="filtering", values=filtering)
 
     def get_metadata(self):
         # extracting general session metadata exemplary from first recording
-        neo_metadata = extract_metadata_single_reader(self.recording_extractor.neo_reader)
+        neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
         neo_metadata = {k: v for k, v in neo_metadata.items() if not k.lower().startswith("dsp")}
@@ -85,9 +81,9 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
 
-def get_filtering_multi_channel(neo_reader) -> List[str]:
+def get_filtering(neo_reader) -> List[str]:
     """
-    Get the filtering metadata from neo reader containing a multiple channels.
+    Get the filtering metadata from a neo reader containing multiple channels.
 
     Parameters
     ----------
@@ -123,7 +119,7 @@ def get_filtering_multi_channel(neo_reader) -> List[str]:
     return filter_info
 
 
-def extract_metadata_single_reader(neo_reader) -> dict:
+def extract_neo_header_metadata(neo_reader) -> dict:
     """
     Extract the session metadata from a NeuralynxRawIO object
 
@@ -157,7 +153,7 @@ def extract_metadata_single_reader(neo_reader) -> dict:
     common_header = _dict_intersection(headers)
 
     # reintroduce recording times as these are typically not exactly identical
-    # use minimal recording_opened and max recording_closed value
+    # use minimal recording_opened and maximal recording_closed value
     if "recording_opened" not in common_header and all(["recording_opened" in h for h in headers]):
         common_header["recording_opened"] = min([h["recording_opened"] for h in headers])
     if "recording_closed" not in common_header and all(["recording_closed" in h for h in headers]):
