@@ -269,3 +269,31 @@ class TestMovieInterface(TestCase):
                 movie_interface_name = movie_metadata["name"]
                 assert acquisition_module[movie_interface_name].rate == 1 / (timestamps[1] - timestamps[0])
                 assert acquisition_module[movie_interface_name].timestamps is None
+
+    def test_starting_frames_type_error(self):
+        conversion_opts = dict(Movie=dict(external_mode=True))
+        metadata = self.metadata
+        movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
+        metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
+
+        with self.assertRaisesWith(exc_type=TypeError, exc_msg="ABC"):
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                overwrite=True,
+                conversion_options=conversion_opts,
+                metadata=metadata,
+            )
+
+    def test_starting_frames_value_error(self):
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0.0]]))
+        metadata = self.metadata
+        movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
+        metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
+
+        with self.assertRaisesWith(exc_type=ValueError, exc_msg="ABC"):
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                overwrite=True,
+                conversion_options=conversion_opts,
+                metadata=metadata,
+            )
