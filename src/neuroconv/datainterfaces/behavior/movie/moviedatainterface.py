@@ -233,7 +233,7 @@ class MovieInterface(BaseDataInterface):
                     )
                 elif num_files > 1:
                     image_series_kwargs.update(starting_frame=starting_frames[j])
-                    
+
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_movie_fps()
                     if timestamps is None:
