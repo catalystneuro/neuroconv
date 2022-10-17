@@ -1,10 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker, Ben Dichter and Julia Sprenger."""
 import json
-import warnings
-from pathlib import Path
 from typing import List, Dict
-
-from natsort import natsorted
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -17,9 +13,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
-
-        self.ncs_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
-
         super().__init__(folder_path=folder_path, verbose=verbose)
         neo_reader = self.recording_extractor.neo_reader
         self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
@@ -28,7 +21,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self.add_recording_extractor_properties()
 
     def add_recording_extractor_properties(self):
-        filtering = get_filtering(self.recording_extractor.neo_reader)
+        filtering = extract_filtering_metadata(self.recording_extractor.neo_reader)
         self.recording_extractor.set_property(key="filtering", values=filtering)
 
     def get_metadata(self):
@@ -81,7 +74,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
 
-def get_filtering(neo_reader) -> List[str]:
+def extract_filtering_metadata(neo_reader) -> List[str]:
     """
     Get the filtering metadata from a neo reader containing multiple channels.
 
