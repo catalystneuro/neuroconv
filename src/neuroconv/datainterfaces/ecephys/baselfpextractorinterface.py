@@ -5,7 +5,6 @@ from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...tools.spikeinterface import write_recording
 from ...utils import get_schema_from_hdmf_class, OptionalFilePathType
 
 OptionalPathType = Optional[Union[str, Path]]
@@ -17,14 +16,14 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_lfp=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesLFP=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
         metadata["Ecephys"].update(
-            ElectricalSeries_lfp=dict(name="ElectricalSeries_lfp", description="Local field potential signal.")
+            ElectricalSeriesLFP=dict(name="ElectricalSeriesLFP", description="Local field potential signal.")
         )
         return metadata
 
@@ -41,8 +40,9 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
         iterator_opts: Optional[dict] = None,
-        save_path: OptionalFilePathType = None,  # TODO: to be removed, depreceation applied at tools level
     ):
+        from ...tools.spikeinterface import write_recording
+
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
@@ -57,10 +57,9 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             starting_time=starting_time,
             use_times=use_times,
             write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            es_key="ElectricalSeriesLFP",
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
-            save_path=save_path,  # TODO: to be removed, depreceation applied at tools level
         )

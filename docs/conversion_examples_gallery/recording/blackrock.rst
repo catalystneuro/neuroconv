@@ -1,7 +1,14 @@
 Blackrock data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
-Convert Blackrock data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockRecordingExtractorInterface`.
+Install NeuroConv with the additional dependencies necessary for reading Blackrock data.
+
+.. code-block:: bash
+
+    pip install neuroconv[blackrock]
+
+Convert Blackrock data to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface.BlackrockRecordingInterface`.
 
 .. code-block:: python
 

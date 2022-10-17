@@ -17,7 +17,7 @@ from spikeextractors.testing import (
     get_default_nwbfile_metadata,
 )
 
-from neuroconv import spikeinterface  # testing aliased import
+from neuroconv.tools import spikeinterface  # testing aliased import
 from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
@@ -164,6 +164,10 @@ class TestExtractors(unittest.TestCase):
             assert len(nwbfile.electrodes) == self.RX.get_num_channels()
         # Writing multiple recordings using metadata
         metadata = get_default_nwbfile_metadata()
+        # Re-mapping from spikextractors metadata to new standard (we probably should get rid of this test)
+        metadata["Ecephys"]["ElectricalSeriesRaw"] = metadata["Ecephys"]["ElectricalSeries_raw"]
+        metadata["Ecephys"]["ElectricalSeriesLFP"] = metadata["Ecephys"]["ElectricalSeries_lfp"]
+        metadata["Ecephys"]["ElectricalSeriesProcessed"] = metadata["Ecephys"]["ElectricalSeries_processed"]
         metadata["NWBFile"].update(self.placeholder_metadata["NWBFile"])
         path_multi = self.test_dir + "/test_multiple.nwb"
         write_recording(
@@ -171,21 +175,21 @@ class TestExtractors(unittest.TestCase):
             nwbfile_path=path_multi,
             metadata=metadata,
             write_as="raw",
-            es_key="ElectricalSeries_raw",
+            es_key="ElectricalSeriesRaw",
         )
         write_recording(
             recording=self.RX2,
             nwbfile_path=path_multi,
             metadata=metadata,
             write_as="processed",
-            es_key="ElectricalSeries_processed",
+            es_key="ElectricalSeriesProcessed",
         )
         write_recording(
             recording=self.RX3,
             nwbfile_path=path_multi,
             metadata=metadata,
             write_as="lfp",
-            es_key="ElectricalSeries_lfp",
+            es_key="ElectricalSeriesLFP",
         )
 
         RX_nwb = se.NwbRecordingExtractor(file_path=path_multi, electrical_series_name="raw_traces")
@@ -203,7 +207,7 @@ class TestExtractors(unittest.TestCase):
         compression = "gzip"
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -221,7 +225,7 @@ class TestExtractors(unittest.TestCase):
         )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -240,7 +244,7 @@ class TestExtractors(unittest.TestCase):
         )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -259,7 +263,7 @@ class TestExtractors(unittest.TestCase):
         )
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            compression_out = nwbfile.acquisition["ElectricalSeries_raw"].data.compression
+            compression_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.compression
         self.assertEqual(
             compression_out,
             compression,
@@ -274,7 +278,7 @@ class TestExtractors(unittest.TestCase):
         write_recording(recording=self.RX, nwbfile_path=path, overwrite=True, metadata=self.placeholder_metadata)
         with NWBHDF5IO(path=path, mode="r") as io:
             nwbfile = io.read()
-            chunks_out = nwbfile.acquisition["ElectricalSeries_raw"].data.chunks
+            chunks_out = nwbfile.acquisition["ElectricalSeriesRaw"].data.chunks
         test_iterator = SpikeInterfaceRecordingDataChunkIterator(recording=self.RX)
         self.assertEqual(
             chunks_out,

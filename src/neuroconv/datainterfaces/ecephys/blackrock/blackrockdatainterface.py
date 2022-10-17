@@ -17,7 +17,8 @@ from ....utils import (
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a BlackrockRecordingExtractor."""
+    """Primary data interface class for converting Blackrock data using a
+    :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
 
     @classmethod
     def get_source_schema(cls):
@@ -74,13 +75,13 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             spikeinterface = get_package(package_name="spikeinterface")
 
             self.RX = spikeinterface.extractors.BlackrockRecordingExtractor
-            super().__init__(file_path=file_path, verbose=verbose)
+            super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries),
-            ElectricalSeries_processed=get_schema_from_hdmf_class(ElectricalSeries),
+            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries),
+            ElectricalSeriesProcessed=get_schema_from_hdmf_class(ElectricalSeries),
         )
         return metadata_schema
 
@@ -95,18 +96,18 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
         # Checks if data is raw or processed
         if int(self.file_path.suffix[-1]) >= 5:
-            metadata["Ecephys"]["ElectricalSeries_raw"] = dict(name="ElectricalSeries_raw")
+            metadata["Ecephys"]["ElectricalSeriesRaw"] = dict(name="ElectricalSeriesRaw")
         else:
-            metadata["Ecephys"]["ElectricalSeries_processed"] = dict(name="ElectricalSeries_processed")
+            metadata["Ecephys"]["ElectricalSeriesProcessed"] = dict(name="ElectricalSeriesProcessed")
         return metadata
 
     def get_conversion_options(self):
         if int(self.file_path.suffix[-1]) >= 5:
             write_as = "raw"
-            es_key = "ElectricalSeries_raw"
+            es_key = "ElectricalSeriesRaw"
         else:
             write_as = "processed"
-            es_key = "ElectricalSeries_processed"
+            es_key = "ElectricalSeriesProcessed"
         conversion_options = dict(write_as=write_as, es_key=es_key, stub_test=False)
         return conversion_options
 
@@ -116,21 +117,26 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        metadata_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["block_index", "seg_index"]
-        )
+        metadata_schema = get_schema_from_method_signature(class_method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
         return metadata_schema
 
-    def __init__(
-        self, file_path: FilePathType, nsx_to_load: Optional[int] = None, nev_override: OptionalFilePathType = None
-    ):
-        spikeextractors = get_package(package_name="spikeextractors")
+    def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):
+        """
+        Parameters
+        ----------
+        file_path : str, Path
+            The file path to the ``.nev`` data
+        sampling_frequency: float,
+            The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
+        used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
+        this extractor to be initialized.
+        verbose : bool, optional
+            Enables verbosity
+        """
 
-        self.Extractor = spikeextractors.BlackrockSortingExtractor
-        super().__init__(filename=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
-        self.source_data = dict(file_path=file_path, nsx_to_load=nsx_to_load, nev_override=nev_override)
+        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self):
         metadata = super().get_metadata()

@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from warnings import warn
 
 from ..baseicephysinterface import BaseIcephysInterface
-from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
 
 def get_start_datetime(neo_reader):
@@ -62,6 +61,8 @@ class AbfInterface(BaseIcephysInterface):
         self.source_data["icephys_metadata_file_path"] = icephys_metadata_file_path
 
     def get_metadata(self):
+        from ....tools.neo import get_number_of_electrodes, get_number_of_segments
+
         metadata = super().get_metadata()
 
         if self.source_data["icephys_metadata"]:

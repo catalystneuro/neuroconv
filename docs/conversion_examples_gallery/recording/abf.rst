@@ -1,5 +1,11 @@
 ABF data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------
+
+Install NeuroConv with the additional dependencies necessary for reading ABF data.
+
+.. code-block:: bash
+
+    pip install neuroconv[abf]
 
 Convert ABF intracellular electrophysiology data to NWB using :py:class:`~neuroconv.datainterfaces.icephys.abf.abfdatainterface.AbfInterface`.
 

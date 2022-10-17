@@ -32,7 +32,7 @@ from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterfac
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
-
+from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -54,7 +54,7 @@ from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 # Behavior
 from .behavior.movie.moviedatainterface import MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
-
+from .behavior.sleap.sleapdatainterface import SLEAPInterface
 
 interface_list = [
     # Ecephys
@@ -83,6 +83,7 @@ interface_list = [
     AxonaLFPDataInterface,
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
+    TdtRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
@@ -98,4 +99,5 @@ interface_list = [
     # Behavior
     MovieInterface,
     DeepLabCutInterface,
+    SLEAPInterface,
 ]

@@ -6,7 +6,8 @@ from ....utils.types import FilePathType
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting European Data Format (EDF) data."""
+    """Primary data interface class for converting European Data Format (EDF) data
+    using the :py:class:`~spikeinterface.extractors.EDFRecordingExtractor`."""
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """

@@ -7,7 +7,6 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
 from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType
 
 
@@ -107,7 +106,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
-        save_path: OptionalFilePathType = None,  # TODO: to be removed
     ):
         """
         Primary function for converting the data in a SortingExtractor to NWB format.
@@ -122,7 +120,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             E.g., calling
                 write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
             will result in the appropriate changes to the my_nwbfile object.
-            If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+            If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
             and returned by the function.
         metadata: dict
             Information for constructing the nwb file (optional) and units table descriptions.
@@ -138,6 +136,8 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             Write electrode information contained in the metadata.
         """
         from spikeinterface import NumpyRecording
+
+        from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
 
         if write_ecephys_metadata and "Ecephys" in metadata:
             n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])
@@ -175,6 +175,5 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
-            save_path=save_path,
             property_descriptions=property_descriptions,
         )

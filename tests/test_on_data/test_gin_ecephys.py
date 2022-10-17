@@ -40,6 +40,7 @@ from neuroconv.datainterfaces import (
     AxonaRecordingInterface,
     AxonaLFPDataInterface,
     EDFRecordingInterface,
+    TdtRecordingInterface,
 )
 
 
@@ -92,7 +93,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeries_lfp"]
+            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
             if not isinstance(recording, BaseRecording):
@@ -117,6 +118,25 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf")),
             case_name="artificial_data",
         ),
+        param(
+            data_interface=TdtRecordingInterface,
+            interface_kwargs=dict(folder_path=str(DATA_PATH / "tdt" / "aep_05")),
+            case_name="multi_segment",
+        ),
+        param(
+            data_interface=BlackrockRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns5"),
+            ),
+            case_name=f"multi_stream_case_ns5",
+        ),
+        param(
+            data_interface=BlackrockRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2"),
+            ),
+            case_name=f"multi_stream_case_ns2",
+        ),
     ]
     if platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"):
         parameterized_recording_list.append(
@@ -126,17 +146,15 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
-            param(
-                data_interface=NeuralynxRecordingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
-            )
+    parameterized_recording_list.append(
+        param(
+            data_interface=NeuralynxRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+            ),
+            case_name=f"",
         )
+    )
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
@@ -258,23 +276,27 @@ class TestEcephysNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
+        es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
+        electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
             raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
-        # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-        nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
-        if "channel_name" in recording.get_property_keys():
-            renamed_channel_ids = recording.get_property("channel_name")
-        else:
-            renamed_channel_ids = recording.get_channel_ids().astype("str")
-        recording = recording.channel_slice(
-            channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
-        )
+        # NWBRecordingExtractor on spikeinterface does not yet support loading data written from multiple segment.
+        if recording.get_num_segments() == 1:
 
-        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
-        # This can only be tested if both gain and offset are present
-        if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
-            check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
+            # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
+            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path, electrical_series_name=electrical_series_name)
+            if "channel_name" in recording.get_property_keys():
+                renamed_channel_ids = recording.get_property("channel_name")
+            else:
+                renamed_channel_ids = recording.get_channel_ids().astype("str")
+            recording = recording.channel_slice(
+                channel_ids=recording.get_channel_ids(), renamed_channel_ids=renamed_channel_ids
+            )
+
+            check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
+            if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
+                check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
     parameterized_sorting_list = [
         param(
@@ -401,7 +423,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_channel_conversion = nwbfile.acquisition["ElectricalSeries_raw"].channel_conversion[:]
+            output_channel_conversion = nwbfile.acquisition["ElectricalSeriesRaw"].channel_conversion[:]
             input_gain_array = np.ones_like(output_channel_conversion) * input_gain
             np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
 
@@ -435,7 +457,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_dtype = nwbfile.acquisition["ElectricalSeries_raw"].data.dtype
+            output_dtype = nwbfile.acquisition["ElectricalSeriesRaw"].data.dtype
             self.assertEqual(first=output_dtype, second=np.dtype("int16"))
 
     def test_neuroscope_starting_time(self):
@@ -459,7 +481,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeries_raw"].starting_time)
+            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeriesRaw"].starting_time)
 
 
 if __name__ == "__main__":

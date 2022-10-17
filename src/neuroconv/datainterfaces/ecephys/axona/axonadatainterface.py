@@ -10,7 +10,8 @@ from ....utils import get_schema_from_method_signature, FilePathType
 
 
 class AxonaRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a AxonaRecordingExtractor"""
+    """Primary data interface class for converting a Axona data using a
+    :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`."""
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         super().__init__(file_path=file_path, all_annotations=True, verbose=verbose)

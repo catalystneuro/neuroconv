@@ -1,7 +1,14 @@
 ScanImage data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
-Convert ScanImage imaging data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageImagingInterface`.
+Install NeuroConv with the additional dependencies necessary for reading ScanImage data.
+
+.. code-block:: bash
+
+    pip install neuroconv[scanimage]
+
+Convert ScanImage imaging data to NWB using
+:py:class:`~neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface.ScanImageImagingInterface`.
 
 .. code-block:: python
 
