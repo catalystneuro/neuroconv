@@ -20,6 +20,8 @@ jobs:
     uses: catalystneuro/neuroconv/.github/workflows/dev-testing.yml@dev_testing_gallery
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
   run-doctest:
     needs: assess-file-changes
