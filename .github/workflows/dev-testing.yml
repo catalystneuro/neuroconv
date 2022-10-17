@@ -102,14 +102,5 @@ jobs:
 
 
 
-      - name: Run full pytest with coverage
-        run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
-      - name: Upload full coverage to Codecov
-        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./codecov.xml
-          flags: unittests
-          name: codecov-umbrella
-          yml: ./codecov.yml
+      - name: Run full pytest
+        run: pytest -rsx -n auto --dist loadscope
