@@ -126,13 +126,9 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
                     description="An optical channel of the microscope.",
                 )
             )
-    # set imaging plane rate:
-    rate = np.nan if imgextractor.get_sampling_frequency() is None else float(imgextractor.get_sampling_frequency())
 
-    # adding imaging_rate:
-    metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()), rate=rate)
+    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()))
 
     plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
     metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
@@ -797,6 +793,11 @@ def add_fluorescence_traces(
         trace_metadata = next(
             trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
         )
+
+        # Pop the rate from the metadata if irregular time series
+        if "timestamps" in roi_response_series_kwargs and "rate" in trace_metadata:
+            trace_metadata.pop("rate")
+
         # Build the roi response series
         roi_response_series_kwargs.update(
             data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),

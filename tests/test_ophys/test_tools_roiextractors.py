@@ -1068,18 +1068,19 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         metadata = deepcopy(self.metadata)
         metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=1.23)
+        metadata["Ophys"]["DfOverF"]["roi_response_series"][0].update(rate=1.23)
 
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
-            metadata=self.metadata,
+            metadata=metadata,
         )
 
         ophys = get_module(self.nwbfile, "ophys")
         roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
         for series_name in roi_response_series.keys():
             self.assertEqual(roi_response_series[series_name].rate, 1.23)
-            self.assertEqual(roi_response_series[series_name].starting_time, None)
+            self.assertEqual(roi_response_series[series_name].starting_time, 0)
             self.assertEqual(roi_response_series[series_name].timestamps, None)
 
     def test_add_fluorescence_traces_irregular_timestamps_with_metadata(self):
@@ -1099,7 +1100,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
             nwbfile=self.nwbfile,
-            metadata=self.metadata,
+            metadata=metadata,
         )
 
         ophys = get_module(self.nwbfile, "ophys")
@@ -1107,7 +1108,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         for series_name in roi_response_series.keys():
             self.assertEqual(roi_response_series[series_name].rate, None)
             self.assertEqual(roi_response_series[series_name].starting_time, None)
-            assert_array_equal(roi_response_series[series_name].timestamps.data, np.empty(shape=5))
+            assert_array_equal(roi_response_series[series_name].timestamps.data, times)
 
 
 class TestAddTwoPhotonSeries(TestCase):
