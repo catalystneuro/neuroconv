@@ -1,4 +1,4 @@
-"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter and Julia Sprenger."""
+"""Authors: Heberto Mayorquin, Cody Baker, Ben Dichter and Julia Sprenger."""
 import json
 import warnings
 from pathlib import Path
