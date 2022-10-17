@@ -65,6 +65,7 @@ jobs:
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
         run: |
           datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+          rm -rf ./ephy_testing_data/.git/
           rm -rf ./ephy_testing_data/.gitattributes
           rm -rf ./ephy_testing_data/.gitignore
           rm -rf ./ephy_testing_data/config.yml
@@ -85,7 +86,13 @@ jobs:
 
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
-        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+        run: |
+          datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+          rm -rf ./ephy_testing_data/.datalad/
+          rm -rf ./ephy_testing_data/.git/
+          rm -rf ./ephy_testing_data/.gitattributes
+          rm -rf ./ephy_testing_data/.gitignore
+          rm -rf ./ephy_testing_data/README.md  
       - name: Upload ophys dataset to S3
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
@@ -99,7 +106,13 @@ jobs:
 
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+        run: |
+          datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+          rm -rf ./ephy_testing_data/.datalad/
+          rm -rf ./ephy_testing_data/.git/
+          rm -rf ./ephy_testing_data/.gitattributes
+          rm -rf ./ephy_testing_data/.gitignore
+          rm -rf ./ephy_testing_data/README.md  
       - name: Upload behavior dataset to S3
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
