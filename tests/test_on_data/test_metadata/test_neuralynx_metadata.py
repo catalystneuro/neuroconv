@@ -18,7 +18,7 @@ def test_neuralynx_cheetah_v574_metadata():
     file_metadata = metadata["NWBFile"]
 
     assert file_metadata["session_start_time"] == datetime.datetime(2017, 2, 16, 17, 56, 4)
-    # the session id can only be extracted from the file headers exposed for neo > 0.11.0
+    # the session id is only exposed on neo dev as of now. TODO: Remove if after neo >=0.12
     if version.LooseVersion(neo.__version__) > version.LooseVersion("0.11.0"):
         assert file_metadata["session_id"] == "d8ba8eef-8d11-4cdc-86dc-05f50d4ba13d"
 
@@ -26,7 +26,7 @@ def test_neuralynx_cheetah_v574_metadata():
     assert '"FileType": "NCS"' in file_metadata["notes"]
     assert '"recording_closed": "2017-02-16 18:01:18"' in file_metadata["notes"]
     assert '"ADMaxValue": "32767"' in file_metadata["notes"]
-    # the sampling rate and device is part of the file headers exposed for neo > 0.11.0
+    # the sampling rate and device is only exposed on neo dev as of now. TODO: Remove if after neo >=0.12
     if version.LooseVersion(neo.__version__) > version.LooseVersion("0.11.0"):
         assert '"sampling_rate": "32000.0"' in file_metadata["notes"]
 
@@ -49,7 +49,7 @@ def test_neuralynx_cheetah_v563_metadata():
     assert '"recording_closed": "2016-11-28 22:44:41.145000"' in file_metadata["notes"]
     assert '"ADMaxValue": "32767"' in file_metadata["notes"]
 
-    # the sampling rate and device is part of the file headers exposed for neo > 0.11.0
+    # the sampling rate and device is only exposed on neo dev as of now. TODO: Remove if after neo >=0.12
     if version.LooseVersion(neo.__version__) > version.LooseVersion("0.11.0"):
         assert '"sampling_rate": "2000.0"' in file_metadata["notes"]
 
@@ -70,7 +70,7 @@ def test_neuralynx_cheetah_v540_metadata():
     assert '"recording_closed": "2001-01-01 00:00:00"' in file_metadata["notes"]
     assert '"ADMaxValue": "32767"' in file_metadata["notes"]
 
-    # the sampling rate and device is part of the file headers exposed for neo > 0.11.0
+    # the sampling rate and device is only exposed on neo dev as of now. TODO: Remove if after neo >=0.12
     if version.LooseVersion(neo.__version__) > version.LooseVersion("0.11.0"):
         assert '"sampling_rate": "1017.375"' in file_metadata["notes"]
 
