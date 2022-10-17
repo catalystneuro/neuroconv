@@ -153,7 +153,7 @@ def extract_metadata_single_reader(neo_reader) -> dict:
             for chan_idx in range(len(stream_annotations["__array_annotations__"]["channel_names"])):
                 headers.append({k: v[chan_idx] for k, v in stream_annotations["__array_annotations__"].items()})
 
-    # extract common attributes across channels
+    # extract common attributes across channels by preserving only shared header keys and values
     common_header = _dict_intersection(headers)
 
     # reintroduce recording times as these are typically not exactly identical
