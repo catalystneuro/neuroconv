@@ -49,7 +49,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if "ApplicationName" in neo_metadata or "ApplicationVersion" in neo_metadata:
                 name = neo_metadata.pop("ApplicationName", "")
                 version = str(neo_metadata.pop("ApplicationVersion", ""))
-                neuralynx_device["description"] = f'{name} {version}'
+                neuralynx_device["description"] = f"{name} {version}"
             nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
         neo_metadata = {k: str(v) for k, v in neo_metadata.items()}

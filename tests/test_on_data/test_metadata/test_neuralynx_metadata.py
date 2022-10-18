@@ -8,6 +8,7 @@ from ..setup_paths import ECEPHY_DATA_PATH
 
 NLX_PATH = ECEPHY_DATA_PATH / "neuralynx"
 
+
 def test_neuralynx_cheetah_v574_metadata():
     import neo
     import distutils.version as version
@@ -31,6 +32,7 @@ def test_neuralynx_cheetah_v574_metadata():
 
         device_metadata = metadata["Ecephys"]["Device"]
         assert device_metadata[-1] == {"name": "AcqSystem1 DigitalLynxSX", "description": "Cheetah 5.7.4"}
+
 
 def test_neuralynx_cheetah_v574_metadata():
     import neo
@@ -106,18 +108,19 @@ def test_neuralynx_filtering():
     interface = NeuralynxRecordingInterface(file_path)
     filtering_keys = interface.recording_extractor.get_annotation("filtering_properties")
 
-    expected_single_channel_props = {"DSPLowCutFilterEnabled": "True",
-                      "DspLowCutFrequency": "10",
-                      "DspLowCutNumTaps": "0",
-                      "DspLowCutFilterType": "DCO",
-                      "DSPHighCutFilterEnabled": "True",
-                      "DspHighCutFrequency": "9000",
-                      "DspHighCutNumTaps": "64",
-                      "DspHighCutFilterType": "FIR",
-                      "DspDelayCompensation": "Enabled",
-                      # don't check for filter delay as the unit might be differently parsed
-                      # "DspFilterDelay_µs": "984"
-                      }
+    expected_single_channel_props = {
+        "DSPLowCutFilterEnabled": "True",
+        "DspLowCutFrequency": "10",
+        "DspLowCutNumTaps": "0",
+        "DspLowCutFilterType": "DCO",
+        "DSPHighCutFilterEnabled": "True",
+        "DspHighCutFrequency": "9000",
+        "DspHighCutNumTaps": "64",
+        "DspHighCutFilterType": "FIR",
+        "DspDelayCompensation": "Enabled",
+        # don't check for filter delay as the unit might be differently parsed
+        # "DspFilterDelay_µs": "984"
+    }
 
     extracted_props = {k: interface.recording_extractor.get_property(k) for k in filtering_keys}
 
@@ -127,4 +130,3 @@ def test_neuralynx_filtering():
     # check values for first channel
     for key, exp_value in expected_single_channel_props.items():
         assert exp_value == extracted_props[key][0]
-
