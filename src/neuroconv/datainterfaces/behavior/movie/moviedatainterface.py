@@ -107,7 +107,7 @@ class MovieInterface(BaseDataInterface):
         stub_test: bool = False,
         external_mode: bool = True,
         starting_times: Optional[list] = None,
-        starting_frames: Optional[List[List[int]]] = None,
+        starting_frames: Optional[list] = None,
         timestamps: Optional[list] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
