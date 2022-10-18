@@ -2,10 +2,11 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from pathlib import Path
 from datetime import datetime
+import unittest
 
 from pynwb import NWBFile
 
-from neuroconv import NWBConverter
+from neuroconv import NWBConverter, ConverterPipe
 from neuroconv.basedatainterface import BaseDataInterface
 
 try:
@@ -42,3 +43,96 @@ def test_converter():
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         rmtree(test_dir)
+
+
+class TestNWBConverterAndPipeInitialization(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        class InterfaceA(BaseDataInterface):
+            def __init__(self, **source_data):
+                super().__init__(**source_data)
+
+            def run_conversion(self):
+                pass
+
+        cls.InterfaceA = InterfaceA
+
+        class InterfaceB(BaseDataInterface):
+            def __init__(self, **source_data):
+                super().__init__(**source_data)
+
+            def run_conversion(self):
+                pass
+
+        cls.InterfaceB = InterfaceB
+
+    def test_child_class_source_data_init(self):
+        class NWBConverterChild(NWBConverter):
+            data_interface_classes = dict(InterfaceA=self.InterfaceA, InterfaceB=self.InterfaceB)
+
+        source_data = dict(InterfaceA=dict(), InterfaceB=dict())
+        converter = NWBConverterChild(source_data)
+
+        data_interface_names = converter.data_interface_classes.keys()
+        assert ["InterfaceA", "InterfaceB"] == list(data_interface_names)
+
+        assert converter.data_interface_classes["InterfaceA"] is self.InterfaceA
+        assert converter.data_interface_classes["InterfaceB"] is self.InterfaceB
+
+    def test_pipe_list_init(self):
+
+        interface_a = self.InterfaceA()
+        interface_b = self.InterfaceB()
+        data_interfaces_list = [interface_a, interface_b]
+        converter = ConverterPipe(data_interfaces=data_interfaces_list)
+
+        data_interface_names = converter.data_interface_classes.keys()
+        assert ["InterfaceA", "InterfaceB"] == list(data_interface_names)
+
+        assert converter.data_interface_classes["InterfaceA"] is self.InterfaceA
+        assert converter.data_interface_classes["InterfaceB"] is self.InterfaceB
+
+        assert converter.data_interface_objects["InterfaceA"] is interface_a
+        assert converter.data_interface_objects["InterfaceB"] is interface_b
+
+    def test_pipe_list_dict(self):
+
+        interface_a = self.InterfaceA()
+        interface_b = self.InterfaceB()
+        data_interfaces_dict = dict(InterfaceA=interface_a, InterfaceB=interface_b)
+        converter = ConverterPipe(data_interfaces=data_interfaces_dict)
+
+        data_interface_names = converter.data_interface_classes.keys()
+        assert ["InterfaceA", "InterfaceB"] == list(data_interface_names)
+
+        assert converter.data_interface_classes["InterfaceA"] is self.InterfaceA
+        assert converter.data_interface_classes["InterfaceB"] is self.InterfaceB
+
+        assert converter.data_interface_objects["InterfaceA"] is interface_a
+        assert converter.data_interface_objects["InterfaceB"] is interface_b
+
+    def test_consistent_init_pipe_vs_nwb(self):
+        class NWBConverterChild(NWBConverter):
+            data_interface_classes = dict(InterfaceA=self.InterfaceA, InterfaceB=self.InterfaceB)
+
+        source_data = dict(InterfaceA=dict(), InterfaceB=dict())
+        converter_child_class = NWBConverterChild(source_data)
+
+        interface_a = self.InterfaceA()
+        interface_b = self.InterfaceB()
+        data_interfaces_dict = dict(InterfaceA=interface_a, InterfaceB=interface_b)
+        converter_arguments = ConverterPipe(data_interfaces=data_interfaces_dict)
+
+        assert converter_arguments.data_interface_classes == converter_child_class.data_interface_classes
+
+    def test_unique_names_with_list_argument(self):
+
+        interface_a = self.InterfaceA()
+        interface_a2 = self.InterfaceA()
+        interface_b = self.InterfaceB()
+        data_interfaces_list = [interface_a, interface_b, interface_a2]
+        converter = ConverterPipe(data_interfaces=data_interfaces_list)
+
+        data_interface_names = list(converter.data_interface_objects.keys())
+        expected_interface_names = ["InterfaceA001", "InterfaceB", "InterfaceA002"]
+        self.assertListEqual(data_interface_names, expected_interface_names)
