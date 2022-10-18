@@ -25,7 +25,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_property(key="filtering", values=filtering)
 
     def get_metadata(self):
-        # extracting general session metadata exemplary from first recording
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
@@ -45,10 +44,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             neuralynx_device = {"name": neo_metadata.pop("HardwareSubSystemType")}
         if neuralynx_device is not None:
             if "ApplicationName" in neo_metadata or "ApplicationVersion" in neo_metadata:
-                description = (
-                    neo_metadata.pop("ApplicationName", "") + " " + str(neo_metadata.pop("ApplicationVersion", ""))
-                )
-                neuralynx_device["description"] = description
+                name = neo_metadata.pop("ApplicationName", "")
+                version = str(neo_metadata.pop("ApplicationVersion", ""))
+                neuralynx_device["description"] = f'{name} {version}'
             nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
         neo_metadata = {k: str(v) for k, v in neo_metadata.items()}
