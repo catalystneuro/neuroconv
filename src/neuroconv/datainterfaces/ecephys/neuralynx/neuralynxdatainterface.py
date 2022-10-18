@@ -13,16 +13,19 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
-        super().__init__(folder_path=folder_path, verbose=verbose)
+        super().__init__(folder_path=folder_path, verbose=verbose, all_annotations=True)
         neo_reader = self.recording_extractor.neo_reader
         self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
         # preserve neo_reader attribute for SelectSegmentRecording
         self.recording_extractor.neo_reader = neo_reader
-        self.add_recording_extractor_properties()
 
-    def add_recording_extractor_properties(self):
-        filtering = extract_filtering_metadata(self.recording_extractor.neo_reader)
-        self.recording_extractor.set_property(key="filtering", values=filtering)
+        # add annotation listing all filtering related property keys
+        filtering_properties = []
+        for key in self.recording_extractor.get_property_keys():
+            if key.lower().startswith("dsp"):
+                filtering_properties.append(key)
+
+        self.recording_extractor.annotate(filtering_properties=filtering_properties)
 
     def get_metadata(self):
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
@@ -70,44 +73,6 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         """
 
         super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
-
-
-def extract_filtering_metadata(neo_reader) -> List[str]:
-    """
-    Get the filtering metadata from a neo reader containing multiple channels.
-
-    Parameters
-    ----------
-    neo_reader: NeuralynxRawIO
-        Neo IO to extract the filtering metadata from
-
-    Returns
-    -------
-    list:
-        list of (str) json dump of filter parameters of each channel.
-         Uses the mu character, which may cause problems
-        for downstream things that expect ASCII.
-    """
-    neo_annotations = neo_reader.raw_annotations
-
-    # extracting infos of each signal (channel)
-    filter_info = []
-    stream_infos = neo_annotations["blocks"][0]["segments"][0]["signals"]
-    # iterate across streams
-    for stream_info in stream_infos:
-        stream_annotations = stream_info["__array_annotations__"]
-        filter_dict = {k: v for k, v in stream_annotations.items() if k.lower().startswith("dsp")}
-        # iterate across channels in stream
-        for chan_idx in range(len(stream_info["__array_annotations__"]["channel_names"])):
-            channel_filter_dict = {k: v[chan_idx] for k, v in filter_dict.items()}
-            # conversion to string values
-            for key, value in channel_filter_dict.items():
-                if not isinstance(value, str):
-                    value = " ".join(value)
-                channel_filter_dict[key] = value
-            filter_info.append(json.dumps(channel_filter_dict, ensure_ascii=True))
-
-    return filter_info
 
 
 def extract_neo_header_metadata(neo_reader) -> dict:
