@@ -4,7 +4,8 @@ from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting the SpikeGadgets format."""
+    """Primary data interface class for converting data in the SpikeGadgets format.
+    Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`."""
 
     @classmethod
     def get_source_schema(cls):

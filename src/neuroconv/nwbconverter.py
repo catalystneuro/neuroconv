@@ -1,7 +1,8 @@
 """Authors: Cody Baker and Ben Dichter."""
 import json
 from jsonschema import validate
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Union
+from collections import Counter
 from pathlib import Path
 
 from pynwb import NWBFile
@@ -16,7 +17,7 @@ from .utils import (
     unroot_schema,
     fill_defaults,
 )
-
+from .basedatainterface import BaseDataInterface
 from .utils.json_schema import NWBMetaDataEncoder
 
 
@@ -135,7 +136,6 @@ class NWBConverter:
     ) -> NWBFile:
         """
         Run the NWB conversion over all the instantiated data interfaces.
-
         Parameters
         ----------
         nwbfile_path: FilePathType
@@ -154,7 +154,6 @@ class NWBConverter:
         conversion_options: dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
-
         Returns
         -------
         nwbfile: NWBFile
@@ -184,3 +183,48 @@ class NWBConverter:
                 )
 
         return nwbfile_out
+
+
+class ConverterPipe(NWBConverter):
+    """Takes a list or dict of pre-initialized interfaces as arguments to build an NWBConverter class"""
+
+    def get_conversion_options_schema(self):
+        """Compile conversion option schemas from each of the data interface classes."""
+        conversion_options_schema = get_base_schema(
+            root=True,
+            id_="conversion_options.schema.json",
+            title="Conversion options schema",
+            description="Schema for the conversion options",
+            version="0.1.0",
+        )
+        for interface_name, data_interface in self.data_interface_classes.items():
+            conversion_options_schema["properties"].update(
+                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
+            )
+        return conversion_options_schema
+
+    def get_source_schema(self):
+        raise NotImplementedError("Source data not available with previously intialized classes")
+
+    def validate_source(self):
+        raise NotImplementedError("Source data not available with previously intialized classes")
+
+    def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
+        self.verbose = verbose
+        if isinstance(data_interfaces, list):
+            # Create unique names for each interface
+            counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
+            total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
+            self.data_interface_objects = dict()
+            for interface in data_interfaces:
+                class_name = interface.__class__.__name__
+                counter[class_name] += 1
+                unique_signature = f"{counter[class_name]:03}" if total_counts[class_name] > 1 else ""
+                interface_name = f"{class_name}{unique_signature}"
+                self.data_interface_objects[interface_name] = interface
+        elif isinstance(data_interfaces, dict):
+            self.data_interface_objects = data_interfaces
+
+        self.data_interface_classes = {
+            name: interface.__class__ for name, interface in self.data_interface_objects.items()
+        }
