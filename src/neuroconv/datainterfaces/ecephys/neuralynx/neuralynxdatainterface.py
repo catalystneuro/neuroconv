@@ -95,6 +95,7 @@ def extract_neo_header_metadata(neo_reader) -> dict:
     # check if neuralynx file header objects are present and use these metadata extraction
     if hasattr(neo_reader, "file_headers"):
         # use only ncs files as only continuous signals are extracted
+        # note that in the neo io the order of file headers is be the same as for channels
         headers = [header for filename, header in neo_reader.file_headers.items() if filename.lower().endswith(".ncs")]
 
     # use metadata provided as array_annotations for each channel (neo version <=0.11.0)
