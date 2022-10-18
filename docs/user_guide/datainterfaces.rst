@@ -20,8 +20,7 @@ For instance, to install the dependencies for SpikeGLX, run:
 
 .. note::
 
-     If you are using `zsh` for command interpreter, you will have to quote the
-     argument like this:
+     If you are using a Z-shell (`zsh`) terminal (the default for MacOS), then you will have to use quotes to specify the custom dependency.
 
      .. code-block::
 
