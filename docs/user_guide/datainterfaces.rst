@@ -18,6 +18,15 @@ For instance, to install the dependencies for SpikeGLX, run:
 
     pip install neuroconv[spikeglx]
 
+.. note::
+
+     If you are using `zsh` for command interpreter, you will have to quote the
+     argument like this:
+
+     .. code-block::
+
+         pip install 'neuroconv[spikeglx]'
+
 2. Construction
 ~~~~~~~~~~~~~~~
 Initialize a class and direct it to the appropriate source data. This will open
