@@ -36,7 +36,7 @@ jobs:
           echo "::set-output name=CONVERSION_GALLERY_CHANGED::false"
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo $file
-            if [[ $file == "src/"* || $file == "requirements-minimal.txt" || $file == "requirements-testing.txt" || $file == "setup.py" ]]
+            if [[ $file == "src/"* || $file == "tests/"* || $file == "requirements-minimal.txt" || $file == "requirements-testing.txt" || $file == "setup.py" ]]
             then
               echo "Source changed"
               echo "::set-output name=SOURCE_CHANGED::true"
