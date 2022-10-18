@@ -80,3 +80,13 @@ Behavior
 
     DeepLabCut <behavior/deeplabcut>
     SLEAP <behavior/sleap>
+
+Common interface combinations
+-----------------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    combinations/spikeglx_and_phy
+    combinations/tiff_and_suite2p
+    combinations/ecephys_pose_estimation
