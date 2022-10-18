@@ -105,7 +105,7 @@ class TestMovieInterface(TestCase):
             )
 
     def test_movie_no_starting_times_with_exernal_mode(self):
-        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0.0, 0.0]]))
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0, 0]]))
         metadata = self.metadata
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
@@ -176,7 +176,7 @@ class TestMovieInterface(TestCase):
                 assert mod[movie_interface_name].external_file[0] == str(self.movie_files[index])
 
     def test_movie_duplicate_names_with_external_mode(self):
-        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0.0, 0.0]]))
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0, 0]]))
         metadata = self.metadata
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
@@ -285,7 +285,7 @@ class TestMovieInterface(TestCase):
             )
 
     def test_starting_frames_value_error(self):
-        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0.0]]))
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0]]))
         metadata = self.metadata
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
