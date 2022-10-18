@@ -104,8 +104,8 @@ class TestMovieInterface(TestCase):
                 metadata=self.metadata,
             )
 
-    def test_movie_no_starting_times_with_exernal_model(self):
-        conversion_opts = dict(Movie=dict(external_mode=True))
+    def test_movie_no_starting_times_with_exernal_mode(self):
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0, 0]]))
         metadata = self.metadata
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
@@ -176,7 +176,7 @@ class TestMovieInterface(TestCase):
                 assert mod[movie_interface_name].external_file[0] == str(self.movie_files[index])
 
     def test_movie_duplicate_names_with_external_mode(self):
-        conversion_opts = dict(Movie=dict(external_mode=True))
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0, 0]]))
         metadata = self.metadata
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
         metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
@@ -269,3 +269,37 @@ class TestMovieInterface(TestCase):
                 movie_interface_name = movie_metadata["name"]
                 assert acquisition_module[movie_interface_name].rate == 1 / (timestamps[1] - timestamps[0])
                 assert acquisition_module[movie_interface_name].timestamps is None
+
+    def test_starting_frames_type_error(self):
+        conversion_opts = dict(Movie=dict(external_mode=True))
+        metadata = self.metadata
+        movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
+        metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
+
+        with self.assertRaisesWith(
+            exc_type=TypeError,
+            exc_msg="Multiple paths were specified for ImageSeries index 0, but no starting_frames were specified!",
+        ):
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                overwrite=True,
+                conversion_options=conversion_opts,
+                metadata=metadata,
+            )
+
+    def test_starting_frames_value_error(self):
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0]]))
+        metadata = self.metadata
+        movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
+        metadata["Behavior"]["Movies"][1]["name"] = movie_interface_name
+
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg="Multiple paths (2) were specified for ImageSeries index 0, but the length of starting_frames (1) did not match the number of paths!",
+        ):
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                overwrite=True,
+                conversion_options=conversion_opts,
+                metadata=metadata,
+            )

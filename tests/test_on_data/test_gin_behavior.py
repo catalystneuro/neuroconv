@@ -225,7 +225,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
     def test_movie_starting_times_with_duplicate_names(self):
         """When all movies go in one ImageSeries container, starting times should be assumed 0.0"""
         self.nwbfile_path = self.nwbfile_path.parent / "movie_duplicated_names.nwb"
-        conversion_opts = dict(Movie=dict(external_mode=True))
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0] * 5]))
 
         metadata = self.get_metadata()
         movies_metadata = metadata["Behavior"]["Movies"]
@@ -307,7 +307,7 @@ class TestMovieDataNwbConversions(unittest.TestCase):
                 assert mod[movie_interface_name].external_file[0] == str(self.movie_files[no])
 
     def test_external_model_with_duplicate_movies(self):
-        conversion_opts = dict(Movie=dict(external_mode=True))
+        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0] * 5]))
 
         metadata = self.get_metadata()
         movie_interface_name = metadata["Behavior"]["Movies"][0]["name"]
