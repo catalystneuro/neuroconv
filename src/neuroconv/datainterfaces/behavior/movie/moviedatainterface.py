@@ -221,11 +221,16 @@ class MovieInterface(BaseDataInterface):
                 raise ValueError("provide starting times as a list of len " f"{len(movies_metadata_unique)}")
 
         # Iterate over unique movies
+        stub_frames = 10
         for j, (image_series_kwargs, file_list) in enumerate(zip(movies_metadata_unique, file_paths_list)):
 
             with VideoCaptureContext(str(file_list[0])) as vc:
                 fps = vc.get_movie_fps()
-                movie_timestamps = starting_times[j] + vc.get_movie_timestamps() if timestamps is None else timestamps
+                max_frames = stub_frames if stub_test else None
+                extracted_timestamps = vc.get_movie_timestamps(max_frames)
+                movie_timestamps = (
+                    starting_times[j] + extracted_timestamps if timestamps is None else timestamps[:max_frames]
+                )
 
             if external_mode:
                 num_files = len(file_list)
@@ -257,7 +262,7 @@ class MovieInterface(BaseDataInterface):
                     chunk_data = True
                 with VideoCaptureContext(str(file)) as video_capture_ob:
                     if stub_test:
-                        video_capture_ob.frame_count = 10
+                        video_capture_ob.frame_count = stub_frames
                     total_frames = video_capture_ob.get_movie_frame_count()
                     frame_shape = video_capture_ob.get_frame_shape()
 
@@ -267,7 +272,7 @@ class MovieInterface(BaseDataInterface):
                 if chunk_data:
                     video_capture_ob = VideoCaptureContext(str(file))
                     if stub_test:
-                        video_capture_ob.frame_count = 10
+                        video_capture_ob.frame_count = stub_frames
                     iterable = DataChunkIterator(
                         data=tqdm(
                             iterable=video_capture_ob,
@@ -289,7 +294,7 @@ class MovieInterface(BaseDataInterface):
                     iterable = np.zeros(shape=maxshape, dtype="uint8")
                     with VideoCaptureContext(str(file)) as video_capture_ob:
                         if stub_test:
-                            video_capture_ob.frame_count = 10
+                            video_capture_ob.frame_count = stub_frames
                         with tqdm(
                             desc=f"Reading movie data for {Path(file).name}",
                             position=tqdm_pos,
