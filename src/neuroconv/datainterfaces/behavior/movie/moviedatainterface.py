@@ -156,7 +156,7 @@ class MovieInterface(BaseDataInterface):
         starting_times : list, optional
             List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
             sequential order and are contiguous.
-        starting_times : list, optional
+        starting_frames : list, optional
             List of start frames for each movie written using external mode.
             Required if more than one path is specified per ImageSeries in external mode.
         timestamps : list, optional
@@ -220,7 +220,12 @@ class MovieInterface(BaseDataInterface):
             else:
                 raise ValueError("provide starting times as a list of len " f"{len(movies_metadata_unique)}")
 
+        # Iterate over unique movies
         for j, (image_series_kwargs, file_list) in enumerate(zip(movies_metadata_unique, file_paths_list)):
+
+            with VideoCaptureContext(str(file_list[0])) as vc:
+                fps = vc.get_movie_fps()
+                movie_timestamps = starting_times[j] + vc.get_movie_timestamps() if timestamps is None else timestamps
 
             if external_mode:
                 num_files = len(file_list)
@@ -236,10 +241,6 @@ class MovieInterface(BaseDataInterface):
                 elif num_files > 1:
                     image_series_kwargs.update(starting_frame=starting_frames[j])
 
-                with VideoCaptureContext(str(file_list[0])) as vc:
-                    fps = vc.get_movie_fps()
-                    if timestamps is None:
-                        timestamps = starting_times[j] + vc.get_movie_timestamps()
                 image_series_kwargs.update(
                     format="external",
                     external_file=file_list,
@@ -259,8 +260,7 @@ class MovieInterface(BaseDataInterface):
                         video_capture_ob.frame_count = 10
                     total_frames = video_capture_ob.get_movie_frame_count()
                     frame_shape = video_capture_ob.get_frame_shape()
-                    timestamps = starting_times[j] + video_capture_ob.get_movie_timestamps()
-                    fps = video_capture_ob.get_movie_fps()
+
                 maxshape = (total_frames, *frame_shape)
                 best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
                 tqdm_pos, tqdm_mininterval = (0, 10)
@@ -315,7 +315,9 @@ class MovieInterface(BaseDataInterface):
                         chunks=best_gzip_chunk,
                     )
                 image_series_kwargs.update(data=data)
-            rate = calculate_regular_series_rate(series=timestamps)
+
+            # Store sampling rate if timestamps are regular
+            rate = calculate_regular_series_rate(series=movie_timestamps)
             if rate is not None:
                 if fps != rate:
                     warn(
@@ -325,7 +327,7 @@ class MovieInterface(BaseDataInterface):
                     )
                 image_series_kwargs.update(starting_time=starting_times[j], rate=rate)
             else:
-                image_series_kwargs.update(timestamps=timestamps)
+                image_series_kwargs.update(timestamps=movie_timestamps)
 
             if module_name is None:
                 nwbfile.add_acquisition(ImageSeries(**image_series_kwargs))
