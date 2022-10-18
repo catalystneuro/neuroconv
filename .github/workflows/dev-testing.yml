@@ -19,12 +19,9 @@ env:
 jobs:
   run:
     name: Minimal and full tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        python-version: [3.7, 3.8, 3.9]
-        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: s-weigand/setup-conda@v1
       - uses: actions/checkout@v2
@@ -32,7 +29,7 @@ jobs:
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.9
 
       - name: Global Setup
         run: |
@@ -44,43 +41,20 @@ jobs:
 
 
 
-      - name: Install neuroconv with minimal requirements
-        run: pip install .[test]
-      - name: Run import tests
-        run: |
-          pytest tests/imports.py::TestImportStructure::test_top_level
-          pytest tests/imports.py::TestImportStructure::test_tools
-          pytest tests/imports.py::TestImportStructure::test_datainterfaces
-      - name: Run minimal tests
-        run: pytest tests/test_minimal -rsx -n auto --dist loadscope
-
-
-
-      - name: Install with behavior requirements
-        run: pip install .[behavior]
-      - name: Run behavior tests
-        run: pytest tests/test_behavior -rsx -n auto --dist loadscope
-
-      - name: Install with icephys requirements
-        run: pip install .[icephys]
-
-      #- name: Run icephys tests  # There are no icephys specific tests without data
-      #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
-
-      - name: Install with ecephys requirements
-        run: pip install .[ecephys]
-      - name: Run ecephys tests
-        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
-
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
-
-
-
       - name: Install full requirements (-e needed for codecov report)
-        run: pip install -e .[full]
+        run: pip install -e .[full,test]
+
+
+      - name: Dev gallery - ROIExtractors
+        run: pip install git+https://github.com/CatalystNeuro/roiextractors@master
+      - name: Dev gallery - PyNWB
+        run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
+      - name: Dev gallery - SpikeInterface
+        run: pip install git+https://github.com/SpikeInterface/spikeinterface@master
+      - name: Dev gallery - NEO
+        run: pip install git+https://github.com/NeuralEnsemble/python-neo@master
+      - name: Dev gallery - HDMF
+        run: pip install git+https://github.com/hdmf-dev/hdmf@dev
 
 
 
@@ -132,14 +106,5 @@ jobs:
 
 
 
-      - name: Run full pytest with coverage
-        run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
-      - name: Upload full coverage to Codecov
-        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./codecov.xml
-          flags: unittests
-          name: codecov-umbrella
-          yml: ./codecov.yml
+      - name: Run full pytest
+        run: pytest -rsx -n auto --dist loadscope
