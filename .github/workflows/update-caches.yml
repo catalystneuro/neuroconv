@@ -63,8 +63,10 @@ jobs:
 
       - name: "Force GIN: ephys download"
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
+        run: datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+      - name: Cleanup unneeded files to minimize AWS billing
+        if: steps.cache-ephys-datasets.outputs.cache-hit == false
         run: |
-          datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
           rm -rf ./ephy_testing_data/.git/
           rm -rf ./ephy_testing_data/.gitattributes
           rm -rf ./ephy_testing_data/.gitignore
@@ -86,8 +88,10 @@ jobs:
 
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+      - name: Cleanup unneeded files to minimize AWS billing
+        if: steps.cache-ophys-datasets.outputs.cache-hit == false
         run: |
-          datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
           rm -rf ./ephy_testing_data/.datalad/
           rm -rf ./ephy_testing_data/.git/
           rm -rf ./ephy_testing_data/.gitattributes
@@ -106,8 +110,10 @@ jobs:
 
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
-        run: |
-          datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+        run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+      - name: Cleanup unneeded files to minimize AWS billing
+        if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        run: |  
           rm -rf ./ephy_testing_data/.datalad/
           rm -rf ./ephy_testing_data/.git/
           rm -rf ./ephy_testing_data/.gitattributes
