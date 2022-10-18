@@ -1,6 +1,7 @@
 """Authors: Heberto Mayorquin, Cody Baker, Ben Dichter and Julia Sprenger."""
 import json
 from typing import List, Dict
+import numpy as np
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -24,6 +25,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         for key in self.recording_extractor.get_property_keys():
             if key.lower().startswith("dsp"):
                 filtering_properties.append(key)
+
+        # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
+        for key in self.recording_extractor.get_property_keys():
+            value = self.recording_extractor.get_property(key)
+            if value.dtype == object or value.dtype == np.bool_:
+                self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
         self.recording_extractor.annotate(filtering_properties=filtering_properties)
 
