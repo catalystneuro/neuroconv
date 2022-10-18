@@ -12,6 +12,9 @@
 
 # v0.2.1
 
+### Features
+* Added `ConverterPipe`, a class that allows chaining previously intialized interfaces for batch conversion and corresponding tests [PR #169](https://github.com/catalystneuro/neuroconv/pull/169)
+
 ### Fixes
 
 * Updated `BlackrockRecordingInterface` to support multi stream file and added gin corresponding gin tests [PR #176](https://github.com/catalystneuro/neuroconv/pull/176)
