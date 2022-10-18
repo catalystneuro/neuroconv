@@ -1,6 +1,6 @@
 """Authors: Saksham Sharda, Cody Baker and Ben Dichter."""
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from warnings import warn
 
 import psutil
@@ -107,7 +107,7 @@ class MovieInterface(BaseDataInterface):
         stub_test: bool = False,
         external_mode: bool = True,
         starting_times: Optional[list] = None,
-        starting_frames: Optional[list] = None,
+        starting_frames: Optional[List[List[int]]] = None,
         timestamps: Optional[list] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
