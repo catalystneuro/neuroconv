@@ -7,8 +7,10 @@ Install NeuroConv with the additional dependencies necessary for reading multime
 
     pip install neuroconv[movie]
 
-This interface can handle conversions from avi, mov, mp4, wmv, flv and most FFmpeg supported formats to NWB using the
+This interface can handle conversions from avi, mov, mp4, wmv, flv and most FFmpeg_ supported formats to NWB using the
 :py:class:`~neuroconv.datainterfaces.behavior.movie.moviedatainterface.MovieInterface` class.
+
+.. _FFmpeg: https://ffmpeg.org/
 
 .. code-block:: python
 
