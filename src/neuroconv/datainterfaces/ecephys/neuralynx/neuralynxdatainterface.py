@@ -1,10 +1,7 @@
-"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
+"""Authors: Heberto Mayorquin, Cody Baker, Ben Dichter and Julia Sprenger."""
 import json
-import warnings
-from pathlib import Path
-
-from natsort import natsorted
-from dateutil import parser
+from typing import List, Dict
+import numpy as np
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -12,95 +9,58 @@ from ....utils import FolderPathType
 from ....utils.json_schema import dict_deep_update
 
 
-def parse_header(header):
-    header_dict = dict()
-    for line in header.split("\n")[1:]:
-        if line:
-            if line[0] == "-":
-                key, val = line[1:].split(" ", 1)
-                header_dict[key] = val
-    return header_dict
-
-
-def get_metadata(folder_path: FolderPathType) -> dict:
-    """
-    Parse the header of one of the .ncs files to get the session start time (without
-    timezone) and the session_id.
-
-    Parameters
-    ----------
-    folder_path: str or Path
-
-    Returns
-    -------
-    dict
-    """
-    folder_path = Path(folder_path)
-    csc_files = sorted(folder_path.glob("*.[nN]cs"))
-    file_path = csc_files[0]
-    with file_path.open(encoding="latin1") as file:
-        raw_header = file.read(1024)
-    header = parse_header(raw_header)
-    if header.get("FileVersion") == "3.4":
-        return dict(
-            session_start_time=parser.parse(header["TimeCreated"]),
-            session_id=header["SessionUUID"],
-        )
-    if header.get("FileVersion", "").startswith("3.3") or header["CheetahRev"].startswith("5.4"):
-        open_line = raw_header.split("\n")[2]
-        spliced_line = open_line[24:35] + open_line[-13:]
-        return dict(session_start_time=parser.parse(spliced_line, dayfirst=False))
-
-
-def get_filtering(channel_path: FolderPathType) -> str:
-    """
-    Get the filtering metadata from an .nsc file.
-
-    Parameters
-    ----------
-    channel_path: str or Path
-        Filepath for an .nsc file
-
-    Returns
-    -------
-    str:
-        json dump of filter parameters. Uses the mu character, which may cause problems
-        for downstream things that expect ASCII.
-    """
-    channel_path = Path(channel_path)
-    with open(channel_path, "r", encoding="latin1") as file:
-        raw_header = file.read(1024)
-    header = parse_header(raw_header)
-
-    return json.dumps(
-        {key: val.strip(" ") for key, val in header.items() if key.lower().startswith("dsp")}, ensure_ascii=False
-    )
-
-
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
-
-        self.nsc_files = natsorted([str(x) for x in Path(folder_path).iterdir() if ".ncs" in x.suffixes])
-
-        super().__init__(folder_path=folder_path, verbose=verbose)
+        super().__init__(folder_path=folder_path, verbose=verbose, all_annotations=True)
+        neo_reader = self.recording_extractor.neo_reader
         self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
+        # preserve neo_reader attribute for SelectSegmentRecording
+        self.recording_extractor.neo_reader = neo_reader
 
-        self.add_recording_extractor_properties()
+        # add annotation listing all filtering related property keys
+        filtering_properties = []
+        for key in self.recording_extractor.get_property_keys():
+            if key.lower().startswith("dsp"):
+                filtering_properties.append(key)
 
-    def add_recording_extractor_properties(self):
-
-        try:
-            filtering = [get_filtering(filename) for filename in self.nsc_files]
-            self.recording_extractor.set_property(key="filtering", values=filtering)
-        except Exception:
-            warnings.warn("filtering could not be extracted.")
+        # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
+        for key in self.recording_extractor.get_property_keys():
+            value = self.recording_extractor.get_property(key)
+            if value.dtype == object or value.dtype == np.bool_:
+                self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
     def get_metadata(self):
-        new_metadata = dict(NWBFile=get_metadata(self.source_data["folder_path"]))
-        return dict_deep_update(super().get_metadata(), new_metadata)
+        neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
+
+        # remove filter related entries already covered by `add_recording_extractor_properties`
+        neo_metadata = {k: v for k, v in neo_metadata.items() if not k.lower().startswith("dsp")}
+
+        # map Neuralynx metadata to NWB
+        nwb_metadata = {"NWBFile": {}, "Ecephys": {"Device": []}}
+        neuralynx_device = None
+        if "SessionUUID" in neo_metadata:
+            # note: SessionUUID can not be used as 'identifier' as this requires uuid4
+            nwb_metadata["NWBFile"]["session_id"] = neo_metadata.pop("SessionUUID")
+        if "recording_opened" in neo_metadata:
+            nwb_metadata["NWBFile"]["session_start_time"] = neo_metadata.pop("recording_opened")
+        if "AcquisitionSystem" in neo_metadata:
+            neuralynx_device = {"name": neo_metadata.pop("AcquisitionSystem")}
+        elif "HardwareSubSystemType" in neo_metadata:
+            neuralynx_device = {"name": neo_metadata.pop("HardwareSubSystemType")}
+        if neuralynx_device is not None:
+            if "ApplicationName" in neo_metadata or "ApplicationVersion" in neo_metadata:
+                name = neo_metadata.pop("ApplicationName", "")
+                version = str(neo_metadata.pop("ApplicationVersion", ""))
+                neuralynx_device["description"] = f"{name} {version}"
+            nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
+
+        neo_metadata = {k: str(v) for k, v in neo_metadata.items()}
+        nwb_metadata["NWBFile"]["notes"] = json.dumps(neo_metadata, ensure_ascii=True)
+
+        return dict_deep_update(super().get_metadata(), nwb_metadata)
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
@@ -118,3 +78,71 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         """
 
         super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
+
+
+def extract_neo_header_metadata(neo_reader) -> dict:
+    """
+    Extract the session metadata from a NeuralynxRawIO object
+
+    Parameters
+    ----------
+    neo_reader: NeuralynxRawIO object
+        Neo IO to extract the metadata from
+
+    Returns
+    -------
+    dict:
+        dictionary containing the session metadata across channels
+        Uses the mu character, which may cause problems
+        for downstream things that expect ASCII.
+    """
+
+    # check if neuralynx file header objects are present and use these metadata extraction
+    if hasattr(neo_reader, "file_headers"):
+        # use only ncs files as only continuous signals are extracted
+        # note that in the neo io the order of file headers is be the same as for channels
+        headers = [header for filename, header in neo_reader.file_headers.items() if filename.lower().endswith(".ncs")]
+
+    # use metadata provided as array_annotations for each channel (neo version <=0.11.0)
+    else:  # TODO: Remove else after dependency update to neo >=0.12
+        headers = []
+        neo_annotations = neo_reader.raw_annotations
+        for stream_annotations in neo_annotations["blocks"][0]["segments"][0]["signals"]:
+            for chan_idx in range(len(stream_annotations["__array_annotations__"]["channel_names"])):
+                headers.append({k: v[chan_idx] for k, v in stream_annotations["__array_annotations__"].items()})
+
+    # extract common attributes across channels by preserving only shared header keys and values
+    common_header = _dict_intersection(headers)
+
+    # reintroduce recording times as these are typically not exactly identical
+    # use minimal recording_opened and maximal recording_closed value
+    if "recording_opened" not in common_header and all(["recording_opened" in h for h in headers]):
+        common_header["recording_opened"] = min([h["recording_opened"] for h in headers])
+    if "recording_closed" not in common_header and all(["recording_closed" in h for h in headers]):
+        common_header["recording_closed"] = max([h["recording_closed"] for h in headers])
+
+    return common_header
+
+
+def _dict_intersection(dict_list: List) -> Dict:
+    """
+    Intersect dict_list and return only common keys and values
+    Parameters
+    ----------
+    dict_list: list of dicitionaries each representing a header
+    Returns
+    -------
+    dict:
+        Dictionary containing key-value pairs common to all input dicitionary_list
+    """
+    if len(dict_list) == 0:
+        return {}
+
+    # Collect keys appearing in all dictionaries
+    common_keys = list(set.intersection(*[set(h.keys()) for h in dict_list]))
+
+    # Add values for common keys if the value is identical across all headers (dict_list)
+    first_dict = dict_list[0]
+    all_dicts_have_same_value_for = lambda key: all([first_dict[key] == dict[key] for dict in dict_list])
+    common_header = {key: first_dict[key] for key in common_keys if all_dicts_have_same_value_for(key)}
+    return common_header
