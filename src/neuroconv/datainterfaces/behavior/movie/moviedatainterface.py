@@ -147,12 +147,8 @@ class MovieInterface(BaseDataInterface):
         stub_test : bool
             If ``True``, truncates the write operation for fast testing. The default is ``False``.
         external_mode : bool
-            :py:class:`~pynwb.image.ImageSeries` in :py:class:`~pynwb.file.NWBFile` may contain either explicit movie
-            data or file paths to external movie files. If True, this utilizes the more efficient method of merely
-            encoding the file path linkage (recommended). For data sharing, the video files must be contained in the
-            same folder as the :py:class:`~pynwb.file.NWBFile`. If the intention of this :py:class:`~pynwb.file.NWBFile`
-            involves an upload to DANDI, the non-NWBFile types are not allowed so this flag would have to be set to
-            ``False``. The default is ``True``.
+            :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external movie files. 
+            If True, this utilizes the more efficient method of writing the relative path to the video files (recommended).
         starting_times : list, optional
             List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
             sequential order and are contiguous.
