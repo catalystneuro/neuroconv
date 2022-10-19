@@ -831,8 +831,9 @@ def _create_roi_table_region(
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
     # Create a reference for ROIs from the plane segmentation
+    id_list = list(plane_segmentation.id)
     roi_table_region = plane_segmentation.create_roi_table_region(
-        region=segmentation_extractor.get_roi_ids(),
+        region=[id_list.index(id) for id in segmentation_extractor.get_roi_ids()],
         description=f"region for Imaging plane{plane_index}",
     )
 
