@@ -147,7 +147,7 @@ class MovieInterface(BaseDataInterface):
         stub_test : bool
             If ``True``, truncates the write operation for fast testing. The default is ``False``.
         external_mode : bool
-            :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external movie files. 
+            :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external movie files.
             If True, this utilizes the more efficient method of writing the relative path to the video files (recommended).
         starting_times : list, optional
             List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
