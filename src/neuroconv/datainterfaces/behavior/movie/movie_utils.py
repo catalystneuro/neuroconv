@@ -21,12 +21,14 @@ class VideoCaptureContext:
         self._frame_count = None
         self._movie_open_msg = "The Movie file is not open!"
 
-    def get_movie_timestamps(self):
+    def get_movie_timestamps(self, max_frames=None):
         """Return numpy array of the timestamps(s) for a movie file."""
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
 
         timestamps = []
-        for _ in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
+        total_frames = self.get_movie_frame_count()
+        frames_to_extract = min(total_frames, max_frames) if max_frames else total_frames
+        for _ in tqdm(range(frames_to_extract), desc="retrieving timestamps"):
             success, _ = self.vc.read()
             if not success:
                 break
