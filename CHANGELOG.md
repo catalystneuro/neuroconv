@@ -12,6 +12,7 @@
 
 ### Documentation and tutorial enhancements
 * Added a note in User Guide/DataInterfaces to help installing custom dependencies for users who use Z-shell (`zsh`). [PR #180](https://github.com/catalystneuro/neuroconv/pull/180)
+* Added `MovieInterface` example in the conversion gallery. [PR #182](https://github.com/catalystneuro/neuroconv/pull/182)
 
 ### Features
 * Added `ConverterPipe`, a class that allows chaining previously intialized interfaces for batch conversion and corresponding tests [PR #169](https://github.com/catalystneuro/neuroconv/pull/169)
