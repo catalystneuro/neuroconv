@@ -15,16 +15,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         super().__init__(folder_path=folder_path, verbose=verbose, all_annotations=True)
-        neo_reader = self.recording_extractor.neo_reader
-        self.recording_extractor = self.recording_extractor.select_segments(segment_indices=0)
-        # preserve neo_reader attribute for SelectSegmentRecording
-        self.recording_extractor.neo_reader = neo_reader
-
-        # add annotation listing all filtering related property keys
-        filtering_properties = []
-        for key in self.recording_extractor.get_property_keys():
-            if key.lower().startswith("dsp"):
-                filtering_properties.append(key)
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
         for key in self.recording_extractor.get_property_keys():
@@ -135,8 +125,6 @@ def _dict_intersection(dict_list: List) -> Dict:
     dict:
         Dictionary containing key-value pairs common to all input dicitionary_list
     """
-    if len(dict_list) == 0:
-        return {}
 
     # Collect keys appearing in all dictionaries
     common_keys = list(set.intersection(*[set(h.keys()) for h in dict_list]))
