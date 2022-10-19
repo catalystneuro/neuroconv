@@ -207,7 +207,10 @@ class TestMovieInterface(TestCase):
             )
 
     def test_movie_stub(self):
-        conversion_opts = dict(Movie=dict(starting_times=self.starting_times, external_mode=False, stub_test=True))
+        timestamps = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15]
+        conversion_opts = dict(
+            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=False, stub_test=True)
+        )
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -221,6 +224,7 @@ class TestMovieInterface(TestCase):
             for no in range(len(metadata["Behavior"]["Movies"])):
                 movie_interface_name = metadata["Behavior"]["Movies"][no]["name"]
                 assert mod[movie_interface_name].data.shape[0] == 10
+                assert mod[movie_interface_name].timestamps.shape[0] == 10
 
     def test_movie_irregular_timestamps(self):
         timestamps = [1, 2, 4]
