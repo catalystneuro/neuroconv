@@ -106,7 +106,6 @@ def test_neuralynx_cheetah_v540_metadata():
 def test_neuralynx_filtering():
     file_path = NLX_PATH / "Cheetah_v5.7.4" / "original_data"
     interface = NeuralynxRecordingInterface(file_path)
-    filtering_keys = interface.recording_extractor.get_annotation("filtering_properties")
 
     expected_single_channel_props = {
         "DSPLowCutFilterEnabled": "True",
@@ -122,11 +121,11 @@ def test_neuralynx_filtering():
         # "DspFilterDelay_µs": "984"
     }
 
-    extracted_props = {k: interface.recording_extractor.get_property(k) for k in filtering_keys}
-
     n_channels = interface.recording_extractor.get_num_channels()
-    # check consistency of number of entries
-    assert all([len(v) == n_channels for v in extracted_props.values()])
-    # check values for first channel
+
     for key, exp_value in expected_single_channel_props.items():
-        assert exp_value == extracted_props[key][0]
+        extracted_value = interface.recording_extractor.get_property(key)
+        # check consistency of number of entries
+        assert len(extracted_value) == n_channels
+        # check values for first channel
+        assert exp_value == extracted_value[0]

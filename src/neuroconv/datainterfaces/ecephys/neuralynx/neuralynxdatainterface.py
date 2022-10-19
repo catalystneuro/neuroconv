@@ -32,8 +32,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
-        self.recording_extractor.annotate(filtering_properties=filtering_properties)
-
     def get_metadata(self):
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
