@@ -18,6 +18,14 @@ For instance, to install the dependencies for SpikeGLX, run:
 
     pip install neuroconv[spikeglx]
 
+.. note::
+
+     If you are using a Z-shell (`zsh`) terminal (the default for MacOS), then you will have to use quotes to specify the custom dependency.
+
+     .. code-block::
+
+         pip install 'neuroconv[spikeglx]'
+
 2. Construction
 ~~~~~~~~~~~~~~~
 Initialize a class and direct it to the appropriate source data. This will open
