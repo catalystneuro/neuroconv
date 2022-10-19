@@ -125,8 +125,6 @@ def _dict_intersection(dict_list: List) -> Dict:
     dict:
         Dictionary containing key-value pairs common to all input dicitionary_list
     """
-    if len(dict_list) == 0:
-        return dict()
 
     # Collect keys appearing in all dictionaries
     common_keys = list(set.intersection(*[set(h.keys()) for h in dict_list]))
