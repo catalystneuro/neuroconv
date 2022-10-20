@@ -15,7 +15,6 @@ This interface can handle conversions from avi, mov, mp4, wmv, flv and most FFmp
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from tabnanny import verbose
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>>
