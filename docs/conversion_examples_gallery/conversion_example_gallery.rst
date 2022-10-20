@@ -80,7 +80,7 @@ Behavior
 
     DeepLabCut <behavior/deeplabcut>
     SLEAP <behavior/sleap>
-    Multimedia Movies <behavior/movie>
+    Videos <behavior/movie>
 
 Common interface combinations
 -----------------------------
