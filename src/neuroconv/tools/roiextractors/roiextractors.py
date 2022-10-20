@@ -517,8 +517,6 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
                     description=f"{ch_name} description",
                 )
             )
-    # set roi_response_series rate:
-    rate = np.nan if sgmextractor.get_sampling_frequency() is None else sgmextractor.get_sampling_frequency()
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
         if trace_data is not None and len(trace_data.shape) != 0:
             metadata["Ophys"]["Fluorescence"]["roi_response_series"].append(
@@ -527,8 +525,6 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
                     description=f"description of {trace_name} traces",
                 )
             )
-    # adding imaging_rate:
-    metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # remove what imaging extractor will input:
     _ = metadata["Ophys"].pop("TwoPhotonSeries")
     return metadata
