@@ -11,7 +11,7 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.1
 
   assess-file-changes:
-    uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@main
+    uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@check_for_changelog_updates
 
   detect-changelog-updates:
     needs: assess-file-changes
