@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     # Map the job outputs to step outputs
     outputs:
-      SOURCE_CHANGED: ${{ steps.source-changed.outputs.SOURCE_CHANGED }}
-      CONVERSION_GALLERY_CHANGED: ${{ steps.source-changed.outputs.CONVERSION_GALLERY_CHANGED }}
+      SOURCE_CHANGED: ${{ steps.assess-changes.outputs.SOURCE_CHANGED }}
+      CONVERSION_GALLERY_CHANGED: ${{ steps.assess-changes.outputs.CONVERSION_GALLERY_CHANGED }}
       CHANGELOG_UPDATED: ${{ steps.assess-changes.outputs.CHANGELOG_UPDATED }}
 
     name: Test changed-files
@@ -34,7 +34,7 @@ jobs:
         uses: tj-actions/changed-files@v29.0.4
 
       - name: Assess Source Code Changes
-        id: source-changed
+        id: assess-changes
         run: |
           echo "SOURCE_CHANGED=false" >> $GITHUB_OUTPUT
           echo "CONVERSION_GALLERY_CHANGED=false" >> $GITHUB_OUTPUT
