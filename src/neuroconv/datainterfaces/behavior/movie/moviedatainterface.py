@@ -53,17 +53,17 @@ def _check_duplicates(movies_metadata, file_paths):
 
 
 class MovieInterface(BaseDataInterface):
-    """Data interface for writing video as ImageSeries."""
+    """Data interface for writing movies as ImageSeries."""
 
     def __init__(self, file_paths: list, verbose: bool = False):
         """
-        Create the interface for writing video as ImageSeries.
+        Create the interface for writing movies as ImageSeries.
 
         Parameters
         ----------
         file_paths : list of FilePathTypes
-            Many video storage formats segment a sequence of video over the course of the experiment.
-            Pass the file paths for this videos as a list in sorted, consecutive order.
+            Many movie storage formats segment a sequence of movies over the course of the experiment.
+            Pass the file paths for this movies as a list in sorted, consecutive order.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python")
         self.verbose = verbose
@@ -120,7 +120,7 @@ class MovieInterface(BaseDataInterface):
         compression_options: Optional[int] = None,
     ):
         """
-        Convert the video data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
+        Convert the movie data files to :py:class:`~pynwb.image.ImageSeries` and write them in the
         :py:class:`~pynwb.file.NWBFile`. Data is written in the :py:class:`~pynwb.image.ImageSeries` container as
         RGB. [times, x, y, 3-RGB].
 
@@ -149,26 +149,26 @@ class MovieInterface(BaseDataInterface):
                 )
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-            The list for the 'Movies' key should correspond one to the video files in the file_paths list.
-            If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
-            Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
+            The list for the 'Movies' key should correspond one to the movie files in the file_paths list.
+            If multiple movies need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
+            Storing multiple movies in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
         overwrite: bool, optional
             Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         stub_test : bool
             If ``True``, truncates the write operation for fast testing. The default is ``False``.
         external_mode : bool
-            :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external video files.
+            :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external movie files.
             If True, this utilizes the more efficient method of writing the relative path to the video files (recommended).
         starting_times : list, optional
-            List of start times for each video. If unspecified, assumes that the videos in the file_paths list are in
+            List of start times for each movie. If unspecified, assumes that the movies in the file_paths list are in
             sequential order and are contiguous.
         starting_frames : list, optional
-            List of start frames for each video written using external mode.
+            List of start frames for each movie written using external mode.
             Required if more than one path is specified per ImageSeries in external mode.
         timestamps : list, optional
-            List of timestamps for the videos. If unspecified, timestamps are extracted from each video data.
+            List of timestamps for the movies. If unspecified, timestamps are extracted from each movie data.
         chunk_data : bool
-            If True, uses a DataChunkIterator to read and write the video, reducing overhead RAM usage at the cost of
+            If True, uses a DataChunkIterator to read and write the movie, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
             of 70 (from compression experiments). Based on experiments for a ~30 FPS system of ~400 x ~600 color
@@ -265,7 +265,7 @@ class MovieInterface(BaseDataInterface):
                     available_memory = psutil.virtual_memory().available
                     if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
                         warn(
-                            f"Not enough memory (estimated {round(uncompressed_estimate/1e9, 2)} GB) to load video file as "
+                            f"Not enough memory (estimated {round(uncompressed_estimate/1e9, 2)} GB) to load movie file as "
                             f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
                         )
                         chunk_data = True
@@ -285,7 +285,7 @@ class MovieInterface(BaseDataInterface):
                         iterable = DataChunkIterator(
                             data=tqdm(
                                 iterable=video_capture_ob,
-                                desc=f"Copying video data for {Path(file).name}",
+                                desc=f"Copying movie data for {Path(file).name}",
                                 position=tqdm_pos,
                                 total=total_frames,
                                 mininterval=tqdm_mininterval,
@@ -305,7 +305,7 @@ class MovieInterface(BaseDataInterface):
                             if stub_test:
                                 video_capture_ob.frame_count = stub_frames
                             with tqdm(
-                                desc=f"Reading video data for {Path(file).name}",
+                                desc=f"Reading movie data for {Path(file).name}",
                                 position=tqdm_pos,
                                 total=total_frames,
                                 mininterval=tqdm_mininterval,
@@ -317,7 +317,7 @@ class MovieInterface(BaseDataInterface):
                             DataChunkIterator(
                                 tqdm(
                                     iterable=iterable,
-                                    desc=f"Writing video data for {Path(file).name}",
+                                    desc=f"Writing movie data for {Path(file).name}",
                                     position=tqdm_pos,
                                     mininterval=tqdm_mininterval,
                                 ),
@@ -335,7 +335,7 @@ class MovieInterface(BaseDataInterface):
                 if rate is not None:
                     if fps != rate:
                         warn(
-                            f"The fps={fps:.2g} from video data is unequal to the difference in "
+                            f"The fps={fps:.2g} from movie data is unequal to the difference in "
                             f"regular timestamps. Using fps={rate:.2g} from timestamps instead.",
                             UserWarning,
                         )
