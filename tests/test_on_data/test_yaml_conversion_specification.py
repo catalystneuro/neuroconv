@@ -124,7 +124,7 @@ class TestYAMLConversionSpecification(TestCase):
 
     def test_run_conversion_from_yaml(self):
         path_to_test_yml_files = Path(__file__).parent / "conversion_specifications"
-        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_movies.yml"
+        yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_videos.yml"
         run_conversion_from_yaml(
             specification_file_path=yaml_file_path,
             data_folder_path=BEHAVIOR_DATA_PATH,
