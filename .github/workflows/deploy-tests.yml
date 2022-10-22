@@ -11,7 +11,7 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.1
 
   assess-file-changes:
-    uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@check_for_changelog_updates
+    uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@main
 
   detect-changelog-updates:
     needs: assess-file-changes
@@ -45,7 +45,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
 
-  run-doctest:
+  run-doctests-only:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: catalystneuro/neuroconv/.github/workflows/doctests.yml@main
