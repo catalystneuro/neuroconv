@@ -10,14 +10,18 @@ on:
       CONVERSION_GALLERY_CHANGED:
         description: "Whether or not the files under /docs/conversion_examples_gallery/ were changed."
         value: ${{ jobs.build.outputs.CONVERSION_GALLERY_CHANGED }}
+      CHANGELOG_UPDATED:
+        description: "Whether or the CHANGELOG.md file was updated."
+        value: ${{ jobs.build.outputs.CHANGELOG_UPDATED }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     # Map the job outputs to step outputs
     outputs:
-      SOURCE_CHANGED: ${{ steps.source-changed.outputs.SOURCE_CHANGED }}
-      CONVERSION_GALLERY_CHANGED: ${{ steps.source-changed.outputs.CONVERSION_GALLERY_CHANGED }}
+      SOURCE_CHANGED: ${{ steps.assess-changes.outputs.SOURCE_CHANGED }}
+      CONVERSION_GALLERY_CHANGED: ${{ steps.assess-changes.outputs.CONVERSION_GALLERY_CHANGED }}
+      CHANGELOG_UPDATED: ${{ steps.assess-changes.outputs.CHANGELOG_UPDATED }}
 
     name: Test changed-files
     steps:
@@ -30,24 +34,32 @@ jobs:
         uses: tj-actions/changed-files@v29.0.4
 
       - name: Assess Source Code Changes
-        id: source-changed
+        id: assess-changes
         run: |
-          echo "::set-output name=SOURCE_CHANGED::false"
-          echo "::set-output name=CONVERSION_GALLERY_CHANGED::false"
+          echo "SOURCE_CHANGED=false" >> $GITHUB_OUTPUT
+          echo "CONVERSION_GALLERY_CHANGED=false" >> $GITHUB_OUTPUT
+          echo "CHANGELOG_UPDATED=false" >> $GITHUB_OUTPUT
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo $file
             if [[ $file == "src/"* || $file == "tests/"* || $file == "requirements-minimal.txt" || $file == "requirements-testing.txt" || $file == "setup.py" ]]
             then
               echo "Source changed"
-              echo "::set-output name=SOURCE_CHANGED::true"
+              echo "SOURCE_CHANGED=true" >> $GITHUB_OUTPUT
             else
               echo "Source not changed"
             fi
             if [[ $file == "docs/conversion_examples_gallery/"* ]]
             then
               echo "Conversion gallery changed"
-              echo "::set-output name=CONVERSION_GALLERY_CHANGED::true"
+              echo "CONVERSION_GALLERY_CHANGED=true" >> $GITHUB_OUTPUT
             else
               echo "Conversion gallery not changed"
+            fi
+            if [[ $file == "CHANGELOG.md" ]]
+            then
+              echo "Changelog updated"
+              echo "CHANGELOG_UPDATED=true" >> $GITHUB_OUTPUT
+            else
+              echo "Changelog not updated"
             fi
           done
