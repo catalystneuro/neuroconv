@@ -52,7 +52,7 @@ from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 
 
 # Behavior
-from .behavior.movie.moviedatainterface import MovieInterface
+from .behavior.video.videodatainterface import VideoInterface, MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 
@@ -97,7 +97,8 @@ interface_list = [
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
     # Behavior
-    MovieInterface,
+    MovieInterface,  # TO-DO: deprecate on April 2023
+    VideoInterface,
     DeepLabCutInterface,
     SLEAPInterface,
 ]
