@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         # Disabling these due to multiplicative nature
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, 3.10]
         os: [ubuntu-latest, macos-latest, windows-latest]
         format: [ {type: recording, name: spikeglx}, {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope}, {type: imaging, name: scanimage}, {type: imaging, name: tiff}, {type: behavior, name: deeplabcut} ]  # SpikeGLX is the test of the 'empty' requirements functionality - missing: ced recording gallery and video behavior gallery
     steps:
