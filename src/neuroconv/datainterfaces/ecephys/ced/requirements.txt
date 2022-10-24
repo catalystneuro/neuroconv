@@ -1,1 +1,1 @@
-sonpy>=1.7.1
+sonpy>=1.7.1;python_version<='3.9'
