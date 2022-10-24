@@ -78,4 +78,5 @@ class BaseDataInterface(ABC):
             If 'nwbfile_path' is specified, informs user after a successful write operation.
             The default is True.
         """
+
         raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
