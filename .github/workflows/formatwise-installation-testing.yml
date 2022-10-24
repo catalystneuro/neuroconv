@@ -17,10 +17,10 @@ jobs:
         format: [ {type: recording, name: spikeglx}, {type: recording, name: edf}, {type: recording, name: intan}, {type: recording, name: neuralynx}, {type: recording, name: neuroscope}, {type: recording, name: openephys}, {type: sorting, name: cellexplorer}, {type: sorting, name: neuralynx}, {type: sorting, name: neuroscope}, {type: imaging, name: scanimage}, {type: imaging, name: tiff}, {type: behavior, name: deeplabcut} ]  # SpikeGLX is the test of the 'empty' requirements functionality - missing: ced recording gallery and video behavior gallery
     steps:
       - uses: s-weigand/setup-conda@v1
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
