@@ -138,7 +138,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
             case_name=f"multi_stream_case_ns2",
         ),
     ]
-    if platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"):
+    this_python_version = version.parse(python_version())
+    if platform != "darwin" or (
+        this_python_version >= version.parse("3.8") and this_python_version < version.parse("3.10")
+    ):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,
