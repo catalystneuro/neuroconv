@@ -10,7 +10,7 @@ import numpy.testing as npt
 from pynwb import NWBHDF5IO
 from packaging import version
 from parameterized import parameterized, param
-from spikeextractors import NwbSortingExtractor, RecordingExtractor, SortingExtractor
+from spikeextractors import NwbSortingExtractor, SortingExtractor
 from spikeextractors.testing import check_sortings_equal
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
@@ -128,19 +128,21 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns5"),
             ),
-            case_name=f"multi_stream_case_ns5",
+            case_name="multi_stream_case_ns5",
         ),
         param(
             data_interface=BlackrockRecordingInterface,
             interface_kwargs=dict(
                 file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2"),
             ),
-            case_name=f"multi_stream_case_ns2",
+            case_name="multi_stream_case_ns2",
         ),
     ]
     this_python_version = version.parse(python_version())
-    if platform != "darwin" or (
-        this_python_version >= version.parse("3.8") and this_python_version < version.parse("3.10")
+    if (
+        platform != "darwin"
+        and this_python_version >= version.parse("3.8")
+        and this_python_version < version.parse("3.10")
     ):
         parameterized_recording_list.append(
             param(
@@ -155,7 +157,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
             ),
-            case_name=f"",
+            case_name="neuralynx",
         )
     )
 
@@ -242,7 +244,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             param(
                 data_interface=SpikeGLXLFPInterface,
                 interface_kwargs=dict(
-                    file_path=str(DATA_PATH / sub_path / f"Noise4Sam_g0_t0.imec0.lf.bin"),
+                    file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.lf.bin"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
