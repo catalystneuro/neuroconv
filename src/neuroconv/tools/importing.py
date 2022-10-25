@@ -50,7 +50,9 @@ def get_package(
     excluded_platforms_and_python_versions = excluded_platforms_and_python_versions or dict()
 
     python_minor_version = version.parse(python_version()).minor
-    excluded_python_minor_versions = [version.parse(excluded_version) for excluded_version in excluded_python_versions]
+    excluded_python_minor_versions = [
+        version.parse(excluded_version).minor for excluded_version in excluded_python_versions
+    ]
     if python_minor_version in excluded_python_minor_versions:
         raise ModuleNotFoundError(
             f"\nThe package '{package_name}' is not available for Python version 3.{python_minor_version}!"
