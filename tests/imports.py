@@ -59,6 +59,10 @@ class TestImportStructure(TestCase):
         from neuroconv import datainterfaces
 
         current_structure = _strip_magic_module_attributes(ls=datainterfaces.__dict__)
+
+        from neuroconv.datainterfaces import interface_list
+
+        interface_name_list = [interface.__name__ for interface in interface_list]
         expected_structure = [
             # Sub-modules
             "behavior",
@@ -68,47 +72,6 @@ class TestImportStructure(TestCase):
             # Exposed attributes
             "interface_list",
             # Behavior
-            "DeepLabCutInterface",
-            "MovieInterface",
-            "SLEAPInterface",
-            # Ecephys
-            "AxonaRecordingInterface",
-            "AxonaPositionDataInterface",
-            "AxonaLFPDataInterface",
-            "AxonaUnitRecordingInterface",
-            "BlackrockRecordingInterface",
-            "BlackrockSortingInterface",
-            "CEDRecordingInterface",
-            "CellExplorerSortingInterface",
-            "EDFRecordingInterface",
-            "IntanRecordingInterface",
-            "KiloSortSortingInterface",
-            "NeuralynxRecordingInterface",
-            "NeuralynxSortingInterface",
-            "NeuroScopeRecordingInterface",
-            "NeuroScopeLFPInterface",
-            "NeuroScopeMultiRecordingTimeInterface",
-            "NeuroScopeSortingInterface",
-            "OpenEphysRecordingInterface",
-            "OpenEphysSortingInterface",
-            "PhySortingInterface",
-            "SpikeGLXRecordingInterface",
-            "SpikeGLXLFPInterface",
-            "SpikeGadgetsRecordingInterface",
-            "SIPickleRecordingInterface",
-            "SIPickleSortingInterface",
-            "TdtRecordingInterface",
-            # Icephys
-            "AbfInterface",
-            # Ophys
-            "CaimanSegmentationInterface",
-            "CnmfeSegmentationInterface",
-            "ExtractSegmentationInterface",
-            "Hdf5ImagingInterface",
-            "SbxImagingInterface",
-            "ScanImageImagingInterface",
-            "SimaSegmentationInterface",
-            "Suite2pSegmentationInterface",
-            "TiffImagingInterface",
-        ]
+        ] + interface_name_list
+
         self.assertCountEqual(first=current_structure, second=expected_structure)
