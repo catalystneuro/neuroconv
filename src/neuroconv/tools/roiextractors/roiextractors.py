@@ -539,6 +539,7 @@ def add_plane_segmentation(
     metadata: Optional[dict],
     plane_segmentation_index: int = 0,
     include_roi_centroids: bool = True,
+    include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
@@ -561,6 +562,11 @@ def add_plane_segmentation(
     include_roi_centroids : bool, optional
         Whether or not to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
+    include_roi_acceptance : bool, optional
+        Whether or not to include if the detected ROI was 'accepted' or 'rejected'.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
         Defaults to True.
     mask_type : str, optional
@@ -611,8 +617,10 @@ def add_plane_segmentation(
     # Check if the plane segmentation already exists in the image segmentation
     if plane_segmentation_name not in image_segmentation.plane_segmentations:
         roi_ids = segmentation_extractor.get_roi_ids()
-        # accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
-        # rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
+
+        if include_roi_acceptance:
+            accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
+            rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
 
         imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][plane_segmentation_index]
         imaging_plane_name = imaging_plane_metadata["name"]
@@ -665,16 +673,17 @@ def add_plane_segmentation(
                 data=H5DataIO(roi_locations, **compression_options),
             )
 
-        # plane_segmentation.add_column(
-        #     name="Accepted",
-        #     description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-        #     data=H5DataIO(accepted_ids, **compression_options),
-        # )
-        # plane_segmentation.add_column(
-        #     name="Rejected",
-        #     description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-        #     data=H5DataIO(rejected_ids, **compression_options),
-        # )
+        if include_roi_acceptance:
+            plane_segmentation.add_column(
+                name="Accepted",
+                description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
+                data=H5DataIO(accepted_ids, **compression_options),
+            )
+            plane_segmentation.add_column(
+                name="Rejected",
+                description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
+                data=H5DataIO(rejected_ids, **compression_options),
+            )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
