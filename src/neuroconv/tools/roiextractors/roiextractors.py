@@ -318,13 +318,16 @@ def add_two_photon_series(
     two_p_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
-    timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-    rate = calculate_regular_series_rate(series=timestamps)
-    if rate:
-        two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    if imaging.has_time_vector():
+        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+        estimated_rate = calculate_regular_series_rate(series=timestamps)
+        if estimated_rate:
+            two_p_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+        else:
+            two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
-        two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"))
-        two_p_series_kwargs["rate"] = None
+        rate = imaging.get_sampling_frequency()
+        two_p_series_kwargs.update(starting_time=0.0, rate=rate)
 
     # Add the TwoPhotonSeries to the nwbfile
     two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
@@ -746,12 +749,16 @@ def add_fluorescence_traces(
     roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
 
     # Add timestamps or rate
-    timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
-    rate = calculate_regular_series_rate(series=timestamps)
-    if rate:
-        roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    if segmentation_extractor.has_time_vector():
+        timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
+        estimated_rate = calculate_regular_series_rate(series=timestamps)
+        if estimated_rate:
+            roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+        else:
+            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
-        roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
+        rate = segmentation_extractor.get_sampling_frequency()
+        roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
