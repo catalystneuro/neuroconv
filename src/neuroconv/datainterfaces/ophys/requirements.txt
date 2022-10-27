@@ -1,1 +1,1 @@
-git+https://github.com/catalystneuro/roiextractors@h5fab28008c7be261399993b12103f6512bc8ebba
+roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@255331e084fae54c7a5d2f5b271bb8727804844d
