@@ -20,7 +20,9 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         maxshape = np.array(self.maxshape)
 
         # Early termination condition
-        if np.prod(maxshape) * self.dtype.itemsize / 1e9 < buffer_gb:
+        if (
+            np.prod(maxshape) * self.dtype.itemsize / 1e9 < buffer_gb
+        ):  # TODO: also getting overflow here; might be safer though due to sign on inequality. Should still fix
             return tuple(self.maxshape)
 
         buffer_bytes = chunk_bytes
