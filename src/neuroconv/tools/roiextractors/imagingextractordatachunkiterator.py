@@ -1,4 +1,5 @@
 """General purpose iterator for all ImagingExtractor data."""
+import warnings
 from typing import Tuple, Optional
 
 import numpy as np
@@ -88,7 +89,20 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         image_size = self._get_maxshape()[1:]
         min_buffer_shape = tuple([chunk_shape[0]]) + image_size
-        scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape) * self._get_dtype().itemsize)))
+        itemsize = self._get_dtype().itemsize
+
+        warnings.filterwarnings(action="error")
+        try:
+            scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape) * itemsize)))
+        except RuntimeWarning:  # buffer overflow, which can lead to an unintended memory leak
+            raise RuntimeError(
+                "The ImagingExtractorDataChunkIterator encountered a buffer overflow with values...\n\n"
+                f"buffer_gb={buffer_gb}\nmin_buffer_shape={min_buffer_shape}\nitemsize={itemsize}\n\n"
+                "Please report this issue to https://github.com/catalystneuro/neuroconv/issues/new/choose "
+                "and include these values in the ticket."
+            )
+        warnings.filterwarnings(action="default")
+
         max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + image_size
         scaled_buffer_shape = tuple(
             [
