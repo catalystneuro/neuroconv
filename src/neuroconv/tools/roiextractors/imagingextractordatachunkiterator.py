@@ -3,8 +3,9 @@ import warnings
 from typing import Tuple, Optional
 
 import numpy as np
-from hdmf.data_utils import GenericDataChunkIterator
 from roiextractors import ImagingExtractor
+
+from ..hdmf import GenericDataChunkIterator
 
 
 class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
@@ -93,7 +94,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         warnings.filterwarnings(action="error")
         try:
-            scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape) * itemsize)))
+            scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape, dtype=np.int64) * itemsize)))
         except RuntimeWarning:  # buffer overflow, which can lead to an unintended memory leak
             raise RuntimeError(
                 "The ImagingExtractorDataChunkIterator encountered a buffer overflow with values...\n\n"
