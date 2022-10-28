@@ -94,7 +94,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         warnings.filterwarnings(action="error")
         try:
-            scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape, dtype=np.int64) * itemsize)))
+            scaling_factor = np.floor(buffer_gb * 1e9 / (np.prod(min_buffer_shape, dtype=np.int64) * itemsize))
         except RuntimeWarning:  # buffer overflow, which can lead to an unintended memory leak
             raise RuntimeError(
                 "The ImagingExtractorDataChunkIterator encountered a buffer overflow with values...\n\n"
@@ -107,8 +107,11 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + image_size
         scaled_buffer_shape = tuple(
             [
-                min(max(int(dimension_length), chunk_shape[dimension_index]), self._get_maxshape()[dimension_index])
-                for dimension_index, dimension_length in enumerate(max_buffer_shape)
+                min(
+                    max(int(target_dimension_length), chunk_shape[dimension_index]),  # Minimum shape is chunk shape
+                    self._get_maxshape()[dimension_index],  # Maximuum size is the maxshape for each axis
+                )
+                for dimension_index, target_dimension_length in enumerate(max_buffer_shape)
             ]
         )
         return scaled_buffer_shape
