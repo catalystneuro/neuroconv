@@ -388,6 +388,22 @@ class TestAddPlaneSegmentation(unittest.TestCase):
 
         assert "ROICentroids" not in plane_segmentation
 
+    def test_do_not_include_acceptance(self):
+        """Test that setting `include_roi_acceptance=False` prevents the boolean acceptance columns from being added."""
+        add_plane_segmentation(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+            include_roi_acceptance=False,
+        )
+
+        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
+        plane_segmentations = image_segmentation.plane_segmentations
+        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
+
+        assert "Accepted" not in plane_segmentation
+        assert "Rejected" not in plane_segmentation
+
     @parameterized.expand(
         [
             param(
