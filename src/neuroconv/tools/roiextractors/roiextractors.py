@@ -126,13 +126,9 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
                     description="An optical channel of the microscope.",
                 )
             )
-    # set imaging plane rate:
-    rate = np.nan if imgextractor.get_sampling_frequency() is None else float(imgextractor.get_sampling_frequency())
 
-    # adding imaging_rate:
-    metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()), rate=rate)
+    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()))
 
     plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
     metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
@@ -322,13 +318,16 @@ def add_two_photon_series(
     two_p_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
-    timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-    rate = calculate_regular_series_rate(series=timestamps)
-    if rate:
-        two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    if imaging.has_time_vector():
+        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+        estimated_rate = calculate_regular_series_rate(series=timestamps)
+        if estimated_rate:
+            two_p_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+        else:
+            two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
-        two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"))
-        two_p_series_kwargs["rate"] = None
+        rate = float(imaging.get_sampling_frequency())
+        two_p_series_kwargs.update(starting_time=0.0, rate=rate)
 
     # Add the TwoPhotonSeries to the nwbfile
     two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
@@ -521,23 +520,14 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
                     description=f"{ch_name} description",
                 )
             )
-    # set roi_response_series rate:
-    rate = np.nan if sgmextractor.get_sampling_frequency() is None else sgmextractor.get_sampling_frequency()
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
-        if trace_name == "raw":
-            if trace_data is not None:
-                metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=rate)
-            continue
         if trace_data is not None and len(trace_data.shape) != 0:
             metadata["Ophys"]["Fluorescence"]["roi_response_series"].append(
                 dict(
                     name=trace_name.capitalize(),
                     description=f"description of {trace_name} traces",
-                    rate=rate,
                 )
             )
-    # adding imaging_rate:
-    metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # remove what imaging extractor will input:
     _ = metadata["Ophys"].pop("TwoPhotonSeries")
     return metadata
@@ -759,12 +749,16 @@ def add_fluorescence_traces(
     roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
 
     # Add timestamps or rate
-    timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
-    rate = calculate_regular_series_rate(series=timestamps)
-    if rate:
-        roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    if segmentation_extractor.has_time_vector():
+        timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
+        estimated_rate = calculate_regular_series_rate(series=timestamps)
+        if estimated_rate:
+            roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+        else:
+            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
-        roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
+        rate = float(segmentation_extractor.get_sampling_frequency())
+        roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
@@ -797,6 +791,11 @@ def add_fluorescence_traces(
         trace_metadata = next(
             trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
         )
+
+        # Pop the rate from the metadata if irregular time series
+        if "timestamps" in roi_response_series_kwargs and "rate" in trace_metadata:
+            trace_metadata.pop("rate")
+
         # Build the roi response series
         roi_response_series_kwargs.update(
             data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
@@ -830,8 +829,9 @@ def _create_roi_table_region(
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
     # Create a reference for ROIs from the plane segmentation
+    id_list = list(plane_segmentation.id)
     roi_table_region = plane_segmentation.create_roi_table_region(
-        region=segmentation_extractor.get_roi_ids(),
+        region=[id_list.index(id) for id in segmentation_extractor.get_roi_ids()],
         description=f"region for Imaging plane{plane_index}",
     )
 
