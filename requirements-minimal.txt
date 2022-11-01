@@ -4,7 +4,7 @@ jsonschema>=3.2.0
 PyYAML>=5.4
 scipy>=1.4.1
 h5py>=2.10.0
-hdmf>=3.2.1
+hdmf @ git+https://github.com/catalystneuro/hdmf.git@1a4390b7466d115841b252c15174976db2539091 # add_error_catcher_for_generic_data_chunk_iterator branch
 pynwb>=1.4.0
 psutil>=5.8.0
 tqdm>=4.60.0
