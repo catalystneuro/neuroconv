@@ -68,10 +68,12 @@ class TestAudioInterface(TestCase):
         return AudioTestNWBConverter(source_data)
 
     def test_unsupported_format(self):
-        exc_msg = ("Some of the file formats are not supported by soundfile. "
-                   "The supported formats are: AIFF, AU, AVR, CAF, FLAC, HTK, SVX, MAT4,"
-                   " MAT5, MPC2K, MP3, OGG, PAF, PVF, RAW, RF64, SD2, SDS, IRCAM, VOC, "
-                   "W64, WAV, NIST, WAVEX, WVE, XI.")
+        exc_msg = (
+            "Some of the file formats are not supported by soundfile. "
+            "The supported formats are: AIFF, AU, AVR, CAF, FLAC, HTK, SVX, MAT4,"
+            " MAT5, MPC2K, MP3, OGG, PAF, PVF, RAW, RF64, SD2, SDS, IRCAM, VOC, "
+            "W64, WAV, NIST, WAVEX, WVE, XI."
+        )
         with self.assertRaisesWith(AssertionError, exc_msg=exc_msg):
             AudioInterface(file_paths=["test.test"])
 
