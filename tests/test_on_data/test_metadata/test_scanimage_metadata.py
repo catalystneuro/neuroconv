@@ -21,11 +21,6 @@ def test_scanimage_metadata():
     device_number = 0  # Imaging plane metadata is a list with metadata for each plane
     # Test imaging plane
     ophys_metadata = metadata["Ophys"]
-    imaging_plane_metadata = ophys_metadata["ImagingPlane"][device_number]
-    imaging_rate = imaging_plane_metadata["imaging_rate"]
-
-    expected_imaging_rate = 3.90625
-    assert imaging_rate == expected_imaging_rate
 
     # Test description of two photon series
     two_photon_series_metadata = ophys_metadata["TwoPhotonSeries"][device_number]

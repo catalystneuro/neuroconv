@@ -19,52 +19,54 @@ class VideoCaptureContext:
         self.file_path = file_path
         self._current_frame = 0
         self._frame_count = None
-        self._movie_open_msg = "The Movie file is not open!"
+        self._video_open_msg = "The video file is not open!"
 
-    def get_movie_timestamps(self):
-        """Return numpy array of the timestamps(s) for a movie file."""
+    def get_video_timestamps(self, max_frames=None):
+        """Return numpy array of the timestamps(s) for a video file."""
         cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
 
         timestamps = []
-        for _ in tqdm(range(self.get_movie_frame_count()), desc="retrieving timestamps"):
+        total_frames = self.get_video_frame_count()
+        frames_to_extract = min(total_frames, max_frames) if max_frames else total_frames
+        for _ in tqdm(range(frames_to_extract), desc="retrieving timestamps"):
             success, _ = self.vc.read()
             if not success:
                 break
             timestamps.append(self.vc.get(cv2.CAP_PROP_POS_MSEC))
         return np.array(timestamps) / 1000
 
-    def get_movie_fps(self):
-        """Return the internal frames per second (fps) for a movie file."""
-        assert self.isOpened(), self._movie_open_msg
+    def get_video_fps(self):
+        """Return the internal frames per second (fps) for a video file."""
+        assert self.isOpened(), self._video_open_msg
         prop = self.get_cv_attribute("CAP_PROP_FPS")
         return self.vc.get(prop)
 
     def get_frame_shape(self) -> Tuple:
-        """Return the shape of frames from a movie file."""
-        frame = self.get_movie_frame(0)
+        """Return the shape of frames from a video file."""
+        frame = self.get_video_frame(0)
         if frame is not None:
             return frame.shape
 
     @property
     def frame_count(self):
         if self._frame_count is None:
-            self._frame_count = self._movie_frame_count()
+            self._frame_count = self._video_frame_count()
         return self._frame_count
 
     @frame_count.setter
     def frame_count(self, val: int):
         assert val > 0, "You must set a positive frame_count (received {val})."
         assert (
-            val <= self._movie_frame_count()
+            val <= self._video_frame_count()
         ), "Cannot set manual frame_count beyond length of video (received {val})."
         self._frame_count = val
 
-    def get_movie_frame_count(self):
+    def get_video_frame_count(self):
         return self.frame_count
 
-    def _movie_frame_count(self):
-        """Return the total number of frames for a movie file."""
-        assert self.isOpened(), self._movie_open_msg
+    def _video_frame_count(self):
+        """Return the total number of frames for a video file."""
+        assert self.isOpened(), self._video_open_msg
         prop = self.get_cv_attribute("CAP_PROP_FRAME_COUNT")
         return int(self.vc.get(prop))
 
@@ -82,7 +84,7 @@ class VideoCaptureContext:
 
     @current_frame.setter
     def current_frame(self, frame_number: int):
-        assert self.isOpened(), self._movie_open_msg
+        assert self.isOpened(), self._video_open_msg
         set_arg = self.get_cv_attribute("CAP_PROP_POS_FRAMES")
         set_value = self.vc.set(set_arg, frame_number)
         if set_value:
@@ -90,19 +92,19 @@ class VideoCaptureContext:
         else:
             raise ValueError(f"Could not set frame number (received {frame_number}).")
 
-    def get_movie_frame(self, frame_number: int):
-        """Return the specific frame from a movie as an RGB colorspace."""
-        assert self.isOpened(), self._movie_open_msg
-        assert frame_number < self.get_movie_frame_count(), "frame number is greater than length of movie"
+    def get_video_frame(self, frame_number: int):
+        """Return the specific frame from a video as an RGB colorspace."""
+        assert self.isOpened(), self._video_open_msg
+        assert frame_number < self.get_video_frame_count(), "frame number is greater than length of video"
         initial_frame_number = self.current_frame
         self.current_frame = frame_number
         success, frame = self.vc.read()
         self.current_frame = initial_frame_number
         return np.flip(frame, 2)  # np.flip to re-order color channels to RGB
 
-    def get_movie_frame_dtype(self):
-        """Return the dtype for frame in a movie file."""
-        frame = self.get_movie_frame(0)
+    def get_video_frame_dtype(self):
+        """Return the dtype for frame in a video file."""
+        frame = self.get_video_frame(0)
         if frame is not None:
             return frame.dtype
 
@@ -116,7 +118,7 @@ class VideoCaptureContext:
         return self
 
     def __next__(self):
-        assert self.isOpened(), self._movie_open_msg
+        assert self.isOpened(), self._video_open_msg
         if self._current_frame < self.frame_count:
             success, frame = self.vc.read()
             self._current_frame += 1
@@ -141,17 +143,17 @@ class VideoCaptureContext:
         self.vc.release()
 
 
-class MovieDataChunkIterator(GenericDataChunkIterator):
-    """DataChunkIterator specifically for use on RecordingExtractor objects."""
+class VideoDataChunkIterator(GenericDataChunkIterator):
+    """DataChunkIterator specifically for use on Video objects."""
 
     def __init__(
         self,
-        movie_file: FilePathType,
+        video_file: FilePathType,
         buffer_gb: float = None,
         chunk_shape: tuple = None,
         stub_test: bool = False,
     ):
-        self.video_capture_ob = VideoCaptureContext(movie_file)
+        self.video_capture_ob = VideoCaptureContext(video_file)
         self._full_frame_size_mb, self._full_frame_shape = self._get_frame_details()
         if stub_test:
             self.video_capture_ob.frame_count = 10
@@ -201,7 +203,7 @@ class MovieDataChunkIterator(GenericDataChunkIterator):
         return frames
 
     def _get_dtype(self):
-        return self.video_capture_ob.get_movie_frame_dtype()
+        return self.video_capture_ob.get_video_frame_dtype()
 
     def _get_maxshape(self):
-        return (self.video_capture_ob.get_movie_frame_count(), *self.video_capture_ob.get_frame_shape())
+        return (self.video_capture_ob.get_video_frame_count(), *self.video_capture_ob.get_frame_shape())

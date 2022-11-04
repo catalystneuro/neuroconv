@@ -18,15 +18,26 @@ from neuroconv.datainterfaces import SIPickleRecordingInterface, SIPickleSorting
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
 
-@pytest.mark.skipif(
-    platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"),
-    reason="Only testing on MacOSX with Python 3.7!",
-)
 class TestAssertions(TestCase):
-    def test_import_assertions(self):
+    @pytest.mark.skipif(
+        platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"),
+        reason="Only testing on MacOSX with Python 3.7!",
+    )
+    def test_ced_import_assertions_python_3_7(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
             exc_msg="\nThe package 'sonpy' is not available on the darwin platform for Python version 3.7!",
+        ):
+            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+
+    @pytest.mark.skipif(
+        version.parse(python_version()) < version.parse("3.10"),
+        reason="Only testing with Python 3.10!",
+    )
+    def test_ced_import_assertions_3_10(self):
+        with self.assertRaisesWith(
+            exc_type=ModuleNotFoundError,
+            exc_msg="\nThe package 'sonpy' is not available for Python version 3.10!",
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 

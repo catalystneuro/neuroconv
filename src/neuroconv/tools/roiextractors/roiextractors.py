@@ -126,13 +126,9 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
                     description="An optical channel of the microscope.",
                 )
             )
-    # set imaging plane rate:
-    rate = np.nan if imgextractor.get_sampling_frequency() is None else float(imgextractor.get_sampling_frequency())
 
-    # adding imaging_rate:
-    metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()), rate=rate)
+    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()))
 
     plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
     metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
@@ -322,13 +318,16 @@ def add_two_photon_series(
     two_p_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
-    timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
-    rate = calculate_regular_series_rate(series=timestamps)
-    if rate:
-        two_p_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    if imaging.has_time_vector():
+        timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
+        estimated_rate = calculate_regular_series_rate(series=timestamps)
+        if estimated_rate:
+            two_p_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+        else:
+            two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
-        two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"))
-        two_p_series_kwargs["rate"] = None
+        rate = float(imaging.get_sampling_frequency())
+        two_p_series_kwargs.update(starting_time=0.0, rate=rate)
 
     # Add the TwoPhotonSeries to the nwbfile
     two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
@@ -521,23 +520,14 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
                     description=f"{ch_name} description",
                 )
             )
-    # set roi_response_series rate:
-    rate = np.nan if sgmextractor.get_sampling_frequency() is None else sgmextractor.get_sampling_frequency()
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
-        if trace_name == "raw":
-            if trace_data is not None:
-                metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=rate)
-            continue
         if trace_data is not None and len(trace_data.shape) != 0:
             metadata["Ophys"]["Fluorescence"]["roi_response_series"].append(
                 dict(
                     name=trace_name.capitalize(),
                     description=f"description of {trace_name} traces",
-                    rate=rate,
                 )
             )
-    # adding imaging_rate:
-    metadata["Ophys"]["ImagingPlane"][0].update(imaging_rate=rate)
     # remove what imaging extractor will input:
     _ = metadata["Ophys"].pop("TwoPhotonSeries")
     return metadata
@@ -549,6 +539,7 @@ def add_plane_segmentation(
     metadata: Optional[dict],
     plane_segmentation_index: int = 0,
     include_roi_centroids: bool = True,
+    include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
@@ -571,6 +562,11 @@ def add_plane_segmentation(
     include_roi_centroids : bool, optional
         Whether or not to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
+    include_roi_acceptance : bool, optional
+        Whether or not to include if the detected ROI was 'accepted' or 'rejected'.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
         Defaults to True.
     mask_type : str, optional
@@ -621,8 +617,10 @@ def add_plane_segmentation(
     # Check if the plane segmentation already exists in the image segmentation
     if plane_segmentation_name not in image_segmentation.plane_segmentations:
         roi_ids = segmentation_extractor.get_roi_ids()
-        accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
-        rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
+
+        if include_roi_acceptance:
+            accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
+            rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
 
         imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][plane_segmentation_index]
         imaging_plane_name = imaging_plane_metadata["name"]
@@ -661,6 +659,7 @@ def add_plane_segmentation(
 
             mask_type_kwarg = f"{mask_type}_mask"
             plane_segmentation = PlaneSegmentation(**plane_segmentation_kwargs)
+
             for roi_id, pixel_mask in zip(roi_ids, pixel_masks):
                 plane_segmentation.add_roi(**{"id": roi_id, mask_type_kwarg: [tuple(x) for x in pixel_mask]})
 
@@ -674,16 +673,17 @@ def add_plane_segmentation(
                 data=H5DataIO(roi_locations, **compression_options),
             )
 
-        plane_segmentation.add_column(
-            name="Accepted",
-            description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-            data=H5DataIO(accepted_ids, **compression_options),
-        )
-        plane_segmentation.add_column(
-            name="Rejected",
-            description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-            data=H5DataIO(rejected_ids, **compression_options),
-        )
+        if include_roi_acceptance:
+            plane_segmentation.add_column(
+                name="Accepted",
+                description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
+                data=H5DataIO(accepted_ids, **compression_options),
+            )
+            plane_segmentation.add_column(
+                name="Rejected",
+                description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
+                data=H5DataIO(rejected_ids, **compression_options),
+            )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
     return nwbfile
@@ -759,12 +759,16 @@ def add_fluorescence_traces(
     roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
 
     # Add timestamps or rate
-    timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
-    rate = calculate_regular_series_rate(series=timestamps)
-    if rate:
-        roi_response_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+    if segmentation_extractor.has_time_vector():
+        timestamps = segmentation_extractor.frame_to_time(np.arange(segmentation_extractor.get_num_frames()))
+        estimated_rate = calculate_regular_series_rate(series=timestamps)
+        if estimated_rate:
+            roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+        else:
+            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
-        roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, **compression_options))
+        rate = float(segmentation_extractor.get_sampling_frequency())
+        roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
@@ -797,6 +801,11 @@ def add_fluorescence_traces(
         trace_metadata = next(
             trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
         )
+
+        # Pop the rate from the metadata if irregular time series
+        if "timestamps" in roi_response_series_kwargs and "rate" in trace_metadata:
+            trace_metadata.pop("rate")
+
         # Build the roi response series
         roi_response_series_kwargs.update(
             data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
@@ -830,8 +839,9 @@ def _create_roi_table_region(
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
     # Create a reference for ROIs from the plane segmentation
+    id_list = list(plane_segmentation.id)
     roi_table_region = plane_segmentation.create_roi_table_region(
-        region=segmentation_extractor.get_roi_ids(),
+        region=[id_list.index(id) for id in segmentation_extractor.get_roi_ids()],
         description=f"region for Imaging plane{plane_index}",
     )
 
@@ -907,6 +917,7 @@ def write_segmentation(
     buffer_size: int = 10,
     plane_num: int = 0,
     include_roi_centroids: bool = True,
+    include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
@@ -943,6 +954,11 @@ def write_segmentation(
     include_roi_centroids : bool, optional
         Whether or not to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+            faster write speeds.
+        Defaults to True.
+    include_roi_acceptance : bool, optional
+        Whether or not to include if the detected ROI was 'accepted' or 'rejected'.
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
         Defaults to True.
     mask_type : str, optional
@@ -1018,6 +1034,7 @@ def write_segmentation(
                 nwbfile=nwbfile_out,
                 metadata=metadata,
                 include_roi_centroids=include_roi_centroids,
+                include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
                 iterator_options=iterator_options,
                 compression_options=compression_options,

@@ -4,8 +4,26 @@ on:
   pull_request:
 
 jobs:
+  cancel-previous-runs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+
   assess-file-changes:
     uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@main
+
+  detect-changelog-updates:
+    needs: assess-file-changes
+    name: Auto-detecting CHANGELOG.md updates
+    runs-on: ubuntu-latest
+    steps:
+      - if:  ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'true' }}
+        run: echo "CHANGELOG.md has been updated."
+      - if:  ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
+        run: |
+          echo "CHANGELOG.md has not been updated."
+          0
 
   run-tests:
     needs: assess-file-changes
@@ -13,8 +31,21 @@ jobs:
     uses: catalystneuro/neuroconv/.github/workflows/testing.yml@main
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
 
-  run-doctest:
+  run-dev-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: catalystneuro/neuroconv/.github/workflows/dev-testing.yml@main
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+
+  run-doctests-only:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: catalystneuro/neuroconv/.github/workflows/doctests.yml@main

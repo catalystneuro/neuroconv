@@ -10,12 +10,12 @@ jobs:
       fail-fast: false
     steps:
       - uses: s-weigand/setup-conda@v1
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
-          python-version: 3.9
+          python-version: "3.10"
 
       - name: Setup Environment
         run: |
@@ -64,6 +64,18 @@ jobs:
       - name: "Force GIN: ephys download"
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
+      - name: Cleanup unneeded files to minimize AWS billing
+        if: steps.cache-ephys-datasets.outputs.cache-hit == false
+        run: |
+          chmod -R +w ./ephy_testing_data/
+          rm -rf ./ephy_testing_data/.git/
+          rm -rf ./ephy_testing_data/.gitattributes
+          rm -rf ./ephy_testing_data/.gitignore
+          rm -rf ./ephy_testing_data/config.yml
+          rm -rf ./ephy_testing_data/datacite.yml
+          rm -rf ./ephy_testing_data/LICENSE
+          rm -rf ./ephy_testing_data/README.md
+          rm -rf ./ephy_testing_data/utils.py
       - name: Upload ephys dataset to S3
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
@@ -78,6 +90,15 @@ jobs:
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+      - name: Cleanup unneeded files to minimize AWS billing
+        if: steps.cache-ophys-datasets.outputs.cache-hit == false
+        run: |
+          chmod -R +w ./ophys_testing_data/
+          rm -rf ./ophys_testing_data/.datalad/
+          rm -rf ./ophys_testing_data/.git/
+          rm -rf ./ophys_testing_data/.gitattributes
+          rm -rf ./ophys_testing_data/.gitignore
+          rm -rf ./ophys_testing_data/README.md
       - name: Upload ophys dataset to S3
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
@@ -92,12 +113,21 @@ jobs:
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+      - name: Cleanup unneeded files to minimize AWS billing
+        if: steps.cache-behavior-datasets.outputs.cache-hit == false
+        run: |
+          chmod -R +w ./behavior_testing_data/
+          rm -rf ./behavior_testing_data/.datalad/
+          rm -rf ./behavior_testing_data/.git/
+          rm -rf ./behavior_testing_data/.gitattributes
+          rm -rf ./behavior_testing_data/.gitignore
+          rm -rf ./behavior_testing_data/README.md
       - name: Upload behavior dataset to S3
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
         with:
           command: sync
-          source: behavior_testing_data
+          source: ./behavior_testing_data
           destination: ${{ secrets.S3_GIN_BUCKET }}/behavior_testing_data
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
