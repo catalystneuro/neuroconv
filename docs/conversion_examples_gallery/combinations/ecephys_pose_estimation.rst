@@ -41,7 +41,5 @@ For this specific example were are combining a OpenEphys recording with KiloSort
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path,  metadata=metadata)
     root pynwb.file.NWBFile ...
-    >>> Path(nwbfile_path).is_file()
-    True
