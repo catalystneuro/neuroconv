@@ -1,5 +1,8 @@
 # Upcoming
 
+### Documentation and tutorial enhancements
+* rmv `Path(path_to_save_nwbfile).is_file()` from each of the gallery pages. [PR #177](https://github.com/catalystneuro/neuroconv/pull/177)
+
 # v0.2.2
 
 ### Testing
