@@ -26,7 +26,3 @@ Convert Phy data to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.phy.
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>>
-    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(nwbfile_path).is_file()
-    True
