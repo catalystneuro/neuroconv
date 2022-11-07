@@ -141,8 +141,7 @@ class AudioInterface(BaseDataInterface):
 
         assert write_as in ["stimulus", "acquisition"], "Audio can be written either as 'stimulus' or 'acquisition'."
 
-        if metadata is None:
-            metadata = dict()
+        metadata = metadata or dict()
 
         audio_metadata = metadata.get("Behavior", dict()).get("Audio", None)
         if audio_metadata is None:
