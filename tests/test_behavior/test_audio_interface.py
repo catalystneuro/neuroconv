@@ -149,6 +149,16 @@ class TestAudioInterface(TestCase):
                 conversion_options=conversion_opts,
             )
 
+    def test_default_starting_times(self):
+        audio_interface = AudioInterface(file_paths=[self.file_paths[0]])
+        metadata = audio_interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=self.session_start_time)
+        with self.assertWarnsWith(warn_type=UserWarning, exc_msg="starting_times not provided, setting to 0.0"):
+            audio_interface.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                metadata=metadata,
+            )
+
     def test_run_conversion(self):
         conversion_opts = dict(Audio=dict(starting_times=self.starting_times))
         self.nwb_converter.run_conversion(
