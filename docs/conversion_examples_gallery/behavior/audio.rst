@@ -18,7 +18,7 @@ This interface can handle conversions from `WAV` format to NWB using the
     >>>
     >>> from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
     >>>
-    >>> audio_file_path = BEHAVIOR_DATA_PATH / "audio" / "audio_recording.wav"
+    >>> audio_file_path = BEHAVIOR_DATA_PATH / "audio" / "natural_audio_recording.wav"
     >>> interface = AudioInterface(file_paths=[audio_file_path], verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
