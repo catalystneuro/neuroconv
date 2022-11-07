@@ -1,6 +1,5 @@
 import os
 import shutil
-import unittest
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
@@ -11,22 +10,14 @@ from dateutil.tz import gettz
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-from scipy.io.wavfile import read
+from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import (
     AudioInterface,
 )
 
-try:
-    import soundfile as sf
 
-    skip_test = False
-except ImportError:
-    skip_test = True
-
-
-@unittest.skipIf(skip_test, "soundfile not installed")
 class TestAudioInterface(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -52,10 +43,10 @@ class TestAudioInterface(TestCase):
 
     def create_audio_files(self):
         for audio_file_ind in range(self.num_audio_files):
-            sf.write(
-                file=self.test_dir / f"test_audio_file_{audio_file_ind}.wav",
-                data=np.random.randn(self.num_frames, 2),
-                samplerate=self.sampling_rate,
+            write(
+                filename=self.test_dir / f"test_audio_file_{audio_file_ind}.wav",
+                rate=self.sampling_rate,
+                data=np.random.randn(self.num_frames, 2).astype(int),
             )
 
     def create_audio_converter(self):
@@ -144,7 +135,7 @@ class TestAudioInterface(TestCase):
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
-                metadata=self.metadata,
+                metadata=metadata,
             )
 
     def test_starting_times_are_floats(self):

@@ -145,9 +145,9 @@ class AudioInterface(BaseDataInterface):
         if metadata is None:
             metadata = dict()
 
-        base_metadata = self.get_metadata()
-        metadata = dict_deep_update(base_metadata, metadata)
-        audio_metadata = metadata["Behavior"]["Audio"]
+        audio_metadata = metadata.get("Behavior", dict()).get("Audio", None)
+        if audio_metadata is None:
+            audio_metadata = self.get_metadata()["Behavior"]["Audio"]
 
         number_of_file_paths = len(file_paths)
         assert len(audio_metadata) == number_of_file_paths, (
