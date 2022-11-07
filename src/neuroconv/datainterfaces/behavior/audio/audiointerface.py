@@ -16,7 +16,6 @@ from neuroconv.utils import (
     get_schema_from_hdmf_class,
     get_base_schema,
     OptionalFilePathType,
-    dict_deep_update,
 )
 from pynwb import NWBFile, TimeSeries
 

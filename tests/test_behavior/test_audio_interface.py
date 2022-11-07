@@ -16,6 +16,21 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import (
     AudioInterface,
 )
+from neuroconv.utils import FilePathType
+
+
+def create_audio_files(
+    test_dir: FilePathType,
+    num_audio_files: int,
+    sampling_rate: int,
+    num_frames: int,
+):
+    for audio_file_ind in range(num_audio_files):
+        write(
+            filename=Path(test_dir) / f"test_audio_file_{audio_file_ind}.wav",
+            rate=sampling_rate,
+            data=np.random.randn(num_frames, 2).astype(int),
+        )
 
 
 class TestAudioInterface(TestCase):
@@ -26,12 +41,18 @@ class TestAudioInterface(TestCase):
         cls.num_audio_files = 3
         cls.sampling_rate = 500
 
+        audio_files_dir = Path(mkdtemp())
+        cls.audio_files_dir = audio_files_dir
+        create_audio_files(
+            test_dir=audio_files_dir,
+            num_audio_files=cls.num_audio_files,
+            sampling_rate=cls.sampling_rate,
+            num_frames=cls.num_frames,
+        )
+        cls.file_paths = [audio_files_dir / file for file in os.listdir(audio_files_dir) if file.endswith(".wav")]
+
     def setUp(self):
         self.test_dir = Path(mkdtemp())
-
-        self.create_audio_files()
-        self.file_paths = [self.test_dir / file for file in os.listdir(self.test_dir) if file.endswith(".wav")]
-
         self.nwbfile_path = str(self.test_dir / "audio_test.nwb")
         self.nwb_converter = self.create_audio_converter()
         self.metadata = self.nwb_converter.get_metadata()
@@ -41,13 +62,9 @@ class TestAudioInterface(TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
-    def create_audio_files(self):
-        for audio_file_ind in range(self.num_audio_files):
-            write(
-                filename=self.test_dir / f"test_audio_file_{audio_file_ind}.wav",
-                rate=self.sampling_rate,
-                data=np.random.randn(self.num_frames, 2).astype(int),
-            )
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.audio_files_dir)
 
     def create_audio_converter(self):
         class AudioTestNWBConverter(NWBConverter):
