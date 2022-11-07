@@ -115,8 +115,25 @@ class TestAudioInterface(TestCase):
                 metadata=metadata,
             )
 
+    def test_metadata_update(self):
+        metadata = deepcopy(self.metadata)
+        metadata["Behavior"]["Audio"][0].update(description="New description for Acoustic waveform series.")
+        conversion_opts = dict(Audio=dict(starting_times=self.starting_times))
+        self.nwb_converter.run_conversion(
+            nwbfile_path=self.nwbfile_path, metadata=metadata, conversion_options=conversion_opts
+        )
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+            container = nwbfile.stimulus
+            audio_name = metadata["Behavior"]["Audio"][0]["name"]
+            self.assertEqual(
+                "New description for Acoustic waveform series.",
+                container[audio_name].description,
+            )
+
     def test_not_all_metadata_are_unique(self):
-        self.metadata["Behavior"].update(
+        metadata = deepcopy(self.metadata)
+        metadata["Behavior"].update(
             Audio=[
                 dict(name="Audio", description="Acoustic waveform series."),
                 dict(name="Audio", description="Acoustic waveform series."),
