@@ -150,7 +150,7 @@ class AudioInterface(BaseDataInterface):
 
         audio_names = [audio["name"] for audio in audio_metadata]
         audio_names_are_unique = len(set(audio_names)) == len(audio_names)
-        assert audio_names_are_unique, "Some of the audio names for AcousticWaveformSeries are not unique."
+        assert audio_names_are_unique, "Some of the names for AcousticWaveformSeries are not unique."
 
         audio_metadata_unique, file_paths_unique = _check_duplicates(audio_metadata, file_paths)
         unpacked_file_paths_unique = [file_path[0] for file_path in file_paths_unique]
