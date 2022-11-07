@@ -4,10 +4,10 @@ from warnings import warn
 
 from hdmf.backends.hdf5 import H5DataIO
 from natsort import natsorted
+from scipy.io.wavfile import read
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _check_duplicates
-from neuroconv.tools import get_package
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
     make_or_load_nwbfile,
@@ -30,15 +30,13 @@ class AudioInterface(BaseDataInterface):
         file_paths: list of FilePathTypes
             The file paths to the audio recordings in sorted, consecutive order.
         """
-
-        soundfile = get_package(package_name="soundfile", installation_instructions="pip install soundfile")
-        self.sf = soundfile
-        suffixes = [suffix.replace(".", "").upper() for file_path in file_paths for suffix in Path(file_path).suffixes]
-        supported_formats = self.sf.available_formats()
-        assert all([suffix in supported_formats for suffix in suffixes]), (
-            "Some of the file formats are not supported by soundfile. "
-            f"The supported formats are: {', '.join(supported_formats.keys())}."
-        )
+        suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
+        format_is_not_supported = [suffix for suffix in suffixes if suffix not in [".wav"]]
+        if format_is_not_supported:
+            raise ValueError(
+                "The currently supported file format for audio is WAV file. "
+                f"Some of the provided files does not match this format: {format_is_not_supported}."
+            )
         self.verbose = verbose
         super().__init__(file_paths=natsorted(file_paths))
 
@@ -95,10 +93,9 @@ class AudioInterface(BaseDataInterface):
             return
 
         # Load the audio file
+        sampling_rate, audio_data = read(filename=file_path, mmap=True)
         if stub_test:
-            audio_data, sampling_rate = self.sf.read(file=file_path, frames=stub_frames)
-        else:
-            audio_data, sampling_rate = self.sf.read(file=file_path)
+            audio_data = audio_data[:stub_frames]
 
         acoustic_waveform_series_kwargs = dict(
             rate=float(sampling_rate),
