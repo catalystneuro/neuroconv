@@ -3,6 +3,9 @@
 ### Documentation and tutorial enhancements
 * Remove `Path(path_to_save_nwbfile).is_file()` from each of the gallery pages. [PR #177](https://github.com/catalystneuro/neuroconv/pull/177)
 
+### Testing
+* Added a `session_id` to the test file for the `automatic_dandi_upload` helper function. [PR #199](https://github.com/catalystneuro/neuroconv/pull/199)
+
 # v0.2.2
 
 ### Testing
