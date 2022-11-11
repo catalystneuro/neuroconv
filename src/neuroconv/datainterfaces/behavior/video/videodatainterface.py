@@ -278,9 +278,10 @@ class VideoInterface(BaseDataInterface):
                         frame_shape = video_capture_ob.get_frame_shape()
 
                     maxshape = (total_frames, *frame_shape)
-                    best_gzip_chunk = (1, frame_shape[0], frame_shape[1], 3)
                     tqdm_pos, tqdm_mininterval = (0, 10)
+
                     if chunk_data:
+                        chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
                         video_capture_ob = VideoCaptureContext(str(file))
                         if stub_test:
                             video_capture_ob.frame_count = stub_frames
@@ -295,14 +296,11 @@ class VideoInterface(BaseDataInterface):
                             iter_axis=0,  # nwb standard is time as zero axis
                             maxshape=maxshape,
                         )
-                        data = H5DataIO(
-                            iterable,
-                            compression=compression,
-                            compression_opts=compression_options,
-                            chunks=best_gzip_chunk,
-                        )
+
                     else:
-                        iterable = np.zeros(shape=maxshape, dtype="uint8")
+                        # Load the video
+                        chunks = None
+                        video = np.zeros(shape=maxshape, dtype="uint8")
                         with VideoCaptureContext(str(file)) as video_capture_ob:
                             if stub_test:
                                 video_capture_ob.frame_count = stub_frames
@@ -313,35 +311,31 @@ class VideoInterface(BaseDataInterface):
                                 mininterval=tqdm_mininterval,
                             ) as pbar:
                                 for n, frame in enumerate(video_capture_ob):
-                                    iterable[n, :, :, :] = frame
+                                    video[n, :, :, :] = frame
                                     pbar.update(1)
-                        data = H5DataIO(
-                            DataChunkIterator(
-                                tqdm(
-                                    iterable=iterable,
-                                    desc=f"Writing video data for {Path(file).name}",
-                                    position=tqdm_pos,
-                                    mininterval=tqdm_mininterval,
-                                ),
-                                iter_axis=0,  # nwb standard is time as zero axis
-                                maxshape=maxshape,
-                            ),
-                            compression="gzip",
-                            compression_opts=compression_options,
-                            chunks=best_gzip_chunk,
-                        )
-                    image_series_kwargs.update(data=data)
+                        iterable = video
+
+                    # Wrap data for compression
+                    wrapped_io_data = H5DataIO(
+                        iterable,
+                        compression=compression,
+                        compression_opts=compression_options,
+                        chunks=chunks,
+                    )
+                    image_series_kwargs.update(data=wrapped_io_data)
 
                 # Store sampling rate if timestamps are regular
                 rate = calculate_regular_series_rate(series=video_timestamps)
                 if rate is not None:
-                    if fps != rate:
+                    if round(fps, 2) != round(rate, 2):
                         warn(
                             f"The fps={fps:.2g} from video data is unequal to the difference in "
                             f"regular timestamps. Using fps={rate:.2g} from timestamps instead.",
                             UserWarning,
                         )
-                    image_series_kwargs.update(starting_time=starting_times[j], rate=rate)
+                    # Add the rate rounded to two decimals
+                    rounded_rate = round(rate, 2)
+                    image_series_kwargs.update(starting_time=starting_times[j], rate=rounded_rate)
                 else:
                     image_series_kwargs.update(timestamps=video_timestamps)
 

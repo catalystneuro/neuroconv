@@ -28,6 +28,3 @@ Convert DeepLabCut pose estimation data to NWB using :py:class:`~neuroconv.datai
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
-    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(path_to_save_nwbfile).is_file()
-    True
