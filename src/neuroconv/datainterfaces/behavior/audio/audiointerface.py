@@ -3,7 +3,6 @@ from typing import Optional
 from warnings import warn
 
 from hdmf.backends.hdf5 import H5DataIO
-from natsort import natsorted
 from scipy.io.wavfile import read
 
 from neuroconv.basedatainterface import BaseDataInterface
@@ -33,6 +32,9 @@ class AudioInterface(BaseDataInterface):
         ----------
         file_paths: list of FilePathTypes
             The file paths to the audio recordings in sorted, consecutive order.
+            We recommend using `natsort` to ensure the files are in consecutive order.
+            from natsort import natsorted
+            natsorted(file_paths)
         """
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
         format_is_not_supported = [
@@ -44,7 +46,7 @@ class AudioInterface(BaseDataInterface):
                 f"Some of the provided files does not match this format: {format_is_not_supported}."
             )
         self.verbose = verbose
-        super().__init__(file_paths=natsorted(file_paths))
+        super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
 
