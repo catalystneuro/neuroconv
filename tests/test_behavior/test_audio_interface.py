@@ -1,4 +1,3 @@
-import os
 import shutil
 from copy import deepcopy
 from datetime import datetime
@@ -10,6 +9,7 @@ from dateutil.tz import gettz
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
+from pynwb.testing import remove_test_file
 from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
@@ -24,14 +24,18 @@ def create_audio_files(
     num_audio_files: int,
     sampling_rate: int,
     num_frames: int,
+    dtype: str = "int16",
 ):
+    audio_file_names = []
     for audio_file_ind in range(num_audio_files):
+        audio_file_name = Path(test_dir) / f"test_audio_file_{audio_file_ind}.wav"
         write(
-            filename=Path(test_dir) / f"test_audio_file_{audio_file_ind}.wav",
+            filename=audio_file_name,
             rate=sampling_rate,
-            dtype = "int16"
-            np.random.randint(size=(12,5), low=np.iinfo(dtype).min, high=np.iinfo(dtype).max, dtype=dtype)
+            data=np.random.randint(size=(num_frames,), low=np.iinfo(dtype).min, high=np.iinfo(dtype).max, dtype=dtype),
         )
+        audio_file_names.append(audio_file_name)
+    return audio_file_names
 
 
 class TestAudioInterface(TestCase):
@@ -41,31 +45,29 @@ class TestAudioInterface(TestCase):
         cls.num_frames = 10000
         cls.num_audio_files = 3
         cls.sampling_rate = 500
+        cls.starting_times = [0.0, 20.0, 40.0]
 
-        audio_files_dir = Path(mkdtemp())
-        cls.audio_files_dir = audio_files_dir
-        create_audio_files(
-            test_dir=audio_files_dir,
+        cls.test_dir = Path(mkdtemp())
+        cls.file_paths = create_audio_files(
+            test_dir=cls.test_dir,
             num_audio_files=cls.num_audio_files,
             sampling_rate=cls.sampling_rate,
             num_frames=cls.num_frames,
         )
-        cls.file_paths = [audio_files_dir / file for file in os.listdir(audio_files_dir) if file.endswith(".wav")]
 
     def setUp(self):
-        self.test_dir = Path(mkdtemp())
         self.nwbfile_path = str(self.test_dir / "audio_test.nwb")
         self.nwb_converter = self.create_audio_converter()
         self.metadata = self.nwb_converter.get_metadata()
         self.metadata["NWBFile"].update(session_start_time=self.session_start_time)
-        self.starting_times = [0.0, 20.0, 40.0]
 
     def tearDown(self):
-        shutil.rmtree(self.test_dir)
+        del self.nwb_converter
+        remove_test_file(self.nwbfile_path)
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.audio_files_dir)
+        shutil.rmtree(cls.test_dir)
 
     def create_audio_converter(self):
         class AudioTestNWBConverter(NWBConverter):
