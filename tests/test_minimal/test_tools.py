@@ -186,7 +186,7 @@ class TestAutomaticDANDIUpload(TestCase):
         self.nwb_folder_path = self.tmpdir / "test_nwb"
         self.nwb_folder_path.mkdir()
         metadata = get_default_nwbfile_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone(), session_id="test_automatic_upload")
         metadata.update(Subject=dict(subject_id="foo"))
         with NWBHDF5IO(path=self.nwb_folder_path / "test_nwb_1.nwb", mode="w") as io:
             io.write(make_nwbfile_from_metadata(metadata=metadata))
