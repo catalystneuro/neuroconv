@@ -136,6 +136,7 @@ class AudioInterface(BaseDataInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
+        stub_frames: int = 1000,
         write_as: str = "stimulus",
         starting_times: Optional[list] = None,
         iterator_options: Optional[dict] = None,
