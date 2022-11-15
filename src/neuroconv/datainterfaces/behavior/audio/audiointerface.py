@@ -65,16 +65,19 @@ class AudioInterface(BaseDataInterface):
         return metadata_schema
 
     def get_metadata(self):
+        default_name = "AcousticWaveformSeries"
+        is_multiple_file_path = len(self.source_data["file_paths"]) > 1
+        audio_metadata = [
+            dict(
+                name=default_name + str(file_ind) if is_multiple_file_path and file_ind > 0 else default_name,
+                description="Acoustic waveform series.",
+            )
+            for file_ind, file_path in enumerate(self.source_data["file_paths"])
+        ]
+        behavior_metadata = dict(Audio=audio_metadata)
 
-        behavior_metadata = dict(
-            Audio=[
-                dict(name=f"Audio: {Path(file_path).stem}", description="Acoustic waveform series.")
-                for file_path in self.source_data["file_paths"]
-            ]
-        )
         metadata = super().get_metadata()
-        metadata["Behavior"] = behavior_metadata
-
+        metadata.update(Behavior=behavior_metadata)
         return metadata
 
     def add_acoustic_waveform_series(
