@@ -35,7 +35,7 @@ class AudioInterface(BaseDataInterface):
             The file paths to the audio recordings in sorted, consecutive order.
         """
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
-        format_is_not_supported = [suffix for suffix in suffixes if suffix not in [".wav"]]
+        format_is_not_supported = [suffix for suffix in suffixes if suffix not in [".wav"]]  # TODO: add support for more formats
         if format_is_not_supported:
             raise ValueError(
                 "The currently supported file format for audio is WAV file. "

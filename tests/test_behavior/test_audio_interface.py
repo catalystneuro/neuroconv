@@ -29,7 +29,8 @@ def create_audio_files(
         write(
             filename=Path(test_dir) / f"test_audio_file_{audio_file_ind}.wav",
             rate=sampling_rate,
-            data=np.random.randn(num_frames, 2).astype(int),
+            dtype = "int16"
+            np.random.randint(size=(12,5), low=np.iinfo(dtype).min, high=np.iinfo(dtype).max, dtype=dtype)
         )
 
 
