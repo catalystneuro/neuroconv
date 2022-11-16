@@ -2,12 +2,11 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-from hdmf.backends.hdf5 import H5DataIO
 from scipy.io.wavfile import read
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _check_duplicates
-from neuroconv.tools.hdmf import SliceableDataChunkIterator
+from neuroconv.tools.audio import add_acoustic_waveform_series
 from neuroconv.tools.nwb_helpers import (
     make_or_load_nwbfile,
 )
@@ -17,8 +16,6 @@ from neuroconv.utils import (
     OptionalFilePathType,
 )
 from pynwb import NWBFile, TimeSeries
-
-from ndx_sound import AcousticWaveformSeries
 
 
 class AudioInterface(BaseDataInterface):
@@ -81,54 +78,6 @@ class AudioInterface(BaseDataInterface):
         metadata = super().get_metadata()
         metadata.update(Behavior=behavior_metadata)
         return metadata
-
-    def add_acoustic_waveform_series(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict,
-        file_path: str,
-        starting_time: float,
-        write_as: Optional[str] = "stimulus",  # "stimulus" or "acquisition"
-        stub_test: bool = False,
-        stub_frames: int = 1000,
-        iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,
-    ):
-
-        compression_options = compression_options or dict(compression="gzip")
-        iterator_options = iterator_options or dict()
-
-        container = nwbfile.acquisition if write_as == "acquisition" else nwbfile.stimulus
-        # Early return if acoustic waveform series with this name already exists in NWBFile
-        if metadata["name"] in container:
-            return
-
-        # Load the audio file
-        sampling_rate, audio_data = read(filename=file_path, mmap=True)
-        if stub_test:
-            audio_data = audio_data[:stub_frames]
-
-        acoustic_waveform_series_kwargs = dict(
-            rate=float(sampling_rate),
-            starting_time=starting_time,
-            data=H5DataIO(SliceableDataChunkIterator(data=audio_data, **iterator_options), **compression_options)
-            if not stub_test
-            else audio_data,
-        )
-
-        # Add metadata
-        acoustic_waveform_series_kwargs.update(**metadata)
-
-        # Create AcousticWaveformSeries with ndx-sound
-        acoustic_waveform_series = AcousticWaveformSeries(**acoustic_waveform_series_kwargs)
-
-        # Add audio recording to nwbfile as acquisition or stimuli
-        if write_as == "acquisition":
-            nwbfile.add_acquisition(acoustic_waveform_series)
-        elif write_as == "stimulus":
-            nwbfile.add_stimulus(acoustic_waveform_series)
-
-        return nwbfile
 
     def run_conversion(
         self,
@@ -195,13 +144,16 @@ class AudioInterface(BaseDataInterface):
             for file_ind, (acoustic_waveform_series_metadata, file_path) in enumerate(
                 zip(audio_metadata_unique, unpacked_file_paths_unique)
             ):
+                sampling_rate, acoustic_series = read(filename=file_path, mmap=True)
+                if stub_test:
+                    acoustic_series = acoustic_series[:stub_frames]
 
-                self.add_acoustic_waveform_series(
-                    file_path=file_path,
-                    metadata=acoustic_waveform_series_metadata,
+                add_acoustic_waveform_series(
                     nwbfile=nwbfile_out,
+                    metadata=acoustic_waveform_series_metadata,
+                    acoustic_series=acoustic_series,
+                    rate=sampling_rate,
                     write_as=write_as,
-                    stub_test=stub_test,
                     starting_time=starting_times[file_ind],
                     iterator_options=iterator_options,
                     compression_options=compression_options,
