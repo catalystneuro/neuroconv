@@ -119,11 +119,11 @@ jobs:
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: |
           chmod -R +w ./behavior_testing_data/
-          rm -rf ./behavior_testing_data/.datalad/
+          #rm -rf ./behavior_testing_data/.datalad/
           rm -rf ./behavior_testing_data/.git/
-          rm -rf ./behavior_testing_data/.gitattributes
+          #rm -rf ./behavior_testing_data/.gitattributes
           rm -rf ./behavior_testing_data/.gitignore
-          rm -rf ./behavior_testing_data/README.md
+          #rm -rf ./behavior_testing_data/README.md
       - name: Upload behavior dataset to S3
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         uses: keithweaver/aws-s3-github-action@v1.0.0
