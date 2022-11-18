@@ -1,10 +1,12 @@
-name: Updated Caches and Upload to S3
+name: Update S3 Testing Data
 on:
   schedule:
     - cron: "0 0 * * *"
+  workflow_dispatch:
+
 jobs:
   run:
-    name: Update cache and upload to S3
+    name: Update S3 Testing Data
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
