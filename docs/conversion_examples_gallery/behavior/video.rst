@@ -30,3 +30,4 @@ This interface can handle conversions from avi, mov, mp4, wmv, flv and most FFmp
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+    root pynwb.file.NWBFile ...
