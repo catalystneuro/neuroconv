@@ -689,9 +689,12 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
-    )
+    if compression is None:
+        eseries_kwargs.update(data=ephys_data_iterator)
+    else:
+        eseries_kwargs.update(
+            data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+        )
 
     # Timestamps vs rate
     timestamps = checked_recording.get_times(segment_index=segment_index)
