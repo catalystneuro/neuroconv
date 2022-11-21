@@ -689,7 +689,7 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    if compression is None:
+    if compression == "zarr":
         eseries_kwargs.update(data=ephys_data_iterator)
     else:
         eseries_kwargs.update(
