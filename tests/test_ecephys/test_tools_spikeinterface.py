@@ -20,6 +20,7 @@ from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
     write_sorting,
+    write_waveforms,
     check_if_recording_traces_fit_into_memory,
     add_electrodes,
     add_electrical_series,
@@ -752,7 +753,8 @@ class TestAddUnitsTable(TestCase):
     def setUpClass(cls):
         """Use common recording objects and values."""
         cls.num_units = 4
-        cls.base_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
+        cls.single_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
+        cls.multiple_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3, 4])
         # Base sorting unit ids are [0, 1, 2, 3]
 
     def setUp(self):
@@ -996,6 +998,43 @@ class TestAddUnitsTable(TestCase):
         units_table = ecephys_mod[units_table_name]
         self.assertEqual(units_table.name, units_table_name)
         self.assertEqual(units_table.description, unit_table_description)
+
+    # def test_default_values_single_segment(self):
+    #     """This test that the names are written appropiately for the single segment case (numbers not added)"""
+    #     write_sorting(sorting=self.single_segment_sorting, nwbfile=self.nwbfile, iterator_type=None)
+
+    #     acquisition_module = self.nwbfile.acquisition
+    #     assert "ElectricalSeriesRaw" in acquisition_module
+    #     electrical_series = acquisition_module["ElectricalSeriesRaw"]
+
+    #     assert isinstance(electrical_series.data, H5DataIO)
+
+    #     compression_parameters = electrical_series.data.get_io_params()
+    #     assert compression_parameters["compression"] == "gzip"
+
+    #     extracted_data = electrical_series.data[:]
+    #     expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
+    #     np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    # def test_write_multiple_segments(self):
+
+    #     write_sorting(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+
+    #     acquisition_module = self.nwbfile.acquisition
+    #     assert len(acquisition_module) == 2
+
+    #     assert "ElectricalSeriesRaw0" in acquisition_module
+    #     assert "ElectricalSeriesRaw1" in acquisition_module
+
+    #     electrical_series0 = acquisition_module["ElectricalSeriesRaw0"]
+    #     extracted_data = electrical_series0.data[:]
+    #     expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=0)
+    #     np.testing.assert_array_almost_equal(expected_data, extracted_data)
+
+    #     electrical_series1 = acquisition_module["ElectricalSeriesRaw1"]
+    #     extracted_data = electrical_series1.data[:]
+    #     expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
+    #     np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
 
 if __name__ == "__main__":
