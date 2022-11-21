@@ -81,7 +81,6 @@ Behavior
     DeepLabCut <behavior/deeplabcut>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
-    Audio <behavior/audio>
 
 Common interface combinations
 -----------------------------
