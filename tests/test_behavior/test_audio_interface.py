@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
+from warnings import warn
 
 import numpy as np
 from dateutil.tz import gettz
@@ -61,13 +62,12 @@ class TestAudioInterface(TestCase):
         self.metadata = self.nwb_converter.get_metadata()
         self.metadata["NWBFile"].update(session_start_time=self.session_start_time)
 
-    #    def tearDown(self):
-    #        del self.nwb_converter
-    #        remove_test_file(self.nwbfile_path)
-
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.test_dir)
+        try:
+            shutil.rmtree(cls.test_dir)
+        except PermissionError:  # Windows CI bug
+            warn(f"Unable to fully clean the temporary directory: {cls.test_dir}\n\nPlease remove it manually.")
 
     def create_audio_converter(self):
         class AudioTestNWBConverter(NWBConverter):
