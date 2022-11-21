@@ -117,9 +117,7 @@ class TestAudioInterface(TestCase):
     def test_incomplete_metadata(self):
         metadata = deepcopy(self.metadata)
         metadata["Behavior"].update(Audio=[dict(name="Audio", description="Acoustic waveform series.")])
-        expected_error_message = (
-            "Incomplete metadata (number of metadata in audio 1)is not equal to the number of file_paths 3"
-        )
+        expected_error_message = "Incomplete metadata, the number of metadata for Audio is (1) is not equal to the number of expected metadata (3)."
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
@@ -151,7 +149,7 @@ class TestAudioInterface(TestCase):
                 dict(name="Audio2", description="Acoustic waveform series."),
             ],
         )
-        expected_error_message = "Some of the names for AcousticWaveformSeries are not unique."
+        expected_error_message = "Some of the names for Audio metadata are not unique."
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
