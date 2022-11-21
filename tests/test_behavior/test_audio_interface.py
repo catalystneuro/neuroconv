@@ -61,9 +61,9 @@ class TestAudioInterface(TestCase):
         self.metadata = self.nwb_converter.get_metadata()
         self.metadata["NWBFile"].update(session_start_time=self.session_start_time)
 
-#    def tearDown(self):
-#        del self.nwb_converter
-#        remove_test_file(self.nwbfile_path)
+    #    def tearDown(self):
+    #        del self.nwb_converter
+    #        remove_test_file(self.nwbfile_path)
 
     @classmethod
     def tearDownClass(cls):
