@@ -89,9 +89,9 @@ class TestAudioInterface(TestCase):
         self.assertEqual(len(audio_metadata), self.num_audio_files)
 
     def test_incorrect_write_as(self):
-        expected_error_message = "Audio can be written either as 'stimulus' or 'acquisition'."
+        expected_error_message = "Acoustic series can be written either as 'stimulus' or 'acquisition'."
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
-            conversion_opts = dict(Audio=dict(write_as="test"))
+            conversion_opts = dict(Audio=dict(write_as="test", starting_times=self.starting_times))
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
                 metadata=self.metadata,
@@ -100,12 +100,13 @@ class TestAudioInterface(TestCase):
 
     def test_write_as_acquisition(self):
         conversion_opts = dict(Audio=dict(write_as="acquisition", starting_times=self.starting_times))
+        nwbfile_path = str(self.test_dir / "audio_write_as_acquisition.nwb")
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path,
+            nwbfile_path=nwbfile_path,
             metadata=self.metadata,
             conversion_options=conversion_opts,
         )
-        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             container = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
@@ -127,11 +128,12 @@ class TestAudioInterface(TestCase):
     def test_metadata_update(self):
         metadata = deepcopy(self.metadata)
         metadata["Behavior"]["Audio"][0].update(description="New description for Acoustic waveform series.")
+        nwbfile_path = str(self.test_dir / "audio_with_updated_metadata.nwb")
         conversion_opts = dict(Audio=dict(starting_times=self.starting_times))
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path, metadata=metadata, conversion_options=conversion_opts
+            nwbfile_path=nwbfile_path, metadata=metadata, conversion_options=conversion_opts
         )
-        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             container = nwbfile.stimulus
             audio_name = metadata["Behavior"]["Audio"][0]["name"]
@@ -187,15 +189,16 @@ class TestAudioInterface(TestCase):
 
     def test_run_conversion(self):
         conversion_opts = dict(Audio=dict(starting_times=self.starting_times))
+        nwbfile_path = str(self.test_dir / "audio_test_data.nwb")
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path,
+            nwbfile_path=nwbfile_path,
             metadata=self.metadata,
             conversion_options=conversion_opts,
         )
         file_paths = self.nwb_converter.data_interface_objects["Audio"].source_data["file_paths"]
         audio_test_data = [read(filename=file_path, mmap=True)[1] for file_path in file_paths]
 
-        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             container = nwbfile.stimulus
             metadata = self.nwb_converter.get_metadata()
