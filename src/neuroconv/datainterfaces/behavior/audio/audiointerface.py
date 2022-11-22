@@ -18,22 +18,36 @@ from neuroconv.utils import (
 from pynwb import NWBFile, TimeSeries
 
 
+def _check_file_paths(file_paths, metadata: dict):
+    number_of_file_paths = len(file_paths)
+    assert len(metadata) == number_of_file_paths, (
+        f"Incomplete metadata, the number of metadata for Audio is ({len(metadata)}) "
+        f"is not equal to the number of expected metadata ({number_of_file_paths})."
+    )
+
+
 def _check_audio_names_are_unique(metadata: dict):
-    neurodata_names = [neurodata["name"] for neurodata in metadata["Behavior"]["Audio"]]
+    neurodata_names = [neurodata["name"] for neurodata in metadata]
     neurodata_names_are_unique = len(set(neurodata_names)) == len(neurodata_names)
     assert neurodata_names_are_unique, f"Some of the names for Audio metadata are not unique."
 
 
-def _check_starting_times(starting_times: list, metadata: dict):
-    assert isinstance(starting_times, list) and all(
-        [isinstance(x, float) for x in starting_times]
-    ), "Argument 'starting_times' must be a list of floats."
+def _check_starting_times(starting_times: list, metadata: dict) -> list:
+    if starting_times is not None:
+        assert isinstance(starting_times, list) and all(
+            [isinstance(x, float) for x in starting_times]
+        ), "Argument 'starting_times' must be a list of floats."
+
+    if len(metadata) == 1 and starting_times is None:
+        warn("starting_times not provided, setting to 0.0")
+        starting_times = [0.0]
 
     assert len(starting_times) == len(metadata), (
         f"The number of entries in 'starting_times' ({len(starting_times)}) must be equal to number of unique "
         f"AcousticWaveformSeries ({len(metadata)}). \n"
         f"'starting_times' provided as input {starting_times}."
     )
+    return starting_times
 
 
 class AudioInterface(BaseDataInterface):
@@ -97,13 +111,6 @@ class AudioInterface(BaseDataInterface):
         metadata.update(Behavior=behavior_metadata)
         return metadata
 
-    def _check_metadata_is_complete(self, metadata: dict):
-        number_of_file_paths = len(self.source_data["file_paths"])
-        assert len(metadata["Behavior"]["Audio"]) == number_of_file_paths, (
-            f"Incomplete metadata, the number of metadata for Audio is ({len(metadata['Behavior']['Audio'])}) "
-            f"is not equal to the number of expected metadata ({number_of_file_paths})."
-        )
-
     def run_conversion(
         self,
         nwbfile_path: OptionalFilePathType = None,
@@ -118,24 +125,16 @@ class AudioInterface(BaseDataInterface):
         overwrite: bool = False,
         verbose: bool = True,
     ):
-        # Checks for metadata
-        self._check_metadata_is_complete(metadata=metadata)
-        _check_audio_names_are_unique(metadata=metadata)
-
-        audio_metadata = metadata["Behavior"]["Audio"]
         file_paths = self.source_data["file_paths"]
+        audio_metadata = metadata["Behavior"]["Audio"]
+        # Checks for metadata
+        _check_file_paths(file_paths=file_paths, metadata=audio_metadata)
+        _check_audio_names_are_unique(metadata=audio_metadata)
+
         audio_metadata_unique, file_paths_unique = _check_duplicates(audio_metadata, file_paths)
         unpacked_file_paths_unique = [file_path[0] for file_path in file_paths_unique]
 
-        if starting_times is not None:
-            _check_starting_times(starting_times=starting_times, metadata=audio_metadata)
-
-        else:
-            if len(audio_metadata_unique) == 1:
-                warn("starting_times not provided, setting to 0.0")
-                starting_times = [0.0]
-            else:
-                raise ValueError("provide starting times as a list of len " f"{len(audio_metadata_unique)}")
+        starting_times = _check_starting_times(starting_times=starting_times, metadata=audio_metadata_unique)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
