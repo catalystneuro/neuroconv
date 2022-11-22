@@ -12,6 +12,8 @@
 
 ### Features
 * Added function to add acoustic series as AcousticWaveformSeries object as __acquisition__ or __stimulus__ to NWB. [PR #201](https://github.com/catalystneuro/neuroconv/pull/201)
+* Added `AudioInterface` for files in `WAV` format using the `add_acoustic_waveform_series` utility function
+  from `tools/audio` to write audio data to NWB. [PR #196](https://github.com/catalystneuro/neuroconv/pull/196)
 
 # v0.2.2
 
@@ -39,8 +41,6 @@
 * Added automatic extraction of metadata for `NeuralynxRecordingInterface` including filtering information for channels, device and recording time information [PR #170](https://github.com/catalystneuro/neuroconv/pull/170)
 * Added stubbing capabilities to timestamp extraction in the `MovieInterface` avoiding scanning through the whole file when `stub_test=True` [PR #181](https://github.com/catalystneuro/neuroconv/pull/181)
 * Added a flag `include_roi_acceptance` to `tools.roiextractors.write_segmentation` and corresponding interfaces to allow disabling the addition of boolean columns indicating ROI acceptance. [PR #193](https://github.com/catalystneuro/neuroconv/pull/193)
-* Added `AudioInterface` to write audio data to NWB. The interface supports files in `WAV` format and uses the `ndx-sound` extension to write audio as
-  __acquisition__ or __stimulus__ to NWB stored in `AcousticWaveformSeries` objects. [PR #196](https://github.com/catalystneuro/neuroconv/pull/196)
 
 ### Pending deprecation
 * Replaced the `MovieInterface` with `VideoInterface` and introduced deprecation warnings for the former. [PR #74](https://github.com/catalystneuro/neuroconv/pull/74)
