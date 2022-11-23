@@ -16,6 +16,7 @@ Recording
     :maxdepth: 1
 
     Axona <recording/axona>
+    Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     Intan <recording/intan>
     Neuralynx <recording/neuralynx>

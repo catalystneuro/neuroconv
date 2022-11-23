@@ -42,6 +42,7 @@ from neuroconv.datainterfaces import (
     EDFRecordingInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
+    BiocamRecordingInterface,
 )
 
 
@@ -145,6 +146,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "plexon" / "File_plexon_3.plx"),
             ),
             case_name="plexon_recording",
+        ),
+        param(
+            data_interface=BiocamRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw")),
+            case_name="biocam",
         ),
     ]
     this_python_version = version.parse(python_version())
