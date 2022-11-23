@@ -41,6 +41,7 @@ from neuroconv.datainterfaces import (
     AxonaLFPDataInterface,
     EDFRecordingInterface,
     TdtRecordingInterface,
+    PlexonRecordingInterface,
 )
 
 
@@ -136,6 +137,14 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2"),
             ),
             case_name="multi_stream_case_ns2",
+        ),
+        param(
+            data_interface=PlexonRecordingInterface,
+            interface_kwargs=dict(
+                # Only File_plexon_3.plx has an ecephys recording stream
+                file_path=str(DATA_PATH / "plexon" / "File_plexon_3.plx"),
+            ),
+            case_name="plexon_recording",
         ),
     ]
     this_python_version = version.parse(python_version())
