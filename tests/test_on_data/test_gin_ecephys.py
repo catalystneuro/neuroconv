@@ -41,6 +41,7 @@ from neuroconv.datainterfaces import (
     AxonaLFPDataInterface,
     EDFRecordingInterface,
     TdtRecordingInterface,
+    AlphaOmegaRecordingInterface,
 )
 
 
@@ -136,6 +137,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2"),
             ),
             case_name="multi_stream_case_ns2",
+        ),
+        param(
+            data_interface=AlphaOmegaRecordingInterface(),
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "alphaomega" / "mpx_map_version4"),
+            ),
+            case_name="alphaomega",
         ),
     ]
     this_python_version = version.parse(python_version())
