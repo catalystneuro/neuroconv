@@ -23,6 +23,11 @@ body:
     attributes:
       label: Does the format have any documentation?
       description: A link or other details to rich documentation describing the folder/file structure.
+    - type: textarea
+      id: format-api
+      attributes:
+        label: Existing APIs for format
+        description: Do you know of any open source libraries for reading this data format?
   - type: textarea
     id: example-files
     attributes:
