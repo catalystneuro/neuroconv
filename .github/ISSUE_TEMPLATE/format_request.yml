@@ -28,8 +28,6 @@ body:
     attributes:
       label: Do you have any example files you are willing to share?
       description: We require small example files for our testing suite to ensure we properly support the format.
-    validations:
-      required: true
   - type: dropdown
     id: interest
     attributes:
