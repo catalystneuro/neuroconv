@@ -1,7 +1,7 @@
-European Data Format (EDF) conversion
+Plexon conversion
 -------------------------------------
 
-Install NeuroConv with the additional dependencies necessary for reading EDF data.
+Install NeuroConv with the additional dependencies necessary for reading Plexon data.
 
 .. code-block:: bash
 
