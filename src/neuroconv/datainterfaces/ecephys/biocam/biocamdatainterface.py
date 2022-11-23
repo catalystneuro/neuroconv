@@ -8,7 +8,7 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting Biocam data.
 
-    Using the :py:class:`~spikeinterface.extractors.EDFRecordingExtractor`.
+    Using the :py:class:`~spikeinterface.extractors.BiocamRecordingExtractor`.
     """
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
