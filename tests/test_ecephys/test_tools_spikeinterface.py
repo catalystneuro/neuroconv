@@ -8,7 +8,7 @@ import numpy as np
 
 from pynwb import NWBHDF5IO, NWBFile
 import pynwb.ecephys
-from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+from spikeinterface.core import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
