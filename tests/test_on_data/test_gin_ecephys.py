@@ -311,8 +311,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             # Edge case that only occurs in testing, but should eventually be fixed nonetheless
             # The NwbRecordingExtractor on spikeinterface experiences an issue when duplicated channel_ids
             # are specified, which occurs during check_recordings_equal when there is only one channel
-            si_test_ch = [nwb_recording.get_channel_ids()[0], nwb_recording.get_channel_ids()[-1]]
-            if len(si_test_ch) == len(set(si_test_ch)):
+            if nwb_recording.get_channel_ids()[0] != nwb_recording.get_channel_ids()[-1]:
                 check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
                 if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
