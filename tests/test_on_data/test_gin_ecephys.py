@@ -41,6 +41,7 @@ from neuroconv.datainterfaces import (
     AxonaLFPDataInterface,
     EDFRecordingInterface,
     TdtRecordingInterface,
+    BiocamRecordingInterface,
 )
 
 
@@ -136,6 +137,11 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "blackrock" / "blackrock_2_1" / "l101210-001.ns2"),
             ),
             case_name="multi_stream_case_ns2",
+        ),
+        param(
+            data_interface=BiocamRecordingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw")),
+            case_name="biocam",
         ),
     ]
     this_python_version = version.parse(python_version())
