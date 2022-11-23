@@ -22,6 +22,7 @@ Recording
     Neuralynx <recording/neuralynx>
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>
+    Plexon <recording/plexon>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
     EDF <recording/edf>
