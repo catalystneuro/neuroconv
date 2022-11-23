@@ -12,9 +12,7 @@ from spikeinterface.core import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
-
 from hdmf.testing import TestCase
-
 
 from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
@@ -29,6 +27,14 @@ from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator imp
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from neuroconv.tools.nwb_helpers import get_module
+
+# See https://github.com/catalystneuro/neuroconv/pull/208
+# TODO: Remove upon next SI release and bump version
+try:
+    from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+except ModuleNotFoundError:
+    from spikeinterface.core import generate_recording, generate_sorting
+
 
 testing_session_time = datetime.now().astimezone()
 
