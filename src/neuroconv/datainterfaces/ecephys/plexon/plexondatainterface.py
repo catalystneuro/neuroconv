@@ -18,7 +18,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         Parameters
         ----------
         file_path: string or Path
-            Path to the Plexon file.
+            Path to the .plx file.
         verbose: boolean
             Allows verbosity.
             Default is True.

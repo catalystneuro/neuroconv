@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
 
     pip install neuroconv[plexon]
 
-Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.PlexonRecordingInterface`.
+Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.PlexonRecordingInterface`. Currently, only .plx is supported.
 
 .. code-block:: python
 
