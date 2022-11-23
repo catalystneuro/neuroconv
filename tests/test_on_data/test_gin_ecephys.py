@@ -139,7 +139,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             case_name="multi_stream_case_ns2",
         ),
         param(
-            data_interface=AlphaOmegaRecordingInterface(),
+            data_interface=AlphaOmegaRecordingInterface,
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "alphaomega" / "mpx_map_version4"),
             ),

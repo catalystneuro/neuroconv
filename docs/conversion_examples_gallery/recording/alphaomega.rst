@@ -16,7 +16,7 @@ Convert AlphaOmega data to NWB using :py:class:`~neuroconv.datainterfaces.ecephy
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import AlphaOmegaRecordingInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/alphaomega/mpx_map_version4/"
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/alphaomega/mpx_map_version4/"
     >>> # Change the file_path to the location in your system
     >>> interface = AlphaOmegaRecordingInterface(folder_path=folder_path, verbose=False)
     >>>
