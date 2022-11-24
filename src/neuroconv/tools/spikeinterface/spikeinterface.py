@@ -367,14 +367,7 @@ def add_electrodes(
 
     # 2 Divide properties to those that will be added as rows (default plus previous) and columns (new properties)
     required_property_to_default_value = dict(
-        x=np.nan,
-        y=np.nan,
-        z=np.nan,
-        # There doesn't seem to be a canonical default for impedence, if missing.
-        # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
-        imp=-1.0,
         location="unknown",
-        filtering="none",
         group=None,
         id=None,
         group_name="default",
