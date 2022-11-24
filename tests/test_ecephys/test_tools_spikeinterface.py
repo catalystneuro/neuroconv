@@ -1017,12 +1017,8 @@ class TestWriteWaveforms(TestCase):
         single_segment_rec.annotate(is_filtered=True)
         multi_segment_rec.annotate(is_filtered=True)
 
-        cls.single_segment_we = extract_waveforms(single_segment_rec,
-                                                  single_segment_sort,
-                                                  folder=None, mode="memory")
-        cls.multi_segment_we = extract_waveforms(multi_segment_rec,
-                                                 multi_segment_sort,
-                                                 folder=None, mode="memory")
+        cls.single_segment_we = extract_waveforms(single_segment_rec, single_segment_sort, folder=None, mode="memory")
+        cls.multi_segment_we = extract_waveforms(multi_segment_rec, multi_segment_sort, folder=None, mode="memory")
         # add template metrics to test property propagation
         compute_template_metrics(cls.single_segment_we)
         compute_template_metrics(cls.multi_segment_we)
