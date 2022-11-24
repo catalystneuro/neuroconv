@@ -17,12 +17,7 @@ class TestMEArecMetadata(unittest.TestCase):
 
         assert nwb_metadata["Ecephys"]["Device"] == "Neuronexus-32"
 
-        # The configuration of the probe - much of this will eventually be absorbed into the
-        # write procedures for ProbeInterface
-        assert nwb_metadata["Ecephys"]["Electrodes"]["description"] == (
-            '{"dim": [10, 12, 10], "pitch": [25.0, 18.0], '
-            '"shape": "circle", "size": 7.5, "sortlist": null, "stagger": -12.5, "type": "mea"}'
-        )
+        # TODO: Test ProbeInterface metadata portion here when integrated
 
         # Recording specific configurations
         assert nwb_metadata["Ecephys"]["ElectricalSeries"]["description"] == (

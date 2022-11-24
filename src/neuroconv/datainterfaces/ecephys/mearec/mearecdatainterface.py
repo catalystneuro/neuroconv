@@ -40,7 +40,6 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
 
         electrode_metadata = dict(mearec_info["electrodes"])
         metadata["Ecephys"]["Device"].update(name=electrode_metadata.pop("electrode_name"))
-        metadata["Ecephys"]["Electrodes"].update(description=json.dumps(electrode_metadata, cls=NWBMetaDataEncoder))
 
         recording_metadata = dict(mearec_info["recordings"])
         for unneeded_key in ["fs", "dtype"]:

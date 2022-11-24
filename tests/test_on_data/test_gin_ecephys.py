@@ -162,7 +162,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
             case_name="alphaomega",
         ),
         param(
-            data_interface=MEArecRecordingInterface(),
+            data_interface=MEArecRecordingInterface,
             interface_kwargs=dict(
                 file_path=str(DATA_PATH / "mearec" / "mearec_test_10s.h5"),
             ),
