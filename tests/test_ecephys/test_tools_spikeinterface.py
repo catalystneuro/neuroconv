@@ -1067,7 +1067,10 @@ class TestWriteWaveforms(TestCase):
         self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
 
     def write_test_files(self):
-        pass
+        with NWBHDF5IO("waveforms_single_segment.nwb", "w") as io:
+            io.write(self.nwbfile1)
+        with NWBHDF5IO("waveforms_multi_segment.nwb", "w") as io:
+            io.write(self.nwbfile2)
 
 
 if __name__ == "__main__":
