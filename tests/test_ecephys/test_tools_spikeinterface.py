@@ -8,6 +8,7 @@ import numpy as np
 
 from pynwb import NWBHDF5IO, NWBFile
 import pynwb.ecephys
+from spikeinterface import extract_waveforms
 from spikeinterface.core.testing_tools import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -755,6 +756,7 @@ class TestAddUnitsTable(TestCase):
         cls.num_units = 4
         cls.single_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
         cls.multiple_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        cls.base_sorting = cls.single_segment_sorting
         # Base sorting unit ids are [0, 1, 2, 3]
 
     def setUp(self):
@@ -999,42 +1001,73 @@ class TestAddUnitsTable(TestCase):
         self.assertEqual(units_table.name, units_table_name)
         self.assertEqual(units_table.description, unit_table_description)
 
-    # def test_default_values_single_segment(self):
-    #     """This test that the names are written appropiately for the single segment case (numbers not added)"""
-    #     write_sorting(sorting=self.single_segment_sorting, nwbfile=self.nwbfile, iterator_type=None)
 
-    #     acquisition_module = self.nwbfile.acquisition
-    #     assert "ElectricalSeriesRaw" in acquisition_module
-    #     electrical_series = acquisition_module["ElectricalSeriesRaw"]
+class TestWriteWaveforms(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        from spikeinterface.postprocessing import compute_template_metrics
 
-    #     assert isinstance(electrical_series.data, H5DataIO)
+        cls.num_units = 4
+        cls.num_channels = 4
+        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3])
+        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3])
+        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3, 4])
+        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        single_segment_rec.annotate(is_filtered=True)
+        multi_segment_rec.annotate(is_filtered=True)
 
-    #     compression_parameters = electrical_series.data.get_io_params()
-    #     assert compression_parameters["compression"] == "gzip"
+        cls.single_segment_we = extract_waveforms(single_segment_rec,
+                                                  single_segment_sort,
+                                                  folder=None, mode="memory")
+        cls.multi_segment_we = extract_waveforms(multi_segment_rec,
+                                                 multi_segment_sort,
+                                                 folder=None, mode="memory")
+        # add template metrics to test property propagation
+        compute_template_metrics(cls.single_segment_we)
+        compute_template_metrics(cls.multi_segment_we)
 
-    #     extracted_data = electrical_series.data[:]
-    #     expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
-    #     np.testing.assert_array_almost_equal(expected_data, extracted_data)
+    def setUp(self):
+        """Start with a fresh NWBFile, and remapped sorters each time."""
+        self.nwbfile1 = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+        self.nwbfile2 = NWBFile(
+            session_description="session_description2", identifier="file_id1", session_start_time=testing_session_time
+        )
 
-    # def test_write_multiple_segments(self):
+    def _test_waveform_write(self, we, nwbfile):
+        # test unit columns
+        self.assertIn("waveform_mean", nwbfile.units.colnames)
+        self.assertIn("waveform_sd", nwbfile.units.colnames)
+        self.assertIn("peak_to_valley", nwbfile.units.colnames)
+        self.assertIn("half_width", nwbfile.units.colnames)
 
-    #     write_sorting(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        # test that electrode table has been saved
+        assert nwbfile.electrodes is not None
 
-    #     acquisition_module = self.nwbfile.acquisition
-    #     assert len(acquisition_module) == 2
+        # test that waveforms and stds are the same
+        unit_ids = we.unit_ids
+        for unit_index in nwbfile.units.id:
+            wf_mean_si = we.get_template(unit_ids[unit_index])
+            wf_mean_nwb = nwbfile.units[unit_index]["waveform_mean"].values[0]
+            np.testing.assert_array_almost_equal(wf_mean_si, wf_mean_nwb)
+            wf_sd_si = we.get_template(unit_ids[unit_index], mode="std")
+            wf_sd_nwb = nwbfile.units[unit_index]["waveform_sd"].values[0]
+            np.testing.assert_array_almost_equal(wf_sd_si, wf_sd_nwb)
 
-    #     assert "ElectricalSeriesRaw0" in acquisition_module
-    #     assert "ElectricalSeriesRaw1" in acquisition_module
+    def test_write_single_segment(self):
+        """This test that the waveforms are written appropriately for the single segment case"""
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile1)
+        self._test_waveform_write(self.single_segment_we, self.nwbfile1)
 
-    #     electrical_series0 = acquisition_module["ElectricalSeriesRaw0"]
-    #     extracted_data = electrical_series0.data[:]
-    #     expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=0)
-    #     np.testing.assert_array_almost_equal(expected_data, extracted_data)
+    def test_write_multiple_segments(self):
+        """This test that the waveforms are written appropriately for the multi segment case"""
+        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2)
+        self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
 
-    #     electrical_series1 = acquisition_module["ElectricalSeriesRaw1"]
-    #     extracted_data = electrical_series1.data[:]
-    #     expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
-    #     np.testing.assert_array_almost_equal(expected_data, extracted_data)
+    def write_test_files(self):
+        pass
 
 
 if __name__ == "__main__":

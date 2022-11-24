@@ -1089,7 +1089,10 @@ def add_units_table(
         if True and either sorting is a spikeextractors SortingExtractor object with "template" property or
         waveform_means (and optionally waveform_sd) are given, then waveforms are added to the units table
         after writing.
-    waveform_means
+    waveform_means : np.array (optional, default to None)
+        Waveform mean (template) for each unit (num_units, num_samples, num_channels)
+    waveform_means : np.array (optional, default to None)
+        Waveform standard deviation for each unit (num_units, num_samples, num_channels)
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
@@ -1359,7 +1362,7 @@ def write_sorting(
 
     Parameters
     ----------
-    sorting: SortingExtractor
+    sorting: SpikeInterfaceSorting
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
@@ -1499,6 +1502,8 @@ def write_waveforms(
         template_stds = None
     sorting = waveform_extractor.sorting
 
+    # metrics properties (quality, template) are temporarily added as properties
+    # to be written in the Units table
     tmp_properties = []
     if waveform_extractor.is_extension("quality_metrics"):
         qm = waveform_extractor.load_extension("quality_metrics").get_data()
