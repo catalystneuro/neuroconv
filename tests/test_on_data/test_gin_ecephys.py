@@ -44,6 +44,7 @@ from neuroconv.datainterfaces import (
     PlexonRecordingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
+    MEArecRecordingInterface,
 )
 
 
@@ -159,6 +160,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 folder_path=str(DATA_PATH / "alphaomega" / "mpx_map_version4"),
             ),
             case_name="alphaomega",
+        ),
+        param(
+            data_interface=MEArecRecordingInterface(),
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "mearec" / "mearec_test_10s.h5"),
+            ),
+            case_name="mearec",
         ),
     ]
     this_python_version = version.parse(python_version())
