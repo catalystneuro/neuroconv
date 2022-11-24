@@ -39,13 +39,17 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         mearec_info = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["mearec_info"]
 
         electrode_metadata = dict(mearec_info["electrodes"])
-        metadata["Ecephys"]["Device"].update(name=electrode_metadata.pop("electrode_name"))
+        metadata["Ecephys"]["Device"][0].update(name=electrode_metadata.pop("electrode_name"))
 
         recording_metadata = dict(mearec_info["recordings"])
         for unneeded_key in ["fs", "dtype"]:
             recording_metadata.pop(unneeded_key)
-        metadata["Ecephys"]["ElectricalSeries"].update(
-            description=json.dumps(recording_metadata, cls=NWBMetaDataEncoder)
+        self.es_key = "ElectricalSeries"
+        metadata["Ecephys"].update(
+            {
+                self.es_key: dict(
+                    name="ElectricalSeries", description=json.dumps(recording_metadata, cls=NWBMetaDataEncoder)
+                )
+            }
         )
-
         return metadata
