@@ -1530,8 +1530,7 @@ def write_waveforms(
         else:
             # we need add_electrodes_from_waveforms
             if waveform_extractor._recording is not None:
-                add_electrodes_info(waveform_extractor.recording, nwbfile=nwbfile_out,
-                                    metadata=metadata)
+                add_electrodes_info(waveform_extractor.recording, nwbfile=nwbfile_out, metadata=metadata)
             else:
                 # add_electrodes_info_from_waveforms(waveform_extractor, metadata, )
                 raise NotImplementedError("Write waveforms requires the waveform_extractor._recording")
@@ -1545,7 +1544,7 @@ def write_waveforms(
             unit_table_description=units_description,
             write_waveforms=False,
             waveform_means=templates,
-            waveform_sds=template_stds
+            waveform_sds=template_stds,
         )
     # rm tmp properties
     for prop in tmp_properties:
