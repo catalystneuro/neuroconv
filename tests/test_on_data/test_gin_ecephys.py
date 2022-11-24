@@ -43,6 +43,7 @@ from neuroconv.datainterfaces import (
     TdtRecordingInterface,
     PlexonRecordingInterface,
     BiocamRecordingInterface,
+    AlphaOmegaRecordingInterface,
 )
 
 
@@ -151,6 +152,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface=BiocamRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw")),
             case_name="biocam",
+        ),
+        param(
+            data_interface=AlphaOmegaRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "alphaomega" / "mpx_map_version4"),
+            ),
+            case_name="alphaomega",
         ),
     ]
     this_python_version = version.parse(python_version())
