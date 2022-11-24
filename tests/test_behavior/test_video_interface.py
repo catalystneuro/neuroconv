@@ -271,7 +271,8 @@ class TestMovieInterface(TestCase):
             metadata = self.nwb_converter.get_metadata()
             for video_metadata in metadata["Behavior"]["Movies"]:
                 video_interface_name = video_metadata["name"]
-                assert acquisition_module[video_interface_name].rate == 1 / (timestamps[1] - timestamps[0])
+                expected_rate = round(1 / (timestamps[1] - timestamps[0]), 2)
+                assert acquisition_module[video_interface_name].rate == expected_rate
                 assert acquisition_module[video_interface_name].timestamps is None
 
     def test_starting_frames_type_error(self):

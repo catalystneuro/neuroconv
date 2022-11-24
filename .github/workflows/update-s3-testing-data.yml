@@ -1,10 +1,12 @@
-name: Updated Caches and Upload to S3
+name: Update S3 Testing Data
 on:
   schedule:
     - cron: "0 0 * * *"
+  workflow_dispatch:
+
 jobs:
   run:
-    name: Update cache and upload to S3
+    name: Update S3 Testing Data
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -33,7 +35,7 @@ jobs:
         id: cache-ephys-datasets
         with:
           path: ./ephy_testing_data
-          key: ephys-datasets-081922-ubuntu-latest-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
+          key: ephys-datasets-s3-ubuntu-latest-${{ steps.ephys.outputs.HASH_EPHY_DATASET }}
 
       - name: Get ophys_testing_data current head hash
         id: ophys
@@ -43,7 +45,7 @@ jobs:
         id: cache-ophys-datasets
         with:
           path: ./ophys_testing_data
-          key: ophys-datasets-042022-ubuntu-latest-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
+          key: ophys-datasets-s3-ubuntu-latest-${{ steps.ophys.outputs.HASH_OPHYS_DATASET }}
 
       - name: Get behavior_testing_data current head hash
         id: behavior
@@ -53,13 +55,15 @@ jobs:
         id: cache-behavior-datasets
         with:
           path: ./behavior_testing_data
-          key: behavior-datasets-042022-ubuntu-latest-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
+          key: behavior-datasets-s3-ubuntu-latest-${{ steps.behavior.outputs.HASH_behavior_DATASET }}
 
 
 
       - name: Install datalad if needed
         if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         run: conda install -c conda-forge datalad==0.16.3
+
+
 
       - name: "Force GIN: ephys download"
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
@@ -68,7 +72,6 @@ jobs:
         if: steps.cache-ephys-datasets.outputs.cache-hit == false
         run: |
           chmod -R +w ./ephy_testing_data/
-          rm -rf ./ephy_testing_data/.git/
           rm -rf ./ephy_testing_data/.gitattributes
           rm -rf ./ephy_testing_data/.gitignore
           rm -rf ./ephy_testing_data/config.yml
@@ -87,6 +90,8 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
 
+
+
       - name: "Force GIN: ophys download"
         if: steps.cache-ophys-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
@@ -95,7 +100,6 @@ jobs:
         run: |
           chmod -R +w ./ophys_testing_data/
           rm -rf ./ophys_testing_data/.datalad/
-          rm -rf ./ophys_testing_data/.git/
           rm -rf ./ophys_testing_data/.gitattributes
           rm -rf ./ophys_testing_data/.gitignore
           rm -rf ./ophys_testing_data/README.md
@@ -110,6 +114,8 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: us-east-2
 
+
+
       - name: "Force GIN: behavior download"
         if: steps.cache-behavior-datasets.outputs.cache-hit == false
         run: datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
@@ -118,7 +124,6 @@ jobs:
         run: |
           chmod -R +w ./behavior_testing_data/
           rm -rf ./behavior_testing_data/.datalad/
-          rm -rf ./behavior_testing_data/.git/
           rm -rf ./behavior_testing_data/.gitattributes
           rm -rf ./behavior_testing_data/.gitignore
           rm -rf ./behavior_testing_data/README.md

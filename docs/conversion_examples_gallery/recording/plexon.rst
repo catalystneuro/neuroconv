@@ -1,24 +1,24 @@
-European Data Format (EDF) conversion
+Plexon conversion
 -------------------------------------
 
-Install NeuroConv with the additional dependencies necessary for reading EDF data.
+Install NeuroConv with the additional dependencies necessary for reading Plexon data.
 
 .. code-block:: bash
 
-    pip install neuroconv[edf]
+    pip install neuroconv[plexon]
 
-Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface`.
+Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.PlexonRecordingInterface`. Currently, only .plx is supported.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import EDFRecordingInterface
+    >>> from neuroconv.datainterfaces import PlexonRecordingInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/edf/edf+C.edf"
+    >>> file_path = f"{ECEPHY_DATA_PATH}/plexon/File_plexon_3.plx"
     >>> # Change the file_path to the location in your system
-    >>> interface = EDFRecordingInterface(file_path=file_path, verbose=False)
+    >>> interface = PlexonRecordingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
