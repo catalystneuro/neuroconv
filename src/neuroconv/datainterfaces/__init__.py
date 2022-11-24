@@ -33,6 +33,8 @@ from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
+from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface
+from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -84,6 +86,8 @@ interface_list = [
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
     TdtRecordingInterface,
+    PlexonRecordingInterface,
+    BiocamRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
