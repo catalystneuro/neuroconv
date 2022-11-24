@@ -50,9 +50,14 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         mearec_info = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["mearec_info"]
 
         electrode_metadata = dict(mearec_info["electrodes"])
+        device_name = electrode_metadata.pop(
+            "electrode_name"
+        )  # 'electrode_name' seems to be a misnomer for the probe name
         metadata["Ecephys"]["Device"][0].update(
-            name=electrode_metadata.pop("electrode_name"), description="The ecephys device for the MEArec recording."
+            name=device_name, description="The ecephys device for the MEArec recording."
         )
+        for electrode_group_metadata in metadata["Ecephys"]["ElectrodeGroup"]:
+            electrode_group_metadata.update(device=device_name)
 
         recording_metadata = dict(mearec_info["recordings"])
         for unneeded_key in ["fs", "dtype"]:

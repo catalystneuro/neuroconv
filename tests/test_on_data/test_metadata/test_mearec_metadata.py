@@ -15,8 +15,12 @@ class TestMEArecMetadata(unittest.TestCase):
 
         nwb_metadata = self.interface.get_metadata()
 
+        assert len(nwb_metadata["Ecephys"]["Device"]) == 1
         assert nwb_metadata["Ecephys"]["Device"][0]["name"] == "Neuronexus-32"
         assert nwb_metadata["Ecephys"]["Device"][0]["description"] == "The ecephys device for the MEArec recording."
+
+        assert len(nwb_metadata["Ecephys"]["ElectrodeGroup"]) == 1
+        assert nwb_metadata["Ecephys"]["ElectrodeGroup"][0]["device"] == "Neuronexus-32"
 
         # TODO: Test ProbeInterface metadata portion here when integrated
 
