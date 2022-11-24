@@ -28,14 +28,15 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
             Default is True.
         """
         super().__init__(file_path=file_path, verbose=verbose)
+        self.es_key = "ElectricalSeries"
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
 
-        self.es_key = "ElectricalSeries"
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
         )
+
         return metadata_schema
 
     def get_metadata(self):
@@ -59,4 +60,5 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         metadata["Ecephys"].update(
             {self.es_key: dict(name=self.es_key, description=json.dumps(recording_metadata, cls=NWBMetaDataEncoder))}
         )
+
         return metadata
