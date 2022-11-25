@@ -1,5 +1,11 @@
 import unittest
+from tempfile import mkdtemp
+from pathlib import Path
+from shutil import rmtree
+from dateutil import tz
+from datetime import datetime
 
+from pynwb import NWBHDF5IO
 from neuroconv.datainterfaces import MEArecRecordingInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH
@@ -11,21 +17,32 @@ class TestMEArecMetadata(unittest.TestCase):
         file_path = ECEPHY_DATA_PATH / "mearec" / "mearec_test_10s.h5"
         cls.interface = MEArecRecordingInterface(file_path=file_path)
 
-    def test_nwb_metadata(self):
+        cls.tmpdir = Path(mkdtemp())
+        cls.nwbfile_path = cls.tmpdir / "mearec_meadata_test.nwb"
+        metadata = cls.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific")))
+        cls.interface.run_conversion(nwbfile_path=cls.nwbfile_path, metadata=metadata)
 
-        nwb_metadata = self.interface.get_metadata()
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(cls.tmpdir)
 
-        assert len(nwb_metadata["Ecephys"]["Device"]) == 1
-        assert nwb_metadata["Ecephys"]["Device"][0]["name"] == "Neuronexus-32"
-        assert nwb_metadata["Ecephys"]["Device"][0]["description"] == "The ecephys device for the MEArec recording."
+    def test_neuroconv_metadata(self):
+        neuroconv_metadata = self.interface.get_metadata()
 
-        assert len(nwb_metadata["Ecephys"]["ElectrodeGroup"]) == 1
-        assert nwb_metadata["Ecephys"]["ElectrodeGroup"][0]["device"] == "Neuronexus-32"
+        assert len(neuroconv_metadata["Ecephys"]["Device"]) == 1
+        assert neuroconv_metadata["Ecephys"]["Device"][0]["name"] == "Neuronexus-32"
+        assert (
+            neuroconv_metadata["Ecephys"]["Device"][0]["description"] == "The ecephys device for the MEArec recording."
+        )
+
+        assert len(neuroconv_metadata["Ecephys"]["ElectrodeGroup"]) == 1
+        assert neuroconv_metadata["Ecephys"]["ElectrodeGroup"][0]["device"] == "Neuronexus-32"
 
         # TODO: Test ProbeInterface metadata portion here when integrated
 
         # Recording specific configurations
-        assert nwb_metadata["Ecephys"]["ElectricalSeries"]["description"] == (
+        assert neuroconv_metadata["Ecephys"]["ElectricalSeries"]["description"] == (
             '{"angle_tol": 15, "bursting": false, "chunk_duration": 0, "color_noise_floor": 1, '
             '"color_peak": 300, "color_q": 2, "drift_mode": "slow", "drifting": false, '
             '"duration": 10.0, "exp_decay": 0.2, "extract_waveforms": false, '
@@ -39,6 +56,13 @@ class TestMEArecMetadata(unittest.TestCase):
             '"sdrand": 0.05, "shape_mod": false, "shape_stretch": 30.0, "slow_drift_velocity": 5, '
             '"sync_jitt": 1, "sync_rate": null, "t_start_drift": 0}'
         )
+
+    def test_nwb_electrical_series_channel_conversions(self):
+        """MEArec writes directly to float32 microVolts, so channel_conversion should be None."""
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition["ElectricalSeries"].channel_conversion is None
 
 
 if __name__ == "__main__":

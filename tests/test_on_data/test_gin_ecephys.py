@@ -106,7 +106,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
             # This can only be tested if both gain and offest are present
             if recording.has_scaled_traces():
-                nwb_lfp_conversion_vector = nwb_lfp_electrical_series.channel_conversion[:]
+                channel_conversion = nwb_lfp_electrical_series.channel_conversion
+                nwb_lfp_conversion_vector = (
+                    channel_conversion[:]
+                    if channel_conversion is not None
+                    else np.ones(shape=nwb_lfp_unscaled.shape[1])
+                )
+
                 nwb_lfp_offset = nwb_lfp_electrical_series.offset
                 recording_data_volts = recording.get_traces(return_scaled=True) * 1e-6
                 nwb_data_volts = nwb_lfp_unscaled * nwb_lfp_conversion_vector * nwb_lfp_conversion + nwb_lfp_offset
@@ -463,9 +469,10 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_channel_conversion = nwbfile.acquisition["ElectricalSeriesRaw"].channel_conversion[:]
-            input_gain_array = np.ones_like(output_channel_conversion) * input_gain
-            np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
+            # output_channel_conversion = nwbfile.acquisition["ElectricalSeriesRaw"].channel_conversion[:]
+            # input_gain_array = np.ones_like(output_channel_conversion) * input_gain
+            # np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
+            assert nwbfile.acquisition["ElectricalSeriesRaw"].channel_conversion is None
 
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             nwb_recording_gains = nwb_recording.get_channel_gains()
