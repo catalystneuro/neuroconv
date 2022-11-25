@@ -33,6 +33,3 @@ Convert OpenEphys data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>>
-    >>> Path(nwbfile_path).is_file()
-    True

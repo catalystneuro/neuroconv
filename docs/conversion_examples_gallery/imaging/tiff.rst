@@ -28,7 +28,3 @@ Convert TIFF imaging data to NWB using
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>>
-    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(nwbfile_path).is_file()
-    True
