@@ -366,35 +366,36 @@ def add_electrodes(
     data_to_add["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
 
     # 2 Divide properties to those that will be added as rows (default plus previous) and columns (new properties)
-    required_property_to_default_value = dict(
+    # This mapping contains all the defaults that might be required by by pre-defined columns on the NWB schema
+    # https://nwb-schema.readthedocs.io/en/latest/format.html#groups-general-extracellular-ephys-electrodes
+    schema_property_to_default_value = dict(
+        id=None,
+        group=None,
+        group_name="default",
+        location="unknown",
         x=np.nan,
         y=np.nan,
         z=np.nan,
         # There doesn't seem to be a canonical default for impedence, if missing.
         # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
         imp=-1.0,
-        location="unknown",
         filtering="none",
-        group=None,
-        id=None,
-        group_name="default",
     )
 
     electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
-    required_properties = set(required_property_to_default_value)
+    required_properties = set(schema_property_to_default_value) - set(["x", "y", "z", "imp", "filtering"])
     extracted_properties = set(data_to_add)
     properties_to_add_by_rows = electrode_table_previous_properties | required_properties
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
     # Find default values for properties / columns already in the electrode table
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
-    property_to_default_values = required_property_to_default_value
     for property in electrode_table_previous_properties - required_properties:
         # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
-        property_to_default_values.update({property: default_value})
+        schema_property_to_default_value.update({property: default_value})
 
     # Add data by rows excluding the rows containing channel_names that were previously added
     channel_names_used_previously = []
@@ -406,7 +407,7 @@ def add_electrodes(
     rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
 
     for row in rows_to_add:
-        electrode_kwargs = dict(property_to_default_values)
+        electrode_kwargs = {k: v for k, v in schema_property_to_default_value.items() if k in required_properties}
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row]
 
