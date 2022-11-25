@@ -1004,8 +1004,9 @@ class TestAddUnitsTable(TestCase):
         self.assertEqual(units_table.description, unit_table_description)
 
 
-@unittest.skipIf(version.parse(python_version()) < version.parse("3.8"),
-                 "SpikeInterface.extract_waveforms() requires Python>=3.8")
+@unittest.skipIf(
+    version.parse(python_version()) < version.parse("3.8"), "SpikeInterface.extract_waveforms() requires Python>=3.8"
+)
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
