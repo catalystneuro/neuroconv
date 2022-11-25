@@ -2,6 +2,8 @@ import unittest
 from unittest.mock import Mock
 from pathlib import Path
 from datetime import datetime
+from platform import python_version
+from packaging import version
 
 import psutil
 import numpy as np
@@ -1002,6 +1004,8 @@ class TestAddUnitsTable(TestCase):
         self.assertEqual(units_table.description, unit_table_description)
 
 
+@unittest.skipIf(version.parse(python_version()) < version.parse("3.8"),
+                 "SpikeInterface.extract_waveforms() requires Python>=3.8")
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
