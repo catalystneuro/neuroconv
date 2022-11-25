@@ -33,6 +33,9 @@ from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
+from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface
+from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
+from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -52,7 +55,7 @@ from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 from .ophys.miniscope.miniscopedatainterface import MiniscopeImagingInterface
 
 # Behavior
-from .behavior.movie.moviedatainterface import MovieInterface
+from .behavior.video.videodatainterface import VideoInterface, MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 
@@ -84,6 +87,9 @@ interface_list = [
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
     TdtRecordingInterface,
+    PlexonRecordingInterface,
+    BiocamRecordingInterface,
+    AlphaOmegaRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
@@ -98,7 +104,8 @@ interface_list = [
     ScanImageImagingInterface,
     MiniscopeImagingInterface,
     # Behavior
-    MovieInterface,
+    MovieInterface,  # TO-DO: deprecate on April 2023
+    VideoInterface,
     DeepLabCutInterface,
     SLEAPInterface,
 ]

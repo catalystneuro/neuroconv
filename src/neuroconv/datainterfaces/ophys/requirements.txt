@@ -1,1 +1,1 @@
-roiextractors>=0.5.0
+roiextractors>=0.5.1

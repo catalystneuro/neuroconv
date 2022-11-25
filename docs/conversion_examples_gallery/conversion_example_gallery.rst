@@ -15,12 +15,15 @@ Recording
 .. toctree::
     :maxdepth: 1
 
+    AlphaOmega <recording/alphaomega>
     Axona <recording/axona>
+    Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     Intan <recording/intan>
     Neuralynx <recording/neuralynx>
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>
+    Plexon <recording/plexon>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
     EDF <recording/edf>
@@ -80,6 +83,8 @@ Behavior
 
     DeepLabCut <behavior/deeplabcut>
     SLEAP <behavior/sleap>
+    Videos <behavior/video>
+    Audio <behavior/audio>
 
 Common interface combinations
 -----------------------------

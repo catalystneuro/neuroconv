@@ -59,6 +59,10 @@ class TestImportStructure(TestCase):
         from neuroconv import datainterfaces
 
         current_structure = _strip_magic_module_attributes(ls=datainterfaces.__dict__)
+
+        from neuroconv.datainterfaces import interface_list
+
+        interface_name_list = [interface.__name__ for interface in interface_list]
         expected_structure = [
             # Sub-modules
             "behavior",

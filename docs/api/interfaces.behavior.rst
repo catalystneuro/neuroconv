@@ -3,7 +3,7 @@ Behavior
 
 Movie Data
 ----------
-.. automodule:: neuroconv.datainterfaces.behavior.movie.moviedatainterface
+.. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
 
 DeepLabCut
 ----------
