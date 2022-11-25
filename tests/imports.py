@@ -72,6 +72,48 @@ class TestImportStructure(TestCase):
             # Exposed attributes
             "interface_list",
             # Behavior
-        ] + interface_name_list
-
+            "DeepLabCutInterface",
+            "MovieInterface",
+            "SLEAPInterface",
+            # Ecephys
+            "AxonaRecordingInterface",
+            "AxonaPositionDataInterface",
+            "AxonaLFPDataInterface",
+            "AxonaUnitRecordingInterface",
+            "BlackrockRecordingInterface",
+            "BlackrockSortingInterface",
+            "CEDRecordingInterface",
+            "CellExplorerSortingInterface",
+            "EDFRecordingInterface",
+            "IntanRecordingInterface",
+            "KiloSortSortingInterface",
+            "NeuralynxRecordingInterface",
+            "NeuralynxSortingInterface",
+            "NeuroScopeRecordingInterface",
+            "NeuroScopeLFPInterface",
+            "NeuroScopeMultiRecordingTimeInterface",
+            "NeuroScopeSortingInterface",
+            "OpenEphysRecordingInterface",
+            "OpenEphysSortingInterface",
+            "PhySortingInterface",
+            "SpikeGLXRecordingInterface",
+            "SpikeGLXLFPInterface",
+            "SpikeGadgetsRecordingInterface",
+            "SIPickleRecordingInterface",
+            "SIPickleSortingInterface",
+            "TdtRecordingInterface",
+            # Icephys
+            "AbfInterface",
+            # Ophys
+            "CaimanSegmentationInterface",
+            "CnmfeSegmentationInterface",
+            "ExtractSegmentationInterface",
+            "Hdf5ImagingInterface",
+            "SbxImagingInterface",
+            "ScanImageImagingInterface",
+            "SimaSegmentationInterface",
+            "Suite2pSegmentationInterface",
+            "TiffImagingInterface",
+            "MiniscopeImagingInterface",
+        ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
