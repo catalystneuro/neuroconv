@@ -15,6 +15,7 @@ Recording
 .. toctree::
     :maxdepth: 1
 
+    AlphaOmega <recording/alphaomega>
     Axona <recording/axona>
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
