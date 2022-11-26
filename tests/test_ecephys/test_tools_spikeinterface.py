@@ -548,10 +548,10 @@ class TestAddElectrodes(TestCase):
             name="0", description="description", location="location", device=self.device
         )
         self.defaults = dict(
+            group=self.electrode_group,
             group_name="0",
             location="unknown",
         )
-        self.defaults.update(group=self.electrode_group)
 
     def test_integer_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are integers."""
@@ -647,6 +647,28 @@ class TestAddElectrodes(TestCase):
         expected_names = ["a", "b", "c", "d", "123", "124", "6"]
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
+
+    def test_manual_row_adition_before_add_electrodes_function_optional_columns(self):
+        """Add some rows including optional columns to the electrode tables before using the add_electrodes function."""
+        values_dic = self.defaults
+
+        values_dic.update(id=123)
+        self.nwbfile.add_electrode(**values_dic, x=0.0, y=1.0, z=2.0)
+
+        values_dic.update(id=124)
+        self.nwbfile.add_electrode(**values_dic, x=1.0, y=2.0, z=3.0)
+
+        # recording_1 does not have x, y, z positions
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_ids = [123, 124, 2, 3, 4, 5]
+        expected_x = [0, 1, np.nan, np.nan, np.nan, np.nan]
+        expected_y = [1, 2, np.nan, np.nan, np.nan, np.nan]
+        expected_z = [2, 3, np.nan, np.nan, np.nan, np.nan]
+        self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
+        self.assertListEqual(list(self.nwbfile.electrodes["x"].data), expected_x)
+        self.assertListEqual(list(self.nwbfile.electrodes["y"].data), expected_y)
+        self.assertListEqual(list(self.nwbfile.electrodes["z"].data), expected_z)
 
     def test_row_matching_by_channel_name_with_existing_property(self):
         """

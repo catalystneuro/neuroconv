@@ -368,11 +368,13 @@ def add_electrodes(
     # 2 Divide properties to those that will be added as rows (default plus previous) and columns (new properties)
     # This mapping contains all the defaults that might be required by by pre-defined columns on the NWB schema
     # https://nwb-schema.readthedocs.io/en/latest/format.html#groups-general-extracellular-ephys-electrodes
-    schema_property_to_default_value = dict(
+    required_schema_property_to_default_value = dict(
         id=None,
         group=None,
         group_name="default",
         location="unknown",
+    )
+    optional_schema_property_to_default_value = dict(
         x=np.nan,
         y=np.nan,
         z=np.nan,
@@ -381,21 +383,30 @@ def add_electrodes(
         imp=-1.0,
         filtering="none",
     )
+    required_schema_properties = set(required_schema_property_to_default_value)
+    optional_schema_properties = set(optional_schema_property_to_default_value)
+    schema_properties = required_schema_properties | optional_schema_properties
 
     electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
-    required_properties = set(schema_property_to_default_value) - set(["x", "y", "z", "imp", "filtering"])
     extracted_properties = set(data_to_add)
-    properties_to_add_by_rows = electrode_table_previous_properties | required_properties
+    properties_to_add_by_rows = required_schema_properties | electrode_table_previous_properties
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
-    # Find default values for properties / columns already in the electrode table
+    # Find default values for a subset of optional schema defined properties already in the electrode table
+    all_properties_to_default_value = dict(required_schema_property_to_default_value)
+    for optional_property in optional_schema_properties.intersection(electrode_table_previous_properties):
+        all_properties_to_default_value.update(
+            {optional_property: optional_schema_property_to_default_value[optional_property]}
+        )
+
+    # Find default values for custom (not schema defined) properties / columns already in the electrode table
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
-    for property in electrode_table_previous_properties - required_properties:
+    for property in electrode_table_previous_properties - schema_properties:
         # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
-        schema_property_to_default_value.update({property: default_value})
+        all_properties_to_default_value.update({property: default_value})
 
     # Add data by rows excluding the rows containing channel_names that were previously added
     channel_names_used_previously = []
@@ -407,7 +418,7 @@ def add_electrodes(
     rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
 
     for row in rows_to_add:
-        electrode_kwargs = {k: v for k, v in schema_property_to_default_value.items() if k in required_properties}
+        electrode_kwargs = dict(all_properties_to_default_value)
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row]
 
@@ -444,10 +455,12 @@ def add_electrodes(
         if np.issubdtype(data.dtype, np.integer):
             data = data.astype("float")
 
-        # Find first matching data-type
-        sample_data = data[0]
-        matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
-        default_value = type_to_default_value[matching_type]
+        if property in optional_schema_property_to_default_value:
+            default_value = optional_schema_property_to_default_value[property]
+        else:  # Find first matching data-type for custom column
+            sample_data = data[0]
+            matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
+            default_value = type_to_default_value[matching_type]
 
         extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=data.dtype)
         extended_data[indexes_for_new_data] = data
