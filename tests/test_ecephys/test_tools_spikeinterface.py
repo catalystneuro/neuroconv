@@ -560,13 +560,8 @@ class TestAddElectrodes(TestCase):
             name="0", description="description", location="location", device=self.device
         )
         self.defaults = dict(
-            x=np.nan,
-            y=np.nan,
-            z=np.nan,
-            imp=-1.0,
-            location="unknown",
-            filtering="none",
             group_name="0",
+            location="unknown",
         )
         self.defaults.update(group=self.electrode_group)
 
