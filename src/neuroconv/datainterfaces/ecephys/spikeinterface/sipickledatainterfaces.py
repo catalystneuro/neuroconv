@@ -17,6 +17,7 @@ class SIPickleRecordingInterface(BaseRecordingExtractorInterface):
         self.subset_channels = None
         self.source_data = dict(file_path=file_path)
         self.verbose = verbose
+        self.es_key = None
 
 
 class SIPickleSortingInterface(BaseSortingExtractorInterface):
