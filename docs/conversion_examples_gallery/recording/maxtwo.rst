@@ -11,10 +11,16 @@ Convert a single data stream from a single recording session in a MaxTwo file to
 
 .. code-block:: python
 
+    >>> import os
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import MaxTwoRecordingInterface
+    >>>
+    >>> # If you do not have the Maxwell HDF5 plugin installed, call this first to automatically set it up.
+    >>> hdf5_plugin_path = f"{HDF5_PLUGIN_PATH}"
+    >>> MaxTwoRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+    >>> os.environ['HDF5_PLUGIN_PATH'] = hdf5_plugin_path
     >>>
     >>> # Change the file_path to the location in your system
     >>> file_path = f"{ECEPHY_DATA_PATH}/maxwell/MaxTwo_data/Activity_Scan/000021/data.raw.h5"
