@@ -45,6 +45,8 @@ from neuroconv.datainterfaces import (
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
+    MaxOneRecordingInterface,
+    MaxTwoRecordingInterface,
 )
 
 
@@ -174,6 +176,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             ),
             case_name="mearec",
         ),
+        param(
+            data_interface=MaxOneRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"),
+            ),
+            case_name="maxone",
+        ),
     ]
     this_python_version = version.parse(python_version())
     if (
@@ -299,6 +308,22 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
+
+    for recording_name in ["rec0000", "rec0001"]:
+        for stream_name in ["well000", "well001", "well002", "well003", "well004", "well005"]:
+            parameterized_recording_list.append(
+                param(
+                    data_interface=MaxTwoRecordingInterface,
+                    interface_kwargs=dict(
+                        file_path=str(
+                            DATA_PATH / "maxwell" / "MaxTwo_data" / "Activity_Scan" / "000021" / "data.raw.h5"
+                        ),
+                        recording_name=recording_name,
+                        stream_name=stream_name,
+                    ),
+                    case_name=f"maxtwo-rec_name={rec_name}-stream_name={stream_name}",
+                ),
+            )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
