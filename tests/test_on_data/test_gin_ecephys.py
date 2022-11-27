@@ -321,7 +321,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                         recording_name=recording_name,
                         stream_name=stream_name,
                     ),
-                    case_name=f"maxtwo-rec_name={rec_name}-stream_name={stream_name}",
+                    case_name=f"maxtwo-recording_name={recording_name}-stream_name={stream_name}",
                 ),
             )
 

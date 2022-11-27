@@ -1,8 +1,10 @@
 """Authors: Cody Baker."""
 from typing import List, Optional
 
+from neo.rawio.maxwellrawio import auto_install_maxwell_hdf5_compression_plugin
+
 from .maxonedatainterface import MaxOneRecordingInterface
-from ....utils.types import FilePathType
+from ....utils.types import FilePathType, FolderPathType
 
 
 class MaxTwoRecordingInterface(MaxOneRecordingInterface):
@@ -16,7 +18,20 @@ class MaxTwoRecordingInterface(MaxOneRecordingInterface):
 
     ExtractorName = "MaxwellRecordingExtractor"
 
-    @classmethod
+    @staticmethod
+    def auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path: Optional[FolderPathType] = None):
+        """
+        If you do not yet have the Maxwell compression plugin installed, this function will automatically install it.
+
+        Parameters
+        ----------
+        hdf5_plugin_path: string or Path, optional
+            Path to your systems HDF5 plugin library.
+            Default is None.
+        """
+        auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+
+    @staticmethod
     def get_recording_names(file_path: FilePathType) -> Optional[List[str]]:
         """
         If you do not know the name of the recording sessions, you may retrieve them with this helper function.
@@ -47,7 +62,7 @@ class MaxTwoRecordingInterface(MaxOneRecordingInterface):
 
             return all_rec_names
 
-    @classmethod
+    @staticmethod
     def get_stream_names(file_path: FilePathType, recording_name: str) -> List[str]:
         """
         If you do not know the name of the streams, you may retrieve them with this helper function.

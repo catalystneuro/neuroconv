@@ -20,15 +20,13 @@ Convert a single data stream from a single recording session in a MaxTwo file to
     >>> file_path = f"{ECEPHY_DATA_PATH}/maxwell/MaxTwo_data/Activity_Scan/000021/data.raw.h5"
     >>>
     >>> # If recording session names are not known ahead of time, you can easily retrieve them
-    >>> MaxTwoRecordingInterface.get_recording_names(file_path=file_path, verbose=False)
+    >>> MaxTwoRecordingInterface.get_recording_names(file_path=file_path)
     ["rec0000", "rec0001"]
     >>> # Choose a name from the list
     >>> recording_name = "rec0000"
     >>>
     >>> # If stream names are not known ahead of time, you can easily retrieve them
-    >>> MaxTwoRecordingInterface.get_stream_names(
-    >>>     file_path=file_path, recording_name=recording_name, verbose=False
-    >>> )
+    >>> MaxTwoRecordingInterface.get_stream_names(file_path=file_path, recording_name=recording_name)
     ["well000", "well001", "well002", "well003", "well004", "well005"]
     >>> stream_name = "well000"
     >>>
