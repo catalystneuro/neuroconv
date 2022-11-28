@@ -94,7 +94,6 @@ interface_list = [
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
     MaxOneRecordingInterface,
-    MaxTwoRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
