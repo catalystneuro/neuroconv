@@ -20,8 +20,7 @@ Recording
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     Intan <recording/intan>
-    MEArec <recording/mearec>
-    MCSRaw <recording/mcsraw>
+    MaxOne <recording/maxone>
     Neuralynx <recording/neuralynx>
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>
