@@ -28,7 +28,7 @@ Recording
     Plexon <recording/plexon>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
-    EDF <recording/edf>
+    European Data Format (EDF) <recording/edf>
     Tucker-Davis Technologies (TDT) <recording/tdt>
 
 Sorting

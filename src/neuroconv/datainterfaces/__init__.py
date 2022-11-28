@@ -37,6 +37,7 @@ from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface
 from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
+from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
 from .ecephys.maxwell.maxtwodatainterface import MaxTwoRecordingInterface
 
@@ -94,6 +95,7 @@ interface_list = [
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
+    MCSRawRecordingInterface,
     MaxOneRecordingInterface,
     MaxTwoRecordingInterface,
     # Icephys
