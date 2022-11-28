@@ -71,9 +71,19 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             file_path = Path(file_path)
             folder_path = file_path.parent
             super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
+
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
             self.set_start_time(timestamp=datetime.fromisoformat(self.meta.get("fileCreateTime")))
+
+            stream_names, _ = SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)
+            self.recording_extractor_nidq = None
+            if "nidq" in stream_names:
+                self.recording_extractor_nidq = SpikeGLXRecordingExtractor(
+                    folder_path="E:/GIN/ephy_testing_data/spikeglx/Noise4Sam_g0",
+                    stream_name="nidq",
+                    load_sync_channel=True,
+                )
 
         # Mount the probe
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
