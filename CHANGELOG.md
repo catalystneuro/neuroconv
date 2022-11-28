@@ -2,6 +2,7 @@
 
 ### Documentation and tutorial enhancements
 * Remove `Path(path_to_save_nwbfile).is_file()` from each of the gallery pages. [PR #177](https://github.com/catalystneuro/neuroconv/pull/177)
+* Improve docstring for `SpikeGLXRecordingInterface. [PR #226](https://github.com/catalystneuro/neuroconv/pull/226)
 
 ### Features
 * Added `AudioInterface` for files in `WAV` format using the `add_acoustic_waveform_series` utility function
