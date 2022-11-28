@@ -46,6 +46,7 @@ from neuroconv.datainterfaces import (
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
+    MCSRawRecordingInterface,
     MaxOneRecordingInterface,
 )
 
@@ -181,6 +182,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "mearec" / "mearec_test_10s.h5"),
             ),
             case_name="mearec",
+        ),
+        param(
+            data_interface=MCSRawRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw"),
+            ),
+            case_name="rawmcs",
         ),
         param(
             data_interface=MaxOneRecordingInterface,
