@@ -1,3 +1,4 @@
+import os
 import unittest
 from tempfile import mkdtemp
 from pathlib import Path
@@ -8,12 +9,16 @@ from datetime import datetime
 from pynwb import NWBHDF5IO
 from neuroconv.datainterfaces import MaxOneRecordingInterface, MaxTwoRecordingInterface
 
-from ..setup_paths import ECEPHY_DATA_PATH
+from ..setup_paths import ECEPHY_DATA_PATH, HDF5_PLUGIN_PATH
 
 
 class TestMaxOneMetadata(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        hdf5_plugin_path = str(HDF5_PLUGIN_PATH)
+        MaxOneRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+        os.environ["HDF5_PLUGIN_PATH"] = hdf5_plugin_path
+
         file_path = ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"
         cls.interface = MaxOneRecordingInterface(file_path=file_path)
 
@@ -31,15 +36,21 @@ class TestMaxOneMetadata(unittest.TestCase):
         neuroconv_metadata = self.interface.get_metadata()
 
         assert len(neuroconv_metadata["Ecephys"]["Device"]) == 1
-        assert neuroconv_metadata["Ecephys"]["Device"][0]["name"] == "DeviceEcephys"
+        assert neuroconv_metadata["Ecephys"]["Device"][0]["name"] == "device"
         assert neuroconv_metadata["Ecephys"]["Device"][0]["description"] == "Recorded using Maxwell version '20190530'."
 
 
 class TestMaxTwoMetadata(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        hdf5_plugin_path = str(HDF5_PLUGIN_PATH)
+        MaxOneRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+        os.environ["HDF5_PLUGIN_PATH"] = hdf5_plugin_path
+
         cls.file_path = ECEPHY_DATA_PATH / "maxwell" / "MaxTwo_data" / "Activity_Scan" / "000021" / "data.raw.h5"
-        cls.interface = MaxTwoRecordingInterface(file_path=cls.file_path, rec_name="rec0000", stream_name="well000")
+        cls.interface = MaxTwoRecordingInterface(
+            file_path=cls.file_path, recording_name="rec0000", stream_name="well000"
+        )
 
         cls.tmpdir = Path(mkdtemp())
         cls.nwbfile_path = cls.tmpdir / "maxtwo_meadata_test.nwb"
@@ -73,7 +84,7 @@ class TestMaxTwoMetadata(unittest.TestCase):
         neuroconv_metadata = self.interface.get_metadata()
 
         assert len(neuroconv_metadata["Ecephys"]["Device"]) == 1
-        assert neuroconv_metadata["Ecephys"]["Device"][0]["name"] == "DeviceEcephys"
+        assert neuroconv_metadata["Ecephys"]["Device"][0]["name"] == "device"
         assert neuroconv_metadata["Ecephys"]["Device"][0]["description"] == "Recorded using Maxwell version '20190530'."
 
 
