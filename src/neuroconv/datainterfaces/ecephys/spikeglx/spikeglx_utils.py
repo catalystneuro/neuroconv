@@ -1,6 +1,8 @@
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
+
 from ....utils import FilePathType
 
 
@@ -105,3 +107,53 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePathType) -> str:
     stream_id = device[1:] + signal_kind
 
     return stream_id
+
+
+def get_events_from_nidq_channel(recording_nidq, event_channel_id: int) -> np.ndarray:
+    """
+    Estimate the pulse timing of each event from the NIDQ channel.
+
+    Parameters
+    ----------
+    recording_nidq: SpikeGLXRecordingExtractor
+        An extractor that can read from the NIDQ streams.
+    event_channel: int
+        The channel id correponding to the event message signal
+    Returns
+    -------
+    trial_times: list
+        List with t_start and t_stop for each trial
+    """
+    hex_base = 16  # In case it's not a simple on/off pulse type but a hex-coded signal
+    voltage_range = 4.5 * 1e6
+
+    tr_events = recording_nidq.get_traces(channel_ids=[event_channel_id])[0]
+    scaled_tr_events = tr_events * (hex_base - 1) / voltage_range
+    scaled_tr_events = (scaled_tr_events - min(scaled_tr_events)) / np.ptp(scaled_tr_events) * (hex_base - 1)
+
+    tr_events_bin = np.zeros(tr_events.shape, dtype=int)
+    tr_events_bin[tr_events > np.max(tr_events) // 2] = 1
+
+    t_start_idxs = np.where(np.diff(tr_events_bin) > 0)[0]
+    t_stop_idxs = np.where(np.diff(tr_events_bin) < 0)[0]
+
+    # discard first stop event if it comes before a start event
+    if t_stop_idxs[0] < t_start_idxs[0]:
+        print("Discarding first trial")
+        t_stop_idxs = t_stop_idxs[1:]
+
+    # discard last start event if it comes after last stop event
+    if t_start_idxs[-1] > t_stop_idxs[-1]:
+        print("Discarding last trial")
+        t_start_idxs = t_start_idxs[:-1]
+
+    assert len(t_start_idxs) == len(t_stop_idxs), "Found a different number of start and stop indices!"
+
+    trial_times = []
+    for t in range(len(t_start_idxs)):
+        start_idx = t_start_idxs[t]
+        stop_idx = t_stop_idxs[t]
+
+        trial_times.append(recording_nidq.frame_to_time(np.array([start_idx, stop_idx])))
+
+    return np.array(trial_times)
