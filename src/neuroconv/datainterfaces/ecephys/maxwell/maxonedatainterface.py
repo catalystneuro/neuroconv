@@ -1,8 +1,6 @@
 """Authors: Cody Baker."""
 from typing import Optional
 
-from neo.rawio.maxwellrawio import auto_install_maxwell_hdf5_compression_plugin
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.types import FilePathType, FolderPathType
 
@@ -27,6 +25,8 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
             Path to your systems HDF5 plugin library.
             Default is None.
         """
+        from neo.rawio.maxwellrawio import auto_install_maxwell_hdf5_compression_plugin
+
         auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):

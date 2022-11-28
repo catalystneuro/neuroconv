@@ -21,7 +21,6 @@ Recording
     Blackrock <recording/blackrock>
     Intan <recording/intan>
     MaxOne <recording/maxone>
-    MaxTwo <recording/maxtwo>
     Neuralynx <recording/neuralynx>
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>

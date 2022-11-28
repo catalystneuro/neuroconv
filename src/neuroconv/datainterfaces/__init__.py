@@ -38,7 +38,6 @@ from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
-from .ecephys.maxwell.maxtwodatainterface import MaxTwoRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
