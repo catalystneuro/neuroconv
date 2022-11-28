@@ -22,6 +22,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.es_key = None  # For automatic metadata extraction
 
+        self.set_rate(rate=self.recording_extractor.get_sampling_frequency())
+
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = super().get_metadata_schema()

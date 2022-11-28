@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import Optional
 import json
+from datetime import datetime
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -72,6 +73,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+            self.set_start_time(timestamp=datetime.fromisoformat(self.meta.get("fileCreateTime")))
 
         # Mount the probe
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
@@ -89,7 +91,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        session_start_time = get_session_start_time(self.meta)
+        session_start_time = self.get_start_time()
         if session_start_time:
             metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
 

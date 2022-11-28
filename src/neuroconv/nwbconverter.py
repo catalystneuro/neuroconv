@@ -3,12 +3,13 @@ import json
 from jsonschema import validate
 from typing import Optional, Dict, List, Union
 from collections import Counter
-from pathlib import Path
+from datetime import datetime
 
 from pynwb import NWBFile
 from pynwb.file import Subject
+from pandas import Timedelta
 
-from .tools.nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
+from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
 from .utils import (
     get_schema_from_hdmf_class,
     get_schema_for_NWBFile,
@@ -71,6 +72,36 @@ class NWBConverter:
             if name in source_data
         }
 
+    def set_start_times(self, times=Dict[str, datetime]):
+        """
+        Set the timestamps which indicate the exact start time of the series in each DataInterface.
+
+        This function is only used for manual override of timing information; for the most part, the start times
+        ought to be set automatically for each interface if the information is available.
+
+        Parameters
+        ----------
+        times: dictionary
+            Mapping from instantiated interface names (as strings) to a timestamp (as a datetime object).
+        """
+        for interface_name, timestamp in times.items():
+            self.data_interface_objects[interface_name].set_start_time(timestamp=timestamp)
+
+    def get_start_times(self) -> Optional[Dict[str, datetime]]:
+        """Retrieve the timestamps which indicate the exact start time of the series in each DataInterface."""
+        return {
+            interface_name: interface.get_start_times()
+            for interface_name, interface in self.data_interface_objects.items()
+        }
+
+    def set_relative_start_times(self, time_delta: Timedelta):
+        """Set a Timedelta object to indicate the relative start time of the series in the DataInterface."""
+        self._relative_start_time = time_delta
+
+    def get_relative_start_times(self) -> Optional[Timedelta]:
+        """Retrieve a Timedelta object to indicate the relative start time of the series in the DataInterface."""
+        return self._relative_start_time
+
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
         metadata_schema = get_base_schema(
@@ -114,6 +145,24 @@ class NWBConverter:
         validate(instance=decoded_metadata, schema=self.get_metadata_schema())
         if self.verbose:
             print("Metadata is valid!")
+
+    def align_to_session_start_time(self, session_start_time: Optional[datetime] = None):
+        """
+        Aligns the time references of the series in each DataInterface to the global session start time.
+
+        Parameters
+        ----------
+        session_start_time: datetime, optional
+            Specify an external session start time to align this interfaces relative time references to.
+            Default behavior is to use this interfaces start time.
+        """
+        interface_start_times = self.get_start_times()
+        earliest_interface_start_time = min(list(interface_start_times))
+        session_start_time = session_start_time or earliest_interface_start_time
+        assert session_start_time is not None, "Unable to synchronize - no session start time is set!"
+
+        for interface in self.data_interface_objects.values():
+            interface.align_to_session_start_time(session_start_time=session_start_time)
 
     def validate_conversion_options(self, conversion_options: Dict[str, dict]):
         """Validate conversion_options against Converter conversion_options_schema."""

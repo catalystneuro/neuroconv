@@ -1,4 +1,5 @@
 import datetime
+from unittest import TestCase
 
 import pytest
 import probeinterface as pi
@@ -11,6 +12,36 @@ from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import get_session
 from ..setup_paths import ECEPHY_DATA_PATH
 
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
+
+
+class TestSpikeGLXAPMetadata(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.interface = SpikeGLXRecordingInterface(
+            file_path=SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
+        )
+
+    def test_start_time(self):
+        assert self.interface.get_start_time() == datetime.datetime(2020, 11, 3, 10, 35, 10)
+
+    def test_start_time_in_metadatta(self):
+        metadata = self.interface.get_metadata()
+        assert metadata["NWBFile"]["session_start_time"] == datetime.datetime(2020, 11, 3, 10, 35, 10)
+
+
+class TestSpikeGLXLFMetadata(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.interface = SpikeGLXRecordingInterface(
+            file_path=SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
+        )
+
+    def test_start_time(self):
+        assert self.interface.get_start_time() == datetime.datetime(2020, 11, 3, 10, 35, 10)
+
+    def test_start_time_in_metadatta(self):
+        metadata = self.interface.get_metadata()
+        assert metadata["NWBFile"]["session_start_time"] == datetime.datetime(2020, 11, 3, 10, 35, 10)
 
 
 def test_spikelgx_session_start_time_ap():
