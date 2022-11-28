@@ -2,12 +2,12 @@
 import uuid
 import warnings
 import numpy as np
-import distutils.version
-from pathlib import Path
+from packaging.version import Version
 from typing import Union, Optional, List
 from warnings import warn
 from collections import defaultdict
 
+from nwbinspector.utils import get_package_version
 import pynwb
 from spikeinterface import BaseRecording, BaseSorting
 from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
@@ -16,6 +16,7 @@ from numbers import Real
 from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 import psutil
+
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
@@ -268,7 +269,7 @@ def add_electrodes(
         checked_recording = recording
 
     # For older versions of pynwb, we need to manually add these columns
-    if distutils.version.LooseVersion(pynwb.__version__) < "1.3.0":
+    if get_package_version("pynwb") < Version("1.3.0"):
         if nwbfile.electrodes is None or "rel_x" not in nwbfile.electrodes.colnames:
             nwbfile.add_electrode_column("rel_x", "x position of electrode in electrode group")
         if nwbfile.electrodes is None or "rel_y" not in nwbfile.electrodes.colnames:
@@ -1000,7 +1001,7 @@ def write_recording(
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     assert (
-        distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
+        get_package_version("pynwb") >= Version("1.3.3")
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
     write_as = "raw" if write_as is None else write_as
     compression = "gzip" if compression is None else compression
