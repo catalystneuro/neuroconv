@@ -663,16 +663,22 @@ def add_electrical_series(
     channel_conversion = checked_recording.get_channel_gains()
     channel_offset = checked_recording.get_channel_offsets()
 
+    unique_channel_conversion = np.unique(channel_conversion)
+    unique_channel_conversion = unique_channel_conversion[0] if len(unique_channel_conversion) == 1 else None
+
     unique_offset = np.unique(channel_offset)
     if unique_offset.size > 1:
         raise ValueError("Recording extractors with heterogeneous offsets are not supported")
     unique_offset = unique_offset[0] if unique_offset[0] is not None else 0
 
     micro_to_volts_conversion_factor = 1e-6
-    eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
+    if not write_scaled and unique_channel_conversion is None:
+        eseries_kwargs.update(conversion=micro_to_volts_conversion_factor)
+        eseries_kwargs.update(channel_conversion=channel_conversion)
+    elif not write_scaled and unique_channel_conversion is not None:
+        eseries_kwargs.update(conversion=unique_channel_conversion * micro_to_volts_conversion_factor)
 
     if not write_scaled:
-        eseries_kwargs.update(channel_conversion=channel_conversion)
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
     # Iterator
