@@ -1000,8 +1000,8 @@ def write_recording(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    assert (
-        get_package_version("pynwb") >= Version("1.3.3")
+    assert get_package_version("pynwb") >= Version(
+        "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
     write_as = "raw" if write_as is None else write_as
     compression = "gzip" if compression is None else compression
