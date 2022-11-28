@@ -27,18 +27,16 @@ Convert a single data stream from a single recording session in a MaxTwo file to
     >>>
     >>> # If recording session names are not known ahead of time, you can easily retrieve them
     >>> MaxTwoRecordingInterface.get_recording_names(file_path=file_path)
-    ["rec0000", "rec0001"]
+    ['rec0000', 'rec0001']
     >>> # Choose a name from the list
     >>> recording_name = "rec0000"
     >>>
     >>> # If stream names are not known ahead of time, you can easily retrieve them
     >>> MaxTwoRecordingInterface.get_stream_names(file_path=file_path, recording_name=recording_name)
-    ["well000", "well001", "well002", "well003", "well004", "well005"]
+    ['well000', 'well001', 'well002', 'well003', 'well004', 'well005']
     >>> stream_name = "well000"
     >>>
-    >>> interface = MaxTwoRecordingInterface(
-    >>>    file_path=file_path, recording_name=recording_name, stream_name=stream_name, verbose=False
-    >>> )
+    >>> interface = MaxTwoRecordingInterface(file_path=file_path, recording_name=recording_name, stream_name=stream_name, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()

@@ -1,3 +1,4 @@
+import os
 import unittest
 import itertools
 from pathlib import Path
@@ -51,7 +52,7 @@ from neuroconv.datainterfaces import (
 
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from .setup_paths import OUTPUT_PATH
+from .setup_paths import OUTPUT_PATH, HDF5_PLUGIN_PATH
 
 
 def custom_name_func(testcase_func, param_num, param):
@@ -81,6 +82,12 @@ class TestEcephysNwbConversions(unittest.TestCase):
             ),
         ),
     ]
+
+    @classmethod
+    def setUpClass(cls):
+        hdf5_plugin_path = str(HDF5_PLUGIN_PATH)
+        MaxOneRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+        os.environ["HDF5_PLUGIN_PATH"] = hdf5_plugin_path
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
     def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs, case_name=""):

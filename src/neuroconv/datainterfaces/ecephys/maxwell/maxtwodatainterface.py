@@ -1,6 +1,8 @@
 """Authors: Cody Baker."""
 from typing import List, Optional
 
+from natsort import natsorted
+
 from .maxonedatainterface import MaxOneRecordingInterface
 from ....utils.types import FilePathType, FolderPathType
 
@@ -33,7 +35,7 @@ class MaxTwoRecordingInterface(MaxOneRecordingInterface):
         """
         import h5py
 
-        with h5py.File(path=file_path, mode="r") as h5:
+        with h5py.File(name=file_path, mode="r") as h5:
             version = h5["version"][0].decode()
 
             stream_ids = list(h5["wells"].keys())
@@ -45,7 +47,8 @@ class MaxTwoRecordingInterface(MaxOneRecordingInterface):
             for stream_id in stream_ids:
                 all_rec_names.update(h5["wells"][stream_id].keys())
 
-            return all_rec_names
+            # natsorted for nicer output; also for testing consistency
+            return natsorted(list(all_rec_names))
 
     @staticmethod
     def get_stream_names(file_path: FilePathType, recording_name: str) -> List[str]:
@@ -65,7 +68,9 @@ class MaxTwoRecordingInterface(MaxOneRecordingInterface):
         from spikeinterface.extractors import MaxwellRecordingExtractor
 
         stream_names, _ = MaxwellRecordingExtractor.get_streams(file_path=file_path, rec_name=recording_name)
-        return stream_names
+
+        # natsorted for nicer output; also for testing consistency
+        return natsorted(stream_names)
 
     def __init__(self, file_path: FilePathType, recording_name: str, stream_name: str, verbose: bool = True):
         """
@@ -85,6 +90,6 @@ class MaxTwoRecordingInterface(MaxOneRecordingInterface):
 
         stream_names, stream_ids = MaxwellRecordingExtractor.get_streams(file_path=file_path, rec_name=recording_name)
         stream_index = stream_names.index(stream_name)
-        super().__init__(
-            file_path=file_path, rec_name=recording_name, stream_id=stream_ids[stream_index], verbose=verbose
+        super(MaxOneRecordingInterface, self).__init__(
+            file_path=file_path, verbose=verbose, rec_name=recording_name, stream_id=stream_ids[stream_index]
         )
