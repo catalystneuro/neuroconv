@@ -1,12 +1,10 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
-from typing import Optional
 import json
 
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
 from .spikeglx_utils import (
     get_session_start_time,
@@ -48,10 +46,23 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        stub_test: Optional[bool] = False,
-        spikeextractors_backend: Optional[bool] = False,
+        stub_test: bool = False,
+        spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
+        """
+
+        Parameters
+        ----------
+        file_path: FilePathType
+            Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
+        stub_test: bool
+            Whether to shorten file for testing purposes. Default: False.
+        spikeextractors_backend: bool
+            Whether to use the legacy spikeextractors library backend. Default: False.
+        verbose: bool
+            Whether to output verbose text. Default: True.
+        """
         from probeinterface import read_spikeglx
 
         self.stub_test = stub_test
