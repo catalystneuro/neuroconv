@@ -558,7 +558,7 @@ class TestAddElectrodes(TestCase):
 
         expected_electrode_column_names = ["location", "group", "group_name", "channel_name", "rel_x", "rel_y"]
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
-        self.assertListEqual(actual_electrode_column_names, expected_electrode_column_names)
+        self.assertCountEqual(actual_electrode_column_names, expected_electrode_column_names)
 
     def test_integer_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are integers."""
