@@ -556,7 +556,7 @@ class TestAddElectrodes(TestCase):
     def test_default_electrode_column_names(self):
         add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
 
-        expected_electrode_column_names = ["location", "group", "group_name"]
+        expected_electrode_column_names = ["location", "group", "group_name", "channel_name", "rel_x", "rel_y"]
         actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
         self.assertListEqual(actual_electrode_column_names, expected_electrode_column_names)
 
