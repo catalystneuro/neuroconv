@@ -28,7 +28,7 @@ jobs:
   run-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: catalystneuro/neuroconv/.github/workflows/testing.yml@main
+    uses: catalystneuro/neuroconv/.github/workflows/testing.yml@python-3.11
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -38,7 +38,7 @@ jobs:
   run-dev-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
-    uses: catalystneuro/neuroconv/.github/workflows/dev-testing.yml@main
+    uses: catalystneuro/neuroconv/.github/workflows/dev-testing.yml@python-3.11
     secrets:
       DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
