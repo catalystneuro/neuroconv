@@ -370,7 +370,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
-
+        
     def test_default_chunking(self):
 
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
@@ -553,6 +553,13 @@ class TestAddElectrodes(TestCase):
             location="unknown",
         )
 
+    def test_default_electrode_column_names(self):
+        add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+        
+        expected_electrode_column_names = ["location", "group", "group_name"]
+        actual_electrode_column_names = list(self.nwbfile.electrodes.colnames)
+        self.assertListEqual(actual_electrode_column_names, expected_electrode_column_names)
+        
     def test_integer_channel_names(self):
         """Ensure channel names merge correctly after appending when channel names are integers."""
         channel_ids = self.base_recording.get_channel_ids()
