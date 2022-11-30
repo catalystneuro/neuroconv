@@ -1534,7 +1534,7 @@ def write_waveforms(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         if write_electrical_series:
-            if not waveform_extractor.has_recording():
+            if waveform_extractor._recording is None:
                 assert recording is not None, (
                     "To write electrical series, the waveform_extractor needs to have a recording attached. "
                     "For recordingless mode, you can use the 'recording' argument."
@@ -1542,7 +1542,7 @@ def write_waveforms(
             write_recording(waveform_extractor._recording, nwbfile_out, metadata, **write_electrical_series_kwargs)
         else:
             # we need add_electrodes_from_waveforms
-            if not waveform_extractor.has_recording():
+            if waveform_extractor._recording is None:
                 if recording is not None:
                     assert isinstance(recording, BaseRecording), "'recording' needs to be a BaseRecording object."
             else:
