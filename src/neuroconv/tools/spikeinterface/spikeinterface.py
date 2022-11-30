@@ -1463,7 +1463,7 @@ def write_waveforms(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     recording: BaseRecording, optional
-        If the waveform_extractor is "recordingless", this argument needs to be passed to save electrode info.
+        If the waveform_extractor, this argument needs to be passed to save electrode info.
         Otherwise, electrodes info is not added to the nwb file.
     overwrite: bool, optional
         Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
