@@ -1433,6 +1433,7 @@ def write_waveforms(
     nwbfile_path: OptionalFilePathType = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
+    recording: Optional[BaseRecording] = None,
     overwrite: bool = False,
     verbose: bool = True,
     write_electrical_series: bool = False,
@@ -1461,6 +1462,9 @@ def write_waveforms(
         and returned by the function.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+    recording: BaseRecording, optional
+        If the waveform_extractor is "recordingless", this argument needs to be passed to save electrode info.
+        Otherwise, electrodes info is not added to the nwb file.
     overwrite: bool, optional
         Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
@@ -1530,15 +1534,29 @@ def write_waveforms(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         if write_electrical_series:
-            assert waveform_extractor._recording is not None
+            if not waveform_extractor.has_recording():
+                assert recording is not None, (
+                    "To write electrical series, the waveform_extractor needs to have a recording attached. "
+                    "For recordingless mode, you can use the 'recording' argument."
+                )
             write_recording(waveform_extractor._recording, nwbfile_out, metadata, **write_electrical_series_kwargs)
         else:
             # we need add_electrodes_from_waveforms
-            if waveform_extractor._recording is not None:
-                add_electrodes_info(waveform_extractor.recording, nwbfile=nwbfile_out, metadata=metadata)
+            if not waveform_extractor.has_recording():
+                if recording is not None:
+                    assert isinstance(recording, BaseRecording), "'recording' needs to be a BaseRecording object."
             else:
-                # add_electrodes_info_from_waveforms(waveform_extractor, metadata, )
-                raise NotImplementedError("Write waveforms requires the waveform_extractor._recording")
+                recording = waveform_extractor.recording
+            if recording is not None:
+                add_electrodes_info(waveform_extractor.recording, nwbfile=nwbfile_out,
+                                    metadata=metadata)
+            else:
+                print(
+                    "To add the electrode table, the waveform_extractor needs to have a recording attached. "
+                    "For recordingless mode, you can use the 'recording' argument."
+                    "The electrode table will not be added."
+                )
+
         add_units_table(
             sorting=sorting,
             nwbfile=nwbfile_out,
@@ -1549,8 +1567,9 @@ def write_waveforms(
             unit_table_description=units_description,
             write_waveforms=False,
             waveform_means=templates,
-            waveform_sds=template_stds,
+            waveform_sds=template_stds
         )
+
     # rm tmp properties
     for prop in tmp_properties:
         sorting.delete_property(prop)
