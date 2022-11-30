@@ -1548,7 +1548,7 @@ def write_waveforms(
             else:
                 recording = waveform_extractor.recording
             if recording is not None:
-                add_electrodes_info(waveform_extractor.recording, nwbfile=nwbfile_out, metadata=metadata)
+                add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
             else:
                 print(
                     "To add the electrode table, the waveform_extractor needs to have a recording attached. "
