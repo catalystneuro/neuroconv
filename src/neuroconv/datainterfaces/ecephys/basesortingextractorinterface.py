@@ -7,7 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType
+from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType, ArrayType
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -71,6 +71,15 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             ),
         )
         return metadata_schema
+
+    def synchronize(self, starting_time: Optional[float] = None, timestamps: Optional[ArrayType] = None):
+        if starting_time is not None or timestamps is not None:
+            assert starting_time != timestamps, "Specify either 'starting_time' or 'timestamps', but not both!"
+
+        if starting_time is not None:
+            self.recording_extractor.set_times(self.recording_extractor.frame_to_times() + starting_time)
+        elif timestamps is not None:
+            self.recording_extractor.set_times(timestamps)
 
     def subset_sorting(self):
         from spikeextractors import SortingExtractor, SubSortingExtractor

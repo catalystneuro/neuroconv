@@ -12,6 +12,7 @@ from ...utils import (
     get_base_schema,
     OptionalFilePathType,
     dict_deep_update,
+    ArrayType,
 )
 
 
@@ -71,6 +72,15 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                 if "rate" in two_photon_series:
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
+
+    def synchronize(self, starting_time: Optional[float] = None, timestamps: Optional[ArrayType] = None):
+        if starting_time is not None or timestamps is not None:
+            assert starting_time != timestamps, "Specify either 'starting_time' or 'timestamps', but not both!"
+
+        if starting_time is not None:
+            self.recording_extractor.set_times(self.recording_extractor.frame_to_times() + starting_time)
+        elif timestamps is not None:
+            self.recording_extractor.set_times(timestamps)
 
     def run_conversion(
         self,
