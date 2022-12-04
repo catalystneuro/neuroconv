@@ -3,9 +3,10 @@ from abc import abstractmethod, ABC
 import uuid
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 
-from .utils import get_base_schema, get_schema_from_method_signature
+from .utils import get_base_schema, get_schema_from_method_signature, ArrayType
 
 
 class BaseDataInterface(ABC):
@@ -22,7 +23,9 @@ class BaseDataInterface(ABC):
         return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
 
     def __init__(self, **source_data):
-        self.source_data = source_data
+        self.source_data: dict = source_data
+        self.starting_time: Optional[float] = None
+        self.timestamps: Optional[ArrayType] = None
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -45,6 +48,30 @@ class BaseDataInterface(ABC):
         )
 
         return metadata
+
+    def synchronize(self, starting_time: Optional[float] = None, timestamps: Optional[ArrayType] = None):
+        """
+        Synchronize all time references for this interface to the common time basis.
+
+        This can be either an offset shift to the 'starting_time' of a regularly sampled series,
+        or a vector of 'timestamps'.
+
+        Both are set in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_time: float
+            The starting time for all temporal data in this interface.
+        timestamps: ArrayType
+            A full vector of timestamps all temporal data in this interface.
+        """
+        if starting_time is not None or timestamps is not None:
+            assert starting_time != timestamps, "Specify either 'starting_time' or 'timestamps', but not both!"
+
+        if starting_time is not None:
+            self.starting_time = starting_time
+        elif timestamps is not None:
+            self.timestamps = np.array(timestamps)
 
     def get_conversion_options(self):
         """Child DataInterface classes should override this to match their conversion options."""
@@ -78,5 +105,4 @@ class BaseDataInterface(ABC):
             If 'nwbfile_path' is specified, informs user after a successful write operation.
             The default is True.
         """
-
         raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
