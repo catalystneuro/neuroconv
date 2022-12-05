@@ -1,9 +1,8 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import abstractmethod, ABC
 import uuid
+from abc import abstractmethod, ABC
 from typing import Optional
 
-import numpy as np
 from pynwb import NWBFile
 
 from .utils import get_base_schema, get_schema_from_method_signature, ArrayType
@@ -24,8 +23,6 @@ class BaseDataInterface(ABC):
 
     def __init__(self, **source_data):
         self.source_data: dict = source_data
-        self.starting_time: Optional[float] = None
-        self.timestamps: Optional[ArrayType] = None
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""

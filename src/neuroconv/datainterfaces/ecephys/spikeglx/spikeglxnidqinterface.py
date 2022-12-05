@@ -127,9 +127,8 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         falling = np.where(diff_dig < 0)[0]
 
         ttl_frames = np.concatenate((rising, falling))
-        # ttl_states = np.array([1] * len(rising) + [-1] * len(falling))
         sort_idxs = np.argsort(ttl_frames)
-        return self.frame_to_time(ttl_frames[sort_idxs])  # , ttl_states[sort_idxs]  # TODO: deal with 'states' later
+        return self.frame_to_time(ttl_frames[sort_idxs])
 
     def get_conversion_options(self):
         conversion_options = super().get_conversion_options()
