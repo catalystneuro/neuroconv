@@ -1,4 +1,4 @@
-import av
+from ....tools import get_package
 from ....utils import FilePathType
 
 
@@ -15,6 +15,7 @@ def extract_timestamps(video_file_path: FilePathType) -> list:
     list
         The timestamps
     """
+    av = get_package(package_name="av")
 
     container = av.open(str(video_file_path))
     stream = container.streams.video[0]
