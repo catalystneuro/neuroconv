@@ -41,7 +41,7 @@ jobs:
           echo "CHANGELOG_UPDATED=false" >> $GITHUB_OUTPUT
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo $file
-            if [[ $file == "src/"* || $file == "tests/"* || $file == "requirements-minimal.txt" || $file == "requirements-testing.txt" || $file == "setup.py" ]]
+            if [[ $file == "src/"* || $file == "tests/"* || $file == "requirements-minimal.txt" || $file == "requirements-testing.txt" || $file == "setup.py" || $file == ".github/"* ]]
             then
               echo "Source changed"
               echo "SOURCE_CHANGED=true" >> $GITHUB_OUTPUT
