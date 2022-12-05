@@ -30,12 +30,12 @@ def _assert_single_shank_for_spike_extractors(recording):
 
 def _fetch_metadata_dic_for_spikextractors_spikelgx_object(recording) -> dict:
     """
-    fetches the meta file from a se.SpikeGLXRecordingExtractor object.
+    Fetches the meta file from a se.SpikeGLXRecordingExtractor object.
+
     Parameters
     ----------
     recording : se.SpikeGLXRecordingExtractor
         a newly instantiated version of the spikeextractors object
-
 
     Returns
     -------
