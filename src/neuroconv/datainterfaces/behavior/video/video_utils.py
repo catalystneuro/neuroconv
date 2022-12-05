@@ -8,6 +8,7 @@ from hdmf.data_utils import GenericDataChunkIterator
 from ....tools import get_package
 from ....utils import FilePathType
 
+
 def get_video_timestamps(file_path: FilePathType, max_frames: Optional[int] = None) -> list:
     """Extract the timestamps of the video located in file_path
 
@@ -24,12 +25,11 @@ def get_video_timestamps(file_path: FilePathType, max_frames: Optional[int] = No
         The timestamps of the video.
     """
 
-    
     with VideoCaptureContext(str(file_path)) as video_context:
         timestamps = video_context.get_video_timestamps(max_frames=max_frames)
-    
+
     return timestamps
-        
+
 
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager."""
