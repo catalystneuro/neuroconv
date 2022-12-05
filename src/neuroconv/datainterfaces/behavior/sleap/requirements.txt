@@ -1,2 +1,2 @@
-sleap-io>=0.0.1
-av
+git+https://github.com/catalystneuro/sleap-io.git@add_starting_time
+av >= 10.0.0
