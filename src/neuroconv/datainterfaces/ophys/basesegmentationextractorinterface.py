@@ -58,14 +58,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
         return metadata
 
-    def synchronize(self, starting_time: Optional[float] = None, timestamps: Optional[ArrayType] = None):
-        if starting_time is not None or timestamps is not None:
-            assert starting_time != timestamps, "Specify either 'starting_time' or 'timestamps', but not both!"
+    def synchronize_starting_time(self, starting_time: float):
+        self.segmentation_extractor.set_times(self.recording_extractor.frame_to_times() + starting_time)
 
-        if starting_time is not None:
-            self.recording_extractor.set_times(self.recording_extractor.frame_to_times() + starting_time)
-        elif timestamps is not None:
-            self.recording_extractor.set_times(timestamps)
+    def synchronize_timestamps(self, timestamps: ArrayType):
+        self.segmentation_extractor.set_times(timestamps)
 
     def run_conversion(
         self,
