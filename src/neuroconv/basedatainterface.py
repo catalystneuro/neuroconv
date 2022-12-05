@@ -49,29 +49,37 @@ class BaseDataInterface(ABC):
 
         return metadata
 
-    def synchronize(self, starting_time: Optional[float] = None, timestamps: Optional[ArrayType] = None):
+    @abstractmethod
+    def synchronize_starting_time(self, starting_time: float):
         """
-        Synchronize all time references for this interface to the common time basis.
+        Synchronize the start of all time references for this interface to the common time basis.
 
-        This can be either an offset shift to the 'starting_time' of a regularly sampled series,
-        or a vector of 'timestamps'.
-
-        Both are set in units seconds relative to the common 'session_start_time'.
+        Must be in units seconds relative to the common 'session_start_time'.
 
         Parameters
         ----------
         starting_time: float
             The starting time for all temporal data in this interface.
+        """
+        raise NotImplementedError(
+            "The protocol for synchronizing the start time of this interface has not been specified!"
+        )
+
+    @abstractmethod
+    def synchronize_timestamps(self, timestamps: ArrayType):
+        """
+        Synchronize all time references for this interface to the common time basis.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
         timestamps: ArrayType
             A full vector of timestamps all temporal data in this interface.
         """
-        if starting_time is not None or timestamps is not None:
-            assert starting_time != timestamps, "Specify either 'starting_time' or 'timestamps', but not both!"
-
-        if starting_time is not None:
-            self.starting_time = starting_time
-        elif timestamps is not None:
-            self.timestamps = np.array(timestamps)
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def get_conversion_options(self):
         """Child DataInterface classes should override this to match their conversion options."""
