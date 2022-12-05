@@ -50,7 +50,6 @@ class VideoCaptureContext:
         timestamps = []
         total_frames = self.get_video_frame_count()
         frames_to_extract = min(total_frames, max_frames) if max_frames else total_frames
-        print(frames_to_extract)
         for _ in tqdm(range(frames_to_extract), desc="retrieving timestamps"):
             success, _ = self.vc.read()
             if not success:
