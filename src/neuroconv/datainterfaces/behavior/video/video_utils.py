@@ -1,5 +1,5 @@
 """Authors: Saksham Sharda, Cody Baker."""
-from typing import Tuple, Iterable
+from typing import Tuple, Iterable, Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -8,6 +8,28 @@ from hdmf.data_utils import GenericDataChunkIterator
 from ....tools import get_package
 from ....utils import FilePathType
 
+def get_video_timestamps(file_path: FilePathType, max_frames: Optional[int] = None) -> list:
+    """Extract the timestamps of the video located in file_path
+
+    Parameters
+    ----------
+    file_path : Path or str
+        The path to a multimedia video file
+    max_frames : Optional[int], optional
+        If provided, extract the timestamps of the video only up to max_frames.
+
+    Returns
+    -------
+    list
+        The timestamps of the video.
+    """
+
+    
+    with VideoCaptureContext(str(file_path)) as video_context:
+        timestamps = video_context.get_video_timestamps(max_frames=max_frames)
+    
+    return timestamps
+        
 
 class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager."""
@@ -28,6 +50,7 @@ class VideoCaptureContext:
         timestamps = []
         total_frames = self.get_video_frame_count()
         frames_to_extract = min(total_frames, max_frames) if max_frames else total_frames
+        print(frames_to_extract)
         for _ in tqdm(range(frames_to_extract), desc="retrieving timestamps"):
             success, _ = self.vc.read()
             if not success:
