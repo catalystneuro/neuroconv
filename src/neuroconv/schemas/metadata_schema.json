@@ -43,8 +43,28 @@
           "type": "array",
           "items": {"title": "related publication", "type": "string"}
         },
+        "slices": {
+          "type": "string",
+          "description": "Description of slices, including information about preparation thickness, orientation, temperature and bath solution."
+        },
+        "source_script": {
+          "type": "string",
+          "description": "Script file used to create this NWB file."
+        },
+        "source_script_file_name": {
+          "type": "string",
+          "description": "Script file used to create this NWB file."
+        },
         "notes": {"type": "string", "description": "Notes about the experiment."},
-        "virus": {"type": "string", "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."}
+        "virus": {"type": "string", "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."},
+        "data_collection": {
+          "type": "string",
+          "description": "Notes about data collection and analysis."
+        },
+        "stimulus_notes": {
+          "type": "string",
+          "description": "Notes about data collection and analysis."
+        }
       }
     },
     "Subject": {
