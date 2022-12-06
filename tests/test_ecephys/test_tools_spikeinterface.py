@@ -1025,8 +1025,7 @@ class TestAddUnitsTable(TestCase):
         )
 
         self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
-        self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:]
-                            for unit_id in subset_unit_ids))
+        self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
 
 
 @unittest.skipIf(
@@ -1101,13 +1100,11 @@ class TestWriteWaveforms(TestCase):
     def test_write_subset_units(self):
         """This test that the waveforms are sliced properly based on unit_ids"""
         subset_unit_ids = self.single_segment_we.unit_ids[::2]
-        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile3,
-                        unit_ids=subset_unit_ids)
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile3, unit_ids=subset_unit_ids)
         self._test_waveform_write(self.we_slice, self.nwbfile3)
 
         self.assertEqual(len(self.nwbfile3.units), len(subset_unit_ids))
-        self.assertTrue(all(str(unit_id) in self.nwbfile3.units["unit_name"][:]
-                            for unit_id in subset_unit_ids))
+        self.assertTrue(all(str(unit_id) in self.nwbfile3.units["unit_name"][:] for unit_id in subset_unit_ids))
 
     def write_test_files(self):
         with NWBHDF5IO("waveforms_single_segment.nwb", "w") as io:
