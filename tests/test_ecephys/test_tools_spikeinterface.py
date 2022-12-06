@@ -1062,10 +1062,8 @@ class TestWriteWaveforms(TestCase):
         recording_less_wf_path = Path("waveforms_recordingless")
         if recording_less_wf_path.is_dir():
             shutil.rmtree(recording_less_wf_path)
-        we = extract_waveforms(single_segment_rec, single_segment_sort,
-                               folder=recording_less_wf_path)
-        cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path,
-                                                            with_recording=False)
+        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=recording_less_wf_path)
+        cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
         # add quality/template metrics to test property propagation
         compute_template_metrics(cls.single_segment_we)
@@ -1111,15 +1109,13 @@ class TestWriteWaveforms(TestCase):
 
     def test_write_single_segment(self):
         """This test that the waveforms are written appropriately for the single segment case"""
-        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile1,
-                        write_electrical_series=True)
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile1, write_electrical_series=True)
         self._test_waveform_write(self.single_segment_we, self.nwbfile1)
         self.assertIn("ElectricalSeriesRaw", self.nwbfile1.acquisition)
 
     def test_write_multiple_segments(self):
         """This test that the waveforms are written appropriately for the multi segment case"""
-        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2,
-                        write_electrical_series=False)
+        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2, write_electrical_series=False)
         self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
 
     def test_write_subset_units(self):
@@ -1133,8 +1129,12 @@ class TestWriteWaveforms(TestCase):
 
     def test_write_recordingless(self):
         """This test that the waveforms are sliced properly based on unit_ids"""
-        write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile4,
-                        recording=self.we_recless_recording, write_electrical_series=True)
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile4,
+            recording=self.we_recless_recording,
+            write_electrical_series=True,
+        )
         self._test_waveform_write(self.we_recless, self.nwbfile4, test_properties=False)
 
     def write_test_files(self):
