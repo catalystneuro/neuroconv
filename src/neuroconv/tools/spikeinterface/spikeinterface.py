@@ -1051,7 +1051,7 @@ def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
 def add_units_table(
     sorting: SpikeInterfaceSorting,
     nwbfile: pynwb.NWBFile,
-    unit_ids: Optional[list[Union[str, int]]] = None,
+    unit_ids: Optional[List[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     skip_features: Optional[List[str]] = None,
