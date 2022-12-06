@@ -387,7 +387,7 @@ def add_electrodes(
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
     # Find default values for properties / columns already in the electrode table
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
+    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan, bool: False}
     property_to_default_values = required_property_to_default_value
     for property in electrode_table_previous_properties - required_properties:
         # Find a matching data type and get the default value
@@ -1051,6 +1051,7 @@ def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
 def add_units_table(
     sorting: SpikeInterfaceSorting,
     nwbfile: pynwb.NWBFile,
+    unit_ids: Optional[list[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     skip_features: Optional[List[str]] = None,
@@ -1068,6 +1069,9 @@ def add_units_table(
     ----------
     sorting: SpikeInterfaceSorting
     nwbfile: NWBFile
+    unit_ids: list, optional
+        Controls the unit_ids that will be written to the nwb file. If None (default), all
+        units are written.
     property_descriptions: dict
         For each key in this dictionary which matches the name of a unit
         property in sorting, adds the value as a description to that
@@ -1145,9 +1149,13 @@ def add_units_table(
     excluded_properties = list(skip_properties) + ["contact_vector"]
     properties_to_extract = [property for property in sorting_properties if property not in excluded_properties]
 
+    if unit_ids is not None:
+        checked_sorting = checked_sorting.select_units(unit_ids)
+    unit_ids = checked_sorting.unit_ids
+
     # Extract properties
     for property in properties_to_extract:
-        data = checked_sorting.get_property(property)
+        data = checked_sorting.get_property(property, ids=unit_ids)
         index = isinstance(data[0], (list, np.ndarray, tuple))
         description = property_descriptions.get(property, "No description.")
         data_to_add[property].update(description=description, data=data, index=index)
@@ -1155,16 +1163,15 @@ def add_units_table(
             data_to_add[property].update(table=nwbfile.electrodes)
 
     # Unit name logic
-    units_ids = checked_sorting.get_unit_ids()
     if "unit_name" in data_to_add:
         unit_name_array = data_to_add["unit_name"]["data"]
     else:
-        unit_name_array = units_ids.astype("str", copy=False)
+        unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
     # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
-    if np.issubdtype(units_ids.dtype, np.integer):
-        data_to_add["id"].update(data=units_ids.astype("int"))
+    if np.issubdtype(unit_ids.dtype, np.integer):
+        data_to_add["id"].update(data=unit_ids.astype("int"))
 
     units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
     extracted_properties = set(data_to_add)
@@ -1198,7 +1205,7 @@ def add_units_table(
         # Extract and concatenate the spike times from multiple segments
         for segment_index in range(checked_sorting.get_num_segments()):
             segment_spike_times = checked_sorting.get_unit_spike_train(
-                unit_id=units_ids[row], segment_index=segment_index, return_times=True
+                unit_id=unit_ids[row], segment_index=segment_index, return_times=True
             )
             spike_times.append(segment_spike_times)
         spike_times = np.concatenate(spike_times)
@@ -1350,6 +1357,7 @@ def write_sorting(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
+    unit_ids: Optional[list[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     skip_features: Optional[List[str]] = None,
@@ -1381,6 +1389,9 @@ def write_sorting(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
+    unit_ids: list, optional
+        Controls the unit_ids that will be written to the nwb file. If None (default), all
+        units are written.
     property_descriptions: dict
         For each key in this dictionary which matches the name of a unit
         property in sorting, adds the value as a description to that
@@ -1416,6 +1427,7 @@ def write_sorting(
     ) as nwbfile_out:
         add_units_table(
             sorting=sorting,
+            unit_ids=unit_ids,
             nwbfile=nwbfile_out,
             property_descriptions=property_descriptions,
             skip_properties=skip_properties,
@@ -1436,6 +1448,7 @@ def write_waveforms(
     recording: Optional[BaseRecording] = None,
     overwrite: bool = False,
     verbose: bool = True,
+    unit_ids: Optional[list[Union[str, int]]] = None,
     write_electrical_series: bool = False,
     write_electrical_series_kwargs: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
@@ -1471,6 +1484,9 @@ def write_waveforms(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
+    unit_ids: list, optional
+        Controls the unit_ids that will be written to the nwb file. If None (default), all
+        units are written.
     write_electrical_series: bool, optional
         If True, the recording object associated to the WaveformExtractor is written as an electrical series.
     write_electrical_series_kwargs: dict, optional
@@ -1499,12 +1515,14 @@ def write_waveforms(
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be a pynwb.NWBFile object!"
 
-    templates = waveform_extractor.get_all_templates()
-    try:
-        template_stds = waveform_extractor.get_all_templates(mode="std")
-    except:
-        template_stds = None
+    # retrieve templates and stds
+    template_means = waveform_extractor.get_all_templates()
+    template_stds = waveform_extractor.get_all_templates(mode="std")
     sorting = waveform_extractor.sorting
+    if unit_ids is not None:
+        unit_indices = sorting.ids_to_indices(unit_ids)
+        template_means = template_means[unit_indices]
+        template_stds = template_stds[unit_indices]
 
     # metrics properties (quality, template) are temporarily added as properties
     # to be written in the Units table
@@ -1559,13 +1577,14 @@ def write_waveforms(
         add_units_table(
             sorting=sorting,
             nwbfile=nwbfile_out,
+            unit_ids=unit_ids,
             property_descriptions=property_descriptions,
             skip_properties=skip_properties,
             write_in_processing_module=write_in_processing_module,
             units_table_name=units_name,
             unit_table_description=units_description,
             write_waveforms=False,
-            waveform_means=templates,
+            waveform_means=template_means,
             waveform_sds=template_stds,
         )
 

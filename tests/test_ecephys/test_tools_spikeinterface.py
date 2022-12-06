@@ -10,7 +10,7 @@ import numpy as np
 
 from pynwb import NWBHDF5IO, NWBFile
 import pynwb.ecephys
-from spikeinterface import extract_waveforms
+from spikeinterface import extract_waveforms, WaveformExtractor
 from spikeinterface.core.testing_tools import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -1003,6 +1003,19 @@ class TestAddUnitsTable(TestCase):
         self.assertEqual(units_table.name, units_table_name)
         self.assertEqual(units_table.description, unit_table_description)
 
+    def test_write_subset_units(self):
+        """ """
+        subset_unit_ids = self.base_sorting.unit_ids[::2]
+        add_units_table(
+            sorting=self.base_sorting,
+            nwbfile=self.nwbfile,
+            unit_ids=subset_unit_ids,
+        )
+
+        self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
+        self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:]
+                            for unit_id in subset_unit_ids))
+
 
 @unittest.skipIf(
     version.parse(python_version()) < version.parse("3.8"), "SpikeInterface.extract_waveforms() requires Python>=3.8"
@@ -1024,6 +1037,9 @@ class TestWriteWaveforms(TestCase):
 
         cls.single_segment_we = extract_waveforms(single_segment_rec, single_segment_sort, folder=None, mode="memory")
         cls.multi_segment_we = extract_waveforms(multi_segment_rec, multi_segment_sort, folder=None, mode="memory")
+        # slice sorting
+        slice_sorting = single_segment_sort.select_units(single_segment_sort.unit_ids[::2])
+        cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
         # add template metrics to test property propagation
         compute_template_metrics(cls.single_segment_we)
         compute_template_metrics(cls.multi_segment_we)
@@ -1034,7 +1050,10 @@ class TestWriteWaveforms(TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
         self.nwbfile2 = NWBFile(
-            session_description="session_description2", identifier="file_id1", session_start_time=testing_session_time
+            session_description="session_description2", identifier="file_id3", session_start_time=testing_session_time
+        )
+        self.nwbfile3 = NWBFile(
+            session_description="session_description3", identifier="file_id3", session_start_time=testing_session_time
         )
 
     def _test_waveform_write(self, we, nwbfile):
@@ -1046,10 +1065,10 @@ class TestWriteWaveforms(TestCase):
 
         # test that electrode table has been saved
         assert nwbfile.electrodes is not None
-
+        assert len(we.unit_ids) == len(nwbfile.units)
         # test that waveforms and stds are the same
         unit_ids = we.unit_ids
-        for unit_index in nwbfile.units.id:
+        for unit_index, _ in enumerate(nwbfile.units.id):
             wf_mean_si = we.get_template(unit_ids[unit_index])
             wf_mean_nwb = nwbfile.units[unit_index]["waveform_mean"].values[0]
             np.testing.assert_array_almost_equal(wf_mean_si, wf_mean_nwb)
@@ -1066,6 +1085,17 @@ class TestWriteWaveforms(TestCase):
         """This test that the waveforms are written appropriately for the multi segment case"""
         write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2)
         self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
+
+    def test_write_subset_units(self):
+        """This test that the waveforms are sliced properly based on unit_ids"""
+        subset_unit_ids = self.single_segment_we.unit_ids[::2]
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile3,
+                        unit_ids=subset_unit_ids)
+        self._test_waveform_write(self.we_slice, self.nwbfile3)
+
+        self.assertEqual(len(self.nwbfile3.units), len(subset_unit_ids))
+        self.assertTrue(all(str(unit_id) in self.nwbfile3.units["unit_name"][:]
+                            for unit_id in subset_unit_ids))
 
     def write_test_files(self):
         with NWBHDF5IO("waveforms_single_segment.nwb", "w") as io:
