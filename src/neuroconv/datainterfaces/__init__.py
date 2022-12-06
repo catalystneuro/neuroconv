@@ -36,6 +36,8 @@ from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface
 from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
+from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -90,6 +92,8 @@ interface_list = [
     PlexonRecordingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
+    MEArecRecordingInterface,
+    MCSRawRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
