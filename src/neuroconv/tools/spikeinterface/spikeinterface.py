@@ -1547,17 +1547,19 @@ def write_waveforms(
 
     # metrics properties (quality, template) are temporarily added as properties
     # to be written in the Units table
-    sorting_copy = sorting.clone()
+    tmp_properties = []
     if waveform_extractor.is_extension("quality_metrics"):
         qm = waveform_extractor.load_extension("quality_metrics").get_data()
         for prop in qm.columns:
-            if prop not in sorting_copy.get_property_keys():
-                sorting_copy.set_property(prop, qm[prop])
+            if prop not in sorting.get_property_keys():
+                sorting.set_property(prop, qm[prop])
+                tmp_properties.append(prop)
     if waveform_extractor.is_extension("template_metrics"):
         tm = waveform_extractor.load_extension("template_metrics").get_data()
         for prop in tm.columns:
-            if prop not in sorting_copy.get_property_keys():
-                sorting_copy.set_property(prop, tm[prop])
+            if prop not in sorting.get_property_keys():
+                sorting.set_property(prop, tm[prop])
+                tmp_properties.append(prop)
 
     assert write_as in [
         "units",
@@ -1598,7 +1600,7 @@ def write_waveforms(
             add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
 
         add_units_table(
-            sorting=sorting_copy,
+            sorting=sorting,
             nwbfile=nwbfile_out,
             unit_ids=unit_ids,
             property_descriptions=property_descriptions,
@@ -1610,3 +1612,7 @@ def write_waveforms(
             waveform_means=template_means,
             waveform_sds=template_stds,
         )
+
+    # remove tmp properties
+    for prop in tmp_properties:
+        sorting.delete_property(prop)
