@@ -83,4 +83,4 @@ The above YAML is common to all :py:class:`~neuroconv.basedatainterface.BaseData
 or :py:class:`~neuroconv.nwbconverter.ConverterPipe`, and an analogous workflow for incorporating this data will work
 for each. Specific interfaces and converters will have additional fields, which you can see using the method
 :func:`DataInterface.get_metadata_schema() <neuroconv.basedatainterface.BaseDataInterface.get_metadata_schema>` or
-:func:`NWBConverter.get_metadata_schema() <neuroconv.nwbconverter.NWBConverter.get_metadata_schema>` or
+:func:`NWBConverter.get_metadata_schema() <neuroconv.nwbconverter.NWBConverter.get_metadata_schema>`.
