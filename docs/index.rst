@@ -21,6 +21,7 @@ of proprietary formats to the Neurodata Without Borders (NWB) standard.
   :caption: API Documentation
 
   NWBConverter <api/nwbconverter>
+  BaseDataInterface <api/basedatainterface>
   Interfaces <api/interfaces>
   Tools <api/tools>
   Utils <api/utils>
