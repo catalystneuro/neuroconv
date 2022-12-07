@@ -1200,7 +1200,7 @@ def add_units_table(
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
     # Find default values for properties / columns already in the table
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
+    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan, bool: False}
     property_to_default_values = {"id": None}
     for property in units_table_previous_properties:
         # Find a matching data type and get the default value
