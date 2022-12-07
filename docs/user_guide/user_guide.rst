@@ -19,3 +19,4 @@ and synchronize data across multiple sources.
   datainterfaces
   nwbconverter
   schemas
+  tsvs
