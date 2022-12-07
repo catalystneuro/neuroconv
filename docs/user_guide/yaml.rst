@@ -79,7 +79,7 @@ dictionary using :py:meth:`~neuroconv.utils.dict.load_dict_from_file`. Then the 
 
 Note that any metadata extracted in by ``spikeglx_interface.get_metadata()`` will be updated by the YAML data.
 
-The above YAML is common to all :py:class:`.BaseDataInterface`, :py:class:`~neuroconv.nwbconverter.NWBConverter`,
+The above YAML is common to all :py:class:`~neuroconv.basedatainterface.BaseDataInterface`, :py:class:`~neuroconv.nwbconverter.NWBConverter`,
 or :py:class:`~neuroconv.nwbconverter.ConverterPipe`, and an analogous workflow for incorporating this data will work
 for each. Specific interfaces and converters will have additional fields, which you can see using the method
 :func:`DataInterface.get_metadata_schema() <neuroconv.basedatainterface.BaseDataInterface.get_metadata_schema>` or
