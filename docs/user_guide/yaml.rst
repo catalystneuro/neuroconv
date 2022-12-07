@@ -81,6 +81,6 @@ Note that any metadata extracted in by ``spikeglx_interface.get_metadata()`` wil
 
 The above YAML is common to all :py:class:`.BaseDataInterface`, :py:class:`~neuroconv.nwbconverter.NWBConverter`,
 or :py:class:`~neuroconv.nwbconverter.ConverterPipe`, and an analogous workflow for incorporating this data will work
-for each. Specific interfaces and converter will have additional fields, which you can see using the method
+for each. Specific interfaces and converters will have additional fields, which you can see using the method
 :func:`DataInterface.get_metadata_schema() <neuroconv.basedatainterface.BaseDataInterface.get_metadata_schema>` or
 :func:`NWBConverter.get_metadata_schema() <neuroconv.nwbconverter.NWBConverter.get_metadata_schema>` or
