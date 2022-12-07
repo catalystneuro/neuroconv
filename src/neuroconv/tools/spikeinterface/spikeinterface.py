@@ -1582,10 +1582,9 @@ def write_waveforms(
                 recording = waveform_extractor.recording
             if write_electrical_series_kwargs is None:
                 write_electrical_series_kwargs = {}
-            write_recording(recording=recording,
-                            nwbfile=nwbfile_out,
-                            metadata=metadata,
-                            **write_electrical_series_kwargs)
+            write_recording(
+                recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
+            )
         else:
             # we need add_electrodes_from_waveforms
             if not waveform_extractor.has_recording():
