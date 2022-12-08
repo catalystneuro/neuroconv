@@ -20,6 +20,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.recording_extractor = self.Extractor(**source_data)
         self.subset_channels = None
         self.verbose = verbose
+        self.es_key = None  # For automatic metadata extraction
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -180,7 +181,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             use_times=use_times,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
-            es_key=es_key,
+            es_key=es_key or self.es_key,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
