@@ -14,13 +14,19 @@ Convert SpikeGLX data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv.datainterfaces import SpikeGLXRecordingInterface
+    >>> from neuroconv.datainterfaces import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
     >>>
-    >>> # For this interface we need to pass the location of the ``.bin`` file
+    >>> # Pass the location of the ``ap.bin`` file.
     >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin"
-    >>> # Change the file_path to the location in your system
-    >>> interface = SpikeGLXRecordingInterface(file_path=file_path, verbose=False)
+    >>> interface_spikeglx_ap = SpikeGLXRecordingInterface(file_path=file_path, verbose=False)
     >>>
+    >>> # Pass the location of the ``ap.bin`` file.
+    >>> file_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.lf.bin"
+    >>> interface_spikeglx_lf = SpikeGLXLFPInterface(file_path=file_path, verbose=False)
+    >>>
+    >>>  # Now that we have defined the two interfaces we pass them to the ConverterPipe which will coordinate the
+    >>>  # concurrent conversion of the data
+    >>> converter = ConverterPipe(data_interfaces=[interface_spikeglx_ap, interface_spikeglx_lf], verbose=False)
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
