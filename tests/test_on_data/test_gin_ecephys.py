@@ -206,9 +206,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         )
     )
 
-    for spikeextractors_backend in [
-        True
-    ]:  # , False]:  # SI version failing due to probeinterface bug https://github.com/SpikeInterface/probeinterface/issues/147
+    for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
                 data_interface=OpenEphysRecordingInterface,
