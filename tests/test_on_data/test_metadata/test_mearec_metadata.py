@@ -64,6 +64,16 @@ class TestMEArecMetadata(unittest.TestCase):
 
             assert nwbfile.acquisition["ElectricalSeries"].channel_conversion is None
 
+    def test_nwb_electrode_cols(self):
+        """MEArec writes directly to float32 microVolts, so channel_conversion should be None."""
+        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
+            nwbfile = io.read()
+
+            for optional_column in ["x", "y", "z", "imp", "filtering"]:
+                assert not hasattr(
+                    nwbfile.electrodes, optional_column
+                ), f"Example data for MEArec does not have data for optional column '{field}', but column was added to NWB file!"
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,12 +2,12 @@
 import uuid
 import warnings
 import numpy as np
-import distutils.version
-from pathlib import Path
+from packaging.version import Version
 from typing import Union, Optional, List
 from warnings import warn
 from collections import defaultdict
 
+from nwbinspector.utils import get_package_version
 import pynwb
 from spikeinterface import BaseRecording, BaseSorting
 from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
@@ -16,6 +16,7 @@ from numbers import Real
 from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 import psutil
+
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
@@ -268,7 +269,7 @@ def add_electrodes(
         checked_recording = recording
 
     # For older versions of pynwb, we need to manually add these columns
-    if distutils.version.LooseVersion(pynwb.__version__) < "1.3.0":
+    if get_package_version("pynwb") < Version("1.3.0"):
         if nwbfile.electrodes is None or "rel_x" not in nwbfile.electrodes.colnames:
             nwbfile.add_electrode_column("rel_x", "x position of electrode in electrode group")
         if nwbfile.electrodes is None or "rel_y" not in nwbfile.electrodes.colnames:
@@ -366,35 +367,47 @@ def add_electrodes(
     data_to_add["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
 
     # 2 Divide properties to those that will be added as rows (default plus previous) and columns (new properties)
-    required_property_to_default_value = dict(
+    # This mapping contains all the defaults that might be required by by pre-defined columns on the NWB schema
+    # https://nwb-schema.readthedocs.io/en/latest/format.html#groups-general-extracellular-ephys-electrodes
+    required_schema_property_to_default_value = dict(
+        id=None,
+        group=None,
+        group_name="default",
+        location="unknown",
+    )
+    optional_schema_property_to_default_value = dict(
         x=np.nan,
         y=np.nan,
         z=np.nan,
         # There doesn't seem to be a canonical default for impedence, if missing.
         # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
         imp=-1.0,
-        location="unknown",
         filtering="none",
-        group=None,
-        id=None,
-        group_name="default",
     )
+    required_schema_properties = set(required_schema_property_to_default_value)
+    optional_schema_properties = set(optional_schema_property_to_default_value)
+    schema_properties = required_schema_properties | optional_schema_properties
 
     electrode_table_previous_properties = set(nwbfile.electrodes.colnames) if nwbfile.electrodes else set()
-    required_properties = set(required_property_to_default_value)
     extracted_properties = set(data_to_add)
-    properties_to_add_by_rows = electrode_table_previous_properties | required_properties
+    properties_to_add_by_rows = required_schema_properties | electrode_table_previous_properties
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
-    # Find default values for properties / columns already in the electrode table
+    # Find default values for a subset of optional schema defined properties already in the electrode table
+    all_properties_to_default_value = dict(required_schema_property_to_default_value)
+    for optional_property in optional_schema_properties.intersection(electrode_table_previous_properties):
+        all_properties_to_default_value.update(
+            {optional_property: optional_schema_property_to_default_value[optional_property]}
+        )
+
+    # Find default values for custom (not schema defined) properties / columns already in the electrode table
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
-    property_to_default_values = required_property_to_default_value
-    for property in electrode_table_previous_properties - required_properties:
+    for property in electrode_table_previous_properties - schema_properties:
         # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
         default_value = type_to_default_value[matching_type]
-        property_to_default_values.update({property: default_value})
+        all_properties_to_default_value.update({property: default_value})
 
     # Add data by rows excluding the rows containing channel_names that were previously added
     channel_names_used_previously = []
@@ -406,7 +419,7 @@ def add_electrodes(
     rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
 
     for row in rows_to_add:
-        electrode_kwargs = dict(property_to_default_values)
+        electrode_kwargs = dict(all_properties_to_default_value)
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row]
 
@@ -443,10 +456,12 @@ def add_electrodes(
         if np.issubdtype(data.dtype, np.integer):
             data = data.astype("float")
 
-        # Find first matching data-type
-        sample_data = data[0]
-        matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
-        default_value = type_to_default_value[matching_type]
+        if property in optional_schema_property_to_default_value:
+            default_value = optional_schema_property_to_default_value[property]
+        else:  # Find first matching data-type for custom column
+            sample_data = data[0]
+            matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
+            default_value = type_to_default_value[matching_type]
 
         extended_data = np.empty(shape=len(nwbfile.electrodes.id[:]), dtype=data.dtype)
         extended_data[indexes_for_new_data] = data
@@ -999,8 +1014,8 @@ def write_recording(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    assert (
-        distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
+    assert get_package_version("pynwb") >= Version(
+        "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
     write_as = "raw" if write_as is None else write_as
     compression = "gzip" if compression is None else compression
