@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 
 
-def get_rising_and_falling_times_from_ttl(trace: np.ndarray, num_bins: int = 2) -> Tuple[np.ndarray, np.ndarray]:
+def parse_rising_and_falling_frames_from_ttl(trace: np.ndarray, num_bins: int = 2) -> Tuple[np.ndarray, np.ndarray]:
     """
     Parse the frame indices for rising and falling events in a TTL pulse.
 
@@ -34,7 +34,8 @@ def get_rising_and_falling_times_from_ttl(trace: np.ndarray, num_bins: int = 2) 
         ),
     ).astype("int8")
     diff_binned_states = np.diff(binned_states, axis=0)
-    rising_frames = np.where(diff_binned_states > 0)
-    falling_frames = np.where(diff_binned_states < 0)
+
+    rising_frames = np.where(diff_binned_states > 0)[0]
+    falling_frames = np.where(diff_binned_states < 0)[0]
 
     return rising_frames, falling_frames
