@@ -27,6 +27,73 @@ class TestMockTTLSignals(TestCase):
     def tearDownClass(cls):
         cls.io.close()
 
+    def test_ttl_times_and_off_duration_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="When specifying `ttl_times`, you do not need to specify `ttl_off_duration`.",
+        ):
+            generate_mock_ttl_signal(ttl_times=[1.2], ttl_off_duration=2.3)
+
+    def test_baseline_mean_int_dtype_float_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "If specifying the 'baseline_mean' manually, please ensure it matches the 'dtype'! "
+                "Received 'int', should be a float."
+            ),
+        ):
+            generate_mock_ttl_signal(baseline_mean=1, dtype="float32")
+
+    def test_signal_mean_int_dtype_float_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "If specifying the 'signal_mean' manually, please ensure it matches the 'dtype'! "
+                "Received 'int', should be a float."
+            ),
+        ):
+            generate_mock_ttl_signal(signal_mean=1, dtype="float32")
+
+    def test_channel_noise_int_dtype_float_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "If specifying the 'channel_noise' manually, please ensure it matches the 'dtype'! "
+                "Received 'int', should be a float."
+            ),
+        ):
+            generate_mock_ttl_signal(channel_noise=1, dtype="float32")
+
+    def test_baseline_mean_int_dtype_int_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "If specifying the 'baseline_mean' manually, please ensure it matches the 'dtype'! "
+                "Received 'float', should be an integer."
+            ),
+        ):
+            generate_mock_ttl_signal(baseline_mean=1.2)
+
+    def test_signal_mean_int_dtype_int_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "If specifying the 'signal_mean' manually, please ensure it matches the 'dtype'! "
+                "Received 'float', should be an integer."
+            ),
+        ):
+            generate_mock_ttl_signal(signal_mean=1.2)
+
+    def test_channel_noise_int_dtype_int_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "If specifying the 'channel_noise' manually, please ensure it matches the 'dtype'! "
+                "Received 'float', should be an integer."
+            ),
+        ):
+            generate_mock_ttl_signal(channel_noise=1.2)
+
     def test_default(self):
         ttl_signal = generate_mock_ttl_signal()
 
