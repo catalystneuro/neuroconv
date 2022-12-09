@@ -20,11 +20,93 @@ class TestMockTTLSignals(TestCase):
         cls.io = NWBHDF5IO(path=cls.nwbfile_path, mode="r")
         cls.nwbfile = cls.io.read()
 
+        # Standard choice of sampling frequency for testing
+        cls.sampling_frequency_hz = 1000.0
+
     @classmethod
     def tearDownClass(cls):
         cls.io.close()
 
-    def test_default_mock_ttl(self):
+    def test_default(self):
         ttl_signal = generate_mock_ttl_signal()
 
         assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["DefaultTTLSignal"].data)
+
+    def test_irregular_short_pulses(self):
+        ttl_signal = generate_mock_ttl_signal(
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            signal_duration=2.5,
+            ttl_times=[0.22, 1.37],
+            ttl_on_duration=0.25,
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["IrregularShortPulses"].data)
+
+    def test_non_default_regular(self):
+        ttl_signal = generate_mock_ttl_signal(
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            signal_duration=3.5,
+            ttl_on_duration=0.3,
+            ttl_off_duration=0.6,
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegular"].data)
+
+    def test_non_default_regular_adjusted_means(self):
+        ttl_signal = generate_mock_ttl_signal(
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            signal_duration=3.5,
+            ttl_on_duration=0.3,
+            ttl_off_duration=0.6,
+            baseline_mean=300,
+            signal_mean=20000,
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegularAdjustedMeans"].data)
+
+    def test_irregular_short_pulses_adjusted_noise(self):
+        ttl_signal = generate_mock_ttl_signal(
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            signal_duration=2.5,
+            ttl_times=[0.22, 1.37],
+            ttl_on_duration=0.25,
+            channel_noise=2,
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["IrregularShortPulsesAdjustedNoise"].data)
+
+    def test_non_default_regular_floats(self):
+        ttl_signal = generate_mock_ttl_signal(
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            signal_duration=3.5,
+            ttl_on_duration=0.3,
+            ttl_off_duration=0.6,
+            dtype="float32",
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegularFloats"].data)
+
+    def test_non_default_regular_floats_adjusted_means_and_noise(self):
+        ttl_signal = generate_mock_ttl_signal(
+            signal_duration=3.5,
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            ttl_on_duration=0.3,
+            ttl_off_duration=0.6,
+            dtype="float32",
+            baseline_mean=1.1,
+            signal_mean=7.2,
+            channel_noise=0.4,
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["FloatsAdjustedMeansAndNoise"].data)
+
+    def test_irregular_short_pulses_different_seed(self):
+        ttl_signal = generate_mock_ttl_signal(
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            signal_duration=2.5,
+            ttl_times=[0.22, 1.37],
+            ttl_on_duration=0.25,
+            random_seed=1,
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["IrregularShortPulsesDifferentSeed"].data)

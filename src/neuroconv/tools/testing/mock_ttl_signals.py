@@ -197,8 +197,8 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
 
     # Test Case 3: Non-default regular
     non_default_regular = generate_mock_ttl_signal(
-        sampling_frequency_hz=rate,
         signal_duration=3.5,
+        sampling_frequency_hz=rate,
         ttl_on_duration=0.3,
         ttl_off_duration=0.6,
     )
@@ -206,8 +206,8 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
 
     # Test Case 4: Non-default regular with adjusted means
     non_default_regular_adjusted_means = generate_mock_ttl_signal(
-        sampling_frequency_hz=rate,
         signal_duration=3.5,
+        sampling_frequency_hz=rate,
         ttl_on_duration=0.3,
         ttl_off_duration=0.6,
         baseline_mean=300,
@@ -217,8 +217,8 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
 
     # Test Case 5: Irregular short pulses with adjusted noise
     irregular_short_pulses_adjusted_noise = generate_mock_ttl_signal(
-        sampling_frequency_hz=rate,
         signal_duration=2.5,
+        sampling_frequency_hz=rate,
         ttl_times=[0.22, 1.37],
         ttl_on_duration=0.25,
         channel_noise=2,
@@ -231,10 +231,23 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
     )
     non_default_series.update(NonDefaultRegularFloats=non_default_regular_as_floats)
 
-    # Test Case 7: Irregular short pulses with different seed
-    irregular_short_pulses_different_seed = generate_mock_ttl_signal(
+    # Test Case 7: Non-default regular as floats with adjusted means and noise (which are also, then, floats)
+    non_default_regular_as_floats_adjusted_means_and_noise = generate_mock_ttl_signal(
+        signal_duration=3.5,
         sampling_frequency_hz=rate,
+        ttl_on_duration=0.3,
+        ttl_off_duration=0.6,
+        dtype="float32",
+        baseline_mean=1.1,
+        signal_mean=7.2,
+        channel_noise=0.4,
+    )
+    non_default_series.update(FloatsAdjustedMeansAndNoise=non_default_regular_as_floats_adjusted_means_and_noise)
+
+    # Test Case 8: Irregular short pulses with different seed
+    irregular_short_pulses_different_seed = generate_mock_ttl_signal(
         signal_duration=2.5,
+        sampling_frequency_hz=rate,
         ttl_times=[0.22, 1.37],
         ttl_on_duration=0.25,
         random_seed=1,
@@ -269,6 +282,8 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
 
     if regenerate_reference_images:
         fig.update_annotations(font_size=8)
+        fig.update_layout(showlegend=False)
+        # fig.update_xaxes(showticklabels=False)
         fig.write_image(file=image_file_path)
 
     with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
