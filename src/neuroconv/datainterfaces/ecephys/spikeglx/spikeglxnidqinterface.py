@@ -1,13 +1,14 @@
 """Authors: Cody Baker."""
 import json
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 from pynwb.ecephys import ElectricalSeries
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
-from .read_spikeglx import ExtractDigital
 from .spikeglx_utils import get_session_start_time
+from ....tools.signal_processing import get_rising_and_falling_times_from_ttl
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
 
 
@@ -109,26 +110,32 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         )
         return metadata
 
-    def get_events_times_from_ttl(self, channel_id=0):
-        channel = [channel_id]
-        dw = 0
-        dig = ExtractDigital(
-            self._raw,
-            firstSamp=0,
-            lastSamp=self.recording_extractor.get_num_frames(),
-            dwReq=dw,
-            dLineList=channel,
-            meta=self._meta,
+    def get_events_times_from_ttl(self, channel_name: str) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Parse event times from a TTL signal on one of the NIDQ channels.
+
+        Parameters
+        ----------
+        channel_index : int
+            Index of the channel in the .nidq.bin file.
+
+        Returns
+        -------
+        rising_times: numpy.ndarray
+            The times of the rising TTL pulse; often used as the start time of the event.
+        falling_times: numpy.ndarray
+            The times of the falling TTL pulse; often used with the rising_times to perform decoding of digital words
+            which occur between the rise and fall.
+            Can also be used to track the duration of an on/off event.
+        """
+        # TODO: consider RAM cost of these operations and implement safer buffering version
+        rising_frames, falling_frames = get_rising_and_falling_times_from_ttl(
+            trace=self.recording_extractor.get_traces(chanel_id=[channel_name])
         )
-        dig = np.squeeze(dig)
-        diff_dig = np.diff(dig.astype(int))
-
-        rising = np.where(diff_dig > 0)[0]
-        falling = np.where(diff_dig < 0)[0]
-
-        ttl_frames = np.concatenate((rising, falling))
-        sort_idxs = np.argsort(ttl_frames)
-        return self.frame_to_time(ttl_frames[sort_idxs])
+        nidq_timestamps = self.recording_extractor.get_times()
+        rising_times = nidq_timestamps[rising_frames]
+        falling_times = nidq_timestamps[falling_frames]
+        return rising_times, falling_times
 
     def get_conversion_options(self):
         conversion_options = super().get_conversion_options()

@@ -6,6 +6,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
+from ...tools.signal_processing import infer_timestamps_from_pulses
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType, ArrayType
 
 
@@ -72,10 +73,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def synchronize_starting_time(self, starting_time: float):
-        self.recording_extractor.set_times(self.recording_extractor.frame_to_times() + starting_time)
+        self.recording_extractor.set_times(times=self.recording_extractor.get_times() + starting_time)
 
     def synchronize_timestamps(self, timestamps: ArrayType):
-        self.recording_extractor.set_times(timestamps)
+        self.recording_extractor.set_times(times=timestamps)
+
+    def synchronize_with_pulses(self, pulse_timestamps: ArrayType):
+        self.recording_extractor.set_times(
+            times=infer_timestamps_from_pulses(
+                relative_timestamps=self.recording_extractor.get_times(), pulse_timestamps=pulse_timestamps
+            )
+        )
 
     def subset_recording(self, stub_test: bool = False):
         """

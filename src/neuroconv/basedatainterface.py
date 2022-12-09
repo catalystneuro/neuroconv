@@ -65,7 +65,7 @@ class BaseDataInterface(ABC):
     @abstractmethod
     def synchronize_timestamps(self, timestamps: ArrayType):
         """
-        Synchronize all time references for this interface to the common time basis.
+        Replace all time references for this interface with the timestamps from the common time basis.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
@@ -76,6 +76,26 @@ class BaseDataInterface(ABC):
         """
         raise NotImplementedError(
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
+
+    @abstractmethod
+    def synchronize_with_pulses(self, pulse_timestamps: ArrayType):
+        """
+        Synchronize time references which occur between the known pulse timestamps which are in the common time basis.
+
+        An example could be a metronomic TTL pulse (e.g., every second) from a secondary data stream to the primary
+        timing system; if the time references of this interface are recorded within the relative time of the secondary
+        data stream, then their exact time in the primary system is inferred given the pulse times.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        timestamps: ArrayType
+            A full vector of timestamps all temporal data in this interface.
+        """
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface given pulse times has not been specified!"
         )
 
     def get_conversion_options(self):
