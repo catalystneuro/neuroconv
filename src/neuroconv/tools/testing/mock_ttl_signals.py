@@ -92,15 +92,15 @@ def generate_mock_ttl_signal(
 
         assert np.issubdtype(type(baseline_mean), np.integer), (
             "If specifying the 'baseline_mean' manually, please ensure it matches the 'dtype'! "
-            f"Received {type(baseline_mean)} should be an integer."
+            f"Received '{type(baseline_mean).__name__}', should be an integer."
         )
         assert np.issubdtype(type(signal_mean), np.integer), (
             "If specifying the 'signal_mean' manually, please ensure it matches the 'dtype'! "
-            f"Received {type(signal_mean)} should be an integer."
+            f"Received '{type(signal_mean).__name__}', should be an integer."
         )
         assert np.issubdtype(type(channel_noise), np.integer), (
             "If specifying the 'channel_noise' manually, please ensure it matches the 'dtype'! "
-            f"Received {type(baseline_mean)} should be an integer."
+            f"Received '{type(channel_noise).__name__}', should be an integer."
         )
     else:
         baseline_mean = baseline_mean or baseline_mean_int16_default * default_gain_to_volts
@@ -109,15 +109,15 @@ def generate_mock_ttl_signal(
 
         assert np.issubdtype(type(baseline_mean), np.floating), (
             "If specifying the 'baseline_mean' manually, please ensure it matches the 'dtype'! "
-            f"Received {type(baseline_mean)} should be a float."
+            f"Received '{type(baseline_mean).__name__}', should be a float."
         )
         assert np.issubdtype(type(signal_mean), np.floating), (
             "If specifying the 'signal_mean' manually, please ensure it matches the 'dtype'! "
-            f"Received {type(signal_mean)} should be a float."
+            f"Received '{type(signal_mean).__name__}', should be a float."
         )
         assert np.issubdtype(type(channel_noise), np.floating), (
             "If specifying the 'channel_noise' manually, please ensure it matches the 'dtype'! "
-            f"Received {type(baseline_mean)} should be a float."
+            f"Received '{type(channel_noise).__name__}', should be a float."
         )
 
     np.random.seed(seed=random_seed)
