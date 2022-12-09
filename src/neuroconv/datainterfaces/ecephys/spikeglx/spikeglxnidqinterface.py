@@ -8,7 +8,7 @@ from pynwb.ecephys import ElectricalSeries
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglx_utils import get_session_start_time
-from ....tools.signal_processing import get_rising_and_falling_times_from_ttl
+from ....tools.signal_processing import parse_rising_and_falling_frames_from_ttl
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
 
 
@@ -129,13 +129,14 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             Can also be used to track the duration of an on/off event.
         """
         # TODO: consider RAM cost of these operations and implement safer buffering version
-        rising_frames, falling_frames = get_rising_and_falling_times_from_ttl(
+        rising_frames, _ = parse_rising_and_falling_frames_from_ttl(
             trace=self.recording_extractor.get_traces(chanel_id=[channel_name])
         )
+
         nidq_timestamps = self.recording_extractor.get_times()
         rising_times = nidq_timestamps[rising_frames]
-        falling_times = nidq_timestamps[falling_frames]
-        return rising_times, falling_times
+
+        return rising_times
 
     def get_conversion_options(self):
         conversion_options = super().get_conversion_options()
