@@ -33,7 +33,9 @@ def parse_rising_and_falling_frames_from_ttl(trace: np.ndarray, num_bins: int = 
             num=num_bins + 1,  # 'num' in np.linspace is actually the number of partitions; +1 to translate to # bins
         ),
     ).astype("int8")
+
     diff_binned_states = np.diff(binned_states, axis=0)
+
     rising_frames = np.where(diff_binned_states > 0)[0]
     falling_frames = np.where(diff_binned_states < 0)[0]
 
