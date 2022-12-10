@@ -18,7 +18,7 @@ class TestParsingRisingAndFallingTimesFromTTL(TestCase):
         expected_falling_frames = np.array([49999, 99999, 149999])
         assert_array_equal(x=falling_frames, y=expected_falling_frames)
 
-    def test_start_during_on_pulse(self):
+    def test_start_during_on_pulse_int16(self):
         """
         Default generation tests start in 'off' condition.
 
@@ -37,7 +37,7 @@ class TestParsingRisingAndFallingTimesFromTTL(TestCase):
         expected_falling_frames = np.array([24999, 109999])
         assert_array_equal(x=falling_frames, y=expected_falling_frames)
 
-    def test_end_during_on_pulse(self):
+    def test_end_during_on_pulse_int16(self):
         """
         Default generation tests start in 'off' condition.
 
@@ -56,7 +56,7 @@ class TestParsingRisingAndFallingTimesFromTTL(TestCase):
         expected_falling_frames = np.array([])
         assert_array_equal(x=falling_frames, y=expected_falling_frames)
 
-    def test_end_during_off_pulse(self):
+    def test_end_during_off_pulse_int16(self):
         ttl_signal = generate_mock_ttl_signal(signal_duration=5.0, ttl_times=[1.0], ttl_duration=2.0)
 
         rising_frames, falling_frames = parse_rising_and_falling_frames_from_ttl(trace=ttl_signal)
@@ -67,7 +67,7 @@ class TestParsingRisingAndFallingTimesFromTTL(TestCase):
         expected_falling_frames = np.array([74999])
         assert_array_equal(x=falling_frames, y=expected_falling_frames)
 
-    def test_start_during_on_pulse_floats(self):
+    def test_start_during_on_pulse_floats_int16(self):
         ttl_signal = generate_mock_ttl_signal(ttl_times=[0.0, 3.4], dtype="float32")
 
         rising_frames, falling_frames = parse_rising_and_falling_frames_from_ttl(trace=ttl_signal)
