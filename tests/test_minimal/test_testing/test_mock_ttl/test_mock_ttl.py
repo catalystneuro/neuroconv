@@ -27,12 +27,19 @@ class TestMockTTLSignals(TestCase):
     def tearDownClass(cls):
         cls.io.close()
 
-    def test_ttl_times_and_off_duration_assertion(self):
+    def test_overlapping_ttl_assertion(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg="When specifying `ttl_times`, you do not need to specify `ttl_off_duration`.",
+            exc_msg=("There are overlapping TTL 'on' intervals! Please specify disjoint on/off periods."),
         ):
-            generate_mock_ttl_signal(ttl_times=[1.2], ttl_off_duration=2.3)
+            generate_mock_ttl_signal(ttl_times=[1.2, 1.5, 1.6], ttl_duration=0.2)
+
+    def test_single_frame_overlapping_ttl_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=("There are overlapping TTL 'on' intervals! Please specify disjoint on/off periods."),
+        ):
+            generate_mock_ttl_signal(ttl_times=[1.2, 1.4], ttl_duration=0.2)
 
     def test_baseline_mean_int_dtype_float_assertion(self):
         with self.assertRaisesWith(
