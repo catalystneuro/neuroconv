@@ -19,7 +19,7 @@ def _check_parameter_dtype_consistency(
     """Helper for `generate_mock_ttl_signal` to assert consistency between parameters and expected trace dtype."""
     end_format = "an integer" if generic_dtype == np.integer else "a float"
     assert np.issubdtype(type(parameter_value), generic_dtype), (
-        "If specifying the 'parameter_name' manually, please ensure it matches the 'dtype'! "
+        f"If specifying the '{parameter_name}' manually, please ensure it matches the 'dtype'! "
         f"Received '{type(parameter_value).__name__}', should be {end_format}."
     )
 
