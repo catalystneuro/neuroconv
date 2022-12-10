@@ -88,7 +88,7 @@ def generate_mock_ttl_signal(
 
     if np.issubdtype(dtype, np.unsignedinteger):
         # If data type is an unsigned integer, increment the signed default values by the midpoint of the unsigned range
-        shift = np.floor(np.iinfo(dtype).max / 2)
+        shift = np.floor(np.iinfo(dtype).max / 2).astype(int)
         baseline_mean_int16_default += shift
         signal_mean_int16_default += shift
 
@@ -130,7 +130,7 @@ def generate_mock_ttl_signal(
     return trace
 
 
-def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_images: bool = False):
+def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_images: bool = False):  # pragma: no cover
     """
     Regenerate the test cases of the file included in the main testing suite, which is frozen between breaking changes.
 
@@ -233,7 +233,17 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
     )
     non_default_series.update(FloatsAdjustedMeansAndNoise=non_default_regular_as_floats_adjusted_means_and_noise)
 
-    # Test Case 8: Irregular short pulses with different seed
+    # Test Case 8: Non-default regular as uint16
+    non_default_regular_as_uint16 = generate_mock_ttl_signal(
+        signal_duration=2.7,
+        ttl_times=[0.2, 1.2, 2.2],
+        ttl_duration=0.3,
+        sampling_frequency_hz=rate,
+        dtype="uint16",
+    )
+    non_default_series.update(NonDefaultRegularUInt16=non_default_regular_as_uint16)
+
+    # Test Case 9: Irregular short pulses with different seed
     irregular_short_pulses_different_seed = generate_mock_ttl_signal(
         signal_duration=2.5,
         ttl_times=[0.22, 1.37],
@@ -244,7 +254,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
     non_default_series.update(IrregularShortPulsesDifferentSeed=irregular_short_pulses_different_seed)
 
     if regenerate_reference_images:
-        num_cols = 4
+        num_cols = 5
         plot_index = 1
         subplot_titles = ["Default"]
         subplot_titles.extend(list(non_default_series))
@@ -270,9 +280,10 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
             plot_index += 1
 
     if regenerate_reference_images:
-        fig.update_annotations(font_size=8)
+        fig.update_annotations(font_size=6)
         fig.update_layout(showlegend=False)
-        # fig.update_xaxes(showticklabels=False)
+        fig.update_yaxes(tickfont=dict(size=5))
+        fig.update_xaxes(showticklabels=False)
         fig.write_image(file=image_file_path)
 
     with NWBHDF5IO(path=nwbfile_path, mode="w") as io:

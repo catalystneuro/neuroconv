@@ -160,6 +160,17 @@ class TestMockTTLSignals(TestCase):
 
         assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegularFloats"].data)
 
+    def test_non_default_regular_as_uint16(self):
+        ttl_signal = generate_mock_ttl_signal(
+            signal_duration=2.7,
+            ttl_times=[0.2, 1.2, 2.2],
+            ttl_duration=0.3,
+            sampling_frequency_hz=self.sampling_frequency_hz,
+            dtype="uint16",
+        )
+
+        assert_array_equal(x=ttl_signal, y=self.nwbfile.acquisition["NonDefaultRegularUInt16"].data)
+
     def test_non_default_regular_floats_adjusted_means_and_noise(self):
         ttl_signal = generate_mock_ttl_signal(
             signal_duration=2.7,
