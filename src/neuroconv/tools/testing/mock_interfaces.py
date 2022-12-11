@@ -4,7 +4,6 @@ from typing import Optional
 import numpy as np
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
-from spikeinterface.extractors import NumpyRecording
 
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ..signal_processing import synchronize_timestamps_between_systems
@@ -69,6 +68,8 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             In conjunction with the `ttl_times`, these must produce disjoint 'on' intervals.
             The default is 1 second.
         """
+        from spikeinterface.extractors import NumpyRecording
+
         self.recording_extractor = NumpyRecording(
             traces_list=generate_mock_ttl_signal(
                 signal_duration=signal_duration, ttl_times=ttl_times, ttl_duration=ttl_duration
