@@ -1,11 +1,10 @@
 import numpy as np
 from numpy.testing import assert_array_equal
 from hdmf.testing import TestCase
-from spikeinterface.extractors import NumpyRecording
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import SpikeGLXNIDQInterface, SpikeGLXRecordingInterface, DeepLabCutInterface
-from neuroconv.tools.testing import MockBehaviorEventInterface, generate_mock_ttl_signal
+from neuroconv.tools.testing import MockBehaviorEventInterface, MockSpikeGLXNIDQInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH, BEHAVIOR_DATA_PATH
 
@@ -31,12 +30,8 @@ class TestNIDQSynchronization(TestCase):
             file_path=self.spikeglx_subpath / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
         )
 
-        self.nidq_interface = SpikeGLXNIDQInterface(file_path=self.spikeglx_subpath / "Noise4Sam_g0_t0.imec0.nidq.bin")
-        self.nidq_interface.recording_extractor = NumpyRecording(
-            traces_list=generate_mock_ttl_signal(
-                signal_duration=23.0, ttl_times=self.synchronized_dlc_timestamps, ttl_duration=0.01
-            )[..., np.newaxis],
-            sampling_frequency=self.nidq_interface.recording_extractor.get_sampling_frequency(),
+        self.nidq_interface = MockSpikeGLXNIDQInterface(
+            signal_duration=23.0, ttl_times=self.synchronized_dlc_timestamps, ttl_duration=0.01
         )
 
         self.dlc_interface = DeepLabCutInterface(
