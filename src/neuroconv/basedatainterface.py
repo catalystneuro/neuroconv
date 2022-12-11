@@ -1,11 +1,12 @@
 """Authors: Cody Baker and Ben Dichter."""
-from abc import abstractmethod, ABC
 import uuid
+from abc import abstractmethod, ABC
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 
-from .utils import get_base_schema, get_schema_from_method_signature
+from .utils import get_base_schema, get_schema_from_method_signature, ArrayType
 
 
 class BaseDataInterface(ABC):
@@ -22,7 +23,7 @@ class BaseDataInterface(ABC):
         return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
 
     def __init__(self, **source_data):
-        self.source_data = source_data
+        self.source_data: dict = source_data
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -45,6 +46,74 @@ class BaseDataInterface(ABC):
         )
 
         return metadata
+
+    @abstractmethod
+    def get_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        timestamps: numpy.ndarray
+            The timestamps for the data stream.
+        """
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    @abstractmethod
+    def synchronize_starting_time(self, starting_time: float):
+        """
+        Synchronize the start of all time references for this interface to the time of the primary system.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_time: float
+            The starting time for all temporal data in this interface.
+        """
+        raise NotImplementedError(
+            "The protocol for synchronizing the start time of this interface has not been specified!"
+        )
+
+    @abstractmethod
+    def synchronize_timestamps(self, synchronized_timestamps: ArrayType):
+        """
+        Replace all timestamps for this interface with those syncrhonized with the primary system.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        synchronized_timestamps: ArrayType
+            The synchronized timestamps for data in this interface.
+        """
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
+
+    @abstractmethod
+    def synchronize_between_systems(
+        self, primary_reference_timestamps: ArrayType, secondary_reference_timestamps: ArrayType
+    ):
+        """
+        Synchronize time references which occur between the known pulse timestamps which are in the common time basis.
+
+        An example could be a metronomic TTL pulse (e.g., every second) from a secondary data stream to the primary
+        timing system; if the time references of this interface are recorded within the relative time of the secondary
+        data stream, then their exact time in the primary system is inferred given the pulse times.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        timestamps: ArrayType
+            A full vector of timestamps all temporal data in this interface.
+        """
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface given pulse times has not been specified!"
+        )
 
     def get_conversion_options(self):
         """Child DataInterface classes should override this to match their conversion options."""
@@ -78,5 +147,4 @@ class BaseDataInterface(ABC):
             If 'nwbfile_path' is specified, informs user after a successful write operation.
             The default is True.
         """
-
         raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")

@@ -7,7 +7,8 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
+from ...tools.signal_processing import synchronize_timestamps_between_systems
+from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType, ArrayType
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -71,6 +72,26 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         )
 
         return metadata
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.recording_extractor.get_times()
+
+    def synchronize_starting_time(self, starting_time: float):
+        self.recording_extractor.set_times(times=self.recording_extractor.get_times() + starting_time)
+
+    def synchronize_timestamps(self, synchronized_timestamps: ArrayType):
+        self.recording_extractor.set_times(times=synchronized_timestamps)
+
+    def synchronize_between_systems(
+        self, primary_reference_timestamps: ArrayType, secondary_reference_timestamps: ArrayType
+    ):
+        unsynchronized_timestamps = self.recording_extractor.get_times()
+        synchronized_timestamps = synchronize_timestamps_between_systems(
+            unsynchronized_timestamps=unsynchronized_timestamps,
+            primary_reference_timestamps=primary_reference_timestamps,
+            secondary_reference_timestamps=secondary_reference_timestamps,
+        )
+        self.recording_extractor.set_times(times=synchronized_timestamps)
 
     def subset_recording(self, stub_test: bool = False):
         """
