@@ -51,13 +51,14 @@ class TestNIDQSynchronization(TestCase):
     def test_nidq_interface_synchronized(self):
         synchronized_dlc_timestamps = (
             self.nidq_interface.get_event_starting_times_from_ttl(
-                channel_name="nidq#XA2"  # the channel receiving pulses from the DLC system
+                channel_name="nidq#XA2"  # The channel receiving pulses from the DLC system
             ),
         )
 
         self.dlc_interface.synchronize_timestamps(timestamps=synchronized_dlc_timestamps)
-        self.behavior_interface.synchronize_with_pulses(
-            primary_timestampss=self.nidq_interface.get_times(), secondary_timestamps=synchronized_dlc_timestamps
+        self.behavior_interface.synchronize_between_systems(
+            primary_reference_timestamps=self.nidq_interface.get_times(),
+            secondary_reference_timestamps=synchronized_dlc_timestamps,
         )
 
         assert_array_equal(x=self.dlc_interface.get_timestamps(), y=synchronized_dlc_timestamps)
@@ -73,9 +74,9 @@ class TestNIDQSynchronization(TestCase):
         )
 
         self.dlc_interface.synchronize_timestamps(timestamps=synchronized_dlc_timestamps)
-        self.behavior_interface.synchronize_between_times(
-            primary_timestampss=self.unsynchronized_secondary_timestamps,
-            secondary_timestamps=synchronized_dlc_timestamps,
+        self.behavior_interface.synchronize_between_systems(
+            primary_reference_timestamps=self.unsynchronized_secondary_timestamps,
+            secondary_reference_timestamps=synchronized_dlc_timestamps,
         )
 
         converter = ConverterPipe(
@@ -127,9 +128,9 @@ class TestExternalSynchronization(TestCase):
         # For example, if the synchronization is performed ahead of time and timestamps stored in a CSV or similar file
         # Then we just need to read in the pulse times instead of having to parse NIDQ signals
         self.dlc_interface.synchronize_timestamps(timestamps=self.externally_synchronized_timestamps)
-        self.behavior_interface.synchronize_between_times(
-            primary_timestampss=self.unsynchronized_secondary_timestamps,
-            secondary_timestamps=self.externally_synchronized_timestamps,
+        self.behavior_interface.synchronize_between_systems(
+            primary_reference_timestamps=self.unsynchronized_secondary_timestamps,
+            secondary_reference_timestamps=self.externally_synchronized_timestamps,
         )
 
         assert_array_equal(x=self.dlc_interface.get_timestamps(), y=self.synchronized_dlc_timestamps)
@@ -139,9 +140,9 @@ class TestExternalSynchronization(TestCase):
 
     def test_nidq_interface_synchronized_converter_pipe(self):
         self.dlc_interface.synchronize_timestamps(timestamps=self.externally_synchronized_timestamps)
-        self.behavior_interface.synchronize_between_times(
-            primary_timestampss=self.unsynchronized_secondary_timestamps,
-            secondary_timestamps=self.externally_synchronized_timestamps,
+        self.behavior_interface.synchronize_between_systems(
+            primary_reference_timestamps=self.unsynchronized_secondary_timestamps,
+            secondary_reference_timestamps=self.externally_synchronized_timestamps,
         )
 
         converter = ConverterPipe(
