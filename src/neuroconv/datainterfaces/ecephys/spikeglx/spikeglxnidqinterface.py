@@ -45,7 +45,9 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         self.stream_id = "nidq"
 
         folder_path = Path(file_path).parent
-        super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
+        super(SpikeGLXRecordingInterface, self).__init__(
+            folder_path=folder_path, stream_id=self.stream_id, verbose=verbose
+        )
         self.source_data.update(file_path=str(file_path))
 
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]

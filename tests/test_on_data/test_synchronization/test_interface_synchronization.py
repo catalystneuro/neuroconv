@@ -58,7 +58,7 @@ class TestNIDQSynchronization(TestCase):
 
         assert_array_equal(x=self.dlc_interface.get_timestamps(), y=synchronized_dlc_timestamps)
 
-        expected_behavior_timestamps = np.array([])  # TODO
+        expected_behavior_timestamps = np.array([8.83168, 10.53219, 12.93291])
         assert_array_equal(x=self.behavior_interface.get_timestamps(), y=expected_behavior_timestamps)
 
     def test_nidq_interface_synchronized_converter_pipe(self):
@@ -130,7 +130,7 @@ class TestExternalSynchronization(TestCase):
 
         assert_array_equal(x=self.dlc_interface.get_timestamps(), y=self.synchronized_dlc_timestamps)
 
-        expected_behavior_timestamps = np.array([])
+        expected_behavior_timestamps = np.array([8.83168, 10.53219, 12.93291])
         assert_array_equal(x=self.behavior_interface.get_timestamps(), y=expected_behavior_timestamps)
 
     def test_nidq_interface_synchronized_converter_pipe(self):
