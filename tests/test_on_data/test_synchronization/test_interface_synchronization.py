@@ -70,8 +70,8 @@ class TestNIDQSynchronization(TestCase):
 
         self.dlc_interface.synchronize_timestamps(timestamps=synchronized_dlc_timestamps)
         self.behavior_interface.synchronize_between_systems(
-            primary_reference_timestamps=self.unsynchronized_secondary_timestamps,
-            secondary_reference_timestamps=synchronized_dlc_timestamps,
+            primary_reference_timestamps=synchronized_dlc_timestamps,
+            secondary_reference_timestamps=self.unsynchronized_secondary_timestamps,
         )
 
         converter = ConverterPipe(
@@ -124,8 +124,8 @@ class TestExternalSynchronization(TestCase):
         # Then we just need to read in the pulse times instead of having to parse NIDQ signals
         self.dlc_interface.synchronize_timestamps(timestamps=self.externally_synchronized_timestamps)
         self.behavior_interface.synchronize_between_systems(
-            primary_reference_timestamps=self.unsynchronized_secondary_timestamps,
-            secondary_reference_timestamps=self.externally_synchronized_timestamps,
+            primary_reference_timestamps=self.externally_synchronized_timestamps,
+            secondary_reference_timestamps=self.unsynchronized_secondary_timestamps,
         )
 
         assert_array_equal(x=self.dlc_interface.get_timestamps(), y=self.synchronized_dlc_timestamps)
