@@ -7,6 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
+from ...tools.signal_processing import synchronize_timestamps_between_systems
 from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType, ArrayType
 
 
@@ -72,11 +73,25 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
-    def synchronize_starting_time(self, starting_time: float):
-        self.sorting_extractor.set_times(self.recording_extractor.frame_to_times() + starting_time)
+    def get_timestamps(self) -> np.ndarray:
+        return self.sorting_extractor.get_times()
 
-    def synchronize_timestamps(self, timestamps: ArrayType):
-        self.sorting_extractor.set_times(timestamps)
+    def synchronize_starting_time(self, starting_time: float):
+        self.sorting_extractor.set_times(times=self.recording_extractor.get_times() + starting_time)
+
+    def synchronize_timestamps(self, synchronized_timestamps: ArrayType):
+        self.sorting_extractor.set_times(times=synchronized_timestamps)
+
+    def synchronize_between_systems(
+        self, primary_reference_timestamps: ArrayType, secondary_reference_timestamps: ArrayType
+    ):
+        unsynchronized_timestamps = self.sorting_extractor.get_times()
+        synchronized_timestamps = synchronize_timestamps_between_systems(
+            unsynchronized_timestamps=unsynchronized_timestamps,
+            primary_reference_timestamps=primary_reference_timestamps,
+            secondary_reference_timestamps=secondary_reference_timestamps,
+        )
+        self.sorting_extractor.set_times(times=synchronized_timestamps)
 
     def subset_sorting(self):
         from spikeextractors import SortingExtractor, SubSortingExtractor

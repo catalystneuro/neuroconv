@@ -3,6 +3,7 @@ import uuid
 from abc import abstractmethod, ABC
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 
 from .utils import get_base_schema, get_schema_from_method_signature, ArrayType
@@ -47,9 +48,23 @@ class BaseDataInterface(ABC):
         return metadata
 
     @abstractmethod
+    def get_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        timestamps: numpy.ndarray
+            The timestamps for the data stream.
+        """
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    @abstractmethod
     def synchronize_starting_time(self, starting_time: float):
         """
-        Synchronize the start of all time references for this interface to the common time basis.
+        Synchronize the start of all time references for this interface to the time of the primary system.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
@@ -63,23 +78,25 @@ class BaseDataInterface(ABC):
         )
 
     @abstractmethod
-    def synchronize_timestamps(self, timestamps: ArrayType):
+    def synchronize_timestamps(self, synchronized_timestamps: ArrayType):
         """
-        Replace all time references for this interface with the timestamps from the common time basis.
+        Replace all timestamps for this interface with those syncrhonized with the primary system.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
         Parameters
         ----------
-        timestamps: ArrayType
-            A full vector of timestamps all temporal data in this interface.
+        synchronized_timestamps: ArrayType
+            The synchronized timestamps for data in this interface.
         """
         raise NotImplementedError(
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
     @abstractmethod
-    def synchronize_with_pulses(self, pulse_timestamps: ArrayType):
+    def synchronize_between_systems(
+        self, primary_reference_timestamps: ArrayType, secondary_reference_timestamps: ArrayType
+    ):
         """
         Synchronize time references which occur between the known pulse timestamps which are in the common time basis.
 

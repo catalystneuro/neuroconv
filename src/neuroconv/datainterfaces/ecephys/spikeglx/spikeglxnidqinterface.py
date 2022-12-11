@@ -1,7 +1,7 @@
 """Authors: Cody Baker."""
 import json
 from pathlib import Path
-from typing import Tuple
+from typing import List
 
 import numpy as np
 from pynwb.ecephys import ElectricalSeries
@@ -105,28 +105,28 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
 
-        metadata["Ecephys"]["ElectricalSeriesSync"] = dict(
-            name="ElectricalSeriesSync", description="Raw acquisition traces for the synchronization (nidq) data."
+        metadata["Ecephys"]["ElectricalSeriesNIDQ"] = dict(
+            name="ElectricalSeriesNIDQ", description="Raw acquisition traces from the NIDQ (.nidq.bin) channels."
         )
         return metadata
 
-    def get_events_times_from_ttl(self, channel_name: str) -> Tuple[np.ndarray, np.ndarray]:
+    def get_channel_names(self) -> List[str]:
+        """Return a list of channel names as set in the recording extractor."""
+        return list(self.recording_extractor.get_channel_ids())
+
+    def get_event_starting_times_from_ttl(self, channel_name: str) -> np.ndarray:
         """
-        Parse event times from a TTL signal on one of the NIDQ channels.
+        Return the start of event times from the rising part of TTL pulses on one of the NIDQ channels.
 
         Parameters
         ----------
-        channel_index : int
-            Index of the channel in the .nidq.bin file.
+        channel_name : int
+            Name of the channel in the .nidq.bin file.
 
         Returns
         -------
         rising_times: numpy.ndarray
             The times of the rising TTL pulse; often used as the start time of the event.
-        falling_times: numpy.ndarray
-            The times of the falling TTL pulse; often used with the rising_times to perform decoding of digital words
-            which occur between the rise and fall.
-            Can also be used to track the duration of an on/off event.
         """
         # TODO: consider RAM cost of these operations and implement safer buffering version
         rising_frames, _ = parse_rising_and_falling_frames_from_ttl(
