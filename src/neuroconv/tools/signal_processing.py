@@ -44,6 +44,7 @@ def parse_rising_and_falling_frames_from_ttl(trace: np.ndarray, num_bins: int = 
 
 def syncrhonize_timestamps_from_pulses(pulse_sent_times, pulse_received_times, unsynched_timestamps):
     """
+    Use pulses to align timestamps to the clock of another system.
 
     Parameters
     ----------
@@ -65,10 +66,10 @@ def syncrhonize_timestamps_from_pulses(pulse_sent_times, pulse_received_times, u
     interval_ratios = np.diff(pulse_received_times) / np.diff(pulse_sent_times)
 
     synched_timestamps = np.array([])
-    for i in np.arange(len(pulse_sent_times)-1):
-        interval_timestamps = (unsynched_timestamps[child_idxs[i]:child_idxs[i+1]] - pulse_sent_times[i]) * \
-                              interval_ratios[i] + pulse_received_times[i]
+    for i in np.arange(len(pulse_sent_times) - 1):
+        interval_timestamps = (
+            unsynched_timestamps[child_idxs[i] : child_idxs[i + 1]] - pulse_sent_times[i]
+        ) * interval_ratios[i] + pulse_received_times[i]
         synched_timestamps = np.hstack((synched_timestamps, interval_timestamps))
 
     return synched_timestamps
-
