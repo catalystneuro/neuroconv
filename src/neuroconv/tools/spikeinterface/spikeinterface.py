@@ -321,14 +321,14 @@ def add_electrodes(
     # Channel name logic
     channel_ids = checked_recording.get_channel_ids()
     if "channel_name" in data_to_add:
+        # if 'channel_name' is set as a property, it is used to override default channel_ids (and "id")
         channel_name_array = data_to_add["channel_name"]["data"]
     else:
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
-
-    # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
-    if np.issubdtype(channel_ids.dtype, np.integer):
-        data_to_add["id"].update(data=channel_ids, index=False)
+        # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
+        if np.issubdtype(channel_ids.dtype, np.integer):
+            data_to_add["id"].update(data=channel_ids, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
     if "location" in data_to_add:
@@ -1190,14 +1190,14 @@ def add_units_table(
 
     # Unit name logic
     if "unit_name" in data_to_add:
+        # if 'unit_name' is set as a property, it is used to override default unit_ids (and "id")
         unit_name_array = data_to_add["unit_name"]["data"]
     else:
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
-
-    # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
-    if np.issubdtype(unit_ids.dtype, np.integer):
-        data_to_add["id"].update(data=unit_ids.astype("int"))
+        # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
+        if np.issubdtype(unit_ids.dtype, np.integer):
+            data_to_add["id"].update(data=unit_ids.astype("int"))
 
     units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
     extracted_properties = set(data_to_add)
