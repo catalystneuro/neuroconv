@@ -1078,6 +1078,13 @@ class TestWriteWaveforms(TestCase):
 
         cls.single_segment_we = extract_waveforms(single_segment_rec, single_segment_sort, folder=None, mode="memory")
         cls.multi_segment_we = extract_waveforms(multi_segment_rec, multi_segment_sort, folder=None, mode="memory")
+
+        # add quality/template metrics to test property propagation
+        compute_template_metrics(cls.single_segment_we)
+        compute_template_metrics(cls.multi_segment_we)
+        compute_quality_metrics(cls.single_segment_we)
+        compute_quality_metrics(cls.multi_segment_we)
+
         # slice sorting
         slice_sorting = single_segment_sort.select_units(single_segment_sort.unit_ids[::2])
         cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
@@ -1087,13 +1094,12 @@ class TestWriteWaveforms(TestCase):
         if recording_less_wf_path.is_dir():
             shutil.rmtree(recording_less_wf_path)
         we = extract_waveforms(single_segment_rec, single_segment_sort, folder=recording_less_wf_path)
+        # add quality/template metrics to test property propagation
+        compute_template_metrics(we)
+        compute_quality_metrics(we)
+        # reload without recording
         cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
-        # add quality/template metrics to test property propagation
-        compute_template_metrics(cls.single_segment_we)
-        compute_template_metrics(cls.multi_segment_we)
-        compute_quality_metrics(cls.single_segment_we)
-        compute_quality_metrics(cls.multi_segment_we)
 
     def setUp(self):
         """Start with a fresh NWBFile, and remapped sorters each time."""
@@ -1108,6 +1114,9 @@ class TestWriteWaveforms(TestCase):
         )
         self.nwbfile4 = NWBFile(
             session_description="session_description4", identifier="file_id4", session_start_time=testing_session_time
+        )
+        self.nwbfile5 = NWBFile(
+            session_description="session_description5", identifier="file_id5", session_start_time=testing_session_time
         )
 
     def _test_waveform_write(self, we, nwbfile, test_properties=True):
@@ -1159,7 +1168,29 @@ class TestWriteWaveforms(TestCase):
             recording=self.we_recless_recording,
             write_electrical_series=True,
         )
-        self._test_waveform_write(self.we_recless, self.nwbfile4, test_properties=False)
+        self._test_waveform_write(self.we_recless, self.nwbfile4, test_properties=True)
+
+        # check that not passing the recording raises and Exception
+        with self.assertRaises(Exception) as context:
+            write_waveforms(
+                waveform_extractor=self.we_recless,
+                nwbfile=self.nwbfile4,
+                recording=self.we_recless_recording,
+                write_electrical_series=True,
+            )
+
+    def test_cleanup_tmp_properties(self):
+        # test that if write_waveforms fails, temporary properties are cleaned up
+        try:
+            write_waveforms(
+                waveform_extractor=self.we_recless,
+                nwbfile=self.nwbfile5,
+                recording=None
+            )
+        except:
+            sorting_properties = self.we_recless.sorting.get_property_keys()
+            self.assertNotIn("peak_to_valley", sorting_properties)
+            self.assertNotIn("amplitud_cutoff", sorting_properties)
 
     def write_test_files(self):
         with NWBHDF5IO("waveforms_single_segment.nwb", "w") as io:
