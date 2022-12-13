@@ -1182,11 +1182,7 @@ class TestWriteWaveforms(TestCase):
     def test_cleanup_tmp_properties(self):
         # test that if write_waveforms fails, temporary properties are cleaned up
         try:
-            write_waveforms(
-                waveform_extractor=self.we_recless,
-                nwbfile=self.nwbfile5,
-                recording=None
-            )
+            write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile5, recording=None)
         except:
             sorting_properties = self.we_recless.sorting.get_property_keys()
             self.assertNotIn("peak_to_valley", sorting_properties)
