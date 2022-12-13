@@ -154,7 +154,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBF
                     'name': my_name,
                     'description': my_description,
                     'location': electrode_location,
-                    'device_name': my_device_name
+                    'device': my_device_name
                 },
                 ...
             ]
@@ -307,6 +307,9 @@ def add_electrodes(
     for property in properties_to_extract:
         data = checked_recording.get_property(property)
         index = isinstance(data[0], (list, np.ndarray, tuple))
+        # booleans are parsed as strings
+        if isinstance(data[0], (bool, np.bool_)):
+            data = data.astype(str)
         # Fill with provided custom descriptions
         description = property_descriptions.get(property, "no description")
         data_to_add[property].update(description=description, data=data, index=index)
@@ -401,7 +404,7 @@ def add_electrodes(
         )
 
     # Find default values for custom (not schema defined) properties / columns already in the electrode table
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan, bool: False}
+    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
     for property in electrode_table_previous_properties - schema_properties:
         # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
@@ -1177,6 +1180,8 @@ def add_units_table(
     # Extract properties
     for property in properties_to_extract:
         data = checked_sorting.get_property(property)
+        if isinstance(data[0], (bool, np.bool_)):
+            data = data.astype(str)
         index = isinstance(data[0], (list, np.ndarray, tuple))
         description = property_descriptions.get(property, "No description.")
         data_to_add[property].update(description=description, data=data, index=index)
@@ -1200,7 +1205,7 @@ def add_units_table(
     properties_to_add_by_columns = extracted_properties - properties_to_add_by_rows
 
     # Find default values for properties / columns already in the table
-    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan, bool: False}
+    type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
     property_to_default_values = {"id": None}
     for property in units_table_previous_properties:
         # Find a matching data type and get the default value
