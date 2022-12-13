@@ -30,6 +30,7 @@
 * Fixed the bug in a `VideoInterface` where it would use `DataChunkIterator` even if the conversion options indicated that it should not. [PR #200](https://github.com/catalystneuro/neuroconv/pull/200)
 * Update usage requirements for HDMF to prevent a buffer overflow isssue fixed in hdmf-dev/hdmf#780. [PR #195](https://github.com/catalystneuro/neuroconv/pull/195)
 * Remove the deprecated `distutils.version` in favor of `packaging.version` [PR #233](https://github.com/catalystneuro/neuroconv/pull/233)
+* Downgrade maximum `sleap-io` version to prevent unintended deprecation errors. [PR #251](https://github.com/catalystneuro/neuroconv/pull/251)
 
 
 # v0.2.2
