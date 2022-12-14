@@ -611,6 +611,23 @@ class TestAddElectrodes(TestCase):
         channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
+    def test_channel_group_names_table(self):
+        "add_electrodes function should add new rows if same channel names, but different group_names"
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        original_groups = self.recording_1.get_channel_groups()
+        self.recording_1.set_channel_groups(["1"] * len(self.recording_1.channel_ids))
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        # reset channel_groups
+        self.recording_1.set_channel_groups(original_groups)
+        assert len(self.nwbfile.electrodes) == 2 * len(self.recording_1.channel_ids)
+        expected_channel_names_in_electrodes_table = list(self.recording_1.channel_ids) \
+            + list(self.recording_1.channel_ids)
+        channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+        group_names_in_electrodes_table = list(self.nwbfile.electrodes["group_name"].data)
+        self.assertEqual(len(np.unique(group_names_in_electrodes_table)), 2)
+
+
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)

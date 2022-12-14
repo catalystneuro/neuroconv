@@ -412,14 +412,18 @@ def add_electrodes(
         default_value = type_to_default_value[matching_type]
         all_properties_to_default_value.update({property: default_value})
 
-    # Add data by rows excluding the rows containing channel_names that were previously added
-    channel_names_used_previously = []
-    if "channel_name" in electrode_table_previous_properties:
-        channel_names_used_previously = nwbfile.electrodes["channel_name"].data
+    # Add data by rows excluding the rows containing channel_names and group_names that were previously added
+    # The same channel_name can be added provided that it belongs to a different group
+    channel_group_names_used_previously = []
+    if "channel_name" in electrode_table_previous_properties and "group_name" in electrode_table_previous_properties:
+        channel_group_names_used_previously = [(ch_name, gr_name) for ch_name, gr_name 
+                                               in zip(nwbfile.electrodes["channel_name"].data, 
+                                                      nwbfile.electrodes["group_name"].data)]
 
     properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
     rows_in_data = [index for index in range(checked_recording.get_num_channels())]
-    rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
+    rows_to_add = [index for index in rows_in_data if (channel_name_array[index], group_name_array[index]) 
+                   not in channel_group_names_used_previously]
 
     for row in rows_to_add:
         electrode_kwargs = dict(all_properties_to_default_value)
@@ -1085,6 +1089,7 @@ def add_units_table(
     write_waveforms: bool = False,
     waveform_means: Optional[np.ndarray] = None,
     waveform_sds: Optional[np.ndarray] = None,
+    electrode_group_table_region=None
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -1604,6 +1609,9 @@ def write_waveforms(
                     "needs to have a recording attached or the 'recording' argument needs to be used."
                 )
                 add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
+            electrode_group_table_region = create_electrode_group_table_region(
+                recording, nwbfile=nwbfile_out
+            )
 
             add_units_table(
                 sorting=sorting,
@@ -1617,8 +1625,15 @@ def write_waveforms(
                 write_waveforms=False,
                 waveform_means=template_means,
                 waveform_sds=template_stds,
+                electrode_group_table_region=electrode_group_table_region
             )
     finally:
         # remove tmp properties
         for prop in tmp_properties:
             sorting.delete_property(prop)
+
+
+def create_electrode_group_table_region(recording, nwbfile):
+    if "group_name" in recording.get_property_keys():
+        pass
+    return None
