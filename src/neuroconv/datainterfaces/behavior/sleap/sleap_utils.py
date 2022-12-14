@@ -17,9 +17,8 @@ def extract_timestamps(video_file_path: FilePathType) -> list:
     """
     av = get_package(package_name="av")
 
-    container = av.open(str(video_file_path))
-    stream = container.streams.video[0]
-    timestamps = [frame.time for frame in container.decode(stream)]
-    container.close()
+    with av.open(str(video_file_path)) as container:
+        stream = container.streams.video[0]
+        timestamps = [frame.time for frame in container.decode(stream)]
 
     return timestamps
