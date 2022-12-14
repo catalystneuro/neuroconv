@@ -35,8 +35,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         name: str = "trials",
         description: Optional[str] = None,
     ):
-        if read_kwargs is None:
-            read_kwargs = {}
+        read_kwargs = read_kwargs  or dict()
         super().__init__(file_path=file_path)
         self.verbose = verbose
 
