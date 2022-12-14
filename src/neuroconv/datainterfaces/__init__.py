@@ -61,6 +61,10 @@ from .behavior.video.videodatainterface import VideoInterface, MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 
+# Text
+from .text.csv.csvtimeintertervalsinterface import CsvTimeIntervalsInterface
+from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
+
 interface_list = [
     # Ecephys
     NeuralynxRecordingInterface,
@@ -111,4 +115,7 @@ interface_list = [
     VideoInterface,
     DeepLabCutInterface,
     SLEAPInterface,
+    # Text
+    CsvTimeIntervalsInterface,
+    ExcelTimeIntervalsInterface,
 ]

@@ -16,7 +16,7 @@ with open(root / "requirements-testing.txt") as f:
 
 extras_require = defaultdict(list)
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
-for modality in ["ophys", "ecephys", "icephys", "behavior"]:
+for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
     modality_requirement_file = modality_path / "requirements.txt"
     if modality_requirement_file.exists():
