@@ -1089,7 +1089,7 @@ def add_units_table(
     write_waveforms: bool = False,
     waveform_means: Optional[np.ndarray] = None,
     waveform_sds: Optional[np.ndarray] = None,
-    electrode_group_table_region=None
+    electrode_group_indices=None
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -1124,8 +1124,10 @@ def add_units_table(
         after writing.
     waveform_means : np.array (optional, default to None)
         Waveform mean (template) for each unit (num_units, num_samples, num_channels)
-    waveform_means : np.array (optional, default to None)
+    waveform_sds : np.array (optional, default to None)
         Waveform standard deviation for each unit (num_units, num_samples, num_channels)
+    electrode_group_table_region : list or array (optional, default to None)
+        The indices of electrodes that waveform_means/sds correspond to.
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
@@ -1242,8 +1244,10 @@ def add_units_table(
         spike_times = np.concatenate(spike_times)
         if waveform_means is not None:
             unit_kwargs["waveform_mean"] = waveform_means[row]
-        if waveform_sds is not None:
-            unit_kwargs["waveform_sd"] = waveform_sds[row]
+            if waveform_sds is not None:
+                unit_kwargs["waveform_sd"] = waveform_sds[row]
+            if electrode_group_indices is not None:
+                unit_kwargs["electrodes"] = electrode_group_indices
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
@@ -1609,7 +1613,8 @@ def write_waveforms(
                     "needs to have a recording attached or the 'recording' argument needs to be used."
                 )
                 add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
-            electrode_group_table_region = create_electrode_group_table_region(
+
+            electrode_group_indices = get_electrode_group_indices(
                 recording, nwbfile=nwbfile_out
             )
 
@@ -1625,7 +1630,7 @@ def write_waveforms(
                 write_waveforms=False,
                 waveform_means=template_means,
                 waveform_sds=template_stds,
-                electrode_group_table_region=electrode_group_table_region
+                electrode_group_indices=electrode_group_indices
             )
     finally:
         # remove tmp properties
@@ -1633,7 +1638,16 @@ def write_waveforms(
             sorting.delete_property(prop)
 
 
-def create_electrode_group_table_region(recording, nwbfile):
+def get_electrode_group_indices(recording, nwbfile):
     if "group_name" in recording.get_property_keys():
-        pass
-    return None
+        group_names = list(np.unique(recording.get_property('group_name')))
+    elif "group" in recording.get_property_keys():
+        group_names = list(np.unique(recording.get_property('group').astype(str)))
+    else:
+        group_names = None
+    if group_names is None:
+        electrode_group_indices = None
+    else:
+        electrode_group_indices = \
+            nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
+    return electrode_group_indices

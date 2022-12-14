@@ -1135,6 +1135,9 @@ class TestWriteWaveforms(TestCase):
         self.nwbfile5 = NWBFile(
             session_description="session_description5", identifier="file_id5", session_start_time=testing_session_time
         )
+        self.nwbfile6 = NWBFile(
+            session_description="session_description6", identifier="file_id6", session_start_time=testing_session_time
+        )
 
     def _test_waveform_write(self, we, nwbfile, test_properties=True):
         # test unit columns
@@ -1196,10 +1199,15 @@ class TestWriteWaveforms(TestCase):
                 write_electrical_series=True,
             )
 
+    def test_write_multiple_probes(self):
+        """This test that the waveforms are written to different electrode groups"""
+        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2, write_electrical_series=False)
+        self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
+
     def test_cleanup_tmp_properties(self):
         # test that if write_waveforms fails, temporary properties are cleaned up
         try:
-            write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile5, recording=None)
+            write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile6, recording=None)
         except:
             sorting_properties = self.we_recless.sorting.get_property_keys()
             self.assertNotIn("peak_to_valley", sorting_properties)
@@ -1217,4 +1225,9 @@ class TestWriteWaveforms(TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    test = TestWriteWaveforms()
+    test.setUpClass()
+    test.setUp()
+    test.test_write_single_segment()
+    print(test.nwbfile.units.electrodes)
