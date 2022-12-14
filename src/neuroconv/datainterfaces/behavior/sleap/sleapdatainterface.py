@@ -83,6 +83,6 @@ class SLEAPInterface(BaseDataInterface):
         ) as nwbfile_out:
 
             labels = self.sleap_io.load_slp(self.file_path)
-            nwbfile_out = self.sleap_io.append_nwb_data(
+            nwbfile_out = self.sleap_io.io.nwb.append_nwb_data(
                 labels=labels, nwbfile=nwbfile_out, pose_estimation_metadata=pose_estimation_metadata
             )
