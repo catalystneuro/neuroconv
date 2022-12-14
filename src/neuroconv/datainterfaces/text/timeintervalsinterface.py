@@ -52,7 +52,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         **conversion_options,
     ):
         with make_or_load_nwbfile(
-                nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
+            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             nwbfile_out.add_time_intervals(self.time_intervals)
 
