@@ -1094,9 +1094,6 @@ class TestWriteWaveforms(TestCase):
         if recording_less_wf_path.is_dir():
             shutil.rmtree(recording_less_wf_path)
         we = extract_waveforms(single_segment_rec, single_segment_sort, folder=recording_less_wf_path)
-        # add quality/template metrics to test property propagation
-        compute_template_metrics(we)
-        compute_quality_metrics(we)
         # reload without recording
         cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
@@ -1168,7 +1165,7 @@ class TestWriteWaveforms(TestCase):
             recording=self.we_recless_recording,
             write_electrical_series=True,
         )
-        self._test_waveform_write(self.we_recless, self.nwbfile4, test_properties=True)
+        self._test_waveform_write(self.we_recless, self.nwbfile4, test_properties=False)
 
         # check that not passing the recording raises and Exception
         with self.assertRaises(Exception) as context:
