@@ -327,8 +327,8 @@ def add_electrodes(
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
         # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
-        if np.issubdtype(channel_ids.dtype, np.integer):
-            data_to_add["id"].update(data=channel_ids, index=False)
+        # if np.issubdtype(channel_ids.dtype, np.integer):
+        #     data_to_add["id"].update(data=channel_ids, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
     if "location" in data_to_add:
@@ -424,7 +424,6 @@ def add_electrodes(
     rows_in_data = [index for index in range(checked_recording.get_num_channels())]
     rows_to_add = [index for index in rows_in_data if (channel_name_array[index], group_name_array[index]) 
                    not in channel_group_names_used_previously]
-
     for row in rows_to_add:
         electrode_kwargs = dict(all_properties_to_default_value)
         for property in properties_with_data:
@@ -1089,7 +1088,7 @@ def add_units_table(
     write_waveforms: bool = False,
     waveform_means: Optional[np.ndarray] = None,
     waveform_sds: Optional[np.ndarray] = None,
-    electrode_group_indices=None
+    unit_electrode_indices=None
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -1126,7 +1125,7 @@ def add_units_table(
         Waveform mean (template) for each unit (num_units, num_samples, num_channels)
     waveform_sds : np.array (optional, default to None)
         Waveform standard deviation for each unit (num_units, num_samples, num_channels)
-    electrode_indices : list of lists or arrays (optional, default to None)
+    unit_electrode_indices : list of lists or arrays (optional, default to None)
         For each unit, the indices of electrodes that each waveform_mean/sd correspond to.
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
@@ -1182,8 +1181,8 @@ def add_units_table(
 
     if unit_ids is not None:
         checked_sorting = checked_sorting.select_units(unit_ids=unit_ids)
-        if electrode_group_indices is not None:
-            electrode_group_indices = np.array(electrode_group_indices)[checked_sorting.ids_to_indices(unit_ids)]
+        if unit_electrode_indices is not None:
+            unit_electrode_indices = np.array(unit_electrode_indices)[checked_sorting.ids_to_indices(unit_ids)]
     unit_ids = checked_sorting.unit_ids
 
     # Extract properties
@@ -1205,8 +1204,8 @@ def add_units_table(
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
         # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
-        if np.issubdtype(unit_ids.dtype, np.integer):
-            data_to_add["id"].update(data=unit_ids.astype("int"))
+        # if np.issubdtype(unit_ids.dtype, np.integer):
+        #     data_to_add["id"].update(data=unit_ids.astype("int"))
 
     units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
     extracted_properties = set(data_to_add)
@@ -1241,8 +1240,8 @@ def add_units_table(
                 rows_to_add.append(index)
             else:
                 unit_name = unit_name_array[index]
-                previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]]
-                if list(previous_electrodes["id"][:]) != list(electrode_group_indices[index]):
+                previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
+                if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
                     rows_to_add.append(index)
 
     for row in rows_to_add:
@@ -1262,8 +1261,8 @@ def add_units_table(
             unit_kwargs["waveform_mean"] = waveform_means[row]
             if waveform_sds is not None:
                 unit_kwargs["waveform_sd"] = waveform_sds[row]
-            if electrode_group_indices is not None:
-                unit_kwargs["electrodes"] = electrode_group_indices
+            if unit_electrode_indices is not None:
+                unit_kwargs["electrodes"] = unit_electrode_indices[row]
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
@@ -1604,18 +1603,19 @@ def write_waveforms(
                 "recording not found. To add the electrode table, the waveform_extractor "
                 "needs to have a recording attached or the 'recording' argument needs to be used."
             )
-            add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
-
             if write_electrical_series:
                 if write_electrical_series_kwargs is None:
                     write_electrical_series_kwargs = {}
                 add_electrical_series(
                     recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
                 )
+            else:
+                add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
 
             electrode_group_indices = get_electrode_group_indices(
                 recording, nwbfile=nwbfile_out
             )
+            unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
 
             add_units_table(
                 sorting=sorting,
@@ -1629,7 +1629,7 @@ def write_waveforms(
                 write_waveforms=False,
                 waveform_means=template_means,
                 waveform_sds=template_stds,
-                electrode_group_indices=electrode_group_indices
+                unit_electrode_indices=unit_electrode_indices
             )
     finally:
         # remove tmp properties

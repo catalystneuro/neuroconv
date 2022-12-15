@@ -1192,11 +1192,16 @@ class TestWriteWaveforms(TestCase):
         write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile,
                         write_electrical_series=False, recording=self.we_recless_recording)
         # check that we have 2 groups
-        self.assertEqual(self.nwbfile.electrode_groups, 2)
+        self.assertEqual(len(self.nwbfile.electrode_groups), 2)
         self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
         # check that we have correct number of units
         self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
         # check electrode regions of units
+        for row in self.nwbfile.units.id:
+            if row < len(self.we_recless.unit_ids):
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+            else:
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
         
         # reset original channel groups
         self.we_recless_recording.set_channel_groups(original_channel_groups)
