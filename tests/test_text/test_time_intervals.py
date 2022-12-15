@@ -7,8 +7,8 @@ from neuroconv.datainterfaces import ExcelTimeIntervalsInterface, CsvTimeInterva
 from neuroconv.datainterfaces.text.timeintervalsinterface import convert_df_to_time_intervals
 
 
-trials_xls_path = os.path.join(os.path.dirname(__file__), 'trials.xlsx')
-trials_csv_path = os.path.join(os.path.dirname(__file__), 'trials.csv')
+trials_xls_path = os.path.join(os.path.dirname(__file__), "trials.xlsx")
+trials_csv_path = os.path.join(os.path.dirname(__file__), "trials.csv")
 
 
 def test_convert_df_to_time_intervals():
@@ -19,7 +19,7 @@ def test_convert_df_to_time_intervals():
 def test_convert_df_to_time_intervals_colname_mapping():
     df = pd.read_excel(trials_xls_path)
     time_intervals = convert_df_to_time_intervals(df, column_name_mapping=dict(condition="cond"))
-    assert time_intervals.colnames == ('start_time', 'stop_time', 'cond')
+    assert time_intervals.colnames == ("start_time", "stop_time", "cond")
 
 
 def test_convert_df_to_time_intervals_():
@@ -35,7 +35,7 @@ def test_excel_time_intervals():
     metadata = interface.get_metadata()
     metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
     nwbfile = interface.run_conversion(metadata=metadata)
-    assert nwbfile.intervals["trials"].colnames == ('start_time', 'stop_time', 'condition')
+    assert nwbfile.intervals["trials"].colnames == ("start_time", "stop_time", "condition")
 
 
 def test_excel_column_name_mapping():
@@ -43,7 +43,7 @@ def test_excel_column_name_mapping():
     metadata = interface.get_metadata()
     metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
     nwbfile = interface.run_conversion(metadata=metadata, column_name_mapping=dict(condition="cond"))
-    assert nwbfile.intervals["trials"].colnames == ('start_time', 'stop_time', 'cond')
+    assert nwbfile.intervals["trials"].colnames == ("start_time", "stop_time", "cond")
 
 
 def test_csv():
