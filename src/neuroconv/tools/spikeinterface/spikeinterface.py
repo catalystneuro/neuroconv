@@ -1480,8 +1480,8 @@ def write_waveforms(
     nwbfile_path: OptionalFilePathType = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
-    recording: Optional[BaseRecording] = None,
     overwrite: bool = False,
+    recording: Optional[BaseRecording] = None,
     verbose: bool = True,
     unit_ids: Optional[List[Union[str, int]]] = None,
     write_electrical_series: bool = False,
@@ -1511,12 +1511,12 @@ def write_waveforms(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         The "Ecephys" section of metadata is also used to create electrodes and electrical series fields.
-    recording: BaseRecording, optional
-        If the waveform_extractor is 'recordingless', this argument needs to be passed to save electrode info.
-        Otherwise, electrodes info is not added to the nwb file.
     overwrite: bool, optional
         Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
+    recording: BaseRecording, optional
+        If the waveform_extractor is 'recordingless', this argument needs to be passed to save electrode info.
+        Otherwise, electrodes info is not added to the nwb file.
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
@@ -1525,8 +1525,8 @@ def write_waveforms(
         units are written.
     write_electrical_series: bool, optional
         If True, the recording object associated to the WaveformExtractor is written as an electrical series.
-    write_electrical_series_kwargs: dict, optional
-        Keyword arguments to control the `write_recording()` function in case write_electrical_series=True
+    add_electrical_series_kwargs: dict, optional
+        Keyword arguments to control the `add_electrical_series()` function in case write_electrical_series=True
     property_descriptions: dict
         For each key in this dictionary which matches the name of a unit
         property in sorting, adds the value as a description to that
@@ -1543,13 +1543,7 @@ def write_waveforms(
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
     units_description : str (optional)
     """
-    if metadata is None:
-        metadata = dict()
-    assert (
-        nwbfile_path is None or nwbfile is None
-    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be a pynwb.NWBFile object!"
+    metadata = metadata if metadata is not None else dict()
 
     # retrieve templates and stds
     template_means = waveform_extractor.get_all_templates()
@@ -1588,31 +1582,20 @@ def write_waveforms(
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
         ) as nwbfile_out:
+            if waveform_extractor_has_recording(waveform_extractor):
+                recording = waveform_extractor.recording
+            assert recording is not None, (
+                "recording not found. To add the electrode table, the waveform_extractor "
+                "needs to have a recording attached or the 'recording' argument needs to be used."
+            )
+            add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
+
             if write_electrical_series:
-                if not waveform_extractor.has_recording():
-                    assert recording is not None, (
-                        "To write electrical series, the waveform_extractor needs to have a recording attached. "
-                        "For recordingless mode, you can use the 'recording' argument."
-                    )
-                else:
-                    recording = waveform_extractor.recording
                 if write_electrical_series_kwargs is None:
                     write_electrical_series_kwargs = {}
-                write_recording(
+                add_electrical_series(
                     recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
                 )
-            else:
-                # we need add_electrodes_from_waveforms
-                if not waveform_extractor.has_recording():
-                    if recording is not None:
-                        assert isinstance(recording, BaseRecording), "'recording' needs to be a BaseRecording object."
-                else:
-                    recording = waveform_extractor.recording
-                assert recording is not None, (
-                    "recording not found. To add the electrode table, the waveform_extractor "
-                    "needs to have a recording attached or the 'recording' argument needs to be used."
-                )
-                add_electrodes_info(recording, nwbfile=nwbfile_out, metadata=metadata)
 
             electrode_group_indices = get_electrode_group_indices(
                 recording, nwbfile=nwbfile_out
@@ -1651,3 +1634,20 @@ def get_electrode_group_indices(recording, nwbfile):
         electrode_group_indices = \
             nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
     return electrode_group_indices
+
+
+def waveform_extractor_has_recording(waveform_extractor):
+    """
+    Temporary helper function to substitute unreleased built-in waveform_extractor.has_recording()
+
+    Parameters
+    ----------
+    waveform_extractor : si.WaveformExtractor
+        The waveform extractor
+
+    Returns
+    -------
+    bool
+        True if the waveform_extractor has an attached recording, False otherwise
+    """
+    return waveform_extractor._recording is not None

@@ -1111,32 +1111,14 @@ class TestWriteWaveforms(TestCase):
         if recording_less_wf_path.is_dir():
             shutil.rmtree(recording_less_wf_path)
         we = extract_waveforms(single_segment_rec, single_segment_sort, folder=recording_less_wf_path)
-        # add quality/template metrics to test property propagation
-        compute_template_metrics(we)
-        compute_quality_metrics(we)
         # reload without recording
         cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
 
     def setUp(self):
         """Start with a fresh NWBFile, and remapped sorters each time."""
-        self.nwbfile1 = NWBFile(
+        self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
-        )
-        self.nwbfile2 = NWBFile(
-            session_description="session_description2", identifier="file_id3", session_start_time=testing_session_time
-        )
-        self.nwbfile3 = NWBFile(
-            session_description="session_description3", identifier="file_id3", session_start_time=testing_session_time
-        )
-        self.nwbfile4 = NWBFile(
-            session_description="session_description4", identifier="file_id4", session_start_time=testing_session_time
-        )
-        self.nwbfile5 = NWBFile(
-            session_description="session_description5", identifier="file_id5", session_start_time=testing_session_time
-        )
-        self.nwbfile6 = NWBFile(
-            session_description="session_description6", identifier="file_id6", session_start_time=testing_session_time
         )
 
     def _test_waveform_write(self, we, nwbfile, test_properties=True):
@@ -1161,40 +1143,40 @@ class TestWriteWaveforms(TestCase):
             np.testing.assert_array_almost_equal(wf_sd_si, wf_sd_nwb)
 
     def test_write_single_segment(self):
-        """This test that the waveforms are written appropriately for the single segment case"""
-        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile1, write_electrical_series=True)
-        self._test_waveform_write(self.single_segment_we, self.nwbfile1)
-        self.assertIn("ElectricalSeriesRaw", self.nwbfile1.acquisition)
+        """This tests that the waveforms are written appropriately for the single segment case"""
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile, write_electrical_series=True)
+        self._test_waveform_write(self.single_segment_we, self.nwbfile)
+        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
     def test_write_multiple_segments(self):
-        """This test that the waveforms are written appropriately for the multi segment case"""
-        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2, write_electrical_series=False)
-        self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
+        """This tests that the waveforms are written appropriately for the multi segment case"""
+        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile, write_electrical_series=False)
+        self._test_waveform_write(self.multi_segment_we, self.nwbfile)
 
     def test_write_subset_units(self):
-        """This test that the waveforms are sliced properly based on unit_ids"""
+        """This tests that the waveforms are sliced properly based on unit_ids"""
         subset_unit_ids = self.single_segment_we.unit_ids[::2]
-        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile3, unit_ids=subset_unit_ids)
-        self._test_waveform_write(self.we_slice, self.nwbfile3, test_properties=False)
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile, unit_ids=subset_unit_ids)
+        self._test_waveform_write(self.we_slice, self.nwbfile, test_properties=False)
 
-        self.assertEqual(len(self.nwbfile3.units), len(subset_unit_ids))
-        self.assertTrue(all(str(unit_id) in self.nwbfile3.units["unit_name"][:] for unit_id in subset_unit_ids))
+        self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
+        self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
 
     def test_write_recordingless(self):
-        """This test that the waveforms are sliced properly based on unit_ids"""
+        """This tests that the waveforms are sliced properly based on unit_ids"""
         write_waveforms(
             waveform_extractor=self.we_recless,
-            nwbfile=self.nwbfile4,
+            nwbfile=self.nwbfile,
             recording=self.we_recless_recording,
             write_electrical_series=True,
         )
-        self._test_waveform_write(self.we_recless, self.nwbfile4, test_properties=True)
+        self._test_waveform_write(self.we_recless, self.nwbfile, test_properties=False)
 
         # check that not passing the recording raises and Exception
         with self.assertRaises(Exception) as context:
             write_waveforms(
                 waveform_extractor=self.we_recless,
-                nwbfile=self.nwbfile4,
+                nwbfile=self.nwbfile,
                 recording=self.we_recless_recording,
                 write_electrical_series=True,
             )
@@ -1203,31 +1185,25 @@ class TestWriteWaveforms(TestCase):
         """This test that the waveforms are written to different electrode groups"""
         write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2, write_electrical_series=False)
         self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
+    def test_unis_table_name(self):
+        """This tests that the units naming exception"""
+        with self.assertRaises(Exception) as context:
+            write_waveforms(
+                waveform_extractor=self.single_segment_we,
+                nwbfile=self.nwbfile,
+                write_as="units",
+                units_name="units1",
+            )
 
     def test_cleanup_tmp_properties(self):
-        # test that if write_waveforms fails, temporary properties are cleaned up
+        """This tests if write_waveforms fails, temporary properties are cleaned up"""
         try:
-            write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile6, recording=None)
+            write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile, recording=None)
         except:
             sorting_properties = self.we_recless.sorting.get_property_keys()
             self.assertNotIn("peak_to_valley", sorting_properties)
             self.assertNotIn("amplitud_cutoff", sorting_properties)
 
-    def write_test_files(self):
-        with NWBHDF5IO("waveforms_single_segment.nwb", "w") as io:
-            io.write(self.nwbfile1)
-        with NWBHDF5IO("waveforms_multi_segment.nwb", "w") as io:
-            io.write(self.nwbfile2)
-        with NWBHDF5IO("waveforms_subset.nwb", "w") as io:
-            io.write(self.nwbfile3)
-        with NWBHDF5IO("waveforms_recless.nwb", "w") as io:
-            io.write(self.nwbfile4)
-
 
 if __name__ == "__main__":
-    # unittest.main()
-    test = TestWriteWaveforms()
-    test.setUpClass()
-    test.setUp()
-    test.test_write_single_segment()
-    print(test.nwbfile.units.electrodes)
+    unittest.main()
