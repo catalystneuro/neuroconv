@@ -1126,8 +1126,8 @@ def add_units_table(
         Waveform mean (template) for each unit (num_units, num_samples, num_channels)
     waveform_sds : np.array (optional, default to None)
         Waveform standard deviation for each unit (num_units, num_samples, num_channels)
-    electrode_group_table_region : list or array (optional, default to None)
-        The indices of electrodes that waveform_means/sds correspond to.
+    electrode_indices : list of lists or arrays (optional, default to None)
+        For each unit, the indices of electrodes that each waveform_mean/sd correspond to.
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
@@ -1182,6 +1182,8 @@ def add_units_table(
 
     if unit_ids is not None:
         checked_sorting = checked_sorting.select_units(unit_ids=unit_ids)
+        if electrode_group_indices is not None:
+            electrode_group_indices = np.array(electrode_group_indices)[checked_sorting.ids_to_indices(unit_ids)]
     unit_ids = checked_sorting.unit_ids
 
     # Extract properties
@@ -1225,10 +1227,24 @@ def add_units_table(
     unit_names_used_previously = []
     if "unit_name" in units_table_previous_properties:
         unit_names_used_previously = units_table["unit_name"].data
+    has_electrodes_column = "electrodes" in units_table.colnames
 
     properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
     rows_in_data = [index for index in range(checked_sorting.get_num_units())]
-    rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
+    if not has_electrodes_column:
+        rows_to_add = [index for index in rows_in_data
+                       if unit_name_array[index] not in unit_names_used_previously]
+    else:
+        rows_to_add = []
+        for index in rows_in_data:
+            if unit_name_array[index] not in unit_names_used_previously:
+                rows_to_add.append(index)
+            else:
+                unit_name = unit_name_array[index]
+                previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]]
+                if list(previous_electrodes["id"][:]) != list(electrode_group_indices[index]):
+                    rows_to_add.append(index)
+
     for row in rows_to_add:
         unit_kwargs = dict(property_to_default_values)
         for property in properties_with_data:

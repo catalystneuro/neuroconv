@@ -1183,8 +1183,24 @@ class TestWriteWaveforms(TestCase):
 
     def test_write_multiple_probes(self):
         """This test that the waveforms are written to different electrode groups"""
-        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile2, write_electrical_series=False)
-        self._test_waveform_write(self.multi_segment_we, self.nwbfile2)
+        # we write the first set of waveforms as belonging to group 0
+        original_channel_groups = self.we_recless_recording.get_channel_groups()
+        write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile,
+                        write_electrical_series=False, recording=self.we_recless_recording)
+        # now we set new channel groups to mimic a different probe and call the function again
+        self.we_recless_recording.set_channel_groups([1] * len(self.we_recless_recording.channel_ids))
+        write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile,
+                        write_electrical_series=False, recording=self.we_recless_recording)
+        # check that we have 2 groups
+        self.assertEqual(self.nwbfile.electrode_groups, 2)
+        self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
+        # check that we have correct number of units
+        self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
+        # check electrode regions of units
+        
+        # reset original channel groups
+        self.we_recless_recording.set_channel_groups(original_channel_groups)
+
     def test_unis_table_name(self):
         """This tests that the units naming exception"""
         with self.assertRaises(Exception) as context:
