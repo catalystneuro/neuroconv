@@ -77,6 +77,7 @@ class TimeIntervalsInterface(BaseDataInterface):
     """
     Abstract Interface for time intervals.
     """
+
     def __init__(
         self,
         file_path: FilePathType,
