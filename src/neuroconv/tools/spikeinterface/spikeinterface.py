@@ -1534,7 +1534,7 @@ def write_waveforms(
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
     units_description : str (optional)
     """
-    metadata =  metadata if metadata is not None else dict()
+    metadata = metadata if metadata is not None else dict()
 
     # retrieve templates and stds
     template_means = waveform_extractor.get_all_templates()
@@ -1585,10 +1585,7 @@ def write_waveforms(
                 if write_electrical_series_kwargs is None:
                     write_electrical_series_kwargs = {}
                 add_electrical_series(
-                    recording=recording,
-                    nwbfile=nwbfile_out,
-                    metadata=metadata,
-                    **write_electrical_series_kwargs
+                    recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
                 )
 
             add_units_table(
