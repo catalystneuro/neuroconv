@@ -1519,7 +1519,7 @@ def add_waveforms(
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
     units_description : str (optional)
     """
-    #TODO: move into add_units
+    # TODO: move into add_units
     assert write_as in [
         "units",
         "processing",
@@ -1665,7 +1665,7 @@ def write_waveforms(
             property_descriptions=property_descriptions,
             write_as=write_as,
             units_name=units_name,
-            units_description=units_description
+            units_description=units_description,
         )
 
 
