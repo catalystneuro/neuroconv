@@ -78,7 +78,7 @@ def test_csv_round_trip(tmp_path):
 def test_csv_round_trip_rename(tmp_path):
     interface = CsvTimeIntervalsInterface(trials_csv_path)
     metadata = interface.get_metadata()
-    metadata["TimeIntervals"]["trials"].update(name="custom_name", description="custom description")
+    metadata["TimeIntervals"]["trials"].update(table_name="custom_name", table_description="custom description")
     metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
     interface.run_conversion(nwbfile_path=tmp_path / "test.nwb", metadata=metadata)
 

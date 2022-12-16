@@ -7,8 +7,8 @@ from pynwb.epoch import TimeIntervals
 
 def convert_df_to_time_intervals(
     df: pd.DataFrame,
-    name: str = "trials",
-    description: str = "experimental trials",
+    table_name: str = "trials",
+    table_description: str = "experimental trials",
     column_name_mapping: Dict[str, str] = None,
     column_descriptions: Dict[str, str] = None,
 ) -> TimeIntervals:
@@ -19,9 +19,9 @@ def convert_df_to_time_intervals(
     ----------
     df : pandas.DataFrame
         The dataframe to convert.
-    name : str, optional
+    table_name : str, optional
         The name of the TimeIntervals object.
-    description : str, optional
+    table_description : str, optional
         The description of the TimeIntervals object.
     column_name_mapping: dict, optional
         If passed, rename subset of columns from key to value.
@@ -47,7 +47,7 @@ def convert_df_to_time_intervals(
     else:
         column_descriptions = dict(default_column_descriptions, **column_descriptions)
 
-    time_intervals = TimeIntervals(name, description)
+    time_intervals = TimeIntervals(name=table_name, description=table_description)
     if "start_time" not in df:
         raise ValueError(f"df must contain a column named 'start_time'. Existing columns: {df.columns.to_list()}")
     if "stop_time" not in df:

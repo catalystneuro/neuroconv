@@ -8,10 +8,10 @@
         "^.*$": {
           "type": "object",
           "properties": {
-            "name": {
+            "table_name": {
               "type": "string"
             },
-            "description": {
+            "table_description": {
               "type": "string"
             }
           }
