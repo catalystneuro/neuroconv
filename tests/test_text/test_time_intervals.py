@@ -1,7 +1,9 @@
 from datetime import datetime
 import os
 
+from numpy.testing import assert_array_equal
 import pandas as pd
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import ExcelTimeIntervalsInterface, CsvTimeIntervalsInterface
 from neuroconv.tools.text import convert_df_to_time_intervals
@@ -52,3 +54,15 @@ def test_csv():
     metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
     nwbfile = interface.run_conversion(metadata=metadata)
     assert nwbfile.intervals["trials"]
+
+
+def test_csv_round_trip(tmp_path):
+    interface = CsvTimeIntervalsInterface(trials_csv_path)
+    metadata = interface.get_metadata()
+    metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
+    interface.run_conversion(nwbfile_path=tmp_path / "test.nwb", metadata=metadata)
+
+    with NWBHDF5IO(tmp_path / "test.nwb", "r") as io:
+        nwb_read = io.read()
+        assert nwb_read.trials.colnames == ("start_time", "stop_time", "condition")
+        assert_array_equal(nwb_read.trials["condition"][:], [1, 2, 3, 1, 3, 2, 2, 3, 1, 2, 3])
