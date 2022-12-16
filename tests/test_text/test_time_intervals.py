@@ -85,3 +85,8 @@ def test_csv_round_trip_rename(tmp_path):
     with NWBHDF5IO(tmp_path / "test.nwb", "r") as io:
         nwb_read = io.read()
         assert nwb_read.intervals["custom_name"].description == "custom description"
+
+
+def test_get_metadata_schema():
+    interface = CsvTimeIntervalsInterface(trials_csv_path)
+    interface.get_metadata_schema()
