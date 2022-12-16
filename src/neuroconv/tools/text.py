@@ -8,7 +8,7 @@ from pynwb.epoch import TimeIntervals
 def convert_df_to_time_intervals(
     df: pd.DataFrame,
     name: str = "trials",
-    description: Optional[str] = None,
+    description: str = "experimental trials",
     column_name_mapping: Dict[str, str] = None,
     column_descriptions: Dict[str, str] = None,
 ) -> TimeIntervals:

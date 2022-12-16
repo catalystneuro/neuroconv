@@ -35,7 +35,7 @@ class TimeIntervalsInterface(BaseDataInterface):
             TimeIntervals=dict(
                 trials=dict(
                     name="trials",
-                    description="trials",
+                    description="experimental trials",
                 )
             )
         )
