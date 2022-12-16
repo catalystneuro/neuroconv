@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 from neuroconv.datainterfaces import ExcelTimeIntervalsInterface, CsvTimeIntervalsInterface
-from neuroconv.datainterfaces.text.timeintervalsinterface import convert_df_to_time_intervals
+from neuroconv.tools.text import convert_df_to_time_intervals
 
 
 trials_xls_path = os.path.join(os.path.dirname(__file__), "trials.xlsx")
