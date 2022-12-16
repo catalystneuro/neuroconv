@@ -1,13 +1,17 @@
 import unittest
 from unittest.mock import Mock
 from pathlib import Path
+import shutil
 from datetime import datetime
+from platform import python_version
+from packaging import version
 
 import psutil
 import numpy as np
 
 from pynwb import NWBHDF5IO, NWBFile
 import pynwb.ecephys
+from spikeinterface import extract_waveforms, WaveformExtractor
 from spikeinterface.core.testing_tools import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -20,6 +24,7 @@ from neuroconv.tools.spikeinterface import (
     get_nwb_metadata,
     write_recording,
     write_sorting,
+    write_waveforms,
     check_if_recording_traces_fit_into_memory,
     add_electrodes,
     add_electrical_series,
@@ -522,6 +527,18 @@ class TestWriteRecording(unittest.TestCase):
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
+    def test_write_bool_properties(self):
+        """ """
+        bool_property = np.array([False] * len(self.single_segment_recording_extractor.channel_ids))
+        bool_property[::2] = True
+        self.single_segment_recording_extractor.set_property("test_bool", bool_property)
+        add_electrodes(
+            recording=self.single_segment_recording_extractor,
+            nwbfile=self.nwbfile,
+        )
+        self.assertIn("test_bool", self.nwbfile.electrodes.colnames)
+        assert all(tb in ["False", "True"] for tb in self.nwbfile.electrodes["test_bool"][:])
+
 
 class TestAddElectrodes(TestCase):
     @classmethod
@@ -764,7 +781,9 @@ class TestAddUnitsTable(TestCase):
     def setUpClass(cls):
         """Use common recording objects and values."""
         cls.num_units = 4
-        cls.base_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
+        cls.single_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
+        cls.multiple_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        cls.base_sorting = cls.single_segment_sorting
         # Base sorting unit ids are [0, 1, 2, 3]
 
     def setUp(self):
@@ -1008,6 +1027,152 @@ class TestAddUnitsTable(TestCase):
         units_table = ecephys_mod[units_table_name]
         self.assertEqual(units_table.name, units_table_name)
         self.assertEqual(units_table.description, unit_table_description)
+
+    def test_write_subset_units(self):
+        """ """
+        subset_unit_ids = self.base_sorting.unit_ids[::2]
+        add_units_table(
+            sorting=self.base_sorting,
+            nwbfile=self.nwbfile,
+            unit_ids=subset_unit_ids,
+        )
+
+        self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
+        self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
+
+    def test_write_bool_properties(self):
+        """ """
+        bool_property = np.array([False] * len(self.base_sorting.unit_ids))
+        bool_property[::2] = True
+        self.base_sorting.set_property("test_bool", bool_property)
+        add_units_table(
+            sorting=self.base_sorting,
+            nwbfile=self.nwbfile,
+        )
+        self.assertIn("test_bool", self.nwbfile.units.colnames)
+        assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
+
+
+@unittest.skipIf(
+    version.parse(python_version()) < version.parse("3.8"), "SpikeInterface.extract_waveforms() requires Python>=3.8"
+)
+class TestWriteWaveforms(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        from spikeinterface.postprocessing import compute_template_metrics
+        from spikeinterface.qualitymetrics import compute_quality_metrics
+
+        cls.num_units = 4
+        cls.num_channels = 4
+        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3])
+        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3])
+        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3, 4])
+        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        single_segment_rec.annotate(is_filtered=True)
+        multi_segment_rec.annotate(is_filtered=True)
+        single_segment_rec = single_segment_rec.save()
+        multi_segment_rec = multi_segment_rec.save()
+        single_segment_sort = single_segment_sort.save()
+        multi_segment_sort = multi_segment_sort.save()
+
+        cls.single_segment_we = extract_waveforms(single_segment_rec, single_segment_sort, folder=None, mode="memory")
+        cls.multi_segment_we = extract_waveforms(multi_segment_rec, multi_segment_sort, folder=None, mode="memory")
+
+        # add quality/template metrics to test property propagation
+        compute_template_metrics(cls.single_segment_we)
+        compute_template_metrics(cls.multi_segment_we)
+        compute_quality_metrics(cls.single_segment_we)
+        compute_quality_metrics(cls.multi_segment_we)
+
+        # slice sorting
+        slice_sorting = single_segment_sort.select_units(single_segment_sort.unit_ids[::2])
+        cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
+
+        # recordingless
+        recording_less_wf_path = Path("waveforms_recordingless")
+        if recording_less_wf_path.is_dir():
+            shutil.rmtree(recording_less_wf_path)
+        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=recording_less_wf_path)
+        # reload without recording
+        cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path, with_recording=False)
+        cls.we_recless_recording = single_segment_rec
+
+    def setUp(self):
+        """Start with a fresh NWBFile, and remapped sorters each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+
+    def _test_waveform_write(self, we, nwbfile, test_properties=True):
+        # test unit columns
+        self.assertIn("waveform_mean", nwbfile.units.colnames)
+        self.assertIn("waveform_sd", nwbfile.units.colnames)
+        if test_properties:
+            self.assertIn("peak_to_valley", nwbfile.units.colnames)
+            self.assertIn("amplitude_cutoff", nwbfile.units.colnames)
+
+        # test that electrode table has been saved
+        assert nwbfile.electrodes is not None
+        assert len(we.unit_ids) == len(nwbfile.units)
+        # test that waveforms and stds are the same
+        unit_ids = we.unit_ids
+        for unit_index, _ in enumerate(nwbfile.units.id):
+            wf_mean_si = we.get_template(unit_ids[unit_index])
+            wf_mean_nwb = nwbfile.units[unit_index]["waveform_mean"].values[0]
+            np.testing.assert_array_almost_equal(wf_mean_si, wf_mean_nwb)
+            wf_sd_si = we.get_template(unit_ids[unit_index], mode="std")
+            wf_sd_nwb = nwbfile.units[unit_index]["waveform_sd"].values[0]
+            np.testing.assert_array_almost_equal(wf_sd_si, wf_sd_nwb)
+
+    def test_write_single_segment(self):
+        """This tests that the waveforms are written appropriately for the single segment case"""
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile, write_electrical_series=True)
+        self._test_waveform_write(self.single_segment_we, self.nwbfile)
+        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
+
+    def test_write_multiple_segments(self):
+        """This tests that the waveforms are written appropriately for the multi segment case"""
+        write_waveforms(waveform_extractor=self.multi_segment_we, nwbfile=self.nwbfile, write_electrical_series=False)
+        self._test_waveform_write(self.multi_segment_we, self.nwbfile)
+
+    def test_write_subset_units(self):
+        """This tests that the waveforms are sliced properly based on unit_ids"""
+        subset_unit_ids = self.single_segment_we.unit_ids[::2]
+        write_waveforms(waveform_extractor=self.single_segment_we, nwbfile=self.nwbfile, unit_ids=subset_unit_ids)
+        self._test_waveform_write(self.we_slice, self.nwbfile, test_properties=False)
+
+        self.assertEqual(len(self.nwbfile.units), len(subset_unit_ids))
+        self.assertTrue(all(str(unit_id) in self.nwbfile.units["unit_name"][:] for unit_id in subset_unit_ids))
+
+    def test_write_recordingless(self):
+        """This tests that the waveforms are sliced properly based on unit_ids"""
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile,
+            recording=self.we_recless_recording,
+            write_electrical_series=True,
+        )
+        self._test_waveform_write(self.we_recless, self.nwbfile, test_properties=False)
+
+        # check that not passing the recording raises and Exception
+        with self.assertRaises(Exception) as context:
+            write_waveforms(
+                waveform_extractor=self.we_recless,
+                nwbfile=self.nwbfile,
+                recording=self.we_recless_recording,
+                write_electrical_series=True,
+            )
+
+    def test_unis_table_name(self):
+        """This tests that the units naming exception"""
+        with self.assertRaises(Exception) as context:
+            write_waveforms(
+                waveform_extractor=self.single_segment_we,
+                nwbfile=self.nwbfile,
+                write_as="units",
+                units_name="units1",
+            )
 
 
 if __name__ == "__main__":
