@@ -414,11 +414,12 @@ def add_electrodes(
 
     # Add data by rows excluding the rows containing channel_names and group_names that were previously added
     # The same channel_name can be added provided that it belongs to a different group
-    channel_group_names_used_previously = []
+    electrodes_used_previously = []
     if "channel_name" in electrode_table_previous_properties and "group_name" in electrode_table_previous_properties:
-        channel_group_names_used_previously = [(ch_name, gr_name) for ch_name, gr_name 
+        channel_group_names_used_previously = [(ch_name, gr_name, dev_name) for ch_name, gr_name, dev_name
                                                in zip(nwbfile.electrodes["channel_name"].data, 
-                                                      nwbfile.electrodes["group_name"].data)]
+                                                      nwbfile.electrodes["group_name"].data,
+                                                      nwbfile.electrodes["group"].data.device_name)]
 
     properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
     rows_in_data = [index for index in range(checked_recording.get_num_channels())]

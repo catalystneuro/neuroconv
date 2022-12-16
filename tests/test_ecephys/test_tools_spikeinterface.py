@@ -1185,6 +1185,7 @@ class TestWriteWaveforms(TestCase):
         """This test that the waveforms are written to different electrode groups"""
         # we write the first set of waveforms as belonging to group 0
         original_channel_groups = self.we_recless_recording.get_channel_groups()
+        self.we_recless_recording.set_channel_groups([0] * len(self.we_recless_recording.channel_ids))
         write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile,
                         write_electrical_series=False, recording=self.we_recless_recording)
         # now we set new channel groups to mimic a different probe and call the function again
