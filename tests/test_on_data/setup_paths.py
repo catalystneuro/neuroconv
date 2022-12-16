@@ -33,6 +33,9 @@ OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
 if not OPHYS_DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {OPHYS_DATA_PATH}!")
 
+TEXT_DATA_PATH = file_path = Path(__file__).parent.parent.parent / "tests" / "test_text"
+
+
 if test_config_dict["SAVE_OUTPUTS"]:
     OUTPUT_PATH = LOCAL_PATH / "example_nwb_output"
     OUTPUT_PATH.mkdir(exist_ok=True)
