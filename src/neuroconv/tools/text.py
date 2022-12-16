@@ -47,9 +47,6 @@ def convert_df_to_time_intervals(
     else:
         column_descriptions = dict(default_column_descriptions, **column_descriptions)
 
-    if description is None:
-        description = name
-
     time_intervals = TimeIntervals(name, description)
     if "start_time" not in df:
         raise ValueError(f"df must contain a column named 'start_time'. Existing columns: {df.columns.to_list()}")

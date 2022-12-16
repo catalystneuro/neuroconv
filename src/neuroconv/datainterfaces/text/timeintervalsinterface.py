@@ -35,7 +35,7 @@ class TimeIntervalsInterface(BaseDataInterface):
             TimeIntervals=dict(
                 trials=dict(
                     name="trials",
-                    description="experimental trials",
+                    description=f"experimental trials generated from {self.source_data['file_path']}",
                 )
             )
         )
