@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading Excel d
 
     pip install neuroconv[excel]
 
-Convert Blackrock sorting data to NWB using
+Convert Excel data to NWB using
 :py:class:`~neuroconv.datainterfaces.text.excel.exceldatainterface.ExcelTimeIntervalsInterface`.
 
 .. code-block:: python
@@ -17,7 +17,7 @@ Convert Blackrock sorting data to NWB using
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ExcelTimeIntervalsInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/excel/trials.xlsx"
+    >>> file_path = f"{TEXT_DATA_PATH}/trials.xlsx"
     >>> # Change the file_path to the location of the file in your system
     >>> interface = ExcelTimeIntervalsInterface(file_path=file_path, verbose=False)
     >>>

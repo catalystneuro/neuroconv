@@ -17,7 +17,7 @@ Convert CSV data to NWB using
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import CsvTimeIntervalsInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/csv/trials.csv"
+    >>> file_path = f"{TEXT_DATA_PATH}/trials.csv"
     >>> # Change the file_path to the location of the file in your system
     >>> interface = CsvTimeIntervalsInterface(file_path=file_path, verbose=False)
     >>>
