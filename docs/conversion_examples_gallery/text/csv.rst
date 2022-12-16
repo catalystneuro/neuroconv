@@ -23,10 +23,9 @@ Convert CSV data to NWB using
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
-    >>> session_start_time = session_start_time.replace(tzinfo=tz.gettz("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add the time zone information to the conversion
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}" # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
