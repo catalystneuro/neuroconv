@@ -28,4 +28,4 @@ Convert CSV data to NWB using
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}" # This should be something like: "./saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> nwbfile = interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
