@@ -20,7 +20,7 @@ def convert_df_to_time_intervals(
     description: Optional[str] = None,
     column_name_mapping: Dict[str, str] = None,
     column_descriptions: Dict[str, str] = None,
-):
+) -> TimeIntervals:
     """
     Convert a dataframe to a TimeIntervals object.
 
