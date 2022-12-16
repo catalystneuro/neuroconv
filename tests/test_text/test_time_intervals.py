@@ -66,3 +66,15 @@ def test_csv_round_trip(tmp_path):
         nwb_read = io.read()
         assert nwb_read.trials.colnames == ("start_time", "stop_time", "condition")
         assert_array_equal(nwb_read.trials["condition"][:], [1, 2, 3, 1, 3, 2, 2, 3, 1, 2, 3])
+
+
+def test_csv_round_trip_rename(tmp_path):
+    interface = CsvTimeIntervalsInterface(trials_csv_path)
+    metadata = interface.get_metadata()
+    metadata["TimeIntervals"]["trials"].update(name="custom_name", description="custom description")
+    metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
+    interface.run_conversion(nwbfile_path=tmp_path / "test.nwb", metadata=metadata)
+
+    with NWBHDF5IO(tmp_path / "test.nwb", "r") as io:
+        nwb_read = io.read()
+        assert nwb_read.intervals["custom_name"].description == "custom description"
