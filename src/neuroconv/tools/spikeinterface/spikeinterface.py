@@ -1649,7 +1649,7 @@ def write_waveforms(
         )
 
         if write_electrical_series:
-            write_electrical_series_kwargs  = write_electrical_series_kwargs  or dict()
+            write_electrical_series_kwargs = write_electrical_series_kwargs or dict()
             add_electrical_series(
                 recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
             )
