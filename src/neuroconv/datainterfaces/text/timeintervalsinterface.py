@@ -111,7 +111,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        tag="trials",
+        tag: str = "trials",
         column_name_mapping: Dict[str, str] = None,
         column_descriptions: Dict[str, str] = None,
     ):
