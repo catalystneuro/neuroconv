@@ -88,7 +88,7 @@ gives the following output, which is derived from the call signature and express
       "additionalProperties": false
     }
 
-A ``ExampleNWBConverter`` that combines these ``DataInterface``s will combine the JSON Schema using the keys of the
+An ``ExampleNWBConverter`` that combines these ``DataInterface``s will combine the JSON Schema using the keys of the
 ``data_interface_classes`` dictionary:
 
 .. code-block:: python
