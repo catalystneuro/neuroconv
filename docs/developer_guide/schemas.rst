@@ -182,7 +182,7 @@ Metadata Schema
 
 Similar to input data, each ``DataInterface`` produces its own metadata schema reflecting
 the specificities of the dataset it interfaces with. The ``DataInterface``-specific metadata schema can be obtained
-via method ``.get_metadata_schema()``. Unlike ``.get_source_schema``, the ``DataInterface`` needs to be initialized
+via the ``.get_metadata_schema()`` method . Unlike ``.get_source_schema``, the ``DataInterface`` needs to be initialized
 first.
 
 .. code-block:: python
