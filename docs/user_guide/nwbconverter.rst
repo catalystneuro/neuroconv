@@ -7,28 +7,32 @@ For instance, in a given extracellular electrophysiology experiment, you might
 have raw and processed data. The NWBConverter class streamlines this
 conversion process. This single NWBConversion object is responsible for
 combining those multiple read/write operations. An example of how to define
-a ``NWBConverter`` would be::
+a ``NWBConverter`` would be
+
+.. code-block:: python
 
     from neuroconv import NWBConverter,
     from neuroconv.datainterfaces import (
-        BlackrockRecordingExtractorInterface,
+        SpikeGLXRecordingInterface,
         PhySortingInterface
     )
 
     class ExampleNWBConverter(NWBConverter):
         data_interface_classes = dict(
-            BlackrockRecording=BlackrockRecordingExtractorInterface,
+            SpikeGLXRecording=SpikeGLXRecordingInterface,
             PhySorting=PhySortingInterface
         )
 
 :py:class:`.NWBConverter` classes define a :py:attr:`.data_interface_classes` dictionary, a class
 attribute that specifies all of the ``DataInterface`` classes used by this
 converter. Then you just need to input ``source_data``, which specifies the
-input data to each ``DataInterface``. The keys to this dictionary are arbitrary,
-but must match between ``data_interface_classes`` and the ``source_data``::
+input data to each ``DataInterface``. The keys to this dictionary must match the
+keys of``data_interface_classes``.
+
+.. code-block:: python
 
     source_data = dict(
-        BlackrockRecording=dict(
+        SpikeGLXRecording=dict(
             file_path="raw_dataset_path"
         ),
         PhySorting=dict(
