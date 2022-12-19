@@ -182,8 +182,8 @@ Metadata Schema
 
 Similar to input data, each ``DataInterface`` produces its own metadata schema reflecting
 the specificities of the dataset it interfaces with. The ``DataInterface``-specific metadata schema can be obtained
-via the ``.get_metadata_schema()`` method . Unlike ``.get_source_schema``, the ``DataInterface`` needs to be initialized
-first.
+via the ``.get_metadata_schema()`` method . Unlike ``.get_source_schema()``, the ``DataInterface`` needs to be
+initialized first.
 
 .. code-block:: python
 
@@ -369,6 +369,7 @@ first.
       "version": "0.1.0"
     }
 
-Like with the source schema, metadata schema are combined across ``DataInterface`` s automatically in an ``NWBConverter``, which
-can also be accessed using ``.get_metadata_schema()``, though the underlying schemas are merged directly with each other
-instead of being combined on a key basis.
+Like with the source schema, metadata schema are combined across ``DataInterface`` s automatically in an
+``NWBConverter``, which can also be accessed using ``.get_metadata_schema()``, though the underlying schemas are
+merged directly with each other instead of being combined on a key basis. For more information on how these nested
+dictionaries automatically merge, refer to :py:func:`~neuroconv.utils.dict.dict_deep_update`.
