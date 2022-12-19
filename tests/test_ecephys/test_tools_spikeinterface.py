@@ -620,13 +620,13 @@ class TestAddElectrodes(TestCase):
         # reset channel_groups
         self.recording_1.set_channel_groups(original_groups)
         assert len(self.nwbfile.electrodes) == 2 * len(self.recording_1.channel_ids)
-        expected_channel_names_in_electrodes_table = list(self.recording_1.channel_ids) \
-            + list(self.recording_1.channel_ids)
+        expected_channel_names_in_electrodes_table = list(self.recording_1.channel_ids) + list(
+            self.recording_1.channel_ids
+        )
         channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
         group_names_in_electrodes_table = list(self.nwbfile.electrodes["group_name"].data)
         self.assertEqual(len(np.unique(group_names_in_electrodes_table)), 2)
-
 
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
@@ -1152,12 +1152,20 @@ class TestWriteWaveforms(TestCase):
         # we write the first set of waveforms as belonging to group 0
         original_channel_groups = self.we_recless_recording.get_channel_groups()
         self.we_recless_recording.set_channel_groups([0] * len(self.we_recless_recording.channel_ids))
-        write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile,
-                        write_electrical_series=False, recording=self.we_recless_recording)
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            recording=self.we_recless_recording,
+        )
         # now we set new channel groups to mimic a different probe and call the function again
         self.we_recless_recording.set_channel_groups([1] * len(self.we_recless_recording.channel_ids))
-        write_waveforms(waveform_extractor=self.we_recless, nwbfile=self.nwbfile,
-                        write_electrical_series=False, recording=self.we_recless_recording)
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            recording=self.we_recless_recording,
+        )
         # check that we have 2 groups
         self.assertEqual(len(self.nwbfile.electrode_groups), 2)
         self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
