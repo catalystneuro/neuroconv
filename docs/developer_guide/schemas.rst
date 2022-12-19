@@ -4,7 +4,7 @@ Defining the form of source with schemas
 ----------------------------------------
 
 The ``.__init__()`` of each ``DataInterface`` has a unique call signature, requiring the source data to be input in a
-specific way. Some require a ``file_path``, some a ``directory_path``, and some require additional arguments that are
+specific way. Some require a ``file_path``, some a ``folder_path``, and some require additional arguments that are
 necessary to read the source data properly. The same is true for the ``.run_conversion()`` method, where some classes
 have unique additional optional arguments. To communicate these requirements and options with an ``NWBConverter`` and
 with interfacing software, the expected form of the input is defined using the JSON Schema language.
