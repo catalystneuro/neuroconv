@@ -776,22 +776,6 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
 
-    def test_assertion_for_id_collision(self):
-        """
-        Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
-        """
-
-        values_dic = self.defaults
-
-        values_dic.update(id=0)
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=1)
-        self.nwbfile.add_electrode(**values_dic)
-        # The self.base_recording channel_ids are [0, 1, 2, 3]
-        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
-            add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
-
 
 class TestAddUnitsTable(TestCase):
     @classmethod
@@ -1003,24 +987,6 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
 
-    def test_id_collision_assertion(self):
-        """
-        Add some units to the units table before using the add_units_table function.
-        In this case there is are some common ids between the manually added units and the sorting ids which causes
-        collisions. That is, if the units ids in the sorter integer it is required for them to be different from the
-        ids already in the table.
-        """
-
-        values_dic = self.defaults
-
-        values_dic.update(id=0)
-        self.nwbfile.add_unit(**values_dic)
-
-        values_dic.update(id=1)
-        self.nwbfile.add_unit(**values_dic)
-        # The self.base_sorting unit_ids are [0, 1, 2, 3]
-        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
-            add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
 
     def test_write_units_table_in_processing_module(self):
         """ """
@@ -1203,7 +1169,7 @@ class TestWriteWaveforms(TestCase):
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
-        
+
         # reset original channel groups
         self.we_recless_recording.set_channel_groups(original_channel_groups)
 
