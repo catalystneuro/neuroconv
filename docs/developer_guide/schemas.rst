@@ -12,7 +12,7 @@ with interfacing software, the expected form of the input is defined using the J
 :py:func:`~neuroconv.datainterfaces.basedatainterface.BaseDataInterface.get_source_schema()`, which is
 responsible for returning the source schema as a JSON schema dictionary. By default, these dictionaries are
 automatically derived from the call signatures of a function, and express similar information to a type-hinted call
-signature, but can also be used to define and validate inputs that are arbitrarily deep nested dictionaries. For
+signature, but can also be used to define and validate inputs that are nested dictionaries of arbitrary depth. For
 example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
 
 .. code-block:: python
