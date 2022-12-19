@@ -987,7 +987,6 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
 
-
     def test_write_units_table_in_processing_module(self):
         """ """
 
