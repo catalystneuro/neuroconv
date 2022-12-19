@@ -1,5 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-from typing import Optional, List
+from typing import Optional
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
