@@ -413,14 +413,18 @@ def add_electrodes(
     # The same channel_name can be added provided that it belongs to a different group
     channel_group_names_used_previously = []
     if "channel_name" in electrode_table_previous_properties and "group_name" in electrode_table_previous_properties:
-        channel_group_names_used_previously = [(ch_name, gr_name) for ch_name, gr_name
-                                               in zip(nwbfile.electrodes["channel_name"].data, 
-                                                      nwbfile.electrodes["group_name"].data)]
+        channel_group_names_used_previously = [
+            (ch_name, gr_name)
+            for ch_name, gr_name in zip(nwbfile.electrodes["channel_name"].data, nwbfile.electrodes["group_name"].data)
+        ]
 
     properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
     rows_in_data = [index for index in range(checked_recording.get_num_channels())]
-    rows_to_add = [index for index in rows_in_data if (channel_name_array[index], group_name_array[index]) 
-                   not in channel_group_names_used_previously]
+    rows_to_add = [
+        index
+        for index in rows_in_data
+        if (channel_name_array[index], group_name_array[index]) not in channel_group_names_used_previously
+    ]
     for row in rows_to_add:
         electrode_kwargs = dict(all_properties_to_default_value)
         for property in properties_with_data:
@@ -1085,7 +1089,7 @@ def add_units_table(
     write_waveforms: bool = False,
     waveform_means: Optional[np.ndarray] = None,
     waveform_sds: Optional[np.ndarray] = None,
-    unit_electrode_indices=None
+    unit_electrode_indices=None,
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -1225,8 +1229,7 @@ def add_units_table(
     properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
     rows_in_data = [index for index in range(checked_sorting.get_num_units())]
     if not has_electrodes_column:
-        rows_to_add = [index for index in rows_in_data
-                       if unit_name_array[index] not in unit_names_used_previously]
+        rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
     else:
         rows_to_add = []
         for index in rows_in_data:
@@ -1584,7 +1587,7 @@ def add_waveforms(
         write_waveforms=False,
         waveform_means=template_means,
         waveform_sds=template_stds,
-        unit_electrode_indices=unit_electrode_indices
+        unit_electrode_indices=unit_electrode_indices,
     )
 
 
@@ -1691,16 +1694,15 @@ def write_waveforms(
 
 def get_electrode_group_indices(recording, nwbfile):
     if "group_name" in recording.get_property_keys():
-        group_names = list(np.unique(recording.get_property('group_name')))
+        group_names = list(np.unique(recording.get_property("group_name")))
     elif "group" in recording.get_property_keys():
-        group_names = list(np.unique(recording.get_property('group').astype(str)))
+        group_names = list(np.unique(recording.get_property("group").astype(str)))
     else:
         group_names = None
     if group_names is None:
         electrode_group_indices = None
     else:
-        electrode_group_indices = \
-            nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
+        electrode_group_indices = nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
     return electrode_group_indices
 
 
