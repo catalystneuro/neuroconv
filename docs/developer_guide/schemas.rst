@@ -369,6 +369,6 @@ first.
       "version": "0.1.0"
     }
 
-Like with the source schema, metadata schema are combined automatically when combined in an ``NWBConverter``, which
-can also be accessed using ``.get_metadata_schema``, though the underlying schemas are merged directly with each other
+Like with the source schema, metadata schema are combined across ``DataInterface`` s automatically in an ``NWBConverter``, which
+can also be accessed using ``.get_metadata_schema()``, though the underlying schemas are merged directly with each other
 instead of being combined on a key basis.
