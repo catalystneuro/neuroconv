@@ -32,7 +32,7 @@ from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, ge
 from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
 
 
-def get_default_ophys_metadata():
+def get_default_ophys_metadata() -> dict:
     """Fill default metadata for optical physiology."""
     metadata = get_default_nwbfile_metadata()
 
@@ -100,7 +100,7 @@ def get_default_ophys_metadata():
     return metadata
 
 
-def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
+def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
     """
     Convert metadata from the ImagingExtractor into nwb specific metadata.
 
@@ -202,9 +202,9 @@ def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int
         An previously defined -in memory- NWBFile.
     metadata : dict
         The metadata in the nwb conversion tools format.
-    imaging_plane_index : int, optional
+    imaging_plane_index : int, default: 0
         The metadata in the nwb conversion tools format is a list of the different imaging planes to add.
-        Specificy which element of the list with this parameter, by default 0
+        Specify which element of the list with this parameter.
 
     Returns
     -------
@@ -243,7 +243,7 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     Returns
     -------
     NWBFile
-        The nwbfile passed as an input with the image segmentation added.
+        The NWBFile passed as an input with the image segmentation added.
     """
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -366,7 +366,7 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 
 def _imaging_frames_to_hdmf_iterator(
     imaging: ImagingExtractor,
-    iterator_type: Optional[str] = "v2",
+    iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
 ):
     """
@@ -376,7 +376,7 @@ def _imaging_frames_to_hdmf_iterator(
     ----------
     imaging : ImagingExtractor
         The imaging extractor to get the data from.
-    iterator_type : str (optional, defaults to 'v2')
+    iterator_type : {'v2', 'v1'}
         The type of iterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
@@ -420,7 +420,7 @@ def write_imaging(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    iterator_type: Optional[str] = "v2",
+    iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
     buffer_size: Optional[int] = None,  # TODO: to be removed
@@ -450,9 +450,7 @@ def write_imaging(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
-    num_chunks: int
-        Number of chunks for writing data to file
-    iterator_type : str (optional, defaults to 'v2')
+    iterator_type : {'v2', 'v1'}
         The type of iterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
@@ -559,17 +557,15 @@ def add_plane_segmentation(
         The metadata for the plane segmentation.
     plane_segmentation_index: int, optional
         The index of the plane segmentation to add.
-    include_roi_centroids : bool, optional
-        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+    include_roi_centroids : bool, default: True
+        Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
-        Defaults to True.
-    include_roi_acceptance : bool, optional
-        Whether or not to include if the detected ROI was 'accepted' or 'rejected'.
+    include_roi_acceptance : bool, default: True
+        Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
-        Defaults to True.
-    mask_type : str, optional
+    mask_type : {'image', 'pixel'}, optional
         There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
         Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
             by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
@@ -710,8 +706,10 @@ def add_fluorescence_traces(
         The nwbfile to add the fluorescence traces to.
     metadata : dict
         The metadata for the fluorescence traces.
-    plane_index : int, optional
+    plane_index : int, default: 0
         The index of the plane to add the fluorescence traces to.
+    iterator_options : dict, optional
+    compression_options : dict, optional
 
     Returns
     -------
@@ -879,8 +877,8 @@ def add_summary_images(
         An previously defined -in memory- NWBFile.
     segmentation_extractor : SegmentationExtractor
         A segmentation extractor object from roiextractors.
-    images_set_name : str
-        The name of the image container, "summary_images" by default.
+    images_set_name : str, default: 'summary_images'
+        The name of the image container.
 
     Returns
     -------
@@ -949,15 +947,15 @@ def write_segmentation(
         The default is True.
     buffer_size : int, optional
         The buffer size in GB, by default 10
-    plane_num : int, optional
-        The plane number to be extracted, by default 0
+    plane_num : int, default: 0
+        The plane number to be extracted.
     include_roi_centroids : bool, optional
-        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
         Defaults to True.
     include_roi_acceptance : bool, optional
-        Whether or not to include if the detected ROI was 'accepted' or 'rejected'.
+        Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
         Defaults to True.
