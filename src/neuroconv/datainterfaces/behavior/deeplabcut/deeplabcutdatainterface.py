@@ -25,14 +25,14 @@ class DeepLabCutInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path : FilePathType
             path to the h5 file output by dlc.
-        config_file_path: FilePathType
+        config_file_path : FilePathType
             path to .yml config file
-        subject_name: str
+        subject_name : str, default: "ind1"
             the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
-        verbose: bool
-            controls verbosity. ``True`` by default.
+        verbose: bool, default: True
+            controls verbosity.
         """
         dlc2nwb = get_package(package_name="dlc2nwb")
 

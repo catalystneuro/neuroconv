@@ -59,7 +59,7 @@ class AudioInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_paths: list of FilePathTypes
+        file_paths : list of FilePathTypes
             The file paths to the audio recordings in sorted, consecutive order.
             We recommend using `natsort` to ensure the files are in consecutive order.
             from natsort import natsorted

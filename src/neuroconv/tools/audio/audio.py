@@ -15,7 +15,7 @@ def add_acoustic_waveform_series(
     rate: float,
     metadata: dict,
     starting_time: float = 0.0,
-    write_as: Optional[str] = "stimulus",
+    write_as: str = "stimulus",
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
@@ -23,7 +23,7 @@ def add_acoustic_waveform_series(
 
     Adds the audio and its metadata to the NWB file either as stimulus or acquisition.
     The neurodata type that is used is an AcousticWaveformSeries object which holds a
-    single or multi-channel acoustic series.
+    single or multichannel acoustic series.
 
     Parameters
     ----------
@@ -35,12 +35,12 @@ def add_acoustic_waveform_series(
         The previously defined -in memory- NWBFile.
     metadata : dict
         The metadata for this acoustic series.
-    starting_time : float
+    starting_time : float, default: 0.0
         The starting time in seconds for this acoustic series relative to the
         start time of the session.
-    write_as : str, optional
+    write_as : {'stimulus', 'acquisition'}
         The acoustic waveform series can be added to the NWB file either as
-        "stimulus" or as "acquisition". The series is stored as "stimulus" by default.
+        "stimulus" or as "acquisition".
     iterator_options : dict, optional
         Dictionary of options for the SliceableDataChunkIterator.
     compression_options : dict, optional

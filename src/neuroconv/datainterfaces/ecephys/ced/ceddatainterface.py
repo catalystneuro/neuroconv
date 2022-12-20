@@ -35,12 +35,18 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         return cls.RX.get_all_channels_info(file_path=file_path)
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        """
+        Initialize reading of CED file.
+
+        Parameters
+        ----------
+        file_path: FilePathType
+            Path to .smr or .smrx file.
+        verbose: bool, default: True
+        """
         _test_sonpy_installation()
 
-        stream_id = None
-        if Path(file_path).suffix == ".smr":
-            stream_id = "1"
-
+        stream_id = "1" if Path(file_path).suffix == ".smr" else None
         super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
 
         # Subset raw channel properties

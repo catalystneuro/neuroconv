@@ -38,7 +38,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         use_times: bool = False,  # To-do to remove, deprecation
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = "v2",
+        iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
     ):
         from ...tools.spikeinterface import write_recording

@@ -19,7 +19,7 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path: string or Path
             Path to the .raw file.
-        verbose: boolean
+        verbose: bool, default: True
             Allows verbose.
             Default is True.
         """

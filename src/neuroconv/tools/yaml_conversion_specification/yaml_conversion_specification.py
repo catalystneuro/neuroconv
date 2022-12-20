@@ -70,10 +70,9 @@ def run_conversion_from_yaml(
     output_folder_path : FolderPathType, optional
         Folder path leading to the desired output location of the .nwb files.
         The default is the parent directory of the specification_file_path.
-    overwrite : bool, optional
+    overwrite : bool, default: False
         If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
         If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
-        The default is False.
     """
     deprecation_warning_string = (
         "'data_folder' and 'output_folder' keyword arguments are deprecated and will be removed on or before "

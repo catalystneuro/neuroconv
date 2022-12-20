@@ -63,7 +63,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             The path to the folder/directory containing the data files for the session (nse, ntt, nse, nev)
         sampling_frequency : float, optional
             If a specific sampling_frequency is desired it can be set with this argument.
-        verbose : bool, optional
+        verbose : bool, default: True
             Enables verbosity
         """
 

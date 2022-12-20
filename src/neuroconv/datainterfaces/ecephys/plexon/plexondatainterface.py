@@ -19,8 +19,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path: string or Path
             Path to the .plx file.
-        verbose: boolean
+        verbose: bool, default: True
             Allows verbosity.
-            Default is True.
         """
         super().__init__(file_path=file_path, verbose=verbose)
