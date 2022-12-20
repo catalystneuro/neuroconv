@@ -264,8 +264,10 @@ def add_electrodes(
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     old_api = False
     if isinstance(recording, RecordingExtractor):
-        msg = ("Support for spikeextractors.RecordingExtractor objects is deprecated. "
-               "Use spikeinterface.BaseRecording objects")
+        msg = (
+            "Support for spikeextractors.RecordingExtractor objects is deprecated. "
+            "Use spikeinterface.BaseRecording objects"
+        )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
         old_api = True
@@ -331,7 +333,7 @@ def add_electrodes(
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
         if old_api:
-             # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
+            # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
             if np.issubdtype(channel_ids.dtype, np.integer):
                 data_to_add["id"].update(data=channel_ids, index=False)
 
@@ -1141,8 +1143,10 @@ def add_units_table(
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
     old_api = False
     if isinstance(sorting, SortingExtractor):
-        msg = ("Support for spikeextractors.SortingExtractor objects is deprecated. "
-               "Use spikeinterface.BaseSorting objects")
+        msg = (
+            "Support for spikeextractors.SortingExtractor objects is deprecated. "
+            "Use spikeinterface.BaseSorting objects"
+        )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
         old_api = True
@@ -1277,7 +1281,7 @@ def add_units_table(
             if unit_electrode_indices is not None:
                 unit_kwargs["electrodes"] = unit_electrode_indices[row]
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
-    added_unit_table_ids = units_table.id[-len(rows_to_add):]
+    added_unit_table_ids = units_table.id[-len(rows_to_add) :]
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
     previous_table_size = len(units_table.id[:]) - len(unit_name_array)
@@ -1326,7 +1330,9 @@ def add_units_table(
     if write_waveforms:
         assert write_table_first_time, "write_waveforms is not supported with re-write"
         units_table = _add_waveforms_to_units_table(
-            sorting=sorting, units_table=units_table, row_ids=added_unit_table_ids,
+            sorting=sorting,
+            units_table=units_table,
+            row_ids=added_unit_table_ids,
             skip_features=skip_features,
         )
 
