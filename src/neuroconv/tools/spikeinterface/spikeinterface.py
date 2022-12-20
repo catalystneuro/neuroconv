@@ -262,9 +262,13 @@ def add_electrodes(
         object to ignore when writing to the NWBFile.
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-
+    old_api = False
     if isinstance(recording, RecordingExtractor):
+        msg = ("Support for spikeextractors.RecordingExtractor objects is deprecated. "
+               "Use spikeinterface.BaseRecording objects")
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        old_api = True
     else:
         checked_recording = recording
 
@@ -326,6 +330,10 @@ def add_electrodes(
     else:
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
+        if old_api:
+             # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
+            if np.issubdtype(channel_ids.dtype, np.integer):
+                data_to_add["id"].update(data=channel_ids, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
     if "location" in data_to_add:
@@ -430,7 +438,7 @@ def add_electrodes(
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row]
 
-        nwbfile.add_electrode(**electrode_kwargs)
+        nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
 
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
@@ -1131,9 +1139,13 @@ def add_units_table(
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
-
+    old_api = False
     if isinstance(sorting, SortingExtractor):
+        msg = ("Support for spikeextractors.SortingExtractor objects is deprecated. "
+               "Use spikeinterface.BaseSorting objects")
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
+        old_api = True
     else:
         checked_sorting = sorting
 
@@ -1204,6 +1216,10 @@ def add_units_table(
     else:
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
+        if old_api:
+            # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
+            if np.issubdtype(unit_ids.dtype, np.integer):
+                data_to_add["id"].update(data=unit_ids.astype("int"))
 
     units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
     extracted_properties = set(data_to_add)
@@ -1261,6 +1277,7 @@ def add_units_table(
             if unit_electrode_indices is not None:
                 unit_kwargs["electrodes"] = unit_electrode_indices[row]
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
+    added_unit_table_ids = units_table.id[-len(rows_to_add):]
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
     previous_table_size = len(units_table.id[:]) - len(unit_name_array)
@@ -1309,13 +1326,15 @@ def add_units_table(
     if write_waveforms:
         assert write_table_first_time, "write_waveforms is not supported with re-write"
         units_table = _add_waveforms_to_units_table(
-            sorting=sorting, units_table=units_table, skip_features=skip_features
+            sorting=sorting, units_table=units_table, row_ids=added_unit_table_ids,
+            skip_features=skip_features,
         )
 
 
 def _add_waveforms_to_units_table(
     sorting: SortingExtractor,
     units_table,
+    row_ids,
     skip_features: Optional[List[str]] = None,
 ):
     """
@@ -1357,7 +1376,7 @@ def _add_waveforms_to_units_table(
                     print(f"Skipping feature '{feature_name}' because not share across all units.")
                     skip_features.append(feature_name)
                     break
-        nspikes = {k: get_nspikes(units_table, int(k)) for k in unit_ids}
+        nspikes = {k: get_nspikes(units_table, k) for k in row_ids}
         for feature_name in feature_shapes.keys():
             # skip first dimension (num_spikes) when comparing feature shape
             if not np.all([elem[1:] == feature_shapes[feature_name][0][1:] for elem in feature_shapes[feature_name]]):
@@ -1383,7 +1402,7 @@ def _add_waveforms_to_units_table(
                     continue
                 set_dynamic_table_property(
                     dynamic_table=units_table,
-                    row_ids=[int(k) for k in unit_ids],
+                    row_ids=[int(k) for k in row_ids],
                     property_name=feature_name,
                     values=flatten_vals,
                     index=spikes_index,
