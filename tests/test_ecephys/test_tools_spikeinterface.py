@@ -611,6 +611,23 @@ class TestAddElectrodes(TestCase):
         channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
+    def test_channel_group_names_table(self):
+        "add_electrodes function should add new rows if same channel names, but different group_names"
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        original_groups = self.recording_1.get_channel_groups()
+        self.recording_1.set_channel_groups(["1"] * len(self.recording_1.channel_ids))
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        # reset channel_groups
+        self.recording_1.set_channel_groups(original_groups)
+        assert len(self.nwbfile.electrodes) == 2 * len(self.recording_1.channel_ids)
+        expected_channel_names_in_electrodes_table = list(self.recording_1.channel_ids) + list(
+            self.recording_1.channel_ids
+        )
+        channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+        group_names_in_electrodes_table = list(self.nwbfile.electrodes["group_name"].data)
+        self.assertEqual(len(np.unique(group_names_in_electrodes_table)), 2)
+
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
@@ -758,22 +775,6 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
-
-    def test_assertion_for_id_collision(self):
-        """
-        Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
-        """
-
-        values_dic = self.defaults
-
-        values_dic.update(id=0)
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=1)
-        self.nwbfile.add_electrode(**values_dic)
-        # The self.base_recording channel_ids are [0, 1, 2, 3]
-        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
-            add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
 
 
 class TestAddUnitsTable(TestCase):
@@ -986,25 +987,6 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
 
-    def test_id_collision_assertion(self):
-        """
-        Add some units to the units table before using the add_units_table function.
-        In this case there is are some common ids between the manually added units and the sorting ids which causes
-        collisions. That is, if the units ids in the sorter integer it is required for them to be different from the
-        ids already in the table.
-        """
-
-        values_dic = self.defaults
-
-        values_dic.update(id=0)
-        self.nwbfile.add_unit(**values_dic)
-
-        values_dic.update(id=1)
-        self.nwbfile.add_unit(**values_dic)
-        # The self.base_sorting unit_ids are [0, 1, 2, 3]
-        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
-            add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
-
     def test_write_units_table_in_processing_module(self):
         """ """
 
@@ -1163,6 +1145,40 @@ class TestWriteWaveforms(TestCase):
                 recording=self.we_recless_recording,
                 write_electrical_series=True,
             )
+
+    def test_write_multiple_probes(self):
+        """This test that the waveforms are written to different electrode groups"""
+        # we write the first set of waveforms as belonging to group 0
+        original_channel_groups = self.we_recless_recording.get_channel_groups()
+        self.we_recless_recording.set_channel_groups([0] * len(self.we_recless_recording.channel_ids))
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            recording=self.we_recless_recording,
+        )
+        # now we set new channel groups to mimic a different probe and call the function again
+        self.we_recless_recording.set_channel_groups([1] * len(self.we_recless_recording.channel_ids))
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            recording=self.we_recless_recording,
+        )
+        # check that we have 2 groups
+        self.assertEqual(len(self.nwbfile.electrode_groups), 2)
+        self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
+        # check that we have correct number of units
+        self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
+        # check electrode regions of units
+        for row in self.nwbfile.units.id:
+            if row < len(self.we_recless.unit_ids):
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+            else:
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+
+        # reset original channel groups
+        self.we_recless_recording.set_channel_groups(original_channel_groups)
 
     def test_unis_table_name(self):
         """This tests that the units naming exception"""

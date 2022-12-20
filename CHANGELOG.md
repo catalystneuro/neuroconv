@@ -1,5 +1,8 @@
 # Upcoming
 
+### Features
+* Improved handling of writing multiple probes to the same `NWB` file [PR #255](https://github.com/catalystneuro/neuroconv/pull/255)
+
 # v0.2.3
 
 ### Documentation and tutorial enhancements
