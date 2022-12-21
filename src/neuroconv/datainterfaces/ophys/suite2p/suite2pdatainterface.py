@@ -5,9 +5,7 @@ from ....utils import FolderPathType
 class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     """Data interface for Suite2pSegmentationExtractor."""
 
-    def __init__(
-        self, folder_path: FolderPathType, combined: bool = False, plane_no: int = 0, verbose: bool = True
-    ):
+    def __init__(self, folder_path: FolderPathType, combined: bool = False, plane_no: int = 0, verbose: bool = True):
         """
 
         Parameters
