@@ -14,7 +14,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         sampling_frequency: float = None,
         start_time: float = None,
         metadata: dict = None,
-        channel_names: List[str] = None,
+        channel_names: ArrayType = None,
         verbose: bool = True,
     ):
         """
