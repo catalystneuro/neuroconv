@@ -22,7 +22,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
-        metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
         metadata_schema = super().get_metadata_schema()

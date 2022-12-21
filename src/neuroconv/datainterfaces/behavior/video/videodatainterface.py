@@ -20,7 +20,7 @@ from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
 from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, OptionalFilePathType
 
 
-def _check_duplicates(videos_metadata: list[dict], file_paths):
+def _check_duplicates(videos_metadata: List[dict], file_paths):
     """
     Accumulates metadata for when multiple video files go in one ImageSeries container.
 

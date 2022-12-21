@@ -1,5 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-from typing import Optional
+from typing import Optional, List
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
@@ -12,7 +12,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        exclude_cluster_groups: Optional[list[str]] = None,
+        exclude_cluster_groups: Optional[List[str]] = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
