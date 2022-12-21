@@ -262,7 +262,6 @@ def add_electrodes(
         object to ignore when writing to the NWBFile.
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    old_api = False
     if isinstance(recording, RecordingExtractor):
         msg = (
             "Support for spikeextractors.RecordingExtractor objects is deprecated. "
@@ -270,9 +269,11 @@ def add_electrodes(
         )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
-        old_api = True
     else:
         checked_recording = recording
+
+    # this flag is used to keep old behavior of assigning "id" from int channel_ids
+    old_api = isinstance(checked_recording, OldToNewRecording)
 
     # For older versions of pynwb, we need to manually add these columns
     if get_package_version("pynwb") < Version("1.3.0"):
@@ -1141,7 +1142,7 @@ def add_units_table(
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
-    old_api = False
+
     if isinstance(sorting, SortingExtractor):
         msg = (
             "Support for spikeextractors.SortingExtractor objects is deprecated. "
@@ -1149,9 +1150,11 @@ def add_units_table(
         )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
-        old_api = True
     else:
         checked_sorting = sorting
+
+    # this flag is used to keep old behavior of assigning "id" from int unit_ids
+    old_api = isinstance(checked_sorting, OldToNewSorting)
 
     if write_in_processing_module:
         ecephys_mod = get_module(

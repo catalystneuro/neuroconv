@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from pathlib import Path
 from datetime import datetime
 
@@ -7,8 +8,16 @@ from pynwb import NWBHDF5IO
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import MovieInterface, DeepLabCutInterface, SLEAPInterface
 
-from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 import sleap_io
+
+# enable to run locally in interactive mode
+try:
+    from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+except:
+    from setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+
+if not BEHAVIOR_DATA_PATH.exists():
+    pytest.fail(f"No folder found in location: {BEHAVIOR_DATA_PATH}!")
 
 
 class TestSLEAPInterface(unittest.TestCase):
