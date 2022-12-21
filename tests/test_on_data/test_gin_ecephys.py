@@ -458,8 +458,9 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
                 # In the NWBSortingExtractor, since unit_names could be not unique,
                 # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
-                sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids,
-                                                       renamed_unit_ids=np.arange(len(sorting.unit_ids)))
+                sorting_renamed = sorting.select_units(
+                    unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
+                )
                 check_sorting_equal_si(SX1=sorting_renamed, SX2=nwb_sorting)
 
     @parameterized.expand(
