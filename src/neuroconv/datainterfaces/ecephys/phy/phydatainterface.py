@@ -16,6 +16,18 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
+        """
+        Initialize a PhySortingInterface.
+
+        Parameters
+        ----------
+        folder_path: str or Path
+            Path to the output Phy folder (containing the params.py).
+        exclude_cluster_groups: list of str | str, optional
+            Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
+        verbose: bool
+        spikeextractors_backend: bool
+        """
         if spikeextractors_backend:
             from spikeextractors import PhySortingExtractor
 
