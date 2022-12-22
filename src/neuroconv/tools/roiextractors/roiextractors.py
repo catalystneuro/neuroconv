@@ -376,7 +376,7 @@ def _imaging_frames_to_hdmf_iterator(
     ----------
     imaging : ImagingExtractor
         The imaging extractor to get the data from.
-    iterator_type: {"v1", "v2", None}, default: 'v2'
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -452,7 +452,7 @@ def write_imaging(
         The default is True.
     num_chunks: int
         Number of chunks for writing data to file
-    iterator_type: {"v1", "v2", None}, default: 'v2'
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
