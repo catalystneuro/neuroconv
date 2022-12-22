@@ -10,7 +10,7 @@ from inspect import Parameter, signature
 import pynwb
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 from pydantic.decorator import ValidatedFunction
 from pydantic.schema import model_schema
 
@@ -86,7 +86,12 @@ def get_pydantic_model_from_method_signature(function: callable, exclude: Option
                 default = ... if parameter.default is Parameter.empty else parameter.default
                 fields[name] = parameter.annotation, default
 
-            self.create_model(fields=fields, takes_args=False, takes_kwargs=True, config=None)
+            self.create_model(
+                fields=fields,
+                takes_args=False,
+                takes_kwargs=True,
+                config=dict(extra=Extra.allow),  # extras usually show up as fixed values passed into neo/SI
+            )
 
     return CustomValidatedFunction(function=function, exclude=exclude).model
 

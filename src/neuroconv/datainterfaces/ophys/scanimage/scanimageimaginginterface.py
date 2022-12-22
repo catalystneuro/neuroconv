@@ -42,8 +42,9 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         file_path: str
             Path to tiff file.
         fallback_sampling_frequency: float, optional
-            The sampling frequency can usually be extracted from the scanimage metadata in
-            exif:ImageDescription:state.acq.frameRate. If not, use this.
+            The sampling frequency can usually be extracted from the scanimage metadata under
+            'exif:ImageDescription:state.acq.frameRate'.
+            If it is not specified in that location, use this argument instead.
         """
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
@@ -57,6 +58,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             assert fallback_sampling_frequency is not None, assert_msg
             sampling_frequency = fallback_sampling_frequency
 
+        self.keyword_aliases = dict(fallback_sampling_frequency="sampling_frequency")
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self):

@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod, ABC
 import uuid
-from typing import Optional
+from typing import Optional, Dict
 
 from pynwb import NWBFile
 from pydantic.schema import model_schema
@@ -27,12 +27,16 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
 
-    def _validate_source(self, source_data: dict):
+    def _validate_source(self, source_data: dict, keyword_aliases: Optional[Dict[str, str]] = None):
+        if keyword_aliases:
+            for keyword, alias in keyword_aliases.items():
+                source_data[keyword] = source_data.pop(alias)
         self.get_source_model().parse_obj(obj=source_data)
 
     def __init__(self, **source_data):
         self.source_data = source_data
-        self._validate_source(source_data=source_data)
+        self.keyword_aliases = getattr(self, "keyword_aliases", None)
+        self._validate_source(source_data=source_data, keyword_aliases=self.keyword_aliases)
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
