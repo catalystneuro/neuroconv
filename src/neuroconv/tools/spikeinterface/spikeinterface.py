@@ -1009,7 +1009,7 @@ def write_recording(
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
         None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict (optional)
+    iterator_opts: dict, optional
         Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
         Valid options are
             buffer_gb : float (optional, defaults to 1 GB)
