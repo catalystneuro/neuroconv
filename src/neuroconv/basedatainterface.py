@@ -29,7 +29,7 @@ class BaseDataInterface(ABC):
         return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
 
     def _validate_source(self, source_data: dict):
-        self.get_source_schema().parse_obj(obj=source_data)
+        self.get_source_model().parse_obj(obj=source_data)
 
     def __init__(self, **source_data):
         self.source_data = source_data
