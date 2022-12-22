@@ -3,9 +3,10 @@ from pathlib import Path
 import json
 
 from pynwb.ecephys import ElectricalSeries
+from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
+from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, dict_deep_update
 from .spikeglx_utils import (
     get_session_start_time,
     _fetch_metadata_dic_for_spikextractors_spikelgx_object,
@@ -39,13 +40,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
+        source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
         return source_schema
 
     def __init__(
         self,
-        file_path: FilePathType,
+        file_path: FilePath,
         stub_test: bool = False,
         spikeextractors_backend: bool = False,
         verbose: bool = True,

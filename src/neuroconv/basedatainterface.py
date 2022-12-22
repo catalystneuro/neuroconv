@@ -4,6 +4,8 @@ import uuid
 from typing import Optional
 
 from pynwb import NWBFile
+from pydantic.schema import model_schema
+from pydantic.decorator import ValidatedFunction
 
 from .utils import get_base_schema, get_schema_from_method_signature
 
@@ -12,17 +14,26 @@ class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
     @classmethod
+    def get_source_model(cls):
+        """Infer the Pydantic model for the source_data from the method signature (annotation typing)."""
+        return ValidatedFunction(function=cls.__init__, config=None).model
+
+    @classmethod
     def get_source_schema(cls):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls.__init__, exclude=["source_data"])
+        return model_schema(cls.get_source_model())
 
     @classmethod
     def get_conversion_options_schema(cls):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
 
+    def _validate_source(self, source_data: dict):
+        self.get_source_schema().parse_obj(obj=source_data)
+
     def __init__(self, **source_data):
         self.source_data = source_data
+        self._validate_source(source_data=source_data)
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
