@@ -16,7 +16,7 @@ class BaseDataInterface(ABC):
     @classmethod
     def get_source_model(cls):
         """Infer the Pydantic model for the source_data from the method signature (annotation typing)."""
-        return ValidatedFunction(function=cls.__init__, config=None).model
+        return ValidatedFunction(function=cls.__init__, config=None)
 
     @classmethod
     def get_source_schema(cls):

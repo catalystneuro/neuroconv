@@ -4,10 +4,14 @@ import json
 import inspect
 from datetime import datetime
 import numpy as np
+from typing import Any, List, Optional, Dict, Tuple
+from inspect import Parameter, signature
 
 import pynwb
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
+from pydantic import BaseModel, ValidatedFunction
+from pydantic.schema import model_schema
 
 from .dict import dict_deep_update
 from .types import FilePathType, FolderPathType
@@ -48,6 +52,58 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     return base_schema
 
 
+def get_pydantic_model_from_method_signature(function: callable, exclude: Optional[List[str]] = None) -> BaseModel:
+    """
+    Generate a Pydantic model from the signature of an arbitrary function which uses keywords with annotation typing.
+
+    Parameters
+    ----------
+    function : callable
+        Any function that uses keywords with annotation types.
+    exclude : list of strings, default: None
+        A list of keys to exclude from the model but are present in the function signature.
+        Can be useful when skipping reserved names such as 'self' in methods of a class.
+
+    Returns
+    -------
+    model : instance of a pydantic model
+    """
+    # The default model of the parent 'ValidatedFunction' includes many fields we do not need
+    # but typical model-copying methods only work on fully instantiated models (which also triggers validation),
+    # whereas the model of this decorator class works more as a class method
+    class CustomValidatedFunction(ValidatedFunction):
+        def __init__(self, function: callable, exclude: Optional[List[str]] = None):
+            super().__init__(function=function, config=None)  # Sets various attributes other methods assume exist
+
+            parameters: Dict[str, Parameter] = signature(function).parameters
+            fields: Dict[str, Tuple[Any, Any]] = dict()
+
+            if exclude is not None:
+                parameters = {k: v for k, v in parameters.items() if k not in exclude}
+
+            for name, parameter in parameters.items():
+                fields[name] = parameter.annotation, ...
+
+            self.create_model(fields=fields, takes_args=False, takes_kwargs=True, config=None)
+
+    return CustomValidatedFunction(function=function, exclude=exclude).model
+
+
+def get_schema_from_pydantic_model(model: BaseModel) -> dict[str, Any]:
+    """
+    Return the JSON schema of a Pydantic model.
+
+    Parameters
+    ----------
+    model : any pydantic model
+
+    Returns
+    -------
+    json_schema : dict
+    """
+    return model_schema(model)
+
+
 def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
@@ -56,6 +112,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
     ----------
     class_method: function
     exclude: list, optional
+
     Returns
     -------
     dict
@@ -76,7 +133,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         FilePathType="string",
         FolderPathType="string",
     )
-    for param_name, param in inspect.signature(class_method).parameters.items():
+    for param_name, param in signature(class_method).parameters.items():
         if param_name not in exclude:
             if param.annotation:
                 if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
