@@ -7,6 +7,7 @@ from warnings import warn
 import numpy as np
 import psutil
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+
 # from hdmf.commmon import VectorData
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
