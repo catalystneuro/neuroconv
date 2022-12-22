@@ -366,7 +366,7 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 
 def _imaging_frames_to_hdmf_iterator(
     imaging: ImagingExtractor,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
 ):
     """
@@ -376,11 +376,11 @@ def _imaging_frames_to_hdmf_iterator(
     ----------
     imaging : ImagingExtractor
         The imaging extractor to get the data from.
-    iterator_type : {'v2', 'v1'}
-        The type of iterator to use.
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
+        The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
-        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_options : dict, optional
         Dictionary of options for the iterator.
         For 'v1' this is the same as the options for the DataChunkIterator.
@@ -420,7 +420,7 @@ def write_imaging(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
     buffer_size: Optional[int] = None,  # TODO: to be removed
@@ -450,11 +450,13 @@ def write_imaging(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
-    iterator_type : {'v2', 'v1'}
-        The type of iterator to use.
+    num_chunks: int
+        Number of chunks for writing data to file
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
+        The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
-        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_options : dict, optional
         Dictionary of options for the iterator.
         For 'v1' this is the same as the options for the DataChunkIterator.
