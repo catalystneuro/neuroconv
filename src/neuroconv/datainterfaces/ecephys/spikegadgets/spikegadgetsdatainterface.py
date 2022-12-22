@@ -1,6 +1,8 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
+from typing import Optional
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
+from ....utils import FilePathType, ArrayType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
@@ -19,8 +21,8 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        gains: OptionalArrayType = None,
-        probe_file_path: OptionalFilePathType = None,
+        gains: Optional[ArrayType] = None,
+        probe_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
