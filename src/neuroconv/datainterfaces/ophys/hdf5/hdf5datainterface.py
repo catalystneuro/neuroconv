@@ -1,5 +1,3 @@
-from typing import List
-
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FilePathType, ArrayType
 
