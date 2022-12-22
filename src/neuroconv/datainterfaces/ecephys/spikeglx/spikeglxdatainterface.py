@@ -14,7 +14,7 @@ from .spikeglx_utils import (
 )
 
 
-def add_recording_extractor_properties(recording_extractor):
+def add_recording_extractor_properties(recording_extractor) -> None:
     """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
 
     probe = recording_extractor.get_probe()
@@ -38,7 +38,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
         return source_schema
@@ -55,12 +55,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        stub_test : bool
-            Whether to shorten file for testing purposes. Default: False.
-        spikeextractors_backend : bool
-            Whether to use the legacy spikeextractors library backend. Default: False.
-        verbose : bool
-            Whether to output verbose text. Default: True.
+        stub_test : bool, default: False
+            Whether to shorten file for testing purposes.
+        spikeextractors_backend : bool, default: False
+            Whether to use the legacy spikeextractors library backend.
+        verbose : bool, default: True
+            Whether to output verbose text.
         """
         from probeinterface import read_spikeglx
 
@@ -90,14 +90,14 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
@@ -131,7 +131,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata
 
-    def get_conversion_options(self):
+    def get_conversion_options(self) -> dict:
         conversion_options = dict(write_as="raw", es_key="ElectricalSeriesRaw", stub_test=False)
         return conversion_options
 
@@ -170,7 +170,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
 
         del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeriesRaw"]
@@ -179,7 +179,7 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         del metadata["Ecephys"]["ElectricalSeriesRaw"]
         metadata["Ecephys"].update(
@@ -190,6 +190,6 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
 
         return metadata
 
-    def get_conversion_options(self):
+    def get_conversion_options(self) -> dict:
         conversion_options = dict(write_as="raw", es_key="ElectricalSeriesLFP", stub_test=False)
         return conversion_options
