@@ -523,10 +523,11 @@ def _recording_traces_to_hdmf_iterator(
         The recording segment to add to the NWBFile.
     return_scaled : bool, defaults to False
         When True recording extractor objects from spikeinterface return their traces in microvolts.
-    iterator_type: str (optional, defaults to 'v2')
+    iterator_type: {"v1", "v2", None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_opts: dict (optional)
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
@@ -618,10 +619,11 @@ def add_electrical_series(
         Set to None to disable all compression.
     compression_opts: int (optional, defaults to 4)
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
+    iterator_type: {"v1", "v2", None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_opts: dict (optional)
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
@@ -1002,10 +1004,11 @@ def write_recording(
         Set to None to disable all compression.
     compression_opts: int (optional, defaults to 4)
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
+    iterator_type: {"v1", "v2", None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_opts: dict (optional)
         Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
         Valid options are
