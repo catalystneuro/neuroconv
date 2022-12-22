@@ -18,6 +18,7 @@ from .json_schema import (
     unroot_schema,
     fill_defaults,
     get_metadata_schema_for_icephys,
+    get_pydantic_model_from_method_signature,
 )
 from .globbing import decompose_f_string, parse_f_string
 from .checks import calculate_regular_series_rate

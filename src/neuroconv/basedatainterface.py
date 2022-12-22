@@ -5,9 +5,8 @@ from typing import Optional
 
 from pynwb import NWBFile
 from pydantic.schema import model_schema
-from pydantic.decorator import ValidatedFunction
 
-from .utils import get_base_schema, get_schema_from_method_signature
+from .utils import get_base_schema, get_schema_from_method_signature, get_pydantic_model_from_method_signature
 
 
 class BaseDataInterface(ABC):
@@ -16,7 +15,7 @@ class BaseDataInterface(ABC):
     @classmethod
     def get_source_model(cls):
         """Infer the Pydantic model for the source_data from the method signature (annotation typing)."""
-        return ValidatedFunction(function=cls.__init__, config=None)
+        return get_pydantic_model_from_method_signature(function=cls.__init__, exclude=["self"])
 
     @classmethod
     def get_source_schema(cls):

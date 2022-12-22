@@ -1,5 +1,11 @@
 # Upcoming
 
+### Features
+* Swapped from `jsonschema.validation` to Pydantic schema parsing for source schemas. [PR #264](https://github.com/catalystneuro/neuroconv/pull/264)
+* Enable validation of all initializations at the DataInterface level. [PR #264](https://github.com/catalystneuro/neuroconv/pull/264)
+
+
+
 # v0.2.3
 
 ### Documentation and tutorial enhancements
