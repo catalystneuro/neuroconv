@@ -1,16 +1,18 @@
 """Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl."""
 from collections import defaultdict
-from warnings import warn
-from typing import Optional
 from copy import deepcopy
+from typing import Optional
+from warnings import warn
 
-import psutil
 import numpy as np
-from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
+import psutil
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+# from hdmf.commmon import VectorData
+from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.base import Images
-from pynwb.image import GrayscaleImage
 from pynwb.device import Device
+from pynwb.image import GrayscaleImage
 from pynwb.ophys import (
     ImageSegmentation,
     ImagingPlane,
@@ -21,10 +23,7 @@ from pynwb.ophys import (
     RoiResponseSeries,
     DfOverF,
 )
-
-# from hdmf.commmon import VectorData
-from hdmf.data_utils import DataChunkIterator
-from hdmf.backends.hdf5.h5_utils import H5DataIO
+from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
@@ -271,7 +270,7 @@ def add_two_photon_series(
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
     buffer_size: Optional[int] = None,  # TODO: to be removed
-):
+) -> NWBFile:
     """
     Auxiliary static method for nwbextractor.
 
@@ -552,20 +551,20 @@ def add_plane_segmentation(
     segmentation_extractor : SegmentationExtractor
         The segmentation extractor to get the results from.
     nwbfile : NWBFile
-        The nwbfile to add the plane segmentation to.
+        The NWBFile to add the plane segmentation to.
     metadata : dict, optional
         The metadata for the plane segmentation.
     plane_segmentation_index: int, optional
         The index of the plane segmentation to add.
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-            faster write speeds.
+        If there are a very large number of ROIs (such as in whole-brain recordings),
+        you may wish to disable this for faster write speeds.
     include_roi_acceptance : bool, default: True
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
-            faster write speeds.
-    mask_type : {'image', 'pixel'}, optional
+        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
+        faster write speeds.
+    mask_type : {'image', 'pixel', 'voxel'}, optional
         There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
         Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
             by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
@@ -573,7 +572,7 @@ def add_plane_segmentation(
             of pixels in each ROI.
         Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
             of voxels in each ROI.
-        Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
+        Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
         Defaults to 'image'.
     iterator_options : dict, optional
