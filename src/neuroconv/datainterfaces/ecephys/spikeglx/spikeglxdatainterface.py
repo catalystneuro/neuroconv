@@ -73,15 +73,20 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
             self.Extractor = SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path), verbose=verbose)
+            super().__init__(file_path=file_path, verbose=verbose)
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
             self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
+            self.source_data_to_validate = dict(
+                file_path=file_path,
+                stub_test=stub_test,
+                spikeextractors_backend=spikeextractors_backend,
+                verbose=verbose,
+            )
             super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
-            self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Mount the probe

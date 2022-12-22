@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod, ABC
 import uuid
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 from pynwb import NWBFile
 from pydantic.schema import model_schema
@@ -10,7 +10,21 @@ from .utils import get_base_schema, get_schema_from_method_signature, get_pydant
 
 
 class BaseDataInterface(ABC):
-    """Abstract class defining the structure of all DataInterfaces."""
+    """
+    Abstract class defining the structure of all DataInterfaces.
+
+    Attributes
+    ----------
+    source_data : dict
+        Structure of input arguments used in upstream initialization.
+    source_data_to_validate : dict, default: None
+        If the input arguments for the downstream __init__ of the interface differ from upstream structure
+        this can be specified to clarify which structure is to be validated.
+
+    """
+
+    source_data: Dict[str, Any]
+    source_data_to_validate: Optional[Dict[str, Any]] = None
 
     @classmethod
     def get_source_model(cls):
@@ -27,16 +41,13 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
 
-    def _validate_source(self, source_data: dict, keyword_aliases: Optional[Dict[str, str]] = None):
-        if keyword_aliases:
-            for keyword, alias in keyword_aliases.items():
-                source_data[keyword] = source_data.pop(alias)
-        self.get_source_model().parse_obj(obj=source_data)
+    def _validate_source(self, source_data_to_validate: dict):
+        self.get_source_model().parse_obj(obj=source_data_to_validate)
 
     def __init__(self, **source_data):
         self.source_data = source_data
-        self.keyword_aliases = getattr(self, "keyword_aliases", None)
-        self._validate_source(source_data=source_data, keyword_aliases=self.keyword_aliases)
+        self.source_data_to_validate = self.source_data_to_validate or self.source_data
+        self._validate_source(source_data_to_validate=self.source_data_to_validate)
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""

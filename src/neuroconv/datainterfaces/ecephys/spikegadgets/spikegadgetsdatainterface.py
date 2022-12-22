@@ -1,4 +1,8 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
+from typing import List, Optional
+
+from pydantic import FilePath
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
 
@@ -18,9 +22,9 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        file_path: FilePathType,
-        gains: OptionalArrayType = None,
-        probe_file_path: OptionalFilePathType = None,
+        file_path: FilePath,
+        gains: List[float] = None,
+        probe_file_path: Optional[FilePath] = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
@@ -42,6 +46,13 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
+        self.source_data_to_validate = dict(
+            file_path=file_path,
+            gains=gains,
+            probe_file_path=probe_file_path,
+            verbose=verbose,
+            spikeextractors_backend=spikeextractors_backend,
+        )
 
         if spikeextractors_backend:
             from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file

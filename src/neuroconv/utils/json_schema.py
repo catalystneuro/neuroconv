@@ -90,8 +90,11 @@ def get_pydantic_model_from_method_signature(function: callable, exclude: Option
                 fields=fields,
                 takes_args=False,
                 takes_kwargs=True,
-                config=dict(extra=Extra.allow),  # extras usually show up as fixed values passed into neo/SI
+                config=dict(
+                    extra=Extra.allow,  # extras usually show up as fixed values passed into neo/SI
+                ),
             )
+            self.model.__config__.arbitrary_types_allowed = True  # Does not propagate when set in higher configs
 
     return CustomValidatedFunction(function=function, exclude=exclude).model
 
