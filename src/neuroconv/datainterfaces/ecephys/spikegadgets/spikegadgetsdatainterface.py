@@ -39,7 +39,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
         spikeextractors_backend : bool, default: False
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
+            When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
 
