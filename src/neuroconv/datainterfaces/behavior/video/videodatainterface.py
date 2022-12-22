@@ -20,20 +20,20 @@ from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
 from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, OptionalFilePathType
 
 
-def _check_duplicates(videos_metadata, file_paths):
+def _check_duplicates(videos_metadata: List[dict], file_paths):
     """
     Accumulates metadata for when multiple video files go in one ImageSeries container.
 
     Parameters
     ----------
-    videos_metadata: List[Dict]
+    videos_metadata: list of dict
         The metadata corresponding to the videos should be organized as follow
                 videos_metadata =[
                             dict(name="Video1", description="This is the first video.."),
                             dict(name="SecondVideo", description="Video #2 details..."),
                 ]
     -------
-    videos_metadata_unique: List[Dict]
+    videos_metadata_unique: list of dict
         if metadata has common names (case when the user intends to put multiple video files
         under the same ImageSeries container), this removes the duplicate names.
     file_paths_list: List[List[str]]

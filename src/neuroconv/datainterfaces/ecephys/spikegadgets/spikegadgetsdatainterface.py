@@ -31,15 +31,15 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to the .rec file.
-        gains : ArrayType, optional
+        gains : array_like, optional
             The early versions of SpikeGadgest do not automatically record the conversion factor ('gain') of the
             acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
         probe_file_path : FilePathType, optional
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
+        spikeextractors_backend : bool, default: False
+            When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
 

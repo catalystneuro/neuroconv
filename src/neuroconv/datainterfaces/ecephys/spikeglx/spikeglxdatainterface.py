@@ -53,13 +53,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         """
         Parameters
         ----------
-        file_path: FilePathType
+        file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        stub_test: bool
+        stub_test : bool
             Whether to shorten file for testing purposes. Default: False.
-        spikeextractors_backend: bool
+        spikeextractors_backend : bool
             Whether to use the legacy spikeextractors library backend. Default: False.
-        verbose: bool
+        verbose : bool
             Whether to output verbose text. Default: True.
         """
         from probeinterface import read_spikeglx

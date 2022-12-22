@@ -13,7 +13,7 @@ from neuroconv.tools.nwb_helpers import (
 from neuroconv.utils import (
     get_schema_from_hdmf_class,
     get_base_schema,
-    OptionalFilePathType,
+    FilePathType,
 )
 from pynwb import NWBFile, TimeSeries
 
@@ -59,11 +59,12 @@ class AudioInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_paths: list of FilePathTypes
+        file_paths : list of FilePathTypes
             The file paths to the audio recordings in sorted, consecutive order.
             We recommend using `natsort` to ensure the files are in consecutive order.
             from natsort import natsorted
             natsorted(file_paths)
+        verbose: bool, default: False
         """
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
         format_is_not_supported = [
@@ -95,7 +96,7 @@ class AudioInterface(BaseDataInterface):
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         default_name = "AcousticWaveformSeries"
         is_multiple_file_path = len(self.source_data["file_paths"]) > 1
         audio_metadata = [
@@ -113,7 +114,7 @@ class AudioInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
@@ -125,6 +126,34 @@ class AudioInterface(BaseDataInterface):
         overwrite: bool = False,
         verbose: bool = True,
     ):
+        """
+
+        Parameters
+        ----------
+        nwbfile_path: FilePathType, optional
+            If a file exists at this path, append to it. If not, write the file here.
+        nwbfile: NWBFile, optional
+            Append to this NWBFile object
+        metadata: dict, optional
+        stub_test: bool, default: False
+        stub_frames: int, default: 1000
+        write_as: {'stimulus', 'acquisition'}
+            The acoustic waveform series can be added to the NWB file either as
+            "stimulus" or as "acquisition".
+        starting_times: list, optional
+            Starting time for each AcousticWaveformSeries
+        iterator_options: dict, optional
+            Dictionary of options for the SliceableDataChunkIterator.
+        compression_options: dict, optional
+            Dictionary of options for compressing the data for H5DataIO.
+        overwrite: bool, default: False
+        verbose: bool, default: True
+
+        Returns
+        -------
+        NWBFile
+
+        """
         file_paths = self.source_data["file_paths"]
         audio_metadata = metadata["Behavior"]["Audio"]
         # Checks for metadata
