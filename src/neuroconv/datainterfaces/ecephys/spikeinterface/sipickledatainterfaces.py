@@ -22,7 +22,7 @@ class SIPickleRecordingInterface(BaseRecordingExtractorInterface):
             category=DeprecationWarning,
             stacklevel=2,
         )
-        
+
         from spikeextractors import load_extractor_from_pickle
 
         self.recording_extractor = load_extractor_from_pickle(pkl_file=file_path)

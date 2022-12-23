@@ -93,7 +93,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
                 category=DeprecationWarning,
                 stacklevel=2,
             )
-            
+
             _ = get_package(package_name="pyintan")
             from spikeextractors import IntanRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording

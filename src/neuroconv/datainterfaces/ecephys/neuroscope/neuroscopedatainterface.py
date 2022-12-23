@@ -196,7 +196,7 @@ class NeuroScopeMultiRecordingTimeInterface(NeuroScopeRecordingInterface):
             category=DeprecationWarning,
             stacklevel=2,
         )
-        
+
         get_package(package_name="lxml")
         from spikeinterface.core.old_api_utils import OldToNewRecording
 

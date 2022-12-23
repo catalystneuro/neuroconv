@@ -24,7 +24,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             category=DeprecationWarning,
             stacklevel=2,
         )
-        
+
         hdf5storage = get_package(package_name="hdf5storage")
 
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)
