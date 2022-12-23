@@ -84,6 +84,16 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend and pyintan dependency
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            
             _ = get_package(package_name="pyintan")
             from spikeextractors import IntanRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
