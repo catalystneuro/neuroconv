@@ -12,8 +12,6 @@ from ....utils import FilePathType
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
 
-    ExtractorModuleName = "spikeextractors"
-
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         hdf5storage = get_package(package_name="hdf5storage")
 
