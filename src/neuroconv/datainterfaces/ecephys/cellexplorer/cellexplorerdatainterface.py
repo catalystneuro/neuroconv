@@ -38,34 +38,41 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         if self.read_spikes_info_with_scipy:
             unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [int(x) for x in cell_info["cluID"][0][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="clu_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0][0]]
+                )
             if "shankID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [f"Group{x}" for x in cell_info["shankID"][0][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="group_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0][0]]
+                )
             if "region" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0][0]]
+                )
         else:  # Logic for hdf5storage
             unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [int(x) for x in cell_info["cluID"][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="clu_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0]]
+                )
             if "shankID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [f"Group{x}" for x in cell_info["shankID"][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="group_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0]]
+                )
             if "region" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0]][0]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0]]
+                )
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
             celltype_info = scipy.io.loadmat(celltype_file_path).get("CellClass", np.empty(0))
             if "label" in celltype_info.dtype.names:
-                for unit_id, value in zip(
-                    unit_ids, [str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]]
-                ):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="cell_type", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids,
+                    key="cell_type",
+                    values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
+                )
 
     def get_metadata(self):
         session_path = Path(self.source_data["file_path"]).parent
