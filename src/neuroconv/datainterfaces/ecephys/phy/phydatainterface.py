@@ -29,6 +29,15 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         spikeextractors_backend: bool
         """
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             from spikeextractors import PhySortingExtractor
 
             self.Extractor = PhySortingExtractor
