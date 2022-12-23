@@ -1,2 +1,2 @@
 hdf5storage>=0.1.18
-git+https://github.com/spikeinterface/spikeinterface@6e5604b6671df3af5c648b389c9925d96abbdfca # main branch on 12/23/22, 1:25pm EST
+spikeinterface @ https://github.com/spikeinterface/spikeinterface.git@6e5604b6671df3af5c648b389c9925d96abbdfca # main branch on 12/23/22, 1:25pm EST
