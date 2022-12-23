@@ -1,6 +1,7 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
 import json
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
