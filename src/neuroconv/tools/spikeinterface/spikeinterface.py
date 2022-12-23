@@ -788,7 +788,7 @@ def add_epochs(recording: RecordingExtractor, nwbfile: pynwb.NWBFile):
         category=DeprecationWarning,
         stacklevel=2,
     )
-    
+
     for epoch_name in recording.get_epoch_names():
         epoch = recording.get_epoch_info(epoch_name)
         if nwbfile.epochs is None:
