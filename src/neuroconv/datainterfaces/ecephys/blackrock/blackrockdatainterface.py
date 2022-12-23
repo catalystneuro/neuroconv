@@ -1,7 +1,7 @@
 """Authors: Luiz Tauffer."""
 from typing import Optional
 from pathlib import Path
-from warning import warn
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
