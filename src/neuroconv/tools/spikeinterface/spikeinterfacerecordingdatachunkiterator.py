@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Saksham Sharda."""
 from typing import Tuple, Iterable, Optional, Union
+from warnings import warn
 
 from spikeinterface.core.old_api_utils import OldToNewRecording
 from spikeextractors import RecordingExtractor
