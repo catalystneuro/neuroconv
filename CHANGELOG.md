@@ -1,5 +1,10 @@
 # Upcoming
 
+### Features
+* Swapped the backend for `CellExplorerSortingInterface` from `spikeextactors` to `spikeinterface`. [PR #267](https://github.com/catalystneuro/neuroconv/pull/267)
+
+
+
 # v0.2.3
 
 ### Documentation and tutorial enhancements
