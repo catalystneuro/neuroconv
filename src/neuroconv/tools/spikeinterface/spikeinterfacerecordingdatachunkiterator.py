@@ -65,6 +65,15 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         """
         if isinstance(recording, RecordingExtractor):
             self.recording = OldToNewRecording(oldapi_recording_extractor=recording)
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
         else:
             self.recording = recording
         self.segment_index = segment_index
