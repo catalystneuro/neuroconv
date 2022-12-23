@@ -59,6 +59,15 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             self.file_path = file_path
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             spikeextractors = get_package(package_name="spikeextractors")
             spikeinterface = get_package(package_name="spikeinterface")
 
@@ -135,7 +144,6 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         verbose : bool, optional
             Enables verbosity
         """
-
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self):
