@@ -44,6 +44,15 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
