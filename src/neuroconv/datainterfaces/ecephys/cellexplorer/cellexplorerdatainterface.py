@@ -15,6 +15,16 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     ExtractorModuleName = "spikeextractors"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        
         hdf5storage = get_package(package_name="hdf5storage")
 
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)
