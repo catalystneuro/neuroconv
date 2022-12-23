@@ -12,7 +12,7 @@ from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
 from ...nwbconverter import NWBConverter
-from ...utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
+from ...utils import dict_deep_update, load_dict_from_file, FilePathType, FolderPathType
 
 
 @click.command()
@@ -51,11 +51,11 @@ def run_conversion_from_yaml_cli(
 
 def run_conversion_from_yaml(
     specification_file_path: FilePathType,
-    data_folder_path: OptionalFolderPathType = None,
-    output_folder_path: OptionalFolderPathType = None,
+    data_folder_path: Optional[FolderPathType] = None,
+    output_folder_path: Optional[FolderPathType] = None,
     overwrite: bool = False,
-    data_folder: OptionalFolderPathType = None,
-    output_folder: OptionalFolderPathType = None,
+    data_folder: Optional[FolderPathType] = None,
+    output_folder: Optional[FolderPathType] = None,
 ):
     """
     Run conversion to NWB given a yaml specification file.

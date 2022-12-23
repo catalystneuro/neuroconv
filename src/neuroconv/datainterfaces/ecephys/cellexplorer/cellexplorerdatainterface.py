@@ -17,16 +17,12 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         hdf5storage = get_package(package_name="hdf5storage")
 
+        self.source_data_to_validate = dict(file_path=file_path, verbose=verbose)
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)
-        self.source_data = dict(file_path=file_path)
-        spikes_matfile_path = Path(file_path)
 
+        spikes_matfile_path = Path(file_path)
         session_path = Path(file_path).parent
         session_id = session_path.stem
-
-        assert (
-            spikes_matfile_path.is_file()
-        ), f"The file_path should point to an existing .spikes.cellinfo.mat file ({spikes_matfile_path})"
 
         try:
             spikes_mat = scipy.io.loadmat(file_name=str(spikes_matfile_path))
@@ -70,7 +66,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="cell_type", value=value)
 
     def get_metadata(self):
-        session_path = Path(self.source_data["file_path"]).parent
+        session_path = Path(self.source_data_to_validate["file_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recording or lfp are included in conversion
         metadata = dict(NWBFile=dict(session_id=session_id))

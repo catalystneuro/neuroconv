@@ -10,7 +10,7 @@ from ...utils import (
     get_schema_from_hdmf_class,
     fill_defaults,
     get_base_schema,
-    OptionalFilePathType,
+    FilePathType,
     dict_deep_update,
 )
 
@@ -74,7 +74,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

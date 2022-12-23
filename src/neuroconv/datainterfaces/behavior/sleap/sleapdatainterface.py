@@ -7,7 +7,7 @@ from pynwb.file import NWBFile
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....tools import get_package
-from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
+from ....utils import dict_deep_update, FilePathType
 
 from .sleap_utils import extract_timestamps
 
@@ -18,7 +18,7 @@ class SLEAPInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        video_file_path: OptionalFilePathType = None,
+        video_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
         frames_per_second: Optional[float] = None,
     ):
@@ -46,7 +46,7 @@ class SLEAPInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

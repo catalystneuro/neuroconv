@@ -1,5 +1,5 @@
 """Author: Luiz Tauffer."""
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from warnings import warn
 
 from pynwb import NWBFile, NWBHDF5IO
@@ -7,7 +7,7 @@ from pynwb import NWBFile, NWBHDF5IO
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
-    OptionalFilePathType,
+    FilePathType,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     get_metadata_schema_for_icephys,
@@ -33,7 +33,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=[])
         return source_schema
 
-    def __init__(self, file_paths: list):
+    def __init__(self, file_paths: List[FilePathType]):
         from ...tools.neo import get_number_of_electrodes, get_number_of_segments
 
         super().__init__(file_paths=file_paths)
@@ -70,13 +70,13 @@ class BaseIcephysInterface(BaseExtractorInterface):
     def run_conversion(
         self,
         nwbfile: NWBFile = None,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         metadata: dict = None,
         overwrite: bool = False,
         icephys_experiment_type: Optional[str] = None,
         skip_electrodes: Tuple[int] = (),
         # TODO: to be removed
-        save_path: OptionalFilePathType = None,  # pragma: no cover
+        save_path: Optional[FilePathType] = None,  # pragma: no cover
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.

@@ -9,10 +9,10 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class, dict_deep_update
+from ....utils import FilePathType, FolderPathType, get_schema_from_hdmf_class, dict_deep_update
 
 
-def subset_shank_channels(recording_extractor, xml_file_path: str):
+def subset_shank_channels(recording_extractor, xml_file_path: FilePathType):
     """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
     shank_channels = get_shank_channels(xml_file_path=xml_file_path)
 
@@ -26,7 +26,7 @@ def subset_shank_channels(recording_extractor, xml_file_path: str):
     return sub_recording
 
 
-def add_recording_extractor_properties(recording_extractor, xml_file_path: str, gain: Optional[float] = None):
+def add_recording_extractor_properties(recording_extractor, xml_file_path: FilePathType, gain: Optional[float] = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
@@ -59,7 +59,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
     @staticmethod
-    def get_ecephys_metadata(xml_file_path: str):
+    def get_ecephys_metadata(xml_file_path: FilePathType):
         """Auto-populates ecephys metadata from the xml_file_path."""
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
@@ -78,7 +78,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
@@ -156,7 +156,7 @@ class NeuroScopeMultiRecordingTimeInterface(NeuroScopeRecordingInterface):
         self,
         folder_path: FolderPathType,
         gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -204,7 +204,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         self,
         file_path: FilePathType,
         gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
         spikeextractors_backend: bool = False,
     ):
         """
@@ -266,7 +266,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         folder_path: FolderPathType,
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
         # TODO: we can enable this once

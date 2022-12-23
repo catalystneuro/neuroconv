@@ -61,7 +61,7 @@ def custom_name_func(testcase_func, param_num, param):
         f"{testcase_func.__name__}_{param_num}_"
         f"{parameterized.to_safe_name(reduced_interface_name)}"
         f"_{param.kwargs.get('case_name', '')}"
-    )
+    ).rstrip("_")
 
 
 class TestEcephysNwbConversions(unittest.TestCase):
@@ -89,9 +89,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestLFP=data_interface)
 
         converter = TestConverter(source_data=dict(TestLFP=interface_kwargs))
+
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
-                self.assertIn(member=interface_kwarg, container=converter.data_interface_objects["TestLFP"].source_data)
+                interface = converter.data_interface_objects["TestLFP"]
+                container = interface.source_data_to_validate or interface.source_data
+                self.assertIn(member=interface_kwarg, container=container)
+
         metadata = converter.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
@@ -316,11 +320,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestRecording=data_interface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
+
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
-                self.assertIn(
-                    member=interface_kwarg, container=converter.data_interface_objects["TestRecording"].source_data
-                )
+                interface = converter.data_interface_objects["TestRecording"]
+                container = interface.source_data_to_validate or interface.source_data
+                self.assertIn(member=interface_kwarg, container=container)
+
         metadata = converter.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
@@ -427,11 +433,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestSorting=data_interface)
 
         converter = TestConverter(source_data=dict(TestSorting=interface_kwargs))
+
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
-                self.assertIn(
-                    member=interface_kwarg, container=converter.data_interface_objects["TestSorting"].source_data
-                )
+                interface = converter.data_interface_objects["TestSorting"]
+                container = interface.source_data_to_validate or interface.source_data
+                self.assertIn(member=interface_kwarg, container=container)
+
         metadata = converter.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)

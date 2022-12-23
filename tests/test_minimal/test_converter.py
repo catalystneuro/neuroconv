@@ -23,6 +23,9 @@ def test_converter():
         nwbfile_path = str(test_dir / "extension_test.nwb")
 
         class NdxEventsInterface(BaseDataInterface):
+            def __init__(self):
+                super().__init__()
+
             def run_conversion(self, nwbfile: NWBFile, metadata: dict):
                 events = LabeledEvents(
                     name="LabeledEvents",
@@ -49,8 +52,8 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         class InterfaceA(BaseDataInterface):
-            def __init__(self, **source_data):
-                super().__init__(**source_data)
+            def __init__(self):
+                super().__init__()
 
             def run_conversion(self):
                 pass
@@ -58,8 +61,8 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         cls.InterfaceA = InterfaceA
 
         class InterfaceB(BaseDataInterface):
-            def __init__(self, **source_data):
-                super().__init__(**source_data)
+            def __init__(self):
+                super().__init__()
 
             def run_conversion(self):
                 pass
