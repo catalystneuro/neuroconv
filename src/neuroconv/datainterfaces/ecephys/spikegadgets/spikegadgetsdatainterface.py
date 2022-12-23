@@ -1,4 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
+from warnings import warn
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
 
