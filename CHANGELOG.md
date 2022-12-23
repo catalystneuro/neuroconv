@@ -1,5 +1,11 @@
 # Upcoming
 
+### Pending deprecation
+
+* Added `DeprecationWarnings` to all `spikeextractors` backends. [PR #265](https://github.com/catalystneuro/neuroconv/pull/265)
+
+
+
 # v0.2.3
 
 ### Documentation and tutorial enhancements
