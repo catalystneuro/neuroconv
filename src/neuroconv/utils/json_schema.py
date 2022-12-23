@@ -100,7 +100,7 @@ def get_pydantic_model_from_method_signature(function: callable, exclude: Option
     return CustomValidatedFunction(function=function, exclude=exclude).model
 
 
-def get_schema_from_pydantic_model(model: BaseModel) -> dict[str, Any]:
+def get_schema_from_pydantic_model(model: BaseModel) -> Dict[str, Any]:
     """
     Return the JSON schema of a Pydantic model.
 
