@@ -32,38 +32,33 @@ class BaseDataInterface(ABC):
     source_data_to_validate: Optional[Dict[str, Any]] = None
 
     @classmethod
-    def get_source_model(cls, exclude: Optional[List[str]] = None):
+    def get_source_model(cls):
         """Infer the Pydantic model for the source_data from the `__init__` method signature (annotation typing)."""
-        exclude = exclude or list()
-        exclude.append("self")
-        return get_pydantic_model_from_method_signature(function=cls.__init__, exclude=exclude)
+        return get_pydantic_model_from_method_signature(function=cls.__init__, exclude=["self"])
 
     @classmethod
-    def get_source_schema(cls, exclude: Optional[List[str]] = None):
+    def get_source_schema(cls):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
-        return model_schema(cls.get_source_model(exclude=exclude))
+        return model_schema(cls.get_source_model())
 
     @classmethod
     def get_conversion_options_model(cls):
         """Infer the Pydantic model for the conversion_options from the `run_conversion` method signature (annotation typing)."""
-        return get_pydantic_model_from_method_signature(function=cls.run_conversion, exclude=["self", "nwbfile"])
+        return get_pydantic_model_from_method_signature(
+            function=cls.run_conversion, exclude=["self", "nwbfile", "metadata"]
+        )
 
     @classmethod
     def get_conversion_options_schema(cls):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
         return model_schema(cls.get_conversion_options_model())
 
-    def _validate_source(self):
-        print(f"source_data: {self.source_data}")
-        print(f"source_data_to_validate: {self.source_data_to_validate}")
-        self.get_source_model().parse_obj(obj=self.source_data_to_validate or self.source_data)
-
-    def _validate_conversion_options(self, conversion_options: dict):
-        self.get_conversion_options_model().parse_obj(obj=conversion_options)
+    def validate_source(self, source_data_to_validate: dict):
+        self.get_source_model().parse_obj(obj=source_data_to_validate)
 
     def __init__(self, **source_data):
         self.source_data = source_data
-        self._validate_source()
+        self.validate_source(source_data_to_validate=self.source_data_to_validate or self.source_data)
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -90,6 +85,9 @@ class BaseDataInterface(ABC):
     def get_conversion_options(self):
         """Child DataInterface classes should override this to match their conversion options."""
         return dict()
+
+    def validate_conversion_options(self, conversion_options: dict):
+        self.get_conversion_options_model().parse_obj(obj=conversion_options)
 
     @abstractmethod
     def run_conversion(
