@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Luiz Tauffer."""
 from typing import Optional
+from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
