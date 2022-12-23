@@ -13,7 +13,7 @@ from neuroconv.tools.nwb_helpers import (
 from neuroconv.utils import (
     get_schema_from_hdmf_class,
     get_base_schema,
-    OptionalFilePathType,
+    FilePathType,
 )
 from pynwb import NWBFile, TimeSeries
 
@@ -113,7 +113,7 @@ class AudioInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         stub_test: bool = False,

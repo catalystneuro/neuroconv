@@ -29,7 +29,7 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
-from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
+from ...utils import FilePathType, dict_deep_update, calculate_regular_series_rate
 
 
 def get_default_ophys_metadata():
@@ -415,7 +415,7 @@ def _imaging_frames_to_hdmf_iterator(
 
 def write_imaging(
     imaging: ImagingExtractor,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -909,7 +909,7 @@ def add_summary_images(
 
 def write_segmentation(
     segmentation_extractor: SegmentationExtractor,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,

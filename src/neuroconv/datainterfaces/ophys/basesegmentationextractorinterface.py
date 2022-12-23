@@ -6,7 +6,7 @@ from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePathType, get_base_schema
+from ...utils import get_schema_from_hdmf_class, fill_defaults, FilePathType, get_base_schema
 
 
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
@@ -60,7 +60,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

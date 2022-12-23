@@ -1,7 +1,7 @@
-from typing import List
+from typing import List, Optional
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, FloatType, ArrayType
+from ....utils import FilePathType
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
@@ -11,9 +11,9 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         self,
         file_path: FilePathType,
         mov_field: str = "mov",
-        sampling_frequency: FloatType = None,
-        start_time: FloatType = None,
-        metadata: dict = None,
+        sampling_frequency: Optional[float] = None,
+        start_time: Optional[float] = None,
+        metadata: Optional[dict] = None,
         channel_names: List[str] = None,
         verbose: bool = True,
     ):

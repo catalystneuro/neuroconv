@@ -1,5 +1,5 @@
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils import FolderPathType, IntType
+from ....utils import FolderPathType
 
 
 class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):

@@ -1,7 +1,6 @@
 """Authors: Cody Baker."""
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-
-from ....utils.types import FolderPathType
+from ....utils import FolderPathType
 
 
 class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
@@ -23,6 +22,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbose.
             Default is True.
         """
+        self.source_data_to_validate = dict(folder_path=folder_path, verbose=verbose)
         super().__init__(folder_path=folder_path, stream_id="RAW", verbose=verbose)
 
     def get_metadata(self):

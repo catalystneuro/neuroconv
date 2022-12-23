@@ -65,6 +65,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         """
         from probeinterface import read_spikeglx
 
+        self.source_data_to_validate = dict(
+            file_path=file_path,
+            stub_test=stub_test,
+            spikeextractors_backend=spikeextractors_backend,
+            verbose=verbose,
+        )
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
@@ -80,12 +86,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
-            self.source_data_to_validate = dict(
-                file_path=file_path,
-                stub_test=stub_test,
-                spikeextractors_backend=spikeextractors_backend,
-                verbose=verbose,
-            )
             super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 

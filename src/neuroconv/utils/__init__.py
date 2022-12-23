@@ -1,13 +1,4 @@
-from .types import (
-    FilePathType,
-    FolderPathType,
-    OptionalFilePathType,
-    OptionalFolderPathType,
-    ArrayType,
-    OptionalArrayType,
-    FloatType,
-    IntType,
-)
+from .types import FilePathType, FolderPathType
 from .dict import dict_deep_update, load_dict_from_file, append_replace_dict_in_list, exist_dict_in_list
 from .json_schema import (
     NWBMetaDataEncoder,

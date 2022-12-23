@@ -17,7 +17,7 @@ from dandi.download import download as dandi_download
 from dandi.organize import organize as dandi_organize
 from dandi.upload import upload as dandi_upload
 
-from ..utils import FolderPathType, OptionalFolderPathType
+from ..utils import FolderPathType
 
 try:  # pragma: no cover
     import globus_cli
@@ -293,7 +293,7 @@ def estimate_s3_conversion_cost(
 def automatic_dandi_upload(
     dandiset_id: str,
     nwb_folder_path: FolderPathType,
-    dandiset_folder_path: OptionalFolderPathType = None,
+    dandiset_folder_path: Optional[FolderPathType] = None,
     version: Optional[str] = None,
     staging: bool = False,
     cleanup: bool = False,

@@ -22,8 +22,7 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["smrx_channel_ids"])
-        source_schema.update(additionalProperties=True)
+        source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"].update(description="Path to CED data file.")
         return source_schema
 
@@ -41,6 +40,7 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         if Path(file_path).suffix == ".smr":
             stream_id = "1"
 
+        self.source_data_to_validate = dict(file_path=file_path, verbose=verbose)
         super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
 
         # Subset raw channel properties

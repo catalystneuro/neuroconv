@@ -58,7 +58,9 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             assert fallback_sampling_frequency is not None, assert_msg
             sampling_frequency = fallback_sampling_frequency
 
-        self.keyword_aliases = dict(fallback_sampling_frequency="sampling_frequency")
+        self.source_data_to_validate = dict(
+            file_path=file_path, fallback_sampling_frequency=sampling_frequency, verbose=verbose
+        )
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self):

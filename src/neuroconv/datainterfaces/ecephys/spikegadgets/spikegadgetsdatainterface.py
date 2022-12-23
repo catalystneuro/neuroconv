@@ -4,7 +4,7 @@ from typing import List, Optional
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
+from ....utils import FilePathType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):

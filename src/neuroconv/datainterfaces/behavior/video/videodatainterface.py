@@ -17,7 +17,7 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
-from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, OptionalFilePathType
+from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, FilePathType
 
 
 def _check_duplicates(videos_metadata, file_paths):
@@ -106,7 +106,7 @@ class VideoInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

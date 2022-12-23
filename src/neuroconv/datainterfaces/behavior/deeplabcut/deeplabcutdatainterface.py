@@ -7,7 +7,7 @@ from pynwb.file import NWBFile
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....tools import get_package
-from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
+from ....utils import dict_deep_update, FilePathType
 
 
 class DeepLabCutInterface(BaseDataInterface):
@@ -53,7 +53,7 @@ class DeepLabCutInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,

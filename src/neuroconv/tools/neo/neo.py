@@ -12,7 +12,7 @@ import pynwb
 from hdmf.backends.hdf5 import H5DataIO
 
 from ..nwb_helpers import add_device_from_metadata
-from ...utils import OptionalFilePathType
+from ...utils import FilePathType
 
 
 response_classes = dict(
@@ -432,7 +432,7 @@ def add_all_to_nwbfile(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: OptionalFilePathType = None,  # pragma: no cover
+    save_path: Optional[FilePathType] = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,

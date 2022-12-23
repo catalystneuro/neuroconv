@@ -15,9 +15,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
-        source_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
-        )
+        source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"]["description"] = "Path to directory containing OpenEphys files."
         return source_schema
 
@@ -71,11 +69,8 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the SortingExtractor."""
-        metadata_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["recording_id", "experiment_id"]
-        )
+        metadata_schema = super().get_source_schema()
         metadata_schema["properties"]["folder_path"].update(description="Path to directory containing OpenEphys files.")
-        metadata_schema["additionalProperties"] = False
         return metadata_schema
 
     def __init__(self, folder_path: FolderPathType, experiment_id: int = 0, recording_id: int = 0):

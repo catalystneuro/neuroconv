@@ -1,16 +1,16 @@
 from typing import Optional
 from warnings import warn
 
+import numpy as np
 from hdmf.backends.hdf5 import H5DataIO
 from ndx_sound import AcousticWaveformSeries
 from pynwb import NWBFile
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
-from neuroconv.utils import ArrayType
 
 
 def add_acoustic_waveform_series(
-    acoustic_series: ArrayType,
+    acoustic_series: np.ndarray,
     nwbfile: NWBFile,
     rate: float,
     metadata: dict,

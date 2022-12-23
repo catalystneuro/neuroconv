@@ -1,12 +1,17 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod, ABC
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from pynwb import NWBFile
 from pydantic.schema import model_schema
 
-from .utils import get_base_schema, get_schema_from_method_signature, get_pydantic_model_from_method_signature
+from .utils import (
+    get_base_schema,
+    get_schema_from_method_signature,
+    get_pydantic_model_from_method_signature,
+    FilePathType,
+)
 
 
 class BaseDataInterface(ABC):
@@ -27,27 +32,38 @@ class BaseDataInterface(ABC):
     source_data_to_validate: Optional[Dict[str, Any]] = None
 
     @classmethod
-    def get_source_model(cls):
-        """Infer the Pydantic model for the source_data from the method signature (annotation typing)."""
-        return get_pydantic_model_from_method_signature(function=cls.__init__, exclude=["self"])
+    def get_source_model(cls, exclude: Optional[List[str]] = None):
+        """Infer the Pydantic model for the source_data from the `__init__` method signature (annotation typing)."""
+        exclude = exclude or list()
+        exclude.append("self")
+        return get_pydantic_model_from_method_signature(function=cls.__init__, exclude=exclude)
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls, exclude: Optional[List[str]] = None):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
-        return model_schema(cls.get_source_model())
+        return model_schema(cls.get_source_model(exclude=exclude))
+
+    @classmethod
+    def get_conversion_options_model(cls):
+        """Infer the Pydantic model for the conversion_options from the `run_conversion` method signature (annotation typing)."""
+        return get_pydantic_model_from_method_signature(function=cls.run_conversion, exclude=["self", "nwbfile"])
 
     @classmethod
     def get_conversion_options_schema(cls):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
+        return model_schema(cls.get_conversion_options_model())
 
-    def _validate_source(self, source_data_to_validate: dict):
-        self.get_source_model().parse_obj(obj=source_data_to_validate)
+    def _validate_source(self):
+        print(f"source_data: {self.source_data}")
+        print(f"source_data_to_validate: {self.source_data_to_validate}")
+        self.get_source_model().parse_obj(obj=self.source_data_to_validate or self.source_data)
+
+    def _validate_conversion_options(self, conversion_options: dict):
+        self.get_conversion_options_model().parse_obj(obj=conversion_options)
 
     def __init__(self, **source_data):
         self.source_data = source_data
-        self.source_data_to_validate = self.source_data_to_validate or self.source_data
-        self._validate_source(source_data_to_validate=self.source_data_to_validate)
+        self._validate_source()
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -78,11 +94,11 @@ class BaseDataInterface(ABC):
     @abstractmethod
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        **conversion_options,
+        verbose: bool = True,
     ):
         """
         Run the NWB conversion for the instantiated data interface.
@@ -103,5 +119,4 @@ class BaseDataInterface(ABC):
             If 'nwbfile_path' is specified, informs user after a successful write operation.
             The default is True.
         """
-
         raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")

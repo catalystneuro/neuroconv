@@ -12,7 +12,6 @@ from ....utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     FilePathType,
-    OptionalFilePathType,
 )
 
 
@@ -22,16 +21,14 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["block_index", "seg_index"]
-        )
+        source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
         return source_schema
 
     def __init__(
         self,
         file_path: FilePathType,
-        nsx_override: OptionalFilePathType = None,
+        nsx_override: Optional[FilePathType] = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
@@ -46,6 +43,13 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
+        self.source_data_to_validate = dict(
+            file_path=file_path,
+            nsx_override=nsx_override,
+            verbose=verbose,
+            spikeextractors_backend=spikeextractors_backend,
+        )
+
         file_path = Path(file_path)
         if file_path.suffix == "":
             assert nsx_override is not None, (
@@ -117,10 +121,9 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        metadata_schema = get_schema_from_method_signature(class_method=cls.__init__)
-        metadata_schema["additionalProperties"] = True
-        metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
-        return metadata_schema
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
+        return source_schema
 
     def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):
         """

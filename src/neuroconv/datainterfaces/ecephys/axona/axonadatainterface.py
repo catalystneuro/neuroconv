@@ -14,8 +14,8 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`."""
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        self.source_data_to_validate = dict(file_path=file_path, verbose=verbose)
         super().__init__(file_path=file_path, all_annotations=True, verbose=verbose)
-        self.source_data = dict(file_path=file_path, verbose=verbose)
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 
         # Set the channel groups
@@ -23,7 +23,6 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_channel_groups(tetrode_id)
 
     def extract_nwb_file_metadata(self):
-
         raw_annotations = self.recording_extractor.neo_reader.raw_annotations
         session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
@@ -84,18 +83,9 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 
     @classmethod
     def get_source_schema(cls):
-        return dict(
-            required=["file_path"],
-            properties=dict(
-                file_path=dict(
-                    type="string",
-                    format="file",
-                    description="Path to Axona file.",
-                ),
-                noise_std=dict(type="number"),
-            ),
-            type="object",
-        )
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to Axona file."
+        return source_schema
 
     def __init__(self, file_path: FilePathType, noise_std: float = 3.5):
         super().__init__(filename=file_path, noise_std=noise_std)
@@ -105,34 +95,20 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     ExtractorName = "NumpyRecording"
 
-    @classmethod
-    def get_source_schema(cls):
-        return dict(
-            required=["file_path"],
-            properties=dict(file_path=dict(type="string")),
-            type="object",
-            additionalProperties=False,
-        )
-
     def __init__(self, file_path: FilePathType):
-
         data = read_all_eeg_file_lfp_data(file_path).T
         sampling_frequency = get_eeg_sampling_frequency(file_path)
-        super().__init__(traces_list=[data], sampling_frequency=sampling_frequency)
 
-        self.source_data = dict(file_path=file_path)
+        self.source_data_to_validate = dict(file_path=file_path)
+        super().__init__(traces_list=[data], sampling_frequency=sampling_frequency)
 
 
 class AxonaPositionDataInterface(BaseDataInterface):
     """Primary data interface class for converting Axona position data"""
 
-    @classmethod
-    def get_source_schema(cls):
-        return get_schema_from_method_signature(cls.__init__)
-
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: FilePathType):
+        self.source_data_to_validate = dict(file_path=file_path)
         super().__init__(filename=file_path)
-        self.source_data(file_path=file_path)
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict):
         """

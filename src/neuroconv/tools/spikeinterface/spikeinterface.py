@@ -20,7 +20,7 @@ import psutil
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
+from ...utils import dict_deep_update, FilePathType, calculate_regular_series_rate
 
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
@@ -907,7 +907,7 @@ def add_all_to_nwbfile(
 
 def write_recording(
     recording: SpikeInterfaceRecording,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1378,7 +1378,7 @@ def _add_waveforms_to_units_table(
 
 def write_sorting(
     sorting: SpikeInterfaceSorting,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
@@ -1569,7 +1569,7 @@ def add_waveforms(
 
 def write_waveforms(
     waveform_extractor: WaveformExtractor,
-    nwbfile_path: OptionalFilePathType = None,
+    nwbfile_path: Optional[FilePathType] = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,

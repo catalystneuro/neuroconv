@@ -74,7 +74,11 @@ def get_pydantic_model_from_method_signature(function: callable, exclude: Option
     # whereas the model of this decorator class works more as a class method
     class CustomValidatedFunction(ValidatedFunction):
         def __init__(self, function: callable, exclude: Optional[List[str]] = None):
-            super().__init__(function=function, config=None)  # Sets various attributes other methods assume exist
+            config = dict(
+                arbitrary_types_allowed=True,  # Needed for NWBFile annotations and anything from Numpy
+            )
+
+            super().__init__(function=function, config=config)  # Sets various attributes other methods assume exist
 
             parameters: Dict[str, Parameter] = signature(function).parameters
             fields: Dict[str, Tuple[Any, Any]] = dict()
@@ -90,11 +94,8 @@ def get_pydantic_model_from_method_signature(function: callable, exclude: Option
                 fields=fields,
                 takes_args=False,
                 takes_kwargs=True,
-                config=dict(
-                    extra=Extra.allow,  # extras usually show up as fixed values passed into neo/SI
-                ),
+                config=config,
             )
-            self.model.__config__.arbitrary_types_allowed = True  # Does not propagate when set in higher configs
 
     return CustomValidatedFunction(function=function, exclude=exclude).model
 

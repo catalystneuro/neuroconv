@@ -14,6 +14,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+        self.source_data_to_validate = dict(folder_path=folder_path, verbose=verbose)
         super().__init__(folder_path=folder_path, verbose=verbose, all_annotations=True)
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
