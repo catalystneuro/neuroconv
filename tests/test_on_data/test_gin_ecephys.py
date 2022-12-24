@@ -368,12 +368,14 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     DATA_PATH / "cellexplorer" / "dataset_1" / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
                 )
             ),
+            case_name="CE1",
         ),
         param(
             data_interface=CellExplorerSortingInterface,
             interface_kwargs=dict(
                 file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")
             ),
+            case_name="CE2",
         ),
         param(
             data_interface=CellExplorerSortingInterface,
@@ -382,6 +384,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
                 )
             ),
+            case_name="CE3",
         ),
         param(
             data_interface=NeuralynxSortingInterface,
@@ -448,7 +451,16 @@ class TestEcephysNwbConversions(unittest.TestCase):
             # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
             if sorting.get_num_segments() == 1:
                 nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
-                check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
+
+                ids1 = np.sort(np.array(sorting.get_unit_ids()))
+                ids2 = np.sort(np.array(nwb_sorting.get_unit_ids()))
+                if np.allclose(ids1, ids2):
+                    check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
+                else:
+                    sorting_renamed = sorting.select_units(
+                        unit_ids=ids1, renamed_unit_ids=np.arange(len(sorting.unit_ids))
+                    )
+                    check_sorting_equal_si(SX1=sorting_renamed, SX2=nwb_sorting)
 
     @parameterized.expand(
         input=[

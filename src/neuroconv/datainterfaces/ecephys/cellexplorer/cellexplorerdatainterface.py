@@ -35,8 +35,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         cell_info = spikes_mat.get("spikes", np.empty(0))
         self.cell_info_fields = cell_info.dtype.names
 
+        unit_ids = self.sorting_extractor.get_unit_ids()
         if self.read_spikes_info_with_scipy:
-            unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
                 self.sorting_extractor.set_property(
                     ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0][0]]
@@ -50,7 +50,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0][0]]
                 )
         else:  # Logic for hdf5storage
-            unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
                 self.sorting_extractor.set_property(
                     ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0]]
