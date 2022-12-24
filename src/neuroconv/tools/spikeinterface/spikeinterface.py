@@ -265,6 +265,15 @@ def add_electrodes(
 
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
     else:
         checked_recording = recording
 
@@ -635,6 +644,15 @@ def add_electrical_series(
 
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
     else:
         checked_recording = recording
 
@@ -760,6 +778,16 @@ def add_epochs(recording: RecordingExtractor, nwbfile: pynwb.NWBFile):
         recording, RecordingExtractor
     ), "'recording' should be a spikeinterface/spikeextractors RecordingExtractor object!"
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+
+    # TODO: Remove spikeextractors backend
+    warn(
+        message=(
+            "Interfaces using a spikeextractors backend will soon be deprecated! "
+            "Please use the SpikeInterface backend instead."
+        ),
+        category=DeprecationWarning,
+        stacklevel=2,
+    )
 
     for epoch_name in recording.get_epoch_names():
         epoch = recording.get_epoch_info(epoch_name)
@@ -1127,6 +1155,15 @@ def add_units_table(
 
     if isinstance(sorting, SortingExtractor):
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
     else:
         checked_sorting = sorting
 
@@ -1310,6 +1347,16 @@ def _add_waveforms_to_units_table(
     unit_ids = sorting.get_unit_ids()
 
     if isinstance(sorting, SortingExtractor):
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
         all_features = set()
         for unit_id in unit_ids:
             all_features.update(sorting.get_unit_spike_feature_names(unit_id))
