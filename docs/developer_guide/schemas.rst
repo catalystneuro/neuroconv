@@ -11,7 +11,7 @@ with interfacing software, the expected form of the input is defined using the J
 ``DataInterface`` classes define the method
 :py:func:`~neuroconv.datainterfaces.basedatainterface.BaseDataInterface.get_source_schema()`, which is
 responsible for returning the source schema as a JSON schema dictionary. By default, these dictionaries are
-automatically derived from the call signatures and type hints of a function, and express similar information, 
+automatically derived from the call signatures and type hints of a function, and express similar information,
 but can also be used to define and validate inputs that are nested dictionaries of arbitrary depth. For
 example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
 
