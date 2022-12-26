@@ -11,8 +11,8 @@ with interfacing software, the expected form of the input is defined using the J
 ``DataInterface`` classes define the method
 :py:func:`~neuroconv.datainterfaces.basedatainterface.BaseDataInterface.get_source_schema()`, which is
 responsible for returning the source schema as a JSON schema dictionary. By default, these dictionaries are
-automatically derived from the call signatures of a function, and express similar information to a type-hinted call
-signature, but can also be used to define and validate inputs that are nested dictionaries of arbitrary depth. For
+automatically derived from the call signatures and type hints of a function, and express similar information, 
+but can also be used to define and validate inputs that are nested dictionaries of arbitrary depth. For
 example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
 
 .. code-block:: python
@@ -88,7 +88,7 @@ gives the following output, which is derived from the call signature and express
       "additionalProperties": false
     }
 
-An ``ExampleNWBConverter`` that combines these ``DataInterface``s will combine the JSON Schema using the keys of the
+An ``ExampleNWBConverter`` that combines these ``DataInterface`` classes will combine the JSON Schema using the keys of the
 ``data_interface_classes`` dictionary:
 
 .. code-block:: python
@@ -182,7 +182,7 @@ Metadata Schema
 
 Similar to input data, each ``DataInterface`` produces its own metadata schema reflecting
 the specificities of the dataset it interfaces with. The ``DataInterface``-specific metadata schema can be obtained
-via the ``.get_metadata_schema()`` method . Unlike ``.get_source_schema()``, the ``DataInterface`` needs to be
+via the ``.get_metadata_schema()`` method. Unlike ``.get_source_schema()``, the ``DataInterface`` needs to be
 initialized first.
 
 .. code-block:: python
