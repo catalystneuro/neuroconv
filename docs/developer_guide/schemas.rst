@@ -19,7 +19,7 @@ example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
 
     def __init__(
         self,
-        file_path: str,
+        file_path: FilePathType,
         stub_test: bool = False,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
@@ -27,7 +27,7 @@ example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
 
 Calling
 :py:func:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface.get_source_schema()`
-gives the following output, which is derived from the call signature and expresses identical constraints.
+gives the following output, which is derived from the call signature and expresses identical information.
 
 .. code-block:: json
 
