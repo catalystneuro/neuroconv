@@ -519,8 +519,9 @@ def _recording_traces_to_hdmf_iterator(
     recording: BaseRecording,
     segment_index: int = None,
     return_scaled: bool = False,
-    iterator_type: str = "v2",
-    iterator_opts: dict = None,
+    iterator_options: Optional[dict] = None,
+    iterator_type: str = "v2",  # TODO: remove
+    iterator_opts: dict = None,  # TODO: remove
 ) -> AbstractDataChunkIterator:
     """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
 
@@ -532,14 +533,6 @@ def _recording_traces_to_hdmf_iterator(
         The recording segment to add to the NWBFile.
     return_scaled : bool, defaults to False
         When True recording extractor objects from spikeinterface return their traces in microvolts.
-    iterator_type: str (optional, defaults to 'v2')
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
-        Dictionary of options for the iterator.
-        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
-        for the full list of options.
 
     Returns
     -------
@@ -551,13 +544,31 @@ def _recording_traces_to_hdmf_iterator(
     ValueError
         If the iterator_type is not 'v1', 'v2' or None.
     """
+    if any([x is not None for x in [iterator_type, iterator_opts]]):  # pragma: no cover
+        assert iterator_options is None, (
+            "You may not specify both 'iterator_type' and 'iterator_opts' with 'iterator_options'! "
+            "Please use only 'iterator_options'."
+        )
+        warn(
+            message=(
+                "The options 'iterator_type' and 'iterator_opts' will soon be deprecated! "
+                "Please use 'iterator_options' instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        iterator_options = dict(
+            method=iterator_type or "v2",
+            extra_options=iterator_opts,
+        )
+    iterator_options = iterator_options or dict(method="v2")
 
     supported_iterator_types = ["v1", "v2", None]
-    if iterator_type not in supported_iterator_types:
-        message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
-        raise ValueError(message)
-
-    iterator_opts = dict() if iterator_opts is None else iterator_opts
+    if iterator_options["method"] not in supported_iterator_types:
+        raise ValueError(
+            "The `method` of `iterator_options` should be either 'v1', 'v2' (recommended) or None! "
+            f"Received {iterator_options['method']}."
+        )
 
     if iterator_type is None:
         check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
@@ -567,11 +578,12 @@ def _recording_traces_to_hdmf_iterator(
             recording=recording,
             segment_index=segment_index,
             return_scaled=return_scaled,
-            **iterator_opts,
+            **iterator_options.get("method_options", dict()),
         )
     elif iterator_type == "v1":
         traces_as_iterator = DataChunkIterator(
-            data=recording.get_traces(return_scaled=return_scaled, segment_index=segment_index), **iterator_opts
+            data=recording.get_traces(return_scaled=return_scaled, segment_index=segment_index),
+            **iterator_options.get("method_options", dict()),
         )
 
     return traces_as_iterator
@@ -587,10 +599,12 @@ def add_electrical_series(
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
+    iterator_options: Optional[dict] = None,
+    compression: Optional[str] = None,  # TODO: remove
+    compression_opts: Optional[int] = None,  # TODO: remove
+    iterator_type: Optional[str] = "v2",  # TODO: remove
+    iterator_opts: Optional[dict] = None,  # TODO: remove
 ):
     """
     Adds traces from recording object as ElectricalSeries to an nwbfile object.
@@ -639,6 +653,44 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    if any([x is not None for x in [compression, compression_opts]]):  # pragma: no cover
+        assert compression_options is None, (
+            "You may not specify both 'compression' and 'compression_opts' with 'compression_options'! "
+            "Please use only 'compression_options'."
+        )
+        warn(
+            message=(
+                "The options 'compression' and 'compression_opts' will soon be deprecated! "
+                "Please use 'compression_options' instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        compression_options = dict(
+            method=compression if isinstance(compression, str) else "gzip",
+            extra_options=compression_opts,
+        )
+    if any([x is not None for x in [iterator_type, iterator_opts]]):  # pragma: no cover
+        assert iterator_options is None, (
+            "You may not specify both 'iterator_type' and 'iterator_opts' with 'iterator_options'! "
+            "Please use only 'iterator_options'."
+        )
+        warn(
+            message=(
+                "The options 'iterator_type' and 'iterator_opts' will soon be deprecated! "
+                "Please use 'iterator_options' instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        iterator_options = dict(
+            method=iterator_type or "v2",
+            extra_options=iterator_opts,
+        )
+
+    compression_options = compression_options or dict(method="gzip")
+    iterator_options = iterator_options or dict(method="v2")
+
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
 
@@ -724,15 +776,15 @@ def add_electrical_series(
     if not write_scaled:
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
-    # Iterator
     ephys_data_iterator = _recording_traces_to_hdmf_iterator(
-        recording=checked_recording,
-        segment_index=segment_index,
-        iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
+        recording=checked_recording, segment_index=segment_index, iterator_options=iterator_options
     )
     eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+        data=H5DataIO(
+            data=ephys_data_iterator,
+            compression=compression_options["method"],
+            compression_opts=compression_options.get("method_options", dict()),
+        )
     )
 
     # Timestamps vs rate
@@ -746,7 +798,9 @@ def add_electrical_series(
     else:
         shifted_time_stamps = starting_time + timestamps
         wrapped_timestamps = H5DataIO(
-            data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
+            data=shifted_time_stamps,
+            compression=compression_options["method"],
+            compression_opts=compression_options.get("method_options", dict()),
         )
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 
@@ -846,7 +900,8 @@ def add_electrodes_info(recording: RecordingExtractor, nwbfile: pynwb.NWBFile, m
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
-def add_all_to_nwbfile(
+# TODO: remove function
+def add_all_to_nwbfile(  # pragma: no cover
     recording: SpikeInterfaceRecording,
     nwbfile=None,
     starting_time: Optional[float] = None,
@@ -856,6 +911,8 @@ def add_all_to_nwbfile(
     es_key: str = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
+    compression_options: Optional[dict] = None,
+    iterator_options: Optional[dict] = None,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = None,
@@ -910,6 +967,16 @@ def add_all_to_nwbfile(
                 Should be below 1 MB. Automatically calculates suitable chunk shape.
         If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
     """
+    warnings.warn(
+        message=(
+            "The function 'add_all_to_nwbfile' will soon be deprecated! "
+            "Please use either 'write_recording' or directly call the sub-functions "
+            "'add_electrodes_info' and 'add_electrical_series'."
+        ),
+        category=DeprecationWarning,
+        stacklevel=2,
+    )
+
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     add_electrodes_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
@@ -946,10 +1013,12 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
-    compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = "v2",
-    iterator_opts: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
+    iterator_options: Optional[dict] = None,
+    compression: Optional[str] = None,  # TODO: remove
+    compression_opts: Optional[int] = None,  # TODO: remove
+    iterator_type: Optional[str] = None,  # TODO: remove
+    iterator_opts: Optional[dict] = None,  # TODO: remove
 ):
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -1075,10 +1144,8 @@ def write_recording(
                     write_as=write_as,
                     es_key=es_key,
                     write_scaled=write_scaled,
-                    compression=compression,
-                    compression_opts=compression_opts,
-                    iterator_type=iterator_type,
-                    iterator_opts=iterator_opts,
+                    compression_options=compression_options,
+                    iterator_options=iterator_options,
                 )
 
         # For objects of the legacy spikeextractors we support adding epochs

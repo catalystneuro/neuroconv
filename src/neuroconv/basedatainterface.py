@@ -2,6 +2,7 @@
 from abc import abstractmethod, ABC
 import uuid
 from typing import Optional
+from warnings import warn
 
 from pynwb import NWBFile
 

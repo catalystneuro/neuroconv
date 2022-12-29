@@ -1,7 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from typing import Optional
+from warnings import warn
 
-import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
@@ -110,10 +110,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_as: Optional[str] = None,
         write_electrical_series: bool = True,
         es_key: str = None,
-        compression: Optional[str] = None,
-        compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        compression_options: Optional[dict] = None,
+        iterator_options: Optional[dict] = None,
+        compression: Optional[str] = None,  # TODO: remove
+        compression_opts: Optional[int] = None,  # TODO: remove
+        iterator_type: Optional[str] = None,  # TODO: remove
+        iterator_opts: Optional[dict] = None,  # TODO: remove
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -145,25 +147,80 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             and electrodes are written to NWB.
         es_key: str (optional)
             Key in metadata dictionary containing metadata info for the specific electrical series
-        compression: str (optional, defaults to "gzip")
-            Type of compression to use. Valid types are "gzip" and "lzf".
-            Set to None to disable all compression.
-        compression_opts: int (optional, defaults to 4)
-            Only applies to compression="gzip". Controls the level of the GZIP.
-        iterator_type: str (optional, defaults to 'v2')
-            The type of DataChunkIterator to use.
+        compression_options: dictionary, optional
+            Type of compression to use. Should follow the structure
+
+            dict(
+                method="name_of_compression_method",
+                method_options=dict(...),
+            )
+
+            Valid 'method' values are any accepted by the `:py:class:~pynwb.H5DataIO`, such as "gzip" and "lzf".
+
+            Not all methods have additional 'method_options' - in those cases, do not need to specify that field.
+
+            The default method is "gzip" with 'extra_options=dict(level=4)'.
+            Set 'method' to `None` to disable all compression.
+        iterator_options: dictionary, optional
+            The type of DataChunkIterator to use. Should follow the structure
+
+            dict(
+                method="v1_or_v2",
+                method_options=dict(...),
+            )
+
             'v1' is the original DataChunkIterator of the hdmf data_utils.
             'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-        iterator_opts: dict (optional)
-            Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-            Valid options are
-                buffer_gb : float (optional, defaults to 1 GB)
-                    Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-                chunk_mb : float (optional, defaults to 1 MB)
-                    Should be below 1 MB. Automatically calculates suitable chunk shape.
+            The default method is "v2".
+
+            Some 'method_options' for the "v2" iterator are
+                buffer_gb : float, optional
+                    Automatically calculates suitable buffer shape. Recommended to be as much free RAM as available.
+                    The default is 1 GB.
+                chunk_mb : float, optional
+                    Automatically calculates suitable chunk shape. Should be at or below 1 MB.
+                    The default is 1 MB.
             If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
         """
+        if any([x is not None for x in [compression, compression_opts]]):  # pragma: no cover
+            assert compression_options is None, (
+                "You may not specify both 'compression' and 'compression_opts' with 'compression_options'! "
+                "Please use only 'compression_options'."
+            )
+            warn(
+                message=(
+                    "The options 'compression' and 'compression_opts' will soon be deprecated! "
+                    "Please use 'compression_options' instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            compression_options = dict(
+                method=compression if isinstance(compression, str) else "gzip",
+                method_options=compression_opts,
+            )
+        if any([x is not None for x in [iterator_type, iterator_opts]]):  # pragma: no cover
+            assert iterator_options is None, (
+                "You may not specify both 'iterator_type' and 'iterator_opts' with 'iterator_options'! "
+                "Please use only 'iterator_options'."
+            )
+            warn(
+                message=(
+                    "The options 'iterator_type' and 'iterator_opts' will soon be deprecated! "
+                    "Please use 'iterator_options' instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            iterator_options = dict(
+                method=iterator_type or "v2",
+                method_options=iterator_opts,
+            )
+
         from ...tools.spikeinterface import write_recording
+
+        compression_options = compression_options or dict(method="gzip")
+        iterator_options = iterator_options or dict(method="v2")
 
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
@@ -182,8 +239,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=es_key or self.es_key,
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            compression_options=compression_options,
+            iterator_options=iterator_options,
         )

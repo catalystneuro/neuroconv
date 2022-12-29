@@ -3,6 +3,7 @@ from typing import Optional, Union
 from pathlib import Path
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
+from warnings import warn
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...utils import get_schema_from_hdmf_class, OptionalFilePathType
@@ -36,12 +37,52 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool = False,
         starting_time: Optional[float] = None,
         use_times: bool = False,  # To-do to remove, deprecation
-        compression: Optional[str] = None,
-        compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = "v2",
-        iterator_opts: Optional[dict] = None,
+        compression_options: Optional[dict] = None,
+        iterator_options: Optional[dict] = None,
+        compression: Optional[str] = None,  # TODO: remove
+        compression_opts: Optional[int] = None,  # TODO: remove
+        iterator_type: Optional[str] = None,  # TODO: remove
+        iterator_opts: Optional[dict] = None,  # TODO: remove
     ):
+        if any([x is not None for x in [compression, compression_opts]]):  # pragma: no cover
+            assert compression_options is None, (
+                "You may not specify both 'compression' and 'compression_opts' with 'compression_options'! "
+                "Please use only 'compression_options'."
+            )
+            warn(
+                message=(
+                    "The options 'compression' and 'compression_opts' will soon be deprecated! "
+                    "Please use 'compression_options' instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            compression_options = dict(
+                method=compression if isinstance(compression, str) else "gzip",
+                extra_options=compression_opts,
+            )
+        if any([x is not None for x in [iterator_type, iterator_opts]]):  # pragma: no cover
+            assert iterator_options is None, (
+                "You may not specify both 'iterator_type' and 'iterator_opts' with 'iterator_options'! "
+                "Please use only 'iterator_options'."
+            )
+            warn(
+                message=(
+                    "The options 'iterator_type' and 'iterator_opts' will soon be deprecated! "
+                    "Please use 'iterator_options' instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+            iterator_options = dict(
+                method=iterator_type or "v2",
+                extra_options=iterator_opts,
+            )
+
         from ...tools.spikeinterface import write_recording
+
+        compression_options = compression_options or dict(method="gzip")
+        iterator_options = iterator_options or dict(method="v2")
 
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
@@ -58,8 +99,6 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             use_times=use_times,
             write_as="lfp",
             es_key="ElectricalSeriesLFP",
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            compression_options=compression_options,
+            iterator_options=iterator_options,
         )
