@@ -35,7 +35,6 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,  # To-do to remove, deprecation
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: Optional[str] = "v2",
@@ -55,7 +54,6 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             starting_time=starting_time,
-            use_times=use_times,
             write_as="lfp",
             es_key="ElectricalSeriesLFP",
             compression=compression,
