@@ -16,15 +16,34 @@ from numbers import Real
 from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 import psutil
-
+from numpydoc.docscrape import NumpyDocString
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
+from ...datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
 
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 SpikeInterfaceSorting = Union[BaseSorting, SortingExtractor]
+
+# Definitions of re-used docstrings
+compression_options_docstring = "\n\t".join(
+    next(
+        filter(
+            lambda x: "compression_options" in x[0],
+            NumpyDocString(BaseRecordingExtractorInterface.run_conversion.__doc__)["Parameters"],
+        )
+    )[2]
+)
+iterator_options_docstring = "\n\t".join(
+    next(
+        filter(
+            lambda x: "iterator_options" in x[0],
+            NumpyDocString(BaseRecordingExtractorInterface.run_conversion.__doc__)["Parameters"],
+        )
+    )[2]
+)
 
 
 def set_dynamic_table_property(
@@ -533,6 +552,8 @@ def _recording_traces_to_hdmf_iterator(
         The recording segment to add to the NWBFile.
     return_scaled : bool, defaults to False
         When True recording extractor objects from spikeinterface return their traces in microvolts.
+    iterator_options : dictionary, optional
+        {iterator_options_docstring}
 
     Returns
     -------
@@ -589,6 +610,11 @@ def _recording_traces_to_hdmf_iterator(
     return traces_as_iterator
 
 
+_recording_traces_to_hdmf_iterator.__doc__ = _recording_traces_to_hdmf_iterator.__doc__.format(
+    iterator_options_docstring=iterator_options_docstring
+)
+
+
 def add_electrical_series(
     recording: SpikeInterfaceRecording,
     nwbfile: pynwb.NWBFile,
@@ -636,19 +662,10 @@ def add_electrical_series(
     write_scaled: bool (optional, defaults to False)
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
-        Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
-        Dictionary of options for the iterator.
-        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
-        for the full list of options.
+    compression_options : dictionary, optional
+        {compression_options_docstring}
+    iterator_options : dictionary, optional
+        {iterator_options_docstring}
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
@@ -812,6 +829,11 @@ def add_electrical_series(
         ecephys_mod.data_interfaces["Processed"].add_electrical_series(es)
     elif write_as == "lfp":
         ecephys_mod.data_interfaces["LFP"].add_electrical_series(es)
+
+
+add_electrical_series.__doc__ = add_electrical_series.__doc__.format(
+    compression_options_docstring=compression_options_docstring, iterator_options_docstring=iterator_options_docstring
+)
 
 
 def add_epochs(recording: RecordingExtractor, nwbfile: pynwb.NWBFile):
