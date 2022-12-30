@@ -387,7 +387,7 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 def _imaging_frames_to_hdmf_iterator(
     imaging: ImagingExtractor,
     iterator_options: Optional[dict] = None,
-    iterator_type: Optional[str] = "v2",  # TODO: to be removed
+    iterator_type: Optional[str] = None,  # TODO: to be removed
 ):
     """
     Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
@@ -454,7 +454,7 @@ def write_imaging(
     verbose: bool = True,
     compression_options: Optional[dict] = None,
     iterator_options: Optional[dict] = None,
-    iterator_type: Optional[str] = "v2",  # TODO: remove
+    iterator_type: Optional[str] = None,  # TODO: remove
     use_times=False,  # TODO: to be removed
 ):
     """

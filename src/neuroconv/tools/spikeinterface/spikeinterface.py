@@ -520,7 +520,7 @@ def _recording_traces_to_hdmf_iterator(
     segment_index: int = None,
     return_scaled: bool = False,
     iterator_options: Optional[dict] = None,
-    iterator_type: str = "v2",  # TODO: remove
+    iterator_type: str = None,  # TODO: remove
     iterator_opts: dict = None,  # TODO: remove
 ) -> AbstractDataChunkIterator:
     """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
@@ -913,7 +913,7 @@ def add_all_to_nwbfile(  # pragma: no cover
     write_scaled: bool = False,
     compression_options: Optional[dict] = None,
     iterator_options: Optional[dict] = None,
-    compression: Optional[str] = "gzip",
+    compression: Optional[str] = None,
     compression_opts: Optional[int] = None,
     iterator_type: Optional[str] = None,
     iterator_opts: Optional[dict] = None,
