@@ -80,6 +80,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
+        compression_options: Optional[dict] = None,
+        iterator_options: Optional[dict] = None,
     ):
         from ...tools.roiextractors import write_imaging
 
@@ -96,4 +98,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
+            compression_options=compression_options,
+            iterator_options=iterator_options,
         )

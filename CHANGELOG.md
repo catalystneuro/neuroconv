@@ -1,13 +1,21 @@
 # Upcoming
 
+### Official deprecation
+* Removed the `buffer_size` argument from `neuroconv.tools.roiextractors.write_imaging`. [PR #???](https://github.com/catalystneuro/neuroconv/pull/???)
+
 ### Fixes
 * Temporarily hotfixed the `tensorflow` dependency after the release of `deeplabcut==2.3.0`. [PR #268](https://github.com/catalystneuro/neuroconv/pull/268)
-
-
 
 ### Pending deprecation
 
 * Added `DeprecationWarning`s for `spikeextractors` objects in `neuroconv.tools.spikeinterface`. [PR #266](https://github.com/catalystneuro/neuroconv/pull/266)
+*  Added `DeprecationWarning`s for `iterator_type`+`iterator_opts` and `compression`+`compression_opts` references across all of NeuroConv. The new standard is to use `iterator_options` with keys `method` and `method_options` as well as `compression_options` with keys `method` and `method_options`.  [PR #???](https://github.com/catalystneuro/neuroconv/pull/???)
+
+
+### Features
+* Added `compression_options` control for Imaging tools and interfaces. [PR #???](https://github.com/catalystneuro/neuroconv/pull/???)
+
+
 
 # v0.2.3
 

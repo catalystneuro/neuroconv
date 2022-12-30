@@ -69,8 +69,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-        iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
+        iterator_options: Optional[dict] = None,
     ):
         from ...tools.roiextractors import write_segmentation
 
@@ -90,6 +90,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
-            iterator_options=iterator_options,
             compression_options=compression_options,
+            iterator_options=iterator_options,
         )

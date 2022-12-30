@@ -267,25 +267,35 @@ def add_two_photon_series(
     nwbfile: NWBFile,
     metadata: dict,
     two_photon_series_index: int = 0,
-    iterator_type: Optional[str] = "v2",
+    compression_options: Optional[dict] = None,
     iterator_options: Optional[dict] = None,
+    iterator_type: Optional[str] = "v2",  # TODO: to be removed
     use_times=False,  # TODO: to be removed
-    buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
     Auxiliary static method for nwbextractor.
 
     Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
     """
-    if use_times:
-        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
-    if buffer_size:
+    if iterator_type is not None:  # pragma: no cover
         warn(
-            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
-            "Specify as a key in the new 'iterator_options' dictionary instead."
+            message=(
+                "The options 'iterator_type' will soon be deprecated! "
+                "Please use 'iterator_options' with keyword 'method' instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
         )
 
-    iterator_options = iterator_options or dict()
+        old_iterator_options = iterator_options
+        iterator_options = dict(method=iterator_type)
+        if old_iterator_options is not None:  # Old usage together with `iterator_type`
+            iterator_options.update(method_options=old_iterator_options)
+    compression_options = compression_options or dict(method="gzip")
+    iterator_options = iterator_options or dict(method="v2")
+
+    if use_times:
+        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
 
     metadata_copy = deepcopy(metadata)
     metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy, append_list=False)
@@ -308,10 +318,13 @@ def add_two_photon_series(
     two_p_series_kwargs = two_photon_series_metadata
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging,
-        iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
-    data = H5DataIO(data=frames_to_iterator, compression=True)
+    data = H5DataIO(
+        data=frames_to_iterator,
+        compression=compression_options["method"],
+        compression_opts=compression_options.get("method_options", dict()),
+    )
     two_p_series_kwargs.update(data=data)
 
     # Add dimension
@@ -324,7 +337,14 @@ def add_two_photon_series(
         if estimated_rate:
             two_p_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
-            two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            two_p_series_kwargs.update(
+                timestamps=H5DataIO(
+                    data=timestamps,
+                    compression=compression_options["method"],
+                    compression_opts=compression_options.get("method_options", dict()),
+                ),
+                rate=None,
+            )
     else:
         rate = float(imaging.get_sampling_frequency())
         two_p_series_kwargs.update(starting_time=0.0, rate=rate)
@@ -366,8 +386,8 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
 
 def _imaging_frames_to_hdmf_iterator(
     imaging: ImagingExtractor,
-    iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    iterator_type: Optional[str] = "v2",  # TODO: to be removed
 ):
     """
     Private auxiliary method to wrap frames from an ImagingExtractor into a DataChunkIterator.
@@ -393,24 +413,36 @@ def _imaging_frames_to_hdmf_iterator(
     DataChunkIterator
         The frames of the imaging extractor wrapped in an iterator object.
     """
+    if iterator_type is not None:  # pragma: no cover
+        warn(
+            message=(
+                "The options 'iterator_type' will soon be deprecated! "
+                "Please use 'iterator_options' with keyword 'method' instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
+        old_iterator_options = iterator_options
+        iterator_options = dict(method=iterator_type)
+        if old_iterator_options is not None:  # Old usage together with `iterator_type`
+            iterator_options.update(method_options=old_iterator_options)
+    iterator_options = iterator_options or dict(method="v2")
 
     def data_generator(imaging):
         for i in range(imaging.get_num_frames()):
             yield imaging.get_frames(frame_idxs=[i]).squeeze().T
 
-    assert iterator_type in ["v1", "v2", None], "'iterator_type' must be either 'v1', 'v2' (recommended), or None."
-    iterator_options = dict() if iterator_options is None else iterator_options
-
-    if iterator_type is None:
+    if iterator_options["method"] is None:
         check_if_imaging_fits_into_memory(imaging=imaging)
         return imaging.get_video().transpose((0, 2, 1))
 
-    if iterator_type == "v1":
-        if "buffer_size" not in iterator_options:
-            iterator_options.update(buffer_size=10)
-        return DataChunkIterator(data=data_generator(imaging), **iterator_options)
+    if iterator_options["method"] == "v1":
+        if "buffer_size" not in iterator_options.get("method_options", dict()):
+            iterator_options.get("method_options", dict()).update(buffer_size=10)
+        return DataChunkIterator(data=data_generator(imaging), **iterator_options["method_options"])
 
-    return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
+    return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options["method_options"])
 
 
 def write_imaging(
@@ -420,10 +452,10 @@ def write_imaging(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    iterator_type: Optional[str] = "v2",
+    compression_options: Optional[dict] = None,
     iterator_options: Optional[dict] = None,
+    iterator_type: Optional[str] = "v2",  # TODO: remove
     use_times=False,  # TODO: to be removed
-    buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
     Primary method for writing an ImagingExtractor object to an NWBFile.
@@ -464,20 +496,31 @@ def write_imaging(
         https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
     """
+    if iterator_type is not None:  # pragma: no cover
+        warn(
+            message=(
+                "The options 'iterator_type' will soon be deprecated! "
+                "Please use 'iterator_options' with keyword 'method' instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
+        old_iterator_options = iterator_options
+        iterator_options = dict(method=iterator_type)
+        if old_iterator_options is not None:  # Old usage together with `iterator_type`
+            iterator_options.update(method_options=old_iterator_options)
+    compression_options = compression_options or dict(method="gzip")
+    iterator_options = iterator_options or dict(method="v2")
+
     assert (
         nwbfile_path is None or nwbfile is None
     ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
     if nwbfile is not None:
         assert isinstance(nwbfile, NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
-    iterator_options = iterator_options or dict()
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
-    if buffer_size:
-        warn(
-            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
-            "Specify as a key in the new 'iterator_options' dictionary instead."
-        )
 
     if metadata is None:
         metadata = dict()
@@ -492,7 +535,7 @@ def write_imaging(
             imaging=imaging,
             nwbfile=nwbfile_out,
             metadata=metadata,
-            iterator_type=iterator_type,
+            compression_options=compression_options,
             iterator_options=iterator_options,
         )
     return nwbfile_out
@@ -694,8 +737,8 @@ def add_fluorescence_traces(
     nwbfile: NWBFile,
     metadata: Optional[dict],
     plane_index: int = 0,
-    iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
+    iterator_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -718,8 +761,8 @@ def add_fluorescence_traces(
     NWBFile
         The nwbfile passed as an input with the fluorescence traces added.
     """
-    iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
+    compression_options = compression_options or dict(method="gzip")
+    iterator_options = iterator_options or dict(method="v2")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -808,7 +851,11 @@ def add_fluorescence_traces(
 
         # Build the roi response series
         roi_response_series_kwargs.update(
-            data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
+            data=H5DataIO(
+                SliceableDataChunkIterator(trace, **iterator_options.get("method_options", dict())),
+                compression=compression_options["method"],
+                compression_opts=compression_options.get("method_options", dict()),
+            ),
             rois=roi_table_region,
             **trace_metadata,
         )

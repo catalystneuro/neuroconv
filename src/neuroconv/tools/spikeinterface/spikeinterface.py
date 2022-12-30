@@ -603,7 +603,7 @@ def add_electrical_series(
     iterator_options: Optional[dict] = None,
     compression: Optional[str] = None,  # TODO: remove
     compression_opts: Optional[int] = None,  # TODO: remove
-    iterator_type: Optional[str] = "v2",  # TODO: remove
+    iterator_type: Optional[str] = None,  # TODO: remove
     iterator_opts: Optional[dict] = None,  # TODO: remove
 ):
     """
@@ -1118,7 +1118,6 @@ def write_recording(
         "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
     write_as = "raw" if write_as is None else write_as
-    compression = "gzip" if compression is None else compression
 
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
