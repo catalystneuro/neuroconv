@@ -59,7 +59,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             )
             compression_options = dict(
                 method=compression if isinstance(compression, str) else "gzip",
-                extra_options=compression_opts,
+                method_options=compression_opts,
             )
         if any([x is not None for x in [iterator_type, iterator_opts]]):  # pragma: no cover
             assert iterator_options is None, (
@@ -76,7 +76,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             )
             iterator_options = dict(
                 method=iterator_type or "v2",
-                extra_options=iterator_opts,
+                method_options=iterator_opts or dict(),
             )
 
         from ...tools.spikeinterface import write_recording

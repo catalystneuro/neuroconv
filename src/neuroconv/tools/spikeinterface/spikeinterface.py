@@ -559,7 +559,7 @@ def _recording_traces_to_hdmf_iterator(
         )
         iterator_options = dict(
             method=iterator_type or "v2",
-            extra_options=iterator_opts,
+            method_options=iterator_opts or dict(),
         )
     iterator_options = iterator_options or dict(method="v2")
 
@@ -567,20 +567,20 @@ def _recording_traces_to_hdmf_iterator(
     if iterator_options["method"] not in supported_iterator_types:
         raise ValueError(
             "The `method` of `iterator_options` should be either 'v1', 'v2' (recommended) or None! "
-            f"Received {iterator_options['method']}."
+            f"Received '{iterator_options['method']}'."
         )
 
-    if iterator_type is None:
+    if iterator_options["method"] is None:
         check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
         traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
-    elif iterator_type == "v2":
+    elif iterator_options["method"] == "v2":
         traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
             recording=recording,
             segment_index=segment_index,
             return_scaled=return_scaled,
             **iterator_options.get("method_options", dict()),
         )
-    elif iterator_type == "v1":
+    elif iterator_options["method"] == "v1":
         traces_as_iterator = DataChunkIterator(
             data=recording.get_traces(return_scaled=return_scaled, segment_index=segment_index),
             **iterator_options.get("method_options", dict()),
@@ -668,7 +668,7 @@ def add_electrical_series(
         )
         compression_options = dict(
             method=compression if isinstance(compression, str) else "gzip",
-            extra_options=compression_opts,
+            method_options=compression_opts,
         )
     if any([x is not None for x in [iterator_type, iterator_opts]]):  # pragma: no cover
         assert iterator_options is None, (
@@ -685,7 +685,7 @@ def add_electrical_series(
         )
         iterator_options = dict(
             method=iterator_type or "v2",
-            extra_options=iterator_opts,
+            method_options=iterator_opts or dict(),
         )
 
     compression_options = compression_options or dict(method="gzip")
@@ -783,7 +783,7 @@ def add_electrical_series(
         data=H5DataIO(
             data=ephys_data_iterator,
             compression=compression_options["method"],
-            compression_opts=compression_options.get("method_options", dict()),
+            compression_opts=compression_options.get("method_options"),
         )
     )
 
@@ -800,7 +800,7 @@ def add_electrical_series(
         wrapped_timestamps = H5DataIO(
             data=shifted_time_stamps,
             compression=compression_options["method"],
-            compression_opts=compression_options.get("method_options", dict()),
+            compression_opts=compression_options.get("method_options"),
         )
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 

@@ -269,7 +269,7 @@ def add_two_photon_series(
     two_photon_series_index: int = 0,
     compression_options: Optional[dict] = None,
     iterator_options: Optional[dict] = None,
-    iterator_type: Optional[str] = "v2",  # TODO: to be removed
+    iterator_type: Optional[str] = None,  # TODO: to be removed
     use_times=False,  # TODO: to be removed
 ):
     """
@@ -291,6 +291,8 @@ def add_two_photon_series(
         iterator_options = dict(method=iterator_type)
         if old_iterator_options is not None:  # Old usage together with `iterator_type`
             iterator_options.update(method_options=old_iterator_options)
+        elif iterator_options["method"] == "v1":
+            iterator_options.update(method_options=dict(buffer_size=10))  # To maintain default behavior
     compression_options = compression_options or dict(method="gzip")
     iterator_options = iterator_options or dict(method="v2")
 
@@ -323,7 +325,7 @@ def add_two_photon_series(
     data = H5DataIO(
         data=frames_to_iterator,
         compression=compression_options["method"],
-        compression_opts=compression_options.get("method_options", dict()),
+        compression_opts=compression_options.get("method_options"),
     )
     two_p_series_kwargs.update(data=data)
 
@@ -341,7 +343,7 @@ def add_two_photon_series(
                 timestamps=H5DataIO(
                     data=timestamps,
                     compression=compression_options["method"],
-                    compression_opts=compression_options.get("method_options", dict()),
+                    compression_opts=compression_options.get("method_options"),
                 ),
                 rate=None,
             )
@@ -429,6 +431,13 @@ def _imaging_frames_to_hdmf_iterator(
             iterator_options.update(method_options=old_iterator_options)
     iterator_options = iterator_options or dict(method="v2")
 
+    supported_iterator_types = ["v1", "v2", None]
+    if iterator_options["method"] not in supported_iterator_types:
+        raise ValueError(
+            "The `method` of `iterator_options` should be either 'v1', 'v2' (recommended) or None! "
+            f"Received '{iterator_options['method']}'."
+        )
+
     def data_generator(imaging):
         for i in range(imaging.get_num_frames()):
             yield imaging.get_frames(frame_idxs=[i]).squeeze().T
@@ -440,9 +449,11 @@ def _imaging_frames_to_hdmf_iterator(
     if iterator_options["method"] == "v1":
         if "buffer_size" not in iterator_options.get("method_options", dict()):
             iterator_options.get("method_options", dict()).update(buffer_size=10)
-        return DataChunkIterator(data=data_generator(imaging), **iterator_options["method_options"])
+        return DataChunkIterator(data=data_generator(imaging), **iterator_options.get("method_options", dict()))
 
-    return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options["method_options"])
+    return ImagingExtractorDataChunkIterator(
+        imaging_extractor=imaging, **iterator_options.get("method_options", dict())
+    )
 
 
 def write_imaging(
@@ -584,8 +595,8 @@ def add_plane_segmentation(
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
+    iterator_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the plane segmentation specified by the metadata to the image segmentation.
@@ -638,8 +649,8 @@ def add_plane_segmentation(
         f"or None (to not write any masks)! Received '{mask_type}'."
     )
 
-    iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
+    compression_options = compression_options or dict(method="gzip")
+    iterator_options = iterator_options or dict(method="v2")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -677,7 +688,11 @@ def add_plane_segmentation(
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
-                data=H5DataIO(segmentation_extractor.get_roi_image_masks().T, **compression_options),
+                data=H5DataIO(
+                    segmentation_extractor.get_roi_image_masks().T,
+                    compression=compression_options["method"],
+                    compression_opts=compression_options.get("method_options"),
+                ),
             )
         elif mask_type == "pixel" or mask_type == "voxel":
             pixel_masks = segmentation_extractor.get_roi_pixel_masks()
@@ -713,19 +728,31 @@ def add_plane_segmentation(
             plane_segmentation.add_column(
                 name="ROICentroids",
                 description="The x, y, (z) centroids of each ROI.",
-                data=H5DataIO(roi_locations, **compression_options),
+                data=H5DataIO(
+                    roi_locations,
+                    compression=compression_options["method"],
+                    compression_opts=compression_options.get("method_options"),
+                ),
             )
 
         if include_roi_acceptance:
             plane_segmentation.add_column(
                 name="Accepted",
                 description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-                data=H5DataIO(accepted_ids, **compression_options),
+                data=H5DataIO(
+                    accepted_ids,
+                    compression=compression_options["method"],
+                    compression_opts=compression_options.get("method_options"),
+                ),
             )
             plane_segmentation.add_column(
                 name="Rejected",
                 description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-                data=H5DataIO(rejected_ids, **compression_options),
+                data=H5DataIO(
+                    rejected_ids,
+                    compression=compression_options["method"],
+                    compression_opts=compression_options.get("method_options"),
+                ),
             )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
@@ -808,7 +835,14 @@ def add_fluorescence_traces(
         if estimated_rate:
             roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
-            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            roi_response_series_kwargs.update(
+                timestamps=H5DataIO(
+                    data=timestamps,
+                    compression=compression_options["method"],
+                    compression_opts=compression_options.get("method_options"),
+                ),
+                rate=None,
+            )
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
         roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
@@ -850,11 +884,20 @@ def add_fluorescence_traces(
             trace_metadata.pop("rate")
 
         # Build the roi response series
+        if iterator_options["method"] is None:
+            roi_response_series_data = trace
+        elif iterator_options["method"] == "v1":
+            raise NotImplementedError("The 'v1' iteration method has not been implemented for segmentation data.")
+        elif iterator_options["method"] == "v2":
+            roi_response_series_data = SliceableDataChunkIterator(
+                trace, **iterator_options.get("method_options", dict())
+            )
+
         roi_response_series_kwargs.update(
             data=H5DataIO(
-                SliceableDataChunkIterator(trace, **iterator_options.get("method_options", dict())),
+                roi_response_series_data,
                 compression=compression_options["method"],
-                compression_opts=compression_options.get("method_options", dict()),
+                compression_opts=compression_options.get("method_options"),
             ),
             rois=roi_table_region,
             **trace_metadata,
@@ -966,8 +1009,8 @@ def write_segmentation(
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
-    iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
+    iterator_options: Optional[dict] = None,
 ):
     """
     Primary method for writing an SegmentationExtractor object to an NWBFile.
@@ -1024,8 +1067,8 @@ def write_segmentation(
         nwbfile_path is None or nwbfile is None
     ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
 
-    iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
+    compression_options = compression_options or dict(method="gzip")
+    iterator_options = iterator_options or dict(method="v2")
 
     # parse metadata correctly considering the MultiSegmentationExtractor function:
     if isinstance(segmentation_extractor, MultiSegmentationExtractor):
@@ -1083,8 +1126,8 @@ def write_segmentation(
                 include_roi_centroids=include_roi_centroids,
                 include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
-                iterator_options=iterator_options,
                 compression_options=compression_options,
+                iterator_options=iterator_options,
             )
 
             # Add fluorescence traces:
@@ -1092,8 +1135,8 @@ def write_segmentation(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
-                iterator_options=iterator_options,
                 compression_options=compression_options,
+                iterator_options=iterator_options,
             )
 
             # Adding summary images (mean and correlation)

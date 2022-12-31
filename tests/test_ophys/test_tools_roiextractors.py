@@ -1207,8 +1207,8 @@ class TestAddTwoPhotonSeries(TestCase):
     def test_invalid_iterator_type_raises_error(self):
         """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
-            AssertionError,
-            "'iterator_type' must be either 'v1', 'v2' (recommended), or None.",
+            exc_type=ValueError,
+            exc_msg="The `method` of `iterator_options` should be either 'v1', 'v2' (recommended) or None! Received 'invalid'.",
         ):
             add_two_photon_series(
                 imaging=self.imaging_extractor,
@@ -1248,7 +1248,7 @@ class TestAddTwoPhotonSeries(TestCase):
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
-            iterator_type=None,
+            iterator_options=dict(method=None),
         )
 
         # Check data

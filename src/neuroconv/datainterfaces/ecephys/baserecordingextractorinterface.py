@@ -214,7 +214,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
             iterator_options = dict(
                 method=iterator_type or "v2",
-                method_options=iterator_opts,
+                method_options=iterator_opts or dict(),
             )
 
         from ...tools.spikeinterface import write_recording
