@@ -21,7 +21,7 @@ from numpydoc.docscrape import NumpyDocString
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
+from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate, format_docstring
 
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
@@ -552,8 +552,7 @@ def _recording_traces_to_hdmf_iterator(
         The recording segment to add to the NWBFile.
     return_scaled : bool, defaults to False
         When True recording extractor objects from spikeinterface return their traces in microvolts.
-    iterator_options : dictionary, optional
-        {iterator_options_docstring}
+    {iterator_options_docstring}
 
     Returns
     -------
@@ -610,9 +609,7 @@ def _recording_traces_to_hdmf_iterator(
     return traces_as_iterator
 
 
-_recording_traces_to_hdmf_iterator.__doc__ = _recording_traces_to_hdmf_iterator.__doc__.format(
-    iterator_options_docstring=iterator_options_docstring
-)
+format_docstring(function=_recording_traces_to_hdmf_iterator, iterator_options_docstring=iterator_options_docstring)
 
 
 def add_electrical_series(
@@ -662,10 +659,8 @@ def add_electrical_series(
     write_scaled: bool (optional, defaults to False)
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression_options : dictionary, optional
-        {compression_options_docstring}
-    iterator_options : dictionary, optional
-        {iterator_options_docstring}
+    {compression_options_docstring}
+    {iterator_options_docstring}
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
@@ -831,8 +826,10 @@ def add_electrical_series(
         ecephys_mod.data_interfaces["LFP"].add_electrical_series(es)
 
 
-add_electrical_series.__doc__ = add_electrical_series.__doc__.format(
-    compression_options_docstring=compression_options_docstring, iterator_options_docstring=iterator_options_docstring
+format_docstring(
+    function=add_electrical_series,
+    compression_options_docstring=compression_options_docstring,
+    iterator_options_docstring=iterator_options_docstring,
 )
 
 
@@ -970,24 +967,8 @@ def add_all_to_nwbfile(  # pragma: no cover
         and electrodes are written to NWB.
     write_scaled: bool (optional, defaults to True)
         If True, writes the scaled traces (return_scaled=True)
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
-        Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2')
-        or DataChunkIterator (iterator_tpye='v1').
-        Valid options are
-            buffer_gb : float (optional, defaults to 1 GB, available for both 'v2' and 'v1')
-                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-            chunk_mb : float (optional, defaults to 1 MB, only available for 'v2')
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
+    {compression_options_docstring}
+    {iterator_options_docstring}
     """
     warnings.warn(
         message=(
@@ -1020,6 +1001,13 @@ def add_all_to_nwbfile(  # pragma: no cover
         )
     if isinstance(recording, RecordingExtractor):
         add_epochs(recording=recording, nwbfile=nwbfile)
+
+
+format_docstring(
+    function=add_all_to_nwbfile,
+    compression_options_docstring=compression_options_docstring,
+    iterator_options_docstring=iterator_options_docstring,
+)
 
 
 def write_recording(
@@ -1116,23 +1104,8 @@ def write_recording(
         and electrodes are written to NWB.
     write_scaled: bool (optional, defaults to True)
         If True, writes the scaled traces (return_scaled=True)
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
-        Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-        Valid options are
-            buffer_gb : float (optional, defaults to 1 GB)
-                Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-            chunk_mb : float (optional, defaults to 1 MB)
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-        If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
+    {compression_options_docstring}
+    {iterator_options_docstring}
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -1174,6 +1147,13 @@ def write_recording(
         if isinstance(recording, RecordingExtractor):
             add_epochs(recording=recording, nwbfile=nwbfile_out)
     return nwbfile_out
+
+
+format_docstring(
+    function=write_recording,
+    compression_options_docstring=compression_options_docstring,
+    iterator_options_docstring=iterator_options_docstring,
+)
 
 
 def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
