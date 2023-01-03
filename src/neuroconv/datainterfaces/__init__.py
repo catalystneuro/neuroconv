@@ -36,6 +36,8 @@ from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface
 from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
+from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
@@ -58,6 +60,10 @@ from .ophys.miniscope.miniscopedatainterface import MiniscopeImagingInterface
 from .behavior.video.videodatainterface import VideoInterface, MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
+
+# Text
+from .text.csv.csvtimeintertervalsinterface import CsvTimeIntervalsInterface
+from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 interface_list = [
     # Ecephys
@@ -90,6 +96,8 @@ interface_list = [
     PlexonRecordingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
+    MEArecRecordingInterface,
+    MCSRawRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
@@ -108,4 +116,7 @@ interface_list = [
     VideoInterface,
     DeepLabCutInterface,
     SLEAPInterface,
+    # Text
+    CsvTimeIntervalsInterface,
+    ExcelTimeIntervalsInterface,
 ]

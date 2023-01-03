@@ -20,13 +20,15 @@ Recording
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     Intan <recording/intan>
+    MEArec <recording/mearec>
+    MCSRaw <recording/mcsraw>
     Neuralynx <recording/neuralynx>
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>
     Plexon <recording/plexon>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
-    EDF <recording/edf>
+    European Data Format (EDF) <recording/edf>
     Tucker-Davis Technologies (TDT) <recording/tdt>
 
 Sorting
@@ -85,6 +87,15 @@ Behavior
     SLEAP <behavior/sleap>
     Videos <behavior/video>
     Audio <behavior/audio>
+
+Text
+----
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV <text/csv>
+    Excel <text/excel>
 
 Common interface combinations
 -----------------------------

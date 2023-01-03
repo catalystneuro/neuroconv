@@ -10,6 +10,7 @@ from .types import (
 )
 from .dict import dict_deep_update, load_dict_from_file, append_replace_dict_in_list, exist_dict_in_list
 from .json_schema import (
+    NWBMetaDataEncoder,
     get_schema_from_method_signature,
     get_schema_from_hdmf_class,
     get_schema_for_NWBFile,

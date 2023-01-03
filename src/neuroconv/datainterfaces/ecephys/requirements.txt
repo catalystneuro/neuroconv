@@ -1,2 +1,3 @@
 spikeinterface>=0.95.1
 spikeextractors>=0.9.10
+packaging<22.0

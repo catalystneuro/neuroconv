@@ -8,5 +8,6 @@ from .spikeinterface import (
     add_epochs,
     write_recording,
     write_sorting,
+    write_waveforms,
     add_units_table,
 )
