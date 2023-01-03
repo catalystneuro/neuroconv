@@ -3,7 +3,7 @@ from ....utils import FilePathType
 
 
 class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
-    """Data interface for constrained nonnegative matrix factorization (CNMFE) segmentation extractor."""
+    """Data interface for constrained non-negative matrix factorization (CNMFE) segmentation extractor."""
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
 
