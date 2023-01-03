@@ -11,7 +11,7 @@ repos:
     -   id: black
         exclude: ^docs/
 -   repo: https://github.com/PyCQA/pydocstyle
-    rev: 5.11.4
+    rev: 6.2.1
     hooks:
     -   id: pydocstyle
         exclude: ^docs/
