@@ -15,6 +15,15 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     ExtractorModuleName = "spikeextractors"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        """
+        Initialize read of Cell Explorer file.
+
+        Parameters
+        ----------
+        file_path: FilePathType
+            Path to .spikes.cellinfo.mat file.
+        verbose: bool, default: True
+        """
         hdf5storage = get_package(package_name="hdf5storage")
 
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)
