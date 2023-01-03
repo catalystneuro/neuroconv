@@ -19,7 +19,8 @@
 * Added page in User Guide for how to use CSVs to specifiy metadata. [PR #241](https://github.com/catalystneuro/neuroconv/pull/177)
 * Added the `BaseDataInterface` in the API docs. [PR #242](https://github.com/catalystneuro/neuroconv/pull/242)
 * Fixed typo in styling section. [PR #253](https://github.com/catalystneuro/neuroconv/pull/253)
-* Update docs on JSON schema. [PR #256](https://github.com/catalystneuro/neuroconv/pull/256)
+* Updated docs on JSON schema. [PR #256](https://github.com/catalystneuro/neuroconv/pull/256)
+* Improved compliance with numpy-style docstring [PR #260](https://github.com/catalystneuro/neuroconv/pull/260)
 
 ### Features
 * Added `AudioInterface` for files in `WAV` format using the `add_acoustic_waveform_series` utility function

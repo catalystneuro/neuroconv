@@ -14,6 +14,15 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`."""
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        """
+
+        Parameters
+        ----------
+        file_path: FilePathType
+            Path to .bin file.
+        verbose: bool, optional, default: True
+        """
+
         super().__init__(file_path=file_path, all_annotations=True, verbose=verbose)
         self.source_data = dict(file_path=file_path, verbose=verbose)
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
