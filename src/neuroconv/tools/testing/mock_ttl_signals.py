@@ -40,32 +40,32 @@ def generate_mock_ttl_signal(
 
     Parameters
     ----------
-    signal_duration: float, default: 7.0
+    signal_duration : float, default: 7.0
         The number of seconds to simulate.
-    ttl_times: array of floats, optional
+    ttl_times : array of floats, optional
         The times within the `signal_duration` to trigger the TTL pulse.
         In conjunction with the `ttl_duration`, these must produce disjoint 'on' intervals.
         The default generates a periodic 1 second on, 1 second off pattern.
-    ttl_duration: float, default: 1.0
+    ttl_duration : float, default: 1.0
         How long the TTL pulse stays in the 'on' state when triggered, in seconds.
         In conjunction with the `ttl_times`, these must produce disjoint 'on' intervals.
-    sampling_frequency_hz: float, default: 25,000
+    sampling_frequency_hz : float, default: 25,000.0
         The sampling frequency of the signal in Hz.
         The default is 25000 Hz; similar to that of typical .nidq.bin files.
-    dtype: numpy data type or one of its accepted string input, default: "int16"
+    dtype : numpy data type or one of its accepted string input, default: "int16"
         The data type of the trace.
         Must match the data type of `baseline_mean`, `signal_mean`, and `channel_noise`, if any of those are specified.
         Recommended to be int16 for maximum efficiency, but can also be any size float to represent voltage scalings.
-    baseline_mean: integer or float, depending on specified 'dtype', optional
+    baseline_mean : integer or float, depending on specified 'dtype', optional
         The average value for the baseline; usually around 0 Volts.
-        The default is apprimxately 0.005645752 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
-    signal_mean: integer or float, depending on specified 'dtype', optional
-        The average value for the signal; usually around 5 Volts.
-        The default is apprimxately 4.980773925 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
-    channel_noise: integer or float, depending on specified 'dtype', optional
-        The standard deviation of white noise in the channel.
-        The default is apprimxately 0.002288818 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
-    random_seed: int or None, default: 0
+        The default is approximately 0.005645752 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
+    signal_mean : integer or float, optional
+        Type depends on specified 'dtype'. The average value for the signal; usually around 5 Volts.
+        The default is approximately 4.980773925 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
+    channel_noise: integer or float, optional
+        Type depends on specified 'dtype'. The standard deviation of white noise in the channel.
+        The default is approximately 0.002288818 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
+    random_seed : int or None, default: 0
         The seed to set for the numpy random number generator.
         Set to None to choose the seed randomly.
         The default is kept at 0 for generating reproducible outputs.
@@ -133,10 +133,10 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
 
     Parameters
     ----------
-    folder_path: PathType
+    folder_path : PathType
         Folder to save the resulting NWB file in. For use in the testing suite, this must be the
         '/test_testing/test_mock_ttl/' subfolder adjacent to the 'test_mock_tt.py' file.
-    regenerate_reference_images: boolean
+    regenerate_reference_images : bool
         If true, uses the kaleido package with plotly (you may need to install both) to regenerate the images used
         as references in the documentation.
     """
