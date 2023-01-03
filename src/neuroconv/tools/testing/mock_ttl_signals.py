@@ -8,12 +8,12 @@ from nwbinspector.tools import make_minimal_nwbfile
 from nwbinspector.utils import is_module_installed
 from pynwb import NWBHDF5IO, TimeSeries, H5DataIO
 
-from ...utils import IntType, FloatType, ArrayType, FolderPathType
+from ...utils import ArrayType, FolderPathType
 
 
 def _check_parameter_dtype_consistency(
     parameter_name: str,
-    parameter_value: Union[IntType, FloatType],
+    parameter_value: Union[int, float],
     generic_dtype: type,  # Literal[np.integer, np.floating]
 ):
     """Helper for `generate_mock_ttl_signal` to assert consistency between parameters and expected trace dtype."""
