@@ -114,7 +114,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,  # To-do to remove, deprecation
         write_as: Optional[str] = None,
         write_electrical_series: bool = True,
         es_key: str = None,
@@ -143,7 +142,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
-            Increments timestamps if use_times is True.
         stub_test : bool, optional, default False
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as : {'raw', 'lfp', 'processed'}
@@ -185,7 +183,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             starting_time=starting_time,
-            use_times=use_times,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=es_key or self.es_key,
