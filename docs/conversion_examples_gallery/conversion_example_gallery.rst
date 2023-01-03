@@ -88,6 +88,15 @@ Behavior
     Videos <behavior/video>
     Audio <behavior/audio>
 
+Text
+----
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV <text/csv>
+    Excel <text/excel>
+
 Common interface combinations
 -----------------------------
 

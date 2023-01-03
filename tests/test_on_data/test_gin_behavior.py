@@ -20,7 +20,7 @@ class TestSLEAPInterface(unittest.TestCase):
             param(
                 data_interface=SLEAPInterface,
                 interface_kwargs=dict(
-                    file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp")
+                    file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),
                 ),
             )
         ]
@@ -74,24 +74,26 @@ class TestSLEAPInterface(unittest.TestCase):
             param(
                 data_interface=SLEAPInterface,
                 interface_kwargs=dict(
-                    file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp")
+                    file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.slp"),
+                    video_file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4"),
                 ),
             )
         ]
     )
-    def test_sleap_to_nwb_converter(self, data_interface, interface_kwargs):
-        nwbfile_path = str(self.savedir / f"{data_interface.__name__}converter.nwb")
+    def test_sleap_interface_timestamps_propagation(self, data_interface, interface_kwargs):
+        nwbfile_path = str(self.savedir / f"{data_interface.__name__}.nwb")
 
-        class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestBehavior=data_interface)
-
-        converter = TestConverter(source_data=dict(TestBehavior=dict(interface_kwargs)))
-        metadata = converter.get_metadata()
+        interface = SLEAPInterface(**interface_kwargs)
+        metadata = interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         slp_predictions_path = interface_kwargs["file_path"]
         labels = sleap_io.load_slp(slp_predictions_path)
+
+        from neuroconv.datainterfaces.behavior.sleap.sleap_utils import extract_timestamps
+
+        expected_timestamps = set(extract_timestamps(interface_kwargs["video_file_path"]))
 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
@@ -100,31 +102,27 @@ class TestSLEAPInterface(unittest.TestCase):
             assert len(nwbfile.processing) == number_of_videos
 
             # Test processing module naming as video
-            processing_module_name = "SLEAP_VIDEO_000_20190128_113421"
-            assert processing_module_name in nwbfile.processing
+            video_name = Path(labels.videos[0].filename).stem
+            processing_module_name = f"SLEAP_VIDEO_000_{video_name}"
 
             # For this case we have as many containers as tracks
-            # Each track usually represents a subject
-            processing_module = nwbfile.processing[processing_module_name]
-            processing_module_interfaces = processing_module.data_interfaces
-            assert len(processing_module_interfaces) == len(labels.tracks)
+            processing_module_interfaces = nwbfile.processing[processing_module_name].data_interfaces
 
-            # Test name of PoseEstimation containers
             extracted_container_names = processing_module_interfaces.keys()
             for track in labels.tracks:
                 expected_track_name = f"track={track.name}"
                 assert expected_track_name in extracted_container_names
 
-            # Test one PoseEstimation container
-            container_name = f"track={track.name}"
-            pose_estimation_container = processing_module_interfaces[container_name]
-            # Test that the skeleton nodes are store as nodes in containers
-            expected_node_names = [node.name for node in labels.skeletons[0]]
-            assert expected_node_names == list(pose_estimation_container.nodes[:])
+                container_name = f"track={track.name}"
+                pose_estimation_container = processing_module_interfaces[container_name]
 
-            # Test that each PoseEstimationSeries is named as a node
-            for node_name in pose_estimation_container.nodes[:]:
-                assert node_name in pose_estimation_container.pose_estimation_series
+                # Test that each PoseEstimationSeries is named as a node
+                for node_name in pose_estimation_container.nodes[:]:
+                    pose_estimation_series = pose_estimation_container.pose_estimation_series[node_name]
+                    extracted_timestamps = pose_estimation_series.timestamps[:]
+
+                    # Some frames do not have predictions associated with them, so we test for sub-set
+                    assert set(extracted_timestamps).issubset(expected_timestamps)
 
 
 class TestDeepLabCutInterface(unittest.TestCase):

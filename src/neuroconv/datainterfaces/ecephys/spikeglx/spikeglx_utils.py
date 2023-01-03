@@ -61,14 +61,17 @@ def get_session_start_time(recording_metadata: dict) -> datetime:
 
     Returns
     -------
-    datetime
+    datetime or None
         the session start time in datetime format.
     """
 
     session_start_time = recording_metadata.get("fileCreateTime", None)
+    if session_start_time.startswith("0000-00-00"):
+        # date was removed. This sometimes happens with human data to protect the
+        # anonymity of medical patients.
+        return
     if session_start_time:
         session_start_time = datetime.fromisoformat(session_start_time)
-
     return session_start_time
 
 
