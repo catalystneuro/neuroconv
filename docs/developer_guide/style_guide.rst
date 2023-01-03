@@ -38,3 +38,5 @@ Other conventions
    notation :code:`dictionary={foo: bar}`. Notable exceptions that do not lend themselves to this constructor are the
    use of  non-valid python expressions as keys (e.g :code:`1key` can not be used as a key because of the number at the beginning)
    and the use of non-mutable objects as keys.
+#. Use "NWBFile" when referring to an instance of :py:class:`~pynwb.file.NWBFile`. Use "NWB File" when referring to a
+   file that is in the NWB format.
