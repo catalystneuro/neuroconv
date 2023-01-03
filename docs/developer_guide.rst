@@ -10,6 +10,7 @@ The most common contribution is for a user/developer to help us integrate a new 
 
     Contributing <developer_guide/contributing>
     Build a Data Interface <developer_guide/build_data_interface>
+    Schemas <developer_guide/schemas>
     Project Structure <developer_guide/project_structure>
     Coding Style <developer_guide/style_guide>
 

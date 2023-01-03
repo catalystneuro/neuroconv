@@ -1,5 +1,14 @@
 # Upcoming
 
+### Fixes
+* Temporarily hotfixed the `tensorflow` dependency after the release of `deeplabcut==2.3.0`. [PR #268](https://github.com/catalystneuro/neuroconv/pull/268)
+
+
+
+### Pending deprecation
+
+* Added `DeprecationWarning`s for `spikeextractors` objects in `neuroconv.tools.spikeinterface`. [PR #266](https://github.com/catalystneuro/neuroconv/pull/266)
+
 # v0.2.3
 
 ### Documentation and tutorial enhancements
@@ -9,7 +18,8 @@
 * Added tutorial for utilizing YAML metadata in a conversion pipeline. [PR #240](https://github.com/catalystneuro/neuroconv/pull/240)
 * Added page in User Guide for how to use CSVs to specifiy metadata. [PR #241](https://github.com/catalystneuro/neuroconv/pull/177)
 * Added the `BaseDataInterface` in the API docs. [PR #242](https://github.com/catalystneuro/neuroconv/pull/242)
-* Fixed type in styling section. [PR #253](https://github.com/catalystneuro/neuroconv/pull/253)
+* Fixed typo in styling section. [PR #253](https://github.com/catalystneuro/neuroconv/pull/253)
+* Update docs on JSON schema. [PR #256](https://github.com/catalystneuro/neuroconv/pull/256)
 
 ### Features
 * Added `AudioInterface` for files in `WAV` format using the `add_acoustic_waveform_series` utility function
