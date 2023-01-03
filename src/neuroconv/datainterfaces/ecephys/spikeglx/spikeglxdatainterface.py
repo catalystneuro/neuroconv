@@ -1,6 +1,7 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
 import json
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -68,6 +69,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             from spikeextractors import SpikeGLXRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
 

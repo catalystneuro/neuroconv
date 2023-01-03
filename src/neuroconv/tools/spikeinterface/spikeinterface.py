@@ -584,7 +584,6 @@ def add_electrical_series(
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
-    use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
@@ -640,9 +639,6 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
-    if use_times:
-        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
-
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
         # TODO: Remove spikeextractors backend
@@ -851,7 +847,6 @@ def add_all_to_nwbfile(
     recording: SpikeInterfaceRecording,
     nwbfile=None,
     starting_time: Optional[float] = None,
-    use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
@@ -873,10 +868,6 @@ def add_all_to_nwbfile(
         nwb file to which the recording information is to be added
     starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times : bool, default False
-        If True, the times are saved to the NWB file using recording.get_times(). If False,
-        the sampling rate is used.
     metadata : dict, optional
         metadata info for constructing the NWB file.
         Check the auxiliary function docstrings for more information
@@ -921,7 +912,6 @@ def add_all_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             starting_time=starting_time,
-            use_times=use_times,
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
@@ -943,7 +933,6 @@ def write_recording(
     overwrite: bool = False,
     verbose: bool = True,
     starting_time: Optional[float] = None,
-    use_times: bool = False,  # TODO: to be removed
     write_as: Optional[str] = None,
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
@@ -1011,10 +1000,6 @@ def write_recording(
         The default is True.
     starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times: bool
-        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
-        the sampling rate is used.
     write_as: {'raw', 'processed', 'lfp'}, optional
         How to save the traces data in the nwb file.
         - 'raw' will save it in acquisition
