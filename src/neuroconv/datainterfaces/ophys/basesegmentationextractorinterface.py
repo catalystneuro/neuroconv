@@ -6,7 +6,7 @@ from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, fill_defaults, OptionalFilePathType, get_base_schema
+from ...utils import get_schema_from_hdmf_class, fill_defaults, FilePathType, get_base_schema
 
 
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
@@ -18,7 +18,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         super().__init__(**source_data)
         self.segmentation_extractor = self.Extractor(**source_data)
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         metadata_schema["required"] = ["Ophys"]
         metadata_schema["properties"]["Ophys"] = get_base_schema()
@@ -51,7 +51,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         from ...tools.roiextractors import get_nwb_segmentation_metadata
 
         metadata = super().get_metadata()
@@ -60,7 +60,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -68,10 +68,50 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         stub_frames: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
+        mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel", "voxel"]]
         compression_options: Optional[dict] = None,
         iterator_options: Optional[dict] = None,
     ):
+        """
+
+        Parameters
+        ----------
+        nwbfile_path : FilePathType, optional
+        nwbfile : NWBFile, optional
+            The NWBFile to add the plane segmentation to.
+        metadata : dict, optional
+            The metadata for the interface
+        overwrite : bool, default: False
+        stub_test : bool, default: False
+        stub_frames : int, default: 100
+        include_roi_centroids : bool, default: True
+            Whether to include the ROI centroids on the PlaneSegmentation table.
+            If there are a very large number of ROIs (such as in whole-brain recordings),
+            you may wish to disable this for faster write speeds.
+        include_roi_acceptance : bool, default: True
+            Whether to include if the detected ROI was 'accepted' or 'rejected'.
+            If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
+            faster write speeds.
+        mask_type : {'image', 'pixel', 'voxel'}, optional
+            There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
+            Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
+                by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
+            Pixel masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
+                of pixels in each ROI.
+            Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
+                of voxels in each ROI.
+            Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
+            If None, the mask information is not written to the NWB file.
+            Defaults to 'image'.
+        iterator_options : dict, optional
+            The options to use when iterating over the image masks of the segmentation extractor.
+        compression_options : dict, optional
+            The options to use when compressing the image masks of the segmentation extractor.
+
+        Returns
+        -------
+
+        """
         from ...tools.roiextractors import write_segmentation
 
         if stub_test:

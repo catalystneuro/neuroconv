@@ -23,6 +23,14 @@ class TimeIntervalsInterface(BaseDataInterface):
         read_kwargs: Optional[dict] = None,
         verbose: bool = True,
     ):
+        """
+
+        Parameters
+        ----------
+        file_path : FilePath
+        read_kwargs : dict, optional
+        verbose : bool, default: True
+        """
         read_kwargs = read_kwargs or dict()
         super().__init__(file_path=file_path)
         self.verbose = verbose
