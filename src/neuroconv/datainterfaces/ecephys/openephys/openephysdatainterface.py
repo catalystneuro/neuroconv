@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Luiz Tauffer."""
 from typing import Optional
+from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -45,6 +46,15 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         """
         self.spikeextractors_backend = spikeextractors_backend
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             from spikeextractors import OpenEphysRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
