@@ -9,16 +9,21 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True):
         """
+        Initialize reading of a TDT recording.
+
         Parameters
         ----------
-        folder_path: str or Path
-            Path to the folder or directory with the corresponding files (TSQ, TBK, TEV, SEV)
-        stream_id: str, "0" by default
+        folder_path : str or Path
+            Path to the directory with the corresponding files (TSQ, TBK, TEV, SEV)
+        stream_id : str, "0" by default
             Select from multiple streams.
-        verbose: bool, True by default
+        verbose : bool, default: True
             Allows verbose.
+
+        Notes
+        -----
+        Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         """
-        # Note: stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
 
         super().__init__(
             folder_path=folder_path,
