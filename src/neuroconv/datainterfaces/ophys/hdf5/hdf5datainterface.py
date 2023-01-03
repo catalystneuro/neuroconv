@@ -19,14 +19,14 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path : FilePathType
             Path to .h5 or .hdf5 file.
-        mov_field: str, default: 'mov'
-        sampling_frequency: float, optional
-        start_time: float, optional
-        metadata: dict, optional
-        channel_names: list of str, optional
-        verbose: bool, default: True
+        mov_field : str, default: 'mov'
+        sampling_frequency : float, optional
+        start_time : float, optional
+        metadata : dict, optional
+        channel_names : list of str, optional
+        verbose : bool, default: True
         """
         super().__init__(
             file_path=file_path,

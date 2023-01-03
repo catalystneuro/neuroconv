@@ -10,10 +10,10 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
 
         Parameters
         ----------
-        folder_path: FolderPathType
-        combined: bool, default: False
-        plane_no: int, default: 0
-        verbose: bool, default: True
+        folder_path : FolderPathType
+        combined : bool, default: False
+        plane_no : int, default: 0
+        verbose : bool, default: True
         """
         super().__init__(folder_path=folder_path, combined=combined, plane_no=plane_no)
         self.verbose = verbose

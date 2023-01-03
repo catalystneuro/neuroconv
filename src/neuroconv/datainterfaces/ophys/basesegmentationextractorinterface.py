@@ -60,14 +60,14 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
-        overwrite: bool = False,
-        stub_test: bool = False,
-        stub_frames: int = 100,
-        include_roi_centroids: bool = True,
-        include_roi_acceptance: bool = True,
+        nwbfile_path : Optional[FilePathType] = None,
+        nwbfile : Optional[NWBFile] = None,
+        metadata : Optional[dict] = None,
+        overwrite : bool = False,
+        stub_test : bool = False,
+        stub_frames : int = 100,
+        include_roi_centroids : bool = True,
+        include_roi_acceptance : bool = True,
         mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel", "voxel"]]
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,

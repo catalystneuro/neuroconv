@@ -49,11 +49,11 @@ class AbfInterface(BaseIcephysInterface):
 
         Parameters
         ----------
-        file_paths: list
+        file_paths : list
             List of files to be converted to the same NWB file.
-        icephys_metadata: dict, optional
+        icephys_metadata : dict, optional
             Dictionary containing the Icephys-specific metadata.
-        icephys_metadata_file_path: str, optional
+        icephys_metadata_file_path : str, optional
             JSON file containing the Icephys-specific metadata.
         """
         super().__init__(file_paths=file_paths)

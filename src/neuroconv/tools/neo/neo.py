@@ -210,12 +210,12 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
 
 def add_icephys_recordings(
     neo_reader,
-    nwbfile: pynwb.NWBFile,
-    metadata: dict = None,
-    icephys_experiment_type: str = "voltage_clamp",
-    stimulus_type: str = "not described",
-    skip_electrodes: Tuple[int] = (),
-    compression: str = "gzip",
+    nwbfile : pynwb.NWBFile,
+    metadata : dict = None,
+    icephys_experiment_type : str = "voltage_clamp",
+    stimulus_type : str = "not described",
+    skip_electrodes : Tuple[int] = (),
+    compression : str = "gzip",
 ):
     """
     Add icephys recordings (stimulus/response pairs) to nwbfile object.
@@ -370,12 +370,12 @@ def add_icephys_recordings(
 
 def add_all_to_nwbfile(
     neo_reader,
-    nwbfile=None,
-    metadata: dict = None,
-    compression: Optional[str] = "gzip",
-    icephys_experiment_type: str = "voltage_clamp",
-    stimulus_type: Optional[str] = None,
-    skip_electrodes: Tuple[int] = (),
+    nwbfile : NWBFile = None,
+    metadata : dict = None,
+    compression : Optional[str] = "gzip",
+    icephys_experiment_type : str = "voltage_clamp",
+    stimulus_type : Optional[str] = None,
+    skip_electrodes : Tuple[int] = (),
 ):
     """
     Auxiliary static method for nwbextractor.

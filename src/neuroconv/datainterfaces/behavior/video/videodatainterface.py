@@ -127,10 +127,10 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        nwbfile_path: FilePathType, optional
+        nwbfile_path : FilePathType, optional
             Path for where to write or load (if overwrite=False) the NWB file.
             If specified, this context will always write to this location.
-        nwbfile: NWBFile, optional
+        nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
             Dictionary of metadata information such as names and description of each video.

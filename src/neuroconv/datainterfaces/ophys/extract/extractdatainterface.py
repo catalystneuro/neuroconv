@@ -18,10 +18,10 @@ class ExtractSegmentationInterface(BaseSegmentationExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
-        sampling_frequency: float
-        output_struct_name: str, optional
-        verbose: bool, default: True
+        file_path : FilePathType
+        sampling_frequency : float
+        output_struct_name : str, optional
+        verbose: bool, default : True
         """
         self.verbose = verbose
         super().__init__(

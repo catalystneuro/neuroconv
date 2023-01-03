@@ -10,9 +10,9 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path : FilePathType
             Path to .hdf5 file.
-        verbose: bool, default True
+        verbose : bool, default True
             Whether to print progress
         """
         super().__init__(file_path=file_path)

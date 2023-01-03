@@ -17,8 +17,8 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
-        sampling_frequency: float
-        verbose: bool, default: True
+        file_path : FilePathType
+        sampling_frequency : float
+        verbose : bool, default: True
         """
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
