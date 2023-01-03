@@ -36,7 +36,7 @@ def read_eeg_file_lfp_data(file_path: FilePathType) -> np.memmap:
 
     Parameters:
     -------
-    file_path: FilePathType
+    file_path : FilePathType
         Full file_path of Axona `.eegX` or `.egfX` file.
 
     Returns:

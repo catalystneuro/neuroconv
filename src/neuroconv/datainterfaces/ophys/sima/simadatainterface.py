@@ -10,7 +10,7 @@ class SimaSegmentationInterface(BaseSegmentationExtractorInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
-        sima_segmentation_label: str, default: "auto_ROIs"
+        file_path : FilePathType
+        sima_segmentation_label : str, default: "auto_ROIs"
         """
         super().__init__(file_path=file_path, sima_segmentation_label=sima_segmentation_label)

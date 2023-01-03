@@ -76,7 +76,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         icephys_experiment_type: str = "voltage_clamp",
         skip_electrodes: Tuple[int] = (),
         # TODO: to be removed
-        save_path: Optional[FilePathType] = None,  # pragma: no cover
+        save_path : Optional[FilePathType] = None,  # pragma: no cover
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.

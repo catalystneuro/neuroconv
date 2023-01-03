@@ -228,9 +228,9 @@ def add_icephys_recordings(
     icephys_experiment_type : {'voltage_clamp', 'current_clamp', 'izero'}
         Type of icephys recording.
     stimulus_type : str, default: 'not described'
-    skip_electrodes: tuple, optional
-        Electrode IDs to skip. Defaults to ().
-    compression: str | bool
+    skip_electrodes : tuple, default: ()
+        Electrode IDs to skip.
+    compression : str | bool
     """
     n_segments = get_number_of_segments(neo_reader, block=0)
 
