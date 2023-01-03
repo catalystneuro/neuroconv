@@ -255,11 +255,11 @@ def estimate_total_conversion_runtime(
 
 
 def estimate_s3_conversion_cost(
-    total_mb : float,
-    transfer_rate_mb : float = 20.0,
-    conversion_rate_mb : float = 17.0,
-    upload_rate_mb : float = 40.0,
-    compression_ratio : float = 1.7,
+    total_mb: float,
+    transfer_rate_mb: float = 20.0,
+    conversion_rate_mb: float = 17.0,
+    upload_rate_mb: float = 40.0,
+    compression_ratio: float = 1.7,
 ):
     """
     Estimate potential cost of performing an entire conversion on S3 using full automation.
@@ -288,9 +288,9 @@ def estimate_s3_conversion_cost(
 
 
 def automatic_dandi_upload(
-    dandiset_id : str,
-    nwb_folder_path : FolderPathType,
-    dandiset_folder_path : OptionalFolderPathType = None,
+    dandiset_id: str,
+    nwb_folder_path: FolderPathType,
+    dandiset_folder_path: OptionalFolderPathType = None,
     version: str = "draft",
     staging: bool = False,
     cleanup: bool = False,

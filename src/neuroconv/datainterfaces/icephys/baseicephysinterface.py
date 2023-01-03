@@ -70,10 +70,10 @@ class BaseIcephysInterface(BaseExtractorInterface):
     def run_conversion(
         self,
         nwbfile: NWBFile = None,
-        nwbfile_path : Optional[FilePathType] = None,
-        metadata : dict = None,
-        overwrite : bool = False,
-        icephys_experiment_type : str = "voltage_clamp",
+        nwbfile_path: Optional[FilePathType] = None,
+        metadata: dict = None,
+        overwrite: bool = False,
+        icephys_experiment_type: str = "voltage_clamp",
         skip_electrodes: Tuple[int] = (),
         # TODO: to be removed
         save_path: Optional[FilePathType] = None,  # pragma: no cover
