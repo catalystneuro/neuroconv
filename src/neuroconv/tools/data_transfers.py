@@ -291,9 +291,9 @@ def automatic_dandi_upload(
     dandiset_id: str,
     nwb_folder_path: FolderPathType,
     dandiset_folder_path: OptionalFolderPathType = None,
-    version : str = "draft",
-    staging : bool = False,
-    cleanup : bool = False,
+    version: str = "draft",
+    staging: bool = False,
+    cleanup: bool = False,
 ):
     """
     Fully automated upload of NWBFiles to a DANDISet.
