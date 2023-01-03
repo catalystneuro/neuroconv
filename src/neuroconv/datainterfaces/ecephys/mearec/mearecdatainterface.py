@@ -23,9 +23,8 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path: string or Path
             Path to the MEArec .h5 file.
-        verbose: boolean
+        verbose: bool, default: True
             Allows verbose.
-            Default is True.
         """
         super().__init__(file_path=file_path, verbose=verbose)
         self.es_key = "ElectricalSeries"
