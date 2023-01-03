@@ -17,6 +17,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, **source_data):
+        """
+        Parameters
+        ----------
+        verbose : bool, default True
+            If True, will print out additional information.
+        source_data : dict
+            key-value pairs of extractor-specific arguments.
+
+        """
         super().__init__(**source_data)
         self.recording_extractor = self.Extractor(**source_data)
         self.subset_channels = None
@@ -79,7 +88,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        stub_test : bool, optional (default False)
+        stub_test : bool, optional, default False
         """
         from spikeextractors import RecordingExtractor, SubRecordingExtractor
         from spikeinterface import BaseRecording
@@ -123,30 +132,29 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, this context will always write to this location.
-        nwbfile: NWBFile
-            nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
+        nwbfile : NWBFile, optional
+            NWBFile to which the recording information is to be added
+        metadata : dict, optional
+            metadata info for constructing the NWB file.
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether or not to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
-        starting_time: float (optional)
+        starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
             Increments timestamps if use_times is True.
-        stub_test: bool, optional (default False)
+        stub_test : bool, optional, default False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as: str (optional, defaults to 'raw')
-            Options: 'raw', 'lfp' or 'processed'
-        write_electrical_series: bool (optional)
-            If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+        write_as : {'raw', 'lfp', 'processed'}
+        write_electrical_series : bool, default: True
+            Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        es_key: str (optional)
+        es_key : str, optional
             Key in metadata dictionary containing metadata info for the specific electrical series
         {compression_options_docstring}
         {iterator_options_docstring}
@@ -183,7 +191,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
             iterator_options = dict(
                 method=iterator_type or "v2",
-                method_options=iterator_opts,
+                method_options=iterator_opts or dict(),
             )
 
         from ...tools.spikeinterface import write_recording

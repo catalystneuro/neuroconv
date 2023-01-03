@@ -1,13 +1,21 @@
 # Upcoming
 
+### Official deprecation
+* Removed the `buffer_size` argument from `neuroconv.tools.roiextractors.write_imaging`. [PR #???](https://github.com/catalystneuro/neuroconv/pull/???)
+
 ### Fixes
 * Temporarily hotfixed the `tensorflow` dependency after the release of `deeplabcut==2.3.0`. [PR #268](https://github.com/catalystneuro/neuroconv/pull/268)
-
-
 
 ### Pending deprecation
 
 * Added `DeprecationWarning`s for `spikeextractors` objects in `neuroconv.tools.spikeinterface`. [PR #266](https://github.com/catalystneuro/neuroconv/pull/266)
+*  Added `DeprecationWarning`s for `iterator_type`+`iterator_opts` and `compression`+`compression_opts` references across all of NeuroConv. The new standard is to use `iterator_options` with keys `method` and `method_options` as well as `compression_options` with keys `method` and `method_options`.  [PR #???](https://github.com/catalystneuro/neuroconv/pull/???)
+
+
+### Features
+* Added `compression_options` control for Imaging tools and interfaces. [PR #???](https://github.com/catalystneuro/neuroconv/pull/???)
+
+
 
 # v0.2.3
 
@@ -18,7 +26,9 @@
 * Added tutorial for utilizing YAML metadata in a conversion pipeline. [PR #240](https://github.com/catalystneuro/neuroconv/pull/240)
 * Added page in User Guide for how to use CSVs to specifiy metadata. [PR #241](https://github.com/catalystneuro/neuroconv/pull/177)
 * Added the `BaseDataInterface` in the API docs. [PR #242](https://github.com/catalystneuro/neuroconv/pull/242)
-* Fixed type in styling section. [PR #253](https://github.com/catalystneuro/neuroconv/pull/253)
+* Fixed typo in styling section. [PR #253](https://github.com/catalystneuro/neuroconv/pull/253)
+* Updated docs on JSON schema. [PR #256](https://github.com/catalystneuro/neuroconv/pull/256)
+* Improved compliance with numpy-style docstring [PR #260](https://github.com/catalystneuro/neuroconv/pull/260)
 
 ### Features
 * Added `AudioInterface` for files in `WAV` format using the `add_acoustic_waveform_series` utility function
