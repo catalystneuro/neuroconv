@@ -1098,6 +1098,7 @@ class TestWriteWaveforms(TestCase):
         cls.we_recless = WaveformExtractor.load_from_folder(cls.recording_less_wf_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
 
+    @classmethod
     def tearDownClass(cls):
         rmtree(cls.tmpdir)
 
