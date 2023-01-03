@@ -21,7 +21,9 @@
 * Added tutorial for utilizing YAML metadata in a conversion pipeline. [PR #240](https://github.com/catalystneuro/neuroconv/pull/240)
 * Added page in User Guide for how to use CSVs to specifiy metadata. [PR #241](https://github.com/catalystneuro/neuroconv/pull/177)
 * Added the `BaseDataInterface` in the API docs. [PR #242](https://github.com/catalystneuro/neuroconv/pull/242)
-* Fixed type in styling section. [PR #253](https://github.com/catalystneuro/neuroconv/pull/253)
+* Fixed typo in styling section. [PR #253](https://github.com/catalystneuro/neuroconv/pull/253)
+* Updated docs on JSON schema. [PR #256](https://github.com/catalystneuro/neuroconv/pull/256)
+* Improved compliance with numpy-style docstring [PR #260](https://github.com/catalystneuro/neuroconv/pull/260)
 
 ### Features
 * Added `AudioInterface` for files in `WAV` format using the `add_acoustic_waveform_series` utility function
@@ -41,6 +43,7 @@
 ### Testing
 * Added a `session_id` to the test file for the `automatic_dandi_upload` helper function. [PR #199](https://github.com/catalystneuro/neuroconv/pull/199)
 * `pre-commit` version bump. [PR #235](https://github.com/catalystneuro/neuroconv/pull/235)
+* Added a `testing` sub-module to `src` and added a method (`generate_mock_ttl_signal`) for generating synthetic TTL pulses. [PR #245](https://github.com/catalystneuro/neuroconv/pull/245)
 
 ### Fixes
 * `VideoInterface`. Only raise a warning if the difference between the rate estimated from timestamps and the fps (frames per seconds) is larger than two decimals. [PR #200](https://github.com/catalystneuro/neuroconv/pull/200)

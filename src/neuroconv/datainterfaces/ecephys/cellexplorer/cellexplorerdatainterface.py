@@ -16,6 +16,15 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     ExtractorModuleName = "spikeextractors"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        """
+        Initialize read of Cell Explorer file.
+
+        Parameters
+        ----------
+        file_path: FilePathType
+            Path to .spikes.cellinfo.mat file.
+        verbose: bool, default: True
+        """
         # TODO: Remove spikeextractors backend
         warn(
             message=(

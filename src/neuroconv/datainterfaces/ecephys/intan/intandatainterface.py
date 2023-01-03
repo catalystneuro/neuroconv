@@ -68,8 +68,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
-        """Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
-
+        """
+        Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
 
         Parameters
         ----------

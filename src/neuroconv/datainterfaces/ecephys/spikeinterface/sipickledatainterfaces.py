@@ -13,6 +13,15 @@ class SIPickleRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "load_extractor_from_pickle"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        """
+        Initialize reading of SpikeInterface Pickle files.
+
+        Parameters
+        ----------
+        file_path : FilePathType
+            Path to .pkl file.
+        verbose : bool, optional, default=True
+        """
         # TODO: Remove entire interfaces
         warn(
             message=(

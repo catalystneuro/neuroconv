@@ -43,6 +43,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
+        verbose: bool, default: True
         spikeextractors_backend : bool
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
