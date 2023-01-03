@@ -28,11 +28,11 @@ def generate_mock_ttl_signal(
     signal_duration: float = 7.0,
     ttl_times: Optional[ArrayType] = None,
     ttl_duration: float = 1.0,
-    sampling_frequency_hz: float = 25000.0,
+    sampling_frequency_hz: float = 25_000.0,
     dtype: DTypeLike = "int16",
-    baseline_mean: Optional[Union[IntType, FloatType]] = None,
-    signal_mean: Optional[Union[IntType, FloatType]] = None,
-    channel_noise: Optional[Union[IntType, FloatType]] = None,
+    baseline_mean: Optional[Union[int, float]] = None,
+    signal_mean: Optional[Union[int, float]] = None,
+    channel_noise: Optional[Union[int, float]] = None,
     random_seed: Optional[int] = 0,
 ) -> np.ndarray:
     """
@@ -40,25 +40,22 @@ def generate_mock_ttl_signal(
 
     Parameters
     ----------
-    signal_duration: float, optional
+    signal_duration: float, default: 7.0
         The number of seconds to simulate.
-        The default is 5.5 seconds.
     ttl_times: array of floats, optional
         The times within the `signal_duration` to trigger the TTL pulse.
         In conjunction with the `ttl_duration`, these must produce disjoint 'on' intervals.
         The default generates a periodic 1 second on, 1 second off pattern.
-    ttl_duration: float, optional
+    ttl_duration: float, default: 1.0
         How long the TTL pulse stays in the 'on' state when triggered, in seconds.
         In conjunction with the `ttl_times`, these must produce disjoint 'on' intervals.
-        The default is 1 second.
-    sampling_frequency_hz: float, optional
+    sampling_frequency_hz: float, default: 25,000
         The sampling frequency of the signal in Hz.
         The default is 25000 Hz; similar to that of typical .nidq.bin files.
-    dtype: numpy data type or one of its accepted string input
+    dtype: numpy data type or one of its accepted string input, default: "int16"
         The data type of the trace.
         Must match the data type of `baseline_mean`, `signal_mean`, and `channel_noise`, if any of those are specified.
         Recommended to be int16 for maximum efficiency, but can also be any size float to represent voltage scalings.
-        Defaults to int16.
     baseline_mean: integer or float, depending on specified 'dtype', optional
         The average value for the baseline; usually around 0 Volts.
         The default is apprimxately 0.005645752 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
@@ -68,10 +65,10 @@ def generate_mock_ttl_signal(
     channel_noise: integer or float, depending on specified 'dtype', optional
         The standard deviation of white noise in the channel.
         The default is apprimxately 0.002288818 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
-    random_seed: int or None, optional
+    random_seed: int or None, default: 0
         The seed to set for the numpy random number generator.
         Set to None to choose the seed randomly.
-        The default is 0 for reproducibility.
+        The default is kept at 0 for generating reproducible outputs.
 
     Returns
     -------
