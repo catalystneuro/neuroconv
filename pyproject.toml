@@ -18,6 +18,8 @@ extend-exclude = '''
   | dist
 )/
 '''
+[tool.pydocstyle]
+convention = "numpy"
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra --doctest-glob='*.rst'"
