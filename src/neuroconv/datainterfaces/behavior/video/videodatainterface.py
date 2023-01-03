@@ -153,7 +153,7 @@ class VideoInterface(BaseDataInterface):
             The list for the 'Movies' key should correspond one to the video files in the file_paths list.
             If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
             Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
-        overwrite: bool, default: False
+        overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
