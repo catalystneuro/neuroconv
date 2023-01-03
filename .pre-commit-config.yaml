@@ -10,3 +10,8 @@ repos:
     hooks:
     -   id: black
         exclude: ^docs/
+-   repo: https://github.com/PyCQA/pydocstyle
+    rev: 5.11.4
+    hooks:
+    -   id: pydocstyle
+        exclude: ^docs/
