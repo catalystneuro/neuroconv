@@ -21,6 +21,10 @@ else:
     LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")
 
+HDF5_PLUGIN_PATH = LOCAL_PATH / "hdf5_plugins"
+if not HDF5_PLUGIN_PATH.exists():
+    pytest.fail(f"No folder found in location: {HDF5_PLUGIN_PATH}!")
+
 BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
 if not BEHAVIOR_DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {BEHAVIOR_DATA_PATH}!")

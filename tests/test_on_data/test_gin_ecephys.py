@@ -1,3 +1,4 @@
+import os
 import unittest
 import itertools
 from pathlib import Path
@@ -46,11 +47,13 @@ from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
+    MaxOneRecordingInterface,
+    MaxTwoRecordingInterface,
 )
 
 
 from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from .setup_paths import OUTPUT_PATH
+from .setup_paths import OUTPUT_PATH, HDF5_PLUGIN_PATH
 
 
 def custom_name_func(testcase_func, param_num, param):
@@ -80,6 +83,12 @@ class TestEcephysNwbConversions(unittest.TestCase):
             ),
         ),
     ]
+
+    @classmethod
+    def setUpClass(cls):
+        hdf5_plugin_path = str(HDF5_PLUGIN_PATH)
+        MaxOneRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+        os.environ["HDF5_PLUGIN_PATH"] = hdf5_plugin_path
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
     def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs, case_name=""):
@@ -181,6 +190,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw"),
             ),
             case_name="rawmcs",
+        ),
+        param(
+            data_interface=MaxOneRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"),
+            ),
+            case_name="maxone",
         ),
     ]
     this_python_version = version.parse(python_version())
@@ -307,6 +323,22 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
+
+    for recording_name in ["rec0000", "rec0001"]:
+        for stream_name in ["well000", "well001", "well002", "well003", "well004", "well005"]:
+            parameterized_recording_list.append(
+                param(
+                    data_interface=MaxTwoRecordingInterface,
+                    interface_kwargs=dict(
+                        file_path=str(
+                            DATA_PATH / "maxwell" / "MaxTwo_data" / "Activity_Scan" / "000021" / "data.raw.h5"
+                        ),
+                        recording_name=recording_name,
+                        stream_name=stream_name,
+                    ),
+                    case_name=f"maxtwo-recording_name={recording_name}-stream_name={stream_name}",
+                ),
+            )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
