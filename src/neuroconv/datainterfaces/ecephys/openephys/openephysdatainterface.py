@@ -24,12 +24,25 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        experiment_id: Optional[int] = 0,
-        recording_id: Optional[int] = 0,
+        experiment_id: int = 0,
+        recording_id: int = 0,
         stub_test: bool = False,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
+        """
+        Initialize reading of OpenEphys binary recording.
+
+        Parameters
+        ----------
+        folder_path: FolderPathType
+            Path to OpenEphys directory.
+        experiment_id : int, default: 0
+        recording_id : int, default: 0
+        stub_test : bool, default: False
+        verbose : bool, default: True
+        spikeextractors_backend : bool, default: False
+        """
         self.spikeextractors_backend = spikeextractors_backend
         if spikeextractors_backend:
             from spikeextractors import OpenEphysRecordingExtractor

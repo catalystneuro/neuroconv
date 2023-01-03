@@ -1,5 +1,4 @@
 """Authors: Heberto Mayorquin, Saksham Sharda, Cody Baker and Ben Dichter."""
-from logging import warning
 from pathlib import Path
 from typing import Optional, List
 from warnings import warn
@@ -17,23 +16,23 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
-from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, OptionalFilePathType
+from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, FilePathType
 
 
-def _check_duplicates(videos_metadata, file_paths):
+def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType]):
     """
     Accumulates metadata for when multiple video files go in one ImageSeries container.
 
     Parameters
     ----------
-    videos_metadata: List[Dict]
+    videos_metadata: list of dict
         The metadata corresponding to the videos should be organized as follow
                 videos_metadata =[
                             dict(name="Video1", description="This is the first video.."),
                             dict(name="SecondVideo", description="Video #2 details..."),
                 ]
     -------
-    videos_metadata_unique: List[Dict]
+    videos_metadata_unique: list of dict
         if metadata has common names (case when the user intends to put multiple video files
         under the same ImageSeries container), this removes the duplicate names.
     file_paths_list: List[List[str]]
@@ -106,7 +105,7 @@ class VideoInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -128,12 +127,12 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
+        nwbfile_path : FilePathType, optional
+            Path for where to write or load (if overwrite=False) the NWB file.
             If specified, this context will always write to this location.
-        nwbfile: NWBFile
+        nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
-        metadata : dict
+        metadata : dict, optional
             Dictionary of metadata information such as names and description of each video.
             Metadata should be passed for each video file passed in the file_paths argument during ``__init__``.
             If storing as 'external mode', then provide duplicate metadata for video files that go in the
@@ -154,11 +153,11 @@ class VideoInterface(BaseDataInterface):
             The list for the 'Movies' key should correspond one to the video files in the file_paths list.
             If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
             Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
-        stub_test : bool
-            If ``True``, truncates the write operation for fast testing. The default is ``False``.
-        external_mode : bool
+        overwrite : bool, default: False
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
+        stub_test : bool, default: False
+            If ``True``, truncates the write operation for fast testing.
+        external_mode : bool, default: True
             :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external video files.
             If True, this utilizes the more efficient method of writing the relative path to the video files (recommended).
         starting_times : list, optional
@@ -169,7 +168,7 @@ class VideoInterface(BaseDataInterface):
             Required if more than one path is specified per ImageSeries in external mode.
         timestamps : list, optional
             List of timestamps for the videos. If unspecified, timestamps are extracted from each video data.
-        chunk_data : bool
+        chunk_data : bool, default: True
             If True, uses a DataChunkIterator to read and write the video, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
             True, even if manually set to False, whenever the video file size exceeds available system RAM by a factor
@@ -185,7 +184,7 @@ class VideoInterface(BaseDataInterface):
             supported filters, see
             https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
         compression_options: int, optional
-            Parameter(s) for compression filter. Currently only supports the compression level (integer from 0 to 9) of
+            Parameter(s) for compression filter. Currently, only supports the compression level (integer from 0 to 9) of
             compression="gzip".
         """
         file_paths = self.source_data["file_paths"]

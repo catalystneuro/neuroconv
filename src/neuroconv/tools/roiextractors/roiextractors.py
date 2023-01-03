@@ -1,16 +1,19 @@
 """Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl."""
 from collections import defaultdict
-from warnings import warn
-from typing import Optional
 from copy import deepcopy
+from typing import Optional
+from warnings import warn
 
-import psutil
 import numpy as np
-from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
+import psutil
+from hdmf.backends.hdf5.h5_utils import H5DataIO
+
+# from hdmf.commmon import VectorData
+from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.base import Images
-from pynwb.image import GrayscaleImage
 from pynwb.device import Device
+from pynwb.image import GrayscaleImage
 from pynwb.ophys import (
     ImageSegmentation,
     ImagingPlane,
@@ -21,10 +24,7 @@ from pynwb.ophys import (
     RoiResponseSeries,
     DfOverF,
 )
-
-# from hdmf.commmon import VectorData
-from hdmf.data_utils import DataChunkIterator
-from hdmf.backends.hdf5.h5_utils import H5DataIO
+from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
@@ -32,7 +32,7 @@ from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, ge
 from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
 
 
-def get_default_ophys_metadata():
+def get_default_ophys_metadata() -> dict:
     """Fill default metadata for optical physiology."""
     metadata = get_default_nwbfile_metadata()
 
@@ -100,7 +100,7 @@ def get_default_ophys_metadata():
     return metadata
 
 
-def get_nwb_imaging_metadata(imgextractor: ImagingExtractor):
+def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
     """
     Convert metadata from the ImagingExtractor into nwb specific metadata.
 
@@ -202,9 +202,9 @@ def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int
         An previously defined -in memory- NWBFile.
     metadata : dict
         The metadata in the nwb conversion tools format.
-    imaging_plane_index : int, optional
+    imaging_plane_index : int, default: 0
         The metadata in the nwb conversion tools format is a list of the different imaging planes to add.
-        Specificy which element of the list with this parameter, by default 0
+        Specify which element of the list with this parameter.
 
     Returns
     -------
@@ -243,7 +243,7 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     Returns
     -------
     NWBFile
-        The nwbfile passed as an input with the image segmentation added.
+        The NWBFile passed as an input with the image segmentation added.
     """
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -271,7 +271,7 @@ def add_two_photon_series(
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
     buffer_size: Optional[int] = None,  # TODO: to be removed
-):
+) -> NWBFile:
     """
     Auxiliary static method for nwbextractor.
 
@@ -376,11 +376,11 @@ def _imaging_frames_to_hdmf_iterator(
     ----------
     imaging : ImagingExtractor
         The imaging extractor to get the data from.
-    iterator_type : str (optional, defaults to 'v2')
-        The type of iterator to use.
+    iterator_type : {"v2", "v1",  None}, default: 'v2'
+        The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
-        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_options : dict, optional
         Dictionary of options for the iterator.
         For 'v1' this is the same as the options for the DataChunkIterator.
@@ -452,11 +452,11 @@ def write_imaging(
         The default is True.
     num_chunks: int
         Number of chunks for writing data to file
-    iterator_type : str (optional, defaults to 'v2')
-        The type of iterator to use.
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
+        The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.DataChunkIterator
-        'v2' is the locally developed ImagingExtractorDataChunkIterator, which offers full control over chunking.
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_options : dict, optional
         Dictionary of options for the iterator.
         For 'v1' this is the same as the options for the DataChunkIterator.
@@ -554,22 +554,20 @@ def add_plane_segmentation(
     segmentation_extractor : SegmentationExtractor
         The segmentation extractor to get the results from.
     nwbfile : NWBFile
-        The nwbfile to add the plane segmentation to.
+        The NWBFile to add the plane segmentation to.
     metadata : dict, optional
         The metadata for the plane segmentation.
-    plane_segmentation_index: int, optional
+    plane_segmentation_index : int, optional
         The index of the plane segmentation to add.
-    include_roi_centroids : bool, optional
-        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+    include_roi_centroids : bool, default: True
+        Whether to include the ROI centroids on the PlaneSegmentation table.
+        If there are a very large number of ROIs (such as in whole-brain recordings),
+        you may wish to disable this for faster write speeds.
+    include_roi_acceptance : bool, default: True
+        Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-            faster write speeds.
-        Defaults to True.
-    include_roi_acceptance : bool, optional
-        Whether or not to include if the detected ROI was 'accepted' or 'rejected'.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
-            faster write speeds.
-        Defaults to True.
-    mask_type : str, optional
+        faster write speeds.
+    mask_type : {'image', 'pixel', 'voxel'}, optional
         There are two types of ROI masks in NWB: ImageMasks and PixelMasks.
         Image masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
             by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
@@ -577,7 +575,7 @@ def add_plane_segmentation(
             of pixels in each ROI.
         Voxel masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
             of voxels in each ROI.
-        Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
+        Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
         Defaults to 'image'.
     iterator_options : dict, optional
@@ -710,8 +708,10 @@ def add_fluorescence_traces(
         The nwbfile to add the fluorescence traces to.
     metadata : dict
         The metadata for the fluorescence traces.
-    plane_index : int, optional
+    plane_index : int, default: 0
         The index of the plane to add the fluorescence traces to.
+    iterator_options : dict, optional
+    compression_options : dict, optional
 
     Returns
     -------
@@ -879,8 +879,8 @@ def add_summary_images(
         An previously defined -in memory- NWBFile.
     segmentation_extractor : SegmentationExtractor
         A segmentation extractor object from roiextractors.
-    images_set_name : str
-        The name of the image container, "summary_images" by default.
+    images_set_name : str, default: 'summary_images'
+        The name of the image container.
 
     Returns
     -------
@@ -949,15 +949,15 @@ def write_segmentation(
         The default is True.
     buffer_size : int, optional
         The buffer size in GB, by default 10
-    plane_num : int, optional
-        The plane number to be extracted, by default 0
+    plane_num : int, default: 0
+        The plane number to be extracted.
     include_roi_centroids : bool, optional
-        Whether or not to include the ROI centroids on the PlaneSegmentation table.
+        Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
         Defaults to True.
     include_roi_acceptance : bool, optional
-        Whether or not to include if the detected ROI was 'accepted' or 'rejected'.
+        Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.
         Defaults to True.

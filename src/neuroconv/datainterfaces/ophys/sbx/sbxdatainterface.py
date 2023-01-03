@@ -5,7 +5,16 @@ from ....utils import FilePathType, FloatType
 class SbxImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for SbxImagingExtractor."""
 
-    def __init__(self, file_path: FilePathType, sampling_frequency: FloatType = None, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, sampling_frequency: float = None, verbose: bool = True):
+        """
+        Parameters
+        ----------
+        file_path : FilePathType
+            Path to .sbx file.
+        sampling_frequency : float, optional
+        verbose : bool, default: True
+        """
+
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self):
