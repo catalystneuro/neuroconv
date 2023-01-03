@@ -370,7 +370,7 @@ def add_icephys_recordings(
 
 def add_all_to_nwbfile(
     neo_reader,
-    nwbfile: NWBFile = None,
+    nwbfile: pynwb.NWBFile = None,
     metadata: dict = None,
     compression: Optional[str] = "gzip",
     icephys_experiment_type: str = "voltage_clamp",
