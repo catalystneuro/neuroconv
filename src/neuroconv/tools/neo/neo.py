@@ -212,8 +212,8 @@ def add_icephys_recordings(
     neo_reader,
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
-    icephys_experiment_type: Optional[str] = None,
-    stimulus_type: Optional[str] = None,
+    icephys_experiment_type: str = "voltage_clamp",
+    stimulus_type: str = "not described",
     skip_electrodes: Tuple[int] = (),
     compression: str = "gzip",
 ):
@@ -225,21 +225,14 @@ def add_icephys_recordings(
     neo_reader : neo.io.baseio
     nwbfile : NWBFile
     metadata : dict, optional
-    icephys_experiment_type : str, optional
-        Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
-        The default is 'voltage_clamp'.
-    stimulus_type : str
-    skip_electrodes: tuple, optional
-        Electrode IDs to skip. Defaults to ().
-    compression: str | bool
+    icephys_experiment_type : {'voltage_clamp', 'current_clamp', 'izero'}
+        Type of icephys recording.
+    stimulus_type : str, default: 'not described'
+    skip_electrodes : tuple, default: ()
+        Electrode IDs to skip.
+    compression : str | bool
     """
     n_segments = get_number_of_segments(neo_reader, block=0)
-
-    if icephys_experiment_type is None:
-        icephys_experiment_type = "voltage_clamp"
-
-    if stimulus_type is None:
-        stimulus_type = "not described"
 
     # Check for protocol data (only ABF2), necessary for stimuli data
     if neo_reader._axon_info["fFileVersionNumber"] < 2:
@@ -377,10 +370,10 @@ def add_icephys_recordings(
 
 def add_all_to_nwbfile(
     neo_reader,
-    nwbfile=None,
+    nwbfile: NWBFile = None,
     metadata: dict = None,
     compression: Optional[str] = "gzip",
-    icephys_experiment_type: Optional[str] = "voltage_clamp",
+    icephys_experiment_type: str = "voltage_clamp",
     stimulus_type: Optional[str] = None,
     skip_electrodes: Tuple[int] = (),
 ):

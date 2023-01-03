@@ -37,7 +37,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         starting_time: Optional[float] = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = "v2",
+        iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
     ):
         from ...tools.spikeinterface import write_recording
