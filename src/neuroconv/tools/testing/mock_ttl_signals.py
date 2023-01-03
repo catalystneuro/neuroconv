@@ -62,7 +62,7 @@ def generate_mock_ttl_signal(
     signal_mean : integer or float, optional
         Type depends on specified 'dtype'. The average value for the signal; usually around 5 Volts.
         The default is approximately 4.980773925 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
-    channel_noise: integer or float, optional
+    channel_noise : integer or float, optional
         Type depends on specified 'dtype'. The standard deviation of white noise in the channel.
         The default is approximately 0.002288818 Volts, estimated from a real example of a TTL pulse in a .nidq.bin file.
     random_seed : int or None, default: 0
