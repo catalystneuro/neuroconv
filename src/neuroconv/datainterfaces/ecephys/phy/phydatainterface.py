@@ -12,7 +12,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        exclude_cluster_groups: Optional[list[str]] = None,
+        exclude_cluster_groups: Optional[list] = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
