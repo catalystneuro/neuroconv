@@ -21,6 +21,7 @@ class CompressionStategy(ABC):
     # Maybe? Can be a instance property
 
 
+# We could also have ZarrCompressionStrategy(CompressionStategy): # for implementing wrapping with ZarrDataIO
 class HDF5CompressionStrategy(CompressionStategy):
 
     dynamic_filters_names = ["blosc", "bshuf", "bzip2", "fcidecomp", "lz4", "sz", "zfp", "zstd"]
