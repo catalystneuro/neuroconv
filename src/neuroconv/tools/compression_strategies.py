@@ -38,7 +38,8 @@ class HDF5CompressionStrategy(CompressionStategy):
         # Dynamic filters
         if self.method_name in self.dynamic_filters_names:
             hdf5plugin = get_package("hdf5plugin")
-            self.dynamic_filter = next(filter(lambda x: x.filter_name == self.method_name, hdf5plugin.get_filters()))
+            available_plugins = hdf5plugin.get_filters()
+            self.dynamic_filter = next(filter(lambda x: x.filter_name == self.method_name, available_plugins))
             self.method_name = self.dynamic_filter.filter_id
             self.allow_plugin_filters = True
             if self.compression_options is not None:
