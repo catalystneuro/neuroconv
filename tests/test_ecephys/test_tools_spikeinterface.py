@@ -34,6 +34,7 @@ from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator imp
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from neuroconv.tools.nwb_helpers import get_module
+from neuroconv.tools.compression_strategies import HDF5CompressionStrategy
 
 testing_session_time = datetime.now().astimezone()
 
@@ -125,34 +126,71 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
                 recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
             )
 
-    def test_write_with_higher_gzip_level(self):
-        compression = "gzip"
-        compression_opts = 8
+
+class TestAddElectricalSeriesHDF5Compression(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_channels = 3
+        cls.sampling_frequency = 1.0
+        cls.durations = [3.0]  # 3 samples in the recorder
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+        self.nwbfile = NWBFile(
+            session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+        )
+        self.test_recording_extractor = generate_recording(
+            sampling_frequency=self.sampling_frequency, num_channels=self.num_channels, durations=self.durations
+        )
+
+    def test_user_default_compression(self):
         add_electrical_series(
             recording=self.test_recording_extractor,
             nwbfile=self.nwbfile,
             iterator_type=None,
-            compression=compression,
-            compression_opts=compression_opts,
         )
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
         compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert compression_parameters["compression_opts"] == compression_opts
+        assert compression_parameters["compression"] == "gzip"
 
-    def test_write_with_lzf_compression(self):
-        compression = "lzf"
+    def test_gzip_compression(self):
+
+        method_name = "gzip"
+        compression_options = dict(level=8)
+        compression_zip = HDF5CompressionStrategy(method_name="gzip", compression_options=compression_options)
+
         add_electrical_series(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            compression_strategy=compression_zip,
         )
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
         compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert "compression_opts" not in compression_parameters
+        assert compression_parameters["compression"] == method_name
+        assert compression_parameters["compression_opts"] == compression_options["level"]
+
+    def test_dynamic_filter_bzip(self):
+
+        method_name = "bzip2"
+        compression_dynamic_filter = HDF5CompressionStrategy(method_name=method_name)
+
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            iterator_type=None,
+            compression_strategy=compression_dynamic_filter,
+        )
+
+        acquisition_module = self.nwbfile.acquisition
+        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        compression_parameters = electrical_series.data.get_io_params()
+        assert compression_parameters["compression"] == compression_dynamic_filter.dynamic_filter.filter_id
 
 
 class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):

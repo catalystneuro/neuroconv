@@ -21,6 +21,7 @@ import psutil
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
+from ..compression_strategies import HDF5CompressionStrategy, CompressionStategy
 
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
@@ -587,8 +588,7 @@ def add_electrical_series(
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
+    compression_strategy: Optional[CompressionStategy] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -728,9 +728,11 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
-    )
+
+    compression_strategy = compression_strategy if compression_strategy else HDF5CompressionStrategy(method_name="gzip")
+
+    ephys_data_hdf5_data_io_wrapped = compression_strategy.wrap_data_for_compression(ephys_data_iterator)
+    eseries_kwargs.update(data=ephys_data_hdf5_data_io_wrapped)
 
     # Timestamps vs rate
     timestamps = checked_recording.get_times(segment_index=segment_index)
@@ -742,9 +744,7 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=checked_recording.get_sampling_frequency())
     else:
         shifted_time_stamps = starting_time + timestamps
-        wrapped_timestamps = H5DataIO(
-            data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
-        )
+        wrapped_timestamps = compression_strategy.wrap_data_for_compression(data=shifted_time_stamps)
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
@@ -937,8 +937,7 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
-    compression_opts: Optional[int] = None,
+    compression_strategy: Optional[CompressionStategy] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -1037,7 +1036,6 @@ def write_recording(
         "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
     write_as = "raw" if write_as is None else write_as
-    compression = "gzip" if compression is None else compression
 
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
@@ -1063,8 +1061,7 @@ def write_recording(
                     write_as=write_as,
                     es_key=es_key,
                     write_scaled=write_scaled,
-                    compression=compression,
-                    compression_opts=compression_opts,
+                    compression_strategy=compression_strategy,
                     iterator_type=iterator_type,
                     iterator_opts=iterator_opts,
                 )

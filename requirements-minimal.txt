@@ -4,6 +4,7 @@ jsonschema>=3.2.0
 PyYAML>=5.4
 scipy>=1.4.1
 h5py>=2.10.0
+hdf5plugin >= 4.0.1
 hdmf>=3.4.7
 pynwb>=1.4.0
 psutil>=5.8.0
