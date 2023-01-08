@@ -159,7 +159,7 @@ class TestAddElectricalSeriesHDF5Compression(unittest.TestCase):
     def test_gzip_compression(self):
 
         method_name = "gzip"
-        compression_options = dict(level=8)
+        compression_options = 8
         compression_zip = HDF5CompressionStrategy(method_name="gzip", compression_options=compression_options)
 
         add_electrical_series(
@@ -173,12 +173,15 @@ class TestAddElectricalSeriesHDF5Compression(unittest.TestCase):
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
         compression_parameters = electrical_series.data.get_io_params()
         assert compression_parameters["compression"] == method_name
-        assert compression_parameters["compression_opts"] == compression_options["level"]
+        assert compression_parameters["compression_opts"] == compression_options
 
     def test_dynamic_filter_bzip(self):
 
         method_name = "bzip2"
-        compression_dynamic_filter = HDF5CompressionStrategy(method_name=method_name)
+        compression_options = dict(blocksize=9)
+        compression_dynamic_filter = HDF5CompressionStrategy(
+            method_name=method_name, compression_options=compression_options
+        )
 
         add_electrical_series(
             recording=self.test_recording_extractor,
@@ -190,7 +193,7 @@ class TestAddElectricalSeriesHDF5Compression(unittest.TestCase):
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
         compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression_dynamic_filter.dynamic_filter.filter_id
+        assert compression_parameters["compression"] == compression_dynamic_filter.plugin_instance.filter_id
 
 
 class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
