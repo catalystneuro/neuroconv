@@ -1,19 +1,20 @@
 """Authors: Cody Baker."""
-import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import numpy as np
+from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
-from .spikeglx_utils import get_session_start_time
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
+from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
 
 
 class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
+
+    ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls):
@@ -39,9 +40,14 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         self.stream_id = "nidq"
 
         folder_path = Path(file_path).parent
-        super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
+        super(SpikeGLXRecordingInterface, self).__init__(
+            folder_path=folder_path, stream_id=self.stream_id, verbose=verbose
+        )
         self.source_data.update(file_path=str(file_path))
 
+        self.recording_extractor.set_property(
+            key="group_name", values=["NIDQChannelGroup"] * self.recording_extractor.get_num_channels()
+        )
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
     def get_metadata_schema(self):
@@ -52,45 +58,11 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         return metadata_schema
 
     def get_metadata(self):
-        metadata = super(SpikeGLXRecordingInterface, self).get_metadata()
-        session_start_time = get_session_start_time(self.meta)
-        if session_start_time:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+        metadata = super().get_metadata()
 
-        # Device metadata
-        device = self.get_device_metadata()
-
-        # Add groups metadata
-        metadata["Ecephys"]["Device"].append(device)
-
-        # Add groups metadata
-        group_names = self.recording_extractor.get_property("group_name")
-        if group_names is None:
-            electrode_groups = [
-                dict(
-                    name="NIDQChannelGroup",
-                    description="A group representing the NIDQ channels.",
-                    location="unknown",
-                    device=device["name"],
-                )
-            ]
-        else:
-            electrode_groups = [
-                dict(
-                    name=group_name,
-                    description="A group representing the NIDQ channels.",
-                    location="unknown",
-                    device=device["name"],
-                )
-                for group_name in set(group_names)
-            ]
-        metadata["Ecephys"].get("ElectrodeGroup", list()).extend(electrode_groups)
-
-        # Electrodes columns descriptions
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
-
         metadata["Ecephys"]["ElectricalSeriesNIDQ"] = dict(
             name="ElectricalSeriesNIDQ", description="Raw acquisition traces from the NIDQ (.nidq.bin) channels."
         )
@@ -124,7 +96,32 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
 
         return rising_times
 
-    def get_conversion_options(self):
-        conversion_options = super().get_conversion_options()
-        conversion_options.update(es_key="ElectricalSeriesNIDQ")
-        return conversion_options
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[FilePathType] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        stub_test: bool = False,
+        write_as: Optional[str] = None,
+        write_electrical_series: bool = True,
+        es_key: str = None,
+        compression: Optional[str] = None,
+        compression_opts: Optional[int] = None,
+        iterator_type: str = "v2",
+        iterator_opts: Optional[dict] = None,
+    ):
+        super().run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            stub_test=stub_test,
+            write_as=write_as,
+            write_electrical_series=write_electrical_series,
+            es_key=es_key or "ElectricalSeriesNIDQ",
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )

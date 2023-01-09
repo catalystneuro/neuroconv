@@ -35,6 +35,7 @@ from neuroconv.datainterfaces import (
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
+    SpikeGLXNIDQInterface,
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
     AxonaRecordingInterface,
@@ -295,6 +296,13 @@ class TestEcephysNwbConversions(unittest.TestCase):
                 case_name=f"spikeextractors_backend={spikeextractors_backend}",
             )
         )
+
+    parameterized_recording_list.append(
+        param(
+            data_interface=SpikeGLXNIDQInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.nidq.bin")),
+        )
+    )
 
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(

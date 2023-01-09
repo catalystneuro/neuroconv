@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from hdmf.testing import TestCase
+from pynwb.testing.mock.file import mock_NWBFile
 from numpy.testing import assert_array_almost_equal
 
 from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
@@ -52,7 +53,7 @@ class TestMockSpikeGLXNIDQInterface(TestCase):
                     {"description": "no description", "manufacturer": "Imec", "name": "Neuropixel-Imec"},
                 ],
                 "ElectricalSeriesNIDQ": {
-                    "description": "Raw acquisition traces " "from the NIDQ " "(.nidq.bin) channels.",
+                    "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels.",
                     "name": "ElectricalSeriesNIDQ",
                 },
                 "ElectrodeGroup": [
@@ -63,14 +64,14 @@ class TestMockSpikeGLXNIDQInterface(TestCase):
                         "name": "ElectrodeGroup",
                     },
                     {
-                        "description": "A group representing the NIDQ " "channels.",
+                        "description": "A group representing the NIDQ channels.",
                         "device": "Neuropixel-Imec",
                         "location": "unknown",
                         "name": "NIDQChannelGroup",
                     },
                 ],
                 "Electrodes": [
-                    {"description": "Name of the ElectrodeGroup this " "electrode is a part of.", "name": "group_name"}
+                    {"description": "Name of the ElectrodeGroup this electrode is a part of.", "name": "group_name"}
                 ],
             }
         }
@@ -80,5 +81,14 @@ class TestMockSpikeGLXNIDQInterface(TestCase):
         assert metadata["NWBFile"]["session_start_time"] == expected_start_time
 
     def test_mock_run_conversion(self):
-        # TODO
-        pass
+        interface = MockSpikeGLXNIDQInterface()
+
+        metadata = interface.get_metadata()
+
+        nwbfile = mock_NWBFile()
+        interface.run_conversion(nwbfile=nwbfile, metadata=metadata)
+
+        assert "Neuropixel-Imec" in nwbfile.devices
+        assert "NIDQChannelGroup" in nwbfile.electrode_groups
+        assert nwbfile.electrodes.id[:] == [0, 1, 2, 3, 4, 5, 6, 7]
+        assert "ElectricalSeriesNIDQ" in nwbfile.acquisition
