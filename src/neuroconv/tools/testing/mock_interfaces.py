@@ -23,7 +23,6 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         ----------
         signal_duration : float, default: 7.0
             The number of seconds to simulate.
-            The default is 7.0 seconds.
         ttl_times : list of list of floats, optional
             The times within the `signal_duration` to trigger the TTL pulse for each channel.
             The outer list is over channels, while each inner list is the set of TTL times for each specific channel.
@@ -31,7 +30,6 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             each of which is of length `ttl_duration` with a 0.1 second offset per channel.
         ttl_duration : float, default: 1.0
             How long the TTL pulse stays in the 'on' state when triggered, in seconds.
-            The default is 1 second.
         """
         from spikeinterface.extractors import NumpyRecording
 
