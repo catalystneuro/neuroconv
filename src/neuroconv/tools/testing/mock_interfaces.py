@@ -29,7 +29,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             The default generates 8 channels with periodic on/off cycle (which start in the 'off' state)
             each of which is of length `ttl_duration` with a 0.1 second offset per channel.
         ttl_duration : float, default: 1.0
-            How long the TTL pulse stays in the 'on' state when triggered, in seconds.
+            How long the TTL pulses stays in the 'on' state when triggered, in seconds.
         """
         from spikeinterface.extractors import NumpyRecording
 
