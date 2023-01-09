@@ -31,10 +31,10 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         ----------
         file_path : FilePathType
             Path to .nidq.bin file.
-        stub_test : bool
-            Whether to shorten file for testing purposes, default: False
-        verbose : bool
-            Whether to output verbose text, default: True
+        stub_test : bool, default: False
+            Whether to shorten file for testing purposes
+        verbose : bool, default: True
+            Whether to output verbose text
         """
         self.stream_id = "nidq"
 
@@ -111,7 +111,7 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
 
         Returns
         -------
-        rising_times: numpy.ndarray
+        rising_times : numpy.ndarray
             The times of the rising TTL pulse.
         """
         # TODO: consider RAM cost of these operations and implement safer buffering version
