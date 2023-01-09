@@ -136,3 +136,17 @@ class TestGetRisingAndFallingTimesFromTTL(TestCase):
 
         expected_falling_frames = np.array([77_500, 205_000])
         assert_array_equal(x=falling_frames, y=expected_falling_frames)
+
+    def test_custom_threshold_floats(self):
+        ttl_signal = generate_mock_ttl_signal(
+            signal_duration=10.0, ttl_times=[1.1, 6.2], ttl_duration=2.0, dtype="float32"
+        )
+
+        rising_frames = get_rising_frames_from_ttl(trace=ttl_signal, threshold=1.5)
+        falling_frames = get_falling_frames_from_ttl(trace=ttl_signal, threshold=1.5)
+
+        expected_rising_frames = np.array([27_500, 155_000])
+        assert_array_equal(x=rising_frames, y=expected_rising_frames)
+
+        expected_falling_frames = np.array([77_500, 205_000])
+        assert_array_equal(x=falling_frames, y=expected_falling_frames)
