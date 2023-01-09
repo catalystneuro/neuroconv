@@ -24,7 +24,7 @@ def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = N
     threshold = threshold or np.mean(trace)
 
     sign = np.sign(trace - threshold)
-    diff = np.diff(sign)
+    diff = np.diff(sign, axis=0)
     rising_frames = np.where(diff > 0)[0]
 
     return rising_frames
@@ -50,7 +50,7 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = 
     threshold = threshold or np.mean(trace)
 
     sign = np.sign(trace - threshold)
-    diff = np.diff(sign)
+    diff = np.diff(sign, axis=0)
     falling_frames = np.where(diff < 0)[0]
 
     return falling_frames

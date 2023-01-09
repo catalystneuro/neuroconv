@@ -29,12 +29,12 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path : FilePathType
             Path to .nidq.bin file.
-        stub_test: bool
-            Whether to shorten file for testing purposes. Default: False.
-        verbose: bool
-            Whether to output verbose text. Default: True.
+        stub_test : bool
+            Whether to shorten file for testing purposes, default: False
+        verbose : bool
+            Whether to output verbose text, default: True
         """
         self.stream_id = "nidq"
 
@@ -47,33 +47,25 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
+            ElectricalSeriesNIDQ=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
     def get_metadata(self):
-        metadata = super().get_metadata()
+        metadata = super(SpikeGLXRecordingInterface, self).get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
             metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
 
         # Device metadata
-        metadata = dict(Ecephys=dict())
-        device_key = "niDev1ProductName"  # At least, this is true for the GIN test data
-        if device_key in self.meta:
-            header_metadata = dict(self.meta)
-            for exclude_key in ["fileCreateTime", device_key]:
-                header_metadata.pop(exclude_key)
-            device = dict(
-                name=self.meta[device_key],
-                description=json.dumps(header_metadata),
-                manufacturer="National Instruments",
-            )
-            metadata["Ecephys"].get("Device", list()).append(Device=device)
+        device = self.get_device_metadata()
+
+        # Add groups metadata
+        metadata["Ecephys"]["Device"].append(device)
 
         # Add groups metadata
         group_names = self.recording_extractor.get_property("group_name")
-        if self.recording_extractor.get_property("group_name") is None:
+        if group_names is None:
             electrode_groups = [
                 dict(
                     name="NIDQChannelGroup",
@@ -114,7 +106,7 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
 
         Parameters
         ----------
-        channel_name : int
+        channel_name : str
             Name of the channel in the .nidq.bin file.
 
         Returns
@@ -123,7 +115,9 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             The times of the rising TTL pulse.
         """
         # TODO: consider RAM cost of these operations and implement safer buffering version
-        rising_frames = get_rising_frames_from_ttl(trace=self.recording_extractor.get_traces(chanel_id=[channel_name]))
+        rising_frames = get_rising_frames_from_ttl(
+            trace=self.recording_extractor.get_traces(channel_ids=[channel_name])
+        )
 
         nidq_timestamps = self.recording_extractor.get_times()
         rising_times = nidq_timestamps[rising_frames]
@@ -132,5 +126,5 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
 
     def get_conversion_options(self):
         conversion_options = super().get_conversion_options()
-        conversion_options.update(es_key="ElectricalSeriesSync")
+        conversion_options.update(es_key="ElectricalSeriesNIDQ")
         return conversion_options
