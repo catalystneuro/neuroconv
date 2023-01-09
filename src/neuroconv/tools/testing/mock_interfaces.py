@@ -40,7 +40,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             ttl_times = [[ttl_time + 0.1 * channel for ttl_time in default_periodic_ttl_times] for channel in range(8)]
         number_of_channels = len(ttl_times)
         channel_ids = [f"nidq#XA{channel_index}" for channel_index in range(number_of_channels)]  # NIDQ channel IDs
-        channel_groups = ["NIDQChannels"] * number_of_channels
+        channel_groups = ["NIDQChannelGroup"] * number_of_channels
 
         sampling_frequency = 25_000.0  # NIDQ sampling rate
         number_of_frames = int(signal_duration * sampling_frequency)
@@ -62,3 +62,5 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
         self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
+        self.subset_channels = None
+        self.verbose = None

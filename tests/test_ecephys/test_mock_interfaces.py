@@ -49,32 +49,26 @@ class TestMockSpikeGLXNIDQInterface(TestCase):
         expected_ecephys_metadata = {
             "Ecephys": {
                 "Device": [
-                    {"description": "no description", "name": "DeviceEcephys"},
                     {"description": "no description", "manufacturer": "Imec", "name": "Neuropixel-Imec"},
                 ],
-                "ElectricalSeriesNIDQ": {
-                    "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels.",
-                    "name": "ElectricalSeriesNIDQ",
-                },
                 "ElectrodeGroup": [
                     {
-                        "description": "no description",
-                        "device": "DeviceEcephys",
-                        "location": "unknown",
-                        "name": "ElectrodeGroup",
-                    },
-                    {
+                        "name": "NIDQChannelGroup",
                         "description": "A group representing the NIDQ channels.",
                         "device": "Neuropixel-Imec",
                         "location": "unknown",
-                        "name": "NIDQChannelGroup",
                     },
                 ],
                 "Electrodes": [
-                    {"description": "Name of the ElectrodeGroup this electrode is a part of.", "name": "group_name"}
+                    {"name": "group_name", "description": "Name of the ElectrodeGroup this electrode is a part of."}
                 ],
+                "ElectricalSeriesNIDQ": {
+                    "name": "ElectricalSeriesNIDQ",
+                    "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels.",
+                },
             }
         }
+        print(metadata["Ecephys"])
         self.assertDictEqual(d1=metadata["Ecephys"], d2=expected_ecephys_metadata["Ecephys"])
 
         expected_start_time = datetime(2020, 11, 3, 10, 35, 10)
