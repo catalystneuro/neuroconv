@@ -300,7 +300,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     parameterized_recording_list.append(
         param(
             data_interface=SpikeGLXNIDQInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.nidq.bin")),
+            interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.nidq.bin")),
         )
     )
 
