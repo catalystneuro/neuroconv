@@ -10,18 +10,18 @@ def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = N
 
     Parameters
     ----------
-    trace: numpy.ndarray
-        A TTL pulse.
-    threshold: float, optional
+    trace : numpy.ndarray
+        A TTL signal.
+    threshold : float, optional
         The threshold used to distinguish on/off states in the trace.
         The mean of the trace is used by default.
 
     Returns
     -------
-    rising_frames: numpy.ndarray
+    rising_frames : numpy.ndarray
         The frame indices of rising events.
     """
-    threshold = threshold or np.mean(trace)
+    threshold = threshold if threshold is not None else np.mean(trace)
 
     sign = np.sign(trace - threshold)
     diff = np.diff(sign)
@@ -36,18 +36,18 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = 
 
     Parameters
     ----------
-    trace: numpy.ndarray
-        A TTL pulse.
-    threshold: float, optional
+    trace : numpy.ndarray
+        A TTL signal.
+    threshold : float, optional
         The threshold used to distinguish on/off states in the trace.
         The mean of the trace is used by default.
 
     Returns
     -------
-    falling_frames: numpy.ndarray
+    falling_frames : numpy.ndarray
         The frame indices of falling events.
     """
-    threshold = threshold or np.mean(trace)
+    threshold = threshold if threshold is not None else np.mean(trace)
 
     sign = np.sign(trace - threshold)
     diff = np.diff(sign)
