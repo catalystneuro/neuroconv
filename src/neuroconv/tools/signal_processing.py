@@ -1,42 +1,56 @@
 """Author: Cody Baker."""
-from typing import Tuple
+from typing import Optional
 
 import numpy as np
 
 
-def parse_rising_and_falling_frames_from_ttl(trace: np.ndarray, num_bins: int = 2) -> Tuple[np.ndarray, np.ndarray]:
+def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = None) -> np.ndarray:
     """
-    Parse the frame indices for rising and falling events in a TTL pulse.
+    Return the frame indices for rising events in a TTL pulse.
 
     Parameters
     ----------
     trace: numpy.ndarray
         A TTL pulse.
-    num_bins: int
-        When digitizing the signal to clean up signal noise, specify the level of refinement in terms of the number
-        of bins incurred from a linear interval partition from the minimum to the maximum trace values.
-        The default is 2, signifying a clear on/off signal from a baseline value to a target value.
+    threshold: float, optional
+        The threshold used to distinguish on/off states in the trace.
+        The mean of the trace is used by default.
 
     Returns
     -------
     rising_frames: numpy.ndarray
         The frame indices of rising events.
+    """
+    threshold = threshold or np.mean(trace)
+
+    sign = np.sign(trace - threshold)
+    diff = np.diff(sign)
+    rising_frames = np.where(diff > 0)[0]
+
+    return rising_frames
+
+
+def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = None) -> np.ndarray:
+    """
+    Return the frame indices for falling events in a TTL pulse.
+
+    Parameters
+    ----------
+    trace: numpy.ndarray
+        A TTL pulse.
+    threshold: float, optional
+        The threshold used to distinguish on/off states in the trace.
+        The mean of the trace is used by default.
+
+    Returns
+    -------
     falling_frames: numpy.ndarray
         The frame indices of falling events.
     """
-    eps = 1 if np.issubdtype(trace.dtype, np.integer) else np.finfo(float).eps
-    binned_states = np.digitize(
-        x=trace,
-        bins=np.linspace(
-            start=np.min(trace) - eps,  # Must go slightly beyond min/max to prevent binning occurences at the boundary
-            stop=np.max(trace) + eps,
-            num=num_bins + 1,  # 'num' in np.linspace is actually the number of partitions; +1 to translate to # bins
-        ),
-    ).astype("int8")
+    threshold = threshold or np.mean(trace)
 
-    diff_binned_states = np.diff(binned_states, axis=0)
+    sign = np.sign(trace - threshold)
+    diff = np.diff(sign)
+    falling_frames = np.where(diff < 0)[0]
 
-    rising_frames = np.where(diff_binned_states > 0)[0]
-    falling_frames = np.where(diff_binned_states < 0)[0]
-
-    return rising_frames, falling_frames
+    return falling_frames

@@ -1,6 +1,7 @@
 """Authors: Luiz Tauffer."""
 from typing import Optional
 from pathlib import Path
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -42,6 +43,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
+        verbose: bool, default: True
         spikeextractors_backend : bool
             False by default. When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
@@ -59,6 +61,15 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             self.file_path = file_path
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             spikeextractors = get_package(package_name="spikeextractors")
             spikeinterface = get_package(package_name="spikeinterface")
 
@@ -135,7 +146,6 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         verbose : bool, optional
             Enables verbosity
         """
-
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
     def get_metadata(self):

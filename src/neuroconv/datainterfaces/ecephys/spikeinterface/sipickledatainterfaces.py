@@ -1,4 +1,6 @@
 """Authors: Alessio Buccino."""
+from warnings import warn
+
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FilePathType
@@ -11,6 +13,25 @@ class SIPickleRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "load_extractor_from_pickle"
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        """
+        Initialize reading of SpikeInterface Pickle files.
+
+        Parameters
+        ----------
+        file_path : FilePathType
+            Path to .pkl file.
+        verbose : bool, optional, default=True
+        """
+        # TODO: Remove entire interfaces
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
         from spikeextractors import load_extractor_from_pickle
 
         self.recording_extractor = load_extractor_from_pickle(pkl_file=file_path)
