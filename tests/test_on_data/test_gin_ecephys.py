@@ -285,7 +285,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         )
 
     for spikeextractors_backend in [True, False]:
-        sub_path = Path("spikeglx") / "Noise4Sam_g0"
+        sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
         parameterized_recording_list.append(
             param(
                 data_interface=SpikeGLXLFPInterface,
@@ -300,7 +300,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
     parameterized_recording_list.append(
         param(
             data_interface=SpikeGLXNIDQInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.nidq.bin")),
+            interface_kwargs=dict(file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_t0.nidq.bin")),
         )
     )
 
