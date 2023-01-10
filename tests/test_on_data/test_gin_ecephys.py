@@ -285,7 +285,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         )
 
     for spikeextractors_backend in [True, False]:
-        sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+        sub_path = Path("spikeglx") / "Noise4Sam_g0"
         parameterized_recording_list.append(
             param(
                 data_interface=SpikeGLXLFPInterface,
