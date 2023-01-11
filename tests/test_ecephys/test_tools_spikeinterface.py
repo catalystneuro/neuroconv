@@ -1158,7 +1158,7 @@ class TestWriteWaveforms(TestCase):
         # recordingless
         cls.tmpdir = Path(mkdtemp())
         cls.waveform_recordingless_path = cls.tmpdir / "waveforms_recordingless"
-        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.recording_less_wf_path)
+        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.waveform_recordingless_path)
         # reload without recording
         cls.we_recless = WaveformExtractor.load_from_folder(cls.waveform_recordingless_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
