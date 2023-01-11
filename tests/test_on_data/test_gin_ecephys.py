@@ -1,4 +1,5 @@
 import unittest
+import pytest
 import itertools
 from pathlib import Path
 from datetime import datetime
@@ -48,9 +49,16 @@ from neuroconv.datainterfaces import (
     MCSRawRecordingInterface,
 )
 
+# enable to run locally in interactive mode
+try:
+    from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+    from .setup_paths import OUTPUT_PATH
+except ImportError:
+    from setup_paths import ECEPHY_DATA_PATH as DATA_PATH
+    from setup_paths import OUTPUT_PATH
 
-from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
-from .setup_paths import OUTPUT_PATH
+if not DATA_PATH.exists():
+    pytest.fail(f"No folder found in location: {DATA_PATH}!")
 
 
 def custom_name_func(testcase_func, param_num, param):
@@ -214,7 +222,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
             )
         )
 
@@ -226,7 +234,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
             )
         )
 
@@ -264,7 +272,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
 
         case_name = (
             f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
-            f"spikeextractors_backend={spikeextractors_backend}"
+            f"spikeextractors_backend_{spikeextractors_backend}"
         )
         parameterized_recording_list.append(
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
@@ -279,7 +287,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.ap.bin"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
             )
         )
 
@@ -292,7 +300,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.lf.bin"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
             )
         )
 
@@ -304,7 +312,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
             )
         )
 
@@ -404,7 +412,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
             )
         )
 
@@ -415,7 +423,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
                     folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
                     spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend={spikeextractors_backend}",
+                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
             )
         )
 
@@ -448,7 +456,12 @@ class TestEcephysNwbConversions(unittest.TestCase):
             # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
             if sorting.get_num_segments() == 1:
                 nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
-                check_sorting_equal_si(SX1=sorting, SX2=nwb_sorting)
+                # In the NWBSortingExtractor, since unit_names could be not unique,
+                # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
+                sorting_renamed = sorting.select_units(
+                    unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
+                )
+                check_sorting_equal_si(SX1=sorting_renamed, SX2=nwb_sorting)
 
     @parameterized.expand(
         input=[
