@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from nwbinspector.utils import get_package_version
 import pynwb
-from spikeinterface import BaseRecording, BaseSorting
+from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
@@ -154,7 +154,7 @@ def add_electrode_groups(recording: SpikeInterfaceRecording, nwbfile: pynwb.NWBF
                     'name': my_name,
                     'description': my_description,
                     'location': electrode_location,
-                    'device_name': my_device_name
+                    'device': my_device_name
                 },
                 ...
             ]
@@ -265,6 +265,15 @@ def add_electrodes(
 
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
     else:
         checked_recording = recording
 
@@ -307,6 +316,9 @@ def add_electrodes(
     for property in properties_to_extract:
         data = checked_recording.get_property(property)
         index = isinstance(data[0], (list, np.ndarray, tuple))
+        # booleans are parsed as strings
+        if isinstance(data[0], (bool, np.bool_)):
+            data = data.astype(str)
         # Fill with provided custom descriptions
         description = property_descriptions.get(property, "no description")
         data_to_add[property].update(description=description, data=data, index=index)
@@ -318,14 +330,14 @@ def add_electrodes(
     # Channel name logic
     channel_ids = checked_recording.get_channel_ids()
     if "channel_name" in data_to_add:
+        # if 'channel_name' is set as a property, it is used to override default channel_ids (and "id")
         channel_name_array = data_to_add["channel_name"]["data"]
     else:
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
-
-    # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
-    if np.issubdtype(channel_ids.dtype, np.integer):
-        data_to_add["id"].update(data=channel_ids, index=False)
+        # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
+        if np.issubdtype(channel_ids.dtype, np.integer):
+            data_to_add["id"].update(data=channel_ids, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
     if "location" in data_to_add:
@@ -520,10 +532,11 @@ def _recording_traces_to_hdmf_iterator(
         The recording segment to add to the NWBFile.
     return_scaled : bool, defaults to False
         When True recording extractor objects from spikeinterface return their traces in microvolts.
-    iterator_type: str (optional, defaults to 'v2')
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_opts: dict (optional)
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
@@ -571,25 +584,24 @@ def add_electrical_series(
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
-    use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = "v2",
+    iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
     """
-    Adds traces from recording object as ElectricalSeries to an nwbfile object.
+    Adds traces from recording object as ElectricalSeries to an NWBFile object.
 
     Parameters
     ----------
-    recording: SpikeInterfaceRecording
+    recording : SpikeInterfaceRecording
         A recording extractor from spikeinterface
-    nwbfile: NWBFile
+    nwbfile : NWBFile
         nwb file to which the recording information is to be added
-    metadata: dict
+    metadata : dict
         metadata info for constructing the nwb file (optional).
         Should be of the format
             metadata['Ecephys']['ElectricalSeries'] = dict(
@@ -598,27 +610,27 @@ def add_electrical_series(
             )
     segment_index : int
         The recording segment to add to the NWBFile.
-    starting_time: float (optional)
+    starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
-    write_as: str (optional, defaults to 'raw')
+    write_as : {'raw', 'processed', 'lfp'}
         How to save the traces data in the nwb file. Options:
-        - 'raw' will save it in acquisition
-        - 'processed' will save it as FilteredEphys, in a processing module
-        - 'lfp' will save it as LFP, in a processing module
-    es_key: str (optional)
+        - 'raw': save it in acquisition
+        - 'processed': save it as FilteredEphys, in a processing module
+        - 'lfp': save it as LFP, in a processing module
+    es_key : str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_scaled: bool (optional, defaults to False)
+    write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
-        Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
+    compression : {'gzip', 'lzf'}, optional
+        Type of compression to use. Set to None to disable all compression.
+    compression_opts: int, default: 4
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
     iterator_opts: dict (optional)
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
@@ -627,11 +639,17 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
-    if use_times:
-        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
-
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
     else:
         checked_recording = recording
 
@@ -758,6 +776,16 @@ def add_epochs(recording: RecordingExtractor, nwbfile: pynwb.NWBFile):
     ), "'recording' should be a spikeinterface/spikeextractors RecordingExtractor object!"
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
+    # TODO: Remove spikeextractors backend
+    warn(
+        message=(
+            "Interfaces using a spikeextractors backend will soon be deprecated! "
+            "Please use the SpikeInterface backend instead."
+        ),
+        category=DeprecationWarning,
+        stacklevel=2,
+    )
+
     for epoch_name in recording.get_epoch_names():
         epoch = recording.get_epoch_info(epoch_name)
         if nwbfile.epochs is None:
@@ -785,11 +813,11 @@ def add_electrodes_info(recording: RecordingExtractor, nwbfile: pynwb.NWBFile, m
 
     Parameters
     ----------
-    recording: SpikeInterfaceRecording
-    nwbfile: NWBFile
-        nwb file to which the recording information is to be added
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
+    recording : SpikeInterfaceRecording
+    nwbfile : NWBFile
+        NWB file to which the recording information is to be added
+    metadata : dict, optional
+        metadata info for constructing the nwb file.
         Should be of the format
             metadata['Ecephys']['Electrodes'] = [
                 {
@@ -819,7 +847,6 @@ def add_all_to_nwbfile(
     recording: SpikeInterfaceRecording,
     nwbfile=None,
     starting_time: Optional[float] = None,
-    use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
@@ -832,46 +859,43 @@ def add_all_to_nwbfile(
 ):
     """
     Auxiliary static method for nwbextractor.
-    Adds all recording related information from recording object and metadata to the nwbfile object.
+    Adds all recording related information from recording object and metadata to the NWBFile object.
+
     Parameters
     ----------
-    recording: SpikeInterfaceRecording
-    nwbfile: NWBFile
+    recording : SpikeInterfaceRecording
+    nwbfile : NWBFile, optional
         nwb file to which the recording information is to be added
-    starting_time: float (optional)
+    starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times: bool
-        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
-        the sampling rate is used.
-    metadata: dict
-        metadata info for constructing the nwb file (optional).
+    metadata : dict, optional
+        metadata info for constructing the NWB file.
         Check the auxiliary function docstrings for more information
         about metadata format.
-    write_as: str (optional, defaults to 'raw')
-        How to save the traces data in the nwb file. Options:
-        - 'raw' will save it in acquisition
-        - 'processed' will save it as FilteredEphys, in a processing module
-        - 'lfp' will save it as LFP, in a processing module
-    es_key: str (optional)
+    write_as : {'raw', 'processed', 'lfp'}
+        How to save the traces data in the NWB file.
+        - 'raw': save it in acquisition
+        - 'processed': save it as FilteredEphys, in a processing module
+        - 'lfp': save it as LFP, in a processing module
+    es_key : str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_electrical_series: bool (optional)
+    write_electrical_series : bool, default: True
         If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
         and electrodes are written to NWB.
-    write_scaled: bool (optional, defaults to True)
+    write_scaled : bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
+    compression : {'gzip', 'lzf'}, optional
+        Type of compression to use.
         Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
+    compression_opts : int (optional, defaults to 4)
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
+    iterator_type : {'v2', 'v1'}
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
         'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
+    iterator_opts : dict, optional
         Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2')
-        or DataChunkIterator (iterator_tpye='v1').
+        or DataChunkIterator (iterator_type='v1').
         Valid options are
             buffer_gb : float (optional, defaults to 1 GB, available for both 'v2' and 'v1')
                 Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
@@ -888,7 +912,6 @@ def add_all_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             starting_time=starting_time,
-            use_times=use_times,
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
@@ -910,14 +933,13 @@ def write_recording(
     overwrite: bool = False,
     verbose: bool = True,
     starting_time: Optional[float] = None,
-    use_times: bool = False,  # TODO: to be removed
     write_as: Optional[str] = None,
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
     compression: Optional[str] = None,
     compression_opts: Optional[int] = None,
-    iterator_type: Optional[str] = "v2",
+    iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
     """
@@ -925,18 +947,18 @@ def write_recording(
 
     Parameters
     ----------
-    recording: SpikeInterfaceRecording
-    nwbfile_path: FilePathType
+    recording : SpikeInterfaceRecording
+    nwbfile_path : FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
-    nwbfile: NWBFile, optional
+    nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
-    metadata: dict, optional
+    metadata : dict, optional
         metadata info for constructing the nwb file (optional). Should be
         of the format
             metadata['Ecephys'] = {}
@@ -970,40 +992,37 @@ def write_recording(
             }
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
-    overwrite: bool, optional
+    overwrite : bool, optional
         Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
-    verbose: bool, optional
+    verbose : bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
-    starting_time: float (optional)
+    starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times: bool
-        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
-        the sampling rate is used.
-    write_as: str (optional, defaults to 'raw')
-        How to save the traces data in the nwb file. Options:
+    write_as: {'raw', 'processed', 'lfp'}, optional
+        How to save the traces data in the nwb file.
         - 'raw' will save it in acquisition
         - 'processed' will save it as FilteredEphys, in a processing module
         - 'lfp' will save it as LFP, in a processing module
-    es_key: str (optional)
+    es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
-    write_electrical_series: bool (optional)
-        If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+    write_electrical_series: bool, default: True
+        If True, electrical series are written in acquisition. If False, only device, electrode_groups,
         and electrodes are written to NWB.
-    write_scaled: bool (optional, defaults to True)
+    write_scaled: bool, optional, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: str (optional, defaults to "gzip")
-        Type of compression to use. Valid types are "gzip" and "lzf".
+    compression: {None, 'gzip', 'lzp'}
+        Type of compression to use.
         Set to None to disable all compression.
-    compression_opts: int (optional, defaults to 4)
+    compression_opts: int, optional, default: 4
         Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: str (optional, defaults to 'v2')
+    iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-    iterator_opts: dict (optional)
+        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
+        None: write the TimeSeries with no memory chunking.
+    iterator_opts: dict, optional
         Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
         Valid options are
             buffer_gb : float (optional, defaults to 1 GB)
@@ -1072,6 +1091,7 @@ def get_nspikes(units_table: pynwb.misc.Units, unit_id: int):
 def add_units_table(
     sorting: SpikeInterfaceSorting,
     nwbfile: pynwb.NWBFile,
+    unit_ids: Optional[List[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     skip_features: Optional[List[str]] = None,
@@ -1079,40 +1099,59 @@ def add_units_table(
     unit_table_description: str = "Autogenerated by neuroconv.",
     write_in_processing_module: bool = False,
     write_waveforms: bool = False,
+    waveform_means: Optional[np.ndarray] = None,
+    waveform_sds: Optional[np.ndarray] = None,
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
 
     Parameters
     ----------
-    sorting: SpikeInterfaceSorting
-    nwbfile: NWBFile
-    property_descriptions: dict
+    sorting : SpikeInterfaceSorting
+    nwbfile : NWBFile
+    unit_ids : list of int or list of str, optional
+        Controls the unit_ids that will be written to the nwb file. If None, all
+        units are written.
+    property_descriptions : dict, optional
         For each key in this dictionary which matches the name of a unit
         property in sorting, adds the value as a description to that
         custom unit column.
-    skip_properties: list of str
+    skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    skip_features: list of str
+    skip_features : list of str, optional
         Each string in this list that matches a spike feature will not be written to the NWBFile.
-    write_in_processing_module: bool (optional, defaults to False)
+    write_in_processing_module : bool default: False
         How to save the units table in the nwb file.
         - True will save it to the processing module to serve as a historical provenance for the official table.
         - False will save it to the official NWBFile.Units position; recommended only for the final form of the data.
-    units_table_name : str (optional, defaults to 'units')
+    units_table_name : str, default: 'units'
         The name of the units table. If write_as=='units', then units_table_name must also be 'units'.
-    unit_table_description : str (optional)
+    unit_table_description : str, optional
         Text description of the units table; it is recommended to include information such as the sorting method,
         curation steps, etc.
-    write_waveforms : bool (optional, defaults to false)
-        if True and sorting is a spikeextractors SortingExtractor object then waveforms are added to the units table
+    write_waveforms : bool, default: False
+        if True and either sorting is a spikeextractors SortingExtractor object with "template" property or
+        waveform_means (and optionally waveform_sd) are given, then waveforms are added to the units table
         after writing.
+    waveform_means : np.ndarray, optional
+        Waveform mean (template) for each unit (num_units, num_samples, num_channels)
+    waveform_means : np.ndarray, optional
+        Waveform standard deviation for each unit (num_units, num_samples, num_channels)
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
 
     if isinstance(sorting, SortingExtractor):
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
     else:
         checked_sorting = sorting
 
@@ -1159,9 +1198,15 @@ def add_units_table(
     excluded_properties = list(skip_properties) + ["contact_vector"]
     properties_to_extract = [property for property in sorting_properties if property not in excluded_properties]
 
+    if unit_ids is not None:
+        checked_sorting = checked_sorting.select_units(unit_ids=unit_ids)
+    unit_ids = checked_sorting.unit_ids
+
     # Extract properties
     for property in properties_to_extract:
         data = checked_sorting.get_property(property)
+        if isinstance(data[0], (bool, np.bool_)):
+            data = data.astype(str)
         index = isinstance(data[0], (list, np.ndarray, tuple))
         description = property_descriptions.get(property, "No description.")
         data_to_add[property].update(description=description, data=data, index=index)
@@ -1169,16 +1214,15 @@ def add_units_table(
             data_to_add[property].update(table=nwbfile.electrodes)
 
     # Unit name logic
-    units_ids = checked_sorting.get_unit_ids()
     if "unit_name" in data_to_add:
+        # if 'unit_name' is set as a property, it is used to override default unit_ids (and "id")
         unit_name_array = data_to_add["unit_name"]["data"]
     else:
-        unit_name_array = units_ids.astype("str", copy=False)
+        unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
-
-    # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
-    if np.issubdtype(units_ids.dtype, np.integer):
-        data_to_add["id"].update(data=units_ids.astype("int"))
+        # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
+        if np.issubdtype(unit_ids.dtype, np.integer):
+            data_to_add["id"].update(data=unit_ids.astype("int"))
 
     units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
     extracted_properties = set(data_to_add)
@@ -1209,13 +1253,17 @@ def add_units_table(
             unit_kwargs[property] = data_to_add[property]["data"][row]
         spike_times = []
 
-        # Extract and cocatenate the spike times from multiple segments
+        # Extract and concatenate the spike times from multiple segments
         for segment_index in range(checked_sorting.get_num_segments()):
             segment_spike_times = checked_sorting.get_unit_spike_train(
-                unit_id=units_ids[row], segment_index=segment_index, return_times=True
+                unit_id=unit_ids[row], segment_index=segment_index, return_times=True
             )
             spike_times.append(segment_spike_times)
         spike_times = np.concatenate(spike_times)
+        if waveform_means is not None:
+            unit_kwargs["waveform_mean"] = waveform_means[row]
+        if waveform_sds is not None:
+            unit_kwargs["waveform_sd"] = waveform_sds[row]
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
@@ -1275,18 +1323,28 @@ def _add_waveforms_to_units_table(
     skip_features: Optional[List[str]] = None,
 ):
     """
-    Auxiliar method for adding waveforms to an existing units_table.
+    Auxiliary method for adding waveforms to an existing units_table.
 
     Parameters
     ----------
-    sorting:  A spikeextractors SortingExtractor.
-    units_table: a previously created units table
-    skip_features: list of str
+    sorting :  A spikeextractors SortingExtractor.
+    units_table : a previously created units table
+    skip_features : list of str
         Each string in this list that matches a spike feature will not be written to the NWBFile.
     """
     unit_ids = sorting.get_unit_ids()
 
     if isinstance(sorting, SortingExtractor):
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
         all_features = set()
         for unit_id in unit_ids:
             all_features.update(sorting.get_unit_spike_feature_names(unit_id))
@@ -1344,22 +1402,23 @@ def _add_waveforms_to_units_table(
                     values=flatten_vals,
                     index=spikes_index,
                 )
-        else:
-            """
-            Currently (2022-04-22), spikeinterface does not support waveform extraction.
-            """
-            pass
+    else:
+        """
+        Currently (2022-04-22), spikeinterface does not support waveform features.
+        """
+        pass
 
     return units_table
 
 
 def write_sorting(
-    sorting: SortingExtractor,
+    sorting: SpikeInterfaceSorting,
     nwbfile_path: OptionalFilePathType = None,
     nwbfile: Optional[pynwb.NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
+    unit_ids: Optional[List[Union[str, int]]] = None,
     property_descriptions: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     skip_features: Optional[List[str]] = None,
@@ -1372,40 +1431,43 @@ def write_sorting(
 
     Parameters
     ----------
-    sorting: SortingExtractor
-    nwbfile_path: FilePathType
+    sorting : SpikeInterfaceSorting
+    nwbfile_path : FilePathType, optional
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
-    nwbfile: NWBFile, optional
+    nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling
             write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
         will result in the appropriate changes to the my_nwbfile object.
         If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
         and returned by the function.
-    metadata: dict, optional
+    metadata : dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-    overwrite: bool, optional
-        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+    overwrite : bool, default: False
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
-    verbose: bool, optional
+    verbose : bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
-    property_descriptions: dict
+    unit_ids : list, optional
+        Controls the unit_ids that will be written to the nwb file. If None (default), all
+        units are written.
+    property_descriptions : dict, opptional
         For each key in this dictionary which matches the name of a unit
         property in sorting, adds the value as a description to that
         custom unit column.
-    skip_properties: list of str
+    skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    skip_features: list of str
+    skip_features : list of str
         Each string in this list that matches a spike feature will not be written to the NWBFile.
-    write_as: str (optional, defaults to 'units')
+    write_as : str, default: 'units'
         How to save the units table in the nwb file. Options:
         - 'units' will save it to the official NWBFile.Units position; recommended only for the final form of the data.
         - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
-    units_name : str (optional, defaults to 'units')
+    units_name : str, default: 'units'
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
-    units_description : str (optional)
+    units_description : str, default: 'Autogenerated by neuroconv.'
     """
     assert (
         nwbfile_path is None or nwbfile is None
@@ -1426,6 +1488,7 @@ def write_sorting(
     ) as nwbfile_out:
         add_units_table(
             sorting=sorting,
+            unit_ids=unit_ids,
             nwbfile=nwbfile_out,
             property_descriptions=property_descriptions,
             skip_properties=skip_properties,
@@ -1436,3 +1499,222 @@ def write_sorting(
             write_waveforms=True,
         )
     return nwbfile_out
+
+
+def add_waveforms(
+    waveform_extractor: WaveformExtractor,
+    nwbfile: Optional[pynwb.NWBFile] = None,
+    metadata: Optional[dict] = None,
+    recording: Optional[BaseRecording] = None,
+    unit_ids: Optional[List[Union[str, int]]] = None,
+    skip_properties: Optional[List[str]] = None,
+    property_descriptions: Optional[dict] = None,
+    write_as: str = "units",
+    units_name: str = "units",
+    units_description: str = "Autogenerated by neuroconv.",
+):
+    """
+    Primary method for writing a WaveformExtractor object to an NWBFile.
+
+    Parameters
+    ----------
+    waveform_extractor : WaveformExtractor
+    nwbfile : NWBFile, optional
+        If passed, this function will fill the relevant fields within the NWBFile object.
+        E.g., calling
+            write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+        will result in the appropriate changes to the my_nwbfile object.
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        and returned by the function.
+    metadata : dict, optional
+        Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        The "Ecephys" section of metadata is also used to create electrodes and electrical series fields.
+    overwrite : bool, default: False
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
+        The default is False (append mode).
+    recording : BaseRecording, optional
+        If the waveform_extractor is 'recordingless', this argument needs to be passed to save electrode info.
+        Otherwise, electrodes info is not added to the nwb file.
+    unit_ids : list, optional
+        Controls the unit_ids that will be written to the nwb file. If None (default), all
+        units are written.
+    property_descriptions : dict
+        For each key in this dictionary which matches the name of a unit
+        property in sorting, adds the value as a description to that
+        custom unit column.
+    skip_properties : list of str
+        Each string in this list that matches a unit property will not be written to the NWBFile.
+    skip_features : list of str
+        Each string in this list that matches a spike feature will not be written to the NWBFile.
+    write_as : str default: 'units'
+        How to save the units table in the nwb file. Options:
+        - 'units' will save it to the official NWBFile.Units position; recommended only for the final form of the data.
+        - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
+    units_name : str, optional, default: 'units'
+        The name of the units table. If write_as=='units', then units_name must also be 'units'.
+    units_description : str, default: 'Autogenerated by neuroconv.'
+    """
+    # TODO: move into add_units
+    assert write_as in [
+        "units",
+        "processing",
+    ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
+    if write_as == "units":
+        assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
+    write_in_processing_module = False if write_as == "units" else True
+
+    # retrieve templates and stds
+    template_means = waveform_extractor.get_all_templates()
+    template_stds = waveform_extractor.get_all_templates(mode="std")
+    sorting = waveform_extractor.sorting
+    if unit_ids is not None:
+        unit_indices = sorting.ids_to_indices(unit_ids)
+        template_means = template_means[unit_indices]
+        template_stds = template_stds[unit_indices]
+
+    # metrics properties (quality, template) are added as properties to the sorting copy
+    sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
+    if waveform_extractor.is_extension("quality_metrics"):
+        qm = waveform_extractor.load_extension("quality_metrics").get_data()
+        for prop in qm.columns:
+            if prop not in sorting_copy.get_property_keys():
+                sorting_copy.set_property(prop, qm[prop])
+    if waveform_extractor.is_extension("template_metrics"):
+        tm = waveform_extractor.load_extension("template_metrics").get_data()
+        for prop in tm.columns:
+            if prop not in sorting_copy.get_property_keys():
+                sorting_copy.set_property(prop, tm[prop])
+
+    add_electrodes_info(recording, nwbfile=nwbfile, metadata=metadata)
+
+    add_units_table(
+        sorting=sorting_copy,
+        nwbfile=nwbfile,
+        unit_ids=unit_ids,
+        property_descriptions=property_descriptions,
+        skip_properties=skip_properties,
+        write_in_processing_module=write_in_processing_module,
+        units_table_name=units_name,
+        unit_table_description=units_description,
+        write_waveforms=False,
+        waveform_means=template_means,
+        waveform_sds=template_stds,
+    )
+
+
+def write_waveforms(
+    waveform_extractor: WaveformExtractor,
+    nwbfile_path: OptionalFilePathType = None,
+    nwbfile: Optional[pynwb.NWBFile] = None,
+    metadata: Optional[dict] = None,
+    overwrite: bool = False,
+    recording: Optional[BaseRecording] = None,
+    verbose: bool = True,
+    unit_ids: Optional[List[Union[str, int]]] = None,
+    write_electrical_series: bool = False,
+    write_electrical_series_kwargs: Optional[dict] = None,
+    skip_properties: Optional[List[str]] = None,
+    property_descriptions: Optional[dict] = None,
+    write_as: str = "units",
+    units_name: str = "units",
+    units_description: str = "Autogenerated by neuroconv.",
+):
+    """
+    Primary method for writing a WaveformExtractor object to an NWBFile.
+
+    Parameters
+    ----------
+    sorting : SortingExtractor
+    nwbfile_path : FilePathType
+        Path for where to write or load (if overwrite=False) the NWBFile.
+        If specified, the context will always write to this location.
+    nwbfile : NWBFile, optional
+        If passed, this function will fill the relevant fields within the NWBFile object.
+        E.g., calling
+            write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
+        will result in the appropriate changes to the my_nwbfile object.
+        If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+        and returned by the function.
+    metadata : dict, optional
+        Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        The "Ecephys" section of metadata is also used to create electrodes and electrical series fields.
+    overwrite : bool, optional
+        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        The default is False (append mode).
+    recording : BaseRecording, optional
+        If the waveform_extractor is 'recordingless', this argument needs to be passed to save electrode info.
+        Otherwise, electrodes info is not added to the nwb file.
+    verbose : bool, optional
+        If 'nwbfile_path' is specified, informs user after a successful write operation.
+        The default is True.
+    unit_ids : list, optional
+        Controls the unit_ids that will be written to the nwb file. If None (default), all
+        units are written.
+    write_electrical_series : bool, default: False
+        If True, the recording object associated to the WaveformExtractor is written as an electrical series.
+    add_electrical_series_kwargs: dict, optional
+        Keyword arguments to control the `add_electrical_series()` function in case write_electrical_series=True
+    property_descriptions: dict, optional
+        For each key in this dictionary which matches the name of a unit
+        property in sorting, adds the value as a description to that
+        custom unit column.
+    skip_properties: list of str, optional
+        Each string in this list that matches a unit property will not be written to the NWBFile.
+    skip_features: list of str, optional
+        Each string in this list that matches a spike feature will not be written to the NWBFile.
+    write_as: {'units', 'processing'}
+        How to save the units table in the nwb file. Options:
+        - 'units' will save it to the official NWBFile.Units position; recommended only for the final form of the data.
+        - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
+    units_name : str, default: 'units'
+        The name of the units table. If write_as=='units', then units_name must also be 'units'.
+    units_description : str, default: 'Autogenerated by neuroconv.'
+    """
+    metadata = metadata if metadata is not None else dict()
+
+    # try:
+    with make_or_load_nwbfile(
+        nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
+    ) as nwbfile_out:
+        if waveform_extractor_has_recording(waveform_extractor):
+            recording = waveform_extractor.recording
+        assert recording is not None, (
+            "recording not found. To add the electrode table, the waveform_extractor "
+            "needs to have a recording attached or the 'recording' argument needs to be used."
+        )
+
+        if write_electrical_series:
+            write_electrical_series_kwargs = write_electrical_series_kwargs or dict()
+            add_electrical_series(
+                recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
+            )
+
+        add_waveforms(
+            waveform_extractor=waveform_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            recording=recording,
+            unit_ids=unit_ids,
+            skip_properties=skip_properties,
+            property_descriptions=property_descriptions,
+            write_as=write_as,
+            units_name=units_name,
+            units_description=units_description,
+        )
+
+
+def waveform_extractor_has_recording(waveform_extractor) -> bool:
+    """
+    Temporary helper function to substitute unreleased built-in waveform_extractor.has_recording()
+
+    Parameters
+    ----------
+    waveform_extractor : si.WaveformExtractor
+        The waveform extractor
+
+    Returns
+    -------
+    bool
+        True if the waveform_extractor has an attached recording, False otherwise
+    """
+    return waveform_extractor._recording is not None
