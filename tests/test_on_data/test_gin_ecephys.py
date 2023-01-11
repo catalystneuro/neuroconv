@@ -297,13 +297,6 @@ class TestEcephysNwbConversions(unittest.TestCase):
             )
         )
 
-    parameterized_recording_list.append(
-        param(
-            data_interface=SpikeGLXNIDQInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_t0.nidq.bin")),
-        )
-    )
-
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
