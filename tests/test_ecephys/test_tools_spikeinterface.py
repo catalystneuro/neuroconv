@@ -1157,10 +1157,10 @@ class TestWriteWaveforms(TestCase):
 
         # recordingless
         cls.tmpdir = Path(mkdtemp())
-        cls.recording_less_wf_path = cls.tmpdir / "waveforms_recordingless"
+        cls.waveform_recordingless_path = cls.tmpdir / "waveforms_recordingless"
         we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.recording_less_wf_path)
         # reload without recording
-        cls.we_recless = WaveformExtractor.load_from_folder(cls.recording_less_wf_path, with_recording=False)
+        cls.we_recless = WaveformExtractor.load_from_folder(cls.waveform_recordingless_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
 
     @classmethod
@@ -1172,11 +1172,6 @@ class TestWriteWaveforms(TestCase):
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
-
-    @classmethod
-    def tearDownClass(cls):
-        if cls.waveform_recordingless_path.is_dir():
-            shutil.rmtree(cls.waveform_recordingless_path)
 
     def _test_waveform_write(self, we, nwbfile, test_properties=True):
         # test unit columns
