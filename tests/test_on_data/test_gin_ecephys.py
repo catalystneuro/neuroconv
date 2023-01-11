@@ -360,7 +360,7 @@ class TestEcephysNwbConversions(unittest.TestCase):
         )
     ]
 
-    @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
+    @parameterized.expand(input=parameterized_aux_list, name_func=custom_name_func)
     def test_aux_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
