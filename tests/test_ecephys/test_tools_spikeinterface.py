@@ -1330,6 +1330,19 @@ class TestWriteWaveforms(TestCase):
         )
         self.single_segment_we.recording.set_channel_groups(groups)
 
+    def test_group_name_property(self):
+        """This tests that the 'group_name' property is correctly used to instantiate electrode grups"""
+        num_channels = len(self.single_segment_we.recording.channel_ids)
+        self.single_segment_we.recording.set_property("group_name",
+                                                      ["my-fancy-group"] * num_channels)
+        write_waveforms(
+            waveform_extractor=self.single_segment_we,
+            nwbfile=self.nwbfile,
+        )
+        self.assertIn("my-fancy-group", self.nwbfile.electrode_groups)
+        self.assertEqual(len(self.nwbfile.electrode_groups), 1)
+        self.single_segment_we.recording.delete_property("group_name")
+
     def test_units_table_name(self):
         """This tests the units naming exception"""
         with self.assertRaises(Exception) as context:
