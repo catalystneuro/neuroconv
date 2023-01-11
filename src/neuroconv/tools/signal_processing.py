@@ -1,4 +1,5 @@
 """Author: Cody Baker."""
+import math
 from typing import Optional
 
 import numpy as np
@@ -23,10 +24,14 @@ def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = N
     rising_frames : numpy.ndarray
         The frame indices of rising events.
     """
+    if math.prod(trace.shape[1:]) != 1:
+        raise ValueError(f"This function expects a one-dimensional array! Received shape of {trace.shape}.")
+    flattened_trace = np.ravel(trace)
+
     threshold = threshold if threshold is not None else np.mean(trace)
 
-    sign = np.sign(trace - threshold)
-    diff = np.diff(sign, axis=0)
+    sign = np.sign(flattened_trace - threshold)
+    diff = np.diff(sign)
     rising_frames = np.where(diff > 0)[0] + 1
 
     return rising_frames
@@ -49,10 +54,14 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = 
     falling_frames : numpy.ndarray
         The frame indices of falling events.
     """
+    if math.prod(trace.shape[1:]) != 1:
+        raise ValueError(f"This function expects a one-dimensional array! Received shape of {trace.shape}.")
+    flattened_trace = np.ravel(trace)
+
     threshold = threshold if threshold is not None else np.mean(trace)
 
-    sign = np.sign(trace - threshold)
-    diff = np.diff(sign, axis=0)
+    sign = np.sign(flattened_trace - threshold)
+    diff = np.diff(sign)
     falling_frames = np.where(diff < 0)[0] + 1
 
     return falling_frames
