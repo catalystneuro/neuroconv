@@ -21,9 +21,9 @@ def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = N
     rising_frames : numpy.ndarray
         The frame indices of rising events.
     """
-    if np.prod(trace.shape[1:]) != 1:  # TODO: when 3.7 dropped, use math.prod to avoid overflow
+    flattened_trace = np.ravel(trace)  # Shapes like (1, x, 1, 1) might result from slicing patterns and are allowed
+    if np.max(trace.shape) != flattened_trace.shape[0]:  # TODO: when 3.7 dropped, use math.prod to avoid overflow
         raise ValueError(f"This function expects a one-dimensional array! Received shape of {trace.shape}.")
-    flattened_trace = np.ravel(trace)  # Shapes like (x, 1, 1) might result from slicing patterns and are allowed
 
     threshold = threshold if threshold is not None else np.mean(trace)
 
@@ -51,9 +51,9 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = 
     falling_frames : numpy.ndarray
         The frame indices of falling events.
     """
-    if np.prod(trace.shape[1:]) != 1:  # TODO: when 3.7 dropped, use math.prod to avoid overflow
+    flattened_trace = np.ravel(trace)  # Shapes like (1, x, 1, 1) might result from slicing patterns and are allowed
+    if np.max(trace.shape) != flattened_trace.shape[0]:  # TODO: when 3.7 dropped, use math.prod to avoid overflow
         raise ValueError(f"This function expects a one-dimensional array! Received shape of {trace.shape}.")
-    flattened_trace = np.ravel(trace)  # Shapes like (x, 1, 1) might result from slicing patterns and are allowed
 
     threshold = threshold if threshold is not None else np.mean(trace)
 
