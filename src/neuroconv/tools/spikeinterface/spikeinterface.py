@@ -381,7 +381,6 @@ def add_electrodes(
         electrode_group_list = [dict(name=group_name) for group_name in groupless_names]
         missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=electrode_group_list))
         add_electrode_groups(recording=checked_recording, nwbfile=nwbfile, metadata=missing_group_metadata)
-        warnings.warn(f"electrode group not found for group in {groupless_names} and were created automatically")
 
     group_list = [nwbfile.electrode_groups[group_name] for group_name in group_name_array]
     data_to_add["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
@@ -497,9 +496,6 @@ def add_electrodes(
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
 
-    if (len(rows_to_add) == 0) and (len(properties_to_add_by_columns) == 0):
-        warnings.warn(f"No information added to the electrodes table")
-
 
 def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording, segment_index: int = 0) -> None:
     """Raises an error if the full traces of a recording extractor are larger than psutil.virtual_memory().available
@@ -599,7 +595,6 @@ def add_electrical_series(
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
-    use_times: bool = False,
     write_as: str = "raw",
     es_key: str = None,
     write_scaled: bool = False,
@@ -655,9 +650,6 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
-    if use_times:
-        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
-
     if isinstance(recording, RecordingExtractor):
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
         # TODO: Remove spikeextractors backend
@@ -866,7 +858,6 @@ def add_all_to_nwbfile(
     recording: SpikeInterfaceRecording,
     nwbfile=None,
     starting_time: Optional[float] = None,
-    use_times: bool = False,
     metadata: dict = None,
     write_as: str = "raw",
     es_key: str = None,
@@ -888,10 +879,6 @@ def add_all_to_nwbfile(
         nwb file to which the recording information is to be added
     starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times : bool, default False
-        If True, the times are saved to the NWB file using recording.get_times(). If False,
-        the sampling rate is used.
     metadata : dict, optional
         metadata info for constructing the NWB file.
         Check the auxiliary function docstrings for more information
@@ -936,7 +923,6 @@ def add_all_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             starting_time=starting_time,
-            use_times=use_times,
             metadata=metadata,
             write_as=write_as,
             es_key=es_key,
@@ -958,7 +944,6 @@ def write_recording(
     overwrite: bool = False,
     verbose: bool = True,
     starting_time: Optional[float] = None,
-    use_times: bool = False,  # TODO: to be removed
     write_as: Optional[str] = None,
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
@@ -1026,10 +1011,6 @@ def write_recording(
         The default is True.
     starting_time : float, optional
         Sets the starting time of the ElectricalSeries to a manually set value.
-        Increments timestamps if use_times is True.
-    use_times: bool
-        If True, the times are saved to the nwb file using recording.get_times(). If False (defualut),
-        the sampling rate is used.
     write_as: {'raw', 'processed', 'lfp'}, optional
         How to save the traces data in the nwb file.
         - 'raw' will save it in acquisition
@@ -1679,7 +1660,7 @@ def write_waveforms(
     verbose: bool = True,
     unit_ids: Optional[List[Union[str, int]]] = None,
     write_electrical_series: bool = False,
-    write_electrical_series_kwargs: Optional[dict] = None,
+    add_electrical_series_kwargs: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     property_descriptions: Optional[dict] = None,
     write_as: str = "units",
@@ -1751,9 +1732,9 @@ def write_waveforms(
         )
 
         if write_electrical_series:
-            write_electrical_series_kwargs = write_electrical_series_kwargs or dict()
+            add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
             add_electrical_series(
-                recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
+                recording=recording, nwbfile=nwbfile_out, metadata=metadata, **add_electrical_series_kwargs
             )
 
         add_waveforms(

@@ -13,7 +13,7 @@ import sleap_io
 # enable to run locally in interactive mode
 try:
     from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
-except:
+except ImportError:
     from setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 
 if not BEHAVIOR_DATA_PATH.exists():

@@ -53,7 +53,7 @@ from neuroconv.datainterfaces import (
 try:
     from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     from .setup_paths import OUTPUT_PATH
-except:
+except ImportError:
     from setup_paths import ECEPHY_DATA_PATH as DATA_PATH
     from setup_paths import OUTPUT_PATH
 

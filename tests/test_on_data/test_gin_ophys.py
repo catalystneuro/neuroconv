@@ -22,7 +22,7 @@ from neuroconv.datainterfaces import (
 # enable to run locally in interactive mode
 try:
     from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
-except:
+except ImportError:
     from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
 
 if not OPHYS_DATA_PATH.exists():
