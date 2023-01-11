@@ -98,6 +98,12 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
 
         return rising_times
 
+    def get_conversion_options(self) -> dict:
+        # Currently this method is only used by NWBConverter classes
+        # We still need a similar override for run_conversion default es_key for stand-alone interface conversion
+        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesNIDQ")
+        return conversion_options
+
     def run_conversion(
         self,
         nwbfile_path: Optional[FilePathType] = None,
