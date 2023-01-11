@@ -1,10 +1,11 @@
 import unittest
 from unittest.mock import Mock
 from pathlib import Path
-import shutil
 from datetime import datetime
 from platform import python_version
 from packaging import version
+from tempfile import mkdtemp
+from shutil import rmtree
 
 import psutil
 import numpy as np
@@ -1090,13 +1091,16 @@ class TestWriteWaveforms(TestCase):
         cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
 
         # recordingless
-        recording_less_wf_path = Path("waveforms_recordingless")
-        if recording_less_wf_path.is_dir():
-            shutil.rmtree(recording_less_wf_path)
-        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=recording_less_wf_path)
+        cls.tmpdir = Path(mkdtemp())
+        cls.recording_less_wf_path = cls.tmpdir / "waveforms_recordingless"
+        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.recording_less_wf_path)
         # reload without recording
-        cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path, with_recording=False)
+        cls.we_recless = WaveformExtractor.load_from_folder(cls.recording_less_wf_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
+
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(cls.tmpdir)
 
     def setUp(self):
         """Start with a fresh NWBFile, and remapped sorters each time."""
