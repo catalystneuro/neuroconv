@@ -262,8 +262,12 @@ def add_electrodes(
         object to ignore when writing to the NWBFile.
     """
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-
     if isinstance(recording, RecordingExtractor):
+        msg = (
+            "Support for spikeextractors.RecordingExtractor objects is deprecated. "
+            "Use spikeinterface.BaseRecording objects"
+        )
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_recording = OldToNewRecording(oldapi_recording_extractor=recording)
         # TODO: Remove spikeextractors backend
         warn(
@@ -276,6 +280,9 @@ def add_electrodes(
         )
     else:
         checked_recording = recording
+
+    # this flag is used to keep old behavior of assigning "id" from int channel_ids
+    old_api = isinstance(checked_recording, OldToNewRecording)
 
     # For older versions of pynwb, we need to manually add these columns
     if get_package_version("pynwb") < Version("1.3.0"):
@@ -335,9 +342,10 @@ def add_electrodes(
     else:
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
-        # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
-        if np.issubdtype(channel_ids.dtype, np.integer):
-            data_to_add["id"].update(data=channel_ids, index=False)
+        if old_api:
+            # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
+            if np.issubdtype(channel_ids.dtype, np.integer):
+                data_to_add["id"].update(data=channel_ids, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
     if "location" in data_to_add:
@@ -373,7 +381,6 @@ def add_electrodes(
         electrode_group_list = [dict(name=group_name) for group_name in groupless_names]
         missing_group_metadata = dict(Ecephys=dict(ElectrodeGroup=electrode_group_list))
         add_electrode_groups(recording=checked_recording, nwbfile=nwbfile, metadata=missing_group_metadata)
-        warnings.warn(f"electrode group not found for group in {groupless_names} and were created automatically")
 
     group_list = [nwbfile.electrode_groups[group_name] for group_name in group_name_array]
     data_to_add["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
@@ -421,21 +428,28 @@ def add_electrodes(
         default_value = type_to_default_value[matching_type]
         all_properties_to_default_value.update({property: default_value})
 
-    # Add data by rows excluding the rows containing channel_names that were previously added
-    channel_names_used_previously = []
-    if "channel_name" in electrode_table_previous_properties:
-        channel_names_used_previously = nwbfile.electrodes["channel_name"].data
+    # Add data by rows excluding the rows containing channel_names and group_names that were previously added
+    # The same channel_name can be added provided that it belongs to a different group
+    channel_group_names_used_previously = []
+    if "channel_name" in electrode_table_previous_properties and "group_name" in electrode_table_previous_properties:
+        channel_group_names_used_previously = [
+            (ch_name, gr_name)
+            for ch_name, gr_name in zip(nwbfile.electrodes["channel_name"].data, nwbfile.electrodes["group_name"].data)
+        ]
 
     properties_with_data = [property for property in properties_to_add_by_rows if "data" in data_to_add[property]]
     rows_in_data = [index for index in range(checked_recording.get_num_channels())]
-    rows_to_add = [index for index in rows_in_data if channel_name_array[index] not in channel_names_used_previously]
-
+    rows_to_add = [
+        index
+        for index in rows_in_data
+        if (channel_name_array[index], group_name_array[index]) not in channel_group_names_used_previously
+    ]
     for row in rows_to_add:
         electrode_kwargs = dict(all_properties_to_default_value)
         for property in properties_with_data:
             electrode_kwargs[property] = data_to_add[property]["data"][row]
 
-        nwbfile.add_electrode(**electrode_kwargs)
+        nwbfile.add_electrode(**electrode_kwargs, enforce_unique_id=True)
 
     # Add channel_name as a column and fill previously existing rows with channel_name equal to str(ids)
     previous_table_size = len(nwbfile.electrodes.id[:]) - len(channel_name_array)
@@ -481,9 +495,6 @@ def add_electrodes(
         extended_data[indexes_for_default_values] = default_value
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
-
-    if (len(rows_to_add) == 0) and (len(properties_to_add_by_columns) == 0):
-        warnings.warn(f"No information added to the electrodes table")
 
 
 def check_if_recording_traces_fit_into_memory(recording: SpikeInterfaceRecording, segment_index: int = 0) -> None:
@@ -1101,6 +1112,7 @@ def add_units_table(
     write_waveforms: bool = False,
     waveform_means: Optional[np.ndarray] = None,
     waveform_sds: Optional[np.ndarray] = None,
+    unit_electrode_indices=None,
 ):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -1135,13 +1147,20 @@ def add_units_table(
         after writing.
     waveform_means : np.ndarray, optional
         Waveform mean (template) for each unit (num_units, num_samples, num_channels)
-    waveform_means : np.ndarray, optional
+    waveform_sds : np.array (optional, default to None)
         Waveform standard deviation for each unit (num_units, num_samples, num_channels)
+    unit_electrode_indices : list of lists or arrays (optional, default to None)
+        For each unit, the indices of electrodes that each waveform_mean/sd correspond to.
     """
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
 
     if isinstance(sorting, SortingExtractor):
+        msg = (
+            "Support for spikeextractors.SortingExtractor objects is deprecated. "
+            "Use spikeinterface.BaseSorting objects"
+        )
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
         checked_sorting = OldToNewSorting(oldapi_sorting_extractor=sorting)
         # TODO: Remove spikeextractors backend
         warn(
@@ -1154,6 +1173,9 @@ def add_units_table(
         )
     else:
         checked_sorting = sorting
+
+    # this flag is used to keep old behavior of assigning "id" from int unit_ids
+    old_api = isinstance(checked_sorting, OldToNewSorting)
 
     if write_in_processing_module:
         ecephys_mod = get_module(
@@ -1200,6 +1222,8 @@ def add_units_table(
 
     if unit_ids is not None:
         checked_sorting = checked_sorting.select_units(unit_ids=unit_ids)
+        if unit_electrode_indices is not None:
+            unit_electrode_indices = np.array(unit_electrode_indices)[checked_sorting.ids_to_indices(unit_ids)]
     unit_ids = checked_sorting.unit_ids
 
     # Extract properties
@@ -1220,9 +1244,10 @@ def add_units_table(
     else:
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
-        # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
-        if np.issubdtype(unit_ids.dtype, np.integer):
-            data_to_add["id"].update(data=unit_ids.astype("int"))
+        if old_api:
+            # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
+            if np.issubdtype(unit_ids.dtype, np.integer):
+                data_to_add["id"].update(data=unit_ids.astype("int"))
 
     units_table_previous_properties = set(units_table.colnames) - set({"spike_times"})
     extracted_properties = set(data_to_add)
@@ -1243,10 +1268,23 @@ def add_units_table(
     unit_names_used_previously = []
     if "unit_name" in units_table_previous_properties:
         unit_names_used_previously = units_table["unit_name"].data
+    has_electrodes_column = "electrodes" in units_table.colnames
 
     properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
     rows_in_data = [index for index in range(checked_sorting.get_num_units())]
-    rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
+    if not has_electrodes_column:
+        rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
+    else:
+        rows_to_add = []
+        for index in rows_in_data:
+            if unit_name_array[index] not in unit_names_used_previously:
+                rows_to_add.append(index)
+            else:
+                unit_name = unit_name_array[index]
+                previous_electrodes = units_table[np.where(units_table["unit_name"][:] == unit_name)[0]].electrodes
+                if list(previous_electrodes.values[0]) != list(unit_electrode_indices[index]):
+                    rows_to_add.append(index)
+
     for row in rows_to_add:
         unit_kwargs = dict(property_to_default_values)
         for property in properties_with_data:
@@ -1262,9 +1300,12 @@ def add_units_table(
         spike_times = np.concatenate(spike_times)
         if waveform_means is not None:
             unit_kwargs["waveform_mean"] = waveform_means[row]
-        if waveform_sds is not None:
-            unit_kwargs["waveform_sd"] = waveform_sds[row]
+            if waveform_sds is not None:
+                unit_kwargs["waveform_sd"] = waveform_sds[row]
+            if unit_electrode_indices is not None:
+                unit_kwargs["electrodes"] = unit_electrode_indices[row]
         units_table.add_unit(spike_times=spike_times, **unit_kwargs, enforce_unique_id=True)
+    added_unit_table_ids = units_table.id[-len(rows_to_add) :]
 
     # Add unit_name as a column and fill previously existing rows with unit_name equal to str(ids)
     previous_table_size = len(units_table.id[:]) - len(unit_name_array)
@@ -1313,13 +1354,17 @@ def add_units_table(
     if write_waveforms:
         assert write_table_first_time, "write_waveforms is not supported with re-write"
         units_table = _add_waveforms_to_units_table(
-            sorting=sorting, units_table=units_table, skip_features=skip_features
+            sorting=sorting,
+            units_table=units_table,
+            row_ids=added_unit_table_ids,
+            skip_features=skip_features,
         )
 
 
 def _add_waveforms_to_units_table(
     sorting: SortingExtractor,
     units_table,
+    row_ids,
     skip_features: Optional[List[str]] = None,
 ):
     """
@@ -1371,7 +1416,7 @@ def _add_waveforms_to_units_table(
                     print(f"Skipping feature '{feature_name}' because not share across all units.")
                     skip_features.append(feature_name)
                     break
-        nspikes = {k: get_nspikes(units_table, int(k)) for k in unit_ids}
+        nspikes = {k: get_nspikes(units_table, k) for k in row_ids}
         for feature_name in feature_shapes.keys():
             # skip first dimension (num_spikes) when comparing feature shape
             if not np.all([elem[1:] == feature_shapes[feature_name][0][1:] for elem in feature_shapes[feature_name]]):
@@ -1397,7 +1442,7 @@ def _add_waveforms_to_units_table(
                     continue
                 set_dynamic_table_property(
                     dynamic_table=units_table,
-                    row_ids=[int(k) for k in unit_ids],
+                    row_ids=[int(k) for k in row_ids],
                     property_name=feature_name,
                     values=flatten_vals,
                     index=spikes_index,
@@ -1586,6 +1631,8 @@ def add_waveforms(
                 sorting_copy.set_property(prop, tm[prop])
 
     add_electrodes_info(recording, nwbfile=nwbfile, metadata=metadata)
+    electrode_group_indices = get_electrode_group_indices(recording, nwbfile=nwbfile)
+    unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
 
     add_units_table(
         sorting=sorting_copy,
@@ -1599,6 +1646,7 @@ def add_waveforms(
         write_waveforms=False,
         waveform_means=template_means,
         waveform_sds=template_stds,
+        unit_electrode_indices=unit_electrode_indices,
     )
 
 
@@ -1612,7 +1660,7 @@ def write_waveforms(
     verbose: bool = True,
     unit_ids: Optional[List[Union[str, int]]] = None,
     write_electrical_series: bool = False,
-    write_electrical_series_kwargs: Optional[dict] = None,
+    add_electrical_series_kwargs: Optional[dict] = None,
     skip_properties: Optional[List[str]] = None,
     property_descriptions: Optional[dict] = None,
     write_as: str = "units",
@@ -1684,9 +1732,9 @@ def write_waveforms(
         )
 
         if write_electrical_series:
-            write_electrical_series_kwargs = write_electrical_series_kwargs or dict()
+            add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
             add_electrical_series(
-                recording=recording, nwbfile=nwbfile_out, metadata=metadata, **write_electrical_series_kwargs
+                recording=recording, nwbfile=nwbfile_out, metadata=metadata, **add_electrical_series_kwargs
             )
 
         add_waveforms(
@@ -1701,6 +1749,20 @@ def write_waveforms(
             units_name=units_name,
             units_description=units_description,
         )
+
+
+def get_electrode_group_indices(recording, nwbfile):
+    if "group_name" in recording.get_property_keys():
+        group_names = list(np.unique(recording.get_property("group_name")))
+    elif "group" in recording.get_property_keys():
+        group_names = list(np.unique(recording.get_property("group").astype(str)))
+    else:
+        group_names = None
+    if group_names is None:
+        electrode_group_indices = None
+    else:
+        electrode_group_indices = nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
+    return electrode_group_indices
 
 
 def waveform_extractor_has_recording(waveform_extractor) -> bool:
