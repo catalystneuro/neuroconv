@@ -55,7 +55,7 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = 
     if np.max(trace.shape) != flattened_trace.shape[0]:  # TODO: when 3.7 dropped, use math.prod to avoid overflow
         raise ValueError(f"This function expects a one-dimensional array! Received shape of {trace.shape}.")
 
-    threshold = threshold if threshold is not None else np.mean(trace)
+    threshold = np.mean(trace) if threshold is None else threshold
 
     sign = np.sign(flattened_trace - threshold)
     diff = np.diff(sign)
