@@ -7,6 +7,17 @@ from neuroconv.tools.testing import generate_mock_ttl_signal
 
 
 class TestGetRisingAndFallingTimesFromTTL(TestCase):
+    def test_input_dimensions_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError, exc_msg="This function expects a one-dimensional array! Received shape of (2, 2)."
+        ):
+            get_rising_frames_from_ttl(trace=np.empty(shape=(2, 2)))
+
+        with self.assertRaisesWith(
+            exc_type=ValueError, exc_msg="This function expects a one-dimensional array! Received shape of (2, 2)."
+        ):
+            get_falling_frames_from_ttl(trace=np.empty(shape=(2, 2)))
+
     def test_current_defaults(self):
         ttl_signal = generate_mock_ttl_signal()
 
