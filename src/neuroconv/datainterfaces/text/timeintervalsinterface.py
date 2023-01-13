@@ -1,8 +1,8 @@
 from abc import abstractmethod
 import os
-
 from typing import Dict, Optional
 
+import numpy as np
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
@@ -51,6 +51,24 @@ class TimeIntervalsInterface(BaseDataInterface):
     def get_metadata_schema(self):
         fpath = os.path.join(os.path.split(__file__)[0], "timeintervals.schema.json")
         return load_dict_from_file(fpath)
+
+    def get_timestamps(self, column: str) -> np.ndarray:
+        if not column.endswith("_time"):
+            raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
+
+        return self.df[column]
+
+    def align_starting_time(self, starting_time: float):
+        timing_columns = [column for column in self.df.columns if column.endswith("_time")]
+
+        for column in timing_columns:
+            self.df[column] += starting_time
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray, column: str):
+        if not column.endswith("_time"):
+            raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
+
+        self.df[column] = aligned_timestamps
 
     def run_conversion(
         self,

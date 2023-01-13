@@ -93,7 +93,6 @@ class BaseDataInterface(ABC):
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
-    @abstractmethod
     def align_by_interpolation(self, aligned_timestamps: np.ndarray, unaligned_timestamps: np.ndarray):
         """
         Interpolate the timestamps of this interface using a mapping from some unaligned time basis to its aligned one.
