@@ -15,6 +15,7 @@ class MockBehaviorEventInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["event_times"])
+        source_schema["additionalProperties"] = True
         return source_schema
 
     def __init__(self, event_times: Optional[ArrayType] = None):
@@ -52,9 +53,8 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["signal_duration", "ttl_times", "ttl_duration"]
-        )
+        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["ttl_times"])
+        source_schema["additionalProperties"] = True
         return source_schema
 
     def __init__(
@@ -62,9 +62,6 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
-
-        # TODO, allow definition of channel names and more than one TTL, if desired.
-        # TODO, make the metadata of this mock mimic the true thing
 
         Parameters
         ----------
