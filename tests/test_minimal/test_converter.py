@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 import unittest
 
+import numpy as np
 from pynwb import NWBFile
 
 from neuroconv import NWBConverter, ConverterPipe
@@ -23,11 +24,20 @@ def test_converter():
         nwbfile_path = str(test_dir / "extension_test.nwb")
 
         class NdxEventsInterface(BaseDataInterface):
+            def __init__(self):
+                self.timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
+
+            def get_timestamps(self) -> np.ndarray:
+                return self.timestamps
+
+            def align_timestamps(self, aligned_timestamps: np.ndarray):
+                self.timestamps = aligned_timestamps
+
             def run_conversion(self, nwbfile: NWBFile, metadata: dict):
                 events = LabeledEvents(
                     name="LabeledEvents",
                     description="events from my experiment",
-                    timestamps=[0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0],
+                    timestamps=self.get_timestamps(),
                     resolution=1e-5,
                     data=[0, 1, 2, 3, 5, 0, 1, 2, 4],
                     labels=["trial_start", "cue_onset", "cue_offset", "response_left", "response_right", "reward"],
@@ -52,6 +62,12 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
 
+            def get_timestamps(self):
+                pass
+
+            def align_timestamps(self):
+                pass
+
             def run_conversion(self):
                 pass
 
@@ -60,6 +76,12 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         class InterfaceB(BaseDataInterface):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
+
+            def get_timestamps(self):
+                pass
+
+            def align_timestamps(self):
+                pass
 
             def run_conversion(self):
                 pass

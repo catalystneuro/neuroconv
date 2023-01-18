@@ -34,9 +34,6 @@ class MockBehaviorEventInterface(BaseDataInterface):
     def get_timestamps(self) -> np.ndarray:
         return self.event_times
 
-    def align_starting_time(self, starting_time: float):
-        self.event_times += starting_time
-
     def align_timestamps(self, aligned_timestamps: np.ndarray):
         self.event_times = aligned_timestamps
 

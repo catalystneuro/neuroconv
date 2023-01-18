@@ -74,9 +74,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
     def get_timestamps(self) -> np.ndarray:
         return self.sorting_extractor.get_times()
 
-    def align_starting_time(self, starting_time: float):
-        self.sorting_extractor.set_times(times=self.sorting_extractor.get_times() + starting_time)
-
     def align_timestamps(self, synchronized_timestamps: np.ndarray):
         self.sorting_extractor.set_times(times=synchronized_timestamps)
 

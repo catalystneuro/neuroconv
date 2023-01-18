@@ -84,9 +84,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def get_timestamps(self) -> np.ndarray:
         return self.recording_extractor.get_times()
 
-    def align_starting_time(self, starting_time: float):
-        self.recording_extractor.set_times(times=self.recording_extractor.get_times() + starting_time)
-
     def align_timestamps(self, aligned_timestamps: np.ndarray):
         self.recording_extractor.set_times(times=aligned_timestamps)
 

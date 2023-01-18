@@ -62,22 +62,6 @@ class BaseDataInterface(ABC):
         )
 
     @abstractmethod
-    def align_starting_time(self, starting_time: float):
-        """
-        Align the starting time for this interface relative to the common session start time.
-
-        Must be in units seconds relative to the common 'session_start_time'.
-
-        Parameters
-        ----------
-        starting_time : float
-            The starting time for all temporal data in this interface.
-        """
-        raise NotImplementedError(
-            "The protocol for synchronizing the start time of this interface has not been specified!"
-        )
-
-    @abstractmethod
     def align_timestamps(self, aligned_timestamps: np.ndarray):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
@@ -92,6 +76,19 @@ class BaseDataInterface(ABC):
         raise NotImplementedError(
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
+
+    def align_starting_time(self, starting_time: float):
+        """
+        Align the starting time for this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_time : float
+            The starting time for all temporal data in this interface.
+        """
+        self.align_timestamps(aligned_timestamps=self.get_timestamps + starting_time)
 
     def align_by_interpolation(self, aligned_timestamps: np.ndarray, unaligned_timestamps: np.ndarray):
         """
