@@ -2,6 +2,7 @@
 from typing import Optional
 from pathlib import Path
 
+import numpy as np
 from pynwb.file import NWBFile
 
 from ....basedatainterface import BaseDataInterface
@@ -50,6 +51,16 @@ class DeepLabCutInterface(BaseDataInterface):
             NWBFile=dict(session_description=self._config_file["Task"], experimenter=[self._config_file["scorer"]]),
         )
         return metadata
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def run_conversion(
         self,
