@@ -112,7 +112,7 @@ class BaseDataInterface(ABC):
             The timestamps of the unaligned secondary time basis.
         """
         self.align_timestamps(
-            aligned_timestamps=np.interp(self.get_timestamps(), unaligned_timestamps, aligned_timestamps)
+            aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
         )
 
     def get_conversion_options(self):
