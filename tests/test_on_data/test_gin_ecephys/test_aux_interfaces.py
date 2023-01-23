@@ -39,6 +39,7 @@ class TestEcephysAuxNwbConversions(unittest.TestCase):
         param(
             data_interface=SpikeGLXNIDQInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_t0.nidq.bin")),
+            case_name="load_sync_channel_False",
         ),
         param(
             data_interface=SpikeGLXNIDQInterface,
@@ -46,6 +47,7 @@ class TestEcephysAuxNwbConversions(unittest.TestCase):
                 file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_t0.nidq.bin"),
                 load_sync_channel=True,
             ),
+            case_name="load_sync_channel_True",
         ),
     ]
 
