@@ -15,6 +15,10 @@
 ### Fixes
 * Temporarily hotfixed the `tensorflow` dependency after the release of `deeplabcut==2.3.0`. [PR #268](https://github.com/catalystneuro/neuroconv/pull/268)
 * Fixed cleanup of waveform tests in SI tools. [PR #277](https://github.com/catalystneuro/neuroconv/pull/277)
+* Added propagation of the `load_sync_channel` argument for the `SpikeGLXRecordingInterface`. [PR #282](https://github.com/catalystneuro/neuroconv/pull/282)
+
+### Testing
+* Re-organized the `test_gin_ecephys` file by splitting into each sub-modality. [PR #282](https://github.com/catalystneuro/neuroconv/pull/282)
 
 
 
