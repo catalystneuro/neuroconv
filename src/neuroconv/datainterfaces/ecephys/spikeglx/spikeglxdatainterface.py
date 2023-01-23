@@ -105,8 +105,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         if not load_sync_channel:
             probe = read_spikeglx(meta_filename)
             self.recording_extractor.set_probe(probe, in_place=True)
-        # Set electrodes properties
-        add_recording_extractor_properties(self.recording_extractor)
+            # Set electrodes properties
+            add_recording_extractor_properties(self.recording_extractor)
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
