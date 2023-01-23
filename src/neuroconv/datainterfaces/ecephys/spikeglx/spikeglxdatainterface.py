@@ -100,9 +100,11 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Mount the probe
+        # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
-        probe = read_spikeglx(meta_filename)
-        self.recording_extractor.set_probe(probe, in_place=True)
+        if not load_sync_channel:
+            probe = read_spikeglx(meta_filename)
+            self.recording_extractor.set_probe(probe, in_place=True)
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
