@@ -50,6 +50,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         stub_test: bool = False,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
+        load_sync_channel: bool = False,
     ):
         """
         Parameters
@@ -62,6 +63,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
             Whether to output verbose text.
+        load_sync_channel : bool, default: False
+            Whether or not to load the last channel in the stream, which is typically used for synchronization.
+            If True, then the probe is not loaded.
         """
         from probeinterface import read_spikeglx
 
@@ -89,7 +93,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
-            super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
+            super().__init__(
+                folder_path=folder_path, stream_id=self.stream_id, verbose=verbose, load_sync_channel=load_sync_channel
+            )
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 

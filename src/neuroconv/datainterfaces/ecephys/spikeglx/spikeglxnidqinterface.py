@@ -22,7 +22,9 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, stub_test: bool = False, verbose: bool = True):
+    def __init__(
+        self, file_path: FilePathType, stub_test: bool = False, verbose: bool = True, load_sync_channel: bool = False
+    ):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
 
@@ -36,12 +38,18 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             Whether to shorten file for testing purposes.
         verbose : bool, default: True
             Whether to output verbose text.
+        load_sync_channel : bool, default: False
+            Whether or not to load the last channel in the stream, which is typically used for synchronization.
+            If True, then the probe is not loaded.
         """
         self.stream_id = "nidq"
 
         folder_path = Path(file_path).parent
         super(SpikeGLXRecordingInterface, self).__init__(
-            folder_path=folder_path, stream_id=self.stream_id, verbose=verbose
+            folder_path=folder_path,
+            stream_id=self.stream_id,
+            verbose=verbose,
+            load_sync_channel=load_sync_channel,
         )
         self.source_data.update(file_path=str(file_path))
 
