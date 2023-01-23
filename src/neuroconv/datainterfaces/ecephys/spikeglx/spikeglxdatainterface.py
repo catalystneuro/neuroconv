@@ -50,7 +50,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         stub_test: bool = False,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
-        load_sync_channel: bool = False,
     ):
         """
         Parameters
@@ -63,9 +62,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
             Whether to output verbose text.
-        load_sync_channel : bool, default: False
-            Whether or not to load the last channel in the stream, which is typically used for synchronization.
-            If True, then the probe is not loaded.
         """
         from probeinterface import read_spikeglx
 
@@ -102,11 +98,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Mount the probe
         # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
-        if not load_sync_channel:
-            probe = read_spikeglx(meta_filename)
-            self.recording_extractor.set_probe(probe, in_place=True)
-            # Set electrodes properties
-            add_recording_extractor_properties(self.recording_extractor)
+        probe = read_spikeglx(meta_filename)
+        self.recording_extractor.set_probe(probe, in_place=True)
+        # Set electrodes properties
+        add_recording_extractor_properties(self.recording_extractor)
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()

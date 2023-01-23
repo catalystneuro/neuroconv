@@ -123,6 +123,14 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
             case_name="rawmcs",
         ),
+        param(
+            data_interface=SpikeGLXRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(
+                    DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
+                ),
+            ),
+        ),
     ]
     this_python_version = version.parse(python_version())
     if (
@@ -209,19 +217,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         )
         parameterized_recording_list.append(
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
-        )
-
-    for load_sync_channel in [False, True]:
-        sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
-        parameterized_recording_list.append(
-            param(
-                data_interface=SpikeGLXRecordingInterface,
-                interface_kwargs=dict(
-                    file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.ap.bin"),
-                    load_sync_channel=load_sync_channel,
-                ),
-                case_name=f"load_sync_channel_{load_sync_channel}",
-            )
         )
 
     for spikeextractors_backend in [True, False]:
