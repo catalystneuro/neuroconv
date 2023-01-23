@@ -88,7 +88,7 @@ class BaseDataInterface(ABC):
         starting_time : float
             The starting time for all temporal data in this interface.
         """
-        self.align_timestamps(aligned_timestamps=self.get_timestamps + starting_time)
+        self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
 
     def align_by_interpolation(self, aligned_timestamps: np.ndarray, unaligned_timestamps: np.ndarray):
         """

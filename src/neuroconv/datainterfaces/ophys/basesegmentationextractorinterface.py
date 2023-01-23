@@ -60,14 +60,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
-        )
+        return self.segmentation_extractor.get_times()
 
     def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
-        )
+        self.segmentation_extractor.set_times(times=aligned_timestamps)
 
     def run_conversion(
         self,
