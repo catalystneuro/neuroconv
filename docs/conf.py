@@ -88,4 +88,6 @@ intersphinx_mapping = {
 # To shorten external links
 extlinks = {
     "nwbinspector": ("https://nwbinspector.readthedocs.io/en/dev/%s", ""),
+    "format-request-form": ("https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement"
+                            "%2Cdata+interfaces&template=format_request.yml&title=%5BNew+Format%5D%3A+", "")
 }

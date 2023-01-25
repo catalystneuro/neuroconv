@@ -18,4 +18,5 @@ and synchronize data across multiple sources.
 
   datainterfaces
   nwbconverter
-  schemas
+  yaml
+  csvs

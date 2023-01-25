@@ -6,6 +6,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeSortingInterface,
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
+from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
 from .ecephys.spikeinterface.sipickledatainterfaces import (
     SIPickleRecordingInterface,
@@ -61,6 +62,10 @@ from .behavior.video.videodatainterface import VideoInterface, MovieInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 
+# Text
+from .text.csv.csvtimeintertervalsinterface import CsvTimeIntervalsInterface
+from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
+
 interface_list = [
     # Ecephys
     NeuralynxRecordingInterface,
@@ -71,6 +76,7 @@ interface_list = [
     NeuroScopeLFPInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
+    SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     SIPickleRecordingInterface,
     SIPickleSortingInterface,
@@ -111,4 +117,7 @@ interface_list = [
     VideoInterface,
     DeepLabCutInterface,
     SLEAPInterface,
+    # Text
+    CsvTimeIntervalsInterface,
+    ExcelTimeIntervalsInterface,
 ]

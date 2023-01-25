@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from datetime import datetime
 
 from hdmf.testing import TestCase
@@ -18,7 +19,14 @@ from neuroconv.datainterfaces import (
     Suite2pSegmentationInterface,
 )
 
-from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+# enable to run locally in interactive mode
+try:
+    from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+except ImportError:
+    from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+
+if not OPHYS_DATA_PATH.exists():
+    pytest.fail(f"No folder found in location: {OPHYS_DATA_PATH}!")
 
 
 def custom_name_func(testcase_func, param_num, param):

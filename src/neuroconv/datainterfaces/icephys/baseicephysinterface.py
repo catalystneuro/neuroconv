@@ -7,7 +7,7 @@ from pynwb import NWBFile, NWBHDF5IO
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
-    OptionalFilePathType,
+    FilePathType,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     get_metadata_schema_for_icephys,
@@ -46,7 +46,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
 
         metadata_schema = super().get_metadata_schema()
         if DandiIcephysMetadata:
@@ -54,7 +54,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         from ...tools.neo import get_number_of_electrodes
 
         metadata = super().get_metadata()
@@ -70,33 +70,31 @@ class BaseIcephysInterface(BaseExtractorInterface):
     def run_conversion(
         self,
         nwbfile: NWBFile = None,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         metadata: dict = None,
         overwrite: bool = False,
-        icephys_experiment_type: Optional[str] = None,
+        icephys_experiment_type: str = "voltage_clamp",
         skip_electrodes: Tuple[int] = (),
         # TODO: to be removed
-        save_path: OptionalFilePathType = None,  # pragma: no cover
+        save_path: Optional[FilePathType] = None,  # pragma: no cover
     ):
         """
         Primary function for converting raw (unprocessed) intracellular data to the NWB standard.
 
         Parameters
         ----------
-        nwbfile: NWBFile
+        nwbfile : NWBFile
             nwb file to which the recording information is to be added
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
-        metadata: dict
+        metadata : dict, optional
             metadata info for constructing the nwb file (optional).
-        overwrite: bool
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
-        icephys_experiment_type: str (optional)
-            Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp',
-                and 'izero' (all current and amplifier settings turned off).
-            If no value is passed, 'voltage_clamp' is used as default.
-        skip_electrodes: tuple, optional
+        overwrite : bool, default: False
+            Whether to overwrite the NWB file if one exists at the nwbfile_path.
+        icephys_experiment_type : {'voltage_clamp', 'current_clamp', 'izero'}
+            Type of icephys recording.
+        skip_electrodes : tuple, optional
             Electrode IDs to skip. Defaults to ().
         """
         from ...tools.neo import write_neo_to_nwb

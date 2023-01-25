@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-from typing import Optional
+from typing import Optional, List
+from warnings import warn
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
@@ -16,7 +17,28 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         verbose: bool = True,
         spikeextractors_backend: bool = False,
     ):
+        """
+        Initialize a PhySortingInterface.
+
+        Parameters
+        ----------
+        folder_path : str or Path
+            Path to the output Phy folder (containing the params.py).
+        exclude_cluster_groups : str or list of str, optional
+            Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
+        verbose : bool, default: True
+        spikeextractors_backend : bool, default: False
+        """
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             from spikeextractors import PhySortingExtractor
 
             self.Extractor = PhySortingExtractor
