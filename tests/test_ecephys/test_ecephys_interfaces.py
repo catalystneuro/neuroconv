@@ -46,7 +46,7 @@ class TestAssertions(TestCase):
             exc_type=ModuleNotFoundError,
             exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
         ):
-            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")            
+            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
 
 def test_pkl_interface():
