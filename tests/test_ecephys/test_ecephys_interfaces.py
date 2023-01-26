@@ -22,7 +22,7 @@ python_version = Version(get_python_version())
 
 class TestAssertions(TestCase):
     @pytest.mark.skipif(
-        platform != "darwin" or python_version >= version.parse("3.8"),
+        platform != "darwin" or python_version >= Version("3.8"),
         reason="Only testing on MacOSX with Python 3.7!",
     )
     def test_ced_import_assertions_python_3_7(self):
