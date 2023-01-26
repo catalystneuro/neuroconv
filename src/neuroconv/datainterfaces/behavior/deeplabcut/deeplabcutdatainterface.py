@@ -40,7 +40,7 @@ class DeepLabCutInterface(BaseDataInterface):
         if "DLC" not in file_path.stem or ".h5" not in file_path.suffixes:
             raise IOError("The file passed in is not a DeepLabCut h5 data file.")
 
-        self._config_file = dlc2nwb.utils.auxiliaryfunctions.read_config(config_file_path)
+        self._config_file = dlc2nwb.utils.read_config(config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
         super().__init__(file_path=file_path, config_file_path=config_file_path)
