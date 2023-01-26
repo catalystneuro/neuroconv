@@ -10,6 +10,34 @@ from ....tools import get_package
 from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
 
 
+def write_subject_to_nwb(nwbfile, h5file, individual_name, config_file):
+    """
+    Given, subject name, write h5file to an existing nwbfile.
+    Parameters
+    ----------
+    nwbfile: pynwb.NWBFile
+        nwbfile to write the subject specific pose estimation series.
+    h5file : str
+        Path to a h5 data file
+    individual_name : str
+        Name of the subject (whose pose is predicted) for single-animal DLC project.
+        For multi-animal projects, the names from the DLC project will be used directly.
+    config_file : str
+        Path to a project config.yaml file
+    config_dict : dict
+        dict containing configuration options. Provide this as alternative to config.yml file.
+    Returns
+    -------
+    nwbfile: pynwb.NWBFile
+        nwbfile with pes written in the behavior module
+    """
+    dlc2nwb = get_package(package_name="dlc2nwb")
+
+    scorer, df, video, paf_graph, timestamps, _ = dlc2nwb.utils._get_pes_args(config_file, h5file, individual_name)
+    df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
+    return dlc2nwb.utils._write_pes_to_nwbfile(nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=True)
+
+
 class DeepLabCutInterface(BaseDataInterface):
     """Data interface for DeepLabCut datasets."""
 
@@ -73,15 +101,13 @@ class DeepLabCutInterface(BaseDataInterface):
         overwrite: bool, optional
             Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         """
-        dlc2nwb = get_package(package_name="dlc2nwb")
-
         base_metadata = self.get_metadata()
         metadata = dict_deep_update(base_metadata, metadata)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-            dlc2nwb.utils.write_subject_to_nwb(
+            write_subject_to_nwb(
                 nwbfile=nwbfile_out,
                 h5file=str(self.source_data["file_path"]),
                 individual_name=self.subject_name,
