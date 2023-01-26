@@ -10,25 +10,25 @@ from ....tools import get_package
 from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
 
 
-def write_subject_to_nwb(nwbfile, h5file, individual_name, config_file):
+def write_subject_to_nwb(nwbfile: NWBFile, h5file: FilePathType, individual_name: str, config_file: FilePathType):
     """
     Given, subject name, write h5file to an existing nwbfile.
+
     Parameters
     ----------
-    nwbfile: pynwb.NWBFile
-        nwbfile to write the subject specific pose estimation series.
-    h5file : str
-        Path to a h5 data file
+    nwbfile : pynwb.NWBFile
+        The in-memory nwbfile object to which the subject specific pose estimation series will be added.
+    h5file : str or path
+        Path to the DeepLabCut .h5 output file.
     individual_name : str
         Name of the subject (whose pose is predicted) for single-animal DLC project.
         For multi-animal projects, the names from the DLC project will be used directly.
-    config_file : str
+    config_file : str or path
         Path to a project config.yaml file
-    config_dict : dict
-        dict containing configuration options. Provide this as alternative to config.yml file.
+
     Returns
     -------
-    nwbfile: pynwb.NWBFile
+    nwbfile : pynwb.NWBFile
         nwbfile with pes written in the behavior module
     """
     dlc2nwb = get_package(package_name="dlc2nwb")
