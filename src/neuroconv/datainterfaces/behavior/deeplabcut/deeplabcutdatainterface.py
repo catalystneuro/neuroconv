@@ -36,7 +36,7 @@ def write_subject_to_nwb(nwbfile: NWBFile, h5file: FilePathType, individual_name
     scorer, df, video, paf_graph, timestamps, _ = dlc2nwb.utils._get_pes_args(config_file, h5file, individual_name)
     df_animal = df.groupby(level="individuals", axis=1).get_group(individual_name)
     return dlc2nwb.utils._write_pes_to_nwbfile(
-        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=True
+        nwbfile, individual_name, df_animal, scorer, video, paf_graph, timestamps, exclude_nans=False
     )
 
 
