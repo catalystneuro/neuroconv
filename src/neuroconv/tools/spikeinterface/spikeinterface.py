@@ -1608,14 +1608,15 @@ def add_waveforms(
         assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
     write_in_processing_module = False if write_as == "units" else True
 
-    # retrieve templates and stds
-    template_means = waveform_extractor.get_all_templates()
-    template_stds = waveform_extractor.get_all_templates(mode="std")
     sorting = waveform_extractor.sorting
-    if unit_ids is not None:
-        unit_indices = sorting.ids_to_indices(unit_ids)
-        template_means = template_means[unit_indices]
-        template_stds = template_stds[unit_indices]
+    if unit_ids is None:
+        unit_ids = sorting.unit_ids
+    # retrieve templates and stds
+    template_means = []
+    template_stds = []
+    for unit_id in unit_ids:
+        template_means.append(waveform_extractor.get_template(unit_id))
+        template_stds.append(waveform_extractor.get_template(unit_id, mode="std"))
 
     # metrics properties (quality, template) are added as properties to the sorting copy
     sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
@@ -1632,7 +1633,12 @@ def add_waveforms(
 
     add_electrodes_info(recording, nwbfile=nwbfile, metadata=metadata)
     electrode_group_indices = get_electrode_group_indices(recording, nwbfile=nwbfile)
-    unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
+    if not waveform_extractor.is_sparse():
+        unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
+    else:
+        sparsity = waveform_extractor.sparsity
+        unit_electrode_indices = [electrode_group_indices[sparse_indices]
+                                  for sparse_indices in sparsity.unit_id_to_channel_indices.values()]
 
     add_units_table(
         sorting=sorting_copy,

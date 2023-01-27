@@ -12,7 +12,7 @@ import numpy as np
 
 from pynwb import NWBHDF5IO, NWBFile
 import pynwb.ecephys
-from spikeinterface import extract_waveforms, WaveformExtractor
+from spikeinterface import extract_waveforms, compute_sparsity, WaveformExtractor
 from spikeinterface.core.testing_tools import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -1163,6 +1163,12 @@ class TestWriteWaveforms(TestCase):
         cls.we_recless = WaveformExtractor.load_from_folder(cls.waveform_recordingless_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
 
+        # sparse
+        cls.waveform_sparse_path = cls.tmpdir / "waveforms_sparse"
+        sparsity = compute_sparsity(cls.single_segment_we, method="radius", radius_um=30)
+        cls.we_sparse = cls.single_segment_we.save(folder=cls.waveform_sparse_path,
+                                                   sparsity=sparsity)
+
     @classmethod
     def tearDownClass(cls):
         rmtree(cls.tmpdir)
@@ -1350,6 +1356,15 @@ class TestWriteWaveforms(TestCase):
                 write_as="units",
                 units_name="units1",
             )
+
+    def test_write_sparse_waveforms(self):
+        """This tests that the waveforms are written appropriately when they are sparse"""
+        write_waveforms(waveform_extractor=self.we_sparse, nwbfile=self.nwbfile, write_electrical_series=False)
+        self._test_waveform_write(self.we_sparse, self.nwbfile)
+        unit_ids = self.we_sparse.unit_ids
+        sparse_indices = self.we_sparse.sparsity.unit_id_to_channel_indices
+        for i, row in enumerate(self.nwbfile.units.id):
+            self.assertEqual(self.nwbfile.units[row].electrodes.values[0], list(sparse_indices[unit_ids[i]]))
 
 
 if __name__ == "__main__":
