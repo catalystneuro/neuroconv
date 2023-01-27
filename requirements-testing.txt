@@ -3,4 +3,4 @@ pytest-cov
 ndx-events>=0.2.0  # for special tests to ensure load_namespaces is set to allow NWBFile load at all timess
 parameterized>=0.8.1
 scikit-learn  # For SI Waveform tests
-numba  # For SI Waveform tests
+numba; python_version <= '3.10'  # For SI Waveform tests
