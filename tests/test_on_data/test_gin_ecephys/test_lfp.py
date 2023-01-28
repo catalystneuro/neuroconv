@@ -52,15 +52,24 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         ),
         param(
             data_interface=SpikeGLXLFPInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin")),
+            interface_kwargs=dict(
+                file_path=str(
+                    DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
+                )
+            ),
         ),
     ]
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
-    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs: dict, case_name: str="", module_name: Optional[str] = None,  # Literal["acquisition", "processing"]
-                               ):
+    def test_convert_lfp_to_nwb(
+        self,
+        data_interface,
+        interface_kwargs: dict,
+        case_name: str = "",
+        module_name: Optional[str] = None,  # Literal["acquisition", "processing"]
+    ):
         module_name = module_name or "processing"
-        
+
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
