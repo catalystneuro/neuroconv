@@ -184,6 +184,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
+    ExtractorName = "SpikeGlxRecordingExtractor"
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
