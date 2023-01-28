@@ -10,7 +10,7 @@ from spikeinterface.core import BaseRecording
 
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import NeuroScopeLFPInterface, AxonaLFPDataInterface
+from neuroconv.datainterfaces import NeuroScopeLFPInterface, AxonaLFPDataInterface, SpikeGLXLFPInterface
 
 # enable to run locally in interactive mode
 try:
@@ -50,10 +50,17 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
                 xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
             ),
         ),
+        param(
+            data_interface=SpikeGLXLFPInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin")),
+        ),
     ]
 
     @parameterized.expand(input=parameterized_lfp_list, name_func=custom_name_func)
-    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs, case_name=""):
+    def test_convert_lfp_to_nwb(self, data_interface, interface_kwargs: dict, case_name: str="", module_name: Optional[str] = None,  # Literal["acquisition", "processing"]
+                               ):
+        module_name = module_name or "processing"
+        
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
         class TestConverter(NWBConverter):
@@ -69,7 +76,10 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
+            if module_name == "raw":
+                nwbfile.acquisition["ElectricalSeriesLFP"]
+            else:
+                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
             if not isinstance(recording, BaseRecording):
