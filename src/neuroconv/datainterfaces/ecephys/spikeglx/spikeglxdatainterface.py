@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 from warnings import warn
+from typing import Optional
 
 from pynwb.ecephys import ElectricalSeries
 
