@@ -148,10 +148,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata
 
-    def get_conversion_options(self) -> dict:
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesRaw", stub_test=False)
-        return conversion_options
-
     def get_device_metadata(self) -> dict:
         """Returns a device with description including the metadat as described here
         # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
@@ -182,6 +178,38 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
 
         return device
+
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[FilePathType] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        stub_test: bool = False,
+        starting_time: Optional[float] = None,
+        write_as: Optional[str] = None,
+        write_electrical_series: bool = True,
+        es_key: str = None,
+        compression: Optional[str] = None,
+        compression_opts: Optional[int] = None,
+        iterator_type: str = "v2",
+        iterator_opts: Optional[dict] = None,
+    ):
+        super().run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            stub_test=stub_test,
+            starting_time=starting_time,
+            write_as=write_as or "raw",
+            write_electrical_series=write_electrical_series,
+            es_key=es_key or "ElectricalSeriesRaw",
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )
 
 
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
