@@ -4,6 +4,7 @@ import json
 from warnings import warn
 from typing import Optional
 
+from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
