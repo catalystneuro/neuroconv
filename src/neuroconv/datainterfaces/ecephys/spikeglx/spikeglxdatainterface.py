@@ -70,7 +70,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
-        if spikeextractors_backend:
+        if spikeextractors_backend:  # pragma: no cover
             # TODO: Remove spikeextractors backend
             warn(
                 message=(
