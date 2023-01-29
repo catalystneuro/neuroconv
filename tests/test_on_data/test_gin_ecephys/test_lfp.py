@@ -1,6 +1,7 @@
 import unittest
 import pytest
 from datetime import datetime
+from typing import Optional
 
 import numpy as np
 import numpy.testing as npt
@@ -57,6 +58,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
                     DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
                 )
             ),
+            expected_write_module="raw",
         ),
     ]
 
@@ -66,9 +68,9 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         data_interface,
         interface_kwargs: dict,
         case_name: str = "",
-        module_name: Optional[str] = None,  # Literal["acquisition", "processing"]
+        expected_write_module: Optional[str] = None,  # Literal["acquisition", "processing"]
     ):
-        module_name = module_name or "processing"
+        expected_write_module = expected_write_module or "processing"
 
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
@@ -85,8 +87,8 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            if module_name == "raw":
-                nwbfile.acquisition["ElectricalSeriesLFP"]
+            if expected_write_module == "raw":
+                nwb_lfp_electrical_series = nwbfile.acquisition["ElectricalSeriesLFP"]
             else:
                 nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
