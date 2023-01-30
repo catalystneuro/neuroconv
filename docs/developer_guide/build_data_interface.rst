@@ -1,3 +1,5 @@
+.. _build-data-interface:
+
 Build a DataInterface
 ---------------------
 

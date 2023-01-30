@@ -35,6 +35,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         super().__init__(file_path=file_path)
         self.verbose = verbose
 
+        self._read_kwargs = read_kwargs
         self.df = self._read_file(file_path, **read_kwargs)
         self.time_intervals = None
 
@@ -51,6 +52,9 @@ class TimeIntervalsInterface(BaseDataInterface):
     def get_metadata_schema(self):
         fpath = os.path.join(os.path.split(__file__)[0], "timeintervals.schema.json")
         return load_dict_from_file(fpath)
+
+    def get_original_timestamps(self, column: str) -> np.ndarray:
+        return self._read_file(**self.source_data, **self._read_kwargs)[column]
 
     def get_timestamps(self, column: str) -> np.ndarray:
         if not column.endswith("_time"):

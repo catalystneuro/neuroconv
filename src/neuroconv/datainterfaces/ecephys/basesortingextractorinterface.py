@@ -71,6 +71,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
     def get_timestamps(self) -> np.ndarray:
         return self.sorting_extractor.get_times()
 

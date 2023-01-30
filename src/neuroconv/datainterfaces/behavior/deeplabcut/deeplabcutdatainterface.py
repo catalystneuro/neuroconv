@@ -52,6 +52,12 @@ class DeepLabCutInterface(BaseDataInterface):
         )
         return metadata
 
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
     def get_timestamps(self) -> np.ndarray:
         raise NotImplementedError(
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."

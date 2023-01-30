@@ -81,6 +81,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
     def get_timestamps(self) -> np.ndarray:
         return self.recording_extractor.get_times()
 
@@ -121,9 +124,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        write_as: Optional[str] = None,
+        write_as: str = "raw",  # Literal["raw", "processed"]
         write_electrical_series: bool = True,
-        es_key: str = None,
+        es_key: Optional[str] = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
