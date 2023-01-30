@@ -26,6 +26,10 @@ def test_converter():
         class NdxEventsInterface(BaseDataInterface):
             def __init__(self):
                 self.timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
+                self.original_timestamps = np.array(self.timestamps)
+
+            def get_original_timestamps(self) -> np.ndarray:
+                return self.original_timestamps
 
             def get_timestamps(self) -> np.ndarray:
                 return self.timestamps
@@ -62,6 +66,9 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
 
+            def get_original_timestamps(self):
+                pass
+
             def get_timestamps(self):
                 pass
 
@@ -76,6 +83,9 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         class InterfaceB(BaseDataInterface):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
+
+            def get_original_timestamps(self):
+                pass
 
             def get_timestamps(self):
                 pass
