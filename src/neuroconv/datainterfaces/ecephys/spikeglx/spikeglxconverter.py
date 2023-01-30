@@ -55,7 +55,7 @@ class SpikeGLXConverter(ConverterPipe):
         )  # TODO: wish this was a SI class method...
 
         folder_path = Path(folder_path)
-        self.data_interface_objects = dict()
+        data_interfaces = dict()
         for stream in available_streams:
             file_path = folder_path / f"{folder_path.stem[:-5]}.imec0.{stream}.bin"  # imagining that stream="ap", "lf"
             # Also might need to consider case where file stem doesn't match folder stem (not typical SpikeGLX though)
@@ -65,7 +65,9 @@ class SpikeGLXConverter(ConverterPipe):
                 interface = SpikeGLXLFPInterface(file_path=file_path)
             if "nidq" in stream:
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
-            self.data_interface_objects.update({stream: interface})
+            data_interfaces.update({stream: interface})
+
+        self.__init__(data_interfaces=data_interfaces)
 
     def run_conversion(
         self,
@@ -88,7 +90,6 @@ class SpikeGLXConverter(ConverterPipe):
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-
             for interface_name, data_interface in self.data_interface_objects.items():
                 data_interface.run_conversion(
                     nwbfile=nwbfile_out,
