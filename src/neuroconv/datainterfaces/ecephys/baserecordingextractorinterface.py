@@ -114,9 +114,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        write_as: Optional[str] = None,
+        write_as: str = "raw",  # Literal["raw", "processed"]
         write_electrical_series: bool = True,
-        es_key: str = None,
+        es_key: Optional[str] = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
