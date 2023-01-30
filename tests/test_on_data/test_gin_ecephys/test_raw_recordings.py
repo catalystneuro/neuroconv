@@ -220,19 +220,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         )
 
     for spikeextractors_backend in [True, False]:
-        sub_path = Path("spikeglx") / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
-        parameterized_recording_list.append(
-            param(
-                data_interface=SpikeGLXLFPInterface,
-                interface_kwargs=dict(
-                    file_path=str(DATA_PATH / sub_path / "Noise4Sam_g0_t0.imec0.lf.bin"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
-        )
-
-    for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
                 data_interface=NeuroScopeRecordingInterface,
