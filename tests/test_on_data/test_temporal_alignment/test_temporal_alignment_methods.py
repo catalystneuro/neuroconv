@@ -115,6 +115,19 @@ class TestNIDQInterfaceAlignment(TestCase):
         )
         assert_array_almost_equal(x=self.behavior_interface.get_timestamps(), y=self.aligned_behavior_event_timestamps)
 
+        # Check original unaltered timestamps are the same
+        assert_array_equal(
+            x=self.trial_interface.get_original_timestamps(column="start_time"), y=self.unaligned_trial_start_times
+        )
+        assert_array_equal(
+            x=self.trial_interface.get_original_timestamps(column="stop_time"),
+            y=self.unaligned_trial_start_times + self.regular_trial_length,
+        )
+        assert_array_equal(
+            x=self.behavior_interface.get_original_timestamps(),
+            y=self.unaligned_behavior_event_timestamps,
+        )
+
     def test_alignment_nwbconverter_direct_modification(self):
         class TestAlignmentConverter(NWBConverter):
             data_interface_classes = dict(
@@ -289,6 +302,19 @@ class TestExternalAlignment(TestNIDQInterfaceAlignment):
         )
         assert_array_almost_equal(
             x=self.behavior_interface.get_timestamps(), y=self.aligned_behavior_event_timestamps, decimal=5
+        )
+
+        # Check original unaltered timestamps are the same
+        assert_array_equal(
+            x=self.trial_interface.get_original_timestamps(column="start_time"), y=self.unaligned_trial_start_times
+        )
+        assert_array_equal(
+            x=self.trial_interface.get_original_timestamps(column="stop_time"),
+            y=self.unaligned_trial_start_times + self.regular_trial_length,
+        )
+        assert_array_equal(
+            x=self.behavior_interface.get_original_timestamps(),
+            y=self.unaligned_behavior_event_timestamps,
         )
 
     def test_alignment_nwbconverter_direct_modification(self):

@@ -81,6 +81,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
     def get_timestamps(self) -> np.ndarray:
         return self.recording_extractor.get_times()
 

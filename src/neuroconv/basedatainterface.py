@@ -48,6 +48,23 @@ class BaseDataInterface(ABC):
         return metadata
 
     @abstractmethod
+    def get_original_timestamps(self) -> np.ndarray:
+        """
+        Retrieve the original unaltered timestamps for the data in this interface.
+
+        This function should retrieve the data on-demand by re-initializing the IO.
+
+        Returns
+        -------
+        timestamps: numpy.ndarray
+            The timestamps for the data stream.
+        """
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
+    @abstractmethod
     def get_timestamps(self) -> np.ndarray:
         """
         Retrieve the timestamps for the data in this interface.

@@ -30,6 +30,10 @@ class MockBehaviorEventInterface(BaseDataInterface):
         """
         event_times = event_times or [1.2, 2.3, 3.4]
         self.event_times = np.array(event_times)
+        self.original_event_times = np.array(event_times)  # Make a copy of the initial loaded timestamps
+
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.original_event_times
 
     def get_timestamps(self) -> np.ndarray:
         return self.event_times
