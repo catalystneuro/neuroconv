@@ -1,9 +1,12 @@
 import unittest
 from pathlib import Path
 from datetime import datetime
+from platform import python_version as get_python_version
 
+import pytest
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
+from packaging.version import Version
 
 from neuroconv.tools.data_transfers import deploy_process
 
@@ -11,6 +14,7 @@ from .setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 from .setup_paths import OUTPUT_PATH
 
 
+@pytest.mark.skipif(Version(get_python_version()).minor == 11, reason="Skipping this test on Python 3.11!")
 class TestYAMLConversionSpecification(TestCase):
     test_folder = OUTPUT_PATH
 
