@@ -89,11 +89,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
-            super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
+            super().__init__(
+                folder_path=folder_path,
+                stream_id=self.stream_id,
+                verbose=verbose,
+            )
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Mount the probe
+        # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
         probe = read_spikeglx(meta_filename)
         self.recording_extractor.set_probe(probe, in_place=True)
