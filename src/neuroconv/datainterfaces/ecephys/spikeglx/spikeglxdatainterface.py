@@ -179,38 +179,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         return device
 
-    def run_conversion(
-        self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
-        overwrite: bool = False,
-        stub_test: bool = False,
-        starting_time: Optional[float] = None,
-        write_as: Optional[str] = None,
-        write_electrical_series: bool = True,
-        es_key: str = None,
-        compression: Optional[str] = None,
-        compression_opts: Optional[int] = None,
-        iterator_type: str = "v2",
-        iterator_opts: Optional[dict] = None,
-    ):
-        super().run_conversion(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            stub_test=stub_test,
-            starting_time=starting_time,
-            write_as=write_as or "raw",
-            write_electrical_series=write_electrical_series,
-            es_key=es_key or "ElectricalSeriesRaw",
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
-        )
-
 
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
@@ -245,9 +213,9 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        write_as: Optional[str] = None,
+        write_as: Optional[str] = "raw",
         write_electrical_series: bool = True,
-        es_key: str = None,
+        es_key: str = "ElectricalSeriesLFP",
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
@@ -260,9 +228,9 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
             overwrite=overwrite,
             stub_test=stub_test,
             starting_time=starting_time,
-            write_as=write_as or "raw",
+            write_as=write_as,
             write_electrical_series=write_electrical_series,
-            es_key=es_key or "ElectricalSeriesLFP",
+            es_key=es_key,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
