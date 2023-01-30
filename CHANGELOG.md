@@ -2,6 +2,7 @@
 
 ### Deprecation
 * All usages of `use_times` have been removed from spikeinterface tools and interfaces. The function `add_electrical_series` now determines whether the timestamps of the spikeinterface recording extractor are uniform or not and automatically stores the data according to best practices [PR #40](https://github.com/catalystneuro/neuroconv/pull/40)
+* Dropped Python 3.7 support. [PR #237](https://github.com/catalystneuro/neuroconv/pull/237)
 
 ### Features
 * Added a tool for determining rising and falling frames from TTL signals (`parse_rising_frames_from_ttl` and `get_falling_frames_from_ttl`). [PR #244](https://github.com/catalystneuro/neuroconv/pull/244)
