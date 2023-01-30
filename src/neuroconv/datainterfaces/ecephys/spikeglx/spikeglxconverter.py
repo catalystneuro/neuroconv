@@ -1,19 +1,19 @@
 """The simplest, easiest to use class for converting all SpikeGLX data in a folder."""
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
+from pynwb import NWBFile
 from pydantic import DirectoryPath
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
+from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import get_schema_from_method_signature
 
 
 class SpikeGLXConverter(ConverterPipe):
     """Primary conversion class for handling multiple SpikeGLX data streams."""
-
-    data_interface_classes = dict(AP=SpikeGLXRecordingInterface, LF=SpikeGLXLFPInterface, NIDQ=SpikeGLXNIDQInterface)
 
     @classmethod
     def get_source_schema(cls):
@@ -66,3 +66,32 @@ class SpikeGLXConverter(ConverterPipe):
             if "nidq" in stream:
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
             self.data_interface_objects.update({stream: interface})
+
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[str] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        # conversion_options: Optional[dict] = None,  # This is the only thing that might get complicated
+        # but it will require the same complications no matter what approach we take
+    ):
+        if metadata is None:
+            metadata = self.get_metadata()
+        self.validate_metadata(metadata=metadata)
+        # self.validate_conversion_options(conversion_options=conversion_options_to_run)
+
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            verbose=self.verbose,
+        ) as nwbfile_out:
+
+            for interface_name, data_interface in self.data_interface_objects.items():
+                data_interface.run_conversion(
+                    nwbfile=nwbfile_out,
+                    metadata=metadata,
+                    # , **conversion_options_to_run.get(interface_name, dict())
+                )
