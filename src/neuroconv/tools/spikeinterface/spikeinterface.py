@@ -1541,7 +1541,7 @@ def write_sorting(
             write_in_processing_module=write_in_processing_module,
             units_table_name=units_name,
             unit_table_description=units_description,
-            write_waveforms=True,
+            write_waveforms=False,
         )
     return nwbfile_out
 
