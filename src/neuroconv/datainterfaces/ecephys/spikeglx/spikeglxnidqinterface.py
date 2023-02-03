@@ -73,9 +73,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         metadata["Ecephys"]["Device"] = [device]
 
         metadata["Ecephys"]["ElectrodeGroup"][0].update(
-            name="NIDQChannelGroup",
-            description = "A group representing the NIDQ channels.",
-            device=device["name"]
+            name="NIDQChannelGroup", description="A group representing the NIDQ channels.", device=device["name"]
         )
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
