@@ -1,5 +1,4 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
-import warnings
 from pathlib import Path
 import json
 from warnings import warn
@@ -231,9 +230,12 @@ class SpikeGLXRecordingInterface(SpikeGLXAPInterface):
         verbose: bool = True,
         es_key: str = "ap",
     ):
-        warnings.warn(
-            "SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
-            "SpikeGLXAPInterface instead."
+        warn(
+            message=(
+                "SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
+                "SpikeGLXAPInterface instead."
+            ),
+            category=DeprecationWarning,
         )
         super().__init__(
             file_path=file_path,
@@ -251,9 +253,12 @@ class SpikeGLXLFPInterface(SpikeGLXLFInterface):
         verbose: bool = True,
         es_key: str = "lf",
     ):
-        warnings.warn(
-            "SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
-            "SpikeGLXAPInterface instead."
+        warn(
+            message=(
+                "SpikeGLXLFPInterface is deprecated and will be removed in a future version. Please use "
+                "SpikeGLXLFInterface instead."
+            ),
+            category=DeprecationWarning,
         )
         super().__init__(
             file_path=file_path,
