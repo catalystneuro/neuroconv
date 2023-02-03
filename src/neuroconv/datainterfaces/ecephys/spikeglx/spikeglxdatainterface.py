@@ -135,4 +135,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-SpikeGLXLFPInterface = SpikeGLXRecordingInterface
+# include for backwards compatibility
+class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
+    pass
