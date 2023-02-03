@@ -34,20 +34,19 @@ def add_recording_extractor_properties(recording_extractor) -> None:
     recording_extractor.set_property(key="contact_shapes", ids=channel_ids, values=contact_shapes)
 
 
-class _SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
+class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
+        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.in or lf.bin file."
         return source_schema
 
     def __init__(
         self,
         file_path: FilePathType,
-        es_key: str,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
@@ -56,8 +55,6 @@ class _SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        es_key : str
-            "ap" or "lf"
         spikeextractors_backend : bool, default: False
             Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
@@ -66,6 +63,7 @@ class _SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         from probeinterface import read_spikeglx
 
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
+        self.es_key = self.stream_id
 
         if spikeextractors_backend:  # pragma: no cover
             # TODO: Remove spikeextractors backend
@@ -92,7 +90,7 @@ class _SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 folder_path=folder_path,
                 stream_id=self.stream_id,
                 verbose=verbose,
-                es_key=es_key,
+                es_key=self.es_key,
             )
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
@@ -163,106 +161,6 @@ class _SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         description_string = "no description"
         if metadata_dict:
             description_string = json.dumps(metadata_dict)
-        device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
+        device_metadata = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
 
-        return device
-
-
-class SpikeGLXAPInterface(_SpikeGLXRecordingInterface):
-    """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
-
-    def __init__(
-        self,
-        file_path: FilePathType,
-        es_key: str = "ap",
-        spikeextractors_backend: bool = False,
-        verbose: bool = True,
-    ):
-        super().__init__(
-            file_path,
-            es_key=es_key,
-            spikeextractors_backend=spikeextractors_backend,
-            verbose=verbose,
-        )
-
-    def get_metadata(self) -> dict:
-        metadata = super().get_metadata()
-
-        metadata["Ecephys"][self.es_key] = dict(
-            name="ElectricalSeriesAP", description=f"Acquisition traces for the ap SpikeGLX data."
-        )
-
-        return metadata
-
-
-class SpikeGLXLFInterface(_SpikeGLXRecordingInterface):
-    """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
-
-    def __init__(
-        self,
-        file_path: FilePathType,
-        spikeextractors_backend: bool = False,
-        verbose: bool = True,
-        es_key: str = "lf",
-    ):
-        super().__init__(
-            file_path=file_path,
-            spikeextractors_backend=spikeextractors_backend,
-            verbose=verbose,
-            es_key=es_key,
-        )
-
-    def get_metadata(self) -> dict:
-        metadata = super().get_metadata()
-
-        metadata["Ecephys"][self.es_key] = dict(
-            name="ElectricalSeriesLF", description=f"Acquisition traces for the lf SpikeGLX data."
-        )
-
-        return metadata
-
-
-class SpikeGLXRecordingInterface(SpikeGLXAPInterface):
-    def __init__(
-        self,
-        file_path: FilePathType,
-        spikeextractors_backend: bool = False,
-        verbose: bool = True,
-        es_key: str = "ap",
-    ):
-        warn(
-            message=(
-                "SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
-                "SpikeGLXAPInterface instead."
-            ),
-            category=DeprecationWarning,
-        )
-        super().__init__(
-            file_path=file_path,
-            spikeextractors_backend=spikeextractors_backend,
-            verbose=verbose,
-            es_key=es_key,
-        )
-
-
-class SpikeGLXLFPInterface(SpikeGLXLFInterface):
-    def __init__(
-        self,
-        file_path: FilePathType,
-        spikeextractors_backend: bool = False,
-        verbose: bool = True,
-        es_key: str = "lf",
-    ):
-        warn(
-            message=(
-                "SpikeGLXLFPInterface is deprecated and will be removed in a future version. Please use "
-                "SpikeGLXLFInterface instead."
-            ),
-            category=DeprecationWarning,
-        )
-        super().__init__(
-            file_path=file_path,
-            spikeextractors_backend=spikeextractors_backend,
-            verbose=verbose,
-            es_key=es_key,
-        )
+        return device_metadata

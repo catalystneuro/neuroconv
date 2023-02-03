@@ -1,17 +1,16 @@
 """Authors: Cody Baker."""
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import numpy as np
-from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
-from .spikeglxdatainterface import SpikeGLXRecordingInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
 
 
-class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
+class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
 
     ExtractorName = "SpikeGLXRecordingExtractor"
@@ -23,7 +22,7 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         return source_schema
 
     def __init__(
-        self, file_path: FilePathType, stub_test: bool = False, verbose: bool = True, load_sync_channel: bool = False
+        self, file_path: FilePathType, verbose: bool = True, load_sync_channel: bool = False
     ):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
@@ -34,34 +33,32 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         ----------
         file_path : FilePathType
             Path to .nidq.bin file.
-        stub_test : bool, default: False
-            Whether to shorten file for testing purposes.
         verbose : bool, default: True
             Whether to output verbose text.
         load_sync_channel : bool, default: False
-            Whether or not to load the last channel in the stream, which is typically used for synchronization.
+            Whether to load the last channel in the stream, which is typically used for synchronization.
             If True, then the probe is not loaded.
         """
-        self.stream_id = "nidq"
 
         folder_path = Path(file_path).parent
-        super(SpikeGLXRecordingInterface, self).__init__(
+        super().__init__(
             folder_path=folder_path,
-            stream_id=self.stream_id,
+            stream_id="nidq",
             verbose=verbose,
             load_sync_channel=load_sync_channel,
         )
         self.source_data.update(file_path=str(file_path))
+        self.es_key = "nidq"
 
         self.recording_extractor.set_property(
             key="group_name", values=["NIDQChannelGroup"] * self.recording_extractor.get_num_channels()
         )
-        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, "nidq")]["meta"]
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesNIDQ=get_schema_from_hdmf_class(ElectricalSeries)
+            nidq=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
@@ -72,10 +69,6 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
-        metadata["Ecephys"].pop("ElectricalSeriesRaw")
-        metadata["Ecephys"]["ElectricalSeriesNIDQ"] = dict(
-            name="ElectricalSeriesNIDQ", description="Raw acquisition traces from the NIDQ (.nidq.bin) channels."
-        )
         return metadata
 
     def get_channel_names(self) -> List[str]:
@@ -107,37 +100,8 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         return rising_times
 
     def get_conversion_options(self) -> dict:
-        # Currently this method is only used by NWBConverter classes
+        # Currently, this method is only used by NWBConverter classes
         # We still need a similar override for run_conversion default es_key for stand-alone interface conversion
         conversion_options = dict(write_as="raw", es_key="ElectricalSeriesNIDQ")
         return conversion_options
 
-    def run_conversion(
-        self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
-        overwrite: bool = False,
-        stub_test: bool = False,
-        write_as: Optional[str] = None,
-        write_electrical_series: bool = True,
-        es_key: str = None,
-        compression: Optional[str] = None,
-        compression_opts: Optional[int] = None,
-        iterator_type: str = "v2",
-        iterator_opts: Optional[dict] = None,
-    ):
-        super().run_conversion(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            stub_test=stub_test,
-            write_as=write_as,
-            write_electrical_series=write_electrical_series,
-            es_key=es_key or "ElectricalSeriesNIDQ",
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
-        )

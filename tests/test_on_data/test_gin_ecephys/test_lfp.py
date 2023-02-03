@@ -11,7 +11,7 @@ from spikeinterface.core import BaseRecording
 
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import NeuroScopeLFPInterface, AxonaLFPDataInterface, SpikeGLXLFPInterface
+from neuroconv.datainterfaces import NeuroScopeLFPInterface, AxonaLFPDataInterface, SpikeGLXRecordingInterface
 
 # enable to run locally in interactive mode
 try:
@@ -52,7 +52,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
             ),
         ),
         param(
-            data_interface=SpikeGLXLFPInterface,
+            data_interface=SpikeGLXRecordingInterface,
             interface_kwargs=dict(
                 file_path=str(
                     DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"

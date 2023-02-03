@@ -1,7 +1,6 @@
 import unittest
 import pytest
 import itertools
-from pathlib import Path
 from datetime import datetime
 from platform import python_version
 from sys import platform
@@ -22,7 +21,6 @@ from neuroconv.datainterfaces import (
     OpenEphysRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
     BlackrockRecordingInterface,
     AxonaRecordingInterface,
     EDFRecordingInterface,
@@ -135,8 +133,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     this_python_version = version.parse(python_version())
     if (
         platform != "darwin"
-        and this_python_version >= version.parse("3.8")
-        and this_python_version < version.parse("3.10")
+        and version.parse("3.8") <= this_python_version < version.parse("3.10")
     ):
         parameterized_recording_list.append(
             param(

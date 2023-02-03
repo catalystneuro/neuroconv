@@ -62,7 +62,7 @@ class TestMockSpikeGLXNIDQInterface(TestCase):
                 "Electrodes": [
                     {"name": "group_name", "description": "Name of the ElectrodeGroup this electrode is a part of."}
                 ],
-                "ElectricalSeriesNIDQ": {
+                "nidq": {
                     "name": "ElectricalSeriesNIDQ",
                     "description": "Raw acquisition traces from the NIDQ (.nidq.bin) channels.",
                 },
