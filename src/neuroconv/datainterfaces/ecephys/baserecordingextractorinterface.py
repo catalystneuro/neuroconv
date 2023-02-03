@@ -3,7 +3,7 @@ from typing import Optional
 
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup
+from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
@@ -14,7 +14,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
-    def __init__(self, verbose: bool = True, **source_data):
+    def __init__(self, verbose: bool = True, es_key: str = None, **source_data):
         """
         Parameters
         ----------
@@ -22,13 +22,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             If True, will print out additional information.
         source_data : dict
             key-value pairs of extractor-specific arguments.
+        es_key : str
+            key of this ElectricalSeries in the metadata dictionary
 
         """
         super().__init__(**source_data)
         self.recording_extractor = self.Extractor(**source_data)
         self.subset_channels = None
         self.verbose = verbose
-        self.es_key = None  # For automatic metadata extraction
+        self.es_key = es_key
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -61,6 +63,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 ),
             ),
         )
+
+        if self.es_key is not None:
+            metadata_schema["properties"]["Ecephys"]["properties"].update(
+                {self.es_key: get_schema_from_hdmf_class(ElectricalSeries)}
+            )
         return metadata_schema
 
     def get_metadata(self):
@@ -77,6 +84,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Device=[dict(name="DeviceEcephys", description="no description")],
             ElectrodeGroup=electrode_metadata,
         )
+
+        if self.es_key is not None:
+            metadata["Ecephys"][self.es_key] = dict(
+                name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
+            )
 
         return metadata
 
@@ -116,7 +128,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: str = "raw",  # Literal["raw", "processed"]
         write_electrical_series: bool = True,
-        es_key: Optional[str] = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
@@ -185,7 +196,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
-            es_key=es_key or self.es_key,
+            es_key=self.es_key,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
