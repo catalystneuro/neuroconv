@@ -21,7 +21,6 @@ from .ecephys.blackrock.blackrockdatainterface import (
 )
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysRecordingInterface,  # temporary import until transitioning to the renamed interface
-    OpenEphysBinaryRecordingInterface,
     OpenEphysSortingInterface,
 )
 from .ecephys.axona.axonadatainterface import (

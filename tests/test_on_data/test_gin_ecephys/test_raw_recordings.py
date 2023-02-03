@@ -19,7 +19,7 @@ from neuroconv.datainterfaces import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroScopeRecordingInterface,
-    OpenEphysBinaryRecordingInterface,
+    OpenEphysRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
@@ -158,7 +158,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
-                data_interface=OpenEphysBinaryRecordingInterface,
+                data_interface=OpenEphysRecordingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
                     spikeextractors_backend=spikeextractors_backend,
