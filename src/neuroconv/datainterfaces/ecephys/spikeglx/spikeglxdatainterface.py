@@ -186,7 +186,7 @@ class SpikeGLXAPInterface(_SpikeGLXRecordingInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         metadata["Ecephys"][self.es_key] = dict(
@@ -213,7 +213,7 @@ class SpikeGLXLFInterface(_SpikeGLXRecordingInterface):
             es_key=es_key,
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         metadata["Ecephys"][self.es_key] = dict(
