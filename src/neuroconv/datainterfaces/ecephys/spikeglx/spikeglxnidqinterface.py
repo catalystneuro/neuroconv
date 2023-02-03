@@ -22,9 +22,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
 
-    def __init__(
-        self, file_path: FilePathType, verbose: bool = True, load_sync_channel: bool = False
-    ):
+    def __init__(self, file_path: FilePathType, verbose: bool = True, load_sync_channel: bool = False):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
 
@@ -58,9 +56,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            nidq=get_schema_from_hdmf_class(ElectricalSeries)
-        )
+        metadata_schema["properties"]["Ecephys"]["properties"].update(nidq=get_schema_from_hdmf_class(ElectricalSeries))
         return metadata_schema
 
     def get_metadata(self):
@@ -119,4 +115,3 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         rising_times = nidq_timestamps[rising_frames]
 
         return rising_times
-
