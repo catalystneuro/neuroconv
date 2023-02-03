@@ -225,14 +225,16 @@ class SpikeGLXLFInterface(_SpikeGLXRecordingInterface):
 
 class SpikeGLXRecordingInterface(SpikeGLXAPInterface):
     def __init__(
-            self,
-            file_path: FilePathType,
-            spikeextractors_backend: bool = False,
-            verbose: bool = True,
-            es_key: str = "ap",
+        self,
+        file_path: FilePathType,
+        spikeextractors_backend: bool = False,
+        verbose: bool = True,
+        es_key: str = "ap",
     ):
-        warnings.warn("SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
-                      "SpikeGLXAPInterface instead.")
+        warnings.warn(
+            "SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
+            "SpikeGLXAPInterface instead."
+        )
         super().__init__(
             file_path=file_path,
             spikeextractors_backend=spikeextractors_backend,
@@ -241,17 +243,18 @@ class SpikeGLXRecordingInterface(SpikeGLXAPInterface):
         )
 
 
-
 class SpikeGLXLFPInterface(SpikeGLXLFInterface):
     def __init__(
-            self,
-            file_path: FilePathType,
-            spikeextractors_backend: bool = False,
-            verbose: bool = True,
-            es_key: str = "lf",
+        self,
+        file_path: FilePathType,
+        spikeextractors_backend: bool = False,
+        verbose: bool = True,
+        es_key: str = "lf",
     ):
-        warnings.warn("SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
-                      "SpikeGLXAPInterface instead.")
+        warnings.warn(
+            "SpikeGLXRecordingInterface is deprecated and will be removed in a future version. Please use "
+            "SpikeGLXAPInterface instead."
+        )
         super().__init__(
             file_path=file_path,
             spikeextractors_backend=spikeextractors_backend,
