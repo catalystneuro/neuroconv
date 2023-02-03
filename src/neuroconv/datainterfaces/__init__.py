@@ -86,7 +86,7 @@ interface_list = [
     CellExplorerSortingInterface,
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
-    OpenEphysBinaryRecordingInterface,
+    OpenEphysRecordingInterface,
     OpenEphysSortingInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
