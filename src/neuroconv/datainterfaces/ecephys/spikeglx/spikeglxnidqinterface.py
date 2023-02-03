@@ -5,9 +5,10 @@ from typing import List
 import numpy as np
 from pynwb.ecephys import ElectricalSeries
 
+from .spikeglx_utils import get_device_metadata, get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
+from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
 
 
 class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
@@ -65,10 +66,30 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     def get_metadata(self):
         metadata = super().get_metadata()
 
-        metadata["Ecephys"]["ElectrodeGroup"][0]["description"] = "A group representing the NIDQ channels."
+        session_start_time = get_session_start_time(self.meta)
+        if session_start_time:
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+
+        # Device metadata
+        device = get_device_metadata(self.meta)
+
+        # Add groups metadata
+        metadata["Ecephys"]["Device"] = [device]
+
+        metadata["Ecephys"]["ElectrodeGroup"][0].update(
+            name="NIDQChannelGroup",
+            description = "A group representing the NIDQ channels.",
+            device=device["name"]
+        )
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
+
+        metadata["Ecephys"]["nidq"].update(
+            name="ElectricalSeriesNIDQ",
+            description="Raw acquisition traces from the NIDQ (.nidq.bin) channels.",
+        )
+
         return metadata
 
     def get_channel_names(self) -> List[str]:
@@ -98,10 +119,4 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         rising_times = nidq_timestamps[rising_frames]
 
         return rising_times
-
-    def get_conversion_options(self) -> dict:
-        # Currently, this method is only used by NWBConverter classes
-        # We still need a similar override for run_conversion default es_key for stand-alone interface conversion
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesNIDQ")
-        return conversion_options
 

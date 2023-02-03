@@ -21,6 +21,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Blackrock data using a
     :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
 
+    es_key = "ElectricalSeries"
+
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(
@@ -115,11 +117,9 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def get_conversion_options(self):
         if int(self.file_path.suffix[-1]) >= 5:
             write_as = "raw"
-            es_key = "ElectricalSeriesRaw"
         else:
             write_as = "processed"
-            es_key = "ElectricalSeriesProcessed"
-        conversion_options = dict(write_as=write_as, es_key=es_key, stub_test=False)
+        conversion_options = dict(write_as=write_as, stub_test=False)
         return conversion_options
 
 

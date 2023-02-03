@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -108,3 +109,34 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePathType) -> str:
     stream_id = device[1:] + signal_kind
 
     return stream_id
+
+
+def get_device_metadata(meta) -> dict:
+    """Returns a device with description including the metadata as described here
+    # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+
+    Returns
+    -------
+    dict
+        a dict containing the metadata necessary for creating the device
+    """
+
+    metadata_dict = dict()
+    if "imDatPrb_type" in meta:
+        probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
+        probe_type = str(meta["imDatPrb_type"])
+        probe_type_description = probe_type_to_probe_description[probe_type]
+        metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
+
+    if "imDatFx_pn" in meta:
+        metadata_dict.update(flex_part_number=meta["imDatFx_pn"])
+
+    if "imDatBsc_pn" in meta:
+        metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
+
+    description_string = "no description"
+    if metadata_dict:
+        description_string = json.dumps(metadata_dict)
+    device_metadata = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
+
+    return device_metadata

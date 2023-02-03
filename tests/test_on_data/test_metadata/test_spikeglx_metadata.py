@@ -6,7 +6,7 @@ from numpy.testing import assert_array_equal
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
-from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import get_session_start_time
+from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import get_session_start_time, get_device_metadata
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
@@ -38,7 +38,7 @@ def test_get_device_metadata():
     ap_file_path = folder_path / "Noise4Sam_g0_t0.imec0.ap.bin"
     spikeglx_interface = SpikeGLXRecordingInterface(file_path=ap_file_path)
 
-    device = spikeglx_interface.get_device_metadata()
+    device = get_device_metadata(spikeglx_interface.meta)
 
     description_string = (
         "{"
