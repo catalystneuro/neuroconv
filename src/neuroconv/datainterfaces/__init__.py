@@ -7,6 +7,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
 )
 from .ecephys.spikeglx.spikeglxdatainterface import (
     SpikeGLXRecordingInterface,
+    SpikeGLXLFPInterface,
 )
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
@@ -77,6 +78,7 @@ interface_list = [
     NeuroScopeSortingInterface,
     NeuroScopeLFPInterface,
     SpikeGLXRecordingInterface,
+    SpikeGLXLFPInterface,
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     SIPickleRecordingInterface,
