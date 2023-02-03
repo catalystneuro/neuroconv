@@ -20,7 +20,7 @@ from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockSortingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import (
-    OpenEphysRecordingInterface,
+    OpenEphysBinaryRecordingInterface,
     OpenEphysSortingInterface,
 )
 from .ecephys.axona.axonadatainterface import (
@@ -85,7 +85,7 @@ interface_list = [
     CellExplorerSortingInterface,
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
-    OpenEphysRecordingInterface,
+    OpenEphysBinaryRecordingInterface,
     OpenEphysSortingInterface,
     PhySortingInterface,
     KiloSortSortingInterface,

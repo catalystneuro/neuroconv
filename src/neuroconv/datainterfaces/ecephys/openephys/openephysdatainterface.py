@@ -7,8 +7,8 @@ from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import get_schema_from_method_signature, FolderPathType
 
 
-class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface for converting OpenEphys data. Uses
+class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
+    """Primary data interface for converting binary OpenEphys data (.dat files). Uses
     :py:class:`~spikeinterface.extractors.OpenEphysBinaryRecordingExtractor`."""
 
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
@@ -19,7 +19,9 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )
-        source_schema["properties"]["folder_path"]["description"] = "Path to directory containing OpenEphys files."
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Path to directory containing OpenEphys binary files."
         return source_schema
 
     def __init__(
