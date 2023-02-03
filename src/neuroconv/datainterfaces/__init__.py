@@ -19,7 +19,7 @@ from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
 )
-from .ecephys.openephys.openephysdatainterface import (
+from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
     OpenEphysSortingInterface,
 )
