@@ -107,7 +107,7 @@ class BaseDataInterface(ABC):
         """
         self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
 
-    def align_by_interpolation(self, aligned_timestamps: np.ndarray, unaligned_timestamps: np.ndarray):
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         """
         Interpolate the timestamps of this interface using a mapping from some unaligned time basis to its aligned one.
 
@@ -123,10 +123,10 @@ class BaseDataInterface(ABC):
 
         Parameters
         ----------
-        aligned_timestamps : numpy.ndarray
-            The timestamps aligned to the primary time basis.
         unaligned_timestamps : numpy.ndarray
             The timestamps of the unaligned secondary time basis.
+        aligned_timestamps : numpy.ndarray
+            The timestamps aligned to the primary time basis.
         """
         self.align_timestamps(
             aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
