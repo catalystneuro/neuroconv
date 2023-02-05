@@ -7,8 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.signal_processing import synchronize_timestamps_between_systems
-from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType, ArrayType
+from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -23,7 +22,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
-        metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
         metadata_schema = super().get_metadata_schema()
@@ -73,24 +71,13 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
     def get_timestamps(self) -> np.ndarray:
         return self.sorting_extractor.get_times()
 
-    def synchronize_starting_time(self, starting_time: float):
-        self.sorting_extractor.set_times(times=self.recording_extractor.get_times() + starting_time)
-
-    def synchronize_timestamps(self, synchronized_timestamps: ArrayType):
-        self.sorting_extractor.set_times(times=synchronized_timestamps)
-
-    def synchronize_between_systems(
-        self, primary_reference_timestamps: ArrayType, secondary_reference_timestamps: ArrayType
-    ):
-        unsynchronized_timestamps = self.sorting_extractor.get_times()
-        synchronized_timestamps = synchronize_timestamps_between_systems(
-            unsynchronized_timestamps=unsynchronized_timestamps,
-            primary_reference_timestamps=primary_reference_timestamps,
-            secondary_reference_timestamps=secondary_reference_timestamps,
-        )
+    def align_timestamps(self, synchronized_timestamps: np.ndarray):
         self.sorting_extractor.set_times(times=synchronized_timestamps)
 
     def subset_sorting(self):
@@ -133,27 +120,27 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
-        nwbfile: NWBFile, optional
+        nwbfile : NWBFile, optional
             If passed, this function will fill the relevant fields within the NWBFile object.
             E.g., calling
                 write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
             will result in the appropriate changes to the my_nwbfile object.
             If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
             and returned by the function.
-        metadata: dict
-            Information for constructing the nwb file (optional) and units table descriptions.
+        metadata : dict
+            Information for constructing the NWB file (optional) and units table descriptions.
             Should be of the format::
 
                 metadata["Ecephys"]["UnitProperties"] = dict(name=my_name, description=my_description)
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        overwrite : bool, optional
+            Whether to overwrite the NWB file if one exists at the nwbfile_path.
             The default is False (append mode).
-        stub_test: bool, optional (default False)
+        stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_ecephys_metadata: bool (optional, defaults to False)
+        write_ecephys_metadata : bool, default: False
             Write electrode information contained in the metadata.
         """
         from spikeinterface import NumpyRecording

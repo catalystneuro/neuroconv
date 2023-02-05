@@ -7,14 +7,12 @@ from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.signal_processing import synchronize_timestamps_between_systems
 from ...utils import (
     get_schema_from_hdmf_class,
     fill_defaults,
     get_base_schema,
     OptionalFilePathType,
     dict_deep_update,
-    ArrayType,
 )
 
 
@@ -75,25 +73,21 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
-    def get_timestamps(self) -> np.ndarray:
-        return self.imaging_extractor.get_times()
-
-    def synchronize_starting_time(self, starting_time: float):
-        self.imaging_extractor.set_times(times=self.recording_extractor.get_times() + starting_time)
-
-    def synchronize_timestamps(self, synchronized_timestamps: ArrayType):
-        self.imaging_extractor.set_times(times=synchronized_timestamps)
-
-    def synchronize_between_systems(
-        self, primary_reference_timestamps: ArrayType, secondary_reference_timestamps: ArrayType
-    ):
-        unsynchronized_timestamps = self.imaging_extractor.get_times()
-        synchronized_timestamps = synchronize_timestamps_between_systems(
-            unsynchronized_timestamps=unsynchronized_timestamps,
-            primary_reference_timestamps=primary_reference_timestamps,
-            secondary_reference_timestamps=secondary_reference_timestamps,
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
         )
-        self.imaging_extractor.set_times(times=synchronized_timestamps)
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def run_conversion(
         self,

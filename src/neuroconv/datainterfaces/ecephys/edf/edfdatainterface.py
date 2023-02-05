@@ -17,9 +17,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path: str or Path
+        folder_path : str or Path
             Path to the edf file
-        verbose: bool, True by default
+        verbose : bool, default: True
             Allows verbose.
         """
         _ = get_package(package_name="pyedflib")

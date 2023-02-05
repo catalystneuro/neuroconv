@@ -1,5 +1,5 @@
-Synchronization
-===============
+Temporal Alignment
+==================
 
 Synchronizing time streams across multiple interfaces is of critical importance when performing an NWB conversion. As explained in the Best Practices (#TODO: add link), all timing information within an NWB file must be with respect to the `timestamps_reference_time` of the file, which by default is the `session_start_time`. It is also encouraged to set this reference time to be the earliest time that occurs in the file so that all synchronized values are strictly positive. This Best Practice is in place to counter drift (#TODO: demonstrate visual drift in unsyncrhonized file) which can occur over the course of an experiment due to the internal clocks of separate systems moving at slightly different rates.
 
@@ -47,8 +47,8 @@ To use this type of synchronization, all the user must provide is the mapping de
     regular_timestamps_as_seen_by_secondary_system = ...
 
     secondary_interface.syncrhonize_between_systems(
-        primary_timestamps=regular_timestamps_as_seen_by_primary_system,
-        secondary_timestamps=regular_timestamps_as_seen_by_secondary_system,
+        unaligned_timestamps=regular_timestamps_as_seen_by_secondary_system,
+        aligned_timestamps=regular_timestamps_as_seen_by_primary_system,
     )
     # All time reference in the secondary_interface have now been mapped from the secondary to the primary system
 

@@ -69,6 +69,7 @@ class TestImportStructure(TestCase):
             "ecephys",
             "icephys",
             "ophys",
+            "text",
             # Exposed attributes
             "interface_list",
             # Behavior

@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -67,8 +68,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
-        """Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
-
+        """
+        Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
 
         Parameters
         ----------
@@ -84,6 +85,16 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend and pyintan dependency
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
             _ = get_package(package_name="pyintan")
             from spikeextractors import IntanRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording

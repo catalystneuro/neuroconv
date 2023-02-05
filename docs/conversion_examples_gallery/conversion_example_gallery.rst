@@ -88,6 +88,15 @@ Behavior
     Videos <behavior/video>
     Audio <behavior/audio>
 
+Text
+----
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV <text/csv>
+    Excel <text/excel>
+
 Common interface combinations
 -----------------------------
 
@@ -97,3 +106,7 @@ Common interface combinations
     combinations/spikeglx_and_phy
     combinations/tiff_and_suite2p
     combinations/ecephys_pose_estimation
+
+.. note::
+  If you do not see the format you need, feel free to :format-request-form:`request it<>` or
+  :ref:`build-data-interface`.

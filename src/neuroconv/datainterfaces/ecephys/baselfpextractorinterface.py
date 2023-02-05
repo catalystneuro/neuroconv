@@ -35,10 +35,12 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,  # To-do to remove, deprecation
+        write_as: str = "lfp",  # Literal["raw", "lfp", "processed"]
+        write_electrical_series: bool = True,
+        es_key: str = "ElectricalSeriesLFP",
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = "v2",
+        iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
     ):
         from ...tools.spikeinterface import write_recording
@@ -55,9 +57,8 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             starting_time=starting_time,
-            use_times=use_times,
-            write_as="lfp",
-            es_key="ElectricalSeriesLFP",
+            write_as=write_as,
+            es_key=es_key,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,

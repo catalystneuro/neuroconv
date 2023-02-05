@@ -7,8 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.signal_processing import synchronize_timestamps_between_systems
-from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType, ArrayType
+from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -17,6 +16,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, **source_data):
+        """
+        Parameters
+        ----------
+        verbose : bool, default True
+            If True, will print out additional information.
+        source_data : dict
+            key-value pairs of extractor-specific arguments.
+
+        """
         super().__init__(**source_data)
         self.recording_extractor = self.Extractor(**source_data)
         self.subset_channels = None
@@ -73,25 +81,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
     def get_timestamps(self) -> np.ndarray:
         return self.recording_extractor.get_times()
 
-    def synchronize_starting_time(self, starting_time: float):
-        self.recording_extractor.set_times(times=self.recording_extractor.get_times() + starting_time)
-
-    def synchronize_timestamps(self, synchronized_timestamps: ArrayType):
-        self.recording_extractor.set_times(times=synchronized_timestamps)
-
-    def synchronize_between_systems(
-        self, primary_reference_timestamps: ArrayType, secondary_reference_timestamps: ArrayType
-    ):
-        unsynchronized_timestamps = self.recording_extractor.get_times()
-        synchronized_timestamps = synchronize_timestamps_between_systems(
-            unsynchronized_timestamps=unsynchronized_timestamps,
-            primary_reference_timestamps=primary_reference_timestamps,
-            secondary_reference_timestamps=secondary_reference_timestamps,
-        )
-        self.recording_extractor.set_times(times=synchronized_timestamps)
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        self.recording_extractor.set_times(times=aligned_timestamps)
 
     def subset_recording(self, stub_test: bool = False):
         """
@@ -99,7 +96,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        stub_test : bool, optional (default False)
+        stub_test : bool, optional, default False
         """
         from spikeextractors import RecordingExtractor, SubRecordingExtractor
         from spikeinterface import BaseRecording
@@ -127,13 +124,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,  # To-do to remove, deprecation
-        write_as: Optional[str] = None,
+        write_as: str = "raw",  # Literal["raw", "processed"]
         write_electrical_series: bool = True,
-        es_key: str = None,
+        es_key: Optional[str] = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = "v2",
+        iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
     ):
         """
@@ -141,41 +137,39 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, this context will always write to this location.
-        nwbfile: NWBFile
-            nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
+        nwbfile : NWBFile, optional
+            NWBFile to which the recording information is to be added
+        metadata : dict, optional
+            metadata info for constructing the NWB file.
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether or not to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
-        starting_time: float (optional)
+        starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
-            Increments timestamps if use_times is True.
-        stub_test: bool, optional (default False)
+        stub_test : bool, optional, default False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as: str (optional, defaults to 'raw')
-            Options: 'raw', 'lfp' or 'processed'
-        write_electrical_series: bool (optional)
-            If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+        write_as : {'raw', 'lfp', 'processed'}
+        write_electrical_series : bool, default: True
+            Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        es_key: str (optional)
+        es_key : str, optional
             Key in metadata dictionary containing metadata info for the specific electrical series
-        compression: str (optional, defaults to "gzip")
-            Type of compression to use. Valid types are "gzip" and "lzf".
+        compression : {'gzip', 'lzf', None}
+            Type of compression to use.
             Set to None to disable all compression.
-        compression_opts: int (optional, defaults to 4)
+        compression_opts : int, optional, default: 4
             Only applies to compression="gzip". Controls the level of the GZIP.
-        iterator_type: str (optional, defaults to 'v2')
+        iterator_type : {'v1', 'v2'}
             The type of DataChunkIterator to use.
             'v1' is the original DataChunkIterator of the hdmf data_utils.
             'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-        iterator_opts: dict (optional)
+        iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
             Valid options are
                 buffer_gb : float (optional, defaults to 1 GB)
@@ -199,7 +193,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             starting_time=starting_time,
-            use_times=use_times,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=es_key or self.es_key,

@@ -16,7 +16,7 @@ with open(root / "requirements-testing.txt") as f:
 
 extras_require = defaultdict(list)
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
-for modality in ["ophys", "ecephys", "icephys", "behavior"]:
+for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
     modality_requirement_file = modality_path / "requirements.txt"
     if modality_requirement_file.exists():
@@ -44,7 +44,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="neuroconv",
-    version="0.2.3",
+    version="0.2.4",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -55,7 +55,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,  # Includes files described in MANIFEST.in in the installation.
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     install_requires=install_requires,
     extras_require=extras_require,
     entry_points={
