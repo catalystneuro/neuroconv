@@ -13,7 +13,6 @@ class TestEDFMetadata(unittest.TestCase):
         cls.interface = EDFRecordingInterface(file_path=file_path)
 
     def test_nwb_metadata(self):
-
         nwb_metadata = self.interface.extract_nwb_file_metadata()
 
         extracted_session_start_time = nwb_metadata["session_start_time"]

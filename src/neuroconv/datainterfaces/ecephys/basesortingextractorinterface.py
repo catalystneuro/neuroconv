@@ -71,6 +71,15 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.sorting_extractor.get_times()
+
+    def align_timestamps(self, synchronized_timestamps: np.ndarray):
+        self.sorting_extractor.set_times(times=synchronized_timestamps)
+
     def subset_sorting(self):
         from spikeextractors import SortingExtractor, SubSortingExtractor
         from spikeinterface import BaseSorting
