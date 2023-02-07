@@ -35,7 +35,6 @@ def add_recording_extractor_properties(recording_extractor) -> None:
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
