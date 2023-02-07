@@ -57,7 +57,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
 
     def test_default_values(self):
-
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -177,7 +176,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         self.test_recording_extractor.set_channel_groups(original_groups)
 
     def test_invalid_write_as_argument_assertion(self):
-
         write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
 
         reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
@@ -289,7 +287,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         )
 
     def test_uniform_values(self):
-
         gains = self.gains_default
         offsets = self.offset_defaults
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -315,7 +312,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_uniform_non_default(self):
-
         gains = self.gains_uniform
         offsets = self.offsets_uniform
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -341,7 +337,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_gains(self):
-
         gains = self.gains_variable
         offsets = self.offsets_uniform
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -371,7 +366,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_null_offsets_in_recording_extractor(self):
-
         gains = self.gains_default
         self.test_recording_extractor.set_channel_gains(gains=gains)
 
@@ -398,7 +392,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_offsets_assertion(self):
-
         gains = self.gains_default
         offsets = self.offsets_variable
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -439,7 +432,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         )
 
     def test_default_chunking(self):
-
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
@@ -467,7 +459,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
     def test_hdfm_iterator(self):
-
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
@@ -489,7 +480,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         isinstance(electrical_series.data, np.ndarray)
 
     def test_non_iterative_write_assertion(self):
-
         # Estimate num of frames required to exceed memory capabilities
         dtype = self.test_recording_extractor.get_dtype()
         element_size_in_bytes = dtype.itemsize
@@ -512,7 +502,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
 
     def test_invalid_iterator_type_assertion(self):
-
         iterator_type = "invalid_iterator_type"
 
         reg_expression = "iterator_type (.*?)"
@@ -570,7 +559,6 @@ class TestWriteRecording(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_multiple_segments(self):
-
         write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition

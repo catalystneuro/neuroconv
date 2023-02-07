@@ -48,11 +48,11 @@ def set_dynamic_table_property(
         raise ValueError("'ids' and 'values' should be lists of same size")
     if index is False:
         if property_name in dynamic_table:
-            for (row_id, value) in zip(row_ids, values):
+            for row_id, value in zip(row_ids, values):
                 dynamic_table[property_name].data[ids.index(row_id)] = value
         else:
             col_data = [default_value] * len(ids)  # init with default val
-            for (row_id, value) in zip(row_ids, values):
+            for row_id, value in zip(row_ids, values):
                 col_data[ids.index(row_id)] = value
             dynamic_table.add_column(
                 name=property_name, description=description, data=col_data, index=index, table=table
@@ -1058,7 +1058,6 @@ def write_recording(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-
         # Convenience function to add device, electrode groups and electrodes info
         add_electrodes_info(recording=recording, nwbfile=nwbfile_out, metadata=metadata)
 
@@ -1541,7 +1540,7 @@ def write_sorting(
             write_in_processing_module=write_in_processing_module,
             units_table_name=units_name,
             unit_table_description=units_description,
-            write_waveforms=True,
+            write_waveforms=False,
         )
     return nwbfile_out
 

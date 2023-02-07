@@ -85,7 +85,9 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     if any(valid_args):
                         param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
                     else:
-                        raise ValueError("No valid arguments were found in the json type mapping!")
+                        raise ValueError(
+                            f"No valid arguments were found in the json type mapping for parameter {param}"
+                        )
                     num_params = len(set(param_types))
                     conflict_message = (
                         "Conflicting json parameter types were detected from the annotation! "
@@ -104,7 +106,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                         param_type = annotation_json_type_map[arg.__name__]
                     else:
                         raise ValueError(
-                            f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
+                            f"No valid arguments were found in the json type mapping '{arg}' for parameter {param}"
                         )
                     if arg == FilePathType:
                         input_schema["properties"].update({param_name: dict(format="file")})
@@ -136,7 +138,13 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     defaults: dict
     overwrite: bool
     """
-    for key, val in schema["properties"].items():
+    # patternProperties introduced with the CsvTimeIntervalsInterface
+    # caused issue with NWBConverter.get_metadata_schema() call leading here
+    properties_reference = "properties"
+    if properties_reference not in schema and "patternProperties" in schema:
+        properties_reference = "patternProperties"
+
+    for key, val in schema[properties_reference].items():
         if key in defaults:
             if val["type"] == "object":
                 fill_defaults(val, defaults[key], overwrite=overwrite)
