@@ -1,6 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
@@ -91,6 +92,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
 
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.recording_extractor.get_times()
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        self.recording_extractor.set_times(times=aligned_timestamps)
 
     def subset_recording(self, stub_test: bool = False):
         """

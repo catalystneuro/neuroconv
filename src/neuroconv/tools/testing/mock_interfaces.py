@@ -2,22 +2,67 @@
 from typing import Optional, List
 
 import numpy as np
+from pynwb import NWBFile
+from pynwb.base import DynamicTable
 
 from .mock_ttl_signals import generate_mock_ttl_signal
+from ...basedatainterface import BaseDataInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...utils import ArrayType, get_schema_from_method_signature
+
+
+class MockBehaviorEventInterface(BaseDataInterface):
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["event_times"])
+        source_schema["additionalProperties"] = True
+        return source_schema
+
+    def __init__(self, event_times: Optional[ArrayType] = None):
+        """
+        Define event times for some behavior.
+
+        Parameters
+        ----------
+        event_times : list of floats, optional
+            The event times to set as timestamps for this interface.
+            The default is the array [1.2, 2.3, 3.4] for similarity to the timescale of the MockSpikeGLXNIDQInterface.
+        """
+        event_times = event_times or [1.2, 2.3, 3.4]
+        self.event_times = np.array(event_times)
+        self.original_event_times = np.array(event_times)  # Make a copy of the initial loaded timestamps
+
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.original_event_times
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.event_times
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        self.event_times = aligned_timestamps
+
+    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+        table = DynamicTable(name="BehaviorEvents", description="Times of various classified behaviors.")
+        table.add_column(name="event_time", description="Time of each event.")
+        for timestamp in self.get_timestamps():  # adding data by column gives error
+            table.add_row(event_time=timestamp)
+        nwbfile.add_acquisition(table)
 
 
 class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
     ExtractorName = "NumpyRecording"
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["ttl_times"])
+        source_schema["additionalProperties"] = True
+        return source_schema
 
     def __init__(
         self, signal_duration: float = 7.0, ttl_times: Optional[List[List[float]]] = None, ttl_duration: float = 1.0
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
-
-        # TODO, allow definition of channel names and more than one TTL, if desired.
-        # TODO, make the metadata of this mock mimic the true thing
 
         Parameters
         ----------

@@ -58,7 +58,6 @@ class TestAddDevices(unittest.TestCase):
         assert device_name in devices
 
     def test_add_device_with_further_metadata(self):
-
         device_name = "new_device"
         description = "device_description"
         manufacturer = "manufactuer"
@@ -120,7 +119,6 @@ class TestAddDevices(unittest.TestCase):
         assert device_name1 in devices
 
     def test_add_device_defaults(self):
-
         add_devices(self.nwbfile, metadata=self.metadata)
 
         devices = self.nwbfile.devices
@@ -129,7 +127,6 @@ class TestAddDevices(unittest.TestCase):
         assert "Microscope" in devices
 
     def test_add_empty_device_list_in_metadata(self):
-
         device_list = []
         self.metadata["Ophys"].update(Device=device_list)
         add_devices(self.nwbfile, metadata=self.metadata)
@@ -139,7 +136,6 @@ class TestAddDevices(unittest.TestCase):
         assert len(devices) == 0
 
     def test_device_object(self):
-
         device_name = "device_object"
         device_object = Device(name=device_name)
         device_list = [device_object]
@@ -152,7 +148,6 @@ class TestAddDevices(unittest.TestCase):
         assert device_name in devices
 
     def test_device_object_and_metadata_mix(self):
-
         device_object = Device(name="device_object")
         device_metadata = dict(name="device_metadata")
         device_list = [device_object, device_metadata]
@@ -202,7 +197,6 @@ class TestAddImagingPlane(unittest.TestCase):
         self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
 
     def test_add_imaging_plane(self):
-
         add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
 
         imaging_planes = self.nwbfile.imaging_planes
@@ -213,7 +207,6 @@ class TestAddImagingPlane(unittest.TestCase):
         assert imaging_plane.description == self.imaging_plane_description
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
-
         add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
 
         self.imaging_plane_metadata["description"] = "modified description"
@@ -224,7 +217,6 @@ class TestAddImagingPlane(unittest.TestCase):
         assert self.imaging_plane_name in imaging_planes
 
     def test_add_two_imaging_planes(self):
-
         # Add the first imaging plane
         first_imaging_plane_name = "first_imaging_plane_name"
         first_imaging_plane_description = "first_imaging_plane_description"
@@ -1218,7 +1210,6 @@ class TestAddTwoPhotonSeries(TestCase):
             )
 
     def test_non_iterative_write_assertion(self):
-
         # Estimate num of frames required to exceed memory capabilities
         dtype = self.imaging_extractor.get_dtype()
         element_size_in_bytes = dtype.itemsize
@@ -1306,7 +1297,6 @@ class TestAddTwoPhotonSeries(TestCase):
         self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
 
     def test_add_two_photon_series_roundtrip(self):
-
         metadata = self.metadata
 
         add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
@@ -1349,7 +1339,6 @@ class TestAddSummaryImages(unittest.TestCase):
         )
 
     def test_add_sumary_images(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
         images_set_name = "images_set_name"
@@ -1370,7 +1359,6 @@ class TestAddSummaryImages(unittest.TestCase):
             np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
 
     def test_extractor_with_one_summary_image_suppressed(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
         segmentation_extractor._image_correlation = None
 
@@ -1389,7 +1377,6 @@ class TestAddSummaryImages(unittest.TestCase):
         assert extracted_images_number == expected_images_number
 
     def test_extractor_with_no_summary_images(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rows=10, num_columns=15, has_summary_images=False
         )
@@ -1405,7 +1392,6 @@ class TestAddSummaryImages(unittest.TestCase):
         assert images_set_name not in ophys.data_interfaces
 
     def test_extractor_with_no_summary_images_and_no_ophys_module(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rows=10, num_columns=15, has_summary_images=False
         )

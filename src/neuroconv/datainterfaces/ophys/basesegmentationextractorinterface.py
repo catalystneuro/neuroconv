@@ -1,6 +1,7 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
@@ -57,6 +58,22 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata = super().get_metadata()
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def run_conversion(
         self,
