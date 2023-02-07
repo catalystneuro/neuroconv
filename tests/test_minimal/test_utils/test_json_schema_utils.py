@@ -133,7 +133,6 @@ def test_dict_deep_update_4():
 
 
 def test_fill_defaults():
-
     schema = dict(
         additionalProperties=False,
         properties=dict(

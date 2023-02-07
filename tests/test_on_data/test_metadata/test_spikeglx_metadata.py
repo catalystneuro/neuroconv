@@ -14,7 +14,6 @@ SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 
 def test_spikelgx_session_start_time_ap():
-
     folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
     stream_id = "imec0.ap"
     recording = SpikeGLXRecordingExtractor(folder_path=folder_path, stream_id=stream_id)

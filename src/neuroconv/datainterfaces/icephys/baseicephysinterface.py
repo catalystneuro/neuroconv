@@ -47,7 +47,6 @@ class BaseIcephysInterface(BaseExtractorInterface):
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
 
     def get_metadata_schema(self) -> dict:
-
         metadata_schema = super().get_metadata_schema()
         if DandiIcephysMetadata:
             metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(DandiIcephysMetadata)

@@ -23,7 +23,6 @@ def get_start_datetime(neo_reader):
 
 
 class AbfInterface(BaseIcephysInterface):
-
     ExtractorName = "AxonIO"
 
     @classmethod
