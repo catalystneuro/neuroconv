@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
+import numpy as np
 from scipy.io.wavfile import read
 
 from neuroconv.basedatainterface import BaseDataInterface
@@ -110,6 +111,22 @@ class AudioInterface(BaseDataInterface):
         metadata = super().get_metadata()
         metadata.update(Behavior=behavior_metadata)
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def run_conversion(
         self,

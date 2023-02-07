@@ -3,6 +3,8 @@ from typing import Optional
 
 import numpy as np
 
+from ..utils import ArrayType
+
 
 def get_rising_frames_from_ttl(trace: np.ndarray, threshold: Optional[float] = None) -> np.ndarray:
     """
