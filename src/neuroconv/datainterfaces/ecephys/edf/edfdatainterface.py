@@ -28,7 +28,6 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 
     def extract_nwb_file_metadata(self):
-
         nwbfile_metadata = dict(
             session_start_time=self.edf_header["startdate"],
             experimenter=self.edf_header["technician"],
@@ -40,7 +39,6 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return nwbfile_metadata
 
     def extract_subject_metadata(self):
-
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
             date_of_birth=self.edf_header["birthdate"],
@@ -52,7 +50,6 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return subject_metadata
 
     def get_metadata(self):
-
         metadata = super().get_metadata()
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)

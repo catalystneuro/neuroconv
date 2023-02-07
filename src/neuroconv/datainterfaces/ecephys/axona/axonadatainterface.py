@@ -32,7 +32,6 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_channel_groups(tetrode_id)
 
     def extract_nwb_file_metadata(self):
-
         raw_annotations = self.recording_extractor.neo_reader.raw_annotations
         session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
@@ -76,7 +75,6 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         return ecephys_metadata
 
     def get_metadata(self):
-
         metadata = super().get_metadata()
 
         nwbfile_metadata = self.extract_nwb_file_metadata()
@@ -124,7 +122,6 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
         )
 
     def __init__(self, file_path: FilePathType):
-
         data = read_all_eeg_file_lfp_data(file_path).T
         sampling_frequency = get_eeg_sampling_frequency(file_path)
         super().__init__(traces_list=[data], sampling_frequency=sampling_frequency)
