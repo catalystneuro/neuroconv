@@ -91,7 +91,6 @@ class VideoInterface(BaseDataInterface):
         return metadata_schema
 
     def get_metadata(self):
-
         metadata = super().get_metadata()
         behavior_metadata = dict(
             Movies=[
@@ -249,7 +248,6 @@ class VideoInterface(BaseDataInterface):
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_video_fps()
                     max_frames = stub_frames if stub_test else None

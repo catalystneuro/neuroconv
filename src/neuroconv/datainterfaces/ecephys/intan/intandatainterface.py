@@ -39,7 +39,6 @@ def extract_electrode_metadata_with_pyintan(file_path):
 
 
 def extract_electrode_metadata(recording_extractor):
-
     channel_name_array = recording_extractor.get_property("channel_name")
 
     group_names = [channel.split("-")[0] for channel in channel_name_array]

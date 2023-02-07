@@ -21,7 +21,6 @@ if not BEHAVIOR_DATA_PATH.exists():
 
 
 class TestSLEAPInterface(unittest.TestCase):
-
     savedir = OUTPUT_PATH
 
     @parameterized.expand(
