@@ -40,7 +40,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.in or lf.bin file."
+        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
     def __init__(
