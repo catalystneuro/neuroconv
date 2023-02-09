@@ -46,9 +46,11 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         folder_path : FolderPathType
             Path to OpenEphys directory.
         stream_id : str, default: None
-            The identifier of the recording stream (e.g. "CH" for channel data).
-            When the recording stream is not specified it uses the first recording stream.
+            The identifier of the recording stream.
+            When the recording stream is not specified the channel stream ("CH") is chosen if available.
+            When channel stream is not available the stream_id or stream_name must be specified.
         stream_name : str, default: None
+            The name of the recording stream.
         block_index : int, default: 0
         all_annotations : bool, default: False
         stub_test : bool, default: False
@@ -58,8 +60,15 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
 
         self.folder_path = folder_path
         if stream_name is None and stream_id is None:
-            stream_channels = self._get_stream_channels()
-            stream_id = list(stream_channels["id"])[0]
+            stream_ids = self._get_stream_ids()
+
+            assert "CH" in stream_ids, (
+                "The identifier or name of recording stream must be specified when the "
+                "channel stream cannot be found in the data. The stream IDs in this data: "
+                f"{', '.join(stream_ids)}"
+            )
+
+            stream_id = "CH"
 
         super().__init__(
             folder_path=folder_path,
@@ -73,12 +82,12 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         if stub_test:
             self.subset_channels = [0, 1]
 
-    def _get_stream_channels(self):
-        """Returns the name and identifier of signal streams for this folder."""
+    def _get_stream_ids(self):
+        """Returns the identifier of signal streams for this folder."""
         reader = OpenEphysRawIO(self.folder_path)
         reader.parse_header()
-
-        return reader.header["signal_streams"]
+        signal_streams = reader.header["signal_streams"]
+        return list(signal_streams["id"])
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
