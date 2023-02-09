@@ -1,5 +1,10 @@
 # Upcoming
 
+### Features
+* Added the `OpenEphysLegacyRecordingInterface` to support Open Ephys legacy format (`.continuous` files).
+  When the recording stream is not specified the channel stream is chosen when available.
+  When channel stream is not available the `stream_id` or `stream_name` must be specified. [PR #295](https://github.com/catalystneuro/neuroconv/pull/295)
+
 
 
 # v0.2.4
