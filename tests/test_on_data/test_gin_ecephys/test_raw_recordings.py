@@ -34,6 +34,9 @@ from neuroconv.datainterfaces import (
     MCSRawRecordingInterface,
 )
 
+from neuroconv.datainterfaces.ecephys.openephys.openephyslegacydatainterface import OpenEphysLegacyRecordingInterface
+
+
 # enable to run locally in interactive mode
 try:
     from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
@@ -130,6 +133,13 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                     DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"
                 ),
             ),
+        ),
+        param(
+            data_interface=OpenEphysLegacyRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
+            ),
+            case_name=f"openephyslegacy",
         ),
     ]
     this_python_version = version.parse(python_version())
