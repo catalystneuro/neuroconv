@@ -21,8 +21,6 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Blackrock data using a
     :py:class:`~spikeinterface.extractors.BlackrockRecordingExtractor`."""
 
-    es_key = "ElectricalSeries"
-
     @classmethod
     def get_source_schema(cls):
         source_schema = get_schema_from_method_signature(
@@ -37,6 +35,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         nsx_override: OptionalFilePathType = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Load and prepare data corresponding to Blackrock interface.
@@ -46,10 +45,13 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         file_path : FilePathType
             The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
         verbose: bool, default: True
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
+        spikeextractors_backend : bool, default: False
+            When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
         """
+
+        self.es_key = es_key
+
         file_path = Path(file_path)
         if file_path.suffix == "":
             assert nsx_override is not None, (
@@ -108,19 +110,10 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
         # Checks if data is raw or processed
-        if int(self.file_path.suffix[-1]) >= 5:
-            metadata["Ecephys"]["ElectricalSeriesRaw"] = dict(name="ElectricalSeriesRaw")
-        else:
-            metadata["Ecephys"]["ElectricalSeriesProcessed"] = dict(name="ElectricalSeriesProcessed")
         return metadata
 
     def get_conversion_options(self):
-        if int(self.file_path.suffix[-1]) >= 5:
-            write_as = "raw"
-        else:
-            write_as = "processed"
-        conversion_options = dict(write_as=write_as, stub_test=False)
-        return conversion_options
+        return dict(write_as="raw" if int(self.file_path.suffix[-1]) >= 5 else "processed")
 
 
 class BlackrockSortingInterface(BaseSortingExtractorInterface):
