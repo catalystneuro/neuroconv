@@ -156,7 +156,7 @@ jobs:
         run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./codecov.xml

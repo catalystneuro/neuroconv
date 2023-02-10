@@ -15,7 +15,6 @@ def test_neuroscope_session_start_time():
 
 
 def test_get_metadata():
-
     sx = NeuroScopeSortingInterface(
         str(NEUROSCOPE_PATH / "dataset_1"),
         xml_file_path=str(NEUROSCOPE_PATH / "dataset_1" / "YutaMouse42-151117.xml"),
