@@ -1,12 +1,9 @@
 import unittest
 from pathlib import Path
 from datetime import datetime
-from platform import python_version as get_python_version
 
-import pytest
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
-from packaging.version import Version
 
 from neuroconv.tools.data_transfers import deploy_process
 
