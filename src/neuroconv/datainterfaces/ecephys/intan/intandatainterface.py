@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -38,7 +39,6 @@ def extract_electrode_metadata_with_pyintan(file_path):
 
 
 def extract_electrode_metadata(recording_extractor):
-
     channel_name_array = recording_extractor.get_property("channel_name")
 
     group_names = [channel.split("-")[0] for channel in channel_name_array]
@@ -84,6 +84,16 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend and pyintan dependency
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
             _ = get_package(package_name="pyintan")
             from spikeextractors import IntanRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording

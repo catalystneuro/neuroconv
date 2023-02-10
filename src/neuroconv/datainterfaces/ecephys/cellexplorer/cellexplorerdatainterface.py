@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
+from warnings import warn
 
 import scipy
 import numpy as np
@@ -22,6 +23,16 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
         hdf5storage = get_package(package_name="hdf5storage")
 
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)

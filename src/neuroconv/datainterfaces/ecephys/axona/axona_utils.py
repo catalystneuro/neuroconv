@@ -111,7 +111,6 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
     eeg_memmaps = list()
     sampling_rates = set()
     for fname in file_path_list:
-
         sampling_rates.add(get_eeg_sampling_frequency(parent_path / fname))
 
         eeg_memmaps.append(read_eeg_file_lfp_data(parent_path / fname))
@@ -397,7 +396,6 @@ def get_position_object(file_path: FilePathType) -> Position:
     position_timestamps = position_data[:, 0]
 
     for ichan in range(position_data.shape[1]):
-
         spatial_series = SpatialSeries(
             name=position_channel_names[ichan],
             timestamps=position_timestamps,

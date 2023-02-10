@@ -6,6 +6,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeSortingInterface,
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
+from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
 from .ecephys.spikeinterface.sipickledatainterfaces import (
     SIPickleRecordingInterface,
@@ -18,8 +19,8 @@ from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
 )
-from .ecephys.openephys.openephysdatainterface import (
-    OpenEphysRecordingInterface,
+from .ecephys.openephys.openephysbinarydatainterface import (
+    OpenEphysRecordingInterface,  # temporary import until transitioning to the renamed interface
     OpenEphysSortingInterface,
 )
 from .ecephys.axona.axonadatainterface import (
@@ -75,6 +76,7 @@ interface_list = [
     NeuroScopeLFPInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
+    SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     SIPickleRecordingInterface,
     SIPickleSortingInterface,

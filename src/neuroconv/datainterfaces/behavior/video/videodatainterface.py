@@ -91,7 +91,6 @@ class VideoInterface(BaseDataInterface):
         return metadata_schema
 
     def get_metadata(self):
-
         metadata = super().get_metadata()
         behavior_metadata = dict(
             Movies=[
@@ -102,6 +101,22 @@ class VideoInterface(BaseDataInterface):
         metadata["Behavior"] = behavior_metadata
 
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def run_conversion(
         self,
@@ -233,7 +248,6 @@ class VideoInterface(BaseDataInterface):
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_video_fps()
                     max_frames = stub_frames if stub_test else None

@@ -1,6 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
@@ -80,6 +81,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.Extractor(**self.source_data).get_times()
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.recording_extractor.get_times()
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        self.recording_extractor.set_times(times=aligned_timestamps)
+
     def subset_recording(self, stub_test: bool = False):
         """
         Subset a recording extractor according to stub and channel subset options.
@@ -114,10 +124,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,  # To-do to remove, deprecation
-        write_as: Optional[str] = None,
+        write_as: str = "raw",  # Literal["raw", "processed"]
         write_electrical_series: bool = True,
-        es_key: str = None,
+        es_key: Optional[str] = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
@@ -143,7 +152,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
-            Increments timestamps if use_times is True.
         stub_test : bool, optional, default False
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_as : {'raw', 'lfp', 'processed'}
@@ -185,7 +193,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             starting_time=starting_time,
-            use_times=use_times,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=es_key or self.es_key,

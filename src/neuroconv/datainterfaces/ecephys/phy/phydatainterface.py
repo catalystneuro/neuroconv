@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
 from typing import Optional, List
+from warnings import warn
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
@@ -29,6 +30,15 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         spikeextractors_backend : bool, default: False
         """
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             from spikeextractors import PhySortingExtractor
 
             self.Extractor = PhySortingExtractor

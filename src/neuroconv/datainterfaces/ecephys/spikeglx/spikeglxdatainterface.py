@@ -1,7 +1,10 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
 import json
+from warnings import warn
+from typing import Optional
 
+from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -67,7 +70,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
-        if spikeextractors_backend:
+        if spikeextractors_backend:  # pragma: no cover
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             from spikeextractors import SpikeGLXRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
@@ -79,11 +91,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
-            super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
+            super().__init__(
+                folder_path=folder_path,
+                stream_id=self.stream_id,
+                verbose=verbose,
+            )
             self.source_data["file_path"] = str(file_path)
             self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Mount the probe
+        # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
         probe = read_spikeglx(meta_filename)
         self.recording_extractor.set_probe(probe, in_place=True)
@@ -131,10 +148,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata
 
-    def get_conversion_options(self) -> dict:
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesRaw", stub_test=False)
-        return conversion_options
-
     def get_device_metadata(self) -> dict:
         """Returns a device with description including the metadat as described here
         # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
@@ -166,9 +179,43 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         return device
 
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[FilePathType] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        stub_test: bool = False,
+        starting_time: Optional[float] = None,
+        write_as: Optional[str] = "raw",
+        write_electrical_series: bool = True,
+        es_key: str = "ElectricalSeriesRaw",
+        compression: Optional[str] = None,
+        compression_opts: Optional[int] = None,
+        iterator_type: str = "v2",
+        iterator_opts: Optional[dict] = None,
+    ):
+        super().run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            stub_test=stub_test,
+            starting_time=starting_time,
+            write_as=write_as,
+            write_electrical_series=write_electrical_series,
+            es_key=es_key,
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )
+
 
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
+
+    ExtractorName = "SpikeGLXRecordingExtractor"
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
@@ -190,6 +237,34 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
 
         return metadata
 
-    def get_conversion_options(self) -> dict:
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesLFP", stub_test=False)
-        return conversion_options
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[FilePathType] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        stub_test: bool = False,
+        starting_time: Optional[float] = None,
+        write_as: Optional[str] = "raw",
+        write_electrical_series: bool = True,
+        es_key: str = "ElectricalSeriesLFP",
+        compression: Optional[str] = None,
+        compression_opts: Optional[int] = None,
+        iterator_type: str = "v2",
+        iterator_opts: Optional[dict] = None,
+    ):
+        super().run_conversion(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            stub_test=stub_test,
+            starting_time=starting_time,
+            write_as=write_as,
+            write_electrical_series=write_electrical_series,
+            es_key=es_key,
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )

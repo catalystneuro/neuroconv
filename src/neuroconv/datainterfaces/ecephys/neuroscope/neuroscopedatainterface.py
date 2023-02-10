@@ -1,6 +1,7 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
 from typing import Optional
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -107,6 +108,16 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
             from spikeextractors import NeuroscopeRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
@@ -177,6 +188,16 @@ class NeuroScopeMultiRecordingTimeInterface(NeuroScopeRecordingInterface):
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
         """
+        # TODO: Remove this sub interface
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend with multiple segments instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
         get_package(package_name="lxml")
         from spikeinterface.core.old_api_utils import OldToNewRecording
 
@@ -232,6 +253,16 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
             from spikeextractors import NeuroscopeRecordingExtractor
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
@@ -311,6 +342,15 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         from spikeextractors import NeuroscopeMultiSortingExtractor
 
         if spikeextractors_backend:
+            # TODO: Remove spikeextractors backend
+            warn(
+                message=(
+                    "Interfaces using a spikeextractors backend will soon be deprecated! "
+                    "Please use the SpikeInterface backend instead."
+                ),
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
             self.Extractor = NeuroscopeMultiSortingExtractor
 
         super().__init__(
