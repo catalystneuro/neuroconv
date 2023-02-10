@@ -11,7 +11,6 @@ from nwbinspector.utils import get_package_version
 import pynwb
 from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
-from spikeextractors import RecordingExtractor, SortingExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -23,8 +22,8 @@ from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import dict_deep_update, OptionalFilePathType, calculate_regular_series_rate
 
 
-SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
-SpikeInterfaceSorting = Union[BaseSorting, SortingExtractor]
+SpikeInterfaceRecording = BaseRecording
+SpikeInterfaceSorting = BaseSorting
 
 
 def set_dynamic_table_property(
