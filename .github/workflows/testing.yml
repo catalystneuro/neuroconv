@@ -140,13 +140,13 @@ jobs:
 
       - name: Finding leak 3
         run: pytest tests/test_on_data/test_gin_ophys.py
-        
+
       - name: Finding leak 4
         run: pytest tests/test_on_data/test_gin_behavior.py
-        
+
       - name: Finding leak 5
         run: pytest tests/test_on_data/test_gin_icephys.py
-        
+
       - name: Finding leak 6
         run: pytest tests/test_on_data/test_gin_ecephys
 
