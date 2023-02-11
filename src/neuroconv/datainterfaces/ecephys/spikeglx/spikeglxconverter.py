@@ -3,13 +3,12 @@ from pathlib import Path
 from typing import List, Optional
 
 from pynwb import NWBFile
-from pydantic import DirectoryPath
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import get_schema_from_method_signature
+from ....utils import get_schema_from_method_signature, FolderPathType
 
 
 class SpikeGLXConverter(ConverterPipe):
@@ -17,19 +16,19 @@ class SpikeGLXConverter(ConverterPipe):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__)
+        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["streams"])
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing SpikeGLX streams."
         return source_schema
 
     @classmethod
-    def get_streams(cls, folder_path: DirectoryPath) -> List[str]:
+    def get_streams(cls, folder_path: FolderPathType) -> List[str]:
         from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
-        available_streams = SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]
+        return SpikeGLXRecordingExtractor.get_streams(folder_path=folder_path)[0]
 
     def __init__(
         self,
-        folder_path: DirectoryPath,
+        folder_path: FolderPathType,
         streams: Optional[List[str]] = None,
         verbose: bool = False,
     ):

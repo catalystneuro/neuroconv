@@ -197,6 +197,7 @@ class ConverterPipe(NWBConverter):
             version="0.1.0",
         )
         for interface_name, data_interface in self.data_interface_classes.items():
+            print(f"{interface_name=}")
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
