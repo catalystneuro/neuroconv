@@ -30,7 +30,8 @@
 
 ### Testing
 * Re-organized the `test_gin_ecephys` file by splitting into each sub-modality. [PR #282](https://github.com/catalystneuro/neuroconv/pull/282)
-* Update github action for code coverage. [PR #307](https://github.com/catalystneuro/neuroconv/pull/307)
+* Add testing support for Python 3.11. [PR #234](https://github.com/catalystneuro/neuroconv/pull/234)
+
 
 
 # v0.2.3

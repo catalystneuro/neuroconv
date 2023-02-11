@@ -1,7 +1,7 @@
 import unittest
-from platform import python_version
+from platform import python_version as get_python_version
 from sys import platform
-from packaging import version
+from packaging.version import Version
 from tempfile import mkdtemp
 from pathlib import Path
 from datetime import datetime
@@ -17,10 +17,12 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces import SIPickleRecordingInterface, SIPickleSortingInterface, CEDRecordingInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
 
+python_version = Version(get_python_version())
+
 
 class TestAssertions(TestCase):
     @pytest.mark.skipif(
-        platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"),
+        platform != "darwin" or python_version >= Version("3.8"),
         reason="Only testing on MacOSX with Python 3.7!",
     )
     def test_ced_import_assertions_python_3_7(self):
@@ -30,14 +32,19 @@ class TestAssertions(TestCase):
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
-    @pytest.mark.skipif(
-        version.parse(python_version()) < version.parse("3.10"),
-        reason="Only testing with Python 3.10!",
-    )
+    @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
     def test_ced_import_assertions_3_10(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
             exc_msg="\nThe package 'sonpy' is not available for Python version 3.10!",
+        ):
+            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+
+    @pytest.mark.skipif(python_version.minor != 11, reason="Only testing with Python 3.11!")
+    def test_ced_import_assertions_3_11(self):
+        with self.assertRaisesWith(
+            exc_type=ModuleNotFoundError,
+            exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 

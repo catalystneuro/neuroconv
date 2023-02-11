@@ -1,2 +1,2 @@
-dlc2nwb==0.2
-tensorflow  # temporary until next release of dlc2nwb
+dlc2nwb>=0.3
+tables  # imported by package but not included in pip setup (is included in setup.cfg)

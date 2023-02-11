@@ -9,7 +9,7 @@ from ....utils import get_schema_from_method_signature, FilePathType
 def _test_sonpy_installation() -> None:
     get_package(
         package_name="sonpy",
-        excluded_python_versions=["3.10"],
+        excluded_python_versions=["3.10", "3.11"],
         excluded_platforms_and_python_versions=dict(darwin=["3.7"]),
     )
 
