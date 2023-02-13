@@ -1,5 +1,8 @@
 # Upcoming
 
+### Features
+* The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
+* Swapped the backend for `CellExplorerSortingInterface` from `spikeextactors` to `spikeinterface`. [PR #267](https://github.com/catalystneuro/neuroconv/pull/267)
 
 
 # v0.2.4
@@ -29,6 +32,8 @@
 
 ### Testing
 * Re-organized the `test_gin_ecephys` file by splitting into each sub-modality. [PR #282](https://github.com/catalystneuro/neuroconv/pull/282)
+* Add testing support for Python 3.11. [PR #234](https://github.com/catalystneuro/neuroconv/pull/234)
+
 
 
 
