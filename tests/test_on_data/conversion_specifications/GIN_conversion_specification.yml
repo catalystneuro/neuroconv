@@ -6,6 +6,7 @@ metadata:
 data_interfaces:
   ap: SpikeGLXRecordingInterface
   lf: SpikeGLXLFPInterface
+  phy: PhySortingInterface
 
 experiments:
   ymaze:
