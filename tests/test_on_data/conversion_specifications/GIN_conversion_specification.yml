@@ -2,8 +2,10 @@ metadata:
   NWBFile:
     lab: My Lab
     institution: My Institution
+
 data_interfaces:
-  - SpikeGLXLFPInterface
+  ap: SpikeGLXRecordingInterface
+  lf: SpikeGLXLFPInterface
 
 experiments:
   ymaze:
@@ -13,13 +15,11 @@ experiments:
 
     sessions:
       - nwbfile_name: example_converter_spec_1
-        data_interfaces:
-          - SpikeGLXRecordingInterface
         source_data:
-          SpikeGLXRecordingInterface:
+          ap:
             file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
         conversion_options:
-          SpikeGLXRecordingInterface:
+          ap:
             stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
         metadata:
           NWBFile:
@@ -33,21 +33,19 @@ experiments:
           Subject:
             subject_id: "002"
         conversion_options:
-          SpikeGLXLFPInterface:
+          lf:
             stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
         source_data:
-          SpikeGLXLFPInterface:
+          lf:
             file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.lf.bin
 
   open_explore:
     sessions:
       - nwbfile_name: example_converter_spec_3
-        data_interfaces:
-          - PhySortingInterface
         source_data:
-          SpikeGLXLFPInterface:
+          lf:
             file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.lf.bin
-          PhySortingInterface:
+          phy:
             folder_path: phy/phy_example_0/
         metadata:
           NWBFile:
@@ -55,5 +53,5 @@ experiments:
           Subject:
             subject_id: Subject Name
         conversion_options:
-          SpikeGLXLFPInterface:
+          lf:
             stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
