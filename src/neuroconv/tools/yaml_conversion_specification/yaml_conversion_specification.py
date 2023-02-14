@@ -106,7 +106,7 @@ def run_conversion_from_yaml(
                 for key, value in interface_source_data.items():
                     if key == "file_paths":
                         source_data[interface_name].update({key: [str(Path(data_folder_path) / x) for x in value]})
-                    elif key == "file_path":
+                    elif key in ("file_path", "folder_path"):
                         source_data[interface_name].update({key: str(Path(data_folder_path) / value)})
             converter = CustomNWBConverter(source_data=source_data)
             metadata = converter.get_metadata()
