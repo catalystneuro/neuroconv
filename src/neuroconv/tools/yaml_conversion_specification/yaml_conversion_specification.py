@@ -91,9 +91,7 @@ def run_conversion_from_yaml(
     global_conversion_options = specification.get("conversion_options", dict())
     data_interfaces_spec = specification.get("data_interfaces")
     data_interfaces_module = import_module(name=".datainterfaces", package="neuroconv")
-    data_interface_classes = {
-        key: getattr(data_interfaces_module, name) for key, name in data_interfaces_spec.items()
-    }
+    data_interface_classes = {key: getattr(data_interfaces_module, name) for key, name in data_interfaces_spec.items()}
 
     CustomNWBConverter = type(
         "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
