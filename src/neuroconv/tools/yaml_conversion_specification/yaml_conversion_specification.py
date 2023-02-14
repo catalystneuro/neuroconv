@@ -2,17 +2,15 @@
 import sys
 from pathlib import Path
 from importlib import import_module
-from itertools import chain
 from jsonschema import validate, RefResolver
 from typing import Optional
-from warnings import warn
 
 import click
 from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
 
 from ...nwbconverter import NWBConverter
-from ...utils import dict_deep_update, load_dict_from_file, FilePathType, OptionalFolderPathType
+from ...utils import dict_deep_update, load_dict_from_file, FilePathType, FolderPathType
 
 
 @click.command()
@@ -51,11 +49,9 @@ def run_conversion_from_yaml_cli(
 
 def run_conversion_from_yaml(
     specification_file_path: FilePathType,
-    data_folder_path: OptionalFolderPathType = None,
-    output_folder_path: OptionalFolderPathType = None,
+    data_folder_path: Optional[FolderPathType] = None,
+    output_folder_path: Optional[FolderPathType] = None,
     overwrite: bool = False,
-    data_folder: OptionalFolderPathType = None,
-    output_folder: OptionalFolderPathType = None,
 ):
     """
     Run conversion to NWB given a yaml specification file.
@@ -74,20 +70,6 @@ def run_conversion_from_yaml(
         If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
         If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
     """
-    deprecation_warning_string = (
-        "'data_folder' and 'output_folder' keyword arguments are deprecated and will be removed on or before "
-        "August 2022! Please use 'data_folder_path' and 'output_folder_path' instead."
-    )
-    if data_folder is not None:
-        assert data_folder_path is None, "Cannot specify both 'data_folder' and 'data_folder_path'. "
-        "Please use 'data_folder_path'."
-        data_folder_path = data_folder
-        warn(deprecation_warning_string)
-    if output_folder is not None:
-        assert output_folder_path is None, "Cannot specify both 'output_folder' and 'output_folder_path'. "
-        "Please use 'output_folder_path'."
-        output_folder_path = output_folder
-        warn(deprecation_warning_string)
 
     if data_folder_path is None:
         data_folder_path = Path(specification_file_path).parent
@@ -98,9 +80,7 @@ def run_conversion_from_yaml(
     specification = load_dict_from_file(file_path=specification_file_path)
     schema_folder = Path(__file__).parent.parent.parent / "schemas"
     specification_schema = load_dict_from_file(file_path=schema_folder / "yaml_conversion_specification_schema.json")
-    sys_uri_base = "file://"
-    if sys.platform.startswith("win32"):
-        sys_uri_base = "file:/"
+    sys_uri_base = "file:/" if sys.platform.startswith("win32") else "file://"
     validate(
         instance=specification,
         schema=specification_schema,
@@ -108,37 +88,25 @@ def run_conversion_from_yaml(
     )
 
     global_metadata = specification.get("metadata", dict())
-    global_data_interfaces = specification.get("data_interfaces")
-    neuroconv_datainterfaces = import_module(name=".datainterfaces", package="neuroconv")
+    data_interfaces_spec = specification.get("data_interfaces")
+    data_interfaces_module = import_module(name=".datainterfaces", package="neuroconv")
+    data_interface_classes = {key: getattr(data_interfaces_module, name) for key, name in data_interfaces_spec.items()}
+
+    CustomNWBConverter = type(
+        "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
+    )
+
     file_counter = 0
     for experiment in specification["experiments"].values():
         experiment_metadata = experiment.get("metadata", dict())
-        experiment_data_interfaces = experiment.get("data_interfaces")
         for session in experiment["sessions"]:
             file_counter += 1
-            session_data_interfaces = session.get("data_interfaces")
-            data_interface_classes = dict()
-            data_interfaces_names_chain = chain(
-                *[
-                    data_interfaces
-                    for data_interfaces in [global_data_interfaces, experiment_data_interfaces, session_data_interfaces]
-                    if data_interfaces is not None
-                ]
-            )
-            for data_interface_name in data_interfaces_names_chain:
-                data_interface_classes.update(
-                    {data_interface_name: getattr(neuroconv_datainterfaces, data_interface_name)}
-                )
-            CustomNWBConverter = type(
-                "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
-            )
-
             source_data = session["source_data"]
             for interface_name, interface_source_data in session["source_data"].items():
                 for key, value in interface_source_data.items():
                     if key == "file_paths":
                         source_data[interface_name].update({key: [str(Path(data_folder_path) / x) for x in value]})
-                    else:
+                    elif key in ("file_path", "folder_path"):
                         source_data[interface_name].update({key: str(Path(data_folder_path) / value)})
             converter = CustomNWBConverter(source_data=source_data)
             metadata = converter.get_metadata()

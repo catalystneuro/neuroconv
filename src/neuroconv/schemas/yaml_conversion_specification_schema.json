@@ -5,44 +5,34 @@
   "description": "Schema for a NWB conversion specified by a YAML file.",
   "version": "0.1.0",
   "type": "object",
-  "allOf": [{"$ref": "#/$defs/level"}],
   "required": ["experiments"],
+  "additionalProperties": false,
   "properties": {
+    "metadata": {"$ref": "./metadata_schema.json#"},
+    "data_interfaces": {
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
     "experiments": {
       "type": "object",
       "additionalProperties": {
         "type": "object",
-        "allOf": [{"$ref": "#/$defs/level"}],
         "required": ["sessions"],
         "properties": {
+          "metadata": {"$ref": "./metadata_schema.json#"},
           "sessions": {
             "type": "array",
             "items": {
               "title": "Single-session specification",
               "type": "object",
               "required": ["source_data"],
-              "allOf": [{"$ref": "#/$defs/level"}],
               "properties": {
+                "metadata": {"$ref": "./metadata_schema.json#"},
                 "nwbfile_name": {"type": "string"},
-                "source_data": {"type": "object"}
+                "source_data": {"type": "object"},
+                "conversion_options": {"type": "object"}
               }
             }
-          }
-        }
-      }
-    }
-  },
-  "$defs": {
-    "level": {
-      "type": "object",
-      "properties": {
-        "metadata": {"$ref": "./metadata_schema.json#"},
-        "conversion_options": {"type": "object"},
-        "data_interfaces": {
-          "type": "array",
-          "items": {
-            "title": "DataInterface",
-            "type": "string"
           }
         }
       }
