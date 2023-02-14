@@ -6,8 +6,6 @@ data_interfaces:
 
 experiments:
   ymaze:
-    source_data:
-      ap: "spikeglx/Noise4{subject}_g0/Noise4{subject}_g0_imec0/Noise4{subject}_g0_t0.imec0.ap.bin"
     sessions:
       - source_data:
           ap:
