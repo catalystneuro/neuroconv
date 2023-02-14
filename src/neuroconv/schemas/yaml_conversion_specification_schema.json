@@ -9,6 +9,7 @@
   "additionalProperties": false,
   "properties": {
     "metadata": {"$ref": "./metadata_schema.json#"},
+    "conversion_options": {"type": "object"},
     "data_interfaces": {
       "type": "object",
       "additionalProperties": {"type": "string"}
@@ -25,7 +26,6 @@
             "items": {
               "title": "Single-session specification",
               "type": "object",
-              "required": ["source_data"],
               "properties": {
                 "metadata": {"$ref": "./metadata_schema.json#"},
                 "nwbfile_name": {"type": "string"},

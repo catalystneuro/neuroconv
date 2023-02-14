@@ -88,9 +88,12 @@ def run_conversion_from_yaml(
     )
 
     global_metadata = specification.get("metadata", dict())
+    global_conversion_options = specification.get("conversion_options", dict())
     data_interfaces_spec = specification.get("data_interfaces")
     data_interfaces_module = import_module(name=".datainterfaces", package="neuroconv")
-    data_interface_classes = {key: getattr(data_interfaces_module, name) for key, name in data_interfaces_spec.items()}
+    data_interface_classes = {
+        key: getattr(data_interfaces_module, name) for key, name in data_interfaces_spec.items()
+    }
 
     CustomNWBConverter = type(
         "CustomNWBConverter", (NWBConverter,), dict(data_interface_classes=data_interface_classes)
@@ -113,11 +116,15 @@ def run_conversion_from_yaml(
             for metadata_source in [global_metadata, experiment_metadata, session.get("metadata", dict())]:
                 metadata = dict_deep_update(metadata, metadata_source)
             nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
+            session_conversion_options = session.get("conversion_options", dict())
+            conversion_options = dict()
+            for key in data_interface_classes:
+                conversion_options[key] = dict(session_conversion_options.get(key, dict()), **global_conversion_options)
             converter.run_conversion(
                 nwbfile_path=output_folder_path / f"{nwbfile_name}.nwb",
                 metadata=metadata,
                 overwrite=overwrite,
-                conversion_options=session.get("conversion_options", dict()),
+                conversion_options=conversion_options,
             )
     # To properly mimic a true dandi organization, the full directory must be populated with NWBFiles.
     all_nwbfile_paths = [nwbfile_path for nwbfile_path in output_folder_path.iterdir() if nwbfile_path.suffix == ".nwb"]
