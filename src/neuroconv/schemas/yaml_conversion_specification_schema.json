@@ -26,6 +26,7 @@
             "items": {
               "title": "Single-session specification",
               "type": "object",
+              "required": ["source_data"],
               "properties": {
                 "metadata": {"$ref": "./metadata_schema.json#"},
                 "nwbfile_name": {"type": "string"},
