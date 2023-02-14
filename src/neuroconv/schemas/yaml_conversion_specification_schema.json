@@ -9,6 +9,7 @@
   "additionalProperties": false,
   "properties": {
     "metadata": {"$ref": "./metadata_schema.json#"},
+    "conversion_options": {"type": "object"},
     "data_interfaces": {
       "type": "object",
       "additionalProperties": {"type": "string"}
