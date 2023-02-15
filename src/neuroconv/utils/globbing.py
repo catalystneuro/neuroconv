@@ -37,11 +37,11 @@ def generate_regex_from_fstring(fstring_pattern: str):
     # Replace each group name in the pattern with a named capture group pattern
     regex_pattern = copy(fstring_pattern)
     for group_name in set(regex_groups):
-        regex_pattern = regex_pattern.replace("{"+group_name+"}", fr"(?P<{group_name}>.+)", 1)
+        regex_pattern = regex_pattern.replace("{" + group_name + "}", rf"(?P<{group_name}>.+)", 1)
 
     # Replace subsequent occurrences with reference to appropriate capture group pattern
     for group_name in set(regex_groups):
-        regex_pattern = regex_pattern.replace("{"+group_name+"}", fr"(?P={group_name})")
+        regex_pattern = regex_pattern.replace("{" + group_name + "}", rf"(?P={group_name})")
 
     return regex_pattern
 
