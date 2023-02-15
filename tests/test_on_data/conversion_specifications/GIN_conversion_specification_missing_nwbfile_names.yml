@@ -2,6 +2,10 @@ metadata:
   NWBFile:
     lab: My Lab
     institution: My Institution
+
+conversion_options:
+  stub_test: True
+
 data_interfaces:
   ap: SpikeGLXRecordingInterface
   lf: SpikeGLXLFPInterface
@@ -16,9 +20,6 @@ experiments:
       - source_data:
           ap:
             file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
-        conversion_options:
-          ap:
-            stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
         metadata:
           NWBFile:
             session_start_time: "2020-10-09T21:19:09+00:00"
@@ -30,9 +31,6 @@ experiments:
             session_start_time: "2020-10-10T21:19:09+00:00"
           Subject:
             subject_id: MyMouse002
-        conversion_options:
-          lf:
-            stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
         source_data:
           lf:
             file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.lf.bin
@@ -49,6 +47,3 @@ experiments:
             session_start_time: "2020-10-11T21:19:09+00:00"
           Subject:
             subject_id: Subject Name
-        conversion_options:
-          lf:
-            stub_test: True  # Required for all SpikeGLX here. File on GIN is still huge
