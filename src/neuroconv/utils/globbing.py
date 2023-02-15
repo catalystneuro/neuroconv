@@ -64,7 +64,7 @@ def glob_pattern(directory_path: str, pattern: str):
     out = dict()
     paths = iglob(os.path.join(directory_path, "**", "*"))
     for path in paths:
-        path.replace("""\\""", """\\\\""")
+        path = path.replace("""\\""", """\\\\""")
         match = re.match(os.path.join(directory_path, pattern), path)
         if match:
             out[path] = match.groupdict()
