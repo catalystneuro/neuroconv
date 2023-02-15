@@ -26,6 +26,9 @@ def generate_regex_from_fstring(fstring_pattern: str):
     >>> print(pattern)
     sub-(?P<subject_id>.+)/sub-(?P=subject_id)/ses-(?P<session_id>.+)
 
+    >>> import re
+    >>> re.match(pattern, "sub-001/sub-001/ses-abc")
+    {'subject_id': '001', 'session_id': 'abc'}
 
     """
     # Find all group names in the filename pattern
