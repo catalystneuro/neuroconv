@@ -18,8 +18,8 @@ def generate_regex_from_fstring(fstring_pattern: str):
     str
         regex pattern
 
-    Examples
-    --------
+    Example
+    -------
 
     >>> fstring_pattern = "sub-{subject_id}/sub-{subject_id}/ses-{session_id}"
     >>> pattern = generate_regex_from_fstring(fstring_pattern)
@@ -64,6 +64,7 @@ def glob_pattern(directory_path: str, pattern: str):
     out = dict()
     paths = iglob(os.path.join(directory_path, "**", "*"))
     for path in paths:
+        path.replace("""\\""", """\\\\""")
         match = re.match(os.path.join(directory_path, pattern), path)
         if match:
             out[path] = match.groupdict()
