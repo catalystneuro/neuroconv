@@ -19,5 +19,5 @@ from .json_schema import (
     fill_defaults,
     get_metadata_schema_for_icephys,
 )
-from .globbing import decompose_f_string, parse_f_string
+from .globbing import generate_regex_from_fstring, glob_pattern
 from .checks import calculate_regular_series_rate
