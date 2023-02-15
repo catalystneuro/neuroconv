@@ -1,8 +1,14 @@
 # Upcoming
 
+### Features
+* The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
+* Swapped the backend for `CellExplorerSortingInterface` from `spikeextactors` to `spikeinterface`. [PR #267](https://github.com/catalystneuro/neuroconv/pull/267)
+* In the conversion YAML, `DataInterface` classes must now be specified as a dictionary instead of a list. [PR #311](https://github.com/catalystneuro/neuroconv/pull/311)
 * Moved `es_key` from `conversion_options` to the `__init__` for all `RecordingInterfaces` in order to keep consistency between the `get_metadata` and `run_conversion` calls. [PR #298](https://github.com/catalystneuro/neuroconv/pull/298)
 * Changed `SpikeGLXRecordingInterface` to accept either the AP or LF bands as file paths. Each will automatically set the correseponding `es_key` and corresponding metadata for each band or probe. [PR #298](https://github.com/catalystneuro/neuroconv/pull/298)
 
+### Testing
+* The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
 
 
 # v0.2.4
@@ -31,6 +37,8 @@
 
 ### Testing
 * Re-organized the `test_gin_ecephys` file by splitting into each sub-modality. [PR #282](https://github.com/catalystneuro/neuroconv/pull/282)
+* Add testing support for Python 3.11. [PR #234](https://github.com/catalystneuro/neuroconv/pull/234)
+
 
 
 
