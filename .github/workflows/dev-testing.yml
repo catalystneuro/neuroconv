@@ -50,7 +50,7 @@ jobs:
       - name: Dev gallery - PyNWB
         run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
       - name: Dev gallery - SpikeInterface
-        run: pip install git+https://github.com/SpikeInterface/spikeinterface@master
+        run: pip install git+https://github.com/spikeinterface/spikeinterface@master
       - name: Dev gallery - NEO
         run: pip install git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF

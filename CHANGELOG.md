@@ -1,10 +1,16 @@
 # Upcoming
 
 ### Features
-* Added the `OpenEphysLegacyRecordingInterface` to support Open Ephys legacy format (`.continuous` files).
-  When the recording stream is not specified the channel stream is chosen when available.
-  When channel stream is not available the `stream_id` or `stream_name` must be specified. [PR #295](https://github.com/catalystneuro/neuroconv/pull/295)
 
+
+* The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
+* Swapped the backend for `CellExplorerSortingInterface` from `spikeextactors` to `spikeinterface`. [PR #267](https://github.com/catalystneuro/neuroconv/pull/267)
+* In the conversion YAML, `DataInterface` classes must now be specified as a dictionary instead of a list. [PR #311](https://github.com/catalystneuro/neuroconv/pull/311)
+* In the conversion YAML, conversion_options can be specified on the global level. [PR #312](https://github.com/catalystneuro/neuroconv/pull/312)
+* Added the `OpenEphysLegacyRecordingInterface` to support Open Ephys legacy format (`.continuous` files). [PR #295](https://github.com/catalystneuro/neuroconv/pull/295)
+
+### Testing
+* The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
 
 
 # v0.2.4
@@ -33,6 +39,8 @@
 
 ### Testing
 * Re-organized the `test_gin_ecephys` file by splitting into each sub-modality. [PR #282](https://github.com/catalystneuro/neuroconv/pull/282)
+* Add testing support for Python 3.11. [PR #234](https://github.com/catalystneuro/neuroconv/pull/234)
+
 
 
 
