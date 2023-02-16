@@ -7,7 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
+from ...utils import get_schema_from_hdmf_class, get_base_schema, FilePathType
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -15,16 +15,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
-    def __init__(self, verbose: bool = True, es_key: str = None, **source_data):
+    def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
         """
         Parameters
         ----------
         verbose : bool, default True
             If True, will print out additional information.
+        es_key : str, default: "ElectricalSeries"
+            key of this ElectricalSeries in the metadata dictionary
         source_data : dict
             key-value pairs of extractor-specific arguments.
-        es_key : str
-            key of this ElectricalSeries in the metadata dictionary
 
         """
         super().__init__(**source_data)
@@ -130,7 +130,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -159,7 +159,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
         overwrite: bool, optional
-            Whether or not to overwrite the NWB file if one exists at the nwbfile_path.
+            Whether to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -169,8 +169,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        es_key : str, optional
-            Key in metadata dictionary containing metadata info for the specific electrical series
         compression : {'gzip', 'lzf', None}
             Type of compression to use.
             Set to None to disable all compression.
@@ -183,9 +181,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
             Valid options are
-                buffer_gb : float (optional, defaults to 1 GB)
-                    Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-                chunk_mb : float (optional, defaults to 1 MB)
+                buffer_gb : float, default: 1.0
+                    Recommended to be as much free RAM as available. Automatically calculates suitable buffer shape.
+                chunk_mb : float, default: 1.0
                     Should be below 1 MB. Automatically calculates suitable chunk shape.
             If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
         """

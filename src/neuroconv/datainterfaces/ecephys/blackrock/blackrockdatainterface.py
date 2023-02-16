@@ -1,16 +1,15 @@
 """Authors: Luiz Tauffer."""
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 from warnings import warn
 
-from pynwb.ecephys import ElectricalSeries
+from pynwb import NWBFile
 
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
 from ....utils import (
-    get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     FilePathType,
     OptionalFilePathType,
@@ -48,9 +47,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend : bool, default: False
             When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
+        es_key : str, default: "ElectricalSeries"
         """
-
-        self.es_key = es_key
 
         file_path = Path(file_path)
         if file_path.suffix == "":
@@ -78,7 +76,13 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             spikeinterface = get_package(package_name="spikeinterface")
 
             self.Extractor = spikeextractors.BlackrockRecordingExtractor
-            super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose)
+            super().__init__(
+                filename=file_path,
+                nsx_override=nsx_override,
+                nsx_to_load=nsx_to_load,
+                verbose=verbose,
+                es_key=es_key,
+            )
             self.source_data = dict(
                 file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
             )
@@ -87,33 +91,17 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         else:
-            spikeinterface = get_package(package_name="spikeinterface")
-
-            self.RX = spikeinterface.extractors.BlackrockRecordingExtractor
-            super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose)
-
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries),
-            ElectricalSeriesProcessed=get_schema_from_hdmf_class(ElectricalSeries),
-        )
-        return metadata_schema
+            super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose, es_key=es_key)
 
     def get_metadata(self):
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            session_start_time = basic_header["TimeOrigin"]
-            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"])
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
-        # Checks if data is raw or processed
         return metadata
-
-    def get_conversion_options(self):
-        return dict(write_as="raw" if int(self.file_path.suffix[-1]) >= 5 else "processed")
 
 
 class BlackrockSortingInterface(BaseSortingExtractorInterface):
@@ -136,7 +124,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
         used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
         this extractor to be initialized.
-        verbose : bool, optional
+        verbose : bool, default: True
             Enables verbosity
         """
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
