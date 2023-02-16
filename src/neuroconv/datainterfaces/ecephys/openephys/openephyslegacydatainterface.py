@@ -49,7 +49,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The identifier of the recording stream.
             When the recording stream is not specified the channel stream ("CH") is chosen if available.
             When channel stream is not available the stream_id or stream_name must be specified.
-        stream_name : str, default: None
+        stream_name : str, optional
             The name of the recording stream.
         block_index : int, default: 0
         all_annotations : bool, default: False
