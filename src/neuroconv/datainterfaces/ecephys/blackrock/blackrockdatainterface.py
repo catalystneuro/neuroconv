@@ -1,5 +1,4 @@
 """Authors: Luiz Tauffer."""
-from typing import Optional
 from pathlib import Path
 from warnings import warn
 
@@ -44,9 +43,9 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         file_path : FilePathType
             The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
         verbose: bool, default: True
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
+        spikeextractors_backend : bool, default: False
+            When True the interface uses the old extractor from the spikextractors library instead of a new
+            spikeinterface object.
         """
         file_path = Path(file_path)
         if file_path.suffix == "":
@@ -83,16 +82,12 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         else:
-            spikeinterface = get_package(package_name="spikeinterface")
-
-            self.RX = spikeinterface.extractors.BlackrockRecordingExtractor
             super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries),
-            ElectricalSeriesProcessed=get_schema_from_hdmf_class(ElectricalSeries),
+            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries),
         )
         return metadata_schema
 
@@ -105,22 +100,12 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
-        # Checks if data is raw or processed
-        if int(self.file_path.suffix[-1]) >= 5:
-            metadata["Ecephys"]["ElectricalSeriesRaw"] = dict(name="ElectricalSeriesRaw")
-        else:
-            metadata["Ecephys"]["ElectricalSeriesProcessed"] = dict(name="ElectricalSeriesProcessed")
+        metadata["Ecephys"]["ElectricalSeries"] = dict(name="ElectricalSeries")
+
         return metadata
 
     def get_conversion_options(self):
-        if int(self.file_path.suffix[-1]) >= 5:
-            write_as = "raw"
-            es_key = "ElectricalSeriesRaw"
-        else:
-            write_as = "processed"
-            es_key = "ElectricalSeriesProcessed"
-        conversion_options = dict(write_as=write_as, es_key=es_key, stub_test=False)
-        return conversion_options
+        return dict(write_as="raw", es_key="ElectricalSeries", stub_test=False)
 
 
 class BlackrockSortingInterface(BaseSortingExtractorInterface):
@@ -139,11 +124,11 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         ----------
         file_path : str, Path
             The file path to the ``.nev`` data
-        sampling_frequency: float,
+        sampling_frequency: float, optional
             The sampling frequency for the sorting extractor. When the signal data is available (.ncs) those files will be
         used to extract the frequency automatically. Otherwise, the sampling frequency needs to be specified for
         this extractor to be initialized.
-        verbose : bool, optional
+        verbose : bool, default: True
             Enables verbosity
         """
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
