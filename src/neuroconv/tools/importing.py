@@ -1,7 +1,7 @@
 """Tool functions for performaing imports."""
 import sys
 import importlib.util
-from platform import python_version
+from platform import python_version, processor
 from types import ModuleType
 from typing import Optional, Dict, List
 
@@ -60,7 +60,7 @@ def get_package(
 
     # Specific architecture of specific platform is specified
     if isinstance(excluded_platforms_and_python_versions.get(sys.platform), dict):
-        architecture = platform.processor()
+        architecture = processor()
         for excluded_version in excluded_platforms_and_python_versions[sys.platform].get(architecture, list()):
             platform_string = f"{sys.platform}:{architecture}"
 
