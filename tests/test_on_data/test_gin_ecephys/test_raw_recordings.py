@@ -1,7 +1,6 @@
 import unittest
 import pytest
 import itertools
-from pathlib import Path
 from datetime import datetime
 from platform import python_version
 from sys import platform
@@ -13,7 +12,6 @@ from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.core import BaseRecording
 
 
-from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     CEDRecordingInterface,
     IntanRecordingInterface,
@@ -22,7 +20,6 @@ from neuroconv.datainterfaces import (
     OpenEphysRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
     BlackrockRecordingInterface,
     AxonaRecordingInterface,
     EDFRecordingInterface,
@@ -235,21 +232,16 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     def test_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
         nwbfile_path = str(self.savedir / f"{data_interface.__name__}_{case_name}.nwb")
 
-        class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestRecording=data_interface)
+        datainterface = data_interface(**interface_kwargs)
 
-        converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
-        for interface_kwarg in interface_kwargs:
-            if interface_kwarg in ["file_path", "folder_path"]:
-                self.assertIn(
-                    member=interface_kwarg, container=converter.data_interface_objects["TestRecording"].source_data
-                )
-        metadata = converter.get_metadata()
+        assert "file_path" in interface_kwargs or "folder_path" in interface_kwargs
+
+        metadata = datainterface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-        recording = converter.data_interface_objects["TestRecording"].recording_extractor
+        datainterface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        recording = datainterface.recording_extractor
 
-        es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
+        es_key = datainterface.get_conversion_options().get("es_key", None)
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
             raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
