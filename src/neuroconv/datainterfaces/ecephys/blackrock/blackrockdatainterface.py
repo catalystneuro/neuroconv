@@ -1,9 +1,6 @@
 """Authors: Luiz Tauffer."""
 from pathlib import Path
-from typing import Optional
 from warnings import warn
-
-from pynwb import NWBFile
 
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
