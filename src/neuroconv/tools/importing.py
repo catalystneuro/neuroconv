@@ -58,10 +58,17 @@ def get_package(
             f"\nThe package '{package_name}' is not available for Python version 3.{python_minor_version}!"
         )
 
-    for excluded_version in excluded_platforms_and_python_versions.get(sys.platform, list()):
+    for excluded_version_or_architecture in excluded_platforms_and_python_versions.get(sys.platform, list()):
+        platform_string = sys.platform
+        if isinstance(excluded_version, dict):
+            architecture = platform.processor()
+            platform_string += architecture
+            excluded_version = excluded_version_or_architecture.get(architecture, "")
+        else:
+            excluded_version = excluded_version_or_architecture
         if python_minor_version == version.parse(excluded_version).minor:
             raise ModuleNotFoundError(
-                f"\nThe package '{package_name}' is not available on the {sys.platform} platform for "
+                f"\nThe package '{package_name}' is not available on the {platform_string} platform for "
                 f"Python version {excluded_version}!"
             )
 
