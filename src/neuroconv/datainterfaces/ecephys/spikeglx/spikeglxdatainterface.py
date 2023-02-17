@@ -51,7 +51,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
-        es_key: str = "ElectricalSeriesAP"
+        es_key: str = "ElectricalSeriesAP",
     ):
         """
         Parameters
@@ -87,8 +87,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             super().__init__(file_path=str(file_path), verbose=verbose)
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
             self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor,
-                                                         es_key=es_key)
+            self.recording_extractor = OldToNewRecording(
+                oldapi_recording_extractor=self.recording_extractor, es_key=es_key
+            )
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
@@ -182,6 +183,8 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
         file_path: FilePathType,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
-        es_key: str = "ElectricalSeriesLF"
+        es_key: str = "ElectricalSeriesLF",
     ):
-        super().__init__(file_path=file_path, spikeextractors_backend=spikeextractors_backend, verbose=verbose, es_key=es_key)
+        super().__init__(
+            file_path=file_path, spikeextractors_backend=spikeextractors_backend, verbose=verbose, es_key=es_key
+        )

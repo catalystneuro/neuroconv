@@ -6,7 +6,13 @@ from ....utils import FolderPathType
 class KiloSortSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a KiloSortingExtractor from spikeinterface."""
 
-    def __init__(self, folder_path: FolderPathType, keep_good_only: bool = False, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self,
+        folder_path: FolderPathType,
+        keep_good_only: bool = False,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
+    ):
         """
         Load and prepare sorting data for kilosort
 

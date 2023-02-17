@@ -75,8 +75,9 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             spikeinterface = get_package(package_name="spikeinterface")
 
             self.Extractor = spikeextractors.BlackrockRecordingExtractor
-            super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose,
-                             es_key=es_key)
+            super().__init__(
+                filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose, es_key=es_key
+            )
             self.source_data = dict(
                 file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
             )

@@ -72,7 +72,9 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
-        metadata["Ecephys"]["ElectricalSeriesNIDQ"]["description"] = "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
+        metadata["Ecephys"]["ElectricalSeriesNIDQ"][
+            "description"
+        ] = "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
         return metadata
 
     def get_channel_names(self) -> List[str]:

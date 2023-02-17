@@ -64,7 +64,10 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
             self.Extractor = OpenEphysRecordingExtractor
             super().__init__(
-                folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose,
+                folder_path=folder_path,
+                experiment_id=experiment_id,
+                recording_id=recording_id,
+                verbose=verbose,
                 es_key=es_key,
             )
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
