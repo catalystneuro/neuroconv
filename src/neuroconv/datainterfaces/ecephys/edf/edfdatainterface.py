@@ -22,7 +22,10 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
             Allows verbose.
         """
-        _ = get_package(package_name="pyedflib")
+        get_package(
+            package_name="pyedflib",
+            excluded_platforms_and_python_versions=dict(m1_darwin=["3.8", "3.9"]),
+        )
 
         super().__init__(file_path=file_path, verbose=verbose)
         self.edf_header = self.recording_extractor.neo_reader.edf_header
