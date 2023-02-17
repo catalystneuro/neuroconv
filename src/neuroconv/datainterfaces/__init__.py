@@ -34,7 +34,7 @@ from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
-from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface
+from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface, PlexonSortingInterface
 from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
@@ -96,6 +96,7 @@ interface_list = [
     EDFRecordingInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
+    PlexonSortingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
