@@ -24,7 +24,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         """
         get_package(
             package_name="pyedflib",
-            excluded_platforms_and_python_versions=dict(m1_darwin=["3.8", "3.9"]),
+            excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.8", "3.9"])),
         )
 
         super().__init__(file_path=file_path, verbose=verbose)
