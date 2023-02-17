@@ -33,6 +33,9 @@ from neuroconv.datainterfaces import (
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
 )
+from neuroconv.datainterfaces.ecephys.openephys.openephysbinarydatainterface import (
+    OpenEphysBinaryRecordingInterface,
+)
 
 from neuroconv.datainterfaces.ecephys.openephys.openephyslegacydatainterface import OpenEphysLegacyRecordingInterface
 
@@ -168,7 +171,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     for spikeextractors_backend in [True, False]:
         parameterized_recording_list.append(
             param(
-                data_interface=OpenEphysRecordingInterface,
+                data_interface=OpenEphysBinaryRecordingInterface,
                 interface_kwargs=dict(
                     folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
                     spikeextractors_backend=spikeextractors_backend,
