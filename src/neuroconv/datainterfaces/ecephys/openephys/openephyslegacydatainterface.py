@@ -30,7 +30,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        stream_id: Optional[str] = None,
+        stream_id: str = "CH",
         stream_name: Optional[str] = None,
         block_index: Optional[int] = 0,
         all_annotations: Optional[bool] = False,
@@ -45,7 +45,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to OpenEphys directory.
-        stream_id : str, default: None
+        stream_id : str, default: "CH"
             The identifier of the recording stream.
             When the recording stream is not specified the channel stream ("CH") is chosen if available.
             When channel stream is not available the stream_id or stream_name must be specified.
@@ -59,16 +59,12 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         self.RX = OpenEphysLegacyRecordingExtractor
 
         self.folder_path = folder_path
-        if stream_name is None and stream_id is None:
-            stream_ids = self._get_stream_ids()
-
-            assert "CH" in stream_ids, (
-                "The identifier or name of recording stream must be specified when the "
-                "channel stream cannot be found in the data. The stream IDs in this data: "
-                f"{', '.join(stream_ids)}"
+        available_stream_ids = self._get_stream_ids()
+        if stream_id not in available_stream_ids:
+            raise ValueError(
+                f"The stream_id '{stream_id}' cannot be found in the data. The stream IDs in this data: "
+                f"{', '.join(available_stream_ids)}"
             )
-
-            stream_id = "CH"
 
         super().__init__(
             folder_path=folder_path,
