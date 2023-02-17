@@ -13,7 +13,7 @@ class TestOpenEphysLegacyConversions(unittest.TestCase):
         self.interface = OpenEphysLegacyRecordingInterface(folder_path=self.folder_path)
 
     def test_openephyslegacy_streams(self):
-        stream_names, stream_ids = self.interface.recording_extractor.get_streams(folder_path=self.folder_path)
+        stream_names = self.interface.get_stream_names(folder_path=self.folder_path)
         self.assertEqual(stream_names, ["Signals CH"])
         self.assertEqual(self.interface.source_data["stream_name"], "Signals CH")
 

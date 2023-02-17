@@ -1,5 +1,5 @@
 """Authors: Szonja Weigl, Cody Baker."""
-from typing import Optional
+from typing import Optional, List
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature
@@ -49,6 +49,11 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
         """
 
+        available_streams = self.get_stream_names(folder_path=folder_path)
+        assert (
+            stream_name in available_streams
+        ), f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
+
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
@@ -56,6 +61,13 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             all_annotations=all_annotations,
             verbose=verbose,
         )
+
+    @classmethod
+    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+        from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
+
+        stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
+        return stream_names
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
