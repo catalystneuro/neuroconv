@@ -26,6 +26,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         probe_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -44,6 +45,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend : bool, default: False
             When True the interface uses the old extractor from the spikextractors library instead
             of a new spikeinterface object.
+        es_key : str, default: "ElectricalSeries"
         """
 
         if spikeextractors_backend:
@@ -65,10 +67,10 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
                     recording=self.recording_extractor, probe_file=probe_file_path
                 )
 
-            super().__init__(filename=file_path, verbose=verbose)
+            super().__init__(filename=file_path, verbose=verbose, es_key=es_key)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
-            super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
+            super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose, es_key=es_key)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:

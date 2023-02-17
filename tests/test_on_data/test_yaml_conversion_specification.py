@@ -57,7 +57,7 @@ def test_run_conversion_from_yaml():
         assert nwbfile.institution == "My Institution"
         assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
         assert nwbfile.subject.subject_id == "1"
-        assert "ElectricalSeriesRaw" in nwbfile.acquisition
+        assert "ElectricalSeriesAP" in nwbfile.acquisition
 
     with NWBHDF5IO(path=OUTPUT_PATH / "example_converter_spec_2.nwb", mode="r") as io:
         nwbfile = io.read()

@@ -66,6 +66,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         stream_id: str = "0",
         spikeextractors_backend: bool = False,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
@@ -81,6 +82,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             of a new spikeinterface object.
         verbose : bool
             Verbose
+        es_key : str, default: "ElectricalSeries"
         """
 
         if spikeextractors_backend:
@@ -99,12 +101,12 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
             self.Extractor = IntanRecordingExtractor
-            super().__init__(file_path=file_path, verbose=verbose)
+            super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
             electrodes_metadata = extract_electrode_metadata_with_pyintan(file_path)
         else:
             self.stream_id = stream_id
-            super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose)
+            super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
             electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
 
         group_names = electrodes_metadata["group_names"]

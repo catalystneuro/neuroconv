@@ -9,7 +9,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting European Data Format (EDF) data
     using the :py:class:`~spikeinterface.extractors.EDFRecordingExtractor`."""
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for EDF
         Currently only continuous EDF+ files (EDF+C) and original EDF files (EDF) are supported
@@ -21,10 +21,11 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             Path to the edf file
         verbose : bool, default: True
             Allows verbose.
+        es_key : str, default: "ElectricalSeries"
         """
         _ = get_package(package_name="pyedflib")
 
-        super().__init__(file_path=file_path, verbose=verbose)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 
     def extract_nwb_file_metadata(self):

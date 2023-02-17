@@ -34,6 +34,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         nsx_override: OptionalFilePathType = None,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Load and prepare data corresponding to Blackrock interface.
@@ -46,6 +47,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         spikeextractors_backend : bool, default: False
             When True the interface uses the old extractor from the spikextractors library instead of a new
             spikeinterface object.
+        es_key : str, default: "ElectricalSeries"
         """
         file_path = Path(file_path)
         if file_path.suffix == "":
@@ -73,7 +75,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             spikeinterface = get_package(package_name="spikeinterface")
 
             self.Extractor = spikeextractors.BlackrockRecordingExtractor
-            super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose)
+            super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose,
+                             es_key=es_key)
             self.source_data = dict(
                 file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
             )
@@ -82,14 +85,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         else:
-            super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose)
-
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries),
-        )
-        return metadata_schema
+            super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose, es_key=es_key)
 
     def get_metadata(self):
         metadata = super().get_metadata()
@@ -100,12 +96,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
-        metadata["Ecephys"]["ElectricalSeries"] = dict(name="ElectricalSeries")
 
         return metadata
-
-    def get_conversion_options(self):
-        return dict(write_as="raw", es_key="ElectricalSeries", stub_test=False)
 
 
 class BlackrockSortingInterface(BaseSortingExtractorInterface):

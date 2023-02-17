@@ -32,6 +32,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         stub_test: bool = False,
         verbose: bool = True,
         spikeextractors_backend: bool = False,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -45,6 +46,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         stub_test : bool, default: False
         verbose : bool, default: True
         spikeextractors_backend : bool, default: False
+        es_key : str, default: "ElectricalSeries"
         """
         self.spikeextractors_backend = spikeextractors_backend
         if spikeextractors_backend:
@@ -62,7 +64,8 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
 
             self.Extractor = OpenEphysRecordingExtractor
             super().__init__(
-                folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose
+                folder_path=folder_path, experiment_id=experiment_id, recording_id=recording_id, verbose=verbose,
+                es_key=es_key,
             )
             self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
             # Remove when spikeinterface 0.95 is released, this has an int sampling rate that causes problems
@@ -71,7 +74,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
             self.RX = OpenEphysBinaryRecordingExtractor
-            super().__init__(folder_path=folder_path, verbose=verbose)
+            super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key)
 
         if stub_test:
             self.subset_channels = [0, 1]

@@ -1,7 +1,6 @@
 import unittest
 import pytest
 import itertools
-from pathlib import Path
 from datetime import datetime
 from platform import python_version
 from sys import platform
@@ -22,7 +21,6 @@ from neuroconv.datainterfaces import (
     OpenEphysRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
     BlackrockRecordingInterface,
     AxonaRecordingInterface,
     EDFRecordingInterface,
