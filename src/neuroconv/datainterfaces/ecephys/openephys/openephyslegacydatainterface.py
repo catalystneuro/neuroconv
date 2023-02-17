@@ -1,9 +1,5 @@
 """Authors: Szonja Weigl, Cody Baker."""
 from typing import Optional
-from warnings import warn
-
-from neo.rawio import OpenEphysRawIO
-from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature
@@ -20,7 +16,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         """Compile input schema for the RecordingExtractor."""
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__,
-            exclude=["stream_id", "stream_name", "block_index", "all_annotations", "stub_test"],
+            exclude=["stream_name", "block_index", "all_annotations"],
         )
         source_schema["properties"]["folder_path"][
             "description"
@@ -30,11 +26,9 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        stream_id: str = "CH",
-        stream_name: Optional[str] = None,
-        block_index: Optional[int] = 0,
-        all_annotations: Optional[bool] = False,
-        stub_test: bool = False,
+        stream_name: Optional[str] = "Signals CH",
+        block_index: Optional[int] = None,
+        all_annotations: Optional[bool] = True,
         verbose: bool = True,
     ):
         """
@@ -45,45 +39,23 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to OpenEphys directory.
-        stream_id : str, default: "CH"
-            The identifier of the recording stream.
-            When the recording stream is not specified the channel stream ("CH") is chosen if available.
-            When channel stream is not available the stream_id or stream_name must be specified.
-        stream_name : str, optional
+        stream_name : str, default: "Signals CH"
             The name of the recording stream.
-        block_index : int, default: 0
-        all_annotations : bool, default: False
+            When the recording stream is not specified the channel stream is chosen if available.
+            When channel stream is not available the name of the stream must be specified.
+        block_index : int, default: None
+        all_annotations : bool, default: True
         stub_test : bool, default: False
         verbose : bool, default: True
         """
-        self.RX = OpenEphysLegacyRecordingExtractor
-
-        self.folder_path = folder_path
-        available_stream_ids = self._get_stream_ids()
-        if stream_id not in available_stream_ids:
-            raise ValueError(
-                f"The stream_id '{stream_id}' cannot be found in the data. The stream IDs in this data: "
-                f"{', '.join(available_stream_ids)}"
-            )
 
         super().__init__(
             folder_path=folder_path,
-            stream_id=stream_id,
             stream_name=stream_name,
             block_index=block_index,
             all_annotations=all_annotations,
             verbose=verbose,
         )
-
-        if stub_test:
-            self.subset_channels = [0, 1]
-
-    def _get_stream_ids(self):
-        """Returns the identifier of signal streams for this folder."""
-        reader = OpenEphysRawIO(self.folder_path)
-        reader.parse_header()
-        signal_streams = reader.header["signal_streams"]
-        return list(signal_streams["id"])
 
     def get_metadata(self):
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""

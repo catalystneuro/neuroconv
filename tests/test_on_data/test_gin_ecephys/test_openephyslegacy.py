@@ -13,17 +13,9 @@ class TestOpenEphysLegacyConversions(unittest.TestCase):
         self.interface = OpenEphysLegacyRecordingInterface(folder_path=self.folder_path)
 
     def test_openephyslegacy_streams(self):
-        stream_ids = self.interface._get_stream_ids()
-        self.assertEqual(stream_ids, ["CH"])
-        self.assertEqual(self.interface.source_data["stream_id"], "CH")
-
-    def test_openephyslegacy_stub_test_True(self):
-        interface = OpenEphysLegacyRecordingInterface(folder_path=self.folder_path, stub_test=True)
-        self.assertEqual(interface.subset_channels, [0, 1])
-
-    def test_openephyslegacy_stub_test_False(self):
-        interface = OpenEphysLegacyRecordingInterface(folder_path=self.folder_path, stub_test=False)
-        self.assertNotEqual(interface.subset_channels, [0, 1])
+        stream_names, stream_ids = self.interface.recording_extractor.get_streams(folder_path=self.folder_path)
+        self.assertEqual(stream_names, ["Signals CH"])
+        self.assertEqual(self.interface.source_data["stream_name"], "Signals CH")
 
     def test_openephyslegacy_source_schema(self):
         schema = self.interface.get_source_schema()
