@@ -13,5 +13,6 @@ The most common contribution is for a user/developer to help us integrate a new 
     Schemas <developer_guide/schemas>
     Project Structure <developer_guide/project_structure>
     Coding Style <developer_guide/style_guide>
+    Deploying Documentation <developer_guide/deploying_documentation>
 
 Or feel free to raise a bug report or feature request for our maintainers to prioritize!
