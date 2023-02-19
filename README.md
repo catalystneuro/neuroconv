@@ -83,42 +83,6 @@ Utilizing the CED recording interface, this project paired ecephys channels with
 * [Tolias lab](https://toliaslab.org/): [tolias-lab-to-nwb](https://github.com/catalystneuro/tolias-lab-to-nwb)
 
 
-# For Developers
-## Running GIN tests locally
-`neuroconv` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality.
-
-### Install testing dependencies
-In a clean environment run:
-
-```shell
-git clone https://github.com/catalystneuro/neuroconv
-cd neuroconv
-pip install .[test,full]
-```
-
-### Downloading the data
-[Datalad](https://www.datalad.org/) (`conda install datalad`) is the recommended way for downloading the data. To do this; simply call:
-
-For electrophysiology data:
-```shell
-datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-```
-
-For optical physiology data:
-```shell
-datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-```
-
-For behavioral data:
-```shell
-datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
-```
-
-
-### Test configuration file
-Once the data is downloaded to your system, you must manually modify the config file ([example](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/base_gin_test_config.json)) located in `./tests/test_on_data/gin_test_config.json` so its corresponding `LOCAL_PATH` key points to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
-
-The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=true` in the `gin_test_config.json` file and modify the variable `OUTPUT_PATH` in the respective test if necessary.
 
 ## Build the documentation
 For building the documentation locally, the following procedure can be followed. Create a clean environment and type
