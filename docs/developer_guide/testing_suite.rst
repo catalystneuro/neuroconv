@@ -40,7 +40,7 @@ For proprietary formats, we like to be able to regularly test our conversions ag
 
 To reduce the complexity of the testing suite, the tests simply assume that the example datasets exist somewhere on your system.
 
-These can each by downloaded using [Datalad](https://www.datalad.org/) and the example datasets can be found at
+These can each by downloaded using `Datalad <https://www.datalad.org/>`_ and the example datasets can be found at
 
 For electrophysiology data
 """"""""""""""""""""""""""
