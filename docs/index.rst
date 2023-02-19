@@ -22,6 +22,7 @@ Features:
 
   user_guide/user_guide
   conversion_examples_gallery/conversion_example_gallery
+  catalogue/catalogue
   developer_guide
 
 .. toctree::
