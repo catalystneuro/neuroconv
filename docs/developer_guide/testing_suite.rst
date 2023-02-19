@@ -54,9 +54,9 @@ For behavioral data
 """""""""""""""""""
 ``datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data``
 
-Once the data is downloaded to your system, you must manually modify the testing config file (`example <https://github.com/catalystneuro/neuroconv/blob/main/base_gin_test_config.json>`_). This file should be located and named as ``tests/test_on_data/gin_test_config.json`` whenever``neuroconv`` is installed in editable ``-e`` mode). The ``LOCAL_PATH`` field points to the folder on your system that contains the dataset folder (*e.g.*, ``ephy_testing_data`` for testing ``ecephys``). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
+Once the data is downloaded to your system, you must manually modify the testing config file (`example <https://github.com/catalystneuro/neuroconv/blob/main/base_gin_test_config.json>`_). This file should be located and named as ``tests/test_on_data/gin_test_config.json`` whenever ``neuroconv`` is installed in editable ``-e`` mode). The ``LOCAL_PATH`` field points to the folder on your system that contains the dataset folder (*e.g.*, ``ephy_testing_data`` for testing ``ecephys``). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
 
-The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=true` in the `gin_test_config.json` file and modify the variable `OUTPUT_PATH` in the respective test if necessary.
+The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag ``SAVE_OUTPUTS=true`` in the ``gin_test_config.json`` file and modify the variable ``OUTPUT_PATH`` in the respective test if necessary.
 
 Subfolders: `tests/test_on_data <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_on_data>`_
 
