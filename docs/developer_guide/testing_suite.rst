@@ -1,7 +1,7 @@
 Running GIN tests locally
 =========================
 
-`neuroconv` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support.
+NeuroConv verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support.
 
 The testing suite is broken up into sub-folders based on the scope of functionalities and dependencies you wish to test.
 
@@ -18,7 +18,7 @@ These test internal functionality using only minimal dependencies or pre-downloa
 
 Subfolders: `tests/test_minimal <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_minimal>`_ and `tests/test_internals <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_internals>`_
 
-These can be run using only ``pip install neuroconv[test]`` and calling ``pytest tests/test_minimal`` or ``pytest tests/test_internal``.
+These can be run using only ``pip install -e neuroconv[test]`` and calling ``pytest tests/test_minimal`` or ``pytest tests/test_internal``.
 
 
 
@@ -29,7 +29,7 @@ These test the functionality of our write tools tailored to certain external dep
 
 Subfolders: `tests/test_ophys <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_ophys>`_, `tests/test_ecephys <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_ecephys>`_, `tests/test_behavior <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_behavior>`_, and `tests/test_text <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_text>`_
 
-These can be run in isolation using ``pip install neuroconv[test,<modality>]`` and calling ``pytest tests/test_<modality>`` where ``<modality>`` can be any of ``ophys``, ``ecephys``, ``text``, or ``behavior``.
+These can be run in isolation using ``pip install -e neuroconv[test,<modality>]`` and calling ``pytest tests/test_<modality>`` where ``<modality>`` can be any of ``ophys``, ``ecephys``, ``text``, or ``behavior``.
 
 
 
@@ -60,4 +60,4 @@ The output of these tests is, by default, stored in a temporary directory that i
 
 Subfolders: `tests/test_on_data <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_on_data>`_
 
-These can be run in total using ``pip install neuroconv[test,full]`` and calling ``pytest tests/test_on_data`` or in isolation by installing the required ``<modality>`` as in the previous section and calling ``pytest tests/test_on_data/test_gin_<modality>``.
+These can be run in total using ``pip install -e neuroconv[test,full]`` and calling ``pytest tests/test_on_data`` or in isolation by installing the required ``<modality>`` as in the previous section and calling ``pytest tests/test_on_data/test_gin_<modality>``.
