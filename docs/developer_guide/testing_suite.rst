@@ -61,26 +61,3 @@ The output of these tests is, by default, stored in a temporary directory that i
 Subfolders: `tests/test_on_data <https://github.com/catalystneuro/neuroconv/tree/main/tests/test_on_data>`_
 
 These can be run in total using ``pip install neuroconv[test,full]`` and calling ``pytest tests/test_on_data`` or in isolation by installing the required ``<modality>`` as in the previous section and calling ``pytest tests/test_on_data/test_gin_<modality>``.
-
-
-
-## Build the documentation
-
-TODO - move
-
-For building the documentation locally, the following procedure can be followed. Create a clean environment and type
-the following commands in your terminal:
-```shell
-git clone https://github.com/catalystneuro/neuroconv
-cd neuroconv
-pip install -e .[docs]
-```
-These commands install both the latest version of the repo and the dependencies necessary to build the documentation.
-Note that the argument `-e` makes you install [editable](https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs)
-
-Now, to build the documention issue the following command in your terminal:
-```shell
-sphinx-build -b html docs ./docs/_build/
-```
-
-This builds the html under `/docs/_build/` (from your root directory, where you have installed `neuroconv`). This allows you to review the outcome of the process localy before commiting code.
