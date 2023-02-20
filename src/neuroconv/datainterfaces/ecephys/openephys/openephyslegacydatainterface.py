@@ -43,7 +43,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The name of the recording stream.
             When the recording stream is not specified the channel stream is chosen if available.
             When channel stream is not available the name of the stream must be specified.
-        block_index : int, default: None
+        block_index : int, optional
         all_annotations : bool, default: True
         stub_test : bool, default: False
         verbose : bool, default: True
