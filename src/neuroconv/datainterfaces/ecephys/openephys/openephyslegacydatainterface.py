@@ -9,8 +9,6 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting legacy Open Ephys data (.continuous files).
     Uses :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor`."""
 
-    ExtractorName = "OpenEphysLegacyRecordingExtractor"
-
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
