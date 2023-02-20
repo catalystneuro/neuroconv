@@ -26,9 +26,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        stream_name: Optional[str] = "Signals CH",
-        block_index: Optional[int] = None,
-        all_annotations: Optional[bool] = True,
+        stream_name: Optional[str] = None,
         verbose: bool = True,
     ):
         """
@@ -39,7 +37,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to OpenEphys directory.
-        stream_name : str, default: "Signals CH"
+        stream_name : str, optional
             The name of the recording stream.
             When the recording stream is not specified the channel stream is chosen if available.
             When channel stream is not available the name of the stream must be specified.
@@ -50,6 +48,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         """
 
         available_streams = self.get_stream_names(folder_path=folder_path)
+        stream_name = stream_name or "Signals CH"
         assert (
             stream_name in available_streams
         ), f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
