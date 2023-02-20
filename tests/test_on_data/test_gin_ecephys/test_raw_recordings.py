@@ -20,6 +20,8 @@ from neuroconv.datainterfaces import (
     NeuralynxRecordingInterface,
     NeuroScopeRecordingInterface,
     OpenEphysRecordingInterface,
+    OpenEphysLegacyRecordingInterface,
+    OpenEphysBinaryRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
@@ -33,12 +35,6 @@ from neuroconv.datainterfaces import (
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
 )
-from neuroconv.datainterfaces.ecephys.openephys.openephysbinarydatainterface import (
-    OpenEphysBinaryRecordingInterface,
-)
-
-from neuroconv.datainterfaces.ecephys.openephys.openephyslegacydatainterface import OpenEphysLegacyRecordingInterface
-
 
 # enable to run locally in interactive mode
 try:
