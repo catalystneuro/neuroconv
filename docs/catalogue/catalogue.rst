@@ -96,7 +96,7 @@ utilizes a custom `extension <https://github.com/catalystneuro/ndx-tank-metadata
 
 In this project, we worked with the `Groh Lab <https://www.uni-heidelberg.de/izn/researchgroups/groh/>`_. Utilizing
 the CED recording interface, this project paired ecephys channels with optogenetic stimulation via laser pulses, and
-mechnical pressure stimulation over time - all of which are channels of data extracted from the common `.smrx` files!
+mechanical pressure stimulation over time - all of which are channels of data extracted from the common `.smrx` files!
 
 `giocomo-lab-to-nwb <https://github.com/catalystneuro/giocomo-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
