@@ -7,6 +7,8 @@
 * In the conversion YAML, conversion_options can be specified on the global level. [PR #312](https://github.com/catalystneuro/neuroconv/pull/312)
 * The `OpenEphysRecordingInterface` now redirects to legacy or binary interface depending on the file format.
   It raises NotImplementedError until the interface for legacy format is added. [PR #296](https://github.com/catalystneuro/neuroconv/pull/296)
+* Move `es_key` to the `__init__` of the `BaseRecordingExtractorInterface` class. It is now longer possible to use 
+  this argument in the `run_conversion` method. [PR #318](https://github.com/catalystneuro/neuroconv/pull/318)
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
