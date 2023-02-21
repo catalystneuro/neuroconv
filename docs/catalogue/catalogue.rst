@@ -11,7 +11,7 @@ This catalogue contains references and short descriptions for a number of real e
 
 If it sounds as if any of the projects in this catalogue might be similar to your own experiments, it might be worth checking out how they implemented things and asking questions by raising Issues on the respective repositories.
 
-..note: It is likely that each project pinned itself to a specific minor version of NeuroConv, or its predecessor, nwb-conversion-tools (NCT). We have organized each pipeline according to the version used in descending order (newest version first).
+..note:: It is likely that each project pinned itself to a specific minor version of NeuroConv, or its predecessor, nwb-conversion-tools (NCT). We have organized each pipeline according to the version used in descending order (newest version first).
 
 
 
