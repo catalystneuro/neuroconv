@@ -45,3 +45,16 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
             Allows verbosity.
         """
         super().__init__(file_path=file_path, verbose=verbose)
+
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
+        neo_reader = self.sorting_extractor.neo_reader
+
+        if hasattr(neo_reader, "raw_annotations"):
+            block_ind = self.sorting_extractor.block_index
+            neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
+
+            if "rec_datetime" in neo_metadata:
+                metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
+
+        return metadata
