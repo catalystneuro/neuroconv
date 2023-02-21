@@ -1,35 +1,20 @@
 """Authors: Cody Baker and Ben Dichter."""
-from typing import Optional, Union
-from pathlib import Path
+from typing import Optional
 from pynwb import NWBFile
-from pynwb.ecephys import ElectricalSeries
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...utils import get_schema_from_hdmf_class, OptionalFilePathType
-
-OptionalPathType = Optional[Union[str, Path]]
+from ...utils import FilePathType
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesLFP=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
-
-    def get_metadata(self):
-        metadata = super().get_metadata()
-        metadata["Ecephys"].update(
-            ElectricalSeriesLFP=dict(name="ElectricalSeriesLFP", description="Local field potential signal.")
-        )
-        return metadata
+    def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeriesLF", **source_data):
+        super().__init__(verbose=verbose, es_key=es_key, **source_data)
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -37,28 +22,20 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: str = "lfp",  # Literal["raw", "lfp", "processed"]
         write_electrical_series: bool = True,
-        es_key: str = "ElectricalSeriesLFP",
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
     ):
-        from ...tools.spikeinterface import write_recording
-
-        if stub_test or self.subset_channels is not None:
-            recording = self.subset_recording(stub_test=stub_test)
-        else:
-            recording = self.recording_extractor
-        write_recording(
-            recording=recording,
+        return super().run_conversion(
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
-            verbose=self.verbose,
+            stub_test=stub_test,
             starting_time=starting_time,
             write_as=write_as,
-            es_key=es_key,
+            write_electrical_series=write_electrical_series,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
