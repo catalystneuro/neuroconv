@@ -23,4 +23,4 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             If True, only Kilosort-labeled 'good' units are returned
         verbose: bool, default: True
         """
-        super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose, es_key=es_key)
+        super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose)
