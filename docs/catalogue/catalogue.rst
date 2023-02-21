@@ -18,7 +18,7 @@ If it sounds as if any of the projects in this catalogue might be similar to you
 NeuroConv v0.2
 --------------
 
-`Ahrens Lab <https://ahrenslab.org/>`_: `ahrens-lab-to-nwb <https://github.com/catalystneuro/ahrens-lab-to-nwb>`_
+`Ahrens Lab <https://ahrenslab.org>`_: `ahrens-lab-to-nwb <https://github.com/catalystneuro/ahrens-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The Ahrens lab was interested in publically sharing the imaging data corresponding to the high-impact publication `Mu Y, Bennett DV, Rubinov M, Narayan S, Yang CT, Tanimoto M, Mensh BD, Looger LL, Ahrens MB. Glia Accumulate Evidence that Actions Are Futile and Suppress Unsuccessful Behavior. Cell. 2019 <https://www.cell.com/cell/fulltext/S0092-8674(19)30621-X?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS009286741930621X%3Fshowall%3Dtrue>`_ and hosting the data on the DANDI archive. In this experiment, paralyzed zebrafish were place in a virtual reality environment which systemetically responded to their attempts to swim by either mimicing movement effects within the environment or not (test of futility). While the subject attempts to engage in swimming behaviors, a light-sheet microscope performs whole-brain scans tracking flourescence activity of neurons, glia, or both dependeing on the session.
