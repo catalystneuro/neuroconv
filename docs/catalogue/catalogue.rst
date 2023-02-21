@@ -31,7 +31,7 @@ The Murthy lab studies fly interactions combined with optical imaging techniques
 `Fee Lab <https://ahrenslab.org/>`_: `fee-lab-to-nwb <https://github.com/catalystneuro/fee-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The Fee lab was interested in sharing data related to several upcoming publications utilizing both optical imaging and extracellular electrophysiology. The work with this lab focused largely on encoding and visualization of complex heirarchical audio signals which are compared directly to temporally aligned neural activity.
+The Fee lab was interested in sharing data related to several upcoming publications utilizing both optical imaging and extracellular electrophysiology. The work with this lab focused largely on encoding and visualization of complex hierarchical audio signals which are compared directly to temporally aligned neural activity.
 
 
 
