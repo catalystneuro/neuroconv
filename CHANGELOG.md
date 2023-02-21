@@ -14,6 +14,9 @@
 ### Fixes
 * BlackrockRecordingInterface now writes all ElectricalSeries to "acquisition" unless changed using the `write_as` flag in `run_conversion`. [PR #315](https://github.com/catalystneuro/neuroconv/pull/315)
 
+### Documentation and tutorial enhancements
+* Move testing instructions to ReadTheDocs[PR #320](https://github.com/catalystneuro/neuroconv/pull/320)
+
 
 # v0.2.4
 
