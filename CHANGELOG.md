@@ -1,4 +1,4 @@
-# Upcoming
+# Upcoming (v.0.3.0)
 
 ### Features
 * The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
