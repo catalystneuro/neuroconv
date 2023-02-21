@@ -12,13 +12,11 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         """Compile input schema for the RecordingExtractor."""
-        source_schema = get_schema_from_method_signature(
-            class_method=cls.__init__,
-            exclude=["stream_name", "block_index", "all_annotations"],
-        )
+        source_schema = super().get_source_schema()
         source_schema["properties"]["folder_path"][
             "description"
         ] = "Path to directory containing OpenEphys legacy files."
+
         return source_schema
 
     def __init__(
