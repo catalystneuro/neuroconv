@@ -18,7 +18,7 @@ NeuroConv v0.2
 `ahrens-lab-to-nwb <https://github.com/catalystneuro/ahrens-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The `Dr. Misha Ahrens' lab <https://ahrenslab.org>`_ at Janelia converted the imaging data corresponding to the
+`Dr. Misha Ahrens' lab <https://ahrenslab.org>`_ at Janelia converted the imaging data corresponding to the
 publication `Mu Y, Bennett DV, Rubinov M, Narayan S, Yang CT, Tanimoto M, Mensh BD, Looger LL, Ahrens MB.
 Glia Accumulate Evidence that Actions Are Futile and Suppress Unsuccessful Behavior. Cell. 2019
 <https://www.cell.com/cell/fulltext/S0092-8674(19)30621-X?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS009286741930621X%3Fshowall%3Dtrue>`_
@@ -30,7 +30,7 @@ microscope performs whole-brain scans tracking florescence activity of neurons, 
 `murthy-lab-to-nwb <https://github.com/catalystneuro/murthy-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This project from `Dr. Mala Murthy's lab <https://mala-murthy.squarespace.com/)>`_ at Princeton is focused on
+This project from `Dr. Mala Murthy's lab <https://mala-murthy.squarespace.com/>`_ at Princeton is focused on
 converting data from an upcoming paper related to mating behaviors. This pipeline features multiple subjects, pose
 estimation through SLEAP, and visual stimulus reconstruction (from the fly's perspective).
 
@@ -57,7 +57,7 @@ tracking through mazes, and trial stimulus events.
 `shenoy-lab-to-nwb <https://github.com/catalystneuro/shenoy-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-These pipelines were built for the `Dr. Krishna Shenoy's lab at Stanford <https://npsl.sites.stanford.edu>`_ and
+These pipelines were built for `Dr. Krishna Shenoy's lab at Stanford <https://npsl.sites.stanford.edu>`_ and
 illustrate conversion of extracellular recordings from Utah arrays and Neuropixels in primates.
 
 `brody-lab-to-nwb <https://github.com/catalystneuro/brody-lab-to-nwb>`_
@@ -100,7 +100,7 @@ mechanical pressure stimulation over time - all of which are channels of data ex
 
 `giocomo-lab-to-nwb <https://github.com/catalystneuro/giocomo-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-This project from `Dr. Lisa Giocomo lab at Stanford <https://giocomolab.weebly.com/>`_ features conversion pipelines
+This project from `Dr. Lisa Giocomo's lab at Stanford <https://giocomolab.weebly.com/>`_ features conversion pipelines
 that handle raw and processed data from SpikeGLX and from calcium imaging.
 
 Other examples of NWB pipelines
