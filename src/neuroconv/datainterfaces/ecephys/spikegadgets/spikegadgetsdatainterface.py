@@ -23,9 +23,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         gains: Optional[ArrayType] = None,
-        probe_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
-        spikeextractors_backend: bool = False,
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -35,40 +33,15 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         file_path : FilePathType
             Path to the .rec file.
         gains : array_like, optional
-            The early versions of SpikeGadgest do not automatically record the conversion factor ('gain') of the
+            The early versions of SpikeGadgets do not automatically record the conversion factor ('gain') of the
             acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
         probe_file_path : FilePathType, optional
             Set channel properties and geometry through a .prb file.
             See https://github.com/SpikeInterface/probeinterface for more information.
-        spikeextractors_backend : bool, default: False
-            When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         """
 
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            from spikeextractors import SpikeGadgetsRecordingExtractor, load_probe_file
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = SpikeGadgetsRecordingExtractor
-            if probe_file_path is not None:
-                self.recording_extractor = load_probe_file(
-                    recording=self.recording_extractor, probe_file=probe_file_path
-                )
-
-            super().__init__(filename=file_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
+        super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:
