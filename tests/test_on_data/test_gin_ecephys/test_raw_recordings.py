@@ -1,7 +1,6 @@
 import unittest
 import pytest
 import itertools
-from pathlib import Path
 from datetime import datetime
 from platform import python_version
 from sys import platform
@@ -22,7 +21,6 @@ from neuroconv.datainterfaces import (
     OpenEphysRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
     BlackrockRecordingInterface,
     AxonaRecordingInterface,
     EDFRecordingInterface,
@@ -131,12 +129,36 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 ),
             ),
         ),
+        param(
+            data_interface=NeuralynxRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+            ),
+            case_name="neuralynx",
+        ),
+        param(
+            data_interface=OpenEphysRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+            ),
+        ),
+        param(
+            data_interface=BlackrockRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
+            ),
+        ),
+        param(
+            data_interface=NeuroScopeRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+            ),
+        )
     ]
     this_python_version = version.parse(python_version())
     if (
-        platform != "darwin"
-        and this_python_version >= version.parse("3.8")
-        and this_python_version < version.parse("3.10")
+            platform != "darwin"
+            and version.parse("3.8") <= this_python_version < version.parse("3.10")
     ):
         parameterized_recording_list.append(
             param(
@@ -145,33 +167,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
-    parameterized_recording_list.append(
-        param(
-            data_interface=NeuralynxRecordingInterface,
-            interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
-            ),
-            case_name="neuralynx",
-        )
-    )
-
-    parameterized_recording_list.append(
-        param(
-            data_interface=OpenEphysRecordingInterface,
-            interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
-            ),
-        )
-    )
-
-    parameterized_recording_list.append(
-        param(
-            data_interface=BlackrockRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
-            ),
-        )
-    )
 
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
@@ -208,15 +203,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         parameterized_recording_list.append(
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
         )
-
-    parameterized_recording_list.append(
-        param(
-            data_interface=NeuroScopeRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
-            ),
-        )
-    )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
