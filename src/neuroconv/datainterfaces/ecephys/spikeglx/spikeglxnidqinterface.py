@@ -1,14 +1,12 @@
 """Authors: Cody Baker."""
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import numpy as np
-from pynwb import NWBFile
-from pynwb.ecephys import ElectricalSeries
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType
+from ....utils import get_schema_from_method_signature, FilePathType
 
 
 class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
