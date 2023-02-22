@@ -155,13 +155,10 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
             ),
-        )
+        ),
     ]
     this_python_version = version.parse(python_version())
-    if (
-            platform != "darwin"
-            and version.parse("3.8") <= this_python_version < version.parse("3.10")
-    ):
+    if platform != "darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,
@@ -199,9 +196,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         else:
             gain_string = None
 
-        case_name = (
-            f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
-        )
+        case_name = f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
         parameterized_recording_list.append(
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
         )
