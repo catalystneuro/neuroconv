@@ -36,7 +36,7 @@ These can be run in isolation using ``pip install -e neuroconv[test,<modality>]`
 On Data
 -------
 
-For proprietary formats, we like to be able to regularly test our conversions against small snnippets of real data.
+For proprietary formats, we regularly test our conversions against small snippets of real data.
 
 To reduce the complexity of the testing suite, the tests simply assume that the example datasets exist somewhere on your system.
 
