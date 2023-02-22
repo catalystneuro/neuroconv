@@ -26,7 +26,6 @@ class BaseExtractorInterface(BaseDataInterface, ABC):
         extractor = getattr(
             extractor_module,
             cls.ExtractorName or cls.__name__.replace("Interface", "Extractor"),
-            )
+        )
         cls.Extractor = extractor
         return extractor
-

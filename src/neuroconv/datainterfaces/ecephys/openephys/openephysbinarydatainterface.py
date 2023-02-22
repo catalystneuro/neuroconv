@@ -63,11 +63,6 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-# Temporary solution for safely transitioning to the renamed interface
-class OpenEphysRecordingInterface(OpenEphysBinaryRecordingInterface):
-    ExtractorName = "OpenEphysBinaryRecordingExtractor"
-
-
 class OpenEphysSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting OpenEphys spiking data."""
 

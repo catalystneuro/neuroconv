@@ -1,6 +1,7 @@
 import unittest
 import pytest
 import itertools
+from pathlib import Path
 from datetime import datetime
 from platform import python_version
 from sys import platform
@@ -19,6 +20,7 @@ from neuroconv.datainterfaces import (
     NeuralynxRecordingInterface,
     NeuroScopeRecordingInterface,
     OpenEphysRecordingInterface,
+    OpenEphysBinaryRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     BlackrockRecordingInterface,
@@ -137,7 +139,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             case_name="neuralynx",
         ),
         param(
-            data_interface=OpenEphysRecordingInterface,
+            data_interface=OpenEphysBinaryRecordingInterface,
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
             ),
