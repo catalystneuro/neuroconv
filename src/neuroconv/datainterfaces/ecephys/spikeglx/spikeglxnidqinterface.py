@@ -23,7 +23,11 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         return source_schema
 
     def __init__(
-        self, file_path: FilePathType, stub_test: bool = False, verbose: bool = True, load_sync_channel: bool = False
+        self,
+        file_path: FilePathType,
+        verbose: bool = True,
+        load_sync_channel: bool = False,
+        es_key: str = "ElectricalSeriesNIDQ",
     ):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
@@ -34,13 +38,12 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         ----------
         file_path : FilePathType
             Path to .nidq.bin file.
-        stub_test : bool, default: False
-            Whether to shorten file for testing purposes.
         verbose : bool, default: True
             Whether to output verbose text.
         load_sync_channel : bool, default: False
             Whether to load the last channel in the stream, which is typically used for synchronization.
             If True, then the probe is not loaded.
+        es_key : str, default: "ElectricalSeriesNIDQ"
         """
         self.stream_id = "nidq"
 
@@ -50,6 +53,7 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             stream_id=self.stream_id,
             verbose=verbose,
             load_sync_channel=load_sync_channel,
+            es_key=es_key,
         )
         self.source_data.update(file_path=str(file_path))
 
@@ -57,13 +61,6 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             key="group_name", values=["NIDQChannelGroup"] * self.recording_extractor.get_num_channels()
         )
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
-
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesNIDQ=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
