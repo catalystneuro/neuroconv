@@ -26,7 +26,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         """
         super().__init__(**source_data)
-        self.recording_extractor = self.Extractor(**source_data)
+        self.recording_extractor = self.get_extractor()(**source_data)
         self.subset_channels = None
         self.verbose = verbose
         self.es_key = None  # For automatic metadata extraction
@@ -82,7 +82,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        return self.Extractor(**self.source_data).get_times()
+        return self.get_extractor()(**self.source_data).get_times()
 
     def get_timestamps(self) -> np.ndarray:
         return self.recording_extractor.get_times()
