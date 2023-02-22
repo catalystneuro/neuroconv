@@ -53,6 +53,7 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             load_sync_channel=load_sync_channel,
             es_key=es_key,
         )
+        self.es_key = es_key
         self.source_data.update(file_path=str(file_path))
 
         self.recording_extractor.set_property(
