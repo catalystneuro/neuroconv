@@ -2,10 +2,6 @@
 from pathlib import Path
 import json
 from warnings import warn
-from typing import Optional
-
-from pynwb import NWBFile
-from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
@@ -58,8 +54,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        stub_test : bool, default: False
-            Whether to shorten file for testing purposes.
         spikeextractors_backend : bool, default: False
             Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
@@ -84,12 +78,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             from spikeinterface.core.old_api_utils import OldToNewRecording
 
             self.Extractor = SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path), verbose=verbose)
+            super().__init__(file_path=str(file_path), verbose=verbose, es_key=es_key)
             _assert_single_shank_for_spike_extractors(self.recording_extractor)
             self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
-            self.recording_extractor = OldToNewRecording(
-                oldapi_recording_extractor=self.recording_extractor, es_key=es_key
-            )
+            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
         else:
             file_path = Path(file_path)
             folder_path = file_path.parent
