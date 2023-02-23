@@ -51,7 +51,7 @@ class TestOphysNwbConversions(TestCase):
             data_interface=TiffImagingInterface,
             interface_kwargs=dict(
                 file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
-                sampling_frequency=15.0,  # typically provied by user
+                sampling_frequency=15.0,  # typically provided by user
             ),
         ),
         param(

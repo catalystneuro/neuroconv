@@ -60,7 +60,7 @@ class TestAddDevices(unittest.TestCase):
     def test_add_device_with_further_metadata(self):
         device_name = "new_device"
         description = "device_description"
-        manufacturer = "manufactuer"
+        manufacturer = "manufacturer"
 
         device_list = [dict(name=device_name, description=description, manufacturer=manufacturer)]
         self.metadata["Ophys"].update(Device=device_list)
