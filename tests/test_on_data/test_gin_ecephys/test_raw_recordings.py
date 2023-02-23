@@ -173,7 +173,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 interface_kwargs=dict(
                     file_path=str(DATA_PATH / "intan" / f"intan_{suffix}_test_1.{suffix}"),
                 ),
-                case_name=suffix
+                case_name=suffix,
             )
         )
 
