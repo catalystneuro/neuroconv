@@ -1,0 +1,3 @@
+[codespell]
+skip = .git,*.pdf
+# ignore-words-list =   # Add items here if needed
