@@ -1,7 +1,6 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
 import json
-from warnings import warn
 from typing import Optional
 
 from pynwb import NWBFile
@@ -9,12 +8,7 @@ from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
-from .spikeglx_utils import (
-    get_session_start_time,
-    _fetch_metadata_dic_for_spikextractors_spikelgx_object,
-    _assert_single_shank_for_spike_extractors,
-    fetch_stream_id_for_spikelgx_file,
-)
+from .spikeglx_utils import get_session_start_time, fetch_stream_id_for_spikelgx_file
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
@@ -50,7 +44,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         stub_test: bool = False,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
         """
@@ -60,8 +53,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
         stub_test : bool, default: False
             Whether to shorten file for testing purposes.
-        spikeextractors_backend : bool, default: False
-            Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
             Whether to output verbose text.
         """
@@ -70,34 +61,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
-        if spikeextractors_backend:  # pragma: no cover
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            from spikeextractors import SpikeGLXRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
 
-            self.Extractor = SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path), verbose=verbose)
-            _assert_single_shank_for_spike_extractors(self.recording_extractor)
-            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            file_path = Path(file_path)
-            folder_path = file_path.parent
-            super().__init__(
-                folder_path=folder_path,
-                stream_id=self.stream_id,
-                verbose=verbose,
-            )
-            self.source_data["file_path"] = str(file_path)
-            self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+        file_path = Path(file_path)
+        folder_path = file_path.parent
+        super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
+        self.source_data["file_path"] = str(file_path)
+        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Mount the probe
         # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)

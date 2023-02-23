@@ -10,10 +10,10 @@ from shutil import rmtree
 import psutil
 import numpy as np
 
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 import pynwb.ecephys
 from spikeinterface import extract_waveforms, WaveformExtractor
-from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+from spikeinterface.core.generate import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
@@ -22,9 +22,7 @@ from hdmf.testing import TestCase
 
 
 from neuroconv.tools.spikeinterface import (
-    get_nwb_metadata,
     write_recording,
-    write_sorting,
     write_waveforms,
     check_if_recording_traces_fit_into_memory,
     add_electrodes,

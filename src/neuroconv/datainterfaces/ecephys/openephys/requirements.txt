@@ -1,1 +1,2 @@
 pyopenephys>=1.1.2
+spikeextractors>=0.9.10

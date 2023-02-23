@@ -22,6 +22,9 @@
 * Moved NeuroConv catalogue from ReadMe.md to ReadTheDocs.
   [PR #322](https://github.com/catalystneuro/neuroconv/pull/322)
 
+### Deprecation
+* Dropped support for the spikeextractors_backend in most cases ExtractorDataInterface classes.
+
 # v0.2.4
 
 ### Deprecation

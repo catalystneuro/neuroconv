@@ -1,13 +1,11 @@
 """Authors: Luiz Tauffer."""
 from pathlib import Path
-from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....tools import get_package
 from ....utils import (
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
@@ -33,7 +31,6 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         nsx_override: OptionalFilePathType = None,
         verbose: bool = True,
-        spikeextractors_backend: bool = False,
     ):
         """
         Load and prepare data corresponding to Blackrock interface.
@@ -43,9 +40,6 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         file_path : FilePathType
             The path to the Blackrock with suffix being .ns1, .ns2, .ns3, .ns4m .ns4, or .ns6
         verbose: bool, default: True
-        spikeextractors_backend : bool, default: False
-            When True the interface uses the old extractor from the spikextractors library instead of a new
-            spikeinterface object.
         """
         file_path = Path(file_path)
         if file_path.suffix == "":
@@ -59,30 +53,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             nsx_to_load = int(file_path.suffix[-1])
             self.file_path = file_path
 
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            spikeextractors = get_package(package_name="spikeextractors")
-            spikeinterface = get_package(package_name="spikeinterface")
-
-            self.Extractor = spikeextractors.BlackrockRecordingExtractor
-            super().__init__(filename=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose)
-            self.source_data = dict(
-                file_path=file_path, nsx_override=nsx_override, nsx_to_load=nsx_to_load, verbose=verbose
-            )
-            self.recording_extractor = spikeinterface.core.old_api_utils.OldToNewRecording(
-                oldapi_recording_extractor=self.recording_extractor
-            )
-
-        else:
-            super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose)
+        super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()

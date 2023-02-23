@@ -1,6 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
-from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -64,7 +63,6 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         stream_id: str = "0",
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
         """
@@ -76,36 +74,13 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             Path to either a rhd or a rhs file
         stream_id : str, optional
             The stream of the data for spikeinterface, "0" by default.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         verbose : bool
             Verbose
         """
 
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend and pyintan dependency
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-
-            _ = get_package(package_name="pyintan")
-            from spikeextractors import IntanRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = IntanRecordingExtractor
-            super().__init__(file_path=file_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-            electrodes_metadata = extract_electrode_metadata_with_pyintan(file_path)
-        else:
-            self.stream_id = stream_id
-            super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose)
-            electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
+        self.stream_id = stream_id
+        super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose)
+        electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
 
         group_names = electrodes_metadata["group_names"]
         group_electrode_numbers = electrodes_metadata["group_electrode_numbers"]

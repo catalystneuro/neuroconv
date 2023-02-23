@@ -80,7 +80,6 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
         """
@@ -98,35 +97,14 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         """
         get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-
-            from spikeextractors import NeuroscopeRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = NeuroscopeRecordingExtractor
-            super().__init__(file_path=file_path, xml_file_path=xml_file_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(file_path=file_path, verbose=verbose)
-            self.source_data["xml_file_path"] = xml_file_path
+        super().__init__(file_path=file_path, verbose=verbose)
+        self.source_data["xml_file_path"] = xml_file_path
 
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
@@ -226,7 +204,6 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        spikeextractors_backend: bool = False,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -243,35 +220,14 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         """
         get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-
-            from spikeextractors import NeuroscopeRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = NeuroscopeRecordingExtractor
-            super().__init__(file_path=file_path, xml_file_path=xml_file_path)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(file_path=file_path)
-            self.source_data["xml_file_path"] = xml_file_path
+        super().__init__(file_path=file_path)
+        self.source_data["xml_file_path"] = xml_file_path
 
         add_recording_extractor_properties(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
@@ -299,7 +255,6 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         exclude_shanks: Optional[list] = None,
         xml_file_path: OptionalFilePathType = None,
         verbose: bool = True,
-        spikeextractors_backend: bool = False,
         # TODO: we can enable this once
         #     a) waveforms on unit columns support conversion factor in NWB
         #     b) write_sorting utils support writing said waveforms properly to a units table
@@ -334,24 +289,8 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             Most common value is 0.195 for an intan recording system.
             The default is None.
             Not currently in use pending updates to NWB waveforms.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         """
         get_package(package_name="lxml")
-        from spikeextractors import NeuroscopeMultiSortingExtractor
-
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            self.Extractor = NeuroscopeMultiSortingExtractor
 
         super().__init__(
             folder_path=folder_path,

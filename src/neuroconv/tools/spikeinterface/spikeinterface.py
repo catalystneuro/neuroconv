@@ -600,7 +600,7 @@ def add_electrical_series(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
     """
@@ -950,7 +950,7 @@ def write_recording(
     write_scaled: bool = False,
     compression: Optional[str] = None,
     compression_opts: Optional[int] = None,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
     """

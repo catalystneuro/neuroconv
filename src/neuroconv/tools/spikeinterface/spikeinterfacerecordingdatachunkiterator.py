@@ -1,13 +1,8 @@
 """Authors: Cody Baker and Saksham Sharda."""
 from typing import Tuple, Iterable, Optional, Union
-from warnings import warn
 
-from spikeinterface.core.old_api_utils import OldToNewRecording
-from spikeextractors import RecordingExtractor
 from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording
-
-SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
@@ -15,7 +10,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
     def __init__(
         self,
-        recording: SpikeInterfaceRecording,
+        recording: BaseRecording,
         segment_index: int = 0,
         return_scaled: bool = False,
         buffer_gb: Optional[float] = None,
@@ -35,9 +30,8 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         segment_index : int, optional
             The recording segment to iterate on.
             Defaults to 0.
-        return_scaled : bool, optional
+        return_scaled : bool, default: False
             Whether to return the trace data in scaled units (uV, if True) or in the raw data type (if False).
-            Defaults to False.
         buffer_gb : float, optional
             The upper bound on size in gigabytes (GB) of each selection from the iteration.
             The buffer_shape will be set implicitly by this argument.
@@ -58,25 +52,14 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             Manual specification of the internal chunk shape for the HDF5 dataset.
             Cannot be set if `chunk_mb` is also specified.
             The default is None.
-        display_progress : bool, optional
+        display_progress : bool, default: False
             Display a progress bar with iteration rate and estimated completion time.
         progress_bar_options : dict, optional
             Dictionary of keyword arguments to be passed directly to tqdm.
             See https://github.com/tqdm/tqdm#parameters for options.
         """
-        if isinstance(recording, RecordingExtractor):
-            self.recording = OldToNewRecording(oldapi_recording_extractor=recording)
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-        else:
-            self.recording = recording
+
+        self.recording = recording
         self.segment_index = segment_index
         self.return_scaled = return_scaled
         self.channel_ids = recording.get_channel_ids()
@@ -102,4 +85,4 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         return self.recording.get_dtype()
 
     def _get_maxshape(self):
-        return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
+        return self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels()
