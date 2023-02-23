@@ -14,7 +14,7 @@ def decompose_f_string(f_string: str) -> (List[str], List[str]):
 
     An example f-string and components would be: 'This is {an} f-string!', with variable 'an' and separators
     'This is ' and ' f-string!'.
-    An instance of this example would be: 'This is definetely a good f-string!' with variable value 'definetely a good'.
+    An instance of this example would be: 'This is definitely a good f-string!' with variable value 'definitely a good'.
 
     Example
     -------
@@ -49,12 +49,12 @@ def parse_f_string(string: str, f_string: str):
     Given an instance of an f-string rule, extract the values of the variables specified by the f-string.
 
     Recovery of values is only possible in cases where the string instance is uniquely invertible,
-    which requires at a minumum requires...
+    which requires at a minimum requires...
         1) Separators between all curly bracket enclosures, *e.g.*, '{var1}{var2}' is not allowed.
            An easy way to resolve this is to add a unique separator between them, *i.e.*, '{var1}-{var2}'.
         2) The separator character(s) cannot also occur within the variable values, *e.g.*, '{var1}b{var2}' on
            instance 'sub_01bsess_040122' where var1='sub_01 and' and var2='sess_040122'. Since the separator is a single
-           character 'b' which also occurs in the instance of var1, it cannot be determined which occurence is the
+           character 'b' which also occurs in the instance of var1, it cannot be determined which occurrence is the
            proper separator.
 
            Resolving this relies on choosing unique separators between variables in the f-string rule; either a single
