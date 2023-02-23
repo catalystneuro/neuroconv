@@ -1,4 +1,8 @@
-# Upcoming
+# Upcoming (0.3.0)
+
+### Back-compatibility break
+* `ExtractorInterface` classes now access their extractor with the classmethod `cls.get_extractor()` instead of the attribute `self.Extractor`. [PR #324](https://github.com/catalystneuro/neuroconv/pull/324)
+* The `spikeextractor_backend` option was removed for several `RecordingExtractorInterface` classes. [PR #324](https://github.com/catalystneuro/neuroconv/pull/324)
 
 ### Features
 * The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
@@ -17,8 +21,6 @@
 
 ### Documentation and tutorial enhancements
 * The instructions to build the documentation were moved to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
-
-### Documentation and tutorial enhancements
 * Moved NeuroConv catalogue from ReadMe.md to ReadTheDocs.
   [PR #322](https://github.com/catalystneuro/neuroconv/pull/322)
 
