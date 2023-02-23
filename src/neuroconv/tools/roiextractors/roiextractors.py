@@ -8,7 +8,7 @@ import numpy as np
 import psutil
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 
-# from hdmf.commmon import VectorData
+# from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.base import Images
@@ -193,7 +193,7 @@ def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata
 
 def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int = 0) -> NWBFile:
     """
-    Adds the imaging plane specificied by the metadata to the nwb file.
+    Adds the imaging plane specified by the metadata to the nwb file.
     The imaging plane that is added is the one located in metadata["Ophys"]["ImagingPlane"][imaging_plane_index]
 
     Parameters
@@ -898,7 +898,7 @@ def add_summary_images(
     image_collection = ophys.data_interfaces[images_set_name]
 
     for img_name, img in images_to_add.items():
-        # Note that nwb uses the conversion width x heigth (columns, rows) and roiextractors uses the transpose
+        # Note that nwb uses the conversion width x height (columns, rows) and roiextractors uses the transpose
         image_collection.add_image(GrayscaleImage(name=img_name, data=img.T))
 
     return nwbfile
