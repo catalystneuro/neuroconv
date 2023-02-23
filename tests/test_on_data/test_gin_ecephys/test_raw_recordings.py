@@ -158,13 +158,10 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
             ),
-        )
+        ),
     ]
     this_python_version = version.parse(python_version())
-    if (
-            platform != "darwin"
-            and version.parse("3.8") <= this_python_version < version.parse("3.10")
-    ):
+    if platform != "darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,

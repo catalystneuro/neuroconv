@@ -61,7 +61,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
-
         file_path = Path(file_path)
         folder_path = file_path.parent
         super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)

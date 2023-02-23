@@ -71,9 +71,7 @@ parameterized_sorting_list = [
     param(
         data_interface=CellExplorerSortingInterface,
         interface_kwargs=dict(
-            file_path=str(
-                DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
-            )
+            file_path=str(DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat")
         ),
     ),
     param(
@@ -103,7 +101,7 @@ parameterized_sorting_list = [
         interface_kwargs=dict(
             folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
         ),
-    )
+    ),
 ]
 
 
@@ -117,9 +115,7 @@ def test_convert_sorting_extractor_to_nwb(self, data_interface, interface_kwargs
     converter = TestConverter(source_data=dict(TestSorting=interface_kwargs))
     for interface_kwarg in interface_kwargs:
         if interface_kwarg in ["file_path", "folder_path"]:
-            self.assertIn(
-                member=interface_kwarg, container=converter.data_interface_objects["TestSorting"].source_data
-            )
+            self.assertIn(member=interface_kwarg, container=converter.data_interface_objects["TestSorting"].source_data)
     metadata = converter.get_metadata()
     metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
     converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
