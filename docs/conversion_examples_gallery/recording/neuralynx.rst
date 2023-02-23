@@ -19,7 +19,7 @@ Convert Neuralynx data to NWB using
     >>>
     >>> # For this data interface we need to pass the folder where the data is
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuralynx/Cheetah_v5.7.4/original_data"
-    >>> # Change the folder_path to the appropiate location in your system
+    >>> # Change the folder_path to the appropriate location in your system
     >>> interface = NeuralynxRecordingInterface(folder_path=folder_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
