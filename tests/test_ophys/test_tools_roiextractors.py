@@ -60,7 +60,7 @@ class TestAddDevices(unittest.TestCase):
     def test_add_device_with_further_metadata(self):
         device_name = "new_device"
         description = "device_description"
-        manufacturer = "manufactuer"
+        manufacturer = "manufacturer"
 
         device_list = [dict(name=device_name, description=description, manufacturer=manufacturer)]
         self.metadata["Ophys"].update(Device=device_list)
@@ -457,7 +457,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
 
     def test_pixel_masks(self):
-        """Test the voxel mask option for writing a plane segementation table."""
+        """Test the voxel mask option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,
@@ -488,7 +488,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert_array_equal(plane_segmentation["pixel_mask"], true_pixel_masks)
 
     def test_voxel_masks(self):
-        """Test the voxel mask option for writing a plane segementation table."""
+        """Test the voxel mask option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,
@@ -519,7 +519,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
 
     def test_none_masks(self):
-        """Test the None mask_type option for writing a plane segementation table."""
+        """Test the None mask_type option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,

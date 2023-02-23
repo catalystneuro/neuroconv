@@ -343,7 +343,7 @@ def add_electrodes(
         channel_name_array = channel_ids.astype("str", copy=False)
         data_to_add["channel_name"].update(description="unique channel reference", data=channel_name_array, index=False)
         if old_api:
-            # If the channel ids are integer keep the old behavior of asigning nwbfile.electrodes.id equal to channel_ids
+            # If the channel ids are integer keep the old behavior of assigning nwbfile.electrodes.id equal to channel_ids
             if np.issubdtype(channel_ids.dtype, np.integer):
                 data_to_add["id"].update(data=channel_ids, index=False)
 
@@ -398,7 +398,7 @@ def add_electrodes(
         x=np.nan,
         y=np.nan,
         z=np.nan,
-        # There doesn't seem to be a canonical default for impedence, if missing.
+        # There doesn't seem to be a canonical default for impedance, if missing.
         # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
         imp=-1.0,
         filtering="none",
@@ -1244,7 +1244,7 @@ def add_units_table(
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
         if old_api:
-            # If the channel ids are integer keep the old behavior of asigning table's id equal to unit_ids
+            # If the channel ids are integer keep the old behavior of assigning table's id equal to unit_ids
             if np.issubdtype(unit_ids.dtype, np.integer):
                 data_to_add["id"].update(data=unit_ids.astype("int"))
 
