@@ -1,4 +1,4 @@
-# Upcoming
+# Upcoming (0.3.0)
 
 ### Back-compatibility break
 * ExtractorDataInterface classes now access their extractor with the classmethod `cls.get_extractor()` instead of the attribute `self.Extractor`. [PR #324](https://github.com/catalystneuro/neuroconv/pull/324)
