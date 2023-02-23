@@ -21,8 +21,6 @@
 
 ### Documentation and tutorial enhancements
 * The instructions to build the documentation were moved to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
-
-### Documentation and tutorial enhancements
 * Moved NeuroConv catalogue from ReadMe.md to ReadTheDocs.
   [PR #322](https://github.com/catalystneuro/neuroconv/pull/322)
 
