@@ -293,7 +293,7 @@ class TestVideoConversions(unittest.TestCase):
             metadata = self.nwb_converter.get_metadata()
             for no in range(len(metadata["Behavior"]["Movies"])):
                 video_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-                assert mod[video_interface_name].data.chunks is not None  # TODO retrive storage_layout of hdf5 dataset
+                assert mod[video_interface_name].data.chunks is not None  # TODO retrieve storage_layout of hdf5 dataset
 
     def test_external_mode(self):
         starting_times = self.starting_times
