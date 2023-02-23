@@ -29,7 +29,7 @@ class TestImportStructure(TestCase):
             # Sub-modules
             "nwbconverter",
             "tools",  # Attached to namespace by NWBConverter import
-            "utils",  # Attached to namesapce by NWBconverter import
+            "utils",  # Attached to namespace by NWBconverter import
             # Exposed attributes
             "NWBConverter",
             "ConverterPipe",

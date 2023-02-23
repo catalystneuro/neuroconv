@@ -1,5 +1,8 @@
 name: Testing External Links
-on: pull_request
+on:
+  pull_request:
+  merge_group:
+
 jobs:
   build-and-test:
     name: Testing External Links

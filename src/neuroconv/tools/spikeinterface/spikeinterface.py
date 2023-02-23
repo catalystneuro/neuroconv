@@ -311,7 +311,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
         x=np.nan,
         y=np.nan,
         z=np.nan,
-        # There doesn't seem to be a canonical default for impedence, if missing.
+        # There doesn't seem to be a canonical default for impedance, if missing.
         # The NwbRecordingExtractor follows the -1.0 convention, other scripts sometimes use np.nan
         imp=-1.0,
         filtering="none",

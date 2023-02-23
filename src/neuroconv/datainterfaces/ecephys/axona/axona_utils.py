@@ -93,7 +93,7 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
     """
     Read LFP data from all Axona `.eeg` or `.egf` files in file_path's directory.
     E.g. if file_path='/my/directory/my_file.eeg', all .eeg channels will be conactenated
-    to a single np.array (chans x nobs). For .egf files substitude the file suffix.
+    to a single np.array (chans x nobs). For .egf files substitute the file suffix.
 
     Parameters
     ---------
