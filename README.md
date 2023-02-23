@@ -39,4 +39,3 @@ pip install git+https://github.com/catalystneuro/neuroconv.git@master
 
 ## Dependencies
 NeuroConv relies heavily on [SpikeInterface](https://github.com/SpikeInterface/spikeinterface) and [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
-
