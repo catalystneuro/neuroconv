@@ -19,9 +19,8 @@ class BaseExtractorInterface(BaseDataInterface, ABC):
 
     @classmethod
     def get_extractor(cls):
-        extractor = getattr(cls, "Extractor", None)
-        if extractor is not None:
-            return extractor
+        if cls.Extractor is not None:
+            return cls.Extractor
         extractor_module = get_package(package_name=cls.ExtractorModuleName)
         extractor = getattr(
             extractor_module,
