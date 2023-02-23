@@ -1,4 +1,4 @@
-# Upcoming
+# Upcoming (v.0.3.0)
 
 ### Features
 * The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
@@ -16,11 +16,10 @@
 * `BlackrockRecordingInterface` now writes all ElectricalSeries to "acquisition" unless changed using the `write_as` flag in `run_conversion`. [PR #315](https://github.com/catalystneuro/neuroconv/pull/315)
 
 ### Documentation and tutorial enhancements
-* The instructions to build the documentation were moved to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
-
-### Documentation and tutorial enhancements
+* Move testing instructions to ReadTheDocs. [PR #320](https://github.com/catalystneuro/neuroconv/pull/320)
 * Moved NeuroConv catalogue from ReadMe.md to ReadTheDocs.
   [PR #322](https://github.com/catalystneuro/neuroconv/pull/322)
+* Moved instructions to build the documentation from README.md to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
 
 # v0.2.4
 
