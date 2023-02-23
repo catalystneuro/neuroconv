@@ -11,7 +11,6 @@ from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.core import BaseRecording
 
-
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     CEDRecordingInterface,
