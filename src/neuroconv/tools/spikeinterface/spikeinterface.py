@@ -961,14 +961,14 @@ def add_units_table(
     properties_to_extract = [property for property in sorting_properties if property not in excluded_properties]
 
     if unit_ids is not None:
-        checked_sorting = sorting.select_units(unit_ids=unit_ids)
+        sorting = sorting.select_units(unit_ids=unit_ids)
         if unit_electrode_indices is not None:
-            unit_electrode_indices = np.array(unit_electrode_indices)[checked_sorting.ids_to_indices(unit_ids)]
-    unit_ids = checked_sorting.unit_ids
+            unit_electrode_indices = np.array(unit_electrode_indices)[sorting.ids_to_indices(unit_ids)]
+    unit_ids = sorting.unit_ids
 
     # Extract properties
     for property in properties_to_extract:
-        data = checked_sorting.get_property(property)
+        data = sorting.get_property(property)
         if isinstance(data[0], (bool, np.bool_)):
             data = data.astype(str)
         index = isinstance(data[0], (list, np.ndarray, tuple))
@@ -1007,7 +1007,7 @@ def add_units_table(
     has_electrodes_column = "electrodes" in units_table.colnames
 
     properties_with_data = {property for property in properties_to_add_by_rows if "data" in data_to_add[property]}
-    rows_in_data = [index for index in range(checked_sorting.get_num_units())]
+    rows_in_data = [index for index in range(sorting.get_num_units())]
     if not has_electrodes_column:
         rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
     else:
@@ -1028,8 +1028,8 @@ def add_units_table(
         spike_times = []
 
         # Extract and concatenate the spike times from multiple segments
-        for segment_index in range(checked_sorting.get_num_segments()):
-            segment_spike_times = checked_sorting.get_unit_spike_train(
+        for segment_index in range(sorting.get_num_segments()):
+            segment_spike_times = sorting.get_unit_spike_train(
                 unit_id=unit_ids[row], segment_index=segment_index, return_times=True
             )
             spike_times.append(segment_spike_times)
