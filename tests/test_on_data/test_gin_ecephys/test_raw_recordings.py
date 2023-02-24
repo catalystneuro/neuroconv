@@ -153,32 +153,32 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         )
     parameterized_recording_list.extend(
         [
-        param(
-            data_interface=NeuralynxRecordingInterface,
-            interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+            param(
+                data_interface=NeuralynxRecordingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+                ),
+                case_name="neuralynx",
             ),
-            case_name="neuralynx",
-        ),
-        param(
-            data_interface=OpenEphysBinaryRecordingInterface,
-            interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+            param(
+                data_interface=OpenEphysBinaryRecordingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+                ),
             ),
-        ),
-        param(
-            data_interface=BlackrockRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
+            param(
+                data_interface=BlackrockRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
+                ),
             ),
-        ),
-        param(
-            data_interface=NeuroScopeRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+            param(
+                data_interface=NeuroScopeRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+                ),
             ),
-        ),
-    ]
+        ]
     )
 
     this_python_version = version.parse(python_version())
