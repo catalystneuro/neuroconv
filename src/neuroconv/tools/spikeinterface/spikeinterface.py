@@ -20,7 +20,7 @@ from spikeinterface.core.old_api_utils import OldToNewRecording, OldToNewSorting
 
 from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import dict_deep_update, calculate_regular_series_rate, FilePathType
+from ...utils import dict_deep_update, FilePathType, calculate_regular_series_rate
 
 SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 SpikeInterfaceSorting = Union[BaseSorting, SortingExtractor]
