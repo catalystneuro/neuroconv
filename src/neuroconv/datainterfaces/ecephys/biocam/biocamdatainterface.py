@@ -17,7 +17,7 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
 
         Parameters
         ----------
-        folder_path : string or Path
+        file_path : string or Path
             Path to the .bwr file.
         verbose : bool, default: True
             Allows verbose.
