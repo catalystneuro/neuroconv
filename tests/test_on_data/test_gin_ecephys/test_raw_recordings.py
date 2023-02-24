@@ -1,7 +1,6 @@
 import unittest
 import pytest
 import itertools
-from pathlib import Path
 from datetime import datetime
 from platform import python_version
 from sys import platform
@@ -12,19 +11,17 @@ from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 from spikeinterface.core import BaseRecording
 
-
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     CEDRecordingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
-    NeuroScopeRecordingInterface,
+    NeuroScopeRecordingInterface
     OpenEphysRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
     BlackrockRecordingInterface,
     AxonaRecordingInterface,
     EDFRecordingInterface,

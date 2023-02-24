@@ -17,6 +17,7 @@ from neuroconv.datainterfaces import (
     PhySortingInterface,
     KiloSortSortingInterface,
     BlackrockSortingInterface,
+    PlexonSortingInterface,
 )
 
 # enable to run locally in interactive mode
@@ -85,6 +86,11 @@ class TestEcephysSortingNwbConversions(unittest.TestCase):
             data_interface=NeuralynxSortingInterface,
             interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),
             case_name="tetrodes",
+        ),
+        param(
+            data_interface=PlexonSortingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "plexon" / "File_plexon_2.plx")),
+            case_name="plexon_sorting",
         ),
     ]
 
