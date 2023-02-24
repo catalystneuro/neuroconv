@@ -72,7 +72,8 @@ class TestEcephysAuxNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestAuxRecording"].recording_extractor
 
         electrical_series_name = metadata["Ecephys"][converter.data_interface_objects["TestAuxRecording"].es_key][
-            "name"]
+            "name"
+        ]
 
         # NWBRecordingExtractor on spikeinterface does not yet support loading data written from multiple segments.
         if recording.get_num_segments() == 1:
