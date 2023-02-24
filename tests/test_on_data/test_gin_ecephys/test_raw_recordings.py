@@ -16,7 +16,7 @@ from neuroconv.datainterfaces import (
     CEDRecordingInterface,
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
-    NeuroScopeRecordingInterface
+    NeuroScopeRecordingInterface,
     OpenEphysRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysBinaryRecordingInterface,
