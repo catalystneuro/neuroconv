@@ -1373,7 +1373,7 @@ def _add_waveforms_to_units_table(
 
     Parameters
     ----------
-    sorting : SortExtractor
+    sorting : spikeinterface.SortingExtractor
         A spikeextractors SortingExtractor.
     units_table : pynwb.misc.Units
         A previously created units table
