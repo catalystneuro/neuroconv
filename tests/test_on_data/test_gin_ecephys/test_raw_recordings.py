@@ -151,7 +151,8 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
-    parameterized_recording_list.append(
+    parameterized_recording_list.extend(
+        [
         param(
             data_interface=NeuralynxRecordingInterface,
             interface_kwargs=dict(
@@ -178,6 +179,8 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
         ),
     ]
+    )
+
     this_python_version = version.parse(python_version())
     if platform != "darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(
