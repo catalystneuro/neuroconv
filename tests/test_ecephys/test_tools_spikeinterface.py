@@ -542,7 +542,7 @@ class TestWriteRecording(unittest.TestCase):
         )
 
     def test_default_values_single_segment(self):
-        """This test that the names are written appropiately for the single segment case (numbers not added)"""
+        """This test that the names are written appropriately for the single segment case (numbers not added)"""
         write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -784,7 +784,7 @@ class TestAddElectrodes(TestCase):
         """
         values_dic = self.defaults
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
-        self.nwbfile.add_electrode_column(name="property", description="exisiting property")
+        self.nwbfile.add_electrode_column(name="property", description="existing property")
 
         values_dic.update(id=20, channel_name="c", property="value_c")
         self.nwbfile.add_electrode(**values_dic)
@@ -1318,7 +1318,7 @@ class TestWriteWaveforms(TestCase):
         self.single_segment_we.recording.set_channel_groups(groups)
 
     def test_group_name_property(self):
-        """This tests that the 'group_name' property is correctly used to instantiate electrode grups"""
+        """This tests that the 'group_name' property is correctly used to instantiate electrode groups"""
         num_channels = len(self.single_segment_we.recording.channel_ids)
         self.single_segment_we.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
         write_waveforms(

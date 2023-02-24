@@ -41,7 +41,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
         self.readers_list = list()
         for f in file_paths:
-            self.readers_list.append(self.Extractor(filename=f))
+            self.readers_list.append(self.get_extractor()(filename=f))
 
         self.subset_channels = None
         self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
