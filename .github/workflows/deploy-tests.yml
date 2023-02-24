@@ -15,6 +15,7 @@ jobs:
 
   detect-changelog-updates:
     needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
     name: Auto-detecting CHANGELOG.md updates
     runs-on: ubuntu-latest
     steps:
