@@ -1,9 +1,9 @@
-"""Tool functions for performaing imports."""
+"""Tool functions for performing imports."""
 import sys
 import importlib.util
 from platform import python_version, processor
 from types import ModuleType
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union
 
 from packaging import version
 
@@ -12,7 +12,7 @@ def get_package(
     package_name: str,
     installation_instructions: Optional[str] = None,
     excluded_python_versions: Optional[List[str]] = None,
-    excluded_platforms_and_python_versions: Optional[Dict[str, List[str]]] = None,
+    excluded_platforms_and_python_versions: Optional[Dict[str, Union[List[str], Dict[str, List[str]]]]] = None,
 ) -> ModuleType:
     """
     Check if package is installed and return module if so.
@@ -29,17 +29,17 @@ def get_package(
         For example,
             >>> installation_source = "conda install -c conda-forge my-package-name"
         Defaults to f"pip install {package_name}".
-    excluded_python_versions : list of string versions, optional
+    excluded_python_versions : list of strs, optional
         If a given package has no distribution available for a certain Python version, it can be excluded by this
         import across all platforms. If you wish to be more specific about combinations of platforms and versions,
         use the 'excluded_platforms_and_python_versions' keyword argument instead.
         Allows all Python versions by default.
-    excluded_platforms_and_python_versions : dict mapping string platform names to a list of string versions, optional
-        In case some combinations of platforms or Python versions are not allowed for the given package, specify
-        this dictionary to raise a more specific error to that issue.
-        For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an informative error
-        when running on MacOS with Python version 3.7.
-        Allows all platforms and Python versions by default.
+    excluded_platforms_and_python_versions : dict, optional
+        mapping string platform names to a list of string versions. In case some combinations of platforms or Python
+        versions are not allowed for the given package, specify this dictionary to raise a more specific error to
+        that issue. For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an
+        informative error when running on MacOS with Python version 3.7. Allows all platforms and Python versions by
+        default.
 
     Raises
     ------

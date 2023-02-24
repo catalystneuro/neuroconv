@@ -6,18 +6,22 @@ from ....utils.types import FilePathType
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting European Data Format (EDF) data
-    using the :py:class:`~spikeinterface.extractors.EDFRecordingExtractor`."""
+    """
+    Data interface class for converting European Data Format (EDF) data using the
+    :py:class:`~spikeinterface.extractors.EDFRecordingExtractor`.
+
+    Not supported for Python 3.8 and 3.9 on M1 macs.
+    """
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
-        Load and prepare data for EDF
-        Currently only continuous EDF+ files (EDF+C) and original EDF files (EDF) are supported
+        Load and prepare data for EDF.
+        Currently, only continuous EDF+ files (EDF+C) and original EDF files (EDF) are supported
 
 
         Parameters
         ----------
-        folder_path : str or Path
+        file_path : str or Path
             Path to the edf file
         verbose : bool, default: True
             Allows verbose.
@@ -47,7 +51,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             date_of_birth=self.edf_header["birthdate"],
         )
 
-        # Filfter empty values
+        # Filter empty values
         subject_metadata = {property: value for property, value in subject_metadata.items() if value}
 
         return subject_metadata
