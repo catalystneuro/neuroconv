@@ -6,7 +6,7 @@ from ....utils import FilePathType
 
 
 def _assert_single_shank_for_spike_extractors(recording):
-    """Raises an exception for a se.SpikeGLXRecordingExtractor object intialized in a file
+    """Raises an exception for a se.SpikeGLXRecordingExtractor object initialized in a file
     with complex geometry as this is not (and will not be )supported in the old spikeextractors API.
 
     Parameters
@@ -82,7 +82,7 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePathType) -> str:
     Example of file name structure:
     Consider the filenames: `Noise4Sam_g0_t0.nidq.bin` or `Noise4Sam_g0_t0.imec0.lf.bin`
     The filenames consist of 3 or 4 parts separated by `.`
-    1. "Noise4Sam_g0_t0" will be the `name` variable. This choosen by the user at recording time.
+    1. "Noise4Sam_g0_t0" will be the `name` variable. This chosen by the user at recording time.
     2. "_gt0_" will give the `seg_index` (here 0)
     3. "nidq" or "imec0" will give the `device` variable
     4. "lf" or "ap" will be the `signal_kind` variable (for nidq the signal kind is an empty string)

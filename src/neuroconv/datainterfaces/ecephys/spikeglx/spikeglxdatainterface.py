@@ -1,14 +1,11 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
-from warnings import warn
-
+import json
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, FilePathType, dict_deep_update
 from .spikeglx_utils import (
     get_session_start_time,
-    _fetch_metadata_dic_for_spikextractors_spikelgx_object,
-    _assert_single_shank_for_spike_extractors,
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
 )
@@ -46,53 +43,32 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
+        es_key: str = "ElectricalSeriesAP",
     ):
         """
         Parameters
         ----------
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        spikeextractors_backend : bool, default: False
-            Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
             Whether to output verbose text.
+        es_key : str, default: "ElectricalSeries"
         """
         from probeinterface import read_spikeglx
 
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
-        self.es_key = self.stream_id
 
-        if spikeextractors_backend:  # pragma: no cover
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            from spikeextractors import SpikeGLXRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path), verbose=verbose, es_key=es_key)
-            _assert_single_shank_for_spike_extractors(self.recording_extractor)
-            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            file_path = Path(file_path)
-            folder_path = file_path.parent
-            super().__init__(
-                folder_path=folder_path,
-                stream_id=self.stream_id,
-                verbose=verbose,
-                es_key=self.es_key,
-            )
-            self.source_data["file_path"] = str(file_path)
-            self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+        file_path = Path(file_path)
+        folder_path = file_path.parent
+        super().__init__(
+            folder_path=folder_path,
+            stream_id=self.stream_id,
+            verbose=verbose,
+            es_key=es_key,
+        )
+        self.source_data["file_path"] = str(file_path)
+        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Mount the probe
         # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
@@ -133,7 +109,49 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         return metadata
 
+    def get_device_metadata(self) -> dict:
+        """Returns a device with description including the metadat as described here
+        # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+
+        Returns
+        -------
+        dict
+            a dict containing the metadata necessary for creating the device
+        """
+
+        meta = self.meta
+        metadata_dict = dict()
+        if "imDatPrb_type" in self.meta:
+            probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
+            probe_type = str(meta["imDatPrb_type"])
+            probe_type_description = probe_type_to_probe_description[probe_type]
+            metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
+
+        if "imDatFx_pn" in self.meta:
+            metadata_dict.update(flex_part_number=meta["imDatFx_pn"])
+
+        if "imDatBsc_pn" in self.meta:
+            metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
+
+        description_string = "no description"
+        if metadata_dict:
+            description_string = json.dumps(metadata_dict)
+        device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
+
+        return device
+
 
 # include for backwards compatibility
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     pass
+    """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
+
+    ExtractorName = "SpikeGLXRecordingExtractor"
+
+    def __init__(
+        self,
+        file_path: FilePathType,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeriesLF",
+    ):
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)

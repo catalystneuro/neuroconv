@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
-from pynwb.ecephys import ElectricalSeries
 
 from .spikeglx_utils import get_device_metadata, get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -22,7 +21,13 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, load_sync_channel: bool = False):
+    def __init__(
+        self,
+        file_path: FilePathType,
+        verbose: bool = True,
+        load_sync_channel: bool = False,
+        es_key: str = "ElectricalSeriesNIDQ",
+    ):
         """
         Read channel data from the NIDQ board for the SpikeGLX recording.
 
@@ -37,6 +42,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         load_sync_channel : bool, default: False
             Whether to load the last channel in the stream, which is typically used for synchronization.
             If True, then the probe is not loaded.
+        es_key : str, default: "ElectricalSeriesNIDQ"
         """
 
         folder_path = Path(file_path).parent
@@ -45,19 +51,14 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
             stream_id="nidq",
             verbose=verbose,
             load_sync_channel=load_sync_channel,
+            es_key=es_key,
         )
         self.source_data.update(file_path=str(file_path))
-        self.es_key = "nidq"
 
         self.recording_extractor.set_property(
             key="group_name", values=["NIDQChannelGroup"] * self.recording_extractor.get_num_channels()
         )
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, "nidq")]["meta"]
-
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(nidq=get_schema_from_hdmf_class(ElectricalSeries))
-        return metadata_schema
 
     def get_metadata(self):
         metadata = super().get_metadata()
@@ -78,12 +79,9 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
-
-        metadata["Ecephys"]["nidq"].update(
-            name="ElectricalSeriesNIDQ",
-            description="Raw acquisition traces from the NIDQ (.nidq.bin) channels.",
-        )
-
+        metadata["Ecephys"]["ElectricalSeriesNIDQ"][
+            "description"
+        ] = "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
         return metadata
 
     def get_channel_names(self) -> List[str]:

@@ -88,16 +88,16 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             if expected_write_module == "raw":
-                nwb_lfp_electrical_series = nwbfile.acquisition["imec0.lf"]
+                nwb_lfp_electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
             else:
-                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
+                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLF"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
             if not isinstance(recording, BaseRecording):
                 raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
             npt.assert_array_equal(x=recording.get_traces(return_scaled=False), y=nwb_lfp_unscaled)
-            # This can only be tested if both gain and offest are present
+            # This can only be tested if both gain and offset are present
             if recording.has_scaled_traces():
                 channel_conversion = nwb_lfp_electrical_series.channel_conversion
                 nwb_lfp_conversion_vector = (

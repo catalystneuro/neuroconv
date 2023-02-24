@@ -96,7 +96,7 @@ def transfer_globus_content(
     destination_endpoint_id : str
         Destination Globus ID.
     destination_folder : FolderPathType
-        Absolute path to a local folder where all content will be transfered to.
+        Absolute path to a local folder where all content will be transferred to.
     display_progress : bool, default: True
         Whether to display the transfer as progress bars using `tqdm`.
     progress_update_rate : float, default: 60.0
@@ -344,7 +344,7 @@ def automatic_dandi_upload(
     organized_nwbfiles = dandiset_path.rglob("*.nwb")
 
     # DANDI has yet to implement forcing of session_id inclusion in organize step
-    # This manually enforces it when only a single sesssion per subject is organized
+    # This manually enforces it when only a single session per subject is organized
     for organized_nwbfile in organized_nwbfiles:
         if "ses" not in organized_nwbfile.stem:
             with NWBHDF5IO(path=organized_nwbfile, mode="r") as io:
