@@ -4,10 +4,10 @@ from typing import Optional
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup
+from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
+from ...utils import get_schema_from_hdmf_class, get_base_schema, FilePathType
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -15,7 +15,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
-    def __init__(self, verbose: bool = True, **source_data):
+    def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
         """
         Parameters
         ----------
@@ -23,13 +23,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             If True, will print out additional information.
         source_data : dict
             key-value pairs of extractor-specific arguments.
+        es_key : str, default: "ElectricalSeries"
+            Key of this ElectricalSeries in the metadata dictionary
 
         """
         super().__init__(**source_data)
         self.recording_extractor = self.get_extractor()(**source_data)
         self.subset_channels = None
         self.verbose = verbose
-        self.es_key = None  # For automatic metadata extraction
+        self.es_key = es_key  # For automatic metadata extraction
 
     def get_metadata_schema(self):
         """Compile metadata schema for the RecordingExtractor."""
@@ -62,6 +64,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 ),
             ),
         )
+
+        if self.es_key is not None:
+            metadata_schema["properties"]["Ecephys"]["properties"].update(
+                {self.es_key: get_schema_from_hdmf_class(ElectricalSeries)}
+            )
+
         return metadata_schema
 
     def get_metadata(self):
@@ -78,6 +86,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Device=[dict(name="DeviceEcephys", description="no description")],
             ElectrodeGroup=electrode_metadata,
         )
+
+        if self.es_key is not None:
+            metadata["Ecephys"][self.es_key] = dict(
+                name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
+            )
 
         return metadata
 
@@ -118,7 +131,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -126,7 +139,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: str = "raw",  # Literal["raw", "processed"]
         write_electrical_series: bool = True,
-        es_key: Optional[str] = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
@@ -148,7 +160,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
         overwrite: bool, optional
-            Whether or not to overwrite the NWB file if one exists at the nwbfile_path.
+            Whether to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -158,8 +170,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        es_key : str, optional
-            Key in metadata dictionary containing metadata info for the specific electrical series
         compression : {'gzip', 'lzf', None}
             Type of compression to use.
             Set to None to disable all compression.
@@ -195,7 +205,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
-            es_key=es_key or self.es_key,
+            es_key=self.es_key,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,
