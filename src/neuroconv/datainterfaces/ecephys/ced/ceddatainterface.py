@@ -31,8 +31,7 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
     def get_all_channels_info(cls, file_path: FilePathType):
         """Retrieve and inspect necessary channel information prior to initialization."""
         _test_sonpy_installation()
-        getattr(cls, "RX")  # Required to trigger dynamic access in case this method is called first
-        return cls.RX.get_all_channels_info(file_path=file_path)
+        return cls.get_extractor().get_all_channels_info(file_path=file_path)
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """

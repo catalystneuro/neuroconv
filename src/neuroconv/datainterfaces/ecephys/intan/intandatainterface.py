@@ -60,12 +60,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Intan data using the
     :py:class:`~spikeinterface.extractors.IntanRecordingExtractor`."""
 
-    def __init__(
-        self,
-        file_path: FilePathType,
-        stream_id: str = "0",
-        verbose: bool = True,
-    ):
+    def __init__(self, file_path: FilePathType, stream_id: str = "0", verbose: bool = True):
         """
         Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
 
