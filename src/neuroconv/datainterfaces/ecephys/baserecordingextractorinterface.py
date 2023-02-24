@@ -186,7 +186,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             recording = self.recording_extractor
 
-        return write_recording(
+        write_recording(
             recording=recording,
             nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
