@@ -6,7 +6,7 @@
 * The `spikeextractor_backend` option was removed for all remaining classes. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
 * The `NeuroScopeMultiRecordingExtractor` has been removed. If your conversion required this, please submit an issue requesting instructions for how to implement it. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
 * The `NeuroScopeMultiRecordingExtractor` has been removed. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
-
+* The `SIPickle` interfaces have been removed. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
 
 ### Features
 * The `OpenEphysRecordingInterface` is now a wrapper for `OpenEphysBinaryRecordingInterface`. [PR #294](https://github.com/catalystneuro/neuroconv/pull/294)
