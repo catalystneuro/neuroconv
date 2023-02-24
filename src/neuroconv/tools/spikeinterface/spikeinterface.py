@@ -909,7 +909,7 @@ def add_all_to_nwbfile(
         Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2')
         or DataChunkIterator (iterator_type='v1').
         Valid options are
-            buffer_gb : float, defaults: 1.0
+            buffer_gb : float, default: 1.0
                 Units in GB. Available for both 'v2' and 'v1'. Recommended to be as much free RAM as available.
                 Automatically calculates suitable buffer shape.
             chunk_mb : float, default: 1.0
