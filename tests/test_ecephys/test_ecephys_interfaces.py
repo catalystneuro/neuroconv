@@ -52,10 +52,14 @@ class TestSortingInterface(unittest.TestCase):
     def setUp(self) -> None:
         self.sorting_start_frames = [100, 200, 300]
         self.num_frames = 1000
-        sorting = NumpySorting(sampling_frequency=3000.0)
-        sorting.add_unit(unit_id=1, times=np.arange(self.sorting_start_frames[0], self.num_frames))
-        sorting.add_unit(unit_id=2, times=np.arange(self.sorting_start_frames[1], self.num_frames))
-        sorting.add_unit(unit_id=3, times=np.arange(self.sorting_start_frames[2], self.num_frames))
+        times = np.array([], dtype="int")
+        labels = np.array([], dtype="int")
+        for i, start_frame in enumerate(self.sorting_start_frames):
+            times_i = np.arange(start_frame, self.num_frames, dtype="int")
+            labels_i = (i + 1) * np.ones_like(times_i, dtype="int")
+            times = np.concatenate((times, times_i))
+            labels = np.concatenate((labels, labels_i))
+        sorting = NumpySorting.from_times_labels(times, labels, sampling_frequency=3000.0)
 
         class TestSortingInterface(BaseSortingExtractorInterface):
             ExtractorName = "NumpySorting"
