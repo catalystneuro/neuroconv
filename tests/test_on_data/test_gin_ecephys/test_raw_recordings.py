@@ -17,6 +17,7 @@ from neuroconv.datainterfaces import (
     IntanRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroScopeRecordingInterface,
+    OpenEphysRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
@@ -128,13 +129,34 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 ),
             ),
         ),
+        param(
+            data_interface=NeuralynxRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+            ),
+            case_name="neuralynx",
+        ),
+        param(
+            data_interface=OpenEphysBinaryRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+            ),
+        ),
+        param(
+            data_interface=BlackrockRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
+            ),
+        ),
+        param(
+            data_interface=NeuroScopeRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+            ),
+        ),
     ]
     this_python_version = version.parse(python_version())
-    if (
-        platform != "darwin"
-        and this_python_version >= version.parse("3.8")
-        and this_python_version < version.parse("3.10")
-    ):
+    if platform != "darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,
@@ -142,49 +164,15 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
-    parameterized_recording_list.append(
-        param(
-            data_interface=NeuralynxRecordingInterface,
-            interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
-            ),
-            case_name="neuralynx",
-        )
-    )
 
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
-            param(
-                data_interface=OpenEphysBinaryRecordingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
-        )
-
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
-            param(
-                data_interface=BlackrockRecordingInterface,
-                interface_kwargs=dict(
-                    file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
-        )
-
-    for suffix, spikeextractors_backend in itertools.product(["rhd", "rhs"], [True, False]):
+    for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
             param(
                 data_interface=IntanRecordingInterface,
                 interface_kwargs=dict(
                     file_path=str(DATA_PATH / "intan" / f"intan_{suffix}_test_1.{suffix}"),
-                    spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"{suffix}, spikeextractors_backend={spikeextractors_backend}",
+                case_name=suffix,
             )
         )
 
@@ -192,12 +180,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     num_channels_list = [512, 128]
     file_name_num_channels_pairs = zip(file_name_list, num_channels_list)
     gains_list = [None, [0.195], [0.385]]
-    for iteration in itertools.product(file_name_num_channels_pairs, gains_list, [True, False]):
-        (file_name, num_channels), gains, spikeextractors_backend = iteration
+    for iteration in itertools.product(file_name_num_channels_pairs, gains_list):
+        (file_name, num_channels), gains = iteration
 
         interface_kwargs = dict(
             file_path=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"),
-            spikeextractors_backend=spikeextractors_backend,
         )
 
         if gains is not None:
@@ -208,24 +195,9 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         else:
             gain_string = None
 
-        case_name = (
-            f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
-            f"spikeextractors_backend_{spikeextractors_backend}"
-        )
+        case_name = f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
         parameterized_recording_list.append(
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
-        )
-
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
-            param(
-                data_interface=NeuroScopeRecordingInterface,
-                interface_kwargs=dict(
-                    file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
         )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)

@@ -80,7 +80,6 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         gain: Optional[float] = None,
         xml_file_path: OptionalFilePathType = None,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
     ):
         """
@@ -98,35 +97,14 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         """
         get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-
-            from spikeextractors import NeuroscopeRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = NeuroscopeRecordingExtractor
-            super().__init__(file_path=file_path, xml_file_path=xml_file_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(file_path=file_path, verbose=verbose)
-            self.source_data["xml_file_path"] = xml_file_path
+        super().__init__(file_path=file_path, verbose=verbose)
+        self.source_data["xml_file_path"] = xml_file_path
 
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
