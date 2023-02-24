@@ -34,20 +34,21 @@ class CEDRecordingInterface(BaseRecordingExtractorInterface):
         getattr(cls, "RX")  # Required to trigger dynamic access in case this method is called first
         return cls.RX.get_all_channels_info(file_path=file_path)
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Initialize reading of CED file.
 
         Parameters
         ----------
-        file_path: FilePathType
+        file_path : FilePathType
             Path to .smr or .smrx file.
-        verbose: bool, default: True
+        verbose : bool, default: True
+        es_key : str, default: "ElectricalSeries"
         """
         _test_sonpy_installation()
 
         stream_id = "1" if Path(file_path).suffix == ".smr" else None
-        super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose)
+        super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key)
 
         # Subset raw channel properties
         signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]

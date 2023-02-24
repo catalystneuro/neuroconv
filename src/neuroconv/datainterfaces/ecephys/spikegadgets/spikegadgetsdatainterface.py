@@ -7,7 +7,7 @@ from ....utils import FilePathType, ArrayType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting data in the SpikeGadgets format.
+    """Data interface class for converting data in the SpikeGadgets format.
     Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`."""
 
     @classmethod
@@ -21,6 +21,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         gains: Optional[ArrayType] = None,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -33,9 +34,10 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             The early versions of SpikeGadgets do not automatically record the conversion factor ('gain') of the
             acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
+        es_key : str, default: "ElectricalSeries"
         """
 
-        super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
+        super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose, es_key=es_key)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:
