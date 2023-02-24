@@ -1,0 +1,125 @@
+from unittest.mock import patch
+from datetime import datetime
+from tempfile import mkdtemp
+from pathlib import Path
+from shutil import rmtree
+from io import StringIO
+
+from pynwb import NWBHDF5IO, TimeSeries
+from hdmf.testing import TestCase
+
+from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
+
+
+class TestMakeOrLoadNWBFile(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = Path(mkdtemp())
+        cls.metadata = dict(NWBFile=dict(session_start_time=datetime.now().astimezone()))
+
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(cls.tmpdir)
+
+    def setUp(self):
+        self.time_series_1 = TimeSeries(name="test1", data=[1], rate=1.0, unit="test")
+        self.time_series_2 = TimeSeries(name="test2", data=[1], rate=1.0, unit="test")
+
+    def test_make_or_load_nwbfile_assertion_nwbfile_path_and_nwbfile_object(self):
+        """Test if assertion is raised when specifying both an NWBFile path and an in-memory NWBFile object."""
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "You must specify either an 'nwbfile_path', or an in-memory 'nwbfile' object, "
+                "or provide the metadata for creating one."
+            ),
+        ):
+            with make_or_load_nwbfile(verbose=True) as nwbfile:
+                nwbfile.add_acquisition(self.time_series_1)
+
+    def test_make_or_load_nwbfile_assertion_conflicting_bases(self):
+        """Test if assertion is raised when conflicting nwbfile object bases are used."""
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_assertion_conflicting_bases.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg=(
+                "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' "
+                "object was passed! Cannot reconcile which nwbfile object to write."
+            ),
+        ):
+            with make_or_load_nwbfile(
+                nwbfile_path=nwbfile_path, nwbfile=make_nwbfile_from_metadata(metadata=self.metadata), overwrite=False
+            ) as nwbfile:
+                nwbfile.add_acquisition(self.time_series_1)
+
+    def test_make_or_load_nwbfile_no_print_on_error_in_context(self):
+        """Test the expected stdout in case an error occurs during the context."""
+        with patch("sys.stdout", new=StringIO()) as fake_out:
+            try:
+                with make_or_load_nwbfile(nwbfile_path=self.tmpdir / "doesnt_matter_1.nwb", metadata=self.metadata):
+                    raise ValueError("test")
+            except ValueError:
+                pass
+            self.assertEqual(fake_out.getvalue(), "")
+
+    def test_make_or_load_nwbfile_no_file_save_on_error_in_context(self):
+        nwbfile_path = Path(self.tmpdir / "doesnt_matter_2.nwb")
+        try:
+            with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata):
+                raise ValueError("test")
+        except ValueError:
+            pass
+        assert not nwbfile_path.exists()
+
+    def test_make_or_load_nwbfile_write(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_write.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_closure(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_closure.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            self.assertCountEqual(nwbfile_out.acquisition["test1"].data, self.time_series_1.data)
+        assert not nwbfile_out.acquisition["test1"].data  # A closed h5py.Dataset returns false
+
+    def test_make_or_load_nwbfile_overwrite(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_overwrite.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" not in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_append(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_append.nwb"
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, metadata=self.metadata, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition
+
+    def test_make_or_load_nwbfile_pass_nwbfile(self):
+        nwbfile_path = self.tmpdir / "test_make_or_load_nwbfile_pass_nwbfile.nwb"
+        nwbfile_in = make_nwbfile_from_metadata(metadata=self.metadata)
+        nwbfile_in.add_acquisition(self.time_series_1)
+        with make_or_load_nwbfile(nwbfile_path=nwbfile_path, nwbfile=nwbfile_in, overwrite=True) as nwbfile:
+            nwbfile.add_acquisition(self.time_series_2)
+        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+            nwbfile_out = io.read()
+            assert "test1" in nwbfile_out.acquisition
+            assert "test2" in nwbfile_out.acquisition

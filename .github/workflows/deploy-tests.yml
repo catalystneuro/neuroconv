@@ -2,19 +2,20 @@ name: Deploy tests
 
 on:
   pull_request:
+  merge_group:
+
+concurrency:  # Cancel previous workflows on the same pull request
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  cancel-previous-runs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
 
   assess-file-changes:
     uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@main
 
   detect-changelog-updates:
     needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
     name: Auto-detecting CHANGELOG.md updates
     runs-on: ubuntu-latest
     steps:

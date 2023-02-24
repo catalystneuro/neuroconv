@@ -204,10 +204,10 @@ class ConverterPipe(NWBConverter):
         return conversion_options_schema
 
     def get_source_schema(self):
-        raise NotImplementedError("Source data not available with previously intialized classes")
+        raise NotImplementedError("Source data not available with previously initialized classes")
 
     def validate_source(self):
-        raise NotImplementedError("Source data not available with previously intialized classes")
+        raise NotImplementedError("Source data not available with previously initialized classes")
 
     def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
         self.verbose = verbose
