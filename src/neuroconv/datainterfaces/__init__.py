@@ -7,10 +7,6 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
-from .ecephys.spikeinterface.sipickledatainterfaces import (
-    SIPickleRecordingInterface,
-    SIPickleSortingInterface,
-)
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.ced.ceddatainterface import CEDRecordingInterface
 from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
