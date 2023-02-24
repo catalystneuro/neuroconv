@@ -14,7 +14,7 @@ combining neural data in proprietary formats and adding essential metadata.
 Features:
 * Command line interface
 * Python API
-* Leverages SpikeExtractor to support conversion from a number or proprietary formats.
+* Leverages SpikeInterface and NEO to support conversion from a number or proprietary formats.
 
 ## Installation
 To install the latest stable release of **neuroconv** though PyPI, type:
