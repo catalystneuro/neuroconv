@@ -1,6 +1,7 @@
 """Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
 from pathlib import Path
 import json
+from typing import Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, FilePathType, dict_deep_update
@@ -44,7 +45,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         verbose: bool = True,
-        es_key: str = "ElectricalSeriesAP",
+        es_key: Optional[str] = None,
     ):
         """
         Parameters
@@ -58,7 +59,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         from probeinterface import read_spikeglx
 
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
-
+        if es_key is None:
+            if "lf" in self.stream_id:
+                es_key = "ElectricalSeriesLF"
+            elif "ap" in self.stream_id:
+                es_key = "ElectricalSeriesAP"
+            else:
+                raise ValueError("Cannot automatically determine es_key from path")
         file_path = Path(file_path)
         folder_path = file_path.parent
         super().__init__(
