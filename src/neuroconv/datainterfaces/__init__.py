@@ -20,7 +20,7 @@ from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockSortingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
-from .ecephys.openephys.openephysbinarydatainterface import OpenEphysSortingInterface
+from .ecephys.openephys.openephysbinarydatainterface import OpenEphysSortingInterface, OpenEphysBinaryRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaRecordingInterface,
     AxonaPositionDataInterface,
@@ -32,7 +32,7 @@ from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
-from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface
+from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface, PlexonSortingInterface
 from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
@@ -83,6 +83,7 @@ interface_list = [
     CellExplorerSortingInterface,
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
+    OpenEphysBinaryRecordingInterface,
     OpenEphysRecordingInterface,
     OpenEphysSortingInterface,
     PhySortingInterface,
@@ -94,6 +95,7 @@ interface_list = [
     EDFRecordingInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
+    PlexonSortingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
