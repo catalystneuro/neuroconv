@@ -16,12 +16,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
         return source_schema
 
-    def __init__(
-        self,
-        file_path: FilePathType,
-        gains: Optional[ArrayType] = None,
-        verbose: bool = True,
-    ):
+    def __init__(self, file_path: FilePathType, gains: Optional[ArrayType] = None, verbose: bool = True):
         """
         Recording Interface for the SpikeGadgets Format.
 
@@ -34,7 +29,6 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
         """
-
         super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)

@@ -24,12 +24,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         -----
         Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         """
-
-        super().__init__(
-            folder_path=folder_path,
-            stream_id=stream_id,
-            verbose=verbose,
-        )
+        super().__init__(folder_path=folder_path, stream_id=stream_id, verbose=verbose)
 
         # Fix channel name format
         channel_names = self.recording_extractor.get_property("channel_name")
