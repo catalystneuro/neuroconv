@@ -4,8 +4,6 @@ from datetime import datetime
 
 import numpy as np
 from parameterized import parameterized, param
-from spikeextractors import NwbSortingExtractor, SortingExtractor
-from spikeextractors.testing import check_sortings_equal
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
 
@@ -140,19 +138,15 @@ class TestEcephysSortingNwbConversions(unittest.TestCase):
             sf = 30000
             sorting.set_sampling_frequency(sf)
 
-        if isinstance(sorting, SortingExtractor):
-            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
-            check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
-        else:
-            # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
-            if sorting.get_num_segments() == 1:
-                nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
-                # In the NWBSortingExtractor, since unit_names could be not unique,
-                # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
-                sorting_renamed = sorting.select_units(
-                    unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
-                )
-                check_sorting_equal_si(SX1=sorting_renamed, SX2=nwb_sorting)
+        # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
+        if sorting.get_num_segments() == 1:
+            nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
+            # In the NWBSortingExtractor, since unit_names could be not unique,
+            # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
+            sorting_renamed = sorting.select_units(
+                unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
+            )
+            check_sorting_equal_si(SX1=sorting_renamed, SX2=nwb_sorting)
 
 
 if __name__ == "__main__":
