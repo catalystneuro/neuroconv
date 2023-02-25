@@ -56,4 +56,3 @@ See our [ReadTheDocs page](https://neuroconv.readthedocs.io/en/main/) for full d
 
 ## License
 NeuroConv is distributed under the BSD3 License. See [LICENSE](https://github.com/catalystneuro/neuroconv/blob/main/LICENSE) for more information.
-
