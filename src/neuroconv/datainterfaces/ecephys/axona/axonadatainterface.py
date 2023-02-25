@@ -14,7 +14,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     Primary data interface class for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
     """
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 
         Parameters
@@ -22,9 +22,10 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType
             Path to .bin file.
         verbose: bool, optional, default: True
+        es_key: str, default: "ElectricalSeries"
         """
 
-        super().__init__(file_path=file_path, all_annotations=True, verbose=verbose)
+        super().__init__(file_path=file_path, all_annotations=True, verbose=verbose, es_key=es_key)
         self.source_data = dict(file_path=file_path, verbose=verbose)
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 
@@ -41,7 +42,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         nwbfile_metadata = dict(
             session_start_time=session_start_time,
             session_description=session_description,
-            experimenter=[experimenter],  # The schema expects an array of strings
+            experimenter=[experimenter] if experimenter else None,  # The schema expects an array of strings
         )
 
         # Filter empty values
@@ -82,7 +83,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         metadata["NWBFile"].update(nwbfile_metadata)
 
         ecephys_metadata = self.extract_ecephys_metadata()
-        metadata["Ecephys"] = ecephys_metadata
+        metadata["Ecephys"].update(ecephys_metadata)
 
         return metadata
 
