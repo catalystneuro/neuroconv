@@ -1,14 +1,11 @@
 """The primary data interfaces for SpikeGLX."""
 from pathlib import Path
 import json
-<<<<<<< HEAD
 from typing import Optional
 
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
-=======
-from warnings import warn
->>>>>>> main
+
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
@@ -65,7 +62,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
-<<<<<<< HEAD
         file_path = Path(file_path)
         folder_path = file_path.parent
         super().__init__(
@@ -75,37 +71,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         )
         self.source_data["file_path"] = str(file_path)
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
-=======
-        if spikeextractors_backend:  # pragma: no cover
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            from spikeextractors import SpikeGLXRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path), verbose=verbose, es_key=es_key)
-            _assert_single_shank_for_spike_extractors(self.recording_extractor)
-            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            file_path = Path(file_path)
-            folder_path = file_path.parent
-            super().__init__(
-                folder_path=folder_path,
-                stream_id=self.stream_id,
-                verbose=verbose,
-                es_key=es_key,
-            )
-            self.source_data["file_path"] = str(file_path)
-            self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
->>>>>>> main
 
         # Mount the probe
         # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
