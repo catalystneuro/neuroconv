@@ -29,6 +29,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: FolderPathType,
         stub_test: bool = False,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -39,12 +40,13 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             Path to OpenEphys directory.
         stub_test : bool, default: False
         verbose : bool, default: True
+        es_key : str, default: "ElectricalSeries"
         """
 
         from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         self.RX = OpenEphysBinaryRecordingExtractor
-        super().__init__(folder_path=folder_path, verbose=verbose)
+        super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key)
 
         if stub_test:
             self.subset_channels = [0, 1]

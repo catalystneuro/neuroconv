@@ -3,18 +3,32 @@
 ![Auto-release](https://github.com/catalystneuro/neuroconv/actions/workflows/auto-publish.yml/badge.svg)
 [![codecov](https://codecov.io/github/catalystneuro/neuroconv/coverage.svg?branch=main)](https://codecov.io/github/catalystneuro/neuroconv?branch=main)
 [![documentation](https://readthedocs.org/projects/neuroconv/badge/?version=main)](https://neuroconv.readthedocs.io/en/main/)
-[![License](https://img.shields.io/pypi/l/pynwb.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
+[![License](https://img.shields.io/pypi/l/neuroconv.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
 
 # NeuroConv
 
-NeuroConv is a package for creating NWB files by converting and
-combining neural data in proprietary formats and adding essential metadata.
 
+
+<!-- TABLE OF CONTENTS -->
+
+## Table of Contents
+
+- [About](#about)
+- [Installation](#installation)
+- [Documentation](#documentation)
+- [License](#license)
+
+## About
+
+NeuroConv is a Python package for converting neurophysiology data in a variety of proprietary formats to the [Neurodata Without Borders (NWB)](http://nwb.org) standard.
 
 Features:
-* Command line interface
-* Python API
-* Leverages SpikeExtractor to support conversion from a number or proprietary formats.
+
+* Reads data from 36 popular neurophysiology data formats and writes to NWB using best practices.
+* Extracts relevant metadata from each format.
+* Handles large data volume by reading datasets piece-wise.
+* Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
+* Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
 ## Installation
 To install the latest stable release of **neuroconv** though PyPI, type:
@@ -37,5 +51,8 @@ Finally, if you prefer to avoid `conda` altogether, the following commands provi
 pip install git+https://github.com/catalystneuro/neuroconv.git@master
 ```
 
-## Dependencies
-NeuroConv relies heavily on [SpikeInterface](https://github.com/SpikeInterface/spikeinterface) and [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
+## Documentation
+See our [ReadTheDocs page](https://neuroconv.readthedocs.io/en/main/) for full documentation, including a gallery of all supported formats.
+
+## License
+NeuroConv is distributed under the BSD3 License. See [LICENSE](https://github.com/catalystneuro/neuroconv/blob/main/LICENSE) for more information.
