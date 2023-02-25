@@ -14,7 +14,6 @@ from hdmf.common.table import DynamicTable
 from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
 from nwbinspector.utils import get_package_version
 from packaging.version import Version
-from spikeextractors import RecordingExtractor, SortingExtractor
 from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 from numbers import Real
 from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
@@ -599,9 +598,11 @@ def add_electrical_series(
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
-    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique. 0-pad these names based on the number of segments. If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
-    if checked_recording.get_num_segments() > 1:
-        width = int(np.ceil(np.log10(checked_recording.get_num_segments())))
+    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
+    # 0-pad these names based on the number of segments.
+    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
+    if recording.get_num_segments() > 1:
+        width = int(np.ceil(np.log10((recording.get_num_segments()))))
         eseries_kwargs["name"] += f"{segment_index:0{width}}"
 
     # Indexes by channel ids if they are integer or by indices otherwise.
