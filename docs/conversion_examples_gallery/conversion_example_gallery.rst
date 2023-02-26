@@ -3,8 +3,8 @@
 Conversion Gallery
 ==================
 
-The examples here are guaranteed to be running correctly with our testing suite.
-Their aim is to be a showcase of the library capabilities and to get you to hit the ground running with your own conversion.
+The examples here are guaranteed to be running correctly with our testing suite. Their aim is to be a showcase of the
+library capabilities and to get you to hit the ground running with your own conversion.
 
 Extracellular electrophysiology
 -------------------------------
@@ -19,16 +19,17 @@ Recording
     Axona <recording/axona>
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
+    European Data Format (EDF) <recording/edf>
     Intan <recording/intan>
-    MEArec <recording/mearec>
     MCSRaw <recording/mcsraw>
+    MEArec <recording/mearec>
     Neuralynx <recording/neuralynx>
     NeuroScope <recording/neuroscope>
     OpenEphys <recording/openephys>
     Plexon <recording/plexon>
+    Spike2 <recording/spike2>
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
-    European Data Format (EDF) <recording/edf>
     Tucker-Davis Technologies (TDT) <recording/tdt>
 
 Sorting
@@ -73,10 +74,10 @@ Segmentation
 .. toctree::
     :maxdepth: 1
 
-    Suite2P <segmentation/suite2p>
     Caiman <segmentation/caiman>
-    EXTRACT <segmentation/extract>
     CNMFE <segmentation/cnmfe>
+    EXTRACT <segmentation/extract>
+    Suite2P <segmentation/suite2p>
 
 Behavior
 --------
@@ -84,10 +85,11 @@ Behavior
 .. toctree::
     :maxdepth: 1
 
+    Audio <behavior/audio>
     DeepLabCut <behavior/deeplabcut>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
-    Audio <behavior/audio>
+
 
 Text
 ----
