@@ -12,6 +12,7 @@ extensions = [
     "sphinx.ext.napoleon",  # Support for NumPy and Google style docstrings
     "sphinx.ext.autodoc",  # Includes documentation from docstrings in docs/api
     "sphinx.ext.autosummary",  # Not clear. Please add if you know
+    "sphinx.ext.doctest",  # Doctest control for conditional skipping
     "sphinx_toggleprompt",  # Used to control >>> behavior in the conversion gallery example doctests
     "sphinx_copybutton",  # Used to control the copy button behavior in the conversion gallery doctests
     "sphinx.ext.intersphinx",  # Allows links to other sphinx project documentation sites
@@ -79,7 +80,6 @@ toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>)
 toggleprompt_default_hidden = "true"
 
 # Doctest
-extensions = ["sphinx.ext.doctest"]
 doctest_global_setup = """
 from platform import python_version as get_python_version
 from packaging.version import Version
