@@ -33,7 +33,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to OpenEphys directory.
-        stream_name : str, defulat: "Signals CH"
+        stream_name : str, default: "Signals CH"
             The name of the recording stream.
         verbose : bool, default: True
         """
