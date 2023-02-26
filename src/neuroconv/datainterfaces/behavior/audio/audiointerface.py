@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 from warnings import warn
 
 import numpy as np
@@ -135,7 +135,7 @@ class AudioInterface(BaseDataInterface):
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         stub_frames: int = 1000,
-        write_as: str = "stimulus",
+        write_as: Literal["stimulus", "acquisition"] = "stimulus",
         starting_times: Optional[list] = None,
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,

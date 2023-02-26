@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 from warnings import warn
 
 from hdmf.backends.hdf5 import H5DataIO
@@ -15,7 +15,7 @@ def add_acoustic_waveform_series(
     rate: float,
     metadata: dict,
     starting_time: float = 0.0,
-    write_as: str = "stimulus",
+    write_as: Literal["stimulus", "acquisition"] = "stimulus",
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:

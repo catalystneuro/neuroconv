@@ -1,5 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
-from typing import Optional
+from typing import Optional, Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -137,7 +137,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        write_as: str = "raw",  # Literal["raw", "processed"]
+        write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
