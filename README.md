@@ -5,8 +5,13 @@
 [![documentation](https://readthedocs.org/projects/neuroconv/badge/?version=main)](https://neuroconv.readthedocs.io/en/main/)
 [![License](https://img.shields.io/pypi/l/neuroconv.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
 
-# NeuroConv
-
+<p align="center">
+  <img src="docs/img/neuroconv_logo.png" width="250" alt="NeuroConv logo"/>
+  <h3 align="center">Automatically convert neurophysiology data to NWB</h3>
+</p>
+<p align="center">
+   <a href="https://neuroconv.readthedocs.io/"><strong>Explore our documentation »</strong></a>
+</p>
 
 
 <!-- TABLE OF CONTENTS -->
