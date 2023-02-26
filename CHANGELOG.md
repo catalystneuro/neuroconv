@@ -2,8 +2,7 @@
 
 ### Back-compatibility break
 * `ExtractorInterface` classes now access their extractor with the classmethod `cls.get_extractor()` instead of the attribute `self.Extractor`. [PR #324](https://github.com/catalystneuro/neuroconv/pull/324)
-* The `spikeextractor_backend` option was removed for several `RecordingExtractorInterface` classes. [PR #324](https://github.com/catalystneuro/neuroconv/pull/324)
-* The `spikeextractor_backend` option was removed for all remaining classes. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
+* The `spikeextractor_backend` option was removed for all`RecordingExtractorInterface` classes. ([PR #324](https://github.com/catalystneuro/neuroconv/pull/324), [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)]
 * The `NeuroScopeMultiRecordingExtractor` has been removed. If your conversion required this, please submit an issue requesting instructions for how to implement it. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
 * The `NeuroScopeMultiRecordingExtractor` has been removed. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
 * The `SIPickle` interfaces have been removed. [PR #309](https://github.com/catalystneuro/neuroconv/pull/309)
