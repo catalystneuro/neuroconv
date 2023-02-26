@@ -5,8 +5,6 @@
 [![documentation](https://readthedocs.org/projects/neuroconv/badge/?version=main)](https://neuroconv.readthedocs.io/en/main/)
 [![License](https://img.shields.io/pypi/l/neuroconv.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
 
-# NeuroConv
-
 <p float="left">
   <img src="docs/img/neuroconv_logo.png" width="300" />
 </p>
