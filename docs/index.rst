@@ -1,6 +1,9 @@
 NeuroConv
 =========
 
+.. image:: img/neuroconv_logo.png
+  :width: 300
+
 ..
   :scale: 100 %
   :align: right
