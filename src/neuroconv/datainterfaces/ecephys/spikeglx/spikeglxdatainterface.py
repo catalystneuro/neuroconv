@@ -1,4 +1,4 @@
-"""The primary data interfaces for SpikeGLX."""
+"""DataInterfaces for SpikeGLX."""
 from pathlib import Path
 import json
 from typing import Optional
