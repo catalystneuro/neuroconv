@@ -43,6 +43,7 @@ Sorting
     Neuralynx <sorting/neuralynx>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
+    Plexon <sorting/plexon>
 
 Intracellular electrophysiology
 -------------------------------
