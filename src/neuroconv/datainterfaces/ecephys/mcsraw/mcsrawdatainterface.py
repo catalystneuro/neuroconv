@@ -11,7 +11,7 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     Using the :py:class:`~spikeinterface.extractors.MCSRawRecordingExtractor`.
     """
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for MCSRaw.
 
@@ -21,6 +21,6 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
             Path to the .raw file.
         verbose: bool, default: True
             Allows verbose.
-            Default is True.
+        es_key: str, default: "ElectricalSeries"
         """
-        super().__init__(file_path=file_path, verbose=verbose)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)

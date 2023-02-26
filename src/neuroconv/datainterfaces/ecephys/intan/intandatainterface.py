@@ -65,6 +65,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePathType,
         stream_id: str = "0",
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
@@ -77,10 +78,11 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             The stream of the data for spikeinterface, "0" by default.
         verbose : bool, default: True
             Verbose
+        es_key : str, default: "ElectricalSeries"
         """
 
         self.stream_id = stream_id
-        super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose)
+        super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
         electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
 
         group_names = electrodes_metadata["group_names"]
