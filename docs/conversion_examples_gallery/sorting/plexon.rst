@@ -10,7 +10,6 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
 Convert Plexon spiking data (.plx) to NWB using :py:class:`~.neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.PlexonSortingInterface`.
 
 .. code-block:: python
-    :skipif: python_version.minor >= 10
 
     >>> from datetime import datetime
     >>> from dateutil import tz
