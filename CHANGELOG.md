@@ -28,6 +28,9 @@
   [PR #322](https://github.com/catalystneuro/neuroconv/pull/322)
 * Moved instructions to build the documentation from README.md to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
 
+### Improvements
+* Use `Literal` in typehints (incompatible with Python<=3.8). [PR #340](https://github.com/catalystneuro/neuroconv/pull/340)
+
 
 
 # v0.2.4
