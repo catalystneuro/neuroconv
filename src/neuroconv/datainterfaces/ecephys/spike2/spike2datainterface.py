@@ -73,7 +73,6 @@ class CEDRecordingInterface(Spike2RecordingInterface):
         """
         warn(
             message="CEDRecordingInterface will soon be deprecated. Please use Spike2RecordingInterface instead.",
-            category=DeprecationWarning
+            category=DeprecationWarning,
         )
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
-
