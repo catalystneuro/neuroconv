@@ -27,7 +27,10 @@
 * Moved NeuroConv catalogue from ReadMe.md to ReadTheDocs.
   [PR #322](https://github.com/catalystneuro/neuroconv/pull/322)
 * Moved instructions to build the documentation from README.md to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
+* Add `Spike2RecordingInterface` to conversion gallery. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)
 
+### Pending deprecation
+* Change name from `CedRecordingInterface` to `Spike2RecordingInterface`. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)
 
 
 # v0.2.4
