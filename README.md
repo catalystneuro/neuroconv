@@ -7,6 +7,9 @@
 
 # NeuroConv
 
+<p float="left">
+  <img src="docs/img/neuroconv_logo.png" width="300" /> 
+</p>
 
 
 <!-- TABLE OF CONTENTS -->
