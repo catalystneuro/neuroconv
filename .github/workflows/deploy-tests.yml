@@ -50,3 +50,20 @@ jobs:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
     uses: catalystneuro/neuroconv/.github/workflows/doctests.yml@main
+
+  check-final-status:
+    if: always()
+
+    needs:
+    - run-tests
+    - run-dev-tests
+    - run-doctests-only
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Decide whether the all jobs succeeded or at least one failed
+      uses: re-actors/alls-green@release/v1
+      with:
+        allowed-skips: run-tests, run-dev-tests, run-doctests-only  # Each has the option to skip depending on whether src changed
+        jobs: ${{ toJSON(needs) }}
