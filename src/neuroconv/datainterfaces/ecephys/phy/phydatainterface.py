@@ -15,7 +15,6 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         folder_path: FolderPathType,
         exclude_cluster_groups: Optional[list] = None,
         verbose: bool = True,
-        spikeextractors_backend: bool = False,
     ):
         """
         Initialize a PhySortingInterface.
@@ -27,19 +26,5 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         exclude_cluster_groups : str or list of str, optional
             Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
         verbose : bool, default: True
-        spikeextractors_backend : bool, default: False
         """
-        if spikeextractors_backend:
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-            from spikeextractors import PhySortingExtractor
-
-            self.Extractor = PhySortingExtractor
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)

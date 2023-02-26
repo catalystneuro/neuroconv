@@ -111,9 +111,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        from spikeextractors import RecordingExtractor, SubRecordingExtractor
-        from spikeinterface import BaseRecording
-
         kwargs = dict()
         if stub_test:
             num_frames = 100
@@ -121,12 +118,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             kwargs.update(end_frame=end_frame)
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
-        if isinstance(self.recording_extractor, RecordingExtractor):
-            recording_extractor = SubRecordingExtractor(self.recording_extractor, **kwargs)
-        elif isinstance(self.recording_extractor, BaseRecording):
-            recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
-        else:
-            raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")
+        recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return recording_extractor
 
     def run_conversion(
