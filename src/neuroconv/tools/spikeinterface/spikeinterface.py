@@ -515,7 +515,7 @@ def add_electrical_series(
     metadata: dict = None,
     segment_index: int = 0,
     starting_time: Optional[float] = None,
-    write_as: Literal["raw","processed", "lfp"] = "raw",
+    write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
