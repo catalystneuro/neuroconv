@@ -3,18 +3,32 @@
 ![Auto-release](https://github.com/catalystneuro/neuroconv/actions/workflows/auto-publish.yml/badge.svg)
 [![codecov](https://codecov.io/github/catalystneuro/neuroconv/coverage.svg?branch=main)](https://codecov.io/github/catalystneuro/neuroconv?branch=main)
 [![documentation](https://readthedocs.org/projects/neuroconv/badge/?version=main)](https://neuroconv.readthedocs.io/en/main/)
-[![License](https://img.shields.io/pypi/l/pynwb.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
+[![License](https://img.shields.io/pypi/l/neuroconv.svg)](https://github.com/catalystneuro/neuroconv/license.txt)
 
 # NeuroConv
 
-NeuroConv is a package for creating NWB files by converting and
-combining neural data in proprietary formats and adding essential metadata.
 
+
+<!-- TABLE OF CONTENTS -->
+
+## Table of Contents
+
+- [About](#about)
+- [Installation](#installation)
+- [Documentation](#documentation)
+- [License](#license)
+
+## About
+
+NeuroConv is a Python package for converting neurophysiology data in a variety of proprietary formats to the [Neurodata Without Borders (NWB)](http://nwb.org) standard.
 
 Features:
-* Command line interface
-* Python API
-* Leverages SpikeExtractor to support conversion from a number or proprietary formats.
+
+* Reads data from 36 popular neurophysiology data formats and writes to NWB using best practices.
+* Extracts relevant metadata from each format.
+* Handles large data volume by reading datasets piece-wise.
+* Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
+* Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
 ## Installation
 To install the latest stable release of **neuroconv** though PyPI, type:
@@ -37,44 +51,8 @@ Finally, if you prefer to avoid `conda` altogether, the following commands provi
 pip install git+https://github.com/catalystneuro/neuroconv.git@master
 ```
 
-## Dependencies
-NeuroConv relies heavily on [SpikeInterface](https://github.com/SpikeInterface/spikeinterface) and [SpikeExtractors](https://github.com/SpikeInterface/spikeextractors) for electrophysiology and on [ROIExtractors](https://github.com/catalystneuro/roiextractors) for optophysiology data.
+## Documentation
+See our [ReadTheDocs page](https://neuroconv.readthedocs.io/en/main/) for full documentation, including a gallery of all supported formats.
 
-
-
-# For Developers
-## Running GIN tests locally
-`neuroconv` verifies the integrity of all code changes by running a full test suite on short examples of real data from the formats we support. There are two classes of tests in this regard; `tests/test_internals` does not require any data to be present and represents the 'minimal' expected behavior for our package, whereas `tests/test_on_data` requires the user to both perform a full install of dependencies (`pip install -r requirements-full.txt`) as well as download the associated data for each modality.
-
-### Install testing dependencies
-In a clean environment run:
-
-```shell
-git clone https://github.com/catalystneuro/neuroconv
-cd neuroconv
-pip install .[test,full]
-```
-
-### Downloading the data
-[Datalad](https://www.datalad.org/) (`conda install datalad`) is the recommended way for downloading the data. To do this; simply call:
-
-For electrophysiology data:
-```shell
-datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
-```
-
-For optical physiology data:
-```shell
-datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
-```
-
-For behavioral data:
-```shell
-datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
-```
-
-
-### Test configuration file
-Once the data is downloaded to your system, you must manually modify the config file ([example](https://github.com/catalystneuro/nwb-conversion-tools/blob/main/base_gin_test_config.json)) located in `./tests/test_on_data/gin_test_config.json` so its corresponding `LOCAL_PATH` key points to the correct folder on your system that contains the dataset folder (e.g., `ephy_testing_data` for testing `ecephys`). The code will automatically detect that the tests are being run locally, so all you need to do ensure the path is correct to your specific system.
-
-The output of these tests is, by default, stored in a temporary directory that is then cleaned after the tests finish running. To examine these files for quality assessment purposes, set the flag `SAVE_OUTPUTS=true` in the `gin_test_config.json` file and modify the variable `OUTPUT_PATH` in the respective test if necessary.
+## License
+NeuroConv is distributed under the BSD3 License. See [LICENSE](https://github.com/catalystneuro/neuroconv/blob/main/LICENSE) for more information.

@@ -23,7 +23,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.imaging_extractor = self.Extractor(**source_data)
+        self.imaging_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
 
     def get_metadata_schema(self):
