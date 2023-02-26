@@ -90,31 +90,22 @@ class TestEcephysSortingNwbConversions(unittest.TestCase):
             interface_kwargs=dict(file_path=str(DATA_PATH / "plexon" / "File_plexon_2.plx")),
             case_name="plexon_sorting",
         ),
+        param(
+            data_interface=NeuroScopeSortingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
+                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+            ),
+            case_name="neuroscope_sorting",
+        ),
+        param(
+            data_interface=PhySortingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
+            ),
+            case_name="phy_sorting",
+        ),
     ]
-
-    for spikeextractors_backend in [False, True]:
-        parameterized_sorting_list.append(
-            param(
-                data_interface=NeuroScopeSortingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
-                    xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
-        )
-
-        parameterized_sorting_list.append(
-            param(
-                data_interface=PhySortingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
-        )
 
     @parameterized.expand(input=parameterized_sorting_list, name_func=custom_name_func)
     def test_convert_sorting_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
