@@ -11,6 +11,7 @@ Convert Spike2 data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spike2.spike2datainterface.Spike2RecordingInterface`.
 
 .. code-block:: python
+    :skipif: python_version.minor >= 10
 
     >>> from datetime import datetime
     >>> from dateutil import tz
