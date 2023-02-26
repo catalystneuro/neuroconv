@@ -38,7 +38,7 @@ def test_get_schema_from_method_signature():
         def __init__(self, a: int, b: float, c: Union[Path, str], d: bool, e: str = "hi"):
             pass
 
-    schema = get_schema_from_method_signature(A.__init__)
+    schema = get_schema_from_method_signature(A.__init__, exclude=["self"])
 
     correct_schema = dict(
         additionalProperties=False,
@@ -58,7 +58,7 @@ def test_get_schema_from_method_signature():
         type="object",
     )
 
-    compare_dicts(schema, correct_schema)
+    assert schema == correct_schema
 
 
 def test_dict_deep_update_1():
