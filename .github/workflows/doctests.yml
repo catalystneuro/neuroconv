@@ -63,4 +63,4 @@ jobs:
 
 
       - name: Run doctests
-        run: pytest docs
+        run: pytest docs --doctest-glob=*.rst --doctest-module
