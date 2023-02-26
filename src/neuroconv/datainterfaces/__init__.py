@@ -2,16 +2,11 @@
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeLFPInterface,
-    NeuroScopeMultiRecordingTimeInterface,
     NeuroScopeSortingInterface,
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
-from .ecephys.spikeinterface.sipickledatainterfaces import (
-    SIPickleRecordingInterface,
-    SIPickleSortingInterface,
-)
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.ced.ceddatainterface import CEDRecordingInterface
 from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
@@ -70,15 +65,12 @@ interface_list = [
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
     NeuroScopeRecordingInterface,
-    NeuroScopeMultiRecordingTimeInterface,
     NeuroScopeSortingInterface,
     NeuroScopeLFPInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXLFPInterface,
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
-    SIPickleRecordingInterface,
-    SIPickleSortingInterface,
     IntanRecordingInterface,
     CEDRecordingInterface,
     CellExplorerSortingInterface,
