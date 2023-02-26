@@ -82,7 +82,7 @@ toggleprompt_default_hidden = "true"
 extensions = ["sphinx.ext.doctest"]
 doctest_global_setup = """
 from platform import python_version as get_python_version
-from packaging import Version
+from packaging.version import Version
 
 python_version = Version(get_python_version())
 """
