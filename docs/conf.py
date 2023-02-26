@@ -78,6 +78,15 @@ def setup(app):  # This makes the data-interfaces signatures display on the docs
 toggleprompt_offset_right = 45  # This controls the position of the prompt (>>>) for the conversion gallery
 toggleprompt_default_hidden = "true"
 
+# Doctest
+extensions = ["sphinx.ext.doctest"]
+doctest_global_setup = """
+from platform import python_version as get_python_version
+from packaging import Version
+
+python_version = Version(get_python_version())
+"""
+
 # Intersphinx
 intersphinx_mapping = {
     "hdmf": ("https://hdmf.readthedocs.io/en/stable/", None),
