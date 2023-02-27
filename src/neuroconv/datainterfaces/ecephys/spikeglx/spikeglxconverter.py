@@ -54,8 +54,7 @@ class SpikeGLXConverter(ConverterPipe):
         """
         folder_path = Path(folder_path)
 
-        available_streams = self.get_streams(folder_path=folder_path)
-        streams = streams or available_streams
+        streams = streams or self.get_streams(folder_path=folder_path)
 
         data_interfaces = dict()
         for stream in streams:
