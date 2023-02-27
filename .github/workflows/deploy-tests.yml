@@ -52,6 +52,7 @@ jobs:
     uses: catalystneuro/neuroconv/.github/workflows/doctests.yml@main
 
   check-final-status:
+    name: All tests passing
     if: always()
 
     needs:
