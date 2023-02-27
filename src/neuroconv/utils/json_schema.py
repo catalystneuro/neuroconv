@@ -93,9 +93,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                 if any(valid_args):
                     param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
                 else:
-                    raise ValueError(
-                        f"No valid arguments were found in the json type mapping for parameter {param}"
-                    )
+                    raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
                 num_params = len(set(param_types))
                 conflict_message = (
                     "Conflicting json parameter types were detected from the annotation! "
