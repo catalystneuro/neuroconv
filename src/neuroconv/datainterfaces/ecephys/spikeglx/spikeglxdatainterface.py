@@ -51,8 +51,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        spikeextractors_backend : bool, default: False
-            Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeries"
@@ -152,10 +150,7 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
         es_key: str = "ElectricalSeriesLF",
     ):
-        super().__init__(
-            file_path=file_path, spikeextractors_backend=spikeextractors_backend, verbose=verbose, es_key=es_key
-        )
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
