@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import List, Optional
 
+import numpy as np
 from pynwb import NWBFile
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
@@ -67,15 +68,23 @@ class SpikeGLXConverter(ConverterPipe):
             if "lf" in stream:
                 probe_name = stream[:5]
                 file_path = (
-                    folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.ap.bin"
+                    folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.lf.bin"
                 )
                 interface = SpikeGLXLFPInterface(file_path=file_path)
             if "nidq" in stream:
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
+                num_channels = interface.recording_extractor.get_num_channels()
+                # To avoid warning/error turing write
+                # TODO: When PyNWB supports other more proper AUX electrode types, remove
+                interface.recording_extractor.set_property(key="shank_electrode_number", values=[np.nan] * num_channels)
+                interface.recording_extractor.set_property(key="contact_shapes", values=[np.nan] * num_channels)
             data_interfaces.update({stream: interface})
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+
+    def get_conversion_options(self) -> dict:
+        return dict()
 
     def run_conversion(
         self,
