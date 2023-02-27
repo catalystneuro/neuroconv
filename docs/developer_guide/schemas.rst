@@ -21,7 +21,6 @@ example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
         self,
         file_path: FilePathType,
         stub_test: bool = False,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
     )
 
@@ -42,10 +41,6 @@ gives the following output, which is derived from the call signature and express
           "description": "Path to SpikeGLX file."
         },
         "stub_test": {
-          "type": "boolean",
-          "default": false
-        },
-        "spikeextractors_backend": {
           "type": "boolean",
           "default": false
         },
@@ -78,10 +73,6 @@ gives the following output, which is derived from the call signature and express
         "verbose": {
           "type": "boolean",
           "default": true
-        },
-        "spikeextractors_backend": {
-          "type": "boolean",
-          "default": false
         }
       },
       "type": "object",
@@ -160,10 +151,6 @@ An ``ExampleNWBConverter`` that combines these ``DataInterface`` classes will co
             "verbose":{
               "type":"boolean",
               "default":true
-            },
-            "spikeextractors_backend":{
-              "type":"boolean",
-              "default":false
             }
           },
           "type":"object",

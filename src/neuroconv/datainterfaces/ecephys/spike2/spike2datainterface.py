@@ -23,7 +23,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "CedRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["smrx_channel_ids"])
         source_schema.update(additionalProperties=True)
         source_schema["properties"]["file_path"].update(description="Path to CED data file.")

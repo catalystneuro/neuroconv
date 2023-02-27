@@ -36,7 +36,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         self.dataframe = self._read_file(file_path, **read_kwargs)
         self.time_intervals = None
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         return dict(
             TimeIntervals=dict(
                 trials=dict(
@@ -46,7 +46,7 @@ class TimeIntervalsInterface(BaseDataInterface):
             )
         )
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         fpath = os.path.join(os.path.split(__file__)[0], "timeintervals.schema.json")
         return load_dict_from_file(fpath)
 

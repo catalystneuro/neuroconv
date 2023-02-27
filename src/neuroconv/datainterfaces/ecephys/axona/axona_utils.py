@@ -122,7 +122,7 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
 
 
 # Helper functions for AxonaPositionDataInterface
-def parse_generic_header(file_path: FilePathType, params: Union[list, set]):
+def parse_generic_header(file_path: FilePathType, params: Union[list, set]) -> dict:
     """
     Given a binary file with phrases and line breaks, enters the
     first word of a phrase as dictionary key and the following
