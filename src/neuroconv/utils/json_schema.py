@@ -85,7 +85,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
             continue
         args_spec[param_name] = dict()
         if param.annotation:
-            if getattr(param.annotation,"__origin__", None) == Literal:
+            if getattr(param.annotation, "__origin__", None) == Literal:
                 args_spec[param_name]["enum"] = list(param.annotation.__args__)
             elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                 args = param.annotation.__args__
