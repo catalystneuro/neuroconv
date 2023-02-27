@@ -1,15 +1,13 @@
 """Authors: Luiz Tauffer."""
+from typing import Optional
 from pathlib import Path
-from warnings import warn
 
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....tools import get_package
 from ....utils import (
     get_schema_from_method_signature,
     FilePathType,
-    OptionalFilePathType,
 )
 
 
@@ -28,7 +26,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        nsx_override: OptionalFilePathType = None,
+        nsx_override: Optional[FilePathType] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):

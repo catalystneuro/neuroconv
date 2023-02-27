@@ -36,7 +36,6 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             or an array of values for each channel.
         es_key : str, default: "ElectricalSeries"
         """
-
         super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose, es_key=es_key)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)

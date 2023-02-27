@@ -1,6 +1,7 @@
-"""Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
+"""DataInterfaces for SpikeGLX."""
 from pathlib import Path
 import json
+
 from typing import Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -14,7 +15,6 @@ from .spikeglx_utils import (
 
 def add_recording_extractor_properties(recording_extractor) -> None:
     """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
-
     probe = recording_extractor.get_probe()
     channel_ids = recording_extractor.get_channel_ids()
 
@@ -117,15 +117,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_device_metadata(self) -> dict:
-        """Returns a device with description including the metadat as described here
-        # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+        """
+        Returns a device with description including the metadata.
+
+        Details described in https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
 
         Returns
         -------
         dict
             a dict containing the metadata necessary for creating the device
         """
-
         meta = self.meta
         metadata_dict = dict()
         if "imDatPrb_type" in self.meta:
