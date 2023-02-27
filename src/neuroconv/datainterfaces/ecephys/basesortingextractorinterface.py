@@ -81,9 +81,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.sorting_extractor.set_times(times=synchronized_timestamps)
 
     def subset_sorting(self):
-        from spikeextractors import SortingExtractor, SubSortingExtractor
-        from spikeinterface import BaseSorting
-
         max_min_spike_time = max(
             [
                 min(x)
@@ -93,17 +90,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             ]
         )
         end_frame = 1.1 * max_min_spike_time
-        if isinstance(self.sorting_extractor, SortingExtractor):
-            stub_sorting_extractor = SubSortingExtractor(
-                self.sorting_extractor,
-                unit_ids=self.sorting_extractor.get_unit_ids(),
-                start_frame=0,
-                end_frame=end_frame,
-            )
-        elif isinstance(self.sorting_extractor, BaseSorting):
-            stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
-        else:
-            raise TypeError(f"{self.sorting_extractor} should be either se.SortingExtractor or si.BaseSorting")
+        stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return stub_sorting_extractor
 
     def run_conversion(
