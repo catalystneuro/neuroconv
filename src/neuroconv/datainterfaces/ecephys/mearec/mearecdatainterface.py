@@ -15,29 +15,19 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     Uses the :py:class:`~spikeinterface.extractors.MEArecRecordingExtractor`.
     """
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for MEArec.
 
         Parameters
         ----------
-        folder_path: string or Path
+        folder_path : str or Path
             Path to the MEArec .h5 file.
-        verbose: boolean
+        verbose : bool, default: True
             Allows verbose.
-            Default is True.
+        es_key : str, default: "ElectricalSeries"
         """
-        super().__init__(file_path=file_path, verbose=verbose)
-        self.es_key = "ElectricalSeries"
-
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-
-        return metadata_schema
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self):
         metadata = super().get_metadata()

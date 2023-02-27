@@ -23,7 +23,6 @@ def get_start_datetime(neo_reader):
 
 
 class AbfInterface(BaseIcephysInterface):
-
     ExtractorName = "AxonIO"
 
     @classmethod
@@ -49,18 +48,20 @@ class AbfInterface(BaseIcephysInterface):
 
         Parameters
         ----------
-            file_paths: list
-                List of files to be converted to the same nwb file.
-            icephys_metadata: dict, optional
-                Dictionary containing the Icephys-specific metadata. Defaults to None.
-            icephys_metadata_file_path: str, optional
-                JSON file containing the Icephys-specific metadata. Defaults to None.
+        file_paths : list
+            List of files to be converted to the same NWB file.
+        icephys_metadata : dict, optional
+            Dictionary containing the Icephys-specific metadata.
+        icephys_metadata_file_path : str, optional
+            JSON file containing the Icephys-specific metadata.
         """
         super().__init__(file_paths=file_paths)
-        self.source_data["icephys_metadata"] = icephys_metadata
-        self.source_data["icephys_metadata_file_path"] = icephys_metadata_file_path
+        self.source_data.update(
+            icephys_metadata=icephys_metadata,
+            icephys_metadata_file_path=icephys_metadata_file_path,
+        )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
         metadata = super().get_metadata()

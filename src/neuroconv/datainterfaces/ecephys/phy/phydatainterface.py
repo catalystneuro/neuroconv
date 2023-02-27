@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-from typing import Optional
+from typing import Optional, List
+from warnings import warn
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
@@ -14,22 +15,16 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         folder_path: FolderPathType,
         exclude_cluster_groups: Optional[list] = None,
         verbose: bool = True,
-        spikeextractors_backend: bool = False,
     ):
         """
         Initialize a PhySortingInterface.
 
         Parameters
         ----------
-        folder_path: str or Path
+        folder_path : str or Path
             Path to the output Phy folder (containing the params.py).
-        exclude_cluster_groups: list of str | str, optional
+        exclude_cluster_groups : str or list of str, optional
             Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
-        verbose: bool
-        spikeextractors_backend: bool
+        verbose : bool, default: True
         """
-        if spikeextractors_backend:
-            from spikeextractors import PhySortingExtractor
-
-            self.Extractor = PhySortingExtractor
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)

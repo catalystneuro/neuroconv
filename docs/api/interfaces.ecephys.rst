@@ -17,10 +17,6 @@ Blackrock Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface
 
-Cambridge Electronic Design (CED) Recording
--------------------------------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.ced.ceddatainterface
-
 CellExplorer Sorting
 --------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface
@@ -52,6 +48,10 @@ OpenEphys Recording
 Phy Sorting
 -----------
 .. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
+
+Spike2
+------
+.. automodule:: neuroconv.datainterfaces.ecephys.spike2.spike2datainterface
 
 Spikegadgets Recording
 ----------------------

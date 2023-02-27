@@ -176,7 +176,6 @@ class NWBConverter:
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-
             for interface_name, data_interface in self.data_interface_objects.items():
                 data_interface.run_conversion(
                     nwbfile=nwbfile_out, metadata=metadata, **conversion_options_to_run.get(interface_name, dict())
@@ -204,10 +203,10 @@ class ConverterPipe(NWBConverter):
         return conversion_options_schema
 
     def get_source_schema(self):
-        raise NotImplementedError("Source data not available with previously intialized classes")
+        raise NotImplementedError("Source data not available with previously initialized classes")
 
     def validate_source(self):
-        raise NotImplementedError("Source data not available with previously intialized classes")
+        raise NotImplementedError("Source data not available with previously initialized classes")
 
     def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
         self.verbose = verbose

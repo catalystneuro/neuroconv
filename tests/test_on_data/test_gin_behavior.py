@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from pathlib import Path
 from datetime import datetime
 
@@ -7,12 +8,19 @@ from pynwb import NWBHDF5IO
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import MovieInterface, DeepLabCutInterface, SLEAPInterface
 
-from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
 import sleap_io
+
+# enable to run locally in interactive mode
+try:
+    from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+except ImportError:
+    from setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+
+if not BEHAVIOR_DATA_PATH.exists():
+    pytest.fail(f"No folder found in location: {BEHAVIOR_DATA_PATH}!")
 
 
 class TestSLEAPInterface(unittest.TestCase):
-
     savedir = OUTPUT_PATH
 
     @parameterized.expand(
@@ -285,7 +293,7 @@ class TestVideoConversions(unittest.TestCase):
             metadata = self.nwb_converter.get_metadata()
             for no in range(len(metadata["Behavior"]["Movies"])):
                 video_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-                assert mod[video_interface_name].data.chunks is not None  # TODO retrive storage_layout of hdf5 dataset
+                assert mod[video_interface_name].data.chunks is not None  # TODO retrieve storage_layout of hdf5 dataset
 
     def test_external_mode(self):
         starting_times = self.starting_times

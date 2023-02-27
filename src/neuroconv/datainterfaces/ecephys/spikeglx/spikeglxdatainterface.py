@@ -1,22 +1,19 @@
-"""Authors: Cody Baker, Heberto Mayorquin and Ben Dichter."""
+"""DataInterfaces for SpikeGLX."""
 from pathlib import Path
 import json
+from typing import Optional
 
+from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
+
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
-from .spikeglx_utils import (
-    get_session_start_time,
-    _fetch_metadata_dic_for_spikextractors_spikelgx_object,
-    _assert_single_shank_for_spike_extractors,
-    fetch_stream_id_for_spikelgx_file,
-)
+from .spikeglx_utils import get_session_start_time, fetch_stream_id_for_spikelgx_file
 
 
-def add_recording_extractor_properties(recording_extractor):
+def add_recording_extractor_properties(recording_extractor) -> None:
     """Automatically add shankgroup_name and shank_electrode_number for spikeglx."""
-
     probe = recording_extractor.get_probe()
     channel_ids = recording_extractor.get_channel_ids()
 
@@ -38,7 +35,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
         return source_schema
@@ -46,58 +43,45 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        stub_test: bool = False,
         spikeextractors_backend: bool = False,
         verbose: bool = True,
+        es_key: str = "ElectricalSeriesAP",
     ):
         """
         Parameters
         ----------
-        file_path: FilePathType
+        file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        stub_test: bool
-            Whether to shorten file for testing purposes. Default: False.
-        spikeextractors_backend: bool
-            Whether to use the legacy spikeextractors library backend. Default: False.
-        verbose: bool
-            Whether to output verbose text. Default: True.
+        spikeextractors_backend : bool, default: False
+            Whether to use the legacy spikeextractors library backend.
+        verbose : bool, default: True
+            Whether to output verbose text.
+        es_key : str, default: "ElectricalSeries"
         """
         from probeinterface import read_spikeglx
 
-        self.stub_test = stub_test
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
 
-        if spikeextractors_backend:
-            from spikeextractors import SpikeGLXRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = SpikeGLXRecordingExtractor
-            super().__init__(file_path=str(file_path), verbose=verbose)
-            _assert_single_shank_for_spike_extractors(self.recording_extractor)
-            self.meta = _fetch_metadata_dic_for_spikextractors_spikelgx_object(self.recording_extractor)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            file_path = Path(file_path)
-            folder_path = file_path.parent
-            super().__init__(folder_path=folder_path, stream_id=self.stream_id, verbose=verbose)
-            self.source_data["file_path"] = str(file_path)
-            self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+        file_path = Path(file_path)
+        folder_path = file_path.parent
+        super().__init__(
+            folder_path=folder_path,
+            stream_id=self.stream_id,
+            verbose=verbose,
+            es_key=es_key,
+        )
+        self.source_data["file_path"] = str(file_path)
+        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Mount the probe
+        # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
         meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
         probe = read_spikeglx(meta_filename)
         self.recording_extractor.set_probe(probe, in_place=True)
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
-
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
@@ -126,25 +110,19 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             dict(name="contact_shapes", description="The shape of the electrode"),
         ]
 
-        metadata["Ecephys"]["ElectricalSeriesRaw"] = dict(
-            name="ElectricalSeriesRaw", description="Raw acquisition traces for the high-pass (ap) SpikeGLX data."
-        )
         return metadata
 
-    def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesRaw", stub_test=False)
-        return conversion_options
-
     def get_device_metadata(self) -> dict:
-        """Returns a device with description including the metadat as described here
-        # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
+        """
+        Returns a device with description including the metadata.
+
+        Details described in https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
 
         Returns
         -------
         dict
             a dict containing the metadata necessary for creating the device
         """
-
         meta = self.meta
         metadata_dict = dict()
         if "imDatPrb_type" in self.meta:
@@ -170,26 +148,15 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
 
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
+    ExtractorName = "SpikeGLXRecordingExtractor"
 
-        del metadata_schema["properties"]["Ecephys"]["properties"]["ElectricalSeriesRaw"]
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeriesLFP=get_schema_from_hdmf_class(ElectricalSeries)
+    def __init__(
+        self,
+        file_path: FilePathType,
+        spikeextractors_backend: bool = False,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeriesLF",
+    ):
+        super().__init__(
+            file_path=file_path, spikeextractors_backend=spikeextractors_backend, verbose=verbose, es_key=es_key
         )
-        return metadata_schema
-
-    def get_metadata(self):
-        metadata = super().get_metadata()
-        del metadata["Ecephys"]["ElectricalSeriesRaw"]
-        metadata["Ecephys"].update(
-            ElectricalSeriesLFP=dict(
-                name="ElectricalSeriesLFP", description="LFP traces for the processed (lf) SpikeGLX data."
-            )
-        )
-
-        return metadata
-
-    def get_conversion_options(self):
-        conversion_options = dict(write_as="raw", es_key="ElectricalSeriesLFP", stub_test=False)
-        return conversion_options

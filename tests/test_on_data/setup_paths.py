@@ -25,16 +25,8 @@ HDF5_PLUGIN_PATH = LOCAL_PATH / "hdf5_plugins"
 HDF5_PLUGIN_PATH.mkdir(exist_ok=True)
 
 BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
-if not BEHAVIOR_DATA_PATH.exists():
-    pytest.fail(f"No folder found in location: {BEHAVIOR_DATA_PATH}!")
-
 ECEPHY_DATA_PATH = LOCAL_PATH / "ephy_testing_data"
-if not ECEPHY_DATA_PATH.exists():
-    pytest.fail(f"No folder found in location: {ECEPHY_DATA_PATH}!")
-
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
-if not OPHYS_DATA_PATH.exists():
-    pytest.fail(f"No folder found in location: {OPHYS_DATA_PATH}!")
 
 TEXT_DATA_PATH = file_path = Path(__file__).parent.parent.parent / "tests" / "test_text"
 

@@ -5,7 +5,6 @@ from .spikeinterface import (
     add_electrodes,
     check_if_recording_traces_fit_into_memory,
     add_electrical_series,
-    add_epochs,
     write_recording,
     write_sorting,
     write_waveforms,

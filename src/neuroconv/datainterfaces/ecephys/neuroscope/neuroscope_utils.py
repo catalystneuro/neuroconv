@@ -78,7 +78,7 @@ def get_channel_groups(xml_file_path: str) -> list:
 
 def get_session_start_time(xml_file_path: str) -> datetime:
     """
-    Auxiliary function for retrieving the session start tiem from the xml file.
+    Auxiliary function for retrieving the session start time from the xml file.
 
     Returns
     -------

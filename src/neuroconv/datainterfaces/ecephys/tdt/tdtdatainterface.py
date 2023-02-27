@@ -7,23 +7,30 @@ from ....utils.types import FolderPathType
 class TdtRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Tucker-Davis Technologies (TDT) data."""
 
-    def __init__(self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True, es_key: str = None):
         """
+        Initialize reading of a TDT recording.
+
         Parameters
         ----------
-        folder_path: str or Path
-            Path to the folder or directory with the corresponding files (TSQ, TBK, TEV, SEV)
-        stream_id: str, "0" by default
+        folder_path : str or Path
+            Path to the directory with the corresponding files (TSQ, TBK, TEV, SEV)
+        stream_id : str, "0" by default
             Select from multiple streams.
-        verbose: bool, True by default
+        verbose : bool, default: True
             Allows verbose.
-        """
-        # Note: stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
+        es_key : str, optional
 
+
+        Notes
+        -----
+        Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
+        """
         super().__init__(
             folder_path=folder_path,
             stream_id=stream_id,
             verbose=verbose,
+            es_key=es_key,
         )
 
         # Fix channel name format

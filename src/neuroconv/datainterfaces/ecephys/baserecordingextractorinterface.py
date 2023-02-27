@@ -4,10 +4,10 @@ from typing import Optional
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup
+from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, get_base_schema, OptionalFilePathType
+from ...utils import get_schema_from_hdmf_class, get_base_schema, FilePathType
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -15,14 +15,25 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
 
-    def __init__(self, verbose: bool = True, **source_data):
+    def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
+        """
+        Parameters
+        ----------
+        verbose : bool, default True
+            If True, will print out additional information.
+        source_data : dict
+            key-value pairs of extractor-specific arguments.
+        es_key : str, default: "ElectricalSeries"
+            Key of this ElectricalSeries in the metadata dictionary
+
+        """
         super().__init__(**source_data)
-        self.recording_extractor = self.Extractor(**source_data)
+        self.recording_extractor = self.get_extractor()(**source_data)
         self.subset_channels = None
         self.verbose = verbose
-        self.es_key = None  # For automatic metadata extraction
+        self.es_key = es_key  # For automatic metadata extraction
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
@@ -53,9 +64,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 ),
             ),
         )
+
+        if self.es_key is not None:
+            metadata_schema["properties"]["Ecephys"]["properties"].update(
+                {self.es_key: get_schema_from_hdmf_class(ElectricalSeries)}
+            )
+
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         channel_groups_array = self.recording_extractor.get_channel_groups()
@@ -70,7 +87,21 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ElectrodeGroup=electrode_metadata,
         )
 
+        if self.es_key is not None:
+            metadata["Ecephys"][self.es_key] = dict(
+                name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
+            )
+
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        return self.get_extractor()(**self.source_data).get_times()
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.recording_extractor.get_times()
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray) -> None:
+        self.recording_extractor.set_times(times=aligned_timestamps)
 
     def subset_recording(self, stub_test: bool = False):
         """
@@ -78,11 +109,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        stub_test : bool, optional (default False)
+        stub_test : bool, default: False
         """
-        from spikeextractors import RecordingExtractor, SubRecordingExtractor
-        from spikeinterface import BaseRecording
-
         kwargs = dict()
         if stub_test:
             num_frames = 100
@@ -90,29 +118,22 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             kwargs.update(end_frame=end_frame)
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
-        if isinstance(self.recording_extractor, RecordingExtractor):
-            recording_extractor = SubRecordingExtractor(self.recording_extractor, **kwargs)
-        elif isinstance(self.recording_extractor, BaseRecording):
-            recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
-        else:
-            raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")
+        recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return recording_extractor
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        use_times: bool = False,  # To-do to remove, deprecation
-        write_as: Optional[str] = None,
+        write_as: str = "raw",  # Literal["raw", "processed"]
         write_electrical_series: bool = True,
-        es_key: str = None,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,
-        iterator_type: Optional[str] = "v2",
+        iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
     ):
         """
@@ -120,46 +141,43 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, this context will always write to this location.
-        nwbfile: NWBFile
-            nwb file to which the recording information is to be added
-        metadata: dict
-            metadata info for constructing the nwb file (optional).
+        nwbfile : NWBFile, optional
+            NWBFile to which the recording information is to be added
+        metadata : dict, optional
+            metadata info for constructing the NWB file.
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        overwrite: bool, default: False
+            Whether to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
-        starting_time: float (optional)
+        starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
-            Increments timestamps if use_times is True.
-        stub_test: bool, optional (default False)
+        stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_as: str (optional, defaults to 'raw')
-            Options: 'raw', 'lfp' or 'processed'
-        write_electrical_series: bool (optional)
-            If True (default), electrical series are written in acquisition. If False, only device, electrode_groups,
+        write_as : {'raw', 'lfp', 'processed'}
+        write_electrical_series : bool, default: True
+            Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        es_key: str (optional)
-            Key in metadata dictionary containing metadata info for the specific electrical series
-        compression: str (optional, defaults to "gzip")
-            Type of compression to use. Valid types are "gzip" and "lzf".
+        compression : {'gzip', 'lzf', None}
+            Type of compression to use.
             Set to None to disable all compression.
-        compression_opts: int (optional, defaults to 4)
+        compression_opts : int, default: 4
             Only applies to compression="gzip". Controls the level of the GZIP.
-        iterator_type: str (optional, defaults to 'v2')
+        iterator_type : {'v2', 'v1'}
             The type of DataChunkIterator to use.
             'v1' is the original DataChunkIterator of the hdmf data_utils.
             'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-        iterator_opts: dict (optional)
+        iterator_opts : dict, optional
             Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
             Valid options are
-                buffer_gb : float (optional, defaults to 1 GB)
-                    Recommended to be as much free RAM as available). Automatically calculates suitable buffer shape.
-                chunk_mb : float (optional, defaults to 1 MB)
+                buffer_gb : float, default: 1.0
+                    In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
+                    buffer shape.
+                chunk_mb : float. default: 1.0
                     Should be below 1 MB. Automatically calculates suitable chunk shape.
             If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
         """
@@ -178,10 +196,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             starting_time=starting_time,
-            use_times=use_times,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
-            es_key=es_key or self.es_key,
+            es_key=self.es_key,
             compression=compression,
             compression_opts=compression_opts,
             iterator_type=iterator_type,

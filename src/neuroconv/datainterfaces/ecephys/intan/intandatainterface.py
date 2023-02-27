@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
+from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
@@ -38,7 +39,6 @@ def extract_electrode_metadata_with_pyintan(file_path):
 
 
 def extract_electrode_metadata(recording_extractor):
-
     channel_name_array = recording_extractor.get_property("channel_name")
 
     group_names = [channel.split("-")[0] for channel in channel_name_array]
@@ -64,11 +64,11 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         stream_id: str = "0",
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
-        """Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
-
+        """
+        Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
 
         Parameters
         ----------
@@ -76,26 +76,14 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             Path to either a rhd or a rhs file
         stream_id : str, optional
             The stream of the data for spikeinterface, "0" by default.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
-        verbose : bool
+        verbose : bool, default: True
             Verbose
+        es_key : str, default: "ElectricalSeries"
         """
 
-        if spikeextractors_backend:
-            _ = get_package(package_name="pyintan")
-            from spikeextractors import IntanRecordingExtractor
-            from spikeinterface.core.old_api_utils import OldToNewRecording
-
-            self.Extractor = IntanRecordingExtractor
-            super().__init__(file_path=file_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-            electrodes_metadata = extract_electrode_metadata_with_pyintan(file_path)
-        else:
-            self.stream_id = stream_id
-            super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose)
-            electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
+        self.stream_id = stream_id
+        super().__init__(file_path=file_path, stream_id=self.stream_id, verbose=verbose, es_key=es_key)
+        electrodes_metadata = extract_electrode_metadata(recording_extractor=self.recording_extractor)
 
         group_names = electrodes_metadata["group_names"]
         group_electrode_numbers = electrodes_metadata["group_electrode_numbers"]

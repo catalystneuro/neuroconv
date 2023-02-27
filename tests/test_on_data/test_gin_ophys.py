@@ -1,4 +1,5 @@
 import unittest
+import pytest
 from datetime import datetime
 
 from hdmf.testing import TestCase
@@ -18,7 +19,14 @@ from neuroconv.datainterfaces import (
     Suite2pSegmentationInterface,
 )
 
-from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+# enable to run locally in interactive mode
+try:
+    from .setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+except ImportError:
+    from setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+
+if not OPHYS_DATA_PATH.exists():
+    pytest.fail(f"No folder found in location: {OPHYS_DATA_PATH}!")
 
 
 def custom_name_func(testcase_func, param_num, param):
@@ -43,7 +51,7 @@ class TestOphysNwbConversions(TestCase):
             data_interface=TiffImagingInterface,
             interface_kwargs=dict(
                 file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
-                sampling_frequency=15.0,  # typically provied by user
+                sampling_frequency=15.0,  # typically provided by user
             ),
         ),
         param(

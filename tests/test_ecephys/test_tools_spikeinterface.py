@@ -1,10 +1,11 @@
 import unittest
 from unittest.mock import Mock
 from pathlib import Path
-import shutil
 from datetime import datetime
 from platform import python_version
 from packaging import version
+from tempfile import mkdtemp
+from shutil import rmtree
 
 import psutil
 import numpy as np
@@ -56,7 +57,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
 
     def test_default_values(self):
-
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -114,8 +114,68 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-    def test_invalid_write_as_argument_assertion(self):
+    def test_write_multiple_electrical_series_from_same_group(self):
+        metadata = dict(
+            Ecephys=dict(
+                ElectricalSeriesRaw=dict(name="ElectricalSeriesRaw", description="raw series"),
+                ElectricalSeriesLFP=dict(name="ElectricalSeriesLFP", description="lfp series"),
+            )
+        )
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesRaw",
+            iterator_type=None,
+        )
+        self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
+        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesLFP",
+            iterator_type=None,
+        )
+        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
+        self.assertIn("ElectricalSeriesLFP", self.nwbfile.acquisition)
+        self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
+
+    def test_write_multiple_electrical_series_from_different_groups(self):
+        metadata = dict(
+            Ecephys=dict(
+                ElectricalSeriesRaw1=dict(name="ElectricalSeriesRaw1", description="raw series"),
+                ElectricalSeriesRaw2=dict(name="ElectricalSeriesRaw2", description="lfp series"),
+            )
+        )
+        original_groups = self.test_recording_extractor.get_channel_groups()
+        self.test_recording_extractor.set_channel_groups(["group0"] * len(self.test_recording_extractor.channel_ids))
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesRaw1",
+            iterator_type=None,
+        )
+        self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
+        self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
+        # set new channel groups to create a new  electrode_group
+        self.test_recording_extractor.set_channel_groups(["group1"] * len(self.test_recording_extractor.channel_ids))
+        add_electrical_series(
+            recording=self.test_recording_extractor,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            es_key="ElectricalSeriesRaw2",
+            iterator_type=None,
+        )
+        self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
+        self.assertIn("ElectricalSeriesRaw2", self.nwbfile.acquisition)
+        self.assertEqual(len(self.nwbfile.electrodes), 2 * len(self.test_recording_extractor.channel_ids))
+
+        self.test_recording_extractor.set_channel_groups(original_groups)
+
+    def test_invalid_write_as_argument_assertion(self):
         write_as = "any_other_string_that_is_not_raw_lfp_or_processed"
 
         reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
@@ -227,7 +287,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         )
 
     def test_uniform_values(self):
-
         gains = self.gains_default
         offsets = self.offset_defaults
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -253,7 +312,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_uniform_non_default(self):
-
         gains = self.gains_uniform
         offsets = self.offsets_uniform
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -279,7 +337,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_gains(self):
-
         gains = self.gains_variable
         offsets = self.offsets_uniform
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -309,7 +366,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_null_offsets_in_recording_extractor(self):
-
         gains = self.gains_default
         self.test_recording_extractor.set_channel_gains(gains=gains)
 
@@ -336,7 +392,6 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
 
     def test_variable_offsets_assertion(self):
-
         gains = self.gains_default
         offsets = self.offsets_variable
         self.test_recording_extractor.set_channel_gains(gains=gains)
@@ -377,7 +432,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         )
 
     def test_default_chunking(self):
-
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
@@ -405,7 +459,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
     def test_hdfm_iterator(self):
-
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
@@ -427,7 +480,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         isinstance(electrical_series.data, np.ndarray)
 
     def test_non_iterative_write_assertion(self):
-
         # Estimate num of frames required to exceed memory capabilities
         dtype = self.test_recording_extractor.get_dtype()
         element_size_in_bytes = dtype.itemsize
@@ -450,7 +502,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
             check_if_recording_traces_fit_into_memory(recording=mock_recorder)
 
     def test_invalid_iterator_type_assertion(self):
-
         iterator_type = "invalid_iterator_type"
 
         reg_expression = "iterator_type (.*?)"
@@ -491,7 +542,7 @@ class TestWriteRecording(unittest.TestCase):
         )
 
     def test_default_values_single_segment(self):
-        """This test that the names are written appropiately for the single segment case (numbers not added)"""
+        """This test that the names are written appropriately for the single segment case (numbers not added)"""
         write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -508,7 +559,6 @@ class TestWriteRecording(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_multiple_segments(self):
-
         write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -611,6 +661,23 @@ class TestAddElectrodes(TestCase):
         channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
         self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
 
+    def test_channel_group_names_table(self):
+        "add_electrodes function should add new rows if same channel names, but different group_names"
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        original_groups = self.recording_1.get_channel_groups()
+        self.recording_1.set_channel_groups(["1"] * len(self.recording_1.channel_ids))
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile)
+        # reset channel_groups
+        self.recording_1.set_channel_groups(original_groups)
+        assert len(self.nwbfile.electrodes) == 2 * len(self.recording_1.channel_ids)
+        expected_channel_names_in_electrodes_table = list(self.recording_1.channel_ids) + list(
+            self.recording_1.channel_ids
+        )
+        channel_names_in_electrodes_table = list(self.nwbfile.electrodes["channel_name"].data)
+        self.assertListEqual(channel_names_in_electrodes_table, expected_channel_names_in_electrodes_table)
+        group_names_in_electrodes_table = list(self.nwbfile.electrodes["group_name"].data)
+        self.assertEqual(len(np.unique(group_names_in_electrodes_table)), 2)
+
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
@@ -622,6 +689,22 @@ class TestAddElectrodes(TestCase):
         actual_properties_in_electrodes_table = list(self.nwbfile.electrodes["common_property"].data)
         expected_properties_in_electrodes_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
         self.assertListEqual(actual_properties_in_electrodes_table, expected_properties_in_electrodes_table)
+
+    def test_add_electrodes_addition(self):
+        """
+        Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
+        """
+        self.nwbfile.add_electrode_column("channel_name", description="channel_name")
+        values_dic = self.defaults
+
+        values_dic.update(id=0, channel_name="0")
+        self.nwbfile.add_electrode(**values_dic)
+
+        values_dic.update(id=1, channel_name="1")
+        self.nwbfile.add_electrode(**values_dic)
+        # The self.base_recording channel_ids are [0, 1, 2, 3], so only '3' and '4' should be added
+        add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
+        self.assertEqual(len(self.nwbfile.electrodes), len(self.base_recording.channel_ids))
 
     def test_new_property_addition(self):
         """Add a property only available in a second recording."""
@@ -701,7 +784,7 @@ class TestAddElectrodes(TestCase):
         """
         values_dic = self.defaults
         self.nwbfile.add_electrode_column(name="channel_name", description="a string reference for the channel")
-        self.nwbfile.add_electrode_column(name="property", description="exisiting property")
+        self.nwbfile.add_electrode_column(name="property", description="existing property")
 
         values_dic.update(id=20, channel_name="c", property="value_c")
         self.nwbfile.add_electrode(**values_dic)
@@ -758,22 +841,6 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
-
-    def test_assertion_for_id_collision(self):
-        """
-        Keep the old logic of not allowing integer channel_ids to match electrodes.table.ids
-        """
-
-        values_dic = self.defaults
-
-        values_dic.update(id=0)
-        self.nwbfile.add_electrode(**values_dic)
-
-        values_dic.update(id=1)
-        self.nwbfile.add_electrode(**values_dic)
-        # The self.base_recording channel_ids are [0, 1, 2, 3]
-        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
-            add_electrodes(recording=self.base_recording, nwbfile=self.nwbfile)
 
 
 class TestAddUnitsTable(TestCase):
@@ -953,6 +1020,12 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
 
+    def test_add_existing_units(self):
+        # test that additional units are not added if already in the nwbfile.units table
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        add_units_table(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        self.assertEqual(len(self.nwbfile.units), len(self.sorting_1.unit_ids))
+
     def test_property_matching_by_unit_name_with_new_property(self):
         """
         Add some units to the units tables before using the add_units_table function.
@@ -985,25 +1058,6 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
-
-    def test_id_collision_assertion(self):
-        """
-        Add some units to the units table before using the add_units_table function.
-        In this case there is are some common ids between the manually added units and the sorting ids which causes
-        collisions. That is, if the units ids in the sorter integer it is required for them to be different from the
-        ids already in the table.
-        """
-
-        values_dic = self.defaults
-
-        values_dic.update(id=0)
-        self.nwbfile.add_unit(**values_dic)
-
-        values_dic.update(id=1)
-        self.nwbfile.add_unit(**values_dic)
-        # The self.base_sorting unit_ids are [0, 1, 2, 3]
-        with self.assertRaisesWith(exc_type=ValueError, exc_msg="id 0 already in the table"):
-            add_units_table(sorting=self.base_sorting, nwbfile=self.nwbfile)
 
     def test_write_units_table_in_processing_module(self):
         """ """
@@ -1090,13 +1144,16 @@ class TestWriteWaveforms(TestCase):
         cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
 
         # recordingless
-        recording_less_wf_path = Path("waveforms_recordingless")
-        if recording_less_wf_path.is_dir():
-            shutil.rmtree(recording_less_wf_path)
-        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=recording_less_wf_path)
+        cls.tmpdir = Path(mkdtemp())
+        cls.waveform_recordingless_path = cls.tmpdir / "waveforms_recordingless"
+        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.waveform_recordingless_path)
         # reload without recording
-        cls.we_recless = WaveformExtractor.load_from_folder(recording_less_wf_path, with_recording=False)
+        cls.we_recless = WaveformExtractor.load_from_folder(cls.waveform_recordingless_path, with_recording=False)
         cls.we_recless_recording = single_segment_rec
+
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(cls.tmpdir)
 
     def setUp(self):
         """Start with a fresh NWBFile, and remapped sorters each time."""
@@ -1164,8 +1221,116 @@ class TestWriteWaveforms(TestCase):
                 write_electrical_series=True,
             )
 
-    def test_unis_table_name(self):
-        """This tests that the units naming exception"""
+    def test_write_multiple_probes_without_electrical_series(self):
+        """This test that the waveforms are written to different electrode groups"""
+        # we write the first set of waveforms as belonging to group 0
+        original_channel_groups = self.we_recless_recording.get_channel_groups()
+        self.we_recless_recording.set_channel_groups([0] * len(self.we_recless_recording.channel_ids))
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            recording=self.we_recless_recording,
+        )
+        # now we set new channel groups to mimic a different probe and call the function again
+        self.we_recless_recording.set_channel_groups([1] * len(self.we_recless_recording.channel_ids))
+        write_waveforms(
+            waveform_extractor=self.we_recless,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            recording=self.we_recless_recording,
+        )
+        # check that we have 2 groups
+        self.assertEqual(len(self.nwbfile.electrode_groups), 2)
+        self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
+        # check that we have correct number of units
+        self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
+        # check electrode regions of units
+        for row in self.nwbfile.units.id:
+            if row < len(self.we_recless.unit_ids):
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+            else:
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+
+        # reset original channel groups
+        self.we_recless_recording.set_channel_groups(original_channel_groups)
+
+    def test_write_multiple_probes_with_electrical_series(self):
+        """This test that the waveforms are written to different electrode groups"""
+        # we write the first set of waveforms as belonging to group 0
+        recording = self.single_segment_we.recording
+        original_channel_groups = recording.get_channel_groups()
+        self.single_segment_we.recording.set_channel_groups([0] * len(recording.channel_ids))
+        metadata = dict(
+            Ecephys=dict(
+                ElectricalSeriesRaw1=dict(name="ElectricalSeriesRaw1", description="raw series"),
+                ElectricalSeriesRaw2=dict(name="ElectricalSeriesRaw2", description="lfp series"),
+            )
+        )
+        add_electrical_series_kwargs1 = dict(es_key="ElectricalSeriesRaw1")
+        write_waveforms(
+            waveform_extractor=self.single_segment_we,
+            nwbfile=self.nwbfile,
+            write_electrical_series=True,
+            metadata=metadata,
+            add_electrical_series_kwargs=add_electrical_series_kwargs1,
+        )
+        self.assertEqual(len(self.nwbfile.electrodes), len(recording.channel_ids))
+        self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
+
+        # now we set new channel groups to mimic a different probe and call the function again
+        self.single_segment_we.recording.set_channel_groups([1] * len(recording.channel_ids))
+        add_electrical_series_kwargs2 = dict(es_key="ElectricalSeriesRaw2")
+        write_waveforms(
+            waveform_extractor=self.single_segment_we,
+            nwbfile=self.nwbfile,
+            write_electrical_series=True,
+            metadata=metadata,
+            add_electrical_series_kwargs=add_electrical_series_kwargs2,
+        )
+        # check that we have 2 groups
+        self.assertEqual(len(self.nwbfile.electrode_groups), 2)
+        self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
+        self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
+        self.assertIn("ElectricalSeriesRaw2", self.nwbfile.acquisition)
+        self.assertEqual(len(self.nwbfile.electrodes), 2 * len(recording.channel_ids))
+
+        # check that we have correct number of units
+        self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
+        # check electrode regions of units
+        for row in self.nwbfile.units.id:
+            if row < len(self.we_recless.unit_ids):
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+            else:
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+
+        # reset original channel groups
+        self.single_segment_we.recording.set_channel_groups(original_channel_groups)
+
+    def test_missing_electrode_group(self):
+        """This tests that waveforms are correctly written even if the 'group' property is not available"""
+        groups = self.single_segment_we.recording.get_channel_groups()
+        self.single_segment_we.recording.delete_property("group")
+        write_waveforms(
+            waveform_extractor=self.single_segment_we,
+            nwbfile=self.nwbfile,
+        )
+        self.single_segment_we.recording.set_channel_groups(groups)
+
+    def test_group_name_property(self):
+        """This tests that the 'group_name' property is correctly used to instantiate electrode groups"""
+        num_channels = len(self.single_segment_we.recording.channel_ids)
+        self.single_segment_we.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
+        write_waveforms(
+            waveform_extractor=self.single_segment_we,
+            nwbfile=self.nwbfile,
+        )
+        self.assertIn("my-fancy-group", self.nwbfile.electrode_groups)
+        self.assertEqual(len(self.nwbfile.electrode_groups), 1)
+        self.single_segment_we.recording.delete_property("group_name")
+
+    def test_units_table_name(self):
+        """This tests the units naming exception"""
         with self.assertRaises(Exception) as context:
             write_waveforms(
                 waveform_extractor=self.single_segment_we,
