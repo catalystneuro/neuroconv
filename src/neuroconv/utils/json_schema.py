@@ -75,6 +75,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         tuple="array",
         FilePathType="string",
         FolderPathType="string",
+        ConstrainedStrValue="string",
     )
     for param_name, param in inspect.signature(class_method).parameters.items():
         if param_name not in exclude:
@@ -112,6 +113,8 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                         input_schema["properties"].update({param_name: dict(format="file")})
                     if arg == FolderPathType:
                         input_schema["properties"].update({param_name: dict(format="directory")})
+                    if arg.__name__ == "ConstrainedStrValue" and arg.regex:
+                        input_schema["properties"].update({param_name: dict(pattern=arg.regex.pattern)})
             else:
                 raise NotImplementedError(
                     f"The annotation type of '{param}' in function '{class_method}' is not implemented! "

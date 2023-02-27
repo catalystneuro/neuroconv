@@ -1,5 +1,6 @@
 """Authors: Heberto Mayorquin, Steffen Buergers."""
 from pynwb import NWBFile
+from pydantic import constr
 
 from .axona_utils import read_all_eeg_file_lfp_data, get_eeg_sampling_frequency, get_position_object
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -14,7 +15,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     DataInterface for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
     """
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+    def __init__(self, file_path: constr(regex=r".*\.bin$"), verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 
         Parameters
