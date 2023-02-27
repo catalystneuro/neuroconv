@@ -43,7 +43,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
         es_key: str = "ElectricalSeriesAP",
     ):

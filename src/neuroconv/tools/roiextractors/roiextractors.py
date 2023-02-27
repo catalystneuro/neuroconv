@@ -495,7 +495,7 @@ def write_imaging(
     return nwbfile_out
 
 
-def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor):
+def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     """
     Convert metadata from the segmentation into nwb specific metadata.
 
@@ -918,7 +918,7 @@ def write_segmentation(
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
-):
+) -> NWBFile:
     """
     Primary method for writing an SegmentationExtractor object to an NWBFile.
 
@@ -938,22 +938,20 @@ def write_segmentation(
         and returned by the function.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-    overwrite: bool, optional
-        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
-        The default is False (append mode).
-    verbose: bool, optional
+    overwrite: bool, default: False
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
+    verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-        The default is True.
-    buffer_size : int, optional
-        The buffer size in GB, by default 10
+    buffer_size : int, default: 10
+        The buffer size in GB.
     plane_num : int, default: 0
         The plane number to be extracted.
-    include_roi_centroids : bool, optional
+    include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
             faster write speeds.
         Defaults to True.
-    include_roi_acceptance : bool, optional
+    include_roi_acceptance : bool, default: True
         Whether to include if the detected ROI was 'accepted' or 'rejected'.
         If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to ddisable this for
             faster write speeds.

@@ -117,7 +117,7 @@ def get_conversion_from_unit(unit: str) -> float:
     return float(conversion)
 
 
-def get_nwb_metadata(neo_reader, metadata: dict = None):
+def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
     """
     Return default metadata for all recording fields.
 
@@ -488,6 +488,7 @@ def write_neo_to_nwb(
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
+    stimulus_type: str, optional
     skip_electrodes: tuple, optional
         Electrode IDs to skip. Defaults to ().
     """

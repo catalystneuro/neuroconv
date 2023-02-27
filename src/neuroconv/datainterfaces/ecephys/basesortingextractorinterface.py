@@ -20,7 +20,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
 
         # Initiate Ecephys metadata

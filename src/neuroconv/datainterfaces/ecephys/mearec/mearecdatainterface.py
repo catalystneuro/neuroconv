@@ -29,7 +29,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         """
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         # TODO: improve ProbeInterface integration in our writing procedures

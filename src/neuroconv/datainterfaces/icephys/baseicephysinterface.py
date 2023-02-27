@@ -30,7 +30,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
     ExtractorModuleName = "neo"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=[])
         return source_schema
 
@@ -112,6 +112,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
             Type of icephys recording.
         skip_electrodes : tuple, optional
             Electrode IDs to skip. Defaults to ().
+        save_path: string, optional
         """
         from ...tools.neo import write_neo_to_nwb
 
