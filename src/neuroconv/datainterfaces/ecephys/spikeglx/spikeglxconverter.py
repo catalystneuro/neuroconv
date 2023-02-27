@@ -82,8 +82,8 @@ class SpikeGLXConverter(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def get_conversion_options(self) -> dict:
-        return dict()
+    def get_conversion_options(self) -> dict:  # Must override the parent method here
+        return dict()  # or else the parent call from a unifying ConverterPipe runs into problems
 
     def run_conversion(
         self,
