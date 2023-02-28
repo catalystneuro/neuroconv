@@ -1,12 +1,12 @@
 """Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 import collections.abc
-import warnings
 import json
+import warnings
 from copy import deepcopy
 from pathlib import Path
 
-import yaml
 import numpy as np
+import yaml
 
 from .types import FilePathType
 

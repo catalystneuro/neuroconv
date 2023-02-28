@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from pynwb import ProcessingModule
 from hdmf.testing import TestCase
+from pynwb import ProcessingModule
 
 from neuroconv.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 

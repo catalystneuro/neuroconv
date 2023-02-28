@@ -1,12 +1,13 @@
 """Authors: Cody Baker and Ben Dichter."""
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from dateutil import parser
 
 from ....tools import get_package
 
 
-def get_xml_file_path(data_file_path: str):
+def get_xml_file_path(data_file_path: str) -> str:
     """
     Infer the xml_file_path from the data_file_path (.dat or .eeg).
 

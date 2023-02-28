@@ -3,20 +3,14 @@ from typing import Optional
 from warnings import warn
 
 import numpy as np
+from pynwb import NWBFile, TimeSeries
 from scipy.io.wavfile import read
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _check_duplicates
 from neuroconv.tools.audio import add_acoustic_waveform_series
-from neuroconv.tools.nwb_helpers import (
-    make_or_load_nwbfile,
-)
-from neuroconv.utils import (
-    get_schema_from_hdmf_class,
-    get_base_schema,
-    FilePathType,
-)
-from pynwb import NWBFile, TimeSeries
+from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
+from neuroconv.utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 def _check_file_paths(file_paths, metadata: dict):

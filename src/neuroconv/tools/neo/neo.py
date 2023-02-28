@@ -1,19 +1,18 @@
 """Author: Luiz Tauffer."""
-from typing import Optional, Tuple
 import distutils.version
 import uuid
+import warnings
 from datetime import datetime
 from pathlib import Path
-import warnings
-import numpy as np
+from typing import Optional, Tuple
 
 import neo.io.baseio
+import numpy as np
 import pynwb
 from hdmf.backends.hdf5 import H5DataIO
 
 from ..nwb_helpers import add_device_from_metadata
 from ...utils import OptionalFilePathType
-
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,
@@ -117,7 +116,7 @@ def get_conversion_from_unit(unit: str) -> float:
     return float(conversion)
 
 
-def get_nwb_metadata(neo_reader, metadata: dict = None):
+def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
     """
     Return default metadata for all recording fields.
 
@@ -488,6 +487,7 @@ def write_neo_to_nwb(
     icephys_experiment_type: str (optional)
         Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero'.
         If no value is passed, 'voltage_clamp' is used as default.
+    stimulus_type: str, optional
     skip_electrodes: tuple, optional
         Electrode IDs to skip. Defaults to ().
     """

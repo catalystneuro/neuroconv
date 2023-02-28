@@ -1,12 +1,13 @@
 import numpy as np
-from numpy.testing import assert_array_equal
-
 from hdmf.testing import TestCase
-from parameterized import parameterized, param
+from numpy.testing import assert_array_equal
 from nwbinspector.utils import get_package_version
+from parameterized import param, parameterized
 from roiextractors.testing import generate_dummy_imaging_extractor
 
-from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
+    ImagingExtractorDataChunkIterator,
+)
 
 
 def custom_name_func(testcase_func, param_num, param):

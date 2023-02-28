@@ -7,7 +7,7 @@ import numpy as np
 from .spikeglx_utils import get_device_metadata, get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
+from ....utils import get_schema_from_method_signature, FilePathType, dict_deep_update
 
 
 class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
@@ -16,7 +16,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
@@ -60,7 +60,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
         )
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, "nidq")]["meta"]
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         session_start_time = get_session_start_time(self.meta)

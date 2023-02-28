@@ -1,13 +1,13 @@
 """Authors: Luiz Tauffer."""
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import (
-    get_schema_from_method_signature,
     FilePathType,
+    get_schema_from_method_signature,
 )
 
 
@@ -55,7 +55,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose, es_key=es_key)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = parse_nsx_basic_header(self.source_data["file_path"])
@@ -71,7 +71,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Blackrock spiking data."""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         metadata_schema = get_schema_from_method_signature(class_method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
@@ -92,7 +92,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         """
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = parse_nev_basic_header(self.source_data["file_path"])

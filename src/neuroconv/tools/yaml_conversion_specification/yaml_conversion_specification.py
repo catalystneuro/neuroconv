@@ -1,16 +1,16 @@
 """Authors: Cody Baker, Alessio Buccino."""
 import sys
-from pathlib import Path
 from importlib import import_module
-from jsonschema import validate, RefResolver
+from pathlib import Path
 from typing import Optional
 
 import click
-from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
+from dandi.organize import create_unique_filenames_from_metadata
+from jsonschema import RefResolver, validate
 
 from ...nwbconverter import NWBConverter
-from ...utils import dict_deep_update, load_dict_from_file, FilePathType, FolderPathType
+from ...utils import FilePathType, FolderPathType, dict_deep_update, load_dict_from_file
 
 
 @click.command()

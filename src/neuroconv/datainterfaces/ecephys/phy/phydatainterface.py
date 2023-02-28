@@ -1,5 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-from typing import Optional, List
+from typing import List, Optional
 from warnings import warn
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface

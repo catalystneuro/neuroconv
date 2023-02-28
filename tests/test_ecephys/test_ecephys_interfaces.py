@@ -1,20 +1,22 @@
 import unittest
+from datetime import datetime
+from pathlib import Path
 from platform import python_version as get_python_version
 from sys import platform
-from packaging.version import Version
 from tempfile import mkdtemp
-from pathlib import Path
-from datetime import datetime
 
 import numpy as np
 import pytest
 from hdmf.testing import TestCase
+from packaging.version import Version
 from pynwb import NWBHDF5IO
 from spikeinterface.extractors import NumpySorting
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import CEDRecordingInterface
-from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
+from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
+    BaseSortingExtractorInterface,
+)
 
 python_version = Version(get_python_version())
 
