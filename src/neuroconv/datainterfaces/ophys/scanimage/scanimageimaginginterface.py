@@ -7,7 +7,7 @@ from ....tools import get_package
 from ....utils import FilePathType
 
 
-def extract_extra_metadata(file_path):
+def extract_extra_metadata(file_path) -> dict:
     ScanImageTiffReader = get_package(
         package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
     )
@@ -22,7 +22,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
@@ -59,7 +59,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         device_number = 0  # Imaging plane metadata is a list with metadata for each plane
 
         metadata = super().get_metadata()
