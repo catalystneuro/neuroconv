@@ -5,11 +5,11 @@ from typing import List, Optional
 import numpy as np
 from pynwb import NWBFile
 
-from .spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
+from .spikeglxdatainterface import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import get_schema_from_method_signature, FolderPathType
+from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class SpikeGLXConverter(ConverterPipe):

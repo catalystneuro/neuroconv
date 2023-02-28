@@ -1,13 +1,13 @@
 import datetime
-from unittest import TestCase
+from copy import deepcopy
+from datetime import datetime
+from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
-from pathlib import Path
-from datetime import datetime
-from copy import deepcopy
+from unittest import TestCase
 
-from pynwb import NWBHDF5IO
 from pydantic import FilePath
+from pynwb import NWBHDF5IO
 
 from neuroconv import ConverterPipe
 from neuroconv.converters import SpikeGLXConverter
