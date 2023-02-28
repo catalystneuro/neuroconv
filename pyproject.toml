@@ -31,4 +31,4 @@ doctest_optionflags = "ELLIPSIS"
 [tool.isort]
 profile = "black"
 reverse_relative = true
-known_first_party = ["nwbwidgets"]
+known_first_party = ["neuroconv"]
