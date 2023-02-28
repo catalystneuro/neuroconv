@@ -4,7 +4,7 @@ from pathlib import Path
 
 from typing import Optional
 
-from .spikeglx_utils import fetch_stream_id_for_spikelgx_file, get_session_start_time
+from .spikeglx_utils import fetch_stream_id_for_spikelgx_file, get_session_start_time, get_device_metadata
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import (
     FilePathType,
