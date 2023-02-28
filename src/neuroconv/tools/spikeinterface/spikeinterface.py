@@ -3,27 +3,24 @@ import uuid
 import warnings
 from collections import defaultdict
 from numbers import Real
-from typing import Union, Optional, List
-from collections import defaultdict
+from typing import List, Optional, Union
 
 import numpy as np
 import psutil
 import pynwb
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.common.table import DynamicTable
-from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
+from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from nwbinspector.utils import get_package_version
 from packaging.version import Version
 from pynwb import NWBFile
 from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
-from numbers import Real
-from hdmf.data_utils import DataChunkIterator, AbstractDataChunkIterator
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-import psutil
 
-from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
+from .spikeinterfacerecordingdatachunkiterator import (
+    SpikeInterfaceRecordingDataChunkIterator,
+)
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import dict_deep_update, FilePathType, calculate_regular_series_rate
+from ...utils import FilePathType, calculate_regular_series_rate, dict_deep_update
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):

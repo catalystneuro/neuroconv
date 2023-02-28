@@ -14,9 +14,7 @@ from pynwb.testing import remove_test_file
 from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces.behavior.audio.audiointerface import (
-    AudioInterface,
-)
+from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
 from neuroconv.utils import FilePathType
 
 

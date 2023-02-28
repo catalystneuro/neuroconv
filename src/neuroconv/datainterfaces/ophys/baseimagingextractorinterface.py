@@ -8,11 +8,11 @@ from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
-    get_schema_from_hdmf_class,
-    fill_defaults,
-    get_base_schema,
     OptionalFilePathType,
     dict_deep_update,
+    fill_defaults,
+    get_base_schema,
+    get_schema_from_hdmf_class,
 )
 
 

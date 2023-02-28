@@ -5,12 +5,23 @@ from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
-from .neuroscope_utils import get_xml_file_path, get_channel_groups, get_shank_channels, get_session_start_time
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .neuroscope_utils import (
+    get_channel_groups,
+    get_session_start_time,
+    get_shank_channels,
+    get_xml_file_path,
+)
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class, dict_deep_update
+from ....utils import (
+    FilePathType,
+    FolderPathType,
+    OptionalFilePathType,
+    dict_deep_update,
+    get_schema_from_hdmf_class,
+)
 
 
 def subset_shank_channels(recording_extractor, xml_file_path: str):
