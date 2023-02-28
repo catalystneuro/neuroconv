@@ -6,7 +6,7 @@ from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
-from ....utils import get_schema_from_hdmf_class, FilePathType
+from ....utils import FilePathType, get_schema_from_hdmf_class
 
 
 def extract_electrode_metadata_with_pyintan(file_path) -> dict:

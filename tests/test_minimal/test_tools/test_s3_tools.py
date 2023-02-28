@@ -1,4 +1,7 @@
-from neuroconv.tools.data_transfers import estimate_s3_conversion_cost, estimate_total_conversion_runtime
+from neuroconv.tools.data_transfers import (
+    estimate_s3_conversion_cost,
+    estimate_total_conversion_runtime,
+)
 
 
 def test_estimate_s3_conversion_cost_standard():

@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from hdmf.testing import TestCase
-from pynwb.testing.mock.file import mock_NWBFile
 from numpy.testing import assert_array_almost_equal
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.testing import MockSpikeGLXNIDQInterface
 

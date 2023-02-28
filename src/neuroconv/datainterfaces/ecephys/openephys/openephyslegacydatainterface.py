@@ -1,5 +1,5 @@
 """Authors: Szonja Weigl, Cody Baker."""
-from typing import Optional, List
+from typing import List, Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature

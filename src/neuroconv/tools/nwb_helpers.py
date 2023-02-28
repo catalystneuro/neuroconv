@@ -1,15 +1,15 @@
 """Authors: Cody Baker, Alessio Buccino."""
 import uuid
-from datetime import datetime
-from warnings import warn
 from contextlib import contextmanager
-from typing import Optional
+from datetime import datetime
 from pathlib import Path
+from typing import Optional
+from warnings import warn
 
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from ..utils import dict_deep_update, FilePathType
+from ..utils import FilePathType, dict_deep_update
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):

@@ -2,8 +2,8 @@
 from pathlib import Path
 from warnings import warn
 
-import scipy
 import numpy as np
+import scipy
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package

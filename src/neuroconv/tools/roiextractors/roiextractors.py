@@ -15,21 +15,29 @@ from pynwb.base import Images
 from pynwb.device import Device
 from pynwb.image import GrayscaleImage
 from pynwb.ophys import (
+    DfOverF,
+    Fluorescence,
     ImageSegmentation,
     ImagingPlane,
-    PlaneSegmentation,
-    Fluorescence,
     OpticalChannel,
-    TwoPhotonSeries,
+    PlaneSegmentation,
     RoiResponseSeries,
-    DfOverF,
+    TwoPhotonSeries,
 )
-from roiextractors import ImagingExtractor, SegmentationExtractor, MultiSegmentationExtractor
+from roiextractors import (
+    ImagingExtractor,
+    MultiSegmentationExtractor,
+    SegmentationExtractor,
+)
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
-from ..nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile, get_module
-from ...utils import OptionalFilePathType, dict_deep_update, calculate_regular_series_rate
+from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
+from ...utils import (
+    OptionalFilePathType,
+    calculate_regular_series_rate,
+    dict_deep_update,
+)
 
 
 def get_default_ophys_metadata() -> dict:

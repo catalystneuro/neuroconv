@@ -3,17 +3,16 @@ from typing import Optional, Tuple
 from warnings import warn
 
 import numpy as np
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
 from ...utils import (
     FilePathType,
+    get_metadata_schema_for_icephys,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
-    get_metadata_schema_for_icephys,
 )
-
 
 try:
     from ndx_dandi_icephys import DandiIcephysMetadata

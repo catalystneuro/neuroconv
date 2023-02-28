@@ -1,19 +1,18 @@
 """Author: Luiz Tauffer."""
-from typing import Optional, Tuple
 import distutils.version
 import uuid
+import warnings
 from datetime import datetime
 from pathlib import Path
-import warnings
-import numpy as np
+from typing import Optional, Tuple
 
 import neo.io.baseio
+import numpy as np
 import pynwb
 from hdmf.backends.hdf5 import H5DataIO
 
 from ..nwb_helpers import add_device_from_metadata
 from ...utils import OptionalFilePathType
-
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,

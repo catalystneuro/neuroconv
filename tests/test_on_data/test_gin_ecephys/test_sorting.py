@@ -1,20 +1,20 @@
 import unittest
-import pytest
 from datetime import datetime
 
 import numpy as np
-from parameterized import parameterized, param
+import pytest
+from parameterized import param, parameterized
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
+    BlackrockSortingInterface,
     CellExplorerSortingInterface,
+    KiloSortSortingInterface,
     NeuralynxSortingInterface,
     NeuroScopeSortingInterface,
     PhySortingInterface,
-    KiloSortSortingInterface,
-    BlackrockSortingInterface,
     PlexonSortingInterface,
 )
 

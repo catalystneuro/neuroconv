@@ -1,6 +1,7 @@
 """Authors: Cody Baker and Ben Dichter."""
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from dateutil import parser
 
 from ....tools import get_package

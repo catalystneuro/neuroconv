@@ -1,12 +1,12 @@
 """Author: Cody Baker."""
-from typing import Optional, Union
 from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
 from nwbinspector.tools import make_minimal_nwbfile
 from nwbinspector.utils import is_module_installed
-from pynwb import NWBHDF5IO, TimeSeries, H5DataIO
+from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 
 from ...utils import ArrayType, FolderPathType
 

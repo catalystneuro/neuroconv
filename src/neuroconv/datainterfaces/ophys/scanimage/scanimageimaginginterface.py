@@ -1,6 +1,7 @@
 import json
-from dateutil.parser import parse as dateparse
 from typing import Optional
+
+from dateutil.parser import parse as dateparse
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools import get_package

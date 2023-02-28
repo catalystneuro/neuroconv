@@ -1,36 +1,36 @@
-import unittest
-import pytest
 import itertools
+import unittest
 from datetime import datetime
 from platform import python_version
 from sys import platform
 
+import pytest
 from packaging import version
-from parameterized import parameterized, param
+from parameterized import param, parameterized
+from spikeinterface.core import BaseRecording
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
-from spikeinterface.core import BaseRecording
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
+    AlphaOmegaRecordingInterface,
+    AxonaRecordingInterface,
+    BiocamRecordingInterface,
+    BlackrockRecordingInterface,
     CEDRecordingInterface,
+    EDFRecordingInterface,
     IntanRecordingInterface,
+    MCSRawRecordingInterface,
+    MEArecRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroScopeRecordingInterface,
-    OpenEphysRecordingInterface,
-    OpenEphysLegacyRecordingInterface,
     OpenEphysBinaryRecordingInterface,
+    OpenEphysLegacyRecordingInterface,
+    OpenEphysRecordingInterface,
+    PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    BlackrockRecordingInterface,
-    AxonaRecordingInterface,
-    EDFRecordingInterface,
     TdtRecordingInterface,
-    PlexonRecordingInterface,
-    BiocamRecordingInterface,
-    AlphaOmegaRecordingInterface,
-    MEArecRecordingInterface,
-    MCSRawRecordingInterface,
 )
 
 # enable to run locally in interactive mode

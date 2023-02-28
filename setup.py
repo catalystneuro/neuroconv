@@ -1,7 +1,8 @@
-from setuptools import setup, find_packages
+from collections import defaultdict
 from pathlib import Path
 from shutil import copy
-from collections import defaultdict
+
+from setuptools import find_packages, setup
 
 root = Path(__file__).parent
 

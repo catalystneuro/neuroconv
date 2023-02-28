@@ -1,16 +1,16 @@
 """Authors: Luiz Tauffer."""
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 from pynwb.ecephys import ElectricalSeries
 
-from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
+from .header_tools import parse_nev_basic_header, parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import (
+    FilePathType,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
-    FilePathType,
 )
 
 

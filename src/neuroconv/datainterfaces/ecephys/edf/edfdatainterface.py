@@ -1,6 +1,5 @@
 """Authors: Heberto Mayorquin"""
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-
 from ....tools import get_package
 from ....utils.types import FilePathType
 
