@@ -4,7 +4,7 @@ from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import get_schema_from_method_signature, FolderPathType
+from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):

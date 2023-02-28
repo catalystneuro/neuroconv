@@ -1,7 +1,9 @@
 from hdmf.testing import TestCase
 
 from neuroconv.datainterfaces import OpenEphysRecordingInterface
-from neuroconv.datainterfaces.ecephys.openephys.openephysbinarydatainterface import OpenEphysBinaryRecordingInterface
+from neuroconv.datainterfaces.ecephys.openephys.openephysbinarydatainterface import (
+    OpenEphysBinaryRecordingInterface,
+)
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

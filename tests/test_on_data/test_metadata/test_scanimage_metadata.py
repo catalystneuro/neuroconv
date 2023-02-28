@@ -1,7 +1,8 @@
 from datetime import datetime
 
-
-from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
+from neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface import (
+    ScanImageImagingInterface,
+)
 
 from ..setup_paths import OPHYS_DATA_PATH
 

@@ -1,6 +1,8 @@
 from hdmf.testing import TestCase
 
-from neuroconv.datainterfaces.ecephys.openephys.openephyslegacydatainterface import OpenEphysLegacyRecordingInterface
+from neuroconv.datainterfaces.ecephys.openephys.openephyslegacydatainterface import (
+    OpenEphysLegacyRecordingInterface,
+)
 
 from ..setup_paths import ECEPHY_DATA_PATH
 

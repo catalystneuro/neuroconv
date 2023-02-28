@@ -10,8 +10,9 @@ NLX_PATH = ECEPHY_DATA_PATH / "neuralynx"
 
 
 def test_neuralynx_cheetah_v574_metadata():
-    import neo
     import distutils.version as version
+
+    import neo
 
     folder_path = NLX_PATH / "Cheetah_v5.7.4" / "original_data"
     metadata = NeuralynxRecordingInterface(folder_path).get_metadata()
@@ -35,8 +36,9 @@ def test_neuralynx_cheetah_v574_metadata():
 
 
 def test_neuralynx_cheetah_v574_metadata():
-    import neo
     import distutils.version as version
+
+    import neo
 
     folder_path = NLX_PATH / "Cheetah_v5.7.4" / "original_data"
     metadata = NeuralynxRecordingInterface(folder_path).get_metadata()
@@ -60,8 +62,9 @@ def test_neuralynx_cheetah_v574_metadata():
 
 
 def test_neuralynx_cheetah_v563_metadata():
-    import neo
     import distutils.version as version
+
+    import neo
 
     folder_path = NLX_PATH / "Cheetah_v5.6.3" / "original_data"
     metadata = NeuralynxRecordingInterface(folder_path).get_metadata()
@@ -83,8 +86,9 @@ def test_neuralynx_cheetah_v563_metadata():
 
 
 def test_neuralynx_cheetah_v540_metadata():
-    import neo
     import distutils.version as version
+
+    import neo
 
     folder_path = NLX_PATH / "Cheetah_v5.4.0" / "original_data"
     metadata = NeuralynxRecordingInterface(folder_path).get_metadata()

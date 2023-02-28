@@ -1,13 +1,13 @@
-from tempfile import mkdtemp
-from shutil import rmtree
-from pathlib import Path
-from datetime import datetime
 import unittest
+from datetime import datetime
+from pathlib import Path
+from shutil import rmtree
+from tempfile import mkdtemp
 
 import numpy as np
 from pynwb import NWBFile
 
-from neuroconv import NWBConverter, ConverterPipe
+from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.basedatainterface import BaseDataInterface
 
 try:

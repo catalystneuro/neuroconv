@@ -1,22 +1,22 @@
 import unittest
-import pytest
 from datetime import datetime
 
+import pytest
 from hdmf.testing import TestCase
-from parameterized import parameterized, param
+from parameterized import param, parameterized
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
-    ScanImageImagingInterface,
-    TiffImagingInterface,
-    Hdf5ImagingInterface,
-    SbxImagingInterface,
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
+    Hdf5ImagingInterface,
+    SbxImagingInterface,
+    ScanImageImagingInterface,
     Suite2pSegmentationInterface,
+    TiffImagingInterface,
 )
 
 # enable to run locally in interactive mode

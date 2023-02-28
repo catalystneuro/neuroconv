@@ -1,8 +1,8 @@
 import unittest
-import pytest
 from datetime import datetime
 
-from parameterized import parameterized, param
+import pytest
+from parameterized import param, parameterized
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 

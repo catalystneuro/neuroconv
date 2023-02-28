@@ -6,7 +6,7 @@ import numpy as np
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import get_schema_from_method_signature, FilePathType
+from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):

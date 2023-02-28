@@ -1,9 +1,9 @@
 """Authors: Heberto Mayorquin, Cody Baker."""
-from warnings import warn
 from typing import Optional
+from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, ArrayType
+from ....utils import ArrayType, FilePathType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):

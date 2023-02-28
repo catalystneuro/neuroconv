@@ -1,13 +1,12 @@
 import unittest
-import pytest
 from datetime import datetime
 
 import numpy as np
 import numpy.testing as npt
+import pytest
+from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
-from parameterized import parameterized, param
 from spikeinterface.extractors import NwbRecordingExtractor
-
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import NeuroScopeRecordingInterface

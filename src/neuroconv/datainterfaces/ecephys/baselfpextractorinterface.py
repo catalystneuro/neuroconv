@@ -1,5 +1,6 @@
 """Authors: Cody Baker and Ben Dichter."""
 from typing import Optional
+
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface

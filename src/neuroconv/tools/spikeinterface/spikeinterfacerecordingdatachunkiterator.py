@@ -1,5 +1,5 @@
 """Authors: Cody Baker and Saksham Sharda."""
-from typing import Tuple, Iterable, Optional, Union
+from typing import Iterable, Optional, Tuple, Union
 from warnings import warn
 
 from hdmf.data_utils import GenericDataChunkIterator

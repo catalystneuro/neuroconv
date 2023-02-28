@@ -1,18 +1,18 @@
 import os
 import unittest
-from tempfile import mkdtemp
 from pathlib import Path
 from shutil import rmtree
+from tempfile import mkdtemp
 
 import pytest
 from hdmf.testing import TestCase
 
 from neuroconv.tools.data_transfers import (
-    get_globus_dataset_content_sizes,
+    deploy_process,
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,
+    get_globus_dataset_content_sizes,
     transfer_globus_content,
-    deploy_process,
 )
 
 try:

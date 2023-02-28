@@ -1,12 +1,12 @@
-from unittest.mock import patch
 from datetime import datetime
-from tempfile import mkdtemp
+from io import StringIO
 from pathlib import Path
 from shutil import rmtree
-from io import StringIO
+from tempfile import mkdtemp
+from unittest.mock import patch
 
-from pynwb import NWBHDF5IO, TimeSeries
 from hdmf.testing import TestCase
+from pynwb import NWBHDF5IO, TimeSeries
 
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
 
