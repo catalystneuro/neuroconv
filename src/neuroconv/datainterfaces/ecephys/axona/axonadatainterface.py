@@ -1,5 +1,4 @@
 """Authors: Heberto Mayorquin, Steffen Buergers."""
-from pydantic import constr
 from pynwb import NWBFile
 
 from .axona_utils import (
@@ -19,7 +18,13 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     DataInterface for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
     """
 
-    def __init__(self, file_path: constr(regex=r".*\.bin$"), verbose: bool = True, es_key: str = "ElectricalSeries"):
+    @classmethod
+    def get_source_schema(cls):
+        schema = super().get_source_schema()
+        schema["properties"]["file_path"]["pattern"] = r".*\.bin$"
+        return schema
+
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
 
         Parameters
