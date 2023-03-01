@@ -1,6 +1,6 @@
 """Authors: Heberto Mayorquin, Steffen Buergers."""
-from pynwb import NWBFile
 from pydantic import constr
+from pynwb import NWBFile
 
 from .axona_utils import (
     get_eeg_sampling_frequency,
