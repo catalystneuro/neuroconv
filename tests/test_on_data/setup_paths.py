@@ -20,9 +20,6 @@ else:
     LOCAL_PATH = Path(test_config_dict["LOCAL_PATH"])
     print("Running GIN tests locally!")
 
-HDF5_PLUGIN_PATH = LOCAL_PATH / "hdf5_plugins"
-HDF5_PLUGIN_PATH.mkdir(exist_ok=True)
-
 BEHAVIOR_DATA_PATH = LOCAL_PATH / "behavior_testing_data"
 ECEPHY_DATA_PATH = LOCAL_PATH / "ephy_testing_data"
 OPHYS_DATA_PATH = LOCAL_PATH / "ophys_testing_data"
