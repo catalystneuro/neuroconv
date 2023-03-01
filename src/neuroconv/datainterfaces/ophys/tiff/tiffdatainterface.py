@@ -6,7 +6,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
     """Data Interface for TiffImagingExtractor."""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema

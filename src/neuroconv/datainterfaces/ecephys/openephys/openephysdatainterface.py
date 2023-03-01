@@ -3,7 +3,6 @@ from typing import Optional
 
 from .openephysbinarydatainterface import OpenEphysBinaryRecordingInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-
 from ....utils import FolderPathType
 
 

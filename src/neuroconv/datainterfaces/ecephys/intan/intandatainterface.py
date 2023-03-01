@@ -6,10 +6,10 @@ from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
-from ....utils import get_schema_from_hdmf_class, FilePathType
+from ....utils import FilePathType, get_schema_from_hdmf_class
 
 
-def extract_electrode_metadata_with_pyintan(file_path):
+def extract_electrode_metadata_with_pyintan(file_path) -> dict:
     pyintan = get_package(package_name="pyintan")
 
     if ".rhd" in Path(file_path).suffixes:
@@ -38,7 +38,7 @@ def extract_electrode_metadata_with_pyintan(file_path):
     return electrodes_metadata
 
 
-def extract_electrode_metadata(recording_extractor):
+def extract_electrode_metadata(recording_extractor) -> dict:
     channel_name_array = recording_extractor.get_property("channel_name")
 
     group_names = [channel.split("-")[0] for channel in channel_name_array]
@@ -100,14 +100,14 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         if any(custom_names):
             self.recording_extractor.set_property(key="custom_channel_name", ids=channel_ids, values=custom_names)
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Ecephys"]["properties"].update(
             ElectricalSeriesRaw=get_schema_from_hdmf_class(ElectricalSeries)
         )
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         ecephys_metadata = metadata["Ecephys"]
 

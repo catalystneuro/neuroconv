@@ -1,26 +1,30 @@
 import os
 import sys
 from datetime import datetime
-from tempfile import mkdtemp
 from pathlib import Path
-from shutil import rmtree
 from platform import python_version as get_python_version
+from shutil import rmtree
+from tempfile import mkdtemp
 
 import pytest
-from pynwb import NWBHDF5IO
 from hdmf.testing import TestCase
+from pynwb import NWBHDF5IO
 
-from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, get_default_nwbfile_metadata
 from neuroconv.tools.data_transfers import automatic_dandi_upload
+from neuroconv.tools.nwb_helpers import (
+    get_default_nwbfile_metadata,
+    make_nwbfile_from_metadata,
+)
 
 DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
 
 
-@pytest.mark.skipif(
-    not HAVE_DANDI_KEY,
-    reason="You must set your DANDI_API_KEY to run this test!",
-)
+@pytest.mark.skip(reason="Problem with staging upload began on March 1, 2023")
+# @pytest.mark.skipif(
+#    not HAVE_DANDI_KEY,
+#    reason="You must set your DANDI_API_KEY to run this test!",
+# )
 class TestAutomaticDANDIUpload(TestCase):
     def setUp(self):
         self.tmpdir = Path(mkdtemp())

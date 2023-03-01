@@ -1,18 +1,21 @@
-from tempfile import mkdtemp
-from shutil import rmtree
-from pathlib import Path
-from typing import Union, Dict
 from datetime import datetime
+from pathlib import Path
+from shutil import rmtree
+from tempfile import mkdtemp
+from typing import Dict, Union
 
 import numpy as np
-from numpy.testing import assert_array_equal, assert_array_almost_equal
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 from pandas import DataFrame
 from pynwb import NWBHDF5IO
 
-from neuroconv import NWBConverter, ConverterPipe
+from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.datainterfaces import CsvTimeIntervalsInterface
-from neuroconv.tools.testing import MockBehaviorEventInterface, MockSpikeGLXNIDQInterface
+from neuroconv.tools.testing import (
+    MockBehaviorEventInterface,
+    MockSpikeGLXNIDQInterface,
+)
 
 
 class TestNIDQInterfacePulseTimesAlignment(TestCase):

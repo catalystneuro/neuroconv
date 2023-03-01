@@ -1,13 +1,13 @@
-import os
 import json
+import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Union
-from copy import deepcopy
 
 from neuroconv.utils import (
-    get_schema_from_method_signature,
     dict_deep_update,
     fill_defaults,
+    get_schema_from_method_signature,
     load_dict_from_file,
 )
 

@@ -4,7 +4,7 @@ from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import get_schema_from_method_signature, FolderPathType
+from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
@@ -14,7 +14,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         """Compile input schema for the RecordingExtractor."""
         source_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
@@ -51,7 +51,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         if stub_test:
             self.subset_channels = [0, 1]
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         import pyopenephys
 
@@ -69,7 +69,7 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting OpenEphys spiking data."""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         """Compile input schema for the SortingExtractor."""
         metadata_schema = get_schema_from_method_signature(
             class_method=cls.__init__, exclude=["recording_id", "experiment_id"]

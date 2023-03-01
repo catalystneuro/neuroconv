@@ -1,35 +1,36 @@
-import unittest
-import pytest
 import itertools
+import unittest
 from datetime import datetime
 from platform import python_version
 from sys import platform
 
+import pytest
 from packaging import version
-from parameterized import parameterized, param
+from parameterized import param, parameterized
+from spikeinterface.core import BaseRecording
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
-from spikeinterface.core import BaseRecording
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
+    AlphaOmegaRecordingInterface,
+    AxonaRecordingInterface,
+    BiocamRecordingInterface,
+    BlackrockRecordingInterface,
     CEDRecordingInterface,
+    EDFRecordingInterface,
     IntanRecordingInterface,
+    MCSRawRecordingInterface,
+    MEArecRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroScopeRecordingInterface,
-    OpenEphysRecordingInterface,
     OpenEphysBinaryRecordingInterface,
+    OpenEphysLegacyRecordingInterface,
+    OpenEphysRecordingInterface,
+    PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    BlackrockRecordingInterface,
-    AxonaRecordingInterface,
-    EDFRecordingInterface,
     TdtRecordingInterface,
-    PlexonRecordingInterface,
-    BiocamRecordingInterface,
-    AlphaOmegaRecordingInterface,
-    MEArecRecordingInterface,
-    MCSRawRecordingInterface,
 )
 
 # enable to run locally in interactive mode
@@ -130,31 +131,56 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
         ),
         param(
-            data_interface=NeuralynxRecordingInterface,
+            data_interface=OpenEphysLegacyRecordingInterface,
             interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+                folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
             ),
-            case_name="neuralynx",
-        ),
-        param(
-            data_interface=OpenEphysBinaryRecordingInterface,
-            interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
-            ),
-        ),
-        param(
-            data_interface=BlackrockRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
-            ),
-        ),
-        param(
-            data_interface=NeuroScopeRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
-            ),
+            case_name=f"openephyslegacy",
         ),
     ]
+    this_python_version = version.parse(python_version())
+    if (
+        platform != "darwin"
+        and this_python_version >= version.parse("3.8")
+        and this_python_version < version.parse("3.10")
+    ):
+        parameterized_recording_list.append(
+            param(
+                data_interface=CEDRecordingInterface,
+                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
+                case_name="smrx",
+            )
+        )
+    parameterized_recording_list.extend(
+        [
+            param(
+                data_interface=NeuralynxRecordingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+                ),
+                case_name="neuralynx",
+            ),
+            param(
+                data_interface=OpenEphysBinaryRecordingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+                ),
+            ),
+            param(
+                data_interface=BlackrockRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
+                ),
+            ),
+            param(
+                data_interface=NeuroScopeRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+                ),
+            ),
+        ]
+    )
+
     this_python_version = version.parse(python_version())
     if platform != "darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(

@@ -4,10 +4,10 @@ from typing import Optional, Literal
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
+from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, get_base_schema, FilePathType
+from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):

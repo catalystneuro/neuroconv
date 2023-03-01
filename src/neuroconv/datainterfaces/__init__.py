@@ -1,60 +1,76 @@
 # Ecephys
-from .ecephys.neuroscope.neuroscopedatainterface import (
-    NeuroScopeRecordingInterface,
-    NeuroScopeLFPInterface,
-    NeuroScopeSortingInterface,
+from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+from .behavior.sleap.sleapdatainterface import SLEAPInterface
+
+# Behavior
+from .behavior.video.videodatainterface import MovieInterface, VideoInterface
+from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axona.axonadatainterface import (
+    AxonaLFPDataInterface,
+    AxonaPositionDataInterface,
+    AxonaRecordingInterface,
+    AxonaUnitRecordingInterface,
 )
-from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface, SpikeGLXLFPInterface
-from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
-from .ecephys.spikegadgets.spikegadgetsdatainterface import SpikeGadgetsRecordingInterface
-from .ecephys.intan.intandatainterface import IntanRecordingInterface
-from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
-from .ecephys.spike2.spike2datainterface import CEDRecordingInterface
-from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
+from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
 from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
 )
-from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
-from .ecephys.openephys.openephysbinarydatainterface import OpenEphysSortingInterface, OpenEphysBinaryRecordingInterface
-from .ecephys.axona.axonadatainterface import (
-    AxonaRecordingInterface,
-    AxonaPositionDataInterface,
-    AxonaLFPDataInterface,
-    AxonaUnitRecordingInterface,
-)
-from .ecephys.neuralynx.neuralynxdatainterface import NeuralynxRecordingInterface, NeuralynxSortingInterface
-from .ecephys.phy.phydatainterface import PhySortingInterface
-from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
+from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
-from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
-from .ecephys.plexon.plexondatainterface import PlexonRecordingInterface, PlexonSortingInterface
-from .ecephys.biocam.biocamdatainterface import BiocamRecordingInterface
-from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
-from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
+from .ecephys.intan.intandatainterface import IntanRecordingInterface
+from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
+from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
+from .ecephys.neuralynx.neuralynxdatainterface import (
+    NeuralynxRecordingInterface,
+    NeuralynxSortingInterface,
+)
+from .ecephys.neuroscope.neuroscopedatainterface import (
+    NeuroScopeLFPInterface,
+    NeuroScopeRecordingInterface,
+    NeuroScopeSortingInterface,
+)
+from .ecephys.openephys.openephysbinarydatainterface import (
+    OpenEphysBinaryRecordingInterface,
+    OpenEphysSortingInterface,
+)
+from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
+from .ecephys.openephys.openephyslegacydatainterface import (
+    OpenEphysLegacyRecordingInterface,
+)
+from .ecephys.phy.phydatainterface import PhySortingInterface
+from .ecephys.plexon.plexondatainterface import (
+    PlexonRecordingInterface,
+    PlexonSortingInterface,
+)
+from .ecephys.spike2.spike2datainterface import (
+    CEDRecordingInterface,
+    Spike2RecordingInterface,
+)
+from .ecephys.spikegadgets.spikegadgetsdatainterface import (
+    SpikeGadgetsRecordingInterface,
+)
+from .ecephys.spikeglx.spikeglxdatainterface import (
+    SpikeGLXLFPInterface,
+    SpikeGLXRecordingInterface,
+)
+from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
+from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
 
-
 # Ophys
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
-from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
-from .ophys.sima.simadatainterface import SimaSegmentationInterface
-
-from .ophys.sbx.sbxdatainterface import SbxImagingInterface
-from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
-
-
-# Behavior
-from .behavior.video.videodatainterface import VideoInterface, MovieInterface
-from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
-from .behavior.sleap.sleapdatainterface import SLEAPInterface
+from .ophys.sima.simadatainterface import SimaSegmentationInterface
+from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
+from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
 # Text
 from .text.csv.csvtimeintertervalsinterface import CsvTimeIntervalsInterface
@@ -77,8 +93,9 @@ interface_list = [
     CellExplorerSortingInterface,
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
-    OpenEphysBinaryRecordingInterface,
     OpenEphysRecordingInterface,
+    OpenEphysBinaryRecordingInterface,
+    OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
     PhySortingInterface,
     KiloSortSortingInterface,

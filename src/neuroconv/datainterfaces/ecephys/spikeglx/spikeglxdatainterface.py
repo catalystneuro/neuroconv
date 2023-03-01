@@ -1,15 +1,19 @@
 """DataInterfaces for SpikeGLX."""
-from pathlib import Path
 import json
+from pathlib import Path
 from typing import Optional
 
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 
-
+from .spikeglx_utils import fetch_stream_id_for_spikelgx_file, get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import get_schema_from_method_signature, get_schema_from_hdmf_class, FilePathType, dict_deep_update
-from .spikeglx_utils import get_session_start_time, fetch_stream_id_for_spikelgx_file
+from ....utils import (
+    FilePathType,
+    dict_deep_update,
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+)
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
@@ -43,7 +47,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
         es_key: str = "ElectricalSeriesAP",
     ):
@@ -52,8 +55,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .bin file. Point to .ap.bin for SpikeGLXRecordingInterface and .lf.bin for SpikeGLXLFPInterface.
-        spikeextractors_backend : bool, default: False
-            Whether to use the legacy spikeextractors library backend.
         verbose : bool, default: True
             Whether to output verbose text.
         es_key : str, default: "ElectricalSeries"
@@ -153,10 +154,7 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     def __init__(
         self,
         file_path: FilePathType,
-        spikeextractors_backend: bool = False,
         verbose: bool = True,
         es_key: str = "ElectricalSeriesLF",
     ):
-        super().__init__(
-            file_path=file_path, spikeextractors_backend=spikeextractors_backend, verbose=verbose, es_key=es_key
-        )
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)

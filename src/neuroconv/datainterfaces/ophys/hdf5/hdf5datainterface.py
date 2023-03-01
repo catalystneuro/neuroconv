@@ -1,5 +1,5 @@
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, ArrayType
+from ....utils import ArrayType, FilePathType
 
 
 class Hdf5ImagingInterface(BaseImagingExtractorInterface):
