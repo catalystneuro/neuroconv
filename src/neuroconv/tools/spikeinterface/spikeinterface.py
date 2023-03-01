@@ -3,7 +3,7 @@ import uuid
 import warnings
 from collections import defaultdict
 from numbers import Real
-from typing import Union, Optional, List, Literal
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 import psutil

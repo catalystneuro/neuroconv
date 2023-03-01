@@ -1,5 +1,5 @@
 """Authors: Cody Baker and Ben Dichter."""
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile

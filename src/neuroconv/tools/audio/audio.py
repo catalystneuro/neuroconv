@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Literal, Optional
 from warnings import warn
 
 from hdmf.backends.hdf5 import H5DataIO

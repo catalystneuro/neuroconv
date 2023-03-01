@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 import numpy as np
 import numpy.testing as npt

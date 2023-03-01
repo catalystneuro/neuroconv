@@ -3,8 +3,8 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
-from typing import Optional, List, Literal
 from types import MethodType
+from typing import List, Literal, Optional
 from unittest.mock import Mock
 
 import numpy as np

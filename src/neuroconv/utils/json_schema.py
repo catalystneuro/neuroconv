@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Literal
 
 import numpy as np
-
 import pynwb
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode

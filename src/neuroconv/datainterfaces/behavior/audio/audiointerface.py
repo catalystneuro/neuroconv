@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Literal, Optional
 from warnings import warn
 
 import numpy as np
