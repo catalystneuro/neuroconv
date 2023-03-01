@@ -1,7 +1,7 @@
-from jsonschema import Draft7Validator
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft7Validator
 
 from neuroconv.datainterfaces import interface_list
 from neuroconv.utils import load_dict_from_file

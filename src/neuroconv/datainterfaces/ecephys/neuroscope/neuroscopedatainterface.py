@@ -5,12 +5,23 @@ from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 
-from .neuroscope_utils import get_xml_file_path, get_channel_groups, get_shank_channels, get_session_start_time
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .neuroscope_utils import (
+    get_channel_groups,
+    get_session_start_time,
+    get_shank_channels,
+    get_xml_file_path,
+)
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class, dict_deep_update
+from ....utils import (
+    FilePathType,
+    FolderPathType,
+    OptionalFilePathType,
+    dict_deep_update,
+    get_schema_from_hdmf_class,
+)
 
 
 def subset_shank_channels(recording_extractor, xml_file_path: str):
@@ -60,7 +71,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
     @staticmethod
-    def get_ecephys_metadata(xml_file_path: str):
+    def get_ecephys_metadata(xml_file_path: str) -> dict:
         """Auto-populates ecephys metadata from the xml_file_path."""
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
@@ -115,7 +126,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -169,7 +180,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
@@ -217,7 +228,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             verbose=verbose,
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))

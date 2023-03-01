@@ -1,20 +1,20 @@
 import unittest
-import pytest
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-from parameterized import parameterized, param
-from pynwb import NWBHDF5IO
-from neuroconv import NWBConverter
-from neuroconv.datainterfaces import MovieInterface, DeepLabCutInterface, SLEAPInterface
-
+import pytest
 import sleap_io
+from parameterized import param, parameterized
+from pynwb import NWBHDF5IO
+
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import DeepLabCutInterface, MovieInterface, SLEAPInterface
 
 # enable to run locally in interactive mode
 try:
-    from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+    from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+    from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 if not BEHAVIOR_DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {BEHAVIOR_DATA_PATH}!")
@@ -99,7 +99,9 @@ class TestSLEAPInterface(unittest.TestCase):
         slp_predictions_path = interface_kwargs["file_path"]
         labels = sleap_io.load_slp(slp_predictions_path)
 
-        from neuroconv.datainterfaces.behavior.sleap.sleap_utils import extract_timestamps
+        from neuroconv.datainterfaces.behavior.sleap.sleap_utils import (
+            extract_timestamps,
+        )
 
         expected_timestamps = set(extract_timestamps(interface_kwargs["video_file_path"]))
 

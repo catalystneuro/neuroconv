@@ -1,11 +1,10 @@
-from pathlib import Path
-import tempfile
 import os
+import tempfile
+from pathlib import Path
 
 import pytest
 
 from neuroconv.utils import load_dict_from_file
-
 
 # Load the configuration for the data tests
 file_path = Path(__file__).parent.parent.parent / "tests" / "test_on_data" / "gin_test_config.json"

@@ -1,10 +1,10 @@
 """Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 import collections.abc
-import json
 import inspect
+import json
 from datetime import datetime
-import numpy as np
 
+import numpy as np
 import pynwb
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode

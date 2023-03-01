@@ -2,7 +2,10 @@ import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 
-from neuroconv.tools.signal_processing import get_rising_frames_from_ttl, get_falling_frames_from_ttl
+from neuroconv.tools.signal_processing import (
+    get_falling_frames_from_ttl,
+    get_rising_frames_from_ttl,
+)
 from neuroconv.tools.testing import generate_mock_ttl_signal
 
 

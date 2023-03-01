@@ -13,6 +13,10 @@ Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
 
+Biocam Recording
+-------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.biocam.biocamdatainterface
+
 Blackrock Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface

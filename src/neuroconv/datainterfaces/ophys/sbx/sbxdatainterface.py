@@ -17,7 +17,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
 
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         metadata["Ophys"]["Device"][0]["description"] = "Scanbox imaging"
         return metadata

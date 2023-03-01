@@ -1,17 +1,20 @@
 import unittest
-import pytest
 from datetime import datetime
 from typing import Optional
 
 import numpy as np
 import numpy.testing as npt
+import pytest
+from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
-from parameterized import parameterized, param
 from spikeinterface.core import BaseRecording
 
-
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import NeuroScopeLFPInterface, AxonaLFPDataInterface, SpikeGLXLFPInterface
+from neuroconv.datainterfaces import (
+    AxonaLFPDataInterface,
+    NeuroScopeLFPInterface,
+    SpikeGLXLFPInterface,
+)
 
 # enable to run locally in interactive mode
 try:

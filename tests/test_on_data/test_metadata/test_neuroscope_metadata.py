@@ -1,7 +1,11 @@
 import datetime
 
-from neuroconv.datainterfaces.ecephys.neuroscope.neuroscope_utils import get_session_start_time
-from neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface import NeuroScopeSortingInterface
+from neuroconv.datainterfaces.ecephys.neuroscope.neuroscope_utils import (
+    get_session_start_time,
+)
+from neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface import (
+    NeuroScopeSortingInterface,
+)
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
