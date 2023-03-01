@@ -11,16 +11,12 @@ from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import MaxOneRecordingInterface
 
-from ..setup_paths import ECEPHY_DATA_PATH, HDF5_PLUGIN_PATH
+from ..setup_paths import ECEPHY_DATA_PATH
 
 
 class TestMaxOneMetadata(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        hdf5_plugin_path = str(HDF5_PLUGIN_PATH)
-        MaxOneRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
-        os.environ["HDF5_PLUGIN_PATH"] = hdf5_plugin_path
-
         file_path = ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"
         cls.interface = MaxOneRecordingInterface(file_path=file_path)
 
