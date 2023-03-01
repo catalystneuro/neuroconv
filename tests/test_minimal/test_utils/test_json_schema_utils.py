@@ -58,7 +58,7 @@ def test_get_schema_from_method_signature():
         type="object",
     )
 
-    compare_dicts(schema, correct_schema)
+    assert schema == correct_schema
 
 
 def test_dict_deep_update_1():
