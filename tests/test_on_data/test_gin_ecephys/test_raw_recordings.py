@@ -227,11 +227,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
         )
 
-    @classmethod
-    def setUpClass(cls):
-        hdf5_plugin_path = str(HDF5_PLUGIN_PATH)
-        MaxOneRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
-        os.environ["HDF5_PLUGIN_PATH"] = hdf5_plugin_path
+    # @classmethod
+    # def setUpClass(cls):
+    #    hdf5_plugin_path = str(HDF5_PLUGIN_PATH)
+    #    MaxOneRecordingInterface.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+    #    os.environ["HDF5_PLUGIN_PATH"] = hdf5_plugin_path
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_recording_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
