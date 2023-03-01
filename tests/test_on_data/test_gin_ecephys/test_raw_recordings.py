@@ -20,6 +20,7 @@ from neuroconv.datainterfaces import (
     CEDRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
+    MaxOneRecordingInterface,
     MCSRawRecordingInterface,
     MEArecRecordingInterface,
     NeuralynxRecordingInterface,
@@ -31,12 +32,6 @@ from neuroconv.datainterfaces import (
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     TdtRecordingInterface,
-    PlexonRecordingInterface,
-    BiocamRecordingInterface,
-    AlphaOmegaRecordingInterface,
-    MEArecRecordingInterface,
-    MCSRawRecordingInterface,
-    MaxOneRecordingInterface,
 )
 
 # enable to run locally in interactive mode

@@ -1,13 +1,14 @@
 import os
 import unittest
-from tempfile import mkdtemp
+from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
-from dateutil import tz
-from datetime import datetime
+from tempfile import mkdtemp
 
 import pytest
+from dateutil import tz
 from pynwb import NWBHDF5IO
+
 from neuroconv.datainterfaces import MaxOneRecordingInterface
 
 from ..setup_paths import ECEPHY_DATA_PATH, HDF5_PLUGIN_PATH

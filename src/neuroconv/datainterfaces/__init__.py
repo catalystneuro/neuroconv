@@ -20,6 +20,7 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingI
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
+from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
 from .ecephys.neuralynx.neuralynxdatainterface import (
@@ -57,7 +58,6 @@ from .ecephys.spikeglx.spikeglxdatainterface import (
 )
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
-from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
