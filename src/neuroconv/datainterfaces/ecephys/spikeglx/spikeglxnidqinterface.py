@@ -7,7 +7,7 @@ import numpy as np
 from .spikeglx_utils import get_device_metadata, get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import get_schema_from_method_signature, FilePathType, dict_deep_update
+from ....utils import FilePathType, dict_deep_update, get_schema_from_method_signature
 
 
 class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):

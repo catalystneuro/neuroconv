@@ -1,16 +1,15 @@
 """DataInterfaces for SpikeGLX."""
 import warnings
 from pathlib import Path
-
 from typing import Optional
 
-from .spikeglx_utils import fetch_stream_id_for_spikelgx_file, get_session_start_time, get_device_metadata
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import (
-    FilePathType,
-    dict_deep_update,
-    get_schema_from_method_signature,
+from .spikeglx_utils import (
+    fetch_stream_id_for_spikelgx_file,
+    get_device_metadata,
+    get_session_start_time,
 )
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils import FilePathType, dict_deep_update, get_schema_from_method_signature
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
