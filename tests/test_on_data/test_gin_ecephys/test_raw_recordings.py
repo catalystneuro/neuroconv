@@ -132,6 +132,12 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
         ),
         param(
+            data_interface=MaxOneRecordingInterface,
+            interface_kwargs=dict(
+                file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"),
+            ),
+        ),
+        param(
             data_interface=OpenEphysLegacyRecordingInterface,
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
