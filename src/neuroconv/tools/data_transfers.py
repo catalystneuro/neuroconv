@@ -335,7 +335,7 @@ def automatic_dandi_upload(
         "Please retrieve your token from DANDI and set this environment variable."
     )
 
-    url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
+    url_base = "https://api-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
     dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
