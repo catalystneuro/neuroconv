@@ -1,5 +1,5 @@
 """DataInterfaces for SpikeGLX."""
-import json
+import warnings
 from pathlib import Path
 
 from typing import Optional
@@ -116,42 +116,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         return metadata
 
-    def get_device_metadata(self) -> dict:
-        """
-        Returns a device with description including the metadata.
-
-        Details described in https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
-
-        Returns
-        -------
-        dict
-            a dict containing the metadata necessary for creating the device
-        """
-        meta = self.meta
-        metadata_dict = dict()
-        if "imDatPrb_type" in self.meta:
-            probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
-            probe_type = str(meta["imDatPrb_type"])
-            probe_type_description = probe_type_to_probe_description[probe_type]
-            metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
-
-        if "imDatFx_pn" in self.meta:
-            metadata_dict.update(flex_part_number=meta["imDatFx_pn"])
-
-        if "imDatBsc_pn" in self.meta:
-            metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
-
-        description_string = "no description"
-        if metadata_dict:
-            description_string = json.dumps(metadata_dict)
-        device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
-
-        return device
-
 
 # include for backwards compatibility
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
-    pass
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
 
     ExtractorName = "SpikeGLXRecordingExtractor"
@@ -162,4 +129,7 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
         verbose: bool = True,
         es_key: str = "ElectricalSeriesLF",
     ):
+        warnings.warn(
+            "SpikeGLXLFPExtractor will be deprecated. Use SpikeGLXRecordingExtractor instead.", DeprecationWarning
+        )
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
