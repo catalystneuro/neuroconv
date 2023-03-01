@@ -21,7 +21,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     @classmethod
     def get_source_schema(cls):
         schema = super().get_source_schema()
-        schema["properties"]["file_path"]["pattern"] = r".*\.bin$"
+        schema["properties"]["file_path"]["pattern"] = r"\.bin$"
         return schema
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
