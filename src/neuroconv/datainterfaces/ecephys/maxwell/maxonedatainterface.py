@@ -44,9 +44,8 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
         hdf5_plugin_path : string or Path, optional
             Path to your systems HDF5 plugin library.
             Uses the home directory by default.
-        verbose : boolean
-            Allows verbose.
-            Default is True.
+        verbose : boolean, default: True
+            Allows verbosity.
         """
         if "HDF5_PLUGIN_PATH" not in os.environ:
             hdf5_plugin_path = hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell"
