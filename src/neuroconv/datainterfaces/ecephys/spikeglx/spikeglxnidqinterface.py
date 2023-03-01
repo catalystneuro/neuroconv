@@ -6,7 +6,7 @@ import numpy as np
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import get_schema_from_method_signature, FilePathType
+from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
@@ -15,7 +15,7 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
     ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
         source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX .nidq file."
         return source_schema
@@ -61,7 +61,7 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
         )
         self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         metadata["Ecephys"]["ElectrodeGroup"][0]["description"] = "A group representing the NIDQ channels."

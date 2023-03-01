@@ -2,12 +2,16 @@
 from pynwb import NWBFile
 from pydantic import constr
 
-from .axona_utils import read_all_eeg_file_lfp_data, get_eeg_sampling_frequency, get_position_object
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .axona_utils import (
+    get_eeg_sampling_frequency,
+    get_position_object,
+    read_all_eeg_file_lfp_data,
+)
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
-from ....utils import get_schema_from_method_signature, FilePathType
+from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class AxonaRecordingInterface(BaseRecordingExtractorInterface):
@@ -34,7 +38,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         tetrode_id = self.recording_extractor.get_property("tetrode_id")
         self.recording_extractor.set_channel_groups(tetrode_id)
 
-    def extract_nwb_file_metadata(self):
+    def extract_nwb_file_metadata(self) -> dict:
         raw_annotations = self.recording_extractor.neo_reader.raw_annotations
         session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
@@ -51,7 +55,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         return nwbfile_metadata
 
-    def extract_ecephys_metadata(self):
+    def extract_ecephys_metadata(self) -> dict:
         unique_elec_group_names = set(self.recording_extractor.get_channel_groups())
         sw_version = self.metadata_in_set_file["sw_version"]
         description = f"Axona DacqUSB, sw_version={sw_version}"
@@ -93,7 +97,7 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
     """Primary data interface class for converting a AxonaRecordingExtractor"""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         return dict(
             required=["file_path"],
             properties=dict(
@@ -116,7 +120,7 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     ExtractorName = "NumpyRecording"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         return dict(
             required=["file_path"],
             properties=dict(file_path=dict(type="string")),
@@ -136,7 +140,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
     """Primary data interface class for converting Axona position data"""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, file_path: str):

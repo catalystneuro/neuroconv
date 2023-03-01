@@ -7,7 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType
+from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -20,7 +20,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
 
         # Initiate Ecephys metadata
@@ -132,7 +132,12 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """
         from spikeinterface import NumpyRecording
 
-        from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
+        from ...tools.spikeinterface import (
+            add_devices,
+            add_electrode_groups,
+            add_electrodes,
+            write_sorting,
+        )
 
         if write_ecephys_metadata and "Ecephys" in metadata:
             n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])

@@ -1,40 +1,37 @@
 import unittest
-from unittest.mock import Mock
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from platform import python_version
-from packaging import version
-from tempfile import mkdtemp
 from shutil import rmtree
+from tempfile import mkdtemp
+from unittest.mock import Mock
 
-import psutil
 import numpy as np
-
-from pynwb import NWBHDF5IO, NWBFile
+import psutil
 import pynwb.ecephys
-from spikeinterface import extract_waveforms, WaveformExtractor
-from spikeinterface.core.testing_tools import generate_recording, generate_sorting
-from spikeinterface.extractors import NumpyRecording
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
-
 from hdmf.testing import TestCase
+from packaging import version
+from pynwb import NWBHDF5IO, NWBFile
+from spikeinterface import WaveformExtractor, extract_waveforms
+from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+from spikeinterface.extractors import NumpyRecording
 
-
+from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
+    add_electrical_series,
+    add_electrodes,
+    add_units_table,
+    check_if_recording_traces_fit_into_memory,
     get_nwb_metadata,
     write_recording,
     write_sorting,
     write_waveforms,
-    check_if_recording_traces_fit_into_memory,
-    add_electrodes,
-    add_electrical_series,
-    add_units_table,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-from neuroconv.tools.nwb_helpers import get_module
 
 testing_session_time = datetime.now().astimezone()
 

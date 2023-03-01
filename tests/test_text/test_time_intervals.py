@@ -1,13 +1,15 @@
-from datetime import datetime
 import os
+from datetime import datetime
 
-from numpy.testing import assert_array_equal
 import pandas as pd
+from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
-from neuroconv.datainterfaces import ExcelTimeIntervalsInterface, CsvTimeIntervalsInterface
+from neuroconv.datainterfaces import (
+    CsvTimeIntervalsInterface,
+    ExcelTimeIntervalsInterface,
+)
 from neuroconv.tools.text import convert_df_to_time_intervals
-
 
 trials_xls_path = os.path.join(os.path.dirname(__file__), "trials.xlsx")
 trials_csv_path = os.path.join(os.path.dirname(__file__), "trials.csv")
