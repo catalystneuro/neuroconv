@@ -10,4 +10,3 @@ psutil>=5.8.0
 tqdm>=4.60.0
 dandi>=0.46.2
 pandas
-pydantic
