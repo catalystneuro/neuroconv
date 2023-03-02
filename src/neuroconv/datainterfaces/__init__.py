@@ -134,10 +134,14 @@ interface_list = [
 ]
 
 interface_lookup = {interface.__name__: interface for interface in interface_list}
-ecephys_recording_interfaces = {interface.__name__: interface for interface in interface_list if "Recording" in interface.__name__}
+ecephys_recording_interfaces = {
+    interface.__name__: interface for interface in interface_list if "Recording" in interface.__name__
+}
 sorting_interfaces = {interface.__name__: interface for interface in interface_list if "Sorting" in interface.__name__}
 imaging_interfaces = {interface.__name__: interface for interface in interface_list if "Imaging" in interface.__name__}
-segmentation_interfaces = {interface.__name__: interface for interface in interface_list if "Segmentation" in interface.__name__}
+segmentation_interfaces = {
+    interface.__name__: interface for interface in interface_list if "Segmentation" in interface.__name__
+}
 icephys_recording_interfacces = dict(AbfInterface=AbfInterface)
 behavior_interfaces = dict(
     VideoInterface=VideoInterface,
