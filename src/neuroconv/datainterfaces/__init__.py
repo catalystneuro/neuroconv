@@ -135,22 +135,22 @@ interface_list = [
 
 interfaces_by_category = dict(
     ecephys={
-        interface.__name__.rstrip("RecordingInterface"): interface
+        interface.__name__.removesuffix("RecordingInterface"): interface
         for interface in interface_list
         if "Recording" in interface.__name__
     },
     sorting={
-        interface.__name__.rstrip("SortingInterface"): interface
+        interface.__name__.removesuffix("SortingInterface"): interface
         for interface in interface_list
         if "Sorting" in interface.__name__
     },
     imaging={
-        interface.__name__.rstrip("ImagingInterface"): interface
+        interface.__name__.removesuffix("ImagingInterface"): interface
         for interface in interface_list
         if "Imaging" in interface.__name__
     },
     segmentation={
-        interface.__name__.rstrip("SegmentationInterface"): interface
+        interface.__name__.removesuffix("SegmentationInterface"): interface
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
