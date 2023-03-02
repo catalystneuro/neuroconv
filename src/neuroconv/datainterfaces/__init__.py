@@ -134,19 +134,19 @@ interface_list = [
 ]
 
 interfaces_by_category = dict(
-    ecephys={interface.__name__: interface for interface in interface_list if "Recording" in interface.__name__},
-    sorting={interface.__name__: interface for interface in interface_list if "Sorting" in interface.__name__},
-    imaging={interface.__name__: interface for interface in interface_list if "Imaging" in interface.__name__},
+    ecephys={interface.__name__.rstrip("RecordingInterface"): interface for interface in interface_list if "Recording" in interface.__name__},
+    sorting={interface.__name__.rstrip("SortingInterface"): interface for interface in interface_list if "Sorting" in interface.__name__},
+    imaging={interface.__name__.rstrip("ImagingInterface"): interface for interface in interface_list if "Imaging" in interface.__name__},
     segmentation={
-        interface.__name__: interface for interface in interface_list if "Segmentation" in interface.__name__
+        interface.__name__.rstrip("SegmentationInterface"): interface for interface in interface_list if "Segmentation" in interface.__name__
     },
-    icephys=dict(AbfInterface=AbfInterface),
+    icephys=dict(Abf=AbfInterface),
     behavior=dict(
-        VideoInterface=VideoInterface,
-        DeepLabCutInterface=DeepLabCutInterface,
-        SLEAPInterface=SLEAPInterface,
+        Video=VideoInterface,
+        DeepLabCut=DeepLabCutInterface,
+        SLEAP=SLEAPInterface,
         # Text
-        CsvTimeIntervalsInterface=CsvTimeIntervalsInterface,
-        ExcelTimeIntervalsInterface=ExcelTimeIntervalsInterface,
+        CsvTimeIntervals=CsvTimeIntervalsInterface,
+        ExcelTimeIntervals=ExcelTimeIntervalsInterface,
     ),
 )
