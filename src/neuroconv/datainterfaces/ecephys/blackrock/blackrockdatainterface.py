@@ -2,16 +2,10 @@
 from pathlib import Path
 from typing import Optional
 
-from pynwb.ecephys import ElectricalSeries
-
 from .header_tools import parse_nev_basic_header, parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import (
-    FilePathType,
-    get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
-)
+from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
@@ -43,6 +37,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
+
         file_path = Path(file_path)
         if file_path.suffix == "":
             assert nsx_override is not None, (
@@ -62,8 +57,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         # Open file and extract headers
         basic_header = parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            session_start_time = basic_header["TimeOrigin"]
-            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"])
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 

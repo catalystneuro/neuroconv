@@ -1,19 +1,15 @@
 """DataInterfaces for SpikeGLX."""
-import json
+import warnings
 from pathlib import Path
 from typing import Optional
 
-from pynwb import NWBFile
-from pynwb.ecephys import ElectricalSeries
-
-from .spikeglx_utils import fetch_stream_id_for_spikelgx_file, get_session_start_time
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import (
-    FilePathType,
-    dict_deep_update,
-    get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
+from .spikeglx_utils import (
+    fetch_stream_id_for_spikelgx_file,
+    get_device_metadata,
+    get_session_start_time,
 )
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ....utils import FilePathType, dict_deep_update, get_schema_from_method_signature
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
@@ -36,19 +32,19 @@ def add_recording_extractor_properties(recording_extractor) -> None:
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
+    ExtractorName = "SpikeGLXRecordingExtractor"
 
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["x_pitch", "y_pitch"])
-        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX file."
+        source_schema["properties"]["file_path"]["description"] = "Path to SpikeGLX ap.bin or lf.bin file."
         return source_schema
 
     def __init__(
         self,
         file_path: FilePathType,
         verbose: bool = True,
-        es_key: str = "ElectricalSeriesAP",
+        es_key: Optional[str] = None,
     ):
         """
         Parameters
@@ -62,7 +58,13 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         from probeinterface import read_spikeglx
 
         self.stream_id = fetch_stream_id_for_spikelgx_file(file_path)
-
+        if es_key is None:
+            if "lf" in self.stream_id:
+                es_key = "ElectricalSeriesLF"
+            elif "ap" in self.stream_id:
+                es_key = "ElectricalSeriesAP"
+            else:
+                raise ValueError("Cannot automatically determine es_key from path")
         file_path = Path(file_path)
         folder_path = file_path.parent
         super().__init__(
@@ -89,7 +91,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
 
         # Device metadata
-        device = self.get_device_metadata()
+        device = get_device_metadata(self.meta)
 
         # Add groups metadata
         metadata["Ecephys"]["Device"] = [device]
@@ -113,39 +115,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         return metadata
 
-    def get_device_metadata(self) -> dict:
-        """
-        Returns a device with description including the metadata.
 
-        Details described in https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
-
-        Returns
-        -------
-        dict
-            a dict containing the metadata necessary for creating the device
-        """
-        meta = self.meta
-        metadata_dict = dict()
-        if "imDatPrb_type" in self.meta:
-            probe_type_to_probe_description = {"0": "NP1.0", "21": "NP2.0(1-shank)", "24": "NP2.0(4-shank)"}
-            probe_type = str(meta["imDatPrb_type"])
-            probe_type_description = probe_type_to_probe_description[probe_type]
-            metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
-
-        if "imDatFx_pn" in self.meta:
-            metadata_dict.update(flex_part_number=meta["imDatFx_pn"])
-
-        if "imDatBsc_pn" in self.meta:
-            metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
-
-        description_string = "no description"
-        if metadata_dict:
-            description_string = json.dumps(metadata_dict)
-        device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
-
-        return device
-
-
+# include for backwards compatibility
 class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
     """Primary data interface class for converting the low-pass (lf) SpikeGLX format."""
 
@@ -157,4 +128,7 @@ class SpikeGLXLFPInterface(SpikeGLXRecordingInterface):
         verbose: bool = True,
         es_key: str = "ElectricalSeriesLF",
     ):
+        warnings.warn(
+            "SpikeGLXLFPExtractor will be deprecated. Use SpikeGLXRecordingExtractor instead.", DeprecationWarning
+        )
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
