@@ -7,7 +7,8 @@ Install NeuroConv with the additional dependencies necessary for reading SpikeGL
 
     pip install neuroconv[spikeglx]
 
-Convert SpikeGLX data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface`.
+Convert ap or lf SpikeGLX streams to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface.SpikeGLXRecordingInterface`.
 
 .. code-block:: python
 
