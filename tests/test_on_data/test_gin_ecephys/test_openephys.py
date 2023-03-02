@@ -1,20 +1,26 @@
 from hdmf.testing import TestCase
 
-from neuroconv.datainterfaces import OpenEphysRecordingInterface
-from neuroconv.datainterfaces.ecephys.openephys.openephysbinarydatainterface import (
+from neuroconv.datainterfaces import (
     OpenEphysBinaryRecordingInterface,
+    OpenEphysLegacyRecordingInterface,
+    OpenEphysRecordingInterface,
 )
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
 
 class TestOpenOpenEphysRecordingInterfaceRedirects(TestCase):
-    def test_legacy_format_raises_NotImplementedError(self):
+    def test_legacy_format(self):
         folder_path = ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"
 
-        exc_msg = "OpenEphysLegacyRecordingInterface had not been implemented yet."
-        with self.assertRaisesWith(NotImplementedError, exc_msg=exc_msg):
-            OpenEphysRecordingInterface(folder_path=folder_path)
+        interface = OpenEphysRecordingInterface(folder_path=folder_path)
+        self.assertIsInstance(interface, OpenEphysLegacyRecordingInterface)
+
+    def test_propagate_stream_name(self):
+        folder_path = ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"
+        exc_msg = "The selected stream 'AUX' is not in the available streams '['Signals CH']'!"
+        with self.assertRaisesWith(AssertionError, exc_msg=exc_msg):
+            OpenEphysRecordingInterface(folder_path=folder_path, stream_name="AUX")
 
     def test_binary_format(self):
         folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"

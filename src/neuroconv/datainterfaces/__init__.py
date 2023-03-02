@@ -1,9 +1,9 @@
-# Ecephys
+# Behavior
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
-
-# Behavior
 from .behavior.video.videodatainterface import MovieInterface, VideoInterface
+
+# Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,

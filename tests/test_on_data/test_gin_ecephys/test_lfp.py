@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 import numpy.testing as npt
@@ -13,7 +13,7 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     AxonaLFPDataInterface,
     NeuroScopeLFPInterface,
-    SpikeGLXLFPInterface,
+    SpikeGLXRecordingInterface,
 )
 
 # enable to run locally in interactive mode
@@ -55,7 +55,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
             ),
         ),
         param(
-            data_interface=SpikeGLXLFPInterface,
+            data_interface=SpikeGLXRecordingInterface,
             interface_kwargs=dict(
                 file_path=str(
                     DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
@@ -71,7 +71,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         data_interface,
         interface_kwargs: dict,
         case_name: str = "",
-        expected_write_module: Optional[str] = None,  # Literal["acquisition", "processing"]
+        expected_write_module: Optional[Literal["acquisition", "processing"]] = None,
     ):
         expected_write_module = expected_write_module or "processing"
 
