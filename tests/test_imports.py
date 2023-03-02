@@ -63,6 +63,7 @@ class TestImportStructure(TestCase):
         from neuroconv.datainterfaces import interface_list
 
         interface_name_list = [interface.__name__ for interface in interface_list]
+        interface_lookups = ["interface_lookup", "ecephys_recording_interfaces", "sorting_interfaces", "imaging_itnerfaces", "segmentation_interfaces", "icephys_recording_interfacces", "behavior_interfaces"]
         expected_structure = [
             # Sub-modules
             "behavior",
@@ -73,6 +74,6 @@ class TestImportStructure(TestCase):
             # Exposed attributes
             "interface_list",
             # Behavior
-        ] + interface_name_list
+        ] + interface_name_list + interface_lookups
 
         self.assertCountEqual(first=current_structure, second=expected_structure)
