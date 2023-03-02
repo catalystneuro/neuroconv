@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 import numpy.testing as npt
@@ -71,7 +71,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         data_interface,
         interface_kwargs: dict,
         case_name: str = "",
-        expected_write_module: Optional[str] = None,  # Literal["acquisition", "processing"]
+        expected_write_module: Optional[Literal["acquisition", "processing"]] = None,
     ):
         expected_write_module = expected_write_module or "processing"
 
