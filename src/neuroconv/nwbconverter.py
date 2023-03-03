@@ -100,13 +100,6 @@ class NWBConverter:
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
-    def get_conversion_options(self):
-        """Auto-fill as much of the conversion options as possible. Must comply with conversion_options_schema."""
-        conversion_options = dict()
-        for interface_name, interface in self.data_interface_objects.items():
-            conversion_options[interface_name] = interface.get_conversion_options()
-        return conversion_options
-
     def validate_metadata(self, metadata: Dict[str, dict]):
         """Validate metadata against Converter metadata_schema."""
         encoder = NWBMetaDataEncoder()
@@ -140,20 +133,17 @@ class NWBConverter:
         Run the NWB conversion over all the instantiated data interfaces.
         Parameters
         ----------
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
-        nwbfile: NWBFile, optional
+        nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
-        metadata: dict, optional
+        metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        overwrite : bool, default: False
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        verbose: bool, optional
-            If 'nwbfile_path' is specified, informs user after a successful write operation.
-            The default is True.
-        conversion_options: dict, optional
+        conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
         Returns
@@ -167,9 +157,8 @@ class NWBConverter:
 
         if conversion_options is None:
             conversion_options = dict()
-        default_conversion_options = self.get_conversion_options()
-        conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
-        self.validate_conversion_options(conversion_options=conversion_options_to_run)
+
+        self.validate_conversion_options(conversion_options=conversion_options)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
@@ -180,7 +169,7 @@ class NWBConverter:
         ) as nwbfile_out:
             for interface_name, data_interface in self.data_interface_objects.items():
                 data_interface.run_conversion(
-                    nwbfile=nwbfile_out, metadata=metadata, **conversion_options_to_run.get(interface_name, dict())
+                    nwbfile=nwbfile_out, metadata=metadata, **conversion_options.get(interface_name, dict())
                 )
 
         return nwbfile_out

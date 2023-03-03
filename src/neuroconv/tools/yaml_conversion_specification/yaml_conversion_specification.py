@@ -116,7 +116,7 @@ def run_conversion_from_yaml(
             nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
             session_conversion_options = session.get("conversion_options", dict())
             conversion_options = dict()
-            for key in data_interface_classes:
+            for key in converter.data_interface_objects:
                 conversion_options[key] = dict(session_conversion_options.get(key, dict()), **global_conversion_options)
             converter.run_conversion(
                 nwbfile_path=output_folder_path / f"{nwbfile_name}.nwb",

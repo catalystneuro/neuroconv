@@ -249,8 +249,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
-
-        es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
+        es_key = converter.data_interface_objects["TestRecording"].es_key
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
             raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")

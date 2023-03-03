@@ -131,10 +131,6 @@ class BaseDataInterface(ABC):
             aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
         )
 
-    def get_conversion_options(self):
-        """Child DataInterface classes should override this to match their conversion options."""
-        return dict()
-
     @abstractmethod
     def run_conversion(
         self,
