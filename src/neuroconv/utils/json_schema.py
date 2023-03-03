@@ -3,7 +3,7 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Callable
 
 import numpy as np
 import pynwb
@@ -49,17 +49,19 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     return base_schema
 
 
-def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
 
     Parameters
     ----------
-    class_method: function
+    method: function
     exclude: list, optional
+
     Returns
     -------
     dict
+
     """
     if exclude is None:
         exclude = ["self", "kwargs"]
@@ -78,7 +80,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         FolderPathType="string",
     )
     args_spec = dict()
-    for param_name, param in inspect.signature(class_method).parameters.items():
+    for param_name, param in inspect.signature(method).parameters.items():
         if param_name in exclude:
             continue
         args_spec[param_name] = dict()
@@ -118,7 +120,7 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
                     input_schema["properties"].update({param_name: dict(format="directory")})
         else:
             raise NotImplementedError(
-                f"The annotation type of '{param}' in function '{class_method}' is not implemented! "
+                f"The annotation type of '{param}' in function '{method}' is not implemented! "
                 "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
                 "or create the json-schema for this method manually."
             )

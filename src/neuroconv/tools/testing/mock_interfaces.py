@@ -14,7 +14,7 @@ from ...utils import ArrayType, get_schema_from_method_signature
 class MockBehaviorEventInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["event_times"])
+        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 
@@ -54,7 +54,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["ttl_times"])
+        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["ttl_times"])
         source_schema["additionalProperties"] = True
         return source_schema
 

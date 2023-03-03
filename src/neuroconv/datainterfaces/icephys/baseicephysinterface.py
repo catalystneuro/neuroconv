@@ -30,7 +30,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=[])
+        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=[])
         return source_schema
 
     def __init__(self, file_paths: list):

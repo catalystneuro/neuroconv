@@ -44,8 +44,7 @@ class NWBConverter:
             source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
-    @classmethod
-    def get_conversion_options_schema(cls):
+    def get_conversion_options_schema(self):
         """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(
             root=True,
@@ -54,16 +53,15 @@ class NWBConverter:
             description="Schema for the conversion options",
             version="0.1.0",
         )
-        for interface_name, data_interface in cls.data_interface_classes.items():
+        for interface_name, data_interface in self.data_interface_objects.items():
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
         return conversion_options_schema
 
-    @classmethod
-    def validate_source(cls, source_data: Dict[str, dict], verbose: bool = True):
+    def validate_source(self, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against Converter source_schema."""
-        cls._validate_source_data(source_data=source_data, verbose=verbose)
+        self._validate_source_data(source_data=source_data, verbose=verbose)
 
     def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
@@ -200,7 +198,7 @@ class ConverterPipe(NWBConverter):
             description="Schema for the conversion options",
             version="0.1.0",
         )
-        for interface_name, data_interface in self.data_interface_classes.items():
+        for interface_name, data_interface in self.data_interface_objects.items():
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )

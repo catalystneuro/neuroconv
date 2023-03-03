@@ -17,13 +17,12 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls.__init__, exclude=["source_data"])
 
-    @classmethod
-    def get_conversion_options_schema(cls):
-        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
-
     def __init__(self, **source_data):
         self.source_data: dict = source_data
+
+    def get_conversion_options_schema(self):
+        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
+        return get_schema_from_method_signature(self.run_conversion, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""

@@ -17,7 +17,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """Compile input schema for the RecordingExtractor."""
         source_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
+            method=cls.__init__, exclude=["recording_id", "experiment_id", "stub_test"]
         )
         source_schema["properties"]["folder_path"][
             "description"
@@ -72,7 +72,7 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
     def get_source_schema(cls) -> dict:
         """Compile input schema for the SortingExtractor."""
         metadata_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["recording_id", "experiment_id"]
+            method=cls.__init__, exclude=["recording_id", "experiment_id"]
         )
         metadata_schema["properties"]["folder_path"].update(description="Path to directory containing OpenEphys files.")
         metadata_schema["additionalProperties"] = False

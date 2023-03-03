@@ -5,6 +5,7 @@ from platform import python_version
 from sys import platform
 
 import pytest
+from jsonschema.validators import Draft7Validator
 from packaging import version
 from parameterized import param, parameterized
 from spikeinterface.core import BaseRecording
@@ -140,9 +141,8 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     ]
     this_python_version = version.parse(python_version())
     if (
-        platform != "darwin"
-        and this_python_version >= version.parse("3.8")
-        and this_python_version < version.parse("3.10")
+            platform != "darwin"
+            and version.parse("3.8") <= this_python_version < version.parse("3.10")
     ):
         parameterized_recording_list.append(
             param(
@@ -234,6 +234,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestRecording=data_interface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
+
+        # validate conversion_options_schema
+        schema = converter.data_interface_objects["TestRecording"].get_conversion_options_schema()
+        Draft7Validator.check_schema(schema=schema)
+
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
                 self.assertIn(
@@ -243,6 +248,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
+
 
         es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
