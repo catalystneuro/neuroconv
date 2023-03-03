@@ -5,7 +5,7 @@ from abc import abstractmethod
 
 from datetime import datetime, date
 from pathlib import Path
-from typing import Dict, Union, Callable
+from typing import Callable, Dict, Union
 
 from jsonschema import validate
 from jsonschema.validators import Draft7Validator
@@ -13,7 +13,9 @@ from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 
 from ...basedatainterface import BaseDataInterface
-from ...datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ...datainterfaces.ecephys.baserecordingextractorinterface import (
+    BaseRecordingExtractorInterface,
+)
 
 
 def json_serial(obj):
@@ -76,7 +78,6 @@ class AbstractDataInterfaceTest(unittest.TestCase):
 
 
 class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
-
     data_interface_cls: BaseRecordingExtractorInterface
 
     def run_conversion(self, nwbfile_path: str) -> dict:
@@ -90,7 +91,7 @@ class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
     def check_read(
             self,
             nwbfile_path: str,
-            electrical_series_name: str = "ElectricalSeries"
+            electrical_series_name: str = "ElectricalSeries",
     ):
         recording = self.interface.recording_extractor
 
