@@ -1,4 +1,3 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Cody Baker and Ben Dichter."""
 import warnings
 from pathlib import Path
 from typing import List, Optional

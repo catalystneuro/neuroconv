@@ -1,4 +1,3 @@
-"""Authors: Cody Baker and Ben Dichter."""
 from typing import Literal, Optional
 
 import numpy as np

@@ -1,4 +1,3 @@
-"""Author: Luiz Tauffer."""
 import distutils.version
 import uuid
 import warnings

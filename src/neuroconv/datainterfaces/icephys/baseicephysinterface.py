@@ -1,4 +1,3 @@
-"""Author: Luiz Tauffer."""
 from typing import Optional, Tuple
 from warnings import warn
 
