@@ -5,7 +5,7 @@ from typing import List, Optional
 import numpy as np
 from pynwb import NWBFile
 
-from .spikeglxdatainterface import SpikeGLXLFPInterface, SpikeGLXRecordingInterface
+from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
 from ....nwbconverter import ConverterPipe
 from ....tools.nwb_helpers import make_or_load_nwbfile
@@ -69,7 +69,7 @@ class SpikeGLXConverter(ConverterPipe):
                 file_path = (
                     folder_path / f"{folder_path.stem}_{probe_name}" / f"{folder_path.stem}_t0.{probe_name}.lf.bin"
                 )
-                interface = SpikeGLXLFPInterface(file_path=file_path)
+                interface = SpikeGLXRecordingInterface(file_path=file_path)
             if "nidq" in stream:
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
@@ -91,6 +91,7 @@ class SpikeGLXConverter(ConverterPipe):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        conversion_options: Optional[dict] = None,
     ):
         if metadata is None:
             metadata = self.get_metadata()
@@ -104,4 +105,6 @@ class SpikeGLXConverter(ConverterPipe):
             verbose=self.verbose,
         ) as nwbfile_out:
             for interface_name, data_interface in self.data_interface_objects.items():
-                data_interface.run_conversion(nwbfile=nwbfile_out, metadata=metadata)
+                data_interface.run_conversion(
+                    nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options
+                )
