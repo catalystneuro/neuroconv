@@ -13,7 +13,5 @@ except ImportError:
 
 class TestAxonRecordingInterface(AbstractRecordingInterfaceTest, unittest.TestCase):
     data_interface_cls = AxonaRecordingInterface
-    kwargs_cases = {
-        "1": dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
-    }
+    cases = dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH

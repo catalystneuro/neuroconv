@@ -1,10 +1,8 @@
 import json
-import os
-import unittest
 from abc import abstractmethod
 from datetime import date, datetime
 from pathlib import Path
-from typing import Callable, Dict, Union
+from typing import Callable, Union
 
 from jsonschema import validate
 from jsonschema.validators import Draft7Validator
@@ -27,7 +25,7 @@ def json_serial(obj):
 
 class AbstractDataInterfaceTest:
     data_interface_cls: Union[BaseDataInterface, Callable]
-    kwargs_cases: dict
+    cases: Union[dict, list]
     save_directory: Path
 
     def test_source_schema_valid(self):
@@ -63,15 +61,18 @@ class AbstractDataInterfaceTest:
         pass
 
     def test_conversion_as_lone_interface(self):
-        for case_name, kwargs in self.kwargs_cases.items():
-            with self.subTest(case_name):
-                self.case_name = case_name
+        cases = self.cases
+        if isinstance(cases, dict):
+            cases = [cases]
+        for num, kwargs in enumerate(cases):
+            with self.subTest(str(num)):
+                self.case_name = str(num)
                 self.interface = self.data_interface_cls(**kwargs)
 
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
-                nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{case_name}.nwb")
+                nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
                 kwargs = self.run_conversion(nwbfile_path)
                 self.check_read(nwbfile_path=nwbfile_path, **kwargs)
 
