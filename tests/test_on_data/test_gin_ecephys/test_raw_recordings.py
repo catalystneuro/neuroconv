@@ -140,10 +140,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         ),
     ]
     this_python_version = version.parse(python_version())
-    if (
-            platform != "darwin"
-            and version.parse("3.8") <= this_python_version < version.parse("3.10")
-    ):
+    if platform != "darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,
@@ -248,7 +245,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
-
 
         es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
