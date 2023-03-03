@@ -14,7 +14,6 @@ from spikeinterface.extractors import NwbRecordingExtractor
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
-    AxonaRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
     CEDRecordingInterface,

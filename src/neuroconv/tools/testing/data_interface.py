@@ -58,7 +58,7 @@ class AbstractDataInterfaceTest(unittest.TestCase):
                 self.check_read(interface, nwbfile_path=nwbfile_path, **kwargs)
 
 
-class AbstractRecordingExtractorTest(AbstractDataInterfaceTest):
+class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
 
     data_interface_cls: BaseRecordingExtractorInterface
 

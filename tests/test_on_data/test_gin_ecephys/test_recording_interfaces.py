@@ -1,4 +1,4 @@
-from neuroconv.tools.testing.data_interface import AbstractRecordingExtractorTest
+from neuroconv.tools.testing.data_interface import AbstractRecordingInterfaceTest
 
 from neuroconv.datainterfaces import AxonaRecordingInterface
 
@@ -10,7 +10,7 @@ except ImportError:
     from setup_paths import OUTPUT_PATH
 
 
-class TestAxonRecordingInterface(AbstractRecordingExtractorTest):
+class TestAxonRecordingInterface(AbstractRecordingInterfaceTest):
     data_interface_cls = AxonaRecordingInterface
     kwargs_cases = {
         "1": dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
