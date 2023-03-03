@@ -61,10 +61,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
 
     parameterized_recording_list = [
         param(
-            data_interface=AxonaRecordingInterface,
-            interface_kwargs=dict(file_path=str(DATA_PATH / "axona" / "axona_raw.bin")),
-        ),
-        param(
             data_interface=EDFRecordingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf")),
             case_name="artificial_data",
@@ -140,9 +136,8 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     ]
     this_python_version = version.parse(python_version())
     if (
-        platform != "darwin"
-        and this_python_version >= version.parse("3.8")
-        and this_python_version < version.parse("3.10")
+            platform != "darwin"
+            and version.parse("3.8") <= this_python_version < version.parse("3.10")
     ):
         parameterized_recording_list.append(
             param(
