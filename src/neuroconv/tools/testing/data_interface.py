@@ -2,8 +2,7 @@ import json
 import os
 import unittest
 from abc import abstractmethod
-
-from datetime import datetime, date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Callable, Dict, Union
 
@@ -89,9 +88,9 @@ class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
         return dict(electrical_series_name=electrical_series_name)
 
     def check_read(
-            self,
-            nwbfile_path: str,
-            electrical_series_name: str = "ElectricalSeries",
+        self,
+        nwbfile_path: str,
+        electrical_series_name: str = "ElectricalSeries",
     ):
         recording = self.interface.recording_extractor
 
