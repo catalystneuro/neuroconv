@@ -26,7 +26,7 @@ def json_serial(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-class AbstractDataInterfaceTest(unittest.TestCase):
+class AbstractDataInterfaceTest:
     data_interface_cls: Union[BaseDataInterface, Callable]
     kwargs_cases: dict
     save_directory: Path
