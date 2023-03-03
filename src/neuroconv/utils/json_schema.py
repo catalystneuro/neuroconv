@@ -3,7 +3,7 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
-from typing import Literal, Callable
+from typing import Callable, Literal
 
 import numpy as np
 import pynwb
