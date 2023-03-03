@@ -1,7 +1,9 @@
+import json
+import os
 import unittest
 from abc import abstractmethod
 
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, Union, Callable
 
@@ -14,6 +16,14 @@ from ...basedatainterface import BaseDataInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
 
 
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError("Type %s not serializable" % type(obj))
+
+
 class AbstractDataInterfaceTest(unittest.TestCase):
     data_interface_cls: Union[BaseDataInterface, Callable]
     kwargs_cases: dict
@@ -23,60 +33,66 @@ class AbstractDataInterfaceTest(unittest.TestCase):
         schema = self.data_interface_cls.get_source_schema()
         Draft7Validator.check_schema(schema=schema)
 
-    @staticmethod
-    def check_conversion_options_schema_valid(interface):
-        schema = interface.get_conversion_options_schema()
+    def check_conversion_options_schema_valid(self):
+        schema = self.interface.get_conversion_options_schema()
         Draft7Validator.check_schema(schema=schema)
 
-    @staticmethod
-    def check_metadata_schema_valid(interface):
-        schema = interface.get_metadata_schema()
+    def check_metadata_schema_valid(self):
+        schema = self.interface.get_metadata_schema()
         Draft7Validator.check_schema(schema=schema)
 
-    @staticmethod
-    def check_metadata_valid(interface, metadata):
-        schema = interface.get_metadata_schema()
+    def check_metadata(self):
+        schema = self.interface.get_metadata_schema()
+        metadata = self.interface.get_metadata()
+        # handle json encoding of datetimes and other tricky types
+        metadata = json.loads(json.dumps(metadata, default=json_serial))
         validate(metadata, schema)
 
+        self.check_extracted_metadata(metadata)
+
     @abstractmethod
-    def run_conversion(self, interface: BaseDataInterface, nwbfile_path: str):
+    def run_conversion(self, nwbfile_path: str):
         pass
 
     @abstractmethod
-    def check_read(self, interface, nwbfile_path: str, **kwargs):
+    def check_read(self, nwbfile_path: str, **kwargs):
+        pass
+
+    def check_extracted_metadata(self, metadata: dict):
         pass
 
     def test_conversion_as_lone_interface(self):
         for case_name, kwargs in self.kwargs_cases.items():
             with self.subTest(case_name):
-                interface = self.data_interface_cls(**kwargs)
+                self.case_name = case_name
+                self.interface = self.data_interface_cls(**kwargs)
 
-                self.check_metadata_schema_valid(interface)
-                self.check_conversion_options_schema_valid(interface)
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
                 nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{case_name}.nwb")
-                kwargs = self.run_conversion(interface, nwbfile_path)
-                self.check_read(interface, nwbfile_path=nwbfile_path, **kwargs)
+                kwargs = self.run_conversion(nwbfile_path)
+                self.check_read(nwbfile_path=nwbfile_path, **kwargs)
 
 
 class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
 
     data_interface_cls: BaseRecordingExtractorInterface
 
-    def run_conversion(self, interface: BaseRecordingExtractorInterface, nwbfile_path: str) -> dict:
-        metadata = interface.get_metadata()
+    def run_conversion(self, nwbfile_path: str) -> dict:
+        metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        electrical_series_name = metadata["Ecephys"][interface.es_key]["name"]
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        electrical_series_name = metadata["Ecephys"][self.interface.es_key]["name"]
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         return dict(electrical_series_name=electrical_series_name)
 
     def check_read(
             self,
-            interface: BaseRecordingExtractorInterface,
             nwbfile_path: str,
             electrical_series_name: str = "ElectricalSeries"
     ):
-        recording = interface.recording_extractor
+        recording = self.interface.recording_extractor
 
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
