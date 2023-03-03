@@ -1,9 +1,8 @@
 import unittest
 from abc import abstractmethod
-
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Union, Callable
+from typing import Callable, Dict, Union
 
 from jsonschema import validate
 from jsonschema.validators import Draft7Validator
@@ -11,7 +10,9 @@ from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 
 from ...basedatainterface import BaseDataInterface
-from ...datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ...datainterfaces.ecephys.baserecordingextractorinterface import (
+    BaseRecordingExtractorInterface,
+)
 
 
 class AbstractDataInterfaceTest(unittest.TestCase):
@@ -59,7 +60,6 @@ class AbstractDataInterfaceTest(unittest.TestCase):
 
 
 class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
-
     data_interface_cls: BaseRecordingExtractorInterface
 
     def run_conversion(self, interface: BaseRecordingExtractorInterface, nwbfile_path: str) -> dict:
@@ -71,10 +71,10 @@ class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
         return dict(electrical_series_name=electrical_series_name)
 
     def check_read(
-            self,
-            interface: BaseRecordingExtractorInterface,
-            nwbfile_path: str,
-            electrical_series_name: str = "ElectricalSeries"
+        self,
+        interface: BaseRecordingExtractorInterface,
+        nwbfile_path: str,
+        electrical_series_name: str = "ElectricalSeries",
     ):
         recording = interface.recording_extractor
 
