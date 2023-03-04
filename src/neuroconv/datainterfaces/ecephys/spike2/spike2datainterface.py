@@ -1,4 +1,3 @@
-"""Authors: Heberto Mayorquin, Luiz Tauffer."""
 from pathlib import Path
 from warnings import warn
 
