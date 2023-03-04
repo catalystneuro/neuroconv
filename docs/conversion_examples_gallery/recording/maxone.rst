@@ -3,6 +3,10 @@ MaxOne conversion
 
 Install NeuroConv with the additional dependencies necessary for reading MaxOne data.
 
+.. note::
+
+    Our interfaces for Maxwell are currently only supported on Linux systems.
+
 .. code-block:: bash
 
     pip install neuroconv[maxwell]

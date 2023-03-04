@@ -1,8 +1,7 @@
 import itertools
 import unittest
 from datetime import datetime
-from platform import python_version
-from sys import platform
+from platform import python_version, system
 
 import pytest
 from packaging import version
@@ -132,12 +131,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
         ),
         param(
-            data_interface=MaxOneRecordingInterface,
-            interface_kwargs=dict(
-                file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"),
-            ),
-        ),
-        param(
             data_interface=OpenEphysLegacyRecordingInterface,
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
@@ -145,12 +138,9 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             case_name=f"openephyslegacy",
         ),
     ]
+
     this_python_version = version.parse(python_version())
-    if (
-        platform != "darwin"
-        and this_python_version >= version.parse("3.8")
-        and this_python_version < version.parse("3.10")
-    ):
+    if system() != "Darwin" and this_python_version >= version.parse("3.8") < version.parse("3.10"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,
@@ -158,6 +148,16 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
+    if system() == "Linux":
+        parameterized_recording_list.append(
+            param(
+                data_interface=MaxOneRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"),
+                ),
+            ),
+        )
+
     parameterized_recording_list.extend(
         [
             param(
@@ -189,7 +189,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     )
 
     this_python_version = version.parse(python_version())
-    if platform != "darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
+    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,

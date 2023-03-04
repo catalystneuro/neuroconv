@@ -1,12 +1,13 @@
 import os
-import unittest
 from datetime import datetime
 from pathlib import Path
+from platform import system
 from shutil import rmtree
 from tempfile import mkdtemp
 
 import pytest
 from dateutil import tz
+from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import MaxOneRecordingInterface
@@ -14,7 +15,19 @@ from neuroconv.datainterfaces import MaxOneRecordingInterface
 from ..setup_paths import ECEPHY_DATA_PATH
 
 
-class TestMaxOneMetadata(unittest.TestCase):
+@pytest.mark.skipif(system() == "Linux", reason="Specific tests for raising assertion on non-linux systems.")
+class TestMaxOneAssertion(TestCase):
+    def test_max_one_usage_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=NotImplementedError,
+            exc_msg="The MaxOneRecordingInterface has not yet been implemented for systems other than Linux.",
+        ):
+            file_path = ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"
+            MaxOneRecordingInterface(file_path=file_path)
+
+
+@pytest.mark.skipif(system() != "Linux", reason="MaxOne only works on Linux at the moment.")
+class TestMaxOneMetadata(TestCase):
     @classmethod
     def setUpClass(cls):
         file_path = ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"
