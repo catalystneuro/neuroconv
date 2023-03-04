@@ -1,7 +1,9 @@
 import unittest
 
 from neuroconv.datainterfaces import CaimanSegmentationInterface
-from neuroconv.tools.testing.data_interface_mixins import SegmentationExtractorInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import (
+    SegmentationExtractorInterfaceTestMixin,
+)
 
 try:
     from .setup_paths import OPHYS_DATA_PATH as DATA_PATH
