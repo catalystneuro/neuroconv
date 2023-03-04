@@ -17,7 +17,9 @@ from ...baseextractorinterface import BaseExtractorInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
-from ...datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
+from ...datainterfaces.ecephys.basesortingextractorinterface import (
+    BaseSortingExtractorInterface,
+)
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
