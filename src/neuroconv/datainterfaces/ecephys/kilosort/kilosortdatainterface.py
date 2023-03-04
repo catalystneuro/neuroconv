@@ -1,4 +1,3 @@
-"""Authors: Heberto Mayorquin, Cody Baker."""
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
 

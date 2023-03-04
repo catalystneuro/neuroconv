@@ -1,4 +1,3 @@
-"""Authors: Cody Baker, Alessio Buccino."""
 import uuid
 from contextlib import contextmanager
 from datetime import datetime

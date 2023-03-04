@@ -11,7 +11,6 @@ from dateutil.tz import gettz
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-from pynwb.testing import remove_test_file
 from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter

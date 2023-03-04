@@ -1,4 +1,3 @@
-"""Authors: Cody Baker and Saksham Sharda."""
 from typing import Iterable, Optional, Tuple, Union
 from warnings import warn
 

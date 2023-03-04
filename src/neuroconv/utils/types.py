@@ -1,4 +1,3 @@
-"""Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 from pathlib import Path
 from typing import Optional, TypeVar, Union
 

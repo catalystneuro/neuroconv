@@ -1,4 +1,3 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Alessio Buccino and Szonja Weigl."""
 from collections import defaultdict
 from copy import deepcopy
 from typing import Optional
