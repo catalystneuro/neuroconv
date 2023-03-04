@@ -6,8 +6,8 @@ from typing import Callable, Union
 
 from jsonschema import validate
 from jsonschema.validators import Draft7Validator
-from roiextractors import NwbImagingExtractor
-from roiextractors.testing import check_imaging_equal
+from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
+from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 
@@ -19,6 +19,7 @@ from ...datainterfaces.ecephys.baserecordingextractorinterface import (
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
+from ...datainterfaces.ophys.basesegmentationextractorinterface import BaseSegmentationExtractorInterface
 
 
 def json_serial(obj):
@@ -137,3 +138,12 @@ class ImagingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
             exclude_channel_comparison = True
 
         check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
+
+
+class SegmentationExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
+    data_interface_cls: BaseSegmentationExtractorInterface
+
+    def check_read(self, nwbfile_path: str):
+        nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
+        segmentation = self.interface.segmentation_extractor
+        check_segmentations_equal(segmentation, nwb_segmentation)

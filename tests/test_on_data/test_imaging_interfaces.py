@@ -1,7 +1,7 @@
 import unittest
 
 from neuroconv.datainterfaces import TiffImagingInterface
-from neuroconv.tools.testing.data_interface import ImagingExtractorInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import ImagingExtractorInterfaceTestMixin
 
 try:
     from .setup_paths import OPHYS_DATA_PATH as DATA_PATH

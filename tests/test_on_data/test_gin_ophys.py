@@ -92,12 +92,6 @@ class TestOphysNwbConversions(TestCase):
     @parameterized.expand(
         [
             param(
-                data_interface=CaimanSegmentationInterface,
-                interface_kwargs=dict(
-                    file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5")
-                ),
-            ),
-            param(
                 data_interface=CnmfeSegmentationInterface,
                 interface_kwargs=dict(
                     file_path=str(
