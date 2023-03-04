@@ -71,7 +71,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
             hdf5_plugin_path=hdf5_plugin_path, download_plugin=download_plugin
         )
         if not os.environ.get("HDF5_PLUGIN_PATH", ""):  # auto install only sets environment variable if path is None
-            os.environ["HDF5_PLUGIN_PATH"] = str(hdf5_plugin_path)
+            os.environ["HDF5_PLUGIN_PATH"] = str(hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell")
 
         super().__init__(file_path=file_path, verbose=verbose)
 
