@@ -11,7 +11,7 @@ except ImportError:
     from setup_paths import OUTPUT_PATH
 
 
-class TestAxonRecordingInterface(ImagingExtractorInterfaceTestMixin, unittest.TestCase):
+class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin, unittest.TestCase):
     data_interface_cls = TiffImagingInterface
     cases = dict(
         file_path=str(DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
