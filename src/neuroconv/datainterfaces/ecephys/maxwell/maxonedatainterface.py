@@ -1,4 +1,5 @@
 """Authors: Cody Baker."""
+import os
 from pathlib import Path
 from platform import system
 from typing import Optional
@@ -66,10 +67,11 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
                 "The MaxOneRecordingInterface has not yet been implemented for systems other than Linux."
             )
 
-        # The auto_install also sets the environment variable for the HDF5 plugin path
         self.auto_install_maxwell_hdf5_compression_plugin(
             hdf5_plugin_path=hdf5_plugin_path, download_plugin=download_plugin
         )
+        if not os.environ.get("HDF5_PLUGIN_PATH", ""):  # auto install only sets environment variable if path is None
+            os.environ["HDF5_PLUGIN_PATH"] = str(hdf5_plugin_path)
 
         super().__init__(file_path=file_path, verbose=verbose)
 
