@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
 from types import MethodType
-from typing import List, Optional
+from typing import List, Literal, Optional
 from unittest.mock import Mock
 
 import numpy as np
@@ -276,7 +276,7 @@ class TestAddImageSegmentation(unittest.TestCase):
         self.assertEqual(image_segmentation.name, self.image_segmentation_name)
 
 
-def _generate_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+def _generate_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
     masks = list()
     size = 3 if mask_type == "pixel" else 4
     for idx in range(1, num_rois + 1):
@@ -284,7 +284,7 @@ def _generate_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "vo
     return masks
 
 
-def _generate_casted_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+def _generate_casted_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
     original_mask = _generate_test_masks(num_rois=num_rois, mask_type=mask_type)
     casted_masks = list()
     for per_roi_mask in original_mask:

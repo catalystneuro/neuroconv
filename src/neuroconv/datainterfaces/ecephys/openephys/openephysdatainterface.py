@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from .openephysbinarydatainterface import OpenEphysBinaryRecordingInterface
+from .openephyslegacydatainterface import OpenEphysLegacyRecordingInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType
 
@@ -36,7 +37,11 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
 
         folder_path = Path(folder_path)
         if any(folder_path.rglob("*.continuous")):
-            raise NotImplementedError("OpenEphysLegacyRecordingInterface had not been implemented yet.")
+            return OpenEphysLegacyRecordingInterface(
+                folder_path=folder_path,
+                stream_name=stream_name,
+                verbose=verbose,
+            )
 
         elif any(folder_path.rglob("*.dat")):
             return OpenEphysBinaryRecordingInterface(

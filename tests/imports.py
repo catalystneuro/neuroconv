@@ -72,7 +72,7 @@ class TestImportStructure(TestCase):
             "text",
             # Exposed attributes
             "interface_list",
-            # Behavior
+            "interfaces_by_category",
         ] + interface_name_list
 
         self.assertCountEqual(first=current_structure, second=expected_structure)

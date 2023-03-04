@@ -1,9 +1,9 @@
-# Ecephys
+# Behavior
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
-
-# Behavior
 from .behavior.video.videodatainterface import MovieInterface, VideoInterface
+
+# Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
@@ -134,3 +134,35 @@ interface_list = [
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
 ]
+
+interfaces_by_category = dict(
+    ecephys={
+        interface.__name__.replace("RecordingInterface", ""): interface  # TODO: use removesuffix when 3.8 is dropped
+        for interface in interface_list
+        if "Recording" in interface.__name__
+    },
+    sorting={
+        interface.__name__.replace("SortingInterface", ""): interface
+        for interface in interface_list
+        if "Sorting" in interface.__name__
+    },
+    imaging={
+        interface.__name__.replace("ImagingInterface", ""): interface
+        for interface in interface_list
+        if "Imaging" in interface.__name__
+    },
+    segmentation={
+        interface.__name__.replace("SegmentationInterface", ""): interface
+        for interface in interface_list
+        if "Segmentation" in interface.__name__
+    },
+    icephys=dict(Abf=AbfInterface),
+    behavior=dict(
+        Video=VideoInterface,
+        DeepLabCut=DeepLabCutInterface,
+        SLEAP=SLEAPInterface,
+        # Text
+        CsvTimeIntervals=CsvTimeIntervalsInterface,
+        ExcelTimeIntervals=ExcelTimeIntervalsInterface,
+    ),
+)

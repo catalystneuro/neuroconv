@@ -1,5 +1,4 @@
-"""Authors: Cody Baker and Ben Dichter."""
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -21,17 +20,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         verbose : bool, default True
             If True, will print out additional information.
+        es_key : str, default: "ElectricalSeries"
+            key of this ElectricalSeries in the metadata dictionary
         source_data : dict
             key-value pairs of extractor-specific arguments.
-        es_key : str, default: "ElectricalSeries"
-            Key of this ElectricalSeries in the metadata dictionary
 
         """
         super().__init__(**source_data)
         self.recording_extractor = self.get_extractor()(**source_data)
         self.subset_channels = None
         self.verbose = verbose
-        self.es_key = es_key  # For automatic metadata extraction
+        self.es_key = es_key
 
     def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
@@ -69,7 +68,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             metadata_schema["properties"]["Ecephys"]["properties"].update(
                 {self.es_key: get_schema_from_hdmf_class(ElectricalSeries)}
             )
-
         return metadata_schema
 
     def get_metadata(self) -> dict:
@@ -129,7 +127,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        write_as: str = "raw",  # Literal["raw", "processed"]
+        write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,

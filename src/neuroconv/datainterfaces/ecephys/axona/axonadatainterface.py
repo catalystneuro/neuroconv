@@ -1,4 +1,3 @@
-"""Authors: Heberto Mayorquin, Steffen Buergers."""
 from pynwb import NWBFile
 
 from .axona_utils import (

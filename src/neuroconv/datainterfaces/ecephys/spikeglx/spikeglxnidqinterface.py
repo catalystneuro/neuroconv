@@ -1,15 +1,15 @@
-"""Authors: Cody Baker."""
 from pathlib import Path
 from typing import List
 
 import numpy as np
 
-from .spikeglxdatainterface import SpikeGLXRecordingInterface
+from .spikeglx_utils import get_device_metadata, get_session_start_time
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import FilePathType, dict_deep_update, get_schema_from_method_signature
 
 
-class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
+class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
 
     ExtractorName = "SpikeGLXRecordingExtractor"
@@ -43,28 +43,38 @@ class SpikeGLXNIDQInterface(SpikeGLXRecordingInterface):
             If True, then the probe is not loaded.
         es_key : str, default: "ElectricalSeriesNIDQ"
         """
-        self.stream_id = "nidq"
 
         folder_path = Path(file_path).parent
-        super(SpikeGLXRecordingInterface, self).__init__(
+        super().__init__(
             folder_path=folder_path,
-            stream_id=self.stream_id,
+            stream_id="nidq",
             verbose=verbose,
             load_sync_channel=load_sync_channel,
             es_key=es_key,
         )
-        self.es_key = es_key
         self.source_data.update(file_path=str(file_path))
 
         self.recording_extractor.set_property(
             key="group_name", values=["NIDQChannelGroup"] * self.recording_extractor.get_num_channels()
         )
-        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
+        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, "nidq")]["meta"]
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
-        metadata["Ecephys"]["ElectrodeGroup"][0]["description"] = "A group representing the NIDQ channels."
+        session_start_time = get_session_start_time(self.meta)
+        if session_start_time:
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+
+        # Device metadata
+        device = get_device_metadata(self.meta)
+
+        # Add groups metadata
+        metadata["Ecephys"]["Device"] = [device]
+
+        metadata["Ecephys"]["ElectrodeGroup"][0].update(
+            name="NIDQChannelGroup", description="A group representing the NIDQ channels.", device=device["name"]
+        )
         metadata["Ecephys"]["Electrodes"] = [
             dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
         ]
