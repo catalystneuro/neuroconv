@@ -54,7 +54,8 @@ class DataInterfaceTestMixin:
     def check_metadata(self):
         schema = self.interface.get_metadata_schema()
         metadata = self.interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         # handle json encoding of datetimes and other tricky types
         metadata = json.loads(json.dumps(metadata, default=json_serial))
         validate(metadata, schema)
