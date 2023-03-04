@@ -1,4 +1,3 @@
-"""Authors: Saksham Sharda, Cody Baker."""
 from typing import Iterable, Optional, Tuple
 
 import numpy as np

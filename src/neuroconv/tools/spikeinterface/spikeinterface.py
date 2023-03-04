@@ -1,4 +1,3 @@
-"""Author: Heberto Mayorquin, Cody Baker."""
 import uuid
 import warnings
 from collections import defaultdict

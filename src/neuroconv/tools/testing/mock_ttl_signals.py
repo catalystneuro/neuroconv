@@ -1,4 +1,3 @@
-"""Author: Cody Baker."""
 from pathlib import Path
 from typing import Optional, Union
 

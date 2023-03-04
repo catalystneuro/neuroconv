@@ -1,4 +1,3 @@
-"""Authors: Szonja Weigl, Cody Baker."""
 from typing import List, Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
