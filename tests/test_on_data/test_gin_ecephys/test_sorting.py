@@ -46,10 +46,6 @@ class TestEcephysSortingNwbConversions(unittest.TestCase):
 
     parameterized_sorting_list = [
         param(
-            data_interface=KiloSortSortingInterface,
-            interface_kwargs=dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0")),
-        ),
-        param(
             data_interface=BlackrockSortingInterface,
             interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev")),
         ),
