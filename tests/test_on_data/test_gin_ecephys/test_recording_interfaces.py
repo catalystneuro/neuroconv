@@ -1,7 +1,9 @@
 import unittest
 
 from neuroconv.datainterfaces import AxonaRecordingInterface
-from neuroconv.tools.testing.data_interface_mixins import RecordingExtractorInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import (
+    RecordingExtractorInterfaceTestMixin,
+)
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH

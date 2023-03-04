@@ -21,7 +21,9 @@ from ...datainterfaces.ecephys.basesortingextractorinterface import BaseSortingE
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
-from ...datainterfaces.ophys.basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from ...datainterfaces.ophys.basesegmentationextractorinterface import (
+    BaseSegmentationExtractorInterface,
+)
 
 
 def json_serial(obj):
