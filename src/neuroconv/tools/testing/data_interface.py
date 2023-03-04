@@ -6,13 +6,17 @@ from typing import Callable, Union
 
 from jsonschema import validate
 from jsonschema.validators import Draft7Validator
+from roiextractors import NwbImagingExtractor
+from roiextractors.testing import check_imaging_equal
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 
 from ...basedatainterface import BaseDataInterface
+from ...baseextractorinterface import BaseExtractorInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
+from ...datainterfaces.ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
 
 
 def json_serial(obj):
@@ -23,7 +27,7 @@ def json_serial(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-class AbstractDataInterfaceTest:
+class DataInterfaceTestMixin:
     data_interface_cls: Union[BaseDataInterface, Callable]
     cases: Union[dict, list]
     save_directory: Path
@@ -43,6 +47,7 @@ class AbstractDataInterfaceTest:
     def check_metadata(self):
         schema = self.interface.get_metadata_schema()
         metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         # handle json encoding of datetimes and other tricky types
         metadata = json.loads(json.dumps(metadata, default=json_serial))
         validate(metadata, schema)
@@ -54,7 +59,7 @@ class AbstractDataInterfaceTest:
         pass
 
     @abstractmethod
-    def check_read(self, nwbfile_path: str, **kwargs):
+    def check_read(self, nwbfile_path: str):
         pass
 
     def check_extracted_metadata(self, metadata: dict):
@@ -74,26 +79,29 @@ class AbstractDataInterfaceTest:
                 self.check_metadata()
                 nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
                 kwargs = self.run_conversion(nwbfile_path)
-                self.check_read(nwbfile_path=nwbfile_path, **kwargs)
+                self.check_read(nwbfile_path=nwbfile_path)
 
 
-class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
-    data_interface_cls: BaseRecordingExtractorInterface
+class ExtractorInterfaceTestMixin(DataInterfaceTestMixin):
+    data_interface_cls: BaseExtractorInterface
 
-    def run_conversion(self, nwbfile_path: str) -> dict:
+    def run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        electrical_series_name = metadata["Ecephys"][self.interface.es_key]["name"]
         self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-        return dict(electrical_series_name=electrical_series_name)
+    @abstractmethod
+    def check_read(self, nwbfile_path: str):
+        pass
 
-    def check_read(
-        self,
-        nwbfile_path: str,
-        electrical_series_name: str = "ElectricalSeries",
-    ):
+
+class RecordingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
+    data_interface_cls: BaseRecordingExtractorInterface
+
+    def check_read(self, nwbfile_path: str):
         recording = self.interface.recording_extractor
+
+        electrical_series_name = self.interface.get_metadata()["Ecephys"][self.interface.es_key]["name"]
 
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
@@ -113,3 +121,17 @@ class AbstractRecordingInterfaceTest(AbstractDataInterfaceTest):
                 check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
                 if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
+
+
+class ImagingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
+    data_interface_cls: BaseImagingExtractorInterface
+
+    def check_read(self, nwbfile_path: str):
+        imaging = self.interface.imaging_extractor
+        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
+
+        exclude_channel_comparison = False
+        if imaging.get_channel_names() is None:
+            exclude_channel_comparison = True
+
+        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
