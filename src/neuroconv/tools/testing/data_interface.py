@@ -16,7 +16,9 @@ from ...baseextractorinterface import BaseExtractorInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
-from ...datainterfaces.ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
+from ...datainterfaces.ophys.baseimagingextractorinterface import (
+    BaseImagingExtractorInterface,
+)
 
 
 def json_serial(obj):
