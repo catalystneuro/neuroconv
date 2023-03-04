@@ -1,4 +1,3 @@
-"""Authors: Cody Baker."""
 import json
 
 from pynwb.ecephys import ElectricalSeries

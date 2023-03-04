@@ -1,4 +1,3 @@
-"""Author: Luiz Tauffer."""
 import json
 from datetime import datetime, timedelta
 from warnings import warn
