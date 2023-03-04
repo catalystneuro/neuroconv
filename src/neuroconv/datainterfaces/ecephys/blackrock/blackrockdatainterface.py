@@ -13,9 +13,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["block_index", "seg_index"]
-        )
+        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
         source_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
         return source_schema
 
@@ -68,7 +66,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls) -> dict:
-        metadata_schema = get_schema_from_method_signature(class_method=cls.__init__)
+        metadata_schema = get_schema_from_method_signature(method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
         return metadata_schema
