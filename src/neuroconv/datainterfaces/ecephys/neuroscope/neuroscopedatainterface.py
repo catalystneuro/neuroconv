@@ -1,9 +1,7 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
 from typing import Optional
-from warnings import warn
 
-from pynwb.ecephys import ElectricalSeries
 
 from .neuroscope_utils import (
     get_channel_groups,
@@ -20,7 +18,6 @@ from ....utils import (
     FolderPathType,
     OptionalFilePathType,
     dict_deep_update,
-    get_schema_from_hdmf_class,
 )
 
 
@@ -229,13 +226,14 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
-        metadata = dict(Ecephys=NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata["Ecephys"] = NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
 
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+            metadata["NWBFile"].update(session_start_time=session_start_time)
 
         return metadata

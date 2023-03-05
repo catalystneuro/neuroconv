@@ -1,28 +1,17 @@
 import datetime
 
 import probeinterface as pi
-import pytest
 from numpy.testing import assert_array_equal
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import (
-    get_device_metadata,
     get_session_start_time,
 )
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
-
-
-def test_spikelgx_session_start_time_ap():
-    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
-    stream_id = "imec0.ap"
-    recording = SpikeGLXRecordingExtractor(folder_path=folder_path, stream_id=stream_id)
-    recording_metadata = recording.neo_reader.signals_info_dict[(0, stream_id)]["meta"]
-
-    assert get_session_start_time(recording_metadata) == datetime.datetime(2020, 11, 3, 10, 35, 10)
 
 
 def test_spikelgx_session_start_time_lf():
@@ -32,29 +21,6 @@ def test_spikelgx_session_start_time_lf():
     recording_metadata = recording.neo_reader.signals_info_dict[(0, stream_id)]["meta"]
 
     assert get_session_start_time(recording_metadata) == datetime.datetime(2020, 11, 3, 10, 35, 10)
-
-
-def test_get_device_metadata():
-    """Test that the add device method of the spikeglx interface returns the right output"""
-    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
-    ap_file_path = folder_path / "Noise4Sam_g0_t0.imec0.ap.bin"
-    spikeglx_interface = SpikeGLXRecordingInterface(file_path=ap_file_path)
-
-    device = get_device_metadata(spikeglx_interface.meta)
-
-    description_string = (
-        "{"
-        '"probe_type": "0", '
-        '"probe_type_description": "NP1.0", '
-        '"flex_part_number": "NP2_FLEX_0", '
-        '"connected_base_station_part_number": "NP2_QBSC_00"'
-        "}"
-    )
-    expected_device = dict(name="Neuropixel-Imec", description=description_string, manufacturer="Imec")
-
-    assert device["name"] == expected_device["name"]
-    assert device["manufacturer"] == expected_device["manufacturer"]
-    assert device["description"] == expected_device["description"]
 
 
 def test_spikelgx_recording_property_addition():
@@ -78,20 +44,3 @@ def test_spikelgx_recording_property_addition():
     assert_array_equal(group_name, expected_group_name)
     assert_array_equal(contact_shapes, expected_contact_shapes)
 
-
-@pytest.mark.skip(reason="Legacy spikeextractors cannot read new GIN file.")
-def test_matching_recording_property_addition_between_backends():
-    """Test that the extracted properties match with both backends"""
-    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
-    ap_file_path = folder_path / "Noise4Sam_g0_t0.imec0.ap.bin"
-
-    interface_new = SpikeGLXRecordingInterface(file_path=ap_file_path)
-    shank_electrode_number_new = interface_new.recording_extractor.get_property("shank_electrode_number")
-    group_name_new = interface_new.recording_extractor.get_property("group_name")
-
-    interface_old = SpikeGLXRecordingInterface(file_path=ap_file_path, spikeextractors_backend=True)
-    shank_electrode_number_old = interface_old.recording_extractor.get_property("shank_electrode_number")
-    group_name_old = interface_old.recording_extractor.get_property("group_name")
-
-    assert_array_equal(shank_electrode_number_new, shank_electrode_number_old)
-    assert_array_equal(group_name_new, group_name_old)

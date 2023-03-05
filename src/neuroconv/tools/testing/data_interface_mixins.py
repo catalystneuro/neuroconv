@@ -13,7 +13,6 @@ from spikeinterface.core.testing import check_recordings_equal, check_sortings_e
 from spikeinterface.extractors import NwbRecordingExtractor, NwbSortingExtractor
 
 from ...basedatainterface import BaseDataInterface
-from ...baseextractorinterface import BaseExtractorInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -38,7 +37,7 @@ def json_serial(obj):
 
 class DataInterfaceTestMixin:
     data_interface_cls: Union[BaseDataInterface, Callable]
-    cases: Union[dict, list]
+    interface_kwargs: Union[dict, list]
     save_directory: Path
 
     def test_source_schema_valid(self):
@@ -59,14 +58,15 @@ class DataInterfaceTestMixin:
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         # handle json encoding of datetimes and other tricky types
-        metadata = json.loads(json.dumps(metadata, default=json_serial))
-        validate(metadata, schema)
+        metadata_for_validation = json.loads(json.dumps(metadata, default=json_serial))
+        validate(metadata_for_validation, schema)
 
         self.check_extracted_metadata(metadata)
 
-    @abstractmethod
     def run_conversion(self, nwbfile_path: str):
-        pass
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
     @abstractmethod
     def check_read(self, nwbfile_path: str):
@@ -76,36 +76,23 @@ class DataInterfaceTestMixin:
         pass
 
     def test_conversion_as_lone_interface(self):
-        cases = self.cases
-        if isinstance(cases, dict):
-            cases = [cases]
-        for num, kwargs in enumerate(cases):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
             with self.subTest(str(num)):
-                self.case_name = str(num)
+                self.case = num
                 self.interface = self.data_interface_cls(**kwargs)
 
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
                 nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
-                kwargs = self.run_conversion(nwbfile_path)
+                self.run_conversion(nwbfile_path)
                 self.check_read(nwbfile_path=nwbfile_path)
 
 
-class ExtractorInterfaceTestMixin(DataInterfaceTestMixin):
-    data_interface_cls: BaseExtractorInterface
-
-    def run_conversion(self, nwbfile_path: str):
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-    @abstractmethod
-    def check_read(self, nwbfile_path: str):
-        pass
-
-
-class RecordingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
+class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
     data_interface_cls: BaseRecordingExtractorInterface
 
     def check_read(self, nwbfile_path: str):
@@ -133,7 +120,7 @@ class RecordingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
                     check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
 
-class ImagingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
+class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
     data_interface_cls: BaseImagingExtractorInterface
 
     def check_read(self, nwbfile_path: str):
@@ -147,7 +134,7 @@ class ImagingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
         check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
 
 
-class SegmentationExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
+class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin):
     data_interface_cls: BaseSegmentationExtractorInterface
 
     def check_read(self, nwbfile_path: str):
@@ -156,7 +143,7 @@ class SegmentationExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
         check_segmentations_equal(segmentation, nwb_segmentation)
 
 
-class SortingExtractorInterfaceTestMixin(ExtractorInterfaceTestMixin):
+class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
     data_interface_cls: BaseSortingExtractorInterface
 
     def check_read(self, nwbfile_path: str):

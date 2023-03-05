@@ -136,7 +136,7 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
             )
 
     # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()))
+    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=[int(x) for x in imgextractor.get_image_size()])
 
     plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
     metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name

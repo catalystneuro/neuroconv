@@ -77,8 +77,9 @@ class DeepLabCutInterface(BaseDataInterface):
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
     def get_metadata(self):
-        metadata = dict(
-            NWBFile=dict(session_description=self._config_file["Task"], experimenter=[self._config_file["scorer"]]),
+        metadata = super().get_metadata()
+        metadata["NWBFile"].update(
+            session_description=self._config_file["Task"], experimenter=[self._config_file["scorer"]]
         )
         return metadata
 
