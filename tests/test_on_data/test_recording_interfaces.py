@@ -1,16 +1,29 @@
 from datetime import datetime
+from platform import python_version
+from sys import platform
 from unittest import TestCase, skipIf
 
 from packaging import version
-from platform import python_version
-from sys import platform
 
-from neuroconv.datainterfaces import AxonaRecordingInterface, BlackrockRecordingInterface, EDFRecordingInterface, \
-    TdtRecordingInterface, PlexonRecordingInterface, BiocamRecordingInterface, AlphaOmegaRecordingInterface, \
-    MEArecRecordingInterface, MCSRawRecordingInterface, SpikeGLXRecordingInterface, \
-    OpenEphysLegacyRecordingInterface, CEDRecordingInterface, NeuralynxRecordingInterface, \
-    OpenEphysBinaryRecordingInterface, NeuroScopeRecordingInterface, IntanRecordingInterface, \
-    SpikeGadgetsRecordingInterface
+from neuroconv.datainterfaces import (
+    AlphaOmegaRecordingInterface,
+    AxonaRecordingInterface,
+    BiocamRecordingInterface,
+    BlackrockRecordingInterface,
+    CEDRecordingInterface,
+    EDFRecordingInterface,
+    IntanRecordingInterface,
+    MCSRawRecordingInterface,
+    MEArecRecordingInterface,
+    NeuralynxRecordingInterface,
+    NeuroScopeRecordingInterface,
+    OpenEphysBinaryRecordingInterface,
+    OpenEphysLegacyRecordingInterface,
+    PlexonRecordingInterface,
+    SpikeGadgetsRecordingInterface,
+    SpikeGLXRecordingInterface,
+    TdtRecordingInterface,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
 )
@@ -58,9 +71,7 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
 
 
 @skipIf(
-    platform == "darwin"
-    or this_python_version < version.parse("3.8")
-    or this_python_version > version.parse("3.9"),
+    platform == "darwin" or this_python_version < version.parse("3.8") or this_python_version > version.parse("3.9"),
     reason="Interface unsupported for OSX. Only runs on Pyton 3.8 and 3.9",
 )
 class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -140,7 +151,10 @@ class TestNeuralynxRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
             assert '"recording_closed": "2017-02-16 18:01:18"' in file_metadata["notes"]
             assert '"ADMaxValue": "32767"' in file_metadata["notes"]
             assert '"sampling_rate": "32000.0"' in file_metadata["notes"]
-            assert metadata["Ecephys"]["Device"][-1] == {"name": "AcqSystem1 DigitalLynxSX", "description": "Cheetah 5.7.4"}
+            assert metadata["Ecephys"]["Device"][-1] == {
+                "name": "AcqSystem1 DigitalLynxSX",
+                "description": "Cheetah 5.7.4",
+            }
 
         elif self.case == 1:
             assert file_metadata["session_start_time"] == datetime(2016, 11, 28, 21, 50, 33, 322000)
@@ -222,7 +236,8 @@ class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin, T
 class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin"))
+        file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.ap.bin")
+    )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -230,13 +245,14 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="Neuropixel-Imec",
             description="{"
-                        '"probe_type": "0", '
-                        '"probe_type_description": "NP1.0", '
-                        '"flex_part_number": "NP2_FLEX_0", '
-                        '"connected_base_station_part_number": "NP2_QBSC_00"'
-                        "}",
+            '"probe_type": "0", '
+            '"probe_type_description": "NP1.0", '
+            '"flex_part_number": "NP2_FLEX_0", '
+            '"connected_base_station_part_number": "NP2_QBSC_00"'
+            "}",
             manufacturer="Imec",
         )
+
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = TdtRecordingInterface

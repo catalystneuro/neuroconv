@@ -43,4 +43,3 @@ def test_spikelgx_recording_property_addition():
     assert_array_equal(shank_electrode_number, expected_shank_electrode_number)
     assert_array_equal(group_name, expected_group_name)
     assert_array_equal(contact_shapes, expected_contact_shapes)
-

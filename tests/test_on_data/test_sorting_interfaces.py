@@ -1,8 +1,14 @@
 from datetime import datetime
 from unittest import TestCase
 
-from neuroconv.datainterfaces import PhySortingInterface, BlackrockSortingInterface, CellExplorerSortingInterface, \
-    NeuralynxSortingInterface, PlexonSortingInterface, NeuroScopeSortingInterface
+from neuroconv.datainterfaces import (
+    BlackrockSortingInterface,
+    CellExplorerSortingInterface,
+    NeuralynxSortingInterface,
+    NeuroScopeSortingInterface,
+    PhySortingInterface,
+    PlexonSortingInterface,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
     SortingExtractorInterfaceTestMixin,
 )
@@ -23,22 +29,21 @@ class TestAxonRecordingInterface(SortingExtractorInterfaceTestMixin, TestCase):
 
 class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = BlackrockSortingInterface
-    interface_kwargs=dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"))
+    interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"))
     save_directory = OUTPUT_PATH
 
 
 class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CellExplorerSortingInterface
     interface_kwargs = [
-        dict(file_path=str(DATA_PATH / "cellexplorer" / "dataset_1" /
-                           "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat")),
-        dict(
-            file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")
-        ),
         dict(
             file_path=str(
-                DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat"
+                DATA_PATH / "cellexplorer" / "dataset_1" / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
             )
+        ),
+        dict(file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")),
+        dict(
+            file_path=str(DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat")
         ),
     ]
     save_directory = OUTPUT_PATH
@@ -46,16 +51,16 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin, TestC
 
 class TestNeuralynxSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = NeuralynxSortingInterface
-    interface_kwargs=[
+    interface_kwargs = [
         dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data")),
-        dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"))
+        dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),
     ]
     save_directory = OUTPUT_PATH
 
 
 class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = NeuroScopeSortingInterface
-    interface_kwargs=dict(
+    interface_kwargs = dict(
         folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
         xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
     )
@@ -65,10 +70,9 @@ class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
         assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 8, 31, 0, 0)
 
 
-
 class TestPhySortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = PhySortingInterface
-    interface_kwargs=dict(
+    interface_kwargs = dict(
         folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
     )
     save_directory = OUTPUT_PATH

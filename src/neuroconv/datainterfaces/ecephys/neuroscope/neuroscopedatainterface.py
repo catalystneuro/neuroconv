@@ -2,7 +2,6 @@
 from pathlib import Path
 from typing import Optional
 
-
 from .neuroscope_utils import (
     get_channel_groups,
     get_session_start_time,
