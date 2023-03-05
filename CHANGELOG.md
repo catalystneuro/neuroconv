@@ -22,7 +22,7 @@
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
-* modularize tests for DataInterface classes using `unittest.TestCase` [PR #355]((https://github.com/catalystneuro/neuroconv/pull/355))
+* modularize tests for DataInterface classes using `unittest.TestCase` [PR #355](https://github.com/catalystneuro/neuroconv/pull/355)
 
 ### Fixes
 * `BlackrockRecordingInterface` now writes all ElectricalSeries to "acquisition" unless changed using the `write_as` flag in `run_conversion`. [PR #315](https://github.com/catalystneuro/neuroconv/pull/315)
