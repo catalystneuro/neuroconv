@@ -1,4 +1,3 @@
-"""Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 import collections.abc
 import inspect
 import json

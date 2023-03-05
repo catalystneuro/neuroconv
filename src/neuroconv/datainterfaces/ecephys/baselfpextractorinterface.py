@@ -1,4 +1,3 @@
-"""Authors: Cody Baker and Ben Dichter."""
 from typing import Literal, Optional
 
 from pynwb import NWBFile
