@@ -1,6 +1,6 @@
 import json
 from abc import abstractmethod
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Union
 
@@ -25,14 +25,7 @@ from ...datainterfaces.ophys.baseimagingextractorinterface import (
 from ...datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
-
-
-def json_serial(obj):
-    """JSON serializer for objects not serializable by default json code"""
-
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    raise TypeError("Type %s not serializable" % type(obj))
+from ...utils import NWBMetaDataEncoder
 
 
 class DataInterfaceTestMixin:
@@ -58,7 +51,7 @@ class DataInterfaceTestMixin:
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         # handle json encoding of datetimes and other tricky types
-        metadata_for_validation = json.loads(json.dumps(metadata, default=json_serial))
+        metadata_for_validation = json.loads(json.dumps(metadata, default=NWBMetaDataEncoder))
         validate(metadata_for_validation, schema)
 
         self.check_extracted_metadata(metadata)
