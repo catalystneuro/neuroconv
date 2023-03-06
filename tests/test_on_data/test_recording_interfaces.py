@@ -61,7 +61,7 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
     platform == "darwin"
     or this_python_version < version.parse("3.8")
     or this_python_version > version.parse("3.9"),
-    reason="Interface unsupported for OSX. Only runs on Pyton 3.8 and 3.9",
+    reason="Interface unsupported for OSX. Only runs on Python 3.8 and 3.9",
 )
 class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CEDRecordingInterface
