@@ -66,6 +66,7 @@ class DataInterfaceTestMixin:
         pass
 
     def check_extracted_metadata(self, metadata: dict):
+        """Override this method to make assertions about specific extracted metadata values."""
         pass
 
     def test_conversion_as_lone_interface(self):
