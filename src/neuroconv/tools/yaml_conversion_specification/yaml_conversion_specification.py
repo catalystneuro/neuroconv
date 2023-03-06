@@ -1,4 +1,3 @@
-"""Authors: Cody Baker, Alessio Buccino."""
 import sys
 from importlib import import_module
 from pathlib import Path

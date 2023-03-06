@@ -1,4 +1,3 @@
-"""Authors: Cody Baker and Ben Dichter."""
 import uuid
 from abc import ABC, abstractmethod
 from typing import Optional

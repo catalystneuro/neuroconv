@@ -1,4 +1,3 @@
-"""Authors: Alessio Buccino."""
 from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface

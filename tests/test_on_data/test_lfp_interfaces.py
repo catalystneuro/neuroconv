@@ -1,6 +1,10 @@
 from unittest import TestCase
 
-from neuroconv.datainterfaces import AxonaLFPDataInterface, NeuroScopeLFPInterface, SpikeGLXRecordingInterface
+from neuroconv.datainterfaces import (
+    AxonaLFPDataInterface,
+    NeuroScopeLFPInterface,
+    SpikeGLXRecordingInterface,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
 )
@@ -31,8 +35,6 @@ class TestNeuroScopeLFPInterface(RecordingExtractorInterfaceTestMixin, TestCase)
 class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = SpikeGLXRecordingInterface
     interface_kwargs = dict(
-        file_path=str(
-            DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin"
-        )
+        file_path=str(DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0" / "Noise4Sam_g0_t0.imec0.lf.bin")
     )
     save_directory = OUTPUT_PATH

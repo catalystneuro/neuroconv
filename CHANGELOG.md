@@ -22,7 +22,7 @@
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
-* modularize tests for DataInterface classes using `unittest.TestCase` [PR #355]((https://github.com/catalystneuro/neuroconv/pull/355))
+* modularize tests for DataInterface classes using `unittest.TestCase` [PR #355](https://github.com/catalystneuro/neuroconv/pull/355)
 
 ### Fixes
 * `BlackrockRecordingInterface` now writes all ElectricalSeries to "acquisition" unless changed using the `write_as` flag in `run_conversion`. [PR #315](https://github.com/catalystneuro/neuroconv/pull/315)
@@ -35,6 +35,7 @@
   [PR #322](https://github.com/catalystneuro/neuroconv/pull/322)
 * Moved instructions to build the documentation from README.md to ReadTheDocs. [PR #323](https://github.com/catalystneuro/neuroconv/pull/323)
 * Add `Spike2RecordingInterface` to conversion gallery. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)
+* Remove authors from module docstrings [PR #354](https://github.com/catalystneuro/neuroconv/pull/354)
 
 ### Pending deprecation
 * Change name from `CedRecordingInterface` to `Spike2RecordingInterface`. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)

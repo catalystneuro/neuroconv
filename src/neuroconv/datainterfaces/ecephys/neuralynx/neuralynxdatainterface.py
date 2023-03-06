@@ -1,4 +1,3 @@
-"""Authors: Heberto Mayorquin, Cody Baker, Ben Dichter and Julia Sprenger."""
 import json
 from typing import List
 

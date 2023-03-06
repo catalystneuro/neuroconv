@@ -1,7 +1,5 @@
-"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
 from typing import Optional
-
 
 from .neuroscope_utils import (
     get_channel_groups,

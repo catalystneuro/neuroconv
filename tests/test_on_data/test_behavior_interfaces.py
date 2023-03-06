@@ -4,16 +4,12 @@ from datetime import datetime
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import DeepLabCutInterface
-from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
-)
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
-    from .setup_paths import BEHAVIOR_DATA_PATH
-    from .setup_paths import OUTPUT_PATH
+    from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import BEHAVIOR_DATA_PATH
-    from setup_paths import OUTPUT_PATH
+    from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 
 class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
