@@ -51,7 +51,7 @@ class DataInterfaceTestMixin:
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         # handle json encoding of datetimes and other tricky types
-        metadata_for_validation = json.loads(json.dumps(metadata, default=NWBMetaDataEncoder))
+        metadata_for_validation = json.loads(json.dumps(metadata, cls=NWBMetaDataEncoder))
         validate(metadata_for_validation, schema)
 
         self.check_extracted_metadata(metadata)
