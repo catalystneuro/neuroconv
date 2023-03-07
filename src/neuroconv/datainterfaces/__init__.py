@@ -20,6 +20,7 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingI
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
+from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
 from .ecephys.neuralynx.neuralynxdatainterface import (
@@ -111,6 +112,7 @@ interface_list = [
     AlphaOmegaRecordingInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
+    MaxOneRecordingInterface,
     # Icephys
     AbfInterface,
     # Ophys
