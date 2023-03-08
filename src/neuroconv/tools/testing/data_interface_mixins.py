@@ -3,7 +3,7 @@ import tempfile
 from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Union, List, Type
+from typing import List, Type, Union
 
 from jsonschema.validators import Draft7Validator, validate
 
