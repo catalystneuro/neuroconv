@@ -42,7 +42,7 @@
 * Use `Literal` in typehints (incompatible with Python<=3.8). [PR #340](https://github.com/catalystneuro/neuroconv/pull/340)
 
 
-# v0.2.4 (February 4, 2023)
+# v0.2.4 (February 7, 2023)
 
 ### Deprecation
 * All usages of `use_times` have been removed from spikeinterface tools and interfaces. The function `add_electrical_series` now determines whether the timestamps of the spikeinterface recording extractor are uniform or not and automatically stores the data according to best practices [PR #40](https://github.com/catalystneuro/neuroconv/pull/40)
