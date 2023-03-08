@@ -10,7 +10,9 @@ from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
+from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
+    BaseRecordingExtractorInterface,
+)
 from neuroconv.utils import NWBMetaDataEncoder
 
 
@@ -37,6 +39,7 @@ class DataInterfaceTestMixin:
     save_directory : Path, optional
         Directory where test files should be saved.
     """
+
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
