@@ -34,6 +34,7 @@ class DataInterfaceTestMixin:
     save_directory : Path, optional
         Directory where test files should be saved.
     """
+
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
