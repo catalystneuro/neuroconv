@@ -3,7 +3,7 @@ import tempfile
 from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Union, Callable, List
+from typing import List, Type, Union
 
 from jsonschema.validators import Draft7Validator, validate
 
@@ -34,7 +34,7 @@ class DataInterfaceTestMixin:
     save_directory : Path, optional
         Directory where test files should be saved.
     """
-    data_interface_cls: Union[BaseDataInterface, Callable]
+    data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
 
