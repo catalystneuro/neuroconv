@@ -2,7 +2,7 @@ import json
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Union, Dict
+from typing import Dict, Union
 
 from neuroconv.utils import (
     dict_deep_update,
@@ -48,7 +48,7 @@ def test_get_schema_from_method_signature():
             c=dict(type="string"),
             d=dict(type="boolean"),
             e=dict(default="hi", type="string"),
-            f=dict(type="object", additionalProperties={'^.*$': dict(type='string')})
+            f=dict(type="object", additionalProperties={"^.*$": dict(type="string")}),
         ),
         required=[
             "a",
