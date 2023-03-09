@@ -1,13 +1,13 @@
-import os
 import json
+import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Union
-from copy import deepcopy
 
 from neuroconv.utils import (
-    get_schema_from_method_signature,
     dict_deep_update,
     fill_defaults,
+    get_schema_from_method_signature,
     load_dict_from_file,
 )
 
@@ -58,7 +58,7 @@ def test_get_schema_from_method_signature():
         type="object",
     )
 
-    compare_dicts(schema, correct_schema)
+    assert schema == correct_schema
 
 
 def test_dict_deep_update_1():
@@ -133,7 +133,6 @@ def test_dict_deep_update_4():
 
 
 def test_fill_defaults():
-
     schema = dict(
         additionalProperties=False,
         properties=dict(

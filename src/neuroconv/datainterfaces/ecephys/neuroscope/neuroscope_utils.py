@@ -1,12 +1,13 @@
 """Authors: Cody Baker and Ben Dichter."""
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from dateutil import parser
 
 from ....tools import get_package
 
 
-def get_xml_file_path(data_file_path: str):
+def get_xml_file_path(data_file_path: str) -> str:
     """
     Infer the xml_file_path from the data_file_path (.dat or .eeg).
 
@@ -78,7 +79,7 @@ def get_channel_groups(xml_file_path: str) -> list:
 
 def get_session_start_time(xml_file_path: str) -> datetime:
     """
-    Auxiliary function for retrieving the session start tiem from the xml file.
+    Auxiliary function for retrieving the session start time from the xml file.
 
     Returns
     -------

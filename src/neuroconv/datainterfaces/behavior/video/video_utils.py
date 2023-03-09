@@ -1,9 +1,8 @@
-"""Authors: Saksham Sharda, Cody Baker."""
-from typing import Tuple, Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 import numpy as np
-from tqdm import tqdm
 from hdmf.data_utils import GenericDataChunkIterator
+from tqdm import tqdm
 
 from ....tools import get_package
 from ....utils import FilePathType

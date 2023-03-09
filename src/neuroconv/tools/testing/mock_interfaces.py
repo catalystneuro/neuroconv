@@ -1,5 +1,4 @@
-"""Authors: Cody Baker."""
-from typing import Optional, List
+from typing import List, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -68,7 +67,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         ----------
         signal_duration : float, default: 7.0
             The number of seconds to simulate.
-        ttl_times : list of list of floats, optional
+        ttl_times : list of lists of floats, optional
             The times within the `signal_duration` to trigger the TTL pulse for each channel.
             The outer list is over channels, while each inner list is the set of TTL times for each specific channel.
             The default generates 8 channels with periodic on/off cycle (which start in the 'off' state)
@@ -109,3 +108,4 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
         self.subset_channels = None
         self.verbose = None
+        self.es_key = "ElectricalSeriesNIDQ"

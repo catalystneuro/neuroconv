@@ -1,6 +1,6 @@
 import numpy as np
-from numpy.testing import assert_array_equal
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_equal
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 
@@ -38,7 +38,6 @@ def test_min_axis_too_large():
 
 
 def test_sliceable_data_chunk_iterator():
-
     data = np.arange(100).reshape(10, 10)
 
     dci = SliceableDataChunkIterator(data=data, buffer_shape=(5, 5), chunk_shape=(5, 5))

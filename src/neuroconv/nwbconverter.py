@@ -1,23 +1,26 @@
-"""Authors: Cody Baker and Ben Dichter."""
 import json
-from jsonschema import validate
-from typing import Optional, Dict, List, Union
 from collections import Counter
 from pathlib import Path
+from typing import Dict, List, Optional, Union
 
+from jsonschema import validate
 from pynwb import NWBFile
 from pynwb.file import Subject
 
-from .tools.nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
-from .utils import (
-    get_schema_from_hdmf_class,
-    get_schema_for_NWBFile,
-    dict_deep_update,
-    get_base_schema,
-    unroot_schema,
-    fill_defaults,
-)
 from .basedatainterface import BaseDataInterface
+from .tools.nwb_helpers import (
+    get_default_nwbfile_metadata,
+    make_nwbfile_from_metadata,
+    make_or_load_nwbfile,
+)
+from .utils import (
+    dict_deep_update,
+    fill_defaults,
+    get_base_schema,
+    get_schema_for_NWBFile,
+    get_schema_from_hdmf_class,
+    unroot_schema,
+)
 from .utils.json_schema import NWBMetaDataEncoder
 
 
@@ -176,7 +179,6 @@ class NWBConverter:
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-
             for interface_name, data_interface in self.data_interface_objects.items():
                 data_interface.run_conversion(
                     nwbfile=nwbfile_out, metadata=metadata, **conversion_options_to_run.get(interface_name, dict())
@@ -204,10 +206,10 @@ class ConverterPipe(NWBConverter):
         return conversion_options_schema
 
     def get_source_schema(self):
-        raise NotImplementedError("Source data not available with previously intialized classes")
+        raise NotImplementedError("Source data not available with previously initialized classes")
 
     def validate_source(self):
-        raise NotImplementedError("Source data not available with previously intialized classes")
+        raise NotImplementedError("Source data not available with previously initialized classes")
 
     def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
         self.verbose = verbose

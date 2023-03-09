@@ -1,13 +1,12 @@
 import unittest
-import pytest
 from datetime import datetime
 
 import numpy as np
 import numpy.testing as npt
+import pytest
+from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
-from parameterized import parameterized, param
 from spikeinterface.extractors import NwbRecordingExtractor
-
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import NeuroScopeRecordingInterface
@@ -68,7 +67,7 @@ class TestNeuroscopeNwbConversions(unittest.TestCase):
             # output_channel_conversion = nwbfile.acquisition["ElectricalSeriesRaw"].channel_conversion[:]
             # input_gain_array = np.ones_like(output_channel_conversion) * input_gain
             # np.testing.assert_array_almost_equal(input_gain_array, output_channel_conversion)
-            assert nwbfile.acquisition["ElectricalSeriesRaw"].channel_conversion is None
+            assert nwbfile.acquisition["ElectricalSeries"].channel_conversion is None
 
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path)
             nwb_recording_gains = nwb_recording.get_channel_gains()
@@ -100,7 +99,7 @@ class TestNeuroscopeNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            output_dtype = nwbfile.acquisition["ElectricalSeriesRaw"].data.dtype
+            output_dtype = nwbfile.acquisition["ElectricalSeries"].data.dtype
             self.assertEqual(first=output_dtype, second=np.dtype("int16"))
 
     def test_neuroscope_starting_time(self):
@@ -124,7 +123,7 @@ class TestNeuroscopeNwbConversions(unittest.TestCase):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeriesRaw"].starting_time)
+            self.assertEqual(first=starting_time, second=nwbfile.acquisition["ElectricalSeries"].starting_time)
 
 
 if __name__ == "__main__":

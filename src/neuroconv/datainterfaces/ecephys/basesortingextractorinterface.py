@@ -1,4 +1,3 @@
-"""Authors: Cody Baker and Ben Dichter."""
 from typing import Optional
 
 import numpy as np
@@ -7,7 +6,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType
+from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -17,10 +16,10 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     def __init__(self, verbose=True, **source_data):
         super().__init__(**source_data)
-        self.sorting_extractor = self.Extractor(**source_data)
+        self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
 
         # Initiate Ecephys metadata
@@ -72,7 +71,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
-        return self.Extractor(**self.source_data).get_times()
+        return self.get_extractor()(**self.source_data).get_times()
 
     def get_timestamps(self) -> np.ndarray:
         return self.sorting_extractor.get_times()
@@ -81,9 +80,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.sorting_extractor.set_times(times=synchronized_timestamps)
 
     def subset_sorting(self):
-        from spikeextractors import SortingExtractor, SubSortingExtractor
-        from spikeinterface import BaseSorting
-
         max_min_spike_time = max(
             [
                 min(x)
@@ -93,17 +89,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             ]
         )
         end_frame = 1.1 * max_min_spike_time
-        if isinstance(self.sorting_extractor, SortingExtractor):
-            stub_sorting_extractor = SubSortingExtractor(
-                self.sorting_extractor,
-                unit_ids=self.sorting_extractor.get_unit_ids(),
-                start_frame=0,
-                end_frame=end_frame,
-            )
-        elif isinstance(self.sorting_extractor, BaseSorting):
-            stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
-        else:
-            raise TypeError(f"{self.sorting_extractor} should be either se.SortingExtractor or si.BaseSorting")
+        stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return stub_sorting_extractor
 
     def run_conversion(
@@ -145,7 +131,12 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """
         from spikeinterface import NumpyRecording
 
-        from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
+        from ...tools.spikeinterface import (
+            add_devices,
+            add_electrode_groups,
+            add_electrodes,
+            write_sorting,
+        )
 
         if write_ecephys_metadata and "Ecephys" in metadata:
             n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])

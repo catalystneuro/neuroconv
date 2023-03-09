@@ -1,7 +1,11 @@
 import datetime
 
-from neuroconv.datainterfaces.ecephys.neuroscope.neuroscope_utils import get_session_start_time
-from neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface import NeuroScopeSortingInterface
+from neuroconv.datainterfaces.ecephys.neuroscope.neuroscope_utils import (
+    get_session_start_time,
+)
+from neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface import (
+    NeuroScopeSortingInterface,
+)
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
@@ -15,7 +19,6 @@ def test_neuroscope_session_start_time():
 
 
 def test_get_metadata():
-
     sx = NeuroScopeSortingInterface(
         str(NEUROSCOPE_PATH / "dataset_1"),
         xml_file_path=str(NEUROSCOPE_PATH / "dataset_1" / "YutaMouse42-151117.xml"),

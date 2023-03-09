@@ -1,6 +1,4 @@
-"""Authors: Cody Baker."""
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-
 from ....utils.types import FolderPathType
 
 
@@ -11,7 +9,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
     Uses the :py:class:`~spikeinterface.extractors.AlphaOmegaRecordingExtractor`.
     """
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for AlphaOmega.
 
@@ -22,10 +20,11 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         verbose: boolean
             Allows verbose.
             Default is True.
+        es_key: str, default: "ElectricalSeries"
         """
-        super().__init__(folder_path=folder_path, stream_id="RAW", verbose=verbose)
+        super().__init__(folder_path=folder_path, stream_id="RAW", verbose=verbose, es_key=es_key)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         annotation = self.recording_extractor.neo_reader.raw_annotations
         metadata["NWBFile"].update(session_start_time=annotation["blocks"][0]["rec_datetime"])

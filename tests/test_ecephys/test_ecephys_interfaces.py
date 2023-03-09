@@ -1,26 +1,29 @@
 import unittest
-from platform import python_version
-from sys import platform
-from packaging import version
-from tempfile import mkdtemp
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from platform import python_version as get_python_version
+from sys import platform
+from tempfile import mkdtemp
 
 import numpy as np
 import pytest
-import spikeextractors as se
-from spikeextractors.testing import check_recordings_equal, check_sortings_equal
 from hdmf.testing import TestCase
+from packaging.version import Version
 from pynwb import NWBHDF5IO
+from spikeinterface.extractors import NumpySorting
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import SIPickleRecordingInterface, SIPickleSortingInterface, CEDRecordingInterface
-from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
+from neuroconv.datainterfaces import CEDRecordingInterface
+from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
+    BaseSortingExtractorInterface,
+)
+
+python_version = Version(get_python_version())
 
 
 class TestAssertions(TestCase):
     @pytest.mark.skipif(
-        platform != "darwin" or version.parse(python_version()) >= version.parse("3.8"),
+        platform != "darwin" or python_version >= Version("3.8"),
         reason="Only testing on MacOSX with Python 3.7!",
     )
     def test_ced_import_assertions_python_3_7(self):
@@ -30,10 +33,7 @@ class TestAssertions(TestCase):
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
-    @pytest.mark.skipif(
-        version.parse(python_version()) < version.parse("3.10"),
-        reason="Only testing with Python 3.10!",
-    )
+    @pytest.mark.skipif(python_version.minor != 10, reason="Only testing with Python 3.10!")
     def test_ced_import_assertions_3_10(self):
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
@@ -41,47 +41,30 @@ class TestAssertions(TestCase):
         ):
             CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
-
-def test_pkl_interface():
-    toy_data = se.example_datasets.toy_example()
-    test_dir = Path(mkdtemp())
-    output_folder = test_dir / "test_pkl"
-    nwbfile_path = str(test_dir / "test_pkl_files.nwb")
-
-    se.save_si_object(object_name="test_recording", si_object=toy_data[0], output_folder=output_folder)
-    se.save_si_object(object_name="test_sorting", si_object=toy_data[1], output_folder=output_folder)
-
-    class SpikeInterfaceTestNWBConverter(NWBConverter):
-        data_interface_classes = dict(Recording=SIPickleRecordingInterface, Sorting=SIPickleSortingInterface)
-
-    source_data = dict(
-        Recording=dict(file_path=str(test_dir / "test_pkl" / "test_recording.pkl")),
-        Sorting=dict(file_path=str(test_dir / "test_pkl" / "test_sorting.pkl")),
-    )
-    converter = SpikeInterfaceTestNWBConverter(source_data=source_data)
-    metadata = converter.get_metadata()
-    metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
-
-    nwb_recording = se.NwbRecordingExtractor(file_path=nwbfile_path)
-    nwb_sorting = se.NwbSortingExtractor(file_path=nwbfile_path)
-    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording)
-    check_recordings_equal(RX1=toy_data[0], RX2=nwb_recording, return_scaled=False)
-    check_sortings_equal(SX1=toy_data[1], SX2=nwb_sorting)
+    @pytest.mark.skipif(python_version.minor != 11, reason="Only testing with Python 3.11!")
+    def test_ced_import_assertions_3_11(self):
+        with self.assertRaisesWith(
+            exc_type=ModuleNotFoundError,
+            exc_msg="\nThe package 'sonpy' is not available for Python version 3.11!",
+        ):
+            CEDRecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
 
 
 class TestSortingInterface(unittest.TestCase):
     def setUp(self) -> None:
         self.sorting_start_frames = [100, 200, 300]
         self.num_frames = 1000
-        sorting = se.NumpySortingExtractor()
-        sorting.set_sampling_frequency(3000)
-        sorting.add_unit(unit_id=1, times=np.arange(self.sorting_start_frames[0], self.num_frames))
-        sorting.add_unit(unit_id=2, times=np.arange(self.sorting_start_frames[1], self.num_frames))
-        sorting.add_unit(unit_id=3, times=np.arange(self.sorting_start_frames[2], self.num_frames))
+        times = np.array([], dtype="int")
+        labels = np.array([], dtype="int")
+        for i, start_frame in enumerate(self.sorting_start_frames):
+            times_i = np.arange(start_frame, self.num_frames, dtype="int")
+            labels_i = (i + 1) * np.ones_like(times_i, dtype="int")
+            times = np.concatenate((times, times_i))
+            labels = np.concatenate((labels, labels_i))
+        sorting = NumpySorting.from_times_labels(times, labels, sampling_frequency=3000.0)
 
         class TestSortingInterface(BaseSortingExtractorInterface):
-            Extractor = se.NumpySortingExtractor
+            ExtractorName = "NumpySorting"
 
             def __init__(self, verbose: bool = True):
                 self.sorting_extractor = sorting

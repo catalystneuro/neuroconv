@@ -1,22 +1,21 @@
 import unittest
-import pytest
 from datetime import datetime
 
 import numpy as np
-from parameterized import parameterized, param
-from spikeextractors import NwbSortingExtractor, SortingExtractor
-from spikeextractors.testing import check_sortings_equal
+import pytest
+from parameterized import param, parameterized
 from spikeinterface.core.testing import check_sortings_equal as check_sorting_equal_si
 from spikeinterface.extractors import NwbSortingExtractor as NwbSortingExtractorSI
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
+    BlackrockSortingInterface,
     CellExplorerSortingInterface,
+    KiloSortSortingInterface,
     NeuralynxSortingInterface,
     NeuroScopeSortingInterface,
     PhySortingInterface,
-    KiloSortSortingInterface,
-    BlackrockSortingInterface,
+    PlexonSortingInterface,
 )
 
 # enable to run locally in interactive mode
@@ -86,31 +85,27 @@ class TestEcephysSortingNwbConversions(unittest.TestCase):
             interface_kwargs=dict(folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),
             case_name="tetrodes",
         ),
+        param(
+            data_interface=PlexonSortingInterface,
+            interface_kwargs=dict(file_path=str(DATA_PATH / "plexon" / "File_plexon_2.plx")),
+            case_name="plexon_sorting",
+        ),
+        param(
+            data_interface=NeuroScopeSortingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
+                xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+            ),
+            case_name="neuroscope_sorting",
+        ),
+        param(
+            data_interface=PhySortingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
+            ),
+            case_name="phy_sorting",
+        ),
     ]
-
-    for spikeextractors_backend in [False, True]:
-        parameterized_sorting_list.append(
-            param(
-                data_interface=NeuroScopeSortingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
-                    xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
-        )
-
-        parameterized_sorting_list.append(
-            param(
-                data_interface=PhySortingInterface,
-                interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "phy" / "phy_example_0"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
-        )
 
     @parameterized.expand(input=parameterized_sorting_list, name_func=custom_name_func)
     def test_convert_sorting_extractor_to_nwb(self, data_interface, interface_kwargs, case_name=""):
@@ -134,19 +129,15 @@ class TestEcephysSortingNwbConversions(unittest.TestCase):
             sf = 30000
             sorting.set_sampling_frequency(sf)
 
-        if isinstance(sorting, SortingExtractor):
-            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
-            check_sortings_equal(SX1=sorting, SX2=nwb_sorting)
-        else:
-            # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
-            if sorting.get_num_segments() == 1:
-                nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
-                # In the NWBSortingExtractor, since unit_names could be not unique,
-                # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
-                sorting_renamed = sorting.select_units(
-                    unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
-                )
-                check_sorting_equal_si(SX1=sorting_renamed, SX2=nwb_sorting)
+        # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
+        if sorting.get_num_segments() == 1:
+            nwb_sorting = NwbSortingExtractorSI(file_path=nwbfile_path, sampling_frequency=sf)
+            # In the NWBSortingExtractor, since unit_names could be not unique,
+            # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
+            sorting_renamed = sorting.select_units(
+                unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
+            )
+            check_sorting_equal_si(SX1=sorting_renamed, SX2=nwb_sorting)
 
 
 if __name__ == "__main__":

@@ -1,22 +1,22 @@
 import unittest
-import pytest
 from datetime import datetime
 
+import pytest
 from hdmf.testing import TestCase
-from parameterized import parameterized, param
+from parameterized import param, parameterized
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
-    ScanImageImagingInterface,
-    TiffImagingInterface,
-    Hdf5ImagingInterface,
-    SbxImagingInterface,
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
+    Hdf5ImagingInterface,
+    SbxImagingInterface,
+    ScanImageImagingInterface,
     Suite2pSegmentationInterface,
+    TiffImagingInterface,
 )
 
 # enable to run locally in interactive mode
@@ -51,7 +51,7 @@ class TestOphysNwbConversions(TestCase):
             data_interface=TiffImagingInterface,
             interface_kwargs=dict(
                 file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
-                sampling_frequency=15.0,  # typically provied by user
+                sampling_frequency=15.0,  # typically provided by user
             ),
         ),
         param(

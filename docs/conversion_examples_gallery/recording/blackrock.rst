@@ -25,7 +25,7 @@ Convert Blackrock data to NWB using
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> session_start_time = session_start_time.replace(tzinfo=tz.gettz("US/Pacific")).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>

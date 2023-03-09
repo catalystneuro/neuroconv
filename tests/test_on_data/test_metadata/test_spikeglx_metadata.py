@@ -1,12 +1,15 @@
 import datetime
 
-import pytest
 import probeinterface as pi
+import pytest
 from numpy.testing import assert_array_equal
 from spikeinterface.extractors import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
-from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import get_session_start_time
+from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import (
+    get_device_metadata,
+    get_session_start_time,
+)
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
@@ -14,7 +17,6 @@ SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 
 def test_spikelgx_session_start_time_ap():
-
     folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
     stream_id = "imec0.ap"
     recording = SpikeGLXRecordingExtractor(folder_path=folder_path, stream_id=stream_id)
@@ -38,7 +40,7 @@ def test_get_device_metadata():
     ap_file_path = folder_path / "Noise4Sam_g0_t0.imec0.ap.bin"
     spikeglx_interface = SpikeGLXRecordingInterface(file_path=ap_file_path)
 
-    device = spikeglx_interface.get_device_metadata()
+    device = get_device_metadata(spikeglx_interface.meta)
 
     description_string = (
         "{"

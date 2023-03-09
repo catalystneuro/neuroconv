@@ -1,13 +1,13 @@
-from tempfile import mkdtemp
-from shutil import rmtree
-from pathlib import Path
-from datetime import datetime
 import unittest
+from datetime import datetime
+from pathlib import Path
+from shutil import rmtree
+from tempfile import mkdtemp
 
 import numpy as np
 from pynwb import NWBFile
 
-from neuroconv import NWBConverter, ConverterPipe
+from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.basedatainterface import BaseDataInterface
 
 try:
@@ -112,7 +112,6 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         assert converter.data_interface_classes["InterfaceB"] is self.InterfaceB
 
     def test_pipe_list_init(self):
-
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_list = [interface_a, interface_b]
@@ -128,7 +127,6 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         assert converter.data_interface_objects["InterfaceB"] is interface_b
 
     def test_pipe_list_dict(self):
-
         interface_a = self.InterfaceA()
         interface_b = self.InterfaceB()
         data_interfaces_dict = dict(InterfaceA=interface_a, InterfaceB=interface_b)
@@ -158,7 +156,6 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         assert converter_arguments.data_interface_classes == converter_child_class.data_interface_classes
 
     def test_unique_names_with_list_argument(self):
-
         interface_a = self.InterfaceA()
         interface_a2 = self.InterfaceA()
         interface_b = self.InterfaceB()
