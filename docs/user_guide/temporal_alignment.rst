@@ -4,11 +4,10 @@ Temporal Alignment
 Neurophysiology experiments often involve multiple acquisition systems that need to be synchronized post-hoc, so
 synchronizing time streams across multiple interfaces is of critical importance when performing an NWB conversion. As
 explained in the Best Practices (#TODO: add link), all timing information within an NWB file must be with respect to
-the `timestamps_reference_time` of the file, which by default is the `session_start_time`.
+the ``timestamps_reference_time`` of the file, which by default is the ``session_start_time``.
 
-There are several ways to synchronize acquisition systems. This tutorial will walk you through the 3 most
-common methods, which are implemented in NeuroConv. The API also allow you to define an entirely custom method for
-synchronization.
+There are several ways to synchronize acquisition systems post-hoc. This tutorial will walk you through the 3 methods
+implemented in NeuroConv. The API also allows you to define an entirely custom method for synchronization.
 
 Note that NeuroConv does not resample the data, as this requires a resampling method that can change the values of
 the underlying data. Rather, we aim to provide the timing of the samples in a common clock.
@@ -16,7 +15,6 @@ the underlying data. Rather, we aim to provide the timing of the samples in a co
 
 1. Synchronize Start Time
 -------------------------
-
 The simplest method of synchronization is to shift the start time of one acquisition system with respect to another. In
 this approach, a secondary system sends a signal as it is starting, such as a TTL pulse, to a primary system,
 indicating the temporal offset between the two systems. The following code will shift the timing of the DataInterface
@@ -38,7 +36,7 @@ Another method is to send a synchronization signals from a secondary system to a
 This approach corrects for not only a difference in starting time, but also any drift that may have occurred due to
 slight differences in the clock speeds of the two systems. Examples of this include sending TTL pulses from a camera
 used to acquire optical imaging to a NIDQ board every time a frame is captured or every time a volume scan begins. You
-can then set these timestamps for the secondary interface as being the known pulse times as received by the primary
+can then align the timestamps of the secondary system by setting them to the pulse times as received by the primary
 system, aligning the times to that system.
 
 Once the `timestamps` are known they can be set in any DataInterface via
@@ -75,10 +73,9 @@ Tracking Timing Information: NIDQ
 ---------------------------------
 
 The above sections do not go into great detail about how exactly to go about tracking and storing all the relative
-timing information. Different labs may have different approaches and some state-of-the-art acquisition systems will
-automatically synchronize between various data streams. One common approach is to utilize electrophysiology boards
-due to their naturally high sampling frequency. With this approach, the activity of a particular channel can be setup
-to receive a signal sent from a secondary system every time a certain event occurs. Those events could be mechanical
+timing information. One common approach is to utilize electrophysiology boards due to their naturally high sampling
+frequency. With this approach, the activity of a particular channel can be setup to receive a signal sent from a
+secondary system every time a certain event occurs. Those events could be mechanical
 triggers, analog signals from environmental electrodes, digital codes, or simple TTLs (# TODO: link to examples of
 these).
 
