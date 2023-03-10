@@ -58,9 +58,10 @@ class NWBConverter:
             )
         return conversion_options_schema
 
-    def validate_source(self, source_data: Dict[str, dict], verbose: bool = True):
+    @classmethod
+    def validate_source(cls, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against Converter source_schema."""
-        self._validate_source_data(source_data=source_data, verbose=verbose)
+        cls._validate_source_data(source_data=source_data, verbose=verbose)
 
     def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
         """Validate source_data against source_schema and initialize all data interfaces."""
