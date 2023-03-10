@@ -4,6 +4,7 @@ from datetime import datetime
 from platform import python_version, system
 
 import pytest
+from jsonschema.validators import Draft7Validator
 from packaging import version
 from parameterized import param, parameterized
 from spikeinterface.core import BaseRecording
@@ -241,6 +242,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestRecording=data_interface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
+
+        # validate conversion_options_schema
+        schema = converter.data_interface_objects["TestRecording"].get_conversion_options_schema()
+        Draft7Validator.check_schema(schema=schema)
+
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
                 self.assertIn(
@@ -251,7 +257,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
-        es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
+        es_key = converter.data_interface_objects["TestRecording"].es_key
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
             raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
