@@ -1,6 +1,5 @@
 import json
 from collections import Counter
-from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 from jsonschema import validate
@@ -10,7 +9,6 @@ from pynwb.file import Subject
 from .basedatainterface import BaseDataInterface
 from .tools.nwb_helpers import (
     get_default_nwbfile_metadata,
-    make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
 from .utils import (
