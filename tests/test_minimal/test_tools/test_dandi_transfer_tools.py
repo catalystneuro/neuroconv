@@ -20,7 +20,7 @@ DANDI_API_KEY = os.getenv("DANDI_API_KEY")
 HAVE_DANDI_KEY = DANDI_API_KEY is not None and DANDI_API_KEY != ""  # can be "" from external forks
 
 
-@pytest.mark.skip(reason="Problem with staging upload began on March 1, 2023")
+@pytest.mark.skip(reason="DANDI Server problems on 3/9/23")
 # @pytest.mark.skipif(
 #    not HAVE_DANDI_KEY,
 #    reason="You must set your DANDI_API_KEY to run this test!",
