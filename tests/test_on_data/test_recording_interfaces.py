@@ -74,7 +74,7 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
 @skipIf(
     platform == "darwin" or this_python_version < version.parse("3.8") or this_python_version > version.parse("3.9"),
     reason="Interface unsupported for OSX. Only runs on Python 3.8 and 3.9",
-    )
+)
 class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CEDRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx"))
@@ -103,9 +103,7 @@ class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase
 @skipUnless(system() == "Linux", reason="MaxOneRecordingInterface is only supported on Linux.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = MaxOneRecordingInterface
-    interface_kwargs = dict(
-        file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5")
-    )
+    interface_kwargs = dict(file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -260,11 +258,11 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
         assert metadata["Ecephys"]["Device"][-1] == dict(
             name="Neuropixel-Imec",
             description="{"
-                        '"probe_type": "0", '
-                        '"probe_type_description": "NP1.0", '
-                        '"flex_part_number": "NP2_FLEX_0", '
-                        '"connected_base_station_part_number": "NP2_QBSC_00"'
-                        "}",
+            '"probe_type": "0", '
+            '"probe_type_description": "NP1.0", '
+            '"flex_part_number": "NP2_FLEX_0", '
+            '"connected_base_station_part_number": "NP2_QBSC_00"'
+            "}",
             manufacturer="Imec",
         )
 

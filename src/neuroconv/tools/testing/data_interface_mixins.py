@@ -10,7 +10,9 @@ from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import BaseRecordingExtractorInterface
+from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
+    BaseRecordingExtractorInterface,
+)
 from neuroconv.utils import NWBMetaDataEncoder
 
 
