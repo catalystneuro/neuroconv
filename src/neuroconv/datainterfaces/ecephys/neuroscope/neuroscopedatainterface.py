@@ -11,11 +11,7 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import (
-    FilePathType,
-    FolderPathType,
-    dict_deep_update,
-)
+from ....utils import FilePathType, FolderPathType, dict_deep_update
 
 
 def subset_shank_channels(recording_extractor, xml_file_path: str):

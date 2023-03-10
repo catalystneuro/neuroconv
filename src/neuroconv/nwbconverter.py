@@ -7,10 +7,7 @@ from pynwb import NWBFile
 from pynwb.file import Subject
 
 from .basedatainterface import BaseDataInterface
-from .tools.nwb_helpers import (
-    get_default_nwbfile_metadata,
-    make_or_load_nwbfile,
-)
+from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
 from .utils import (
     dict_deep_update,
     fill_defaults,

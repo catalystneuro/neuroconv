@@ -11,7 +11,9 @@ from spikeinterface.core.testing import check_sortings_equal
 from spikeinterface.extractors import NwbSortingExtractor
 
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import BaseSortingExtractorInterface
+from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
+    BaseSortingExtractorInterface,
+)
 from neuroconv.utils import NWBMetaDataEncoder
 
 
