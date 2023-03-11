@@ -34,6 +34,7 @@ def custom_name_func(testcase_func, param_num, param):
 
 
 class TestOphysNwbConversions(TestCase):
+    savedir = OUTPUT_PATH
 
     @parameterized.expand(
         [
