@@ -6,7 +6,12 @@ import numpy as np
 from pynwb import NWBFile
 from pynwb.file import Subject
 
-from .utils import get_base_schema, get_schema_from_method_signature, get_schema_from_hdmf_class, get_schema_for_NWBFile
+from .utils import (
+    get_base_schema,
+    get_schema_for_NWBFile,
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+)
 
 
 class BaseDataInterface(ABC):
