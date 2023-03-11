@@ -10,7 +10,9 @@ from roiextractors import NwbImagingExtractor
 from roiextractors.testing import check_imaging_equal
 
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
+from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
+    BaseImagingExtractorInterface,
+)
 from neuroconv.utils import NWBMetaDataEncoder
 
 
