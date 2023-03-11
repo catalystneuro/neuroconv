@@ -10,7 +10,9 @@ from roiextractors import NwbSegmentationExtractor
 from roiextractors.testing import check_segmentations_equal
 
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import BaseSegmentationExtractorInterface
+from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
+    BaseSegmentationExtractorInterface,
+)
 from neuroconv.utils import NWBMetaDataEncoder
 
 
