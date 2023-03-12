@@ -1,4 +1,3 @@
-"""Authors: Cody Baker."""
 import os
 from pathlib import Path
 from platform import system
@@ -30,7 +29,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
             Path to your systems HDF5 plugin library.
             Uses the home directory by default.
         download_plugin : boolean, default: True
-            Whether or not to force download of the decompression plugin.
+            Whether to force download of the decompression plugin.
             It's a very lightweight install but does require an internet connection.
             This is left as True for seamless passive usage and should not impact performance.
         """
