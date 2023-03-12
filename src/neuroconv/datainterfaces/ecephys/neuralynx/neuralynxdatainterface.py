@@ -13,8 +13,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
-    def __init__(self, folder_path: FolderPathType, stream_name: str, verbose: bool = True, es_key: str = "ElectricalSeries"):
-        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose, all_annotations=True, es_key=es_key)
+    def __init__(
+        self, folder_path: FolderPathType, stream_name: str, verbose: bool = True, es_key: str = "ElectricalSeries"
+    ):
+        super().__init__(
+            folder_path=folder_path, stream_name=stream_name, verbose=verbose, all_annotations=True, es_key=es_key
+        )
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
         for key in self.recording_extractor.get_property_keys():
