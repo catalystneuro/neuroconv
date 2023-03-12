@@ -68,7 +68,8 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
 
         if download_plugin:
             hdf5_plugin_path = os.environ.get(
-                "HDF5_PLUGIN_PATH", hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell",
+                "HDF5_PLUGIN_PATH",
+                hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell",
             )
             self.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
             os.environ["HDF5_PLUGIN_PATH"] = str(hdf5_plugin_path)

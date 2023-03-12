@@ -1,9 +1,9 @@
+import unittest
 from datetime import datetime
 from pathlib import Path
 from platform import system
 from shutil import rmtree
 from tempfile import mkdtemp
-import unittest
 
 import pytest
 from dateutil import tz
@@ -18,8 +18,8 @@ from ..setup_paths import ECEPHY_DATA_PATH
 class TestMaxOneAssertion(TestCase):
     def test_max_one_usage_assertion(self):
         with self.assertRaisesWith(
-                exc_type=NotImplementedError,
-                exc_msg="The MaxOneRecordingInterface has not yet been implemented for systems other than Linux.",
+            exc_type=NotImplementedError,
+            exc_msg="The MaxOneRecordingInterface has not yet been implemented for systems other than Linux.",
         ):
             file_path = ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"
             MaxOneRecordingInterface(file_path=file_path)
