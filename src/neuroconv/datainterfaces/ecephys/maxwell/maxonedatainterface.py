@@ -55,7 +55,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
             Path to your systems HDF5 plugin library.
             Uses the home directory by default.
         download_plugin : boolean, default: True
-            Whether or not to force download of the decompression plugin.
+            Whether to force download of the decompression plugin.
             It's a very lightweight install but does require an internet connection.
             This is left as True for seamless passive usage and should not impact performance.
         verbose : boolean, default: True
@@ -66,10 +66,11 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
                 "The MaxOneRecordingInterface has not yet been implemented for systems other than Linux."
             )
 
-        if not os.environ.get("HDF5_PLUGIN_PATH", ""):
-            hdf5_plugin_path = hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell"
-            if not hdf5_plugin_path.exists():
-                self.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
+        if download_plugin:
+            hdf5_plugin_path = os.environ.get(
+                "HDF5_PLUGIN_PATH", hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell",
+            )
+            self.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
             os.environ["HDF5_PLUGIN_PATH"] = str(hdf5_plugin_path)
 
         super().__init__(file_path=file_path, verbose=verbose)
