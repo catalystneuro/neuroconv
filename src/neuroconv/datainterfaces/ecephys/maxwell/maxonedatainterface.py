@@ -67,7 +67,8 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         hdf5_plugin_path = os.environ.get(
-            "HDF5_PLUGIN_PATH", hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell",
+            "HDF5_PLUGIN_PATH",
+            hdf5_plugin_path or Path.home() / "hdf5_plugin_path_maxwell",
         )
         os.environ["HDF5_PLUGIN_PATH"] = str(hdf5_plugin_path)
 
