@@ -12,6 +12,13 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
 
     ExtractorName = "OpenEphysBinaryRecordingExtractor"
 
+    @classmethod
+    def get_source_schema(cls):
+        """Compile input schema for the RecordingExtractor."""
+        source_schema = super().get_source_schema()
+        source_schema.update(required=["folder_path"], additionalProperties=True)
+        return source_schema
+
     def __new__(
         cls,
         folder_path: FolderPathType,
