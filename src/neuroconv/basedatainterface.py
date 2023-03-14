@@ -14,7 +14,7 @@ class BaseDataInterface(ABC):
     @classmethod
     def get_source_schema(cls):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls.__init__, exclude=["source_data"])
+        return get_schema_from_method_signature(cls.__new__, exclude=["source_data"])
 
     def __init__(self, **source_data):
         self.source_data: dict = source_data
