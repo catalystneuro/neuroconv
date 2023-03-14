@@ -43,7 +43,9 @@ def write_subject_to_nwb(nwbfile: NWBFile, h5file: FilePathType, individual_name
 class DeepLabCutInterface(BaseDataInterface):
     """Data interface for DeepLabCut datasets."""
 
-    keywords = BaseDataInterface.keywords + ["DLC", ]
+    keywords = BaseDataInterface.keywords + [
+        "DLC",
+    ]
 
     def __init__(
         self,

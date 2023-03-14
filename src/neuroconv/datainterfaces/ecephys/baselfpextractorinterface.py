@@ -9,7 +9,12 @@ from ...utils import FilePathType
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
 
-    keywords = BaseRecordingExtractorInterface.keywords + ["extracellular electrophysiology", "LFP", "local field potential", "LF"]
+    keywords = BaseRecordingExtractorInterface.keywords + [
+        "extracellular electrophysiology",
+        "LFP",
+        "local field potential",
+        "LF",
+    ]
 
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeriesLF", **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)

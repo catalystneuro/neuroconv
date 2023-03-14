@@ -11,7 +11,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     Not supported for Python 3.8 and 3.9 on M1 macs.
     """
 
-    keywords = BaseRecordingExtractorInterface.keywords + ["European Data Format", ]
+    keywords = BaseRecordingExtractorInterface.keywords + [
+        "European Data Format",
+    ]
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """

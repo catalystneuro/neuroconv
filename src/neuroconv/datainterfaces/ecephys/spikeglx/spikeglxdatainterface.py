@@ -32,8 +32,9 @@ def add_recording_extractor_properties(recording_extractor) -> None:
 
 
 class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
-
-    keywords = BaseRecordingExtractorInterface.keywords + ["Neuropixels", ]
+    keywords = BaseRecordingExtractorInterface.keywords + [
+        "Neuropixels",
+    ]
 
     ExtractorName = "SpikeGLXRecordingExtractor"
 

@@ -19,7 +19,9 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
     Data interface class for converting Spike2 data from CED (Cambridge Electronic
     Design) using the :py:class:`~spikeinterface.extractors.CedRecordingExtractor`."""
 
-    keywords = BaseRecordingExtractorInterface.keywords + ["CED", ]
+    keywords = BaseRecordingExtractorInterface.keywords + [
+        "CED",
+    ]
 
     ExtractorName = "CedRecordingExtractor"
 
