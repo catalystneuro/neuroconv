@@ -63,9 +63,9 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
 
     """
     if exclude is None:
-        exclude = ["cls", "self", "kwargs"]
+        exclude = ["self", "kwargs"]
     else:
-        exclude = exclude + ["cls", "self", "kwargs"]
+        exclude = exclude + ["self", "kwargs"]
     input_schema = get_base_schema()
     annotation_json_type_map = dict(
         bool="boolean",
