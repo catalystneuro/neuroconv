@@ -1,11 +1,12 @@
 import uuid
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
 from pynwb import NWBFile
 
-from .utils import get_base_schema, get_schema_from_method_signature
+from .utils import get_schema_from_method_signature, load_dict_from_file
 
 
 class BaseDataInterface(ABC):
@@ -17,7 +18,7 @@ class BaseDataInterface(ABC):
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 
     def __init__(self, **source_data):
-        self.source_data: dict = source_data
+        self.source_data = source_data
 
     def get_conversion_options_schema(self):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
@@ -25,13 +26,7 @@ class BaseDataInterface(ABC):
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
-        metadata_schema = get_base_schema(
-            id_="metadata.schema.json",
-            root=True,
-            title="Metadata",
-            description="Schema for the metadata",
-            version="0.1.0",
-        )
+        metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         return metadata_schema
 
     def get_metadata(self):

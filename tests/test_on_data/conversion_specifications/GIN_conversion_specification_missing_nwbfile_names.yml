@@ -25,12 +25,18 @@ experiments:
             session_start_time: "2020-10-09T21:19:09+00:00"
           Subject:
             subject_id: Mouse 1
+            sex: F
+            age: P35D
+            species: Mus musculus
       - nwbfile_name: example_defined_name
         metadata:
           NWBFile:
             session_start_time: "2020-10-10T21:19:09+00:00"
           Subject:
             subject_id: MyMouse002
+            sex: F
+            age: P35D
+            species: Mus musculus
         source_data:
           lf:
             file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.lf.bin
@@ -47,3 +53,6 @@ experiments:
             session_start_time: "2020-10-11T21:19:09+00:00"
           Subject:
             subject_id: Subject Name
+            sex: F
+            age: P35D
+            species: Mus musculus
