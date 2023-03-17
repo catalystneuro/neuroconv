@@ -20,8 +20,6 @@ def test_unpack_experiment_dynamic_paths(tmpdir):
         ),
     )
 
-    print(out)
-
     assert out == [
         {
             "source_data": {
