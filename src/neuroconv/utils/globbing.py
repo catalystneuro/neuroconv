@@ -5,7 +5,7 @@ from typing import Union
 
 from parse import parse
 
-from neuroconv.utils import FilePathType, FolderPathType
+from .types import FilePathType, FolderPathType
 
 
 def parse_glob_directory(
