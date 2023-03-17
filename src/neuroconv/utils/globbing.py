@@ -1,5 +1,5 @@
-from collections import defaultdict
 import os
+from collections import defaultdict
 from glob import glob
 
 from parse import parse
@@ -12,8 +12,6 @@ def parse_glob_directory(path, format_):
         result = parse(format_, filepath)
         if result:
             yield filepath, result.named
-
-
 
 
 def ddict():
