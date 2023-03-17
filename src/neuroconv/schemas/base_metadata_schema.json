@@ -116,7 +116,7 @@
       "properties": {
         "age": {
           "type": "string",
-          "description": "The age of the subject. The ISO 8601 Duration format is recommended, e.g., “P90D” for 90 days old, “P2W” for 2 weeks old, “P18Y” for 18 years old.",
+          "description": "The age of the subject. The ISO 8601 Duration format is recommended, e.g., ‘P90D‘ for 90 days old, ‘P2W‘ for 2 weeks old, ‘P18Y‘ for 18 years old.",
           "pattern": "^P((\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?))|(\\d+W)?$"
         },
         "age__reference": {
@@ -163,7 +163,7 @@
         },
         "strain": {
           "type": "string",
-          "description": "The strain of the subject, e.g., “C57BL/6J”"
+          "description": "The strain of the subject, e.g., ‘C57BL/6J‘"
         }
       }
     }
