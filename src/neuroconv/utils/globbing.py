@@ -1,5 +1,5 @@
-from glob import glob
 import os
+from glob import glob
 
 from parse import parse
 
@@ -8,10 +8,11 @@ def parse_glob_directory(path, format_):
     path = str(path)
     for filepath in glob(os.path.join(path, "**", "*"), recursive=True):
         print(filepath)
-        filepath = filepath[len(path) + 1:]
+        filepath = filepath[len(path) + 1 :]
         result = parse(format_, filepath)
         if result:
             yield filepath, result.named
+
 
 from collections import defaultdict
 
