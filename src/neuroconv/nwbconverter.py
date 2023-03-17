@@ -7,16 +7,13 @@ from jsonschema import validate
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
-from .tools.nwb_helpers import (
-    get_default_nwbfile_metadata,
-    make_or_load_nwbfile,
-)
+from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
 from .utils import (
     dict_deep_update,
     fill_defaults,
     get_base_schema,
-    unroot_schema,
     load_dict_from_file,
+    unroot_schema,
 )
 from .utils.json_schema import NWBMetaDataEncoder
 
