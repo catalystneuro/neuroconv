@@ -8,10 +8,7 @@ from parse import parse
 from neuroconv.utils import FilePathType, FolderPathType
 
 
-def parse_glob_directory(
-    path: Union[FilePathType, FolderPathType],
-    format_: str
-):
+def parse_glob_directory(path: Union[FilePathType, FolderPathType], format_: str):
     """Find matching paths and return those paths and extracted metadata
 
     Parameters
