@@ -1,4 +1,4 @@
-import os
+import unittest
 from datetime import datetime
 from pathlib import Path
 from platform import system
@@ -8,7 +8,6 @@ from tempfile import mkdtemp
 import pytest
 from dateutil import tz
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import MaxOneRecordingInterface
 
@@ -26,7 +25,8 @@ class TestMaxOneAssertion(TestCase):
             MaxOneRecordingInterface(file_path=file_path)
 
 
-@pytest.mark.skipif(system() != "Linux", reason="MaxOne only works on Linux at the moment.")
+@pytest.mark.skip(reason="Stochastically fails to download compression library.")
+# @pytest.mark.skipif(system() != "Linux", reason="MaxOne only works on Linux at the moment.")
 class TestMaxOneMetadata(TestCase):
     @classmethod
     def setUpClass(cls):
