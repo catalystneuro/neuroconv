@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from neuroconv.utils import expand_paths
@@ -32,8 +33,8 @@ def test_expand_paths(tmpdir):
     out = expand_paths(
         base,
         dict(
-            aa=dict(file_path="sub-{subject_id:3}/session_{session_id:3}/abc"),
-            bb=dict(file_path="sub-{subject_id:3}/session_{session_id:3}/xyz"),
+            aa=dict(file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "abc")),
+            bb=dict(file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "xyz")),
         ),
     )
 
@@ -43,29 +44,29 @@ def test_expand_paths(tmpdir):
         [
             {
                 "source_data": {
-                    "aa": {"file_path": "sub-002/session_101/abc"},
-                    "bb": {"file_path": "sub-002/session_101/xyz"},
+                    "aa": {"file_path": os.path.join("sub-002","session_101", "abc")},
+                    "bb": {"file_path": os.path.join("sub-002", "session_101", "xyz")},
                 },
                 "metadata": {"NWBFile": {"session_id": "101"}, "Subject": {"subject_id": "002"}},
             },
             {
                 "source_data": {
-                    "aa": {"file_path": "sub-002/session_102/abc"},
-                    "bb": {"file_path": "sub-002/session_102/xyz"},
+                    "aa": {"file_path": os.path.join("sub-002", "session_102", "abc")},
+                    "bb": {"file_path": os.path.join("sub-002", "session_102", "xyz")},
                 },
                 "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "002"}},
             },
             {
                 "source_data": {
-                    "aa": {"file_path": "sub-001/session_101/abc"},
-                    "bb": {"file_path": "sub-001/session_101/xyz"},
+                    "aa": {"file_path": os.path.join("sub-001", "session_101", "abc")},
+                    "bb": {"file_path": os.path.join("sub-001", "session_101", "xyz")},
                 },
                 "metadata": {"NWBFile": {"session_id": "101"}, "Subject": {"subject_id": "001"}},
             },
             {
                 "source_data": {
-                    "aa": {"file_path": "sub-001/session_102/abc"},
-                    "bb": {"file_path": "sub-001/session_102/xyz"},
+                    "aa": {"file_path": os.path.join("sub-001", "session_102", "abc")},
+                    "bb": {"file_path": os.path.join("sub-001", "session_102", "xyz")},
                 },
                 "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "001"}},
             },
