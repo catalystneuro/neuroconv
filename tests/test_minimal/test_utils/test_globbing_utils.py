@@ -66,5 +66,5 @@ def test_unpack_experiment_dynamic_paths(tmpdir):
                 },
                 "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "001"}},
             },
-        ]
+        ],
     )
