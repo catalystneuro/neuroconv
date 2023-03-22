@@ -3,6 +3,21 @@ from pathlib import Path
 from neuroconv.utils.globbing import unpack_experiment_dynamic_paths
 
 
+# helper functions to test for equivalence between set-like lists of dicts.
+def freeze(obj):
+    if isinstance(obj, dict):
+        return frozenset((k, freeze(v)) for k, v in obj.items())
+    elif isinstance(obj, list):
+        return frozenset(freeze(x) for x in obj)
+    return obj
+
+
+def are_equivalent_lists(list1, list2):
+    set1 = set(freeze(x) for x in list1)
+    set2 = set(freeze(x) for x in list2)
+    return set1 == set2
+
+
 def test_unpack_experiment_dynamic_paths(tmpdir):
     base = Path(tmpdir)
     for subject_id in ("001", "002"):
@@ -20,33 +35,36 @@ def test_unpack_experiment_dynamic_paths(tmpdir):
         ),
     )
 
-    assert out == [
-        {
-            "source_data": {
-                "aa": {"file_path": "sub-002/session_101/abc"},
-                "bb": {"file_path": "sub-002/session_101/xyz"},
+    assert are_equivalent_lists(
+        out,
+        [
+            {
+                "source_data": {
+                    "aa": {"file_path": "sub-002/session_101/abc"},
+                    "bb": {"file_path": "sub-002/session_101/xyz"},
+                },
+                "metadata": {"NWBFile": {"session_id": "101"}, "Subject": {"subject_id": "002"}},
             },
-            "metadata": {"NWBFile": {"session_id": "101"}, "Subject": {"subject_id": "002"}},
-        },
-        {
-            "source_data": {
-                "aa": {"file_path": "sub-002/session_102/abc"},
-                "bb": {"file_path": "sub-002/session_102/xyz"},
+            {
+                "source_data": {
+                    "aa": {"file_path": "sub-002/session_102/abc"},
+                    "bb": {"file_path": "sub-002/session_102/xyz"},
+                },
+                "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "002"}},
             },
-            "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "002"}},
-        },
-        {
-            "source_data": {
-                "aa": {"file_path": "sub-001/session_101/abc"},
-                "bb": {"file_path": "sub-001/session_101/xyz"},
+            {
+                "source_data": {
+                    "aa": {"file_path": "sub-001/session_101/abc"},
+                    "bb": {"file_path": "sub-001/session_101/xyz"},
+                },
+                "metadata": {"NWBFile": {"session_id": "101"}, "Subject": {"subject_id": "001"}},
             },
-            "metadata": {"NWBFile": {"session_id": "101"}, "Subject": {"subject_id": "001"}},
-        },
-        {
-            "source_data": {
-                "aa": {"file_path": "sub-001/session_102/abc"},
-                "bb": {"file_path": "sub-001/session_102/xyz"},
+            {
+                "source_data": {
+                    "aa": {"file_path": "sub-001/session_102/abc"},
+                    "bb": {"file_path": "sub-001/session_102/xyz"},
+                },
+                "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "001"}},
             },
-            "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "001"}},
-        },
-    ]
+        ]
+    )
