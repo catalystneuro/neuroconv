@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 from glob import glob
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 from parse import parse
 
@@ -45,8 +45,8 @@ def _unddict(d):
 
 
 def expand_paths(
-        data_directory: FolderPathType,
-        source_data_spec: dict,
+    data_directory: FolderPathType,
+    source_data_spec: dict,
 ):
     """
     Match paths in a directory to specs and extract metadata from the paths.
