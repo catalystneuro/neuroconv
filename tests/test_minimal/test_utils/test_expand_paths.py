@@ -19,7 +19,6 @@ def are_equivalent_lists(list1, list2):
 
 
 def test_expand_paths(tmpdir):
-
     # set up directory for parsing
     base = Path(tmpdir)
     for subject_id in ("001", "002"):
