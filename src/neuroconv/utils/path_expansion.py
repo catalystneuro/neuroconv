@@ -9,7 +9,8 @@ from .types import FilePathType, FolderPathType
 
 
 def parse_glob_directory(path: Union[FilePathType, FolderPathType], format_: str) -> Tuple:
-    """Find matching paths and return those paths and extracted metadata
+    """
+    Match path to an fstring format and extract metadata from the path.
 
     Parameters
     ----------
@@ -48,6 +49,7 @@ def expand_paths(
         source_data_spec: dict,
 ):
     """
+    Match paths in a directory to specs and extract metadata from the paths.
 
     Parameters
     ----------
