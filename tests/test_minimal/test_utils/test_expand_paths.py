@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from neuroconv.utils.globbing import unpack_experiment_dynamic_paths
+from neuroconv.utils import expand_paths
 
 
-# helper functions to test for equivalence between set-like lists of dicts.
+#  helper functions to test for equivalence between set-like lists of dicts.
 def freeze(obj):
     if isinstance(obj, dict):
         return frozenset((k, freeze(v)) for k, v in obj.items())
@@ -18,7 +18,9 @@ def are_equivalent_lists(list1, list2):
     return set1 == set2
 
 
-def test_unpack_experiment_dynamic_paths(tmpdir):
+def test_expand_paths(tmpdir):
+
+    # set up directory for parsing
     base = Path(tmpdir)
     for subject_id in ("001", "002"):
         Path.mkdir(base / f"sub-{subject_id}")
@@ -27,7 +29,8 @@ def test_unpack_experiment_dynamic_paths(tmpdir):
             (base / f"sub-{subject_id}" / f"session_{session_id}" / "abc").touch()
             (base / f"sub-{subject_id}" / f"session_{session_id}" / "xyz").touch()
 
-    out = unpack_experiment_dynamic_paths(
+    # run path parsing
+    out = expand_paths(
         base,
         dict(
             aa=dict(file_path="sub-{subject_id:3}/session_{session_id:3}/abc"),
@@ -35,6 +38,7 @@ def test_unpack_experiment_dynamic_paths(tmpdir):
         ),
     )
 
+    # test results
     assert are_equivalent_lists(
         out,
         [

@@ -1,14 +1,14 @@
 import os
 from collections import defaultdict
 from glob import glob
-from typing import Union
+from typing import Union, Tuple
 
 from parse import parse
 
 from .types import FilePathType, FolderPathType
 
 
-def parse_glob_directory(path: Union[FilePathType, FolderPathType], format_: str):
+def parse_glob_directory(path: Union[FilePathType, FolderPathType], format_: str) -> Tuple:
     """Find matching paths and return those paths and extracted metadata
 
     Parameters
@@ -18,8 +18,11 @@ def parse_glob_directory(path: Union[FilePathType, FolderPathType], format_: str
     format_: str
         An f-string formatted query.
 
-    Returns
-    -------
+    Yields
+    ------
+    tuple:
+        filepath: str
+        metadata: dict
 
     """
     path = str(path)
@@ -30,22 +33,19 @@ def parse_glob_directory(path: Union[FilePathType, FolderPathType], format_: str
             yield filepath, result.named
 
 
-def ddict():
+def _ddict():
     """Create a defaultdict of defaultdicts"""
-    return defaultdict(ddict)
+    return defaultdict(_ddict)
 
 
-def unddict(d):
+def _unddict(d):
     """Turn a ddict into a normal dictionary"""
-    if isinstance(d, defaultdict):
-        return {key: unddict(value) for key, value in d.items()}
-    else:
-        return d
+    return {key: _unddict(value) for key, value in d.items()} if isinstance(d, defaultdict) else d
 
 
-def unpack_experiment_dynamic_paths(
-    data_directory: FolderPathType,
-    source_data_spec: dict,
+def expand_paths(
+        data_directory: FolderPathType,
+        source_data_spec: dict,
 ):
     """
 
@@ -59,7 +59,7 @@ def unpack_experiment_dynamic_paths(
     -------
 
     """
-    out = ddict()
+    out = _ddict()
     for interface, source_data in source_data_spec.items():
         for path_type in ("file_path", "folder_path"):
             if path_type in source_data:
@@ -70,4 +70,4 @@ def unpack_experiment_dynamic_paths(
                         out[key]["metadata"]["NWBFile"]["session_id"] = metadata["session_id"]
                     if "subject_id" in metadata:
                         out[key]["metadata"]["Subject"]["subject_id"] = metadata["subject_id"]
-    return list(unddict(out).values())
+    return list(_unddict(out).values())

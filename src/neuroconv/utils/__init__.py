@@ -5,7 +5,7 @@ from .dict import (
     exist_dict_in_list,
     load_dict_from_file,
 )
-from .globbing import parse_glob_directory
+from .path_expansion import parse_glob_directory, expand_paths
 from .json_schema import (
     NWBMetaDataEncoder,
     fill_defaults,
