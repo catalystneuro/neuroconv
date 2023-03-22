@@ -52,7 +52,7 @@ def unpack_experiment_dynamic_paths(
     Parameters
     ----------
     data_directory : path-like
-        Directory where the data are. Start the resursive search here.
+        Directory where the data are. Start the recursive search here.
     source_data_spec : dict
         Source spec.
     Returns
