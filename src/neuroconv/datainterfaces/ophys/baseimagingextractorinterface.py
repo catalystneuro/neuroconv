@@ -19,7 +19,7 @@ from ...utils import (
 class BaseImagingExtractorInterface(BaseExtractorInterface):
     """Parent class for all ImagingExtractorInterfaces."""
 
-    ExtractorModuleName: Optional[str] = "roiextractors"
+    ExtractorModuleName = "roiextractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)

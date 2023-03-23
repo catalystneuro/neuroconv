@@ -1,6 +1,6 @@
 import uuid
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -16,6 +16,8 @@ from .utils import (
 
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
+
+    keywords: List[str] = []
 
     @classmethod
     def get_source_schema(cls):
