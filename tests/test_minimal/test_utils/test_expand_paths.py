@@ -44,7 +44,7 @@ def test_expand_paths(tmpdir):
         [
             {
                 "source_data": {
-                    "aa": {"file_path": os.path.join("sub-002","session_101", "abc")},
+                    "aa": {"file_path": os.path.join("sub-002", "session_101", "abc")},
                     "bb": {"file_path": os.path.join("sub-002", "session_101", "xyz")},
                 },
                 "metadata": {"NWBFile": {"session_id": "101"}, "Subject": {"subject_id": "002"}},
