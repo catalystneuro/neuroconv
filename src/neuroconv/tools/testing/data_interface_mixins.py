@@ -6,12 +6,15 @@ from pathlib import Path
 from typing import List, Type, Union
 
 from jsonschema.validators import Draft7Validator, validate
-from roiextractors import NwbImagingExtractor
-from roiextractors.testing import check_imaging_equal
+from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
+from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
+)
+from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
+    BaseSegmentationExtractorInterface,
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
@@ -108,3 +111,12 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
             exclude_channel_comparison = True
 
         check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
+
+
+class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin):
+    data_interface_cls: BaseSegmentationExtractorInterface
+
+    def check_read(self, nwbfile_path: str):
+        nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
+        segmentation = self.interface.segmentation_extractor
+        check_segmentations_equal(segmentation, nwb_segmentation)
