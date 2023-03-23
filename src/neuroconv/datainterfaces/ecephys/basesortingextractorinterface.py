@@ -10,9 +10,11 @@ from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
-    """Primary class for all SortingExtractor intefaces."""
+    """Primary class for all SortingExtractor interfaces."""
 
-    ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
+    keywords = BaseExtractorInterface.keywords + ["extracellular electrophysiology", "spike sorting"]
+
+    ExtractorModuleName = "spikeinterface.extractors"
 
     def __init__(self, verbose=True, **source_data):
         super().__init__(**source_data)

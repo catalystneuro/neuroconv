@@ -1,15 +1,23 @@
 import uuid
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 from pynwb import NWBFile
+from pynwb.file import Subject
 
-from .utils import get_base_schema, get_schema_from_method_signature
+from .utils import (
+    get_base_schema,
+    get_schema_for_NWBFile,
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+)
 
 
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
+
+    keywords: List[str] = []
 
     @classmethod
     def get_source_schema(cls):
@@ -31,6 +39,7 @@ class BaseDataInterface(ABC):
             title="Metadata",
             description="Schema for the metadata",
             version="0.1.0",
+            properties=dict(NWBFile=get_schema_for_NWBFile(), Subject=get_schema_from_hdmf_class(Subject)),
         )
         return metadata_schema
 

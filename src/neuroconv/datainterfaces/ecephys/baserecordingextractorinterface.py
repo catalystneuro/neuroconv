@@ -12,7 +12,8 @@ from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
     """Parent class for all RecordingExtractorInterfaces."""
 
-    ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
+    keywords = BaseExtractorInterface.keywords + ["extracellular electrophysiology", "voltage", "recording"]
+    ExtractorModuleName = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
         """

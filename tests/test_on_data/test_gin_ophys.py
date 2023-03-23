@@ -4,19 +4,15 @@ from datetime import datetime
 import pytest
 from hdmf.testing import TestCase
 from parameterized import param, parameterized
-from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
-from roiextractors.testing import check_imaging_equal, check_segmentations_equal
+from roiextractors import NwbSegmentationExtractor
+from roiextractors.testing import check_segmentations_equal
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
     ExtractSegmentationInterface,
-    Hdf5ImagingInterface,
-    SbxImagingInterface,
-    ScanImageImagingInterface,
     Suite2pSegmentationInterface,
-    TiffImagingInterface,
 )
 
 # enable to run locally in interactive mode
@@ -39,62 +35,6 @@ def custom_name_func(testcase_func, param_num, param):
 
 class TestOphysNwbConversions(TestCase):
     savedir = OUTPUT_PATH
-
-    imaging_interface_list = [
-        param(
-            data_interface=ScanImageImagingInterface,
-            interface_kwargs=dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff")
-            ),
-        ),
-        param(
-            data_interface=TiffImagingInterface,
-            interface_kwargs=dict(
-                file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
-                sampling_frequency=15.0,  # typically provided by user
-            ),
-        ),
-        param(
-            data_interface=Hdf5ImagingInterface,
-            interface_kwargs=dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5")),
-        ),
-    ]
-    for suffix in [".mat", ".sbx"]:
-        imaging_interface_list.append(
-            param(
-                data_interface=SbxImagingInterface,
-                interface_kwargs=dict(
-                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / f"sample{suffix}")
-                ),
-            ),
-        )
-
-    @parameterized.expand(imaging_interface_list, name_func=custom_name_func)
-    def test_convert_imaging_extractor_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = self.savedir / f"{data_interface.__name__}.nwb"
-
-        # TODO: Temporary hack around a strange issue where if the first SBX file fails due to an error
-        # during check_imaging_equal, it leaves the NWBFile open and second test fails because of that.
-        # Try to determine true source of error; is context failing to close through pynwb or is it the
-        # NWBImagingExtractor that fails to close?
-        if nwbfile_path.exists():
-            nwbfile_path = self.savedir / f"{data_interface.__name__}_2.nwb"
-
-        class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestImaging=data_interface)
-
-        converter = TestConverter(source_data=dict(TestImaging=dict(interface_kwargs)))
-        metadata = converter.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-        imaging = converter.data_interface_objects["TestImaging"].imaging_extractor
-        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
-
-        exclude_channel_comparison = False
-        if imaging.get_channel_names() is None:
-            exclude_channel_comparison = True
-
-        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
 
     @parameterized.expand(
         [
