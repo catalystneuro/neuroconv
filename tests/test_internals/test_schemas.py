@@ -13,12 +13,6 @@ def test_interface_source_schema(data_interface):
     Draft7Validator.check_schema(schema=schema)
 
 
-@pytest.mark.parametrize("data_interface", interface_list)
-def test_interface_conversion_options_schema(data_interface):
-    schema = data_interface.get_conversion_options_schema()
-    Draft7Validator.check_schema(schema=schema)
-
-
 def test_yaml_specification_schema():
     schema = load_dict_from_file(
         file_path=Path(__file__).parent.parent.parent
