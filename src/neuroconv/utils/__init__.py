@@ -15,7 +15,7 @@ from .json_schema import (
     get_schema_from_method_signature,
     unroot_schema,
 )
-from .path_expansion import expand_paths, parse_glob_directory
+from path_expansion import LocalPathExpander
 from .types import (
     ArrayType,
     FilePathType,
