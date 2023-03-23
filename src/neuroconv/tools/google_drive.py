@@ -8,9 +8,8 @@ from googleapiclient.errors import HttpError
 
 from ..utils.path_expansion import AbstractPathExpander
 
-
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly', 'https://www.googleapis.com/auth/drive.readonly']
+SCOPES = ["https://www.googleapis.com/auth/drive.metadata.readonly", "https://www.googleapis.com/auth/drive.readonly"]
 
 
 class GoogleDrivePathExpander(AbstractPathExpander):
@@ -31,6 +30,7 @@ class GoogleDrivePathExpander(AbstractPathExpander):
     ... )
 
     """
+
     def __init__(self, credentials_file_path: str):
         """
         Initialize a new GoogleDrive.
@@ -45,8 +45,8 @@ class GoogleDrivePathExpander(AbstractPathExpander):
         # The file token.json stores the user's access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first
         # time.
-        if os.path.exists('token.json'):
-            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        if os.path.exists("token.json"):
+            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
             # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
@@ -55,14 +55,14 @@ class GoogleDrivePathExpander(AbstractPathExpander):
                 flow = InstalledAppFlow.from_client_secrets_file(credentials_file_path, SCOPES)
                 creds = flow.run_local_server(port=0)
             # Save the credentials for the next run
-            with open('token.json', 'w') as token:
+            with open("token.json", "w") as token:
                 token.write(creds.to_json())
 
         try:
-            self.service = build('drive', 'v3', credentials=creds)
+            self.service = build("drive", "v3", credentials=creds)
         except HttpError as error:
             # TODO(developer) - Handle errors from drive API.
-            print(f'An error occurred: {error}')
+            print(f"An error occurred: {error}")
 
     def list_directory(self, folder):
         """
@@ -90,4 +90,5 @@ class GoogleDrivePathExpander(AbstractPathExpander):
                     yield from _list_dir(item["id"], new_path)
                 else:
                     yield new_path[1:]
+
         yield from _list_dir(folder)

@@ -2,7 +2,7 @@ import abc
 import os
 from collections import defaultdict
 from glob import glob
-from typing import Union, List, Dict
+from typing import Dict, List, Union
 
 from parse import parse
 
@@ -32,8 +32,7 @@ def _unddict(d):
 
 
 class AbstractPathExpander(abc.ABC):
-
-    @ abc.abstractmethod
+    @abc.abstractmethod
     def __init__(self, *args, **kwargs):
         pass
 
@@ -102,4 +101,4 @@ class LocalPathExpander(object):
 
     def list_directory(self, folder: Union[FilePathType, FolderPathType]):
         li = glob(os.path.join(str(folder), "**", "*"), recursive=True)
-        yield(x[len(folder) + 1:] for x in li)
+        yield (x[len(folder) + 1 :] for x in li)
