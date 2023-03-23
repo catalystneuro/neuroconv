@@ -7,7 +7,7 @@ from pynwb.file import NWBFile
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FilePathType, OptionalFilePathType, dict_deep_update
+from ....utils import FilePathType, dict_deep_update
 
 
 def write_subject_to_nwb(nwbfile: NWBFile, h5file: FilePathType, individual_name: str, config_file: FilePathType):
@@ -80,8 +80,10 @@ class DeepLabCutInterface(BaseDataInterface):
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
     def get_metadata(self):
-        metadata = dict(
-            NWBFile=dict(session_description=self._config_file["Task"], experimenter=[self._config_file["scorer"]]),
+        metadata = super().get_metadata()
+        metadata["NWBFile"].update(
+            session_description=self._config_file["Task"],
+            experimenter=[self._config_file["scorer"]],
         )
         return metadata
 
@@ -103,7 +105,7 @@ class DeepLabCutInterface(BaseDataInterface):
 
     def run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
+        nwbfile_path: Optional[FilePathType] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
