@@ -121,6 +121,7 @@
         },
         "age__reference": {
           "type": "string",
+          "enum": ["birth", "gestational"],
           "description": "Age is with reference to this event. Can be ‘birth’ or ‘gestational’.",
           "default": "birth"
         },
