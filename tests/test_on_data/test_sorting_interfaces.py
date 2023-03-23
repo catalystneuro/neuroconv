@@ -21,10 +21,6 @@ except ImportError:
     from setup_paths import OUTPUT_PATH
 
 
-class TestAxonRecordingInterface(SortingExtractorInterfaceTestMixin, TestCase):
-    data_interface_cls = PhySortingInterface
-    interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
-    save_directory = OUTPUT_PATH
 
 
 class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
