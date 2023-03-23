@@ -5,15 +5,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Type, Union
 
+import numpy as np
 from jsonschema.validators import Draft7Validator, validate
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
-from spikeinterface.core.testing import check_recordings_equal
-from spikeinterface.extractors import NwbRecordingExtractor
+from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
+from spikeinterface.extractors import NwbRecordingExtractor, NwbSortingExtractor
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
+)
+from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
+    BaseSortingExtractorInterface,
 )
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
@@ -153,3 +157,23 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                 check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
                 if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
+
+
+class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
+    data_interface_cls: BaseSortingExtractorInterface
+
+    def check_read_nwb(self, nwbfile_path: str):
+        sorting = self.interface.sorting_extractor
+        sf = sorting.get_sampling_frequency()
+        if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
+            sorting.set_sampling_frequency(30_000)
+
+        # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
+        if sorting.get_num_segments() == 1:
+            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
+            # In the NWBSortingExtractor, since unit_names could be not unique,
+            # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
+            sorting_renamed = sorting.select_units(
+                unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
+            )
+            check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
