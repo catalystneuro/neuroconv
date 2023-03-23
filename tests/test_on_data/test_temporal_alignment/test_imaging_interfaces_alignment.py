@@ -1,21 +1,21 @@
-from tempfile import mkdtemp
-from shutil import rmtree
-from pathlib import Path
-from typing import Union, Dict
 from datetime import datetime
+from pathlib import Path
+from shutil import rmtree
+from tempfile import mkdtemp
+from typing import Dict, Union
 
-import pytest
 import numpy as np
-from parameterized import parameterized, param
-from numpy.testing import assert_array_equal, assert_array_almost_equal
+import pytest
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_almost_equal, assert_array_equal
+from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
-    ScanImageImagingInterface,
-    TiffImagingInterface,
     Hdf5ImagingInterface,
     SbxImagingInterface,
+    ScanImageImagingInterface,
+    TiffImagingInterface,
 )
 
 # enable to run locally in interactive mode
