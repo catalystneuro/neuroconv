@@ -21,8 +21,6 @@ except ImportError:
     from setup_paths import OUTPUT_PATH
 
 
-
-
 class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = BlackrockSortingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"))
