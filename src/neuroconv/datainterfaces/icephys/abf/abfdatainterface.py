@@ -1,4 +1,3 @@
-"""Author: Luiz Tauffer."""
 import json
 from datetime import datetime, timedelta
 from warnings import warn
@@ -26,7 +25,7 @@ class AbfInterface(BaseIcephysInterface):
     ExtractorName = "AxonIO"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_paths"] = dict(
             type="array",

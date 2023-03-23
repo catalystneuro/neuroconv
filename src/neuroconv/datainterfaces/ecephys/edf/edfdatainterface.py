@@ -1,6 +1,4 @@
-"""Authors: Heberto Mayorquin"""
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-
 from ....tools import get_package
 from ....utils.types import FilePathType
 
@@ -12,6 +10,10 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
     Not supported for Python 3.8 and 3.9 on M1 macs.
     """
+
+    keywords = BaseRecordingExtractorInterface.keywords + [
+        "European Data Format",
+    ]
 
     def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
@@ -35,7 +37,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 
-    def extract_nwb_file_metadata(self):
+    def extract_nwb_file_metadata(self) -> dict:
         nwbfile_metadata = dict(
             session_start_time=self.edf_header["startdate"],
             experimenter=self.edf_header["technician"],
@@ -46,7 +48,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return nwbfile_metadata
 
-    def extract_subject_metadata(self):
+    def extract_subject_metadata(self) -> dict:
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
             date_of_birth=self.edf_header["birthdate"],
@@ -57,7 +59,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return subject_metadata
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)

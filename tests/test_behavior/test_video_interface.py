@@ -1,12 +1,12 @@
 import shutil
-import unittest
-from hdmf.testing import TestCase
 import tempfile
+import unittest
 from datetime import datetime
-from dateutil.tz import gettz
 from pathlib import Path
 
 import numpy as np
+from dateutil.tz import gettz
+from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
 from neuroconv import NWBConverter

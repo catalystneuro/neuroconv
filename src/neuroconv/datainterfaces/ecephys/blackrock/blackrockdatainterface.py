@@ -1,17 +1,10 @@
-"""Authors: Luiz Tauffer."""
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
-from pynwb.ecephys import ElectricalSeries
-
-from .header_tools import parse_nsx_basic_header, parse_nev_basic_header
+from .header_tools import parse_nev_basic_header, parse_nsx_basic_header
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import (
-    get_schema_from_hdmf_class,
-    get_schema_from_method_signature,
-    FilePathType,
-)
+from ....utils import FilePathType, get_schema_from_method_signature
 
 
 class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
@@ -20,9 +13,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(
-            class_method=cls.__init__, exclude=["block_index", "seg_index"]
-        )
+        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["block_index", "seg_index"])
         source_schema["properties"]["file_path"]["description"] = "Path to Blackrock file."
         return source_schema
 
@@ -43,6 +34,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
+
         file_path = Path(file_path)
         if file_path.suffix == "":
             assert nsx_override is not None, (
@@ -57,13 +49,12 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(file_path=file_path, stream_id=str(nsx_to_load), verbose=verbose, es_key=es_key)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            session_start_time = basic_header["TimeOrigin"]
-            metadata["NWBFile"].update(session_start_time=session_start_time.strftime("%Y-%m-%dT%H:%M:%S"))
+            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"])
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
@@ -74,8 +65,8 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Blackrock spiking data."""
 
     @classmethod
-    def get_source_schema(cls):
-        metadata_schema = get_schema_from_method_signature(class_method=cls.__init__)
+    def get_source_schema(cls) -> dict:
+        metadata_schema = get_schema_from_method_signature(method=cls.__init__)
         metadata_schema["additionalProperties"] = True
         metadata_schema["properties"]["file_path"].update(description="Path to Blackrock file.")
         return metadata_schema
@@ -95,7 +86,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         """
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         # Open file and extract headers
         basic_header = parse_nev_basic_header(self.source_data["file_path"])

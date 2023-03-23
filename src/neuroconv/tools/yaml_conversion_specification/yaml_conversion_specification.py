@@ -1,16 +1,15 @@
-"""Authors: Cody Baker, Alessio Buccino."""
 import sys
-from pathlib import Path
 from importlib import import_module
-from jsonschema import validate, RefResolver
+from pathlib import Path
 from typing import Optional
 
 import click
-from dandi.organize import create_unique_filenames_from_metadata
 from dandi.metadata import _get_pynwb_metadata
+from dandi.organize import create_unique_filenames_from_metadata
+from jsonschema import RefResolver, validate
 
 from ...nwbconverter import NWBConverter
-from ...utils import dict_deep_update, load_dict_from_file, FilePathType, FolderPathType
+from ...utils import FilePathType, FolderPathType, dict_deep_update, load_dict_from_file
 
 
 @click.command()
@@ -116,7 +115,7 @@ def run_conversion_from_yaml(
             nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
             session_conversion_options = session.get("conversion_options", dict())
             conversion_options = dict()
-            for key in data_interface_classes:
+            for key in converter.data_interface_objects:
                 conversion_options[key] = dict(session_conversion_options.get(key, dict()), **global_conversion_options)
             converter.run_conversion(
                 nwbfile_path=output_folder_path / f"{nwbfile_name}.nwb",

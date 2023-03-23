@@ -1,21 +1,21 @@
 """Collection of helper functions for assessing and performing automated data transfers."""
-import os
-import subprocess
 import json
+import os
 import re
-from typing import Dict, Optional, List, Union, Tuple
+import subprocess
 from pathlib import Path
-from warnings import warn
 from shutil import rmtree
-from time import sleep, time
 from tempfile import mkdtemp
+from time import sleep, time
+from typing import Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 import psutil
-from tqdm import tqdm
-from pynwb import NWBHDF5IO
 from dandi.download import download as dandi_download
 from dandi.organize import organize as dandi_organize
 from dandi.upload import upload as dandi_upload
+from pynwb import NWBHDF5IO
+from tqdm import tqdm
 
 from ..utils import FolderPathType, OptionalFolderPathType
 
@@ -360,7 +360,7 @@ def automatic_dandi_upload(
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
-    dandi_instance = "dandi-staging" if staging else "dandi"
+    dandi_instance = "dandi-staging" if staging else "dandi"  # Test
     dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance)
 
     # Cleanup should be confirmed manually; Windows especially can complain

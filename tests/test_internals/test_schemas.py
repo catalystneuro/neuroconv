@@ -1,7 +1,7 @@
-from jsonschema import Draft7Validator
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft7Validator
 
 from neuroconv.datainterfaces import interface_list
 from neuroconv.utils import load_dict_from_file
@@ -10,12 +10,6 @@ from neuroconv.utils import load_dict_from_file
 @pytest.mark.parametrize("data_interface", interface_list)
 def test_interface_source_schema(data_interface):
     schema = data_interface.get_source_schema()
-    Draft7Validator.check_schema(schema=schema)
-
-
-@pytest.mark.parametrize("data_interface", interface_list)
-def test_interface_conversion_options_schema(data_interface):
-    schema = data_interface.get_conversion_options_schema()
     Draft7Validator.check_schema(schema=schema)
 
 

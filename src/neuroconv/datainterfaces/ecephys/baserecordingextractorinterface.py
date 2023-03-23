@@ -1,19 +1,19 @@
-"""Authors: Cody Baker and Ben Dichter."""
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ecephys import ElectrodeGroup, ElectricalSeries
+from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, get_base_schema, FilePathType
+from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
     """Parent class for all RecordingExtractorInterfaces."""
 
-    ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
+    keywords = BaseExtractorInterface.keywords + ["extracellular electrophysiology", "voltage", "recording"]
+    ExtractorModuleName = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
         """
@@ -21,17 +21,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         verbose : bool, default True
             If True, will print out additional information.
+        es_key : str, default: "ElectricalSeries"
+            key of this ElectricalSeries in the metadata dictionary
         source_data : dict
             key-value pairs of extractor-specific arguments.
-        es_key : str, default: "ElectricalSeries"
-            Key of this ElectricalSeries in the metadata dictionary
 
         """
         super().__init__(**source_data)
         self.recording_extractor = self.get_extractor()(**source_data)
         self.subset_channels = None
         self.verbose = verbose
-        self.es_key = es_key  # For automatic metadata extraction
+        self.es_key = es_key
 
     def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
@@ -69,7 +69,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             metadata_schema["properties"]["Ecephys"]["properties"].update(
                 {self.es_key: get_schema_from_hdmf_class(ElectricalSeries)}
             )
-
         return metadata_schema
 
     def get_metadata(self) -> dict:
@@ -111,9 +110,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        from spikeextractors import RecordingExtractor, SubRecordingExtractor
-        from spikeinterface import BaseRecording
-
         kwargs = dict()
         if stub_test:
             num_frames = 100
@@ -121,12 +117,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             kwargs.update(end_frame=end_frame)
         if self.subset_channels is not None:
             kwargs.update(channel_ids=self.subset_channels)
-        if isinstance(self.recording_extractor, RecordingExtractor):
-            recording_extractor = SubRecordingExtractor(self.recording_extractor, **kwargs)
-        elif isinstance(self.recording_extractor, BaseRecording):
-            recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
-        else:
-            raise TypeError(f"{self.recording_extractor} should be either se.RecordingExtractor or si.BaseRecording")
+        recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return recording_extractor
 
     def run_conversion(
@@ -137,7 +128,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        write_as: str = "raw",  # Literal["raw", "processed"]
+        write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,

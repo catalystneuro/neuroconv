@@ -1,6 +1,6 @@
 import unittest
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO

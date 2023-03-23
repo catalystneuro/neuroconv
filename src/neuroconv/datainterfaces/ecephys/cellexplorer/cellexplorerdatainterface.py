@@ -1,9 +1,8 @@
-"""Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
 from warnings import warn
 
-import scipy
 import numpy as np
+import scipy
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
@@ -93,7 +92,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
                 )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recording or lfp are included in conversion

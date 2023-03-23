@@ -1,7 +1,5 @@
-"""Authors: Cody Baker."""
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-
 from ....utils.types import FilePathType
 
 

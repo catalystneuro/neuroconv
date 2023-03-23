@@ -1,6 +1,4 @@
-"""Authors: Cody Baker."""
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-
 from ....utils.types import FolderPathType
 
 
@@ -26,7 +24,7 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
         """
         super().__init__(folder_path=folder_path, stream_id="RAW", verbose=verbose, es_key=es_key)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         annotation = self.recording_extractor.neo_reader.raw_annotations
         metadata["NWBFile"].update(session_start_time=annotation["blocks"][0]["rec_datetime"])

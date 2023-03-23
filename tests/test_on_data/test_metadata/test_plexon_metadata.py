@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from neuroconv.datainterfaces import PlexonSortingInterface
+
 from ..setup_paths import ECEPHY_DATA_PATH
 
 PLEXON_PATH = ECEPHY_DATA_PATH / "plexon"

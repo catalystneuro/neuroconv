@@ -1,13 +1,8 @@
-"""Authors: Cody Baker and Saksham Sharda."""
-from typing import Tuple, Iterable, Optional, Union
+from typing import Iterable, Optional, Tuple, Union
 from warnings import warn
 
-from spikeinterface.core.old_api_utils import OldToNewRecording
-from spikeextractors import RecordingExtractor
 from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording
-
-SpikeInterfaceRecording = Union[BaseRecording, RecordingExtractor]
 
 
 class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
@@ -15,7 +10,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
     def __init__(
         self,
-        recording: SpikeInterfaceRecording,
+        recording: BaseRecording,
         segment_index: int = 0,
         return_scaled: bool = False,
         buffer_gb: Optional[float] = None,
@@ -64,19 +59,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             Dictionary of keyword arguments to be passed directly to tqdm.
             See https://github.com/tqdm/tqdm#parameters for options.
         """
-        if isinstance(recording, RecordingExtractor):
-            self.recording = OldToNewRecording(oldapi_recording_extractor=recording)
-            # TODO: Remove spikeextractors backend
-            warn(
-                message=(
-                    "Interfaces using a spikeextractors backend will soon be deprecated! "
-                    "Please use the SpikeInterface backend instead."
-                ),
-                category=DeprecationWarning,
-                stacklevel=2,
-            )
-        else:
-            self.recording = recording
+        self.recording = recording
         self.segment_index = segment_index
         self.return_scaled = return_scaled
         self.channel_ids = recording.get_channel_ids()

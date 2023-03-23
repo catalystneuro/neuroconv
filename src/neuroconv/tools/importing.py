@@ -1,9 +1,9 @@
 """Tool functions for performing imports."""
-import sys
 import importlib.util
-from platform import python_version, processor
+import sys
+from platform import processor, python_version
 from types import ModuleType
-from typing import Optional, Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from packaging import version
 

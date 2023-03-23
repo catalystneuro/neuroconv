@@ -1,6 +1,4 @@
-"""Author: Heberto Mayorquin"""
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-
 from ....utils.types import FolderPathType
 
 
@@ -26,7 +24,6 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         -----
         Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         """
-
         super().__init__(
             folder_path=folder_path,
             stream_id=stream_id,

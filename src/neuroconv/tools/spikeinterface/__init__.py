@@ -1,13 +1,12 @@
 from .spikeinterface import (
-    get_nwb_metadata,
     add_devices,
+    add_electrical_series,
     add_electrode_groups,
     add_electrodes,
+    add_units_table,
     check_if_recording_traces_fit_into_memory,
-    add_electrical_series,
-    add_epochs,
+    get_nwb_metadata,
     write_recording,
     write_sorting,
     write_waveforms,
-    add_units_table,
 )

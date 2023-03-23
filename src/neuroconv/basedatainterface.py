@@ -1,29 +1,35 @@
-"""Authors: Cody Baker and Ben Dichter."""
 import uuid
-from abc import abstractmethod, ABC
-from typing import Optional
+from abc import ABC, abstractmethod
+from typing import List, Optional
 
 import numpy as np
 from pynwb import NWBFile
+from pynwb.file import Subject
 
-from .utils import get_base_schema, get_schema_from_method_signature
+from .utils import (
+    get_base_schema,
+    get_schema_for_NWBFile,
+    get_schema_from_hdmf_class,
+    get_schema_from_method_signature,
+)
 
 
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
+    keywords: List[str] = []
+
     @classmethod
     def get_source_schema(cls):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls.__init__, exclude=["source_data"])
-
-    @classmethod
-    def get_conversion_options_schema(cls):
-        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(cls.run_conversion, exclude=["nwbfile", "metadata"])
+        return get_schema_from_method_signature(cls, exclude=["source_data"])
 
     def __init__(self, **source_data):
         self.source_data: dict = source_data
+
+    def get_conversion_options_schema(self):
+        """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
+        return get_schema_from_method_signature(self.run_conversion, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -33,6 +39,7 @@ class BaseDataInterface(ABC):
             title="Metadata",
             description="Schema for the metadata",
             version="0.1.0",
+            properties=dict(NWBFile=get_schema_for_NWBFile(), Subject=get_schema_from_hdmf_class(Subject)),
         )
         return metadata_schema
 
@@ -132,10 +139,6 @@ class BaseDataInterface(ABC):
             aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
         )
 
-    def get_conversion_options(self):
-        """Child DataInterface classes should override this to match their conversion options."""
-        return dict()
-
     @abstractmethod
     def run_conversion(
         self,
@@ -157,11 +160,8 @@ class BaseDataInterface(ABC):
             An in-memory NWBFile object to write to the location.
         metadata: dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        overwrite: bool, default: False
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        verbose: bool, optional
-            If 'nwbfile_path' is specified, informs user after a successful write operation.
-            The default is True.
         """
         raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")

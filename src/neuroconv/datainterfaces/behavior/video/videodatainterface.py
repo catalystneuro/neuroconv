@@ -1,11 +1,10 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Cody Baker and Ben Dichter."""
-from pathlib import Path
-from typing import Optional, List
-from warnings import warn
 import warnings
-import psutil
+from pathlib import Path
+from typing import List, Optional
+from warnings import warn
 
 import numpy as np
+import psutil
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
@@ -16,7 +15,12 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
-from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, FilePathType
+from ....utils import (
+    FilePathType,
+    calculate_regular_series_rate,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType]):

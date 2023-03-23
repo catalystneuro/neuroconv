@@ -1,9 +1,8 @@
-"""Authors: Heberto Mayorquin, Cody Baker."""
-from warnings import warn
 from typing import Optional
+from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, ArrayType
+from ....utils import ArrayType, FilePathType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
@@ -11,7 +10,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`."""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
         return source_schema
@@ -36,7 +35,6 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             or an array of values for each channel.
         es_key : str, default: "ElectricalSeries"
         """
-
         super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose, es_key=es_key)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)

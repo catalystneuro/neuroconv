@@ -1,5 +1,5 @@
-"""Authors: Cody Baker and Ben Dichter."""
-from typing import Optional
+from typing import Literal, Optional
+
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -8,6 +8,13 @@ from ...utils import FilePathType
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
     """Primary class for all LFP data interfaces."""
+
+    keywords = BaseRecordingExtractorInterface.keywords + [
+        "extracellular electrophysiology",
+        "LFP",
+        "local field potential",
+        "LF",
+    ]
 
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeriesLF", **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)
@@ -20,7 +27,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
-        write_as: str = "lfp",  # Literal["raw", "lfp", "processed"]
+        write_as: Literal["raw", "lfp", "processed"] = "lfp",
         write_electrical_series: bool = True,
         compression: Optional[str] = None,
         compression_opts: Optional[int] = None,

@@ -1,20 +1,20 @@
 import unittest
-from unittest.mock import Mock
-from tempfile import mkdtemp
-from pathlib import Path
-from datetime import datetime
 from copy import deepcopy
-from typing import Optional, List
+from datetime import datetime
+from pathlib import Path
+from tempfile import mkdtemp
 from types import MethodType
+from typing import List, Literal, Optional
+from unittest.mock import Mock
 
-import psutil
 import numpy as np
-from numpy.typing import ArrayLike
+import psutil
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
-from parameterized import parameterized, param
-from pynwb import NWBFile, NWBHDF5IO, H5DataIO
+from numpy.typing import ArrayLike
+from parameterized import param, parameterized
+from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.device import Device
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
@@ -24,15 +24,17 @@ from roiextractors.testing import (
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     add_devices,
-    add_imaging_plane,
-    add_two_photon_series,
-    add_plane_segmentation,
-    add_image_segmentation,
-    add_summary_images,
     add_fluorescence_traces,
+    add_image_segmentation,
+    add_imaging_plane,
+    add_plane_segmentation,
+    add_summary_images,
+    add_two_photon_series,
     check_if_imaging_fits_into_memory,
 )
-from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
+    ImagingExtractorDataChunkIterator,
+)
 
 
 class TestAddDevices(unittest.TestCase):
@@ -274,7 +276,7 @@ class TestAddImageSegmentation(unittest.TestCase):
         self.assertEqual(image_segmentation.name, self.image_segmentation_name)
 
 
-def _generate_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+def _generate_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
     masks = list()
     size = 3 if mask_type == "pixel" else 4
     for idx in range(1, num_rois + 1):
@@ -282,7 +284,7 @@ def _generate_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "vo
     return masks
 
 
-def _generate_casted_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+def _generate_casted_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
     original_mask = _generate_test_masks(num_rois=num_rois, mask_type=mask_type)
     casted_masks = list()
     for per_roi_mask in original_mask:

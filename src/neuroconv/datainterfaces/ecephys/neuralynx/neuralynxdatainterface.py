@@ -1,6 +1,6 @@
-"""Authors: Heberto Mayorquin, Cody Baker, Ben Dichter and Julia Sprenger."""
 import json
-from typing import List, Dict
+from typing import List
+
 import numpy as np
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -22,7 +22,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
@@ -114,7 +114,7 @@ def extract_neo_header_metadata(neo_reader) -> dict:
     return common_header
 
 
-def _dict_intersection(dict_list: List) -> Dict:
+def _dict_intersection(dict_list: List) -> dict:
     """
     Intersect dict_list and return only common keys and values
     Parameters

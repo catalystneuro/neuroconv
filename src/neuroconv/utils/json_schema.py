@@ -1,10 +1,10 @@
-"""Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 import collections.abc
-import json
 import inspect
+import json
 from datetime import datetime
-import numpy as np
+from typing import Callable, Literal
 
+import numpy as np
 import pynwb
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
@@ -48,17 +48,19 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     return base_schema
 
 
-def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
 
     Parameters
     ----------
-    class_method: function
+    method: function
     exclude: list, optional
+
     Returns
     -------
     dict
+
     """
     if exclude is None:
         exclude = ["self", "kwargs"]
@@ -76,54 +78,62 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         FilePathType="string",
         FolderPathType="string",
     )
-    for param_name, param in inspect.signature(class_method).parameters.items():
-        if param_name not in exclude:
-            if param.annotation:
-                if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
-                    args = param.annotation.__args__
-                    valid_args = [x.__name__ in annotation_json_type_map for x in args]
-                    if any(valid_args):
-                        param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
-                    else:
-                        raise ValueError(
-                            f"No valid arguments were found in the json type mapping for parameter {param}"
-                        )
-                    num_params = len(set(param_types))
-                    conflict_message = (
-                        "Conflicting json parameter types were detected from the annotation! "
-                        f"{param.annotation.__args__} found."
-                    )
-                    # Normally cannot support Union[...] of multiple annotation types
-                    if num_params > 2:
-                        raise ValueError(conflict_message)
-                    # Special condition for Optional[...]
-                    if num_params == 2 and not args[1] is type(None):  # noqa: E721
-                        raise ValueError(conflict_message)
-                    param_type = param_types[0]
+    args_spec = dict()
+    for param_name, param in inspect.signature(method).parameters.items():
+        if param_name in exclude:
+            continue
+        args_spec[param_name] = dict()
+        if param.annotation:
+            if getattr(param.annotation, "__origin__", None) == Literal:
+                args_spec[param_name]["enum"] = list(param.annotation.__args__)
+            elif getattr(param.annotation, "__origin__", None) == dict:
+                args_spec[param_name] = dict(type="object")
+                if param.annotation.__args__ == (str, str):
+                    args_spec[param_name].update(additionalProperties={"^.*$": dict(type="string")})
                 else:
-                    arg = param.annotation
-                    if arg.__name__ in annotation_json_type_map:
-                        param_type = annotation_json_type_map[arg.__name__]
-                    else:
-                        raise ValueError(
-                            f"No valid arguments were found in the json type mapping '{arg}' for parameter {param}"
-                        )
-                    if arg == FilePathType:
-                        input_schema["properties"].update({param_name: dict(format="file")})
-                    if arg == FolderPathType:
-                        input_schema["properties"].update({param_name: dict(format="directory")})
-            else:
-                raise NotImplementedError(
-                    f"The annotation type of '{param}' in function '{class_method}' is not implemented! "
-                    "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
-                    "or create the json-schema for this method manually."
+                    args_spec[param_name].update(additionalProperties=True)
+            elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
+                args = param.annotation.__args__
+                valid_args = [x.__name__ in annotation_json_type_map for x in args]
+                if any(valid_args):
+                    param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
+                else:
+                    raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
+                num_params = len(set(param_types))
+                conflict_message = (
+                    "Conflicting json parameter types were detected from the annotation! "
+                    f"{param.annotation.__args__} found."
                 )
-            arg_spec = {param_name: dict(type=param_type)}
-            if param.default is param.empty:
-                input_schema["required"].append(param_name)
-            elif param.default is not None:
-                arg_spec[param_name].update(default=param.default)
-            input_schema["properties"] = dict_deep_update(input_schema["properties"], arg_spec)
+                # Normally cannot support Union[...] of multiple annotation types
+                if num_params > 2:
+                    raise ValueError(conflict_message)
+                # Special condition for Optional[...]
+                if num_params == 2 and not args[1] is type(None):  # noqa: E721
+                    raise ValueError(conflict_message)
+                args_spec[param_name]["type"] = param_types[0]
+            else:
+                arg = param.annotation
+                if arg.__name__ in annotation_json_type_map:
+                    args_spec[param_name]["type"] = annotation_json_type_map[arg.__name__]
+                else:
+                    raise ValueError(
+                        f"No valid arguments were found in the json type mapping '{arg}' for parameter {param}"
+                    )
+                if arg == FilePathType:
+                    input_schema["properties"].update({param_name: dict(format="file")})
+                if arg == FolderPathType:
+                    input_schema["properties"].update({param_name: dict(format="directory")})
+        else:
+            raise NotImplementedError(
+                f"The annotation type of '{param}' in function '{method}' is not implemented! "
+                "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
+                "or create the json-schema for this method manually."
+            )
+        if param.default is param.empty:
+            input_schema["required"].append(param_name)
+        elif param.default is not None:
+            args_spec[param_name].update(default=param.default)
+        input_schema["properties"] = dict_deep_update(input_schema["properties"], args_spec)
         input_schema["additionalProperties"] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
 
