@@ -6,20 +6,20 @@ from pathlib import Path
 from typing import List, Type, Union
 
 from jsonschema.validators import Draft7Validator, validate
-from spikeinterface.core.testing import check_recordings_equal
-from spikeinterface.extractors import NwbRecordingExtractor
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
+from spikeinterface.core.testing import check_recordings_equal
+from spikeinterface.extractors import NwbRecordingExtractor
 
 from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
+    BaseRecordingExtractorInterface,
+)
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
-)
-from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
-    BaseRecordingExtractorInterface,
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
