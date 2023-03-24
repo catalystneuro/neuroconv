@@ -93,10 +93,11 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 )
 
     def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recording or lfp are included in conversion
-        metadata = dict(NWBFile=dict(session_id=session_id))
+        metadata["NWBFile"].update(session_id=session_id)
 
         unit_properties = []
         cellinfo_file_path = session_path / f"{session_id}.spikes.cellinfo.mat"
