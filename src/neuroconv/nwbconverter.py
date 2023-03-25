@@ -1,7 +1,7 @@
 import json
 from collections import Counter
-from typing import Dict, List, Optional, Union
 from pathlib import Path
+from typing import Dict, List, Optional, Union
 
 from jsonschema import validate
 from pynwb import NWBFile
