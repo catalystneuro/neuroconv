@@ -5,20 +5,14 @@ from typing import Dict, List, Optional, Union
 
 from jsonschema import validate
 from pynwb import NWBFile
-from pynwb.file import Subject
 
 from .basedatainterface import BaseDataInterface
-from .tools.nwb_helpers import (
-    get_default_nwbfile_metadata,
-    make_nwbfile_from_metadata,
-    make_or_load_nwbfile,
-)
+from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
 from .utils import (
     dict_deep_update,
     fill_defaults,
     get_base_schema,
-    get_schema_for_NWBFile,
-    get_schema_from_hdmf_class,
+    load_dict_from_file,
     unroot_schema,
 )
 from .utils.json_schema import NWBMetaDataEncoder
@@ -75,15 +69,7 @@ class NWBConverter:
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
-        metadata_schema = get_base_schema(
-            id_="metadata.schema.json",
-            root=True,
-            title="Metadata",
-            description="Schema for the metadata",
-            version="0.1.0",
-            required=["NWBFile"],
-            properties=dict(NWBFile=get_schema_for_NWBFile(), Subject=get_schema_from_hdmf_class(Subject)),
-        )
+        metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         for data_interface in self.data_interface_objects.values():
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
