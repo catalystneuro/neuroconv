@@ -1,8 +1,5 @@
 from pathlib import Path
 from typing import Optional
-from warnings import warn
-
-from pynwb.ecephys import ElectricalSeries
 
 from .neuroscope_utils import (
     get_channel_groups,
@@ -14,13 +11,7 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import (
-    FilePathType,
-    FolderPathType,
-    OptionalFilePathType,
-    dict_deep_update,
-    get_schema_from_hdmf_class,
-)
+from ....utils import FilePathType, FolderPathType, dict_deep_update
 
 
 def subset_shank_channels(recording_extractor, xml_file_path: str):
@@ -89,7 +80,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
@@ -104,7 +95,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : OptionalFilePathType, optional
+        xml_file_path : FilePathType, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
@@ -146,7 +137,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         self,
         file_path: FilePathType,
         gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -196,7 +187,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         folder_path: FolderPathType,
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
     ):
         """
@@ -206,13 +197,13 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to folder containing .clu and .res files.
-        keep_mua_units : bool
-            Optional. Whether or not to return sorted spikes from multi-unit activity.
+        keep_mua_units : bool, default: True
+            Optional. Whether to return sorted spikes from multi-unit activity.
             The default is True.
-        exclude_shanks : list
-            Optional. List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
+        exclude_shanks : list, optional
+            List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
             final integer of all the .res.%i and .clu.%i pairs.
-        xml_file_path : OptionalFilePathType, optional
+        xml_file_path : FilePathType, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
@@ -228,11 +219,11 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         )
 
     def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
-        metadata = dict(Ecephys=NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
-
+        metadata["Ecephys"] = NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
             metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
