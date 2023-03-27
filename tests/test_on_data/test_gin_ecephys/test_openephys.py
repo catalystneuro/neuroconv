@@ -9,7 +9,7 @@ from neuroconv.datainterfaces import (
 from ..setup_paths import ECEPHY_DATA_PATH
 
 
-class TestOpenOpenEphysRecordingInterfaceRedirects(TestCase):
+class TestOpenEphysRecordingInterfaceRedirects(TestCase):
     def test_legacy_format(self):
         folder_path = ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"
 
