@@ -11,7 +11,6 @@ from .json_schema import (
     fill_defaults,
     get_base_schema,
     get_metadata_schema_for_icephys,
-    get_schema_for_NWBFile,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     unroot_schema,
