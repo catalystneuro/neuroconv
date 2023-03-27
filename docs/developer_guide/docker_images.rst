@@ -19,7 +19,7 @@ The `LABEL` is the important item here. In each docker file we wish to publish o
 .. code:
 
     LABEL org.opencontainers.image.source=https://github.com/OWNER/REPO
-    
+
 After building the image, publish the container with
 
 .. code:
