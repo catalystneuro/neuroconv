@@ -14,6 +14,7 @@ def extract_extra_metadata(file_path) -> dict:
     )
 
     description = ScanImageTiffReader.ScanImageTiffReader(str(file_path)).description(iframe=0)
+    description = description.replace("\n", "\r")
     extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in description.split("\r") if "=" in x}
 
     return extra_metadata
