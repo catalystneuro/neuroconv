@@ -1,7 +1,7 @@
 from datetime import datetime
 from platform import python_version, system
 from sys import platform
-from unittest import TestCase, skipIf, skipUnless, skip
+from unittest import TestCase, skip, skipIf, skipUnless
 
 from packaging import version
 
@@ -100,7 +100,7 @@ class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase
     save_directory = OUTPUT_PATH
 
 
-#@skipUnless(system() == "Linux", reason="MaxOneRecordingInterface is only supported on Linux.")
+# @skipUnless(system() == "Linux", reason="MaxOneRecordingInterface is only supported on Linux.")
 @skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = MaxOneRecordingInterface
