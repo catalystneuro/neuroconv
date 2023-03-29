@@ -378,6 +378,7 @@ def automatic_dandi_upload(
 def submit_aws_batch_job(
     job_name: str,
     docker_container: str,
+    environment_variables: List[Dict[str, str]],
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
@@ -501,22 +502,7 @@ def submit_aws_batch_job(
             jobQueue=job_queue_name,
             jobDefinition=job_definition,
             jobName=job_name,
-            containerOverrides=dict(
-                environment=[  # These are environment variables
-                    dict(  # The burden is on the calling script to update the table status to finished
-                        name="STATUS_TRACKER_TABLE_NAME",
-                        value=status_tracker_table_name,
-                    ),
-                    dict(  # For rclone transfers
-                        name="RCLONE_CREDENTIALS",
-                        value=os.environ["RCLONE_CREDENTIALS"],
-                    ),
-                    dict(  # For rclone transfers
-                        name="DANDI_API_KEY",
-                        value=os.environ["DANDI_API_KEY"],
-                    ),
-                ]
-            ),
+            containerOverrides=dict(environment=environment_variables),  # TODO - auto inject status tracker?
         )
         table.put_item(Item=dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted"))
     else:
