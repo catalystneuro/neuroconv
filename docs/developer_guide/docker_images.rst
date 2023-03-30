@@ -5,9 +5,23 @@ Manually Build Docker Images
 
 .. note: The NeuroConv docker container comes prepackaged with all required installations, *i.e.*, equivalent to `pip install neuroconv[full]`. As such it is fairly heavy, so be sure that whatever system (or specifically CI environment) you build with has sufficient disk space.
 
+
+Latest Release
+~~~~~~~~~~~~~~
+
 .. code:
 
-    docker build -f neuroconv_dockerfile -t neuroconv .
+    docker build -f neuroconv_latest_release_dockerfile -t neuroconv_latest_release .
+
+
+Dev Branch
+~~~~~~~~~~
+
+Checkout to a specific branch on a local clone, then
+
+.. code:
+
+    docker build -f neuroconv_developer_build_dockerfile -t neuroconv_dev .
 
 
 
