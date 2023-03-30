@@ -39,7 +39,7 @@ You can either perform a manual build locally following the instructions above, 
 .. code:
 
     docker pull ghcr.io/catalystneuro/neuroconv:latest
-    
+
 and can then run the entrypoint (equivalent to the usual CLI usage) on a YAML specification file (named `your_specification_file.yml`) with
 
 .. code:
