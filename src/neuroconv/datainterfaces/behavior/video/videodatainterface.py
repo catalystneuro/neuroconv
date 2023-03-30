@@ -1,11 +1,10 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Cody Baker and Ben Dichter."""
-from pathlib import Path
-from typing import Optional, List
-from warnings import warn
 import warnings
-import psutil
+from pathlib import Path
+from typing import List, Optional
+from warnings import warn
 
 import numpy as np
+import psutil
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
@@ -16,7 +15,12 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
-from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, FilePathType
+from ....utils import (
+    FilePathType,
+    calculate_regular_series_rate,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType]):
@@ -66,7 +70,7 @@ class VideoInterface(BaseDataInterface):
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         """
-        get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         super().__init__(file_paths=file_paths)
 
@@ -91,7 +95,6 @@ class VideoInterface(BaseDataInterface):
         return metadata_schema
 
     def get_metadata(self):
-
         metadata = super().get_metadata()
         behavior_metadata = dict(
             Movies=[
@@ -249,7 +252,6 @@ class VideoInterface(BaseDataInterface):
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_video_fps()
                     max_frames = stub_frames if stub_test else None

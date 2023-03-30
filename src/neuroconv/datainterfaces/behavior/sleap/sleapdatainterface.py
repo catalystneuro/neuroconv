@@ -1,16 +1,14 @@
-"""Author: Heberto Mayorquin."""
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 from pynwb.file import NWBFile
 
-from ....basedatainterface import BaseDataInterface
-from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....tools import get_package
-from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
-
 from .sleap_utils import extract_timestamps
+from ....basedatainterface import BaseDataInterface
+from ....tools import get_package
+from ....tools.nwb_helpers import make_or_load_nwbfile
+from ....utils import FilePathType, OptionalFilePathType, dict_deep_update
 
 
 class SLEAPInterface(BaseDataInterface):
@@ -98,7 +96,6 @@ class SLEAPInterface(BaseDataInterface):
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-
             labels = self.sleap_io.load_slp(self.file_path)
             nwbfile_out = self.sleap_io.io.nwb.append_nwb_data(
                 labels=labels, nwbfile=nwbfile_out, pose_estimation_metadata=pose_estimation_metadata

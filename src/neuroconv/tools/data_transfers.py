@@ -1,21 +1,21 @@
 """Collection of helper functions for assessing and performing automated data transfers."""
-import os
-import subprocess
 import json
+import os
 import re
-from typing import Dict, Optional, List, Union, Tuple
+import subprocess
 from pathlib import Path
-from warnings import warn
 from shutil import rmtree
-from time import sleep, time
 from tempfile import mkdtemp
+from time import sleep, time
+from typing import Dict, List, Optional, Tuple, Union
+from warnings import warn
 
 import psutil
-from tqdm import tqdm
-from pynwb import NWBHDF5IO
 from dandi.download import download as dandi_download
 from dandi.organize import organize as dandi_organize
 from dandi.upload import upload as dandi_upload
+from pynwb import NWBHDF5IO
+from tqdm import tqdm
 
 from ..utils import FolderPathType, OptionalFolderPathType
 
@@ -96,7 +96,7 @@ def transfer_globus_content(
     destination_endpoint_id : str
         Destination Globus ID.
     destination_folder : FolderPathType
-        Absolute path to a local folder where all content will be transfered to.
+        Absolute path to a local folder where all content will be transferred to.
     display_progress : bool, default: True
         Whether to display the transfer as progress bars using `tqdm`.
     progress_update_rate : float, default: 60.0
@@ -344,7 +344,7 @@ def automatic_dandi_upload(
     organized_nwbfiles = dandiset_path.rglob("*.nwb")
 
     # DANDI has yet to implement forcing of session_id inclusion in organize step
-    # This manually enforces it when only a single sesssion per subject is organized
+    # This manually enforces it when only a single session per subject is organized
     for organized_nwbfile in organized_nwbfiles:
         if "ses" not in organized_nwbfile.stem:
             with NWBHDF5IO(path=organized_nwbfile, mode="r") as io:
@@ -360,7 +360,7 @@ def automatic_dandi_upload(
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
-    dandi_instance = "dandi-staging" if staging else "dandi"
+    dandi_instance = "dandi-staging" if staging else "dandi"  # Test
     dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance)
 
     # Cleanup should be confirmed manually; Windows especially can complain

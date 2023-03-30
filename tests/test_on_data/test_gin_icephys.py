@@ -1,20 +1,20 @@
 import os
 import tempfile
 import unittest
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-import pytest
 import numpy.testing as npt
+import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import AbfInterface
+from neuroconv.tools.neo import get_number_of_electrodes, get_number_of_segments
 from neuroconv.utils import load_dict_from_file
-from neuroconv.tools.neo import get_number_of_segments, get_number_of_electrodes
 
 try:
-    from parameterized import parameterized, param
+    from parameterized import param, parameterized
 
     HAVE_PARAMETERIZED = True
 except ImportError:

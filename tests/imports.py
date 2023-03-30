@@ -29,7 +29,7 @@ class TestImportStructure(TestCase):
             # Sub-modules
             "nwbconverter",
             "tools",  # Attached to namespace by NWBConverter import
-            "utils",  # Attached to namesapce by NWBconverter import
+            "utils",  # Attached to namespace by NWBconverter import
             # Exposed attributes
             "NWBConverter",
             "ConverterPipe",
@@ -72,7 +72,7 @@ class TestImportStructure(TestCase):
             "text",
             # Exposed attributes
             "interface_list",
-            # Behavior
+            "interfaces_by_category",
         ] + interface_name_list
 
         self.assertCountEqual(first=current_structure, second=expected_structure)

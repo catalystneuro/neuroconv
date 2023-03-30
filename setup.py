@@ -1,7 +1,8 @@
-from setuptools import setup, find_packages
+from collections import defaultdict
 from pathlib import Path
 from shutil import copy
-from collections import defaultdict
+
+from setuptools import find_packages, setup
 
 root = Path(__file__).parent
 
@@ -44,7 +45,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="neuroconv",
-    version="0.2.4",
+    version="0.2.5",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -52,6 +53,7 @@ setup(
     author_email="ben.dichter@catalystneuro.com",
     url="https://github.com/catalystneuro/neuroconv",
     keywords="nwb",
+    license_files=("LICENSE",),
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     include_package_data=True,  # Includes files described in MANIFEST.in in the installation.

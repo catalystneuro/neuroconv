@@ -5,18 +5,16 @@ from pathlib import Path
 from tempfile import mkdtemp
 from warnings import warn
 
+import jsonschema
 import numpy as np
 from dateutil.tz import gettz
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-from pynwb.testing import remove_test_file
 from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces.behavior.audio.audiointerface import (
-    AudioInterface,
-)
+from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
 from neuroconv.utils import FilePathType
 
 
@@ -89,8 +87,14 @@ class TestAudioInterface(TestCase):
         self.assertEqual(len(audio_metadata), self.num_audio_files)
 
     def test_incorrect_write_as(self):
-        expected_error_message = "Acoustic series can be written either as 'stimulus' or 'acquisition'."
-        with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
+        expected_error_message = """'test' is not one of ['stimulus', 'acquisition']
+
+Failed validating 'enum' in schema['properties']['Audio']['properties']['write_as']:
+    {'default': 'stimulus', 'enum': ['stimulus', 'acquisition']}
+
+On instance['Audio']['write_as']:
+    'test'"""
+        with self.assertRaisesWith(exc_type=jsonschema.exceptions.ValidationError, exc_msg=expected_error_message):
             conversion_opts = dict(Audio=dict(write_as="test", starting_times=self.starting_times))
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,

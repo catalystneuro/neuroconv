@@ -1,9 +1,8 @@
-"""Authors: Saksham Sharda, Cody Baker."""
-from typing import Tuple, Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
 import numpy as np
-from tqdm import tqdm
 from hdmf.data_utils import GenericDataChunkIterator
+from tqdm import tqdm
 
 from ....tools import get_package
 from ....utils import FilePathType
@@ -35,7 +34,7 @@ class VideoCaptureContext:
     """Retrieving video metadata and frames using a context manager."""
 
     def __init__(self, file_path: FilePathType):
-        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         self.vc = cv2.VideoCapture(filename=file_path)
         self.file_path = file_path
@@ -45,7 +44,7 @@ class VideoCaptureContext:
 
     def get_video_timestamps(self, max_frames=None):
         """Return numpy array of the timestamps(s) for a video file."""
-        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         timestamps = []
         total_frames = self.get_video_frame_count()
@@ -94,7 +93,7 @@ class VideoCaptureContext:
 
     @staticmethod
     def get_cv_attribute(attribute_name: str):
-        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         if int(cv2.__version__.split(".")[0]) < 3:  # pragma: no cover
             return getattr(cv2.cv, "CV_" + attribute_name)
@@ -153,7 +152,7 @@ class VideoCaptureContext:
             raise StopIteration
 
     def __enter__(self):
-        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        cv2 = get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
 
         self.vc = cv2.VideoCapture(self.file_path)
         return self

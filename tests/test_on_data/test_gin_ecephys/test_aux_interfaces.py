@@ -1,8 +1,8 @@
 import unittest
-import pytest
 from datetime import datetime
 
-from parameterized import parameterized, param
+import pytest
+from parameterized import param, parameterized
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
 
@@ -71,12 +71,12 @@ class TestEcephysAuxNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestAuxRecording"].recording_extractor
 
-        es_key = converter.get_conversion_options()["TestAuxRecording"]["es_key"]
-        electrical_series_name = metadata["Ecephys"][es_key]["name"]
+        electrical_series_name = metadata["Ecephys"][converter.data_interface_objects["TestAuxRecording"].es_key][
+            "name"
+        ]
 
         # NWBRecordingExtractor on spikeinterface does not yet support loading data written from multiple segments.
         if recording.get_num_segments() == 1:
-
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path, electrical_series_name=electrical_series_name)
             if "channel_name" in recording.get_property_keys():

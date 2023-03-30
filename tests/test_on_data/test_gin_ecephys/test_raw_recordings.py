@@ -1,37 +1,37 @@
-import unittest
-import pytest
 import itertools
-from pathlib import Path
+import unittest
 from datetime import datetime
-from platform import python_version
-from sys import platform
+from platform import python_version, system
 
+import pytest
+from jsonschema.validators import Draft7Validator
 from packaging import version
-from parameterized import parameterized, param
+from parameterized import param, parameterized
+from spikeinterface.core import BaseRecording
 from spikeinterface.core.testing import check_recordings_equal
 from spikeinterface.extractors import NwbRecordingExtractor
-from spikeinterface.core import BaseRecording
-
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
+    AlphaOmegaRecordingInterface,
+    AxonaRecordingInterface,
+    BiocamRecordingInterface,
+    BlackrockRecordingInterface,
     CEDRecordingInterface,
+    EDFRecordingInterface,
     IntanRecordingInterface,
+    MaxOneRecordingInterface,
+    MCSRawRecordingInterface,
+    MEArecRecordingInterface,
     NeuralynxRecordingInterface,
     NeuroScopeRecordingInterface,
+    OpenEphysBinaryRecordingInterface,
+    OpenEphysLegacyRecordingInterface,
     OpenEphysRecordingInterface,
+    PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
-    SpikeGLXLFPInterface,
-    BlackrockRecordingInterface,
-    AxonaRecordingInterface,
-    EDFRecordingInterface,
     TdtRecordingInterface,
-    PlexonRecordingInterface,
-    BiocamRecordingInterface,
-    AlphaOmegaRecordingInterface,
-    MEArecRecordingInterface,
-    MCSRawRecordingInterface,
 )
 
 # enable to run locally in interactive mode
@@ -131,13 +131,17 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 ),
             ),
         ),
+        param(
+            data_interface=OpenEphysLegacyRecordingInterface,
+            interface_kwargs=dict(
+                folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
+            ),
+            case_name=f"openephyslegacy",
+        ),
     ]
+
     this_python_version = version.parse(python_version())
-    if (
-        platform != "darwin"
-        and this_python_version >= version.parse("3.8")
-        and this_python_version < version.parse("3.10")
-    ):
+    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
         parameterized_recording_list.append(
             param(
                 data_interface=CEDRecordingInterface,
@@ -145,49 +149,64 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
                 case_name="smrx",
             )
         )
-    parameterized_recording_list.append(
-        param(
-            data_interface=NeuralynxRecordingInterface,
-            interface_kwargs=dict(
-                folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
-            ),
-            case_name="neuralynx",
-        )
-    )
-
-    for spikeextractors_backend in [True, False]:
+    if system() == "Linux":
         parameterized_recording_list.append(
             param(
-                data_interface=OpenEphysRecordingInterface,
+                data_interface=MaxOneRecordingInterface,
                 interface_kwargs=dict(
-                    folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
-                    spikeextractors_backend=spikeextractors_backend,
+                    file_path=str(DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5"),
                 ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
+            ),
         )
 
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
+    parameterized_recording_list.extend(
+        [
+            param(
+                data_interface=NeuralynxRecordingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"),
+                ),
+                case_name="neuralynx",
+            ),
+            param(
+                data_interface=OpenEphysBinaryRecordingInterface,
+                interface_kwargs=dict(
+                    folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"),
+                ),
+            ),
             param(
                 data_interface=BlackrockRecordingInterface,
                 interface_kwargs=dict(
                     file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"),
-                    spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
+            ),
+            param(
+                data_interface=NeuroScopeRecordingInterface,
+                interface_kwargs=dict(
+                    file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
+                ),
+            ),
+        ]
+    )
+
+    this_python_version = version.parse(python_version())
+    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
+        parameterized_recording_list.append(
+            param(
+                data_interface=CEDRecordingInterface,
+                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
+                case_name="smrx",
             )
         )
 
-    for suffix, spikeextractors_backend in itertools.product(["rhd", "rhs"], [True, False]):
+    for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(
             param(
                 data_interface=IntanRecordingInterface,
                 interface_kwargs=dict(
                     file_path=str(DATA_PATH / "intan" / f"intan_{suffix}_test_1.{suffix}"),
-                    spikeextractors_backend=spikeextractors_backend,
                 ),
-                case_name=f"{suffix}, spikeextractors_backend={spikeextractors_backend}",
+                case_name=suffix,
             )
         )
 
@@ -195,12 +214,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
     num_channels_list = [512, 128]
     file_name_num_channels_pairs = zip(file_name_list, num_channels_list)
     gains_list = [None, [0.195], [0.385]]
-    for iteration in itertools.product(file_name_num_channels_pairs, gains_list, [True, False]):
-        (file_name, num_channels), gains, spikeextractors_backend = iteration
+    for iteration in itertools.product(file_name_num_channels_pairs, gains_list):
+        (file_name, num_channels), gains = iteration
 
         interface_kwargs = dict(
             file_path=str(DATA_PATH / "spikegadgets" / f"{file_name}.rec"),
-            spikeextractors_backend=spikeextractors_backend,
         )
 
         if gains is not None:
@@ -211,24 +229,9 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         else:
             gain_string = None
 
-        case_name = (
-            f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
-            f"spikeextractors_backend_{spikeextractors_backend}"
-        )
+        case_name = f"{file_name}, num_channels={num_channels}, gains={gain_string}, "
         parameterized_recording_list.append(
             param(data_interface=SpikeGadgetsRecordingInterface, interface_kwargs=interface_kwargs, case_name=case_name)
-        )
-
-    for spikeextractors_backend in [True, False]:
-        parameterized_recording_list.append(
-            param(
-                data_interface=NeuroScopeRecordingInterface,
-                interface_kwargs=dict(
-                    file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"),
-                    spikeextractors_backend=spikeextractors_backend,
-                ),
-                case_name=f"spikeextractors_backend_{spikeextractors_backend}",
-            )
         )
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
@@ -239,6 +242,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             data_interface_classes = dict(TestRecording=data_interface)
 
         converter = TestConverter(source_data=dict(TestRecording=interface_kwargs))
+
+        # validate conversion_options_schema
+        schema = converter.data_interface_objects["TestRecording"].get_conversion_options_schema()
+        Draft7Validator.check_schema(schema=schema)
+
         for interface_kwarg in interface_kwargs:
             if interface_kwarg in ["file_path", "folder_path"]:
                 self.assertIn(
@@ -249,14 +257,13 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
         recording = converter.data_interface_objects["TestRecording"].recording_extractor
 
-        es_key = converter.get_conversion_options()["TestRecording"].get("es_key", None)
+        es_key = converter.data_interface_objects["TestRecording"].es_key
         electrical_series_name = metadata["Ecephys"][es_key]["name"] if es_key else None
         if not isinstance(recording, BaseRecording):
             raise ValueError("recordings of interfaces should be BaseRecording objects from spikeinterface ")
 
         # NWBRecordingExtractor on spikeinterface does not yet support loading data written from multiple segment.
         if recording.get_num_segments() == 1:
-
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
             nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path, electrical_series_name=electrical_series_name)
             if "channel_name" in recording.get_property_keys():

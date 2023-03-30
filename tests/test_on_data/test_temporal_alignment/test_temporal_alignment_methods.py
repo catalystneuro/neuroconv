@@ -1,18 +1,21 @@
-from tempfile import mkdtemp
-from shutil import rmtree
-from pathlib import Path
-from typing import Union, Dict
 from datetime import datetime
+from pathlib import Path
+from shutil import rmtree
+from tempfile import mkdtemp
+from typing import Dict, Union
 
 import numpy as np
-from numpy.testing import assert_array_equal, assert_array_almost_equal
 from hdmf.testing import TestCase
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 from pandas import DataFrame
 from pynwb import NWBHDF5IO
 
-from neuroconv import NWBConverter, ConverterPipe
+from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.datainterfaces import CsvTimeIntervalsInterface
-from neuroconv.tools.testing import MockBehaviorEventInterface, MockSpikeGLXNIDQInterface
+from neuroconv.tools.testing import (
+    MockBehaviorEventInterface,
+    MockSpikeGLXNIDQInterface,
+)
 
 
 class TestNIDQInterfacePulseTimesAlignment(TestCase):
@@ -302,7 +305,7 @@ class TestExternalPuleTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
 
         converter = ConverterPipe(data_interfaces=[self.trial_interface, self.behavior_interface])
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)  # No NIDQ to automaticall include star time
+        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)  # No NIDQ to automatically include star time
 
         nwbfile_path = self.tmpdir / "test_external_pulse_times_alignment_converter_pipe.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
@@ -319,7 +322,7 @@ class TestExternalPuleTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         )
         converter = TestAlignmentConverter(source_data=source_data)
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)  # No NIDQ to automaticall include star time
+        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)  # No NIDQ to automatically include star time
 
         unaligned_trial_start_timestamps = converter.data_interface_objects["Trials"].get_timestamps(
             column="start_time"
@@ -383,7 +386,7 @@ class TestExternalPuleTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         )
         converter = TestAlignmentConverter(source_data=source_data)
         metadata = converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)  # No NIDQ to automaticall include star time
+        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)  # No NIDQ to automatically include star time
 
         nwbfile_path = self.tmpdir / "test_external_pulse_times_alignment_nwbconverter_internal_modification.nwb"
         converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

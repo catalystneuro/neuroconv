@@ -1,11 +1,10 @@
-"""Authors: Cody Baker."""
 import json
 
 from pynwb.ecephys import ElectricalSeries
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils.types import FilePathType
 from ....utils.json_schema import NWBMetaDataEncoder, get_schema_from_hdmf_class
+from ....utils.types import FilePathType
 
 
 class MEArecRecordingInterface(BaseRecordingExtractorInterface):
@@ -15,30 +14,21 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     Uses the :py:class:`~spikeinterface.extractors.MEArecRecordingExtractor`.
     """
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         """
         Load and prepare data for MEArec.
 
         Parameters
         ----------
-        folder_path: string or Path
+        folder_path : str or Path
             Path to the MEArec .h5 file.
-        verbose: bool, default: True
+        verbose : bool, default: True
             Allows verbose.
+        es_key : str, default: "ElectricalSeries"
         """
-        super().__init__(file_path=file_path, verbose=verbose)
-        self.es_key = "ElectricalSeries"
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-
-        return metadata_schema
-
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
         # TODO: improve ProbeInterface integration in our writing procedures
