@@ -1,3 +1,4 @@
 FROM python:3.10
 LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
 RUN pip install neuroconv[full]
+CMD ["python3 -m"]
