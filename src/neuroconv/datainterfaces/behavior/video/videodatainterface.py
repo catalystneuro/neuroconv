@@ -70,7 +70,7 @@ class VideoInterface(BaseDataInterface):
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         """
-        get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         super().__init__(file_paths=file_paths)
 
