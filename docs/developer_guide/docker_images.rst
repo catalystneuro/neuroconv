@@ -28,3 +28,20 @@ After building the image, publish the container with
     export CR_PAT="<YOUR GITHUB SECRET TOKEN>"
     echo $CR_PAT | docker login ghcr.io -u <YOUR GITHUB USERNAME> --password-stdin
     docker push ghcr.io/catalystneuro/neuroconv:TAG
+
+
+
+Running Docker Container (Linux)
+--------------------------------
+
+You can either perform a manual build locally following the instructions above, or pull the container from the GitHub Container Registry (GHCR) with
+
+.. code:
+
+    docker pull ghcr.io/catalystneuro/neuroconv:latest
+    
+and can then run the entrypoint (equivalent to the usual CLI usage) on a YAML specification file (named `your_specification_file.yml`) with
+
+.. code:
+
+    docker run -it --volume /your/local/drive/:/desired/alias/of/drive/ ghcr.io/catalystneuro/neuroconv:latest neuroconv /desired/alias/of/drive/your_specification_file.yml
