@@ -72,10 +72,9 @@ To use this type of synchronization, all the user must provide is the mapping de
 Tracking Timing Information: NIDQ
 ---------------------------------
 
-The above sections do not go into great detail about how exactly to go about tracking and storing all the relative
-timing information. One common approach is to utilize electrophysiology boards due to their naturally high sampling
-frequency. With this approach, the activity of a particular channel can be setup to receive a signal sent from a
-secondary system every time a certain event occurs. Those events could be mechanical
+The above sections do not describe how to track and store the timing information. One common approach is to utilize
+electrophysiology boards due to their naturally high sampling frequency. With this approach, a channel can be setup
+to receive a signal sent from a secondary system every time a certain event occurs. Those events could be mechanical
 triggers, analog signals from environmental electrodes, digital codes, or simple TTLs (# TODO: link to examples of
 these).
 
