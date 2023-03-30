@@ -1,6 +1,6 @@
 FROM python:3.10
 LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
-ADD /neuroconv /neuroconv  # Current working directory must be just outside local clone of neuroconv
+ADD /neuroconv /neuroconv
 RUN cd neuroconv \
  && pip install -e .[full]
 CMD ["python3 -m"]
