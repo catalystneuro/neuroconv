@@ -23,7 +23,7 @@ of a secondary system according to this new starting time.
 .. code-block:: python
 
     start_time_of_other_interface = 3.4  # in units seconds
-    
+
     other_interface.synchronize_start_time(start_time=start_time_of_other_interface)
 
 The advantage of this approach is its simplicity, but it cannot account for any drift due to misalignment between the
@@ -55,7 +55,7 @@ NeuroConv default behavior for this approach is to linearly interpolate the time
 note the data values for the series itself is *not* changed during the process, only the timestamp values are
 inferred for common reference time.
 
-To use this type of synchronization, all the user must provide is the mapping determined by the 
+To use this type of synchronization, all the user must provide is the mapping determined by the
 
 .. code-block:: python
 
@@ -87,7 +87,3 @@ As an example demonstration of how to use this interface, let us assume the foll
 Primary system: NeuroPixels ecephys probe (SpikeGLX)
 Secondary systems: SLEAP pose estimation (in `.slp` file format) of a mouse subject and event trigger times from when
 the mouse performed a certain interation with a mechanical device (stored in a `.mat` file)
-
-
-
-
