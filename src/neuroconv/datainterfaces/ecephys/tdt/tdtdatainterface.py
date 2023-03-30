@@ -5,7 +5,9 @@ from ....utils.types import FolderPathType
 class TdtRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface class for converting Tucker-Davis Technologies (TDT) data."""
 
-    def __init__(self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True, es_key: str = None):
+    def __init__(
+        self, folder_path: FolderPathType, stream_id: str = "0", verbose: bool = True, es_key: str = "ElectricalSeries"
+    ):
         """
         Initialize reading of a TDT recording.
 
