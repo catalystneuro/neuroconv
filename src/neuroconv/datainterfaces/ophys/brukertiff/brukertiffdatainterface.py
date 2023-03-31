@@ -15,7 +15,9 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["folder_path"]["description"] = "Path to Tiff folder."
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "The path that points to the folder containing the Bruker TIF image files and configuration files."
         return source_schema
 
     def __init__(self, folder_path: FolderPathType, sampling_frequency: Optional[float] = None, verbose: bool = True):
@@ -24,7 +26,8 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        folder_path : FolderPathType
+            The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         sampling_frequency : float
         verbose : bool, default: True
         """
