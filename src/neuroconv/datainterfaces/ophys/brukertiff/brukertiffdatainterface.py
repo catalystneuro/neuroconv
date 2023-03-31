@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 from xml.etree import ElementTree
 
 import numpy as np
@@ -20,7 +19,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         ] = "The path that points to the folder containing the Bruker TIF image files and configuration files."
         return source_schema
 
-    def __init__(self, folder_path: FolderPathType, sampling_frequency: Optional[float] = None, verbose: bool = True):
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         """
         Initialize reading of TIFF files.
 
@@ -28,10 +27,9 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         ----------
         folder_path : FolderPathType
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
-        sampling_frequency : float
         verbose : bool, default: True
         """
-        super().__init__(folder_path=folder_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
     def _get_env_root(self):
         folder_path = Path(self.source_data["folder_path"])
