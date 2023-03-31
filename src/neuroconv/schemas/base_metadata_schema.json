@@ -10,7 +10,7 @@
     "NWBFile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["session_start_time"]
+      "required": ["session_start_time"],
       "properties": {
         "keywords": {
           "description": "Terms to search over",
