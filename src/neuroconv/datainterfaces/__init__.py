@@ -61,6 +61,7 @@ from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
+from .ophys.brukertiff.brukertiffdatainterface import BrukerTiffImagingInterface
 
 # Ophys
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
@@ -125,6 +126,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
+    BrukerTiffImagingInterface,
     # Behavior
     MovieInterface,  # TO-DO: deprecate on April 2023
     VideoInterface,
