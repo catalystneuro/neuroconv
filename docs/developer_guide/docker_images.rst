@@ -28,20 +28,23 @@ Checkout to a specific branch on a local clone, then
 Publish Container to GitHub
 ---------------------------
 
-The `LABEL` is the important item here. In each docker file we wish to publish on the GitHub Container Registry (GHCR), we will label them such as
+The `LABEL` is the important item here; it determines the host repository on the GitHub Container Registry (GHCR). In each docker file we wish to publish on the GHCR, we will add this label right after the `FROM` clause
 
 .. code:
 
-    LABEL org.opencontainers.image.source=https://github.com/OWNER/REPO
+    FROM PARENT_IMAGE:TAG
+    LABEL org.opencontainers.image.source=https://github.com/catalystneuro/neuroconv
 
-After building the image, publish the container with
+After building the image itself, we can publish the container with
 
 .. code:
 
-    docker tag IMAGE_NAME ghcr.io/catalystneuro/neuroconv:TAG
+    docker tag IMAGE_NAME ghcr.io/catalystneuro/IMAGE_NAME:TAG
     export CR_PAT="<YOUR GITHUB SECRET TOKEN>"
     echo $CR_PAT | docker login ghcr.io -u <YOUR GITHUB USERNAME> --password-stdin
-    docker push ghcr.io/catalystneuro/neuroconv:TAG
+    docker push ghcr.io/catalystneuro/IMAGE_NAME:TAG
+
+.. note: Though it may appear confusing, the use of the `IMAGE_NAME` in these steps determines only the _name_ of the package as available from the 'packages' screen of the host repository; the `LABEL` itself ensured the upload and linkage to the NeuroConv GHCR.
 
 
 
