@@ -1,8 +1,8 @@
-import sys
 import os
+import sys
 from importlib import import_module
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Literal, Optional
 from uuid import uuid4
 
 import click
@@ -11,7 +11,7 @@ from dandi.organize import create_unique_filenames_from_metadata
 from jsonschema import RefResolver, validate
 from pydantic import FilePath
 
-from ..data_transfers import submit_aws_batch_job, automatic_dandi_upload
+from ..data_transfers import automatic_dandi_upload, submit_aws_batch_job
 from ...nwbconverter import NWBConverter
 from ...utils import FilePathType, FolderPathType, dict_deep_update, load_dict_from_file
 

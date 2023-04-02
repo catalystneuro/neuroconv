@@ -21,7 +21,7 @@ To easily transfer data from a Google Drive (or theoretically any backend suppor
 
 .. note:
 
-    I eventually hope to just be able to read and pass these directly from a local `rclone.conf` file, but 
+    I eventually hope to just be able to read and pass these directly from a local `rclone.conf` file, but
 
 .. note:
 
