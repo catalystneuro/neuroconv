@@ -77,7 +77,7 @@ To use manually outside of AWS Batch,
 .. code:
 
     export YAML_STREAM="<copy and paste contents of YAML file (manually replace instances of double quotes with single quotes)>"
-    docker run -it --volume /your/local/drive/:/desired/alias/of/drive/ ghcr.io/catalystneuro/neuroconv:latest
+    docker run -it --volume /your/local/drive/:/desired/alias/of/drive/ ghcr.io/catalystneuro/neuroconv:dev_auto_yaml
 
 To use automatically via a Python helper function (coming in a separate PR)
 
