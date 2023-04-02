@@ -48,8 +48,8 @@ After building the image itself, we can publish the container with
 
 
 
-Running Docker Container (Linux)
---------------------------------
+Running Docker Container on local YAML (Linux)
+----------------------------------------------
 
 You can either perform a manual build locally following the instructions above, or pull the container from the GitHub Container Registry (GHCR) with
 
@@ -62,3 +62,33 @@ and can then run the entrypoint (equivalent to the usual CLI usage) on a YAML sp
 .. code:
 
     docker run -it --volume /your/local/drive/:/desired/alias/of/drive/ ghcr.io/catalystneuro/neuroconv:latest neuroconv /desired/alias/of/drive/your_specification_file.yml
+
+
+
+Running Docker Container with a YAML_STREAM (Linux)
+---------------------------------------------------
+
+An alternative approach that simplifies usage on AWS Batch is to specify the YAML contents as an environment variable. The file is constructed in the first step of the container launch. The only potential downside with this usage is maximum file size (~13,000 characters; current example files do not come remotely close to this).
+
+Otherwise, the YAML file transfer will have to managed separately, likely as a part of the data transfer or an entirely separate transfer step.
+
+To use manually outside of AWS Batch,
+
+.. code:
+
+    export YAML_STREAM="<copy and paste contents of YAML file (manually replace instances of double quotes with single quotes)>"
+    docker run -it --volume /your/local/drive/:/desired/alias/of/drive/ ghcr.io/catalystneuro/neuroconv:latest
+
+To use automatically via a Python helper function (coming in a separate PR)
+
+.. code:
+    import os
+
+    with open(file="my_yaml_file.yml") as file:
+        yaml_stream = "".join(file.readlines()).replace("\"", "'")
+
+    os.environ["YAML_STREAM"] = yaml_stream
+
+.. note:
+
+    When  using YAML files through the docker containers, always be sure that the NWB file paths are absolute paths stemming from the mounted volume; otherwise, the NWB file will indeed be written inside the container but will not be accessible outside of it.
