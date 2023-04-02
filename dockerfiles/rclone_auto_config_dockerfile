@@ -1,0 +1,5 @@
+FROM rclone/rclone:latest
+CMD printf "[$DRIVE_NAME]\ntype = drive\nscope = drive\ntoken = {\"access_token\":\"$TOKEN\",\"token_type\":\"Bearer\",\"refresh_token\":\"$REFRESH_TOKEN\",\"expiry\":\"$EXPIRY\"}" > /mnt/data/rclone.conf \
+  && cat /mnt/data/rclone.conf \
+  && rclone $RCLONE_COMMAND
+ENTRYPOINT [""]
