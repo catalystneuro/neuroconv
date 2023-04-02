@@ -1,1 +1,1 @@
-from .yaml_conversion_specification import run_conversion_from_yaml, deploy_conversion_from_yaml
+from .yaml_conversion_specification import run_conversion_from_yaml, deploy_conversion_from_yaml_and_upload_to_dandi

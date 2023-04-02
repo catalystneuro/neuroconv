@@ -378,19 +378,13 @@ def automatic_dandi_upload(
 def submit_aws_batch_job(
     job_name: str,
     docker_container: str,
+    efs_name: str,
     environment_variables: List[Dict[str, str]],
     status_tracker_table_name: str = "neuroconv_batch_status_tracker",
     iam_role_name: str = "neuroconv_batch_role",
     compute_environment_name: str = "neuroconv_batch_environment",
     job_queue_name: str = "neuroconv_batch_queue",
 ) -> None:
-    assert (
-        "RCLONE_CREDENTIALS" in os.environ
-    ), "You must set your rclone credentials as the environment variable 'RCLONE_CREDENTIALS' to submit this job!"
-    assert (
-        "DANDI_API_KEY" in os.environ
-    ), "You must set your DANDI API key as the environment variable 'DANDI_API_KEY' to submit this job!"
-
     import boto3
 
     region = "us-east-2"  # TODO, maybe control AWS region? Technically not required if user has it set in credentials
@@ -399,6 +393,7 @@ def submit_aws_batch_job(
     dynamodb_resource = boto3.resource("dynamodb", region)
     iam_client = boto3.client("iam", region)
     batch_client = boto3.client("batch", region)
+    efs_client = boto3.client("efs", region)
 
     # It is extremely useful to have a status tracker that is separate from the job environment
     # Technically detailed logs of inner workings are given in the CloudWatch, but that can only really be
@@ -435,6 +430,7 @@ def submit_aws_batch_job(
         role = iam_client.get_role(RoleName=iam_role_name)
 
     # Ensure compute environment is setup
+    # Note that it's easier to do this through the UI
     current_compute_environments = [
         environment["computeEnvironmentName"]
         for environment in batch_client.describe_compute_environments()["computeEnvironments"]
@@ -445,14 +441,17 @@ def submit_aws_batch_job(
             type="MANAGED",
             state="ENABLED",
             computeResources={
-                "type": "EC2",
-                "allocationStrategy": "BEST_FIT",
-                "minvCpus": 0,  # TODO, control
-                "maxvCpus": 256,  # TODO, control
-                "subnets": ["subnet-0be50d51", "subnet-3fd16f77", "subnet-0092132b"],
-                "instanceRole": "ecsInstanceRole",
-                "securityGroupIds": ["sg-851667c7"],
+                "type": "SPOT",
                 "instanceTypes": ["optimal"],
+                "allocationStrategy": "BEST_FIT_PROGRESSIVE",
+                "minvCpus": 0,
+                "maxvCpus": 256,
+                "instanceRole": "ecsInstanceRole",
+                "subnets": ["subnet-0890a93aedb42e73e", "subnet-0680e07980538b786", "subnet-0e20bbcfb951b5387"],
+                "securityGroupIds": [
+                    # "sg-0ad453a713c5b5580",
+                    "sg-001699e5b7496b226",
+                ],
             },
         )
 
@@ -464,47 +463,55 @@ def submit_aws_batch_job(
             state="ENABLED",
             priority=1,
             computeEnvironmentOrder=[
-                dict(order=100, computeEnvironment="dynamodb_import_environment"),
+                dict(order=100, computeEnvironment=compute_environment_name),
             ],
         )
 
-    # Ensure job definition exists
-    job_definition = f"neuroconv_batch_{docker_container}"  # Keep unique by incorporating name of container
-    current_job_definitions = [
-        definition["jobDefinitionName"] for definition in batch_client.describe_job_queues()["jobDefinitions"]
-    ]
-    if job_definition not in current_job_definitions:
-        batch_client.register_job_definition(
-            jobDefinitionName=job_definition,
-            type="container",
-            containerProperties=dict(
-                image=docker_container,
-                memory=256,  # TODO, control
-                vcpus=16,  # TODO, control
-                jobRoleArn=role["Role"]["Arn"],
-                executionRoleArn=role["Role"]["Arn"],
-                environment=[
-                    dict(
-                        name="AWS_DEFAULT_REGION",
-                        value=region,
-                    )
-                ],
-            ),
-        )
-    else:
-        # TODO: would also need to check that memory/vcpu values resolve with previously defined name
-        pass
+    # Create unique EFS volume - having some trouble with automatically doing this ATM
+    # efs_client.create_file_system(name=job_name)  # TODO, decide how best to perform cleanup
+    # efs_name = "test_efs"
+
+    # Always re-register the job; if the name already exists, it will count as a 'revision'
+    batch_client.register_job_definition(
+        jobDefinitionName=job_name,
+        type="container",
+        containerProperties=dict(
+            image=docker_container,
+            # instanceType="t2.small",
+            memory=16 * 1024,  # TODO, also conflicting info on if its MiB or GiB; confirmed, via boto3 it's in MiB
+            vcpus=4,
+            jobRoleArn=role["Role"]["Arn"],
+            executionRoleArn=role["Role"]["Arn"],
+            environment=[
+                dict(
+                    name="AWS_DEFAULT_REGION",
+                    value=region,
+                )
+            ],
+            volumes=[
+                # {"name": efs_name, "host": {"sourcePath": "/mnt/data"}},
+                {
+                    "name": efs_name,
+                    # "host": {"sourcePath": "/mnt/data"},
+                    "efsVolumeConfiguration": {"fileSystemId": "fs-0ab4d92c222097625"},  # "rootDirectory": ""},
+                }
+            ],
+            mountPoints=[{"sourceVolume": efs_name, "containerPath": "/mnt/data", "readOnly": False}],
+        ),
+    )
 
     # Submit job and update status tracker
     currently_running_jobs = batch_client.list_jobs(jobQueue=job_queue_name)
     if job_name not in currently_running_jobs:
         batch_client.submit_job(
             jobQueue=job_queue_name,
-            jobDefinition=job_definition,
+            jobDefinition=job_name,
             jobName=job_name,
             containerOverrides=dict(environment=environment_variables),  # TODO - auto inject status tracker?
         )
-        table.put_item(Item=dict(id=uuid4(), job_name=job_name, submitted_on=datetime.now(), status="submitted"))
+        table.put_item(
+            Item=dict(id=str(uuid4()), job_name=job_name, submitted_on=str(datetime.now()), status="submitted")
+        )
     else:
         raise ValueError(
             f"There is already a job named '{job_name}' running in the queue! "

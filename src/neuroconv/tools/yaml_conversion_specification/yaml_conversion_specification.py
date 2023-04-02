@@ -167,12 +167,13 @@ def run_conversion_from_yaml(
 
 def deploy_conversion_from_yaml_and_upload_to_dandi(  # the 'and upload to DANDI' part should ultimately be embedded in the YAML syntax
     specification_file_path: FilePath,
+    efs_name: str,
     dandiset_id: str,
     transfer_method: Literal["rclone"],
     transfer_commands: str,
     transfer_config_file_path: FilePath,
 ):
-    job_name = Path(specification_file_path).stem + uuid4()
+    job_name = Path(specification_file_path).stem + "-" + str(uuid4())
     with open(file=specification_file_path) as file:
         yaml_as_string = "".join(file.readlines())  # Loaded as raw string, not as dict
 
@@ -184,11 +185,14 @@ def deploy_conversion_from_yaml_and_upload_to_dandi(  # the 'and upload to DANDI
             dict(name="CONFIG_STREAM", value=config_as_string),
             dict(name="RCLONE_COMMANDS", value=transfer_commands),
             dict(name="YAML_STREAM", value=yaml_as_string),
-            dict(name="DANDI_API_KEY", value=os.envion["DANDI_API_KEY"]),
+            dict(name="DANDI_API_KEY", value=os.environ["DANDI_API_KEY"]),
             dict(name="DANDISET_ID", value=dandiset_id),
         ]
     else:
         raise NotImplementedError(f"The transfer method {transfer_method} is not yet supported!")
     submit_aws_batch_job(
-        job_name=job_name, docker_container=docker_container, environment_variables=environment_variables
+        job_name=job_name,
+        docker_container=docker_container,
+        efs_name=efs_name,
+        environment_variables=environment_variables,
     )  # TODO - setup something here with status tracker table - might have to be on YAML level
