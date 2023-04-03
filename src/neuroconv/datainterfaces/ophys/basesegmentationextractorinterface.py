@@ -65,10 +65,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
+        self.get_extractor()(**self.source_data).get_times()
 
     def get_timestamps(self) -> np.ndarray:
         return self.segmentation_extractor.get_times()

@@ -74,10 +74,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
+        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
     def get_timestamps(self) -> np.ndarray:
         return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
