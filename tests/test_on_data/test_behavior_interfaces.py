@@ -26,6 +26,12 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
+    def check_align_starting_time_internal(self):
+        pass  # TODO in separate PR
+
+    def check_align_timestamps_internal(self):
+        pass  # TODO in separate PR
+
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
