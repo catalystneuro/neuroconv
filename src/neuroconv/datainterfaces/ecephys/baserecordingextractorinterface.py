@@ -110,14 +110,20 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        kwargs = dict()
-        if stub_test:
-            num_frames = 100
-            end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
-            kwargs.update(end_frame=end_frame)
-        if self.subset_channels is not None:
-            kwargs.update(channel_ids=self.subset_channels)
-        recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
+        from spikeinterface.core.segmentutils import ConcatenateSegmentRecording
+
+        max_frames = 100
+
+        recording_extractor = self.recording_extractor
+        number_of_segments = recording_extractor.get_num_segments()
+        recording_segments = [recording_extractor.select_segments([index]) for index in range(number_of_segments)]
+        end_frame_list = [min(max_frames, segment.get_num_frames()) for segment in recording_segments]
+        recording_segments_stubbed = [
+            segment.frame_slice(start_frame=0, end_frame=end_frame)
+            for segment, end_frame in zip(recording_segments, end_frame_list)
+        ]
+        recording_extractor = ConcatenateSegmentRecording(recording_segments_stubbed)
+
         return recording_extractor
 
     def run_conversion(
