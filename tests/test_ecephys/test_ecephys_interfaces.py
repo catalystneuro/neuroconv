@@ -38,12 +38,7 @@ class TestRecordingInterface(TestCase):
     def test_stub_multi_segment(self):
         interface = self.multi_segment_recording_interface
         metadata = interface.get_metadata()
-        # Test that assertion is risen when the next statement is run
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg="Stub test and channel subset only supported for single segment recordings.",
-        ):
-            interface.run_conversion(stub_test=True, metadata=metadata)
+        interface.run_conversion(stub_test=True, metadata=metadata)
 
 
 class TestAssertions(TestCase):
