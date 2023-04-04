@@ -17,9 +17,7 @@ from neuroconv.datainterfaces import CEDRecordingInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.datainterfaces.ecephys.generatorrecordinginterface import (
-    GeneratorRecordingInterface,
-)
+from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
 python_version = Version(get_python_version())
 
@@ -27,8 +25,8 @@ python_version = Version(get_python_version())
 class TestRecordingInterface(TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.single_segment_recording_interface = GeneratorRecordingInterface(durations=[0.100])
-        cls.multi_segment_recording_interface = GeneratorRecordingInterface(durations=[0.100, 0.100])
+        cls.single_segment_recording_interface = MockRecordingInterface(durations=[0.100])
+        cls.multi_segment_recording_interface = MockRecordingInterface(durations=[0.100, 0.100])
 
     def test_stub_single_segment(self):
         interface = self.single_segment_recording_interface
