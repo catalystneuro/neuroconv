@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-
 from ...utils.dict import dict_deep_update
 
 
