@@ -17,7 +17,9 @@ from neuroconv.datainterfaces import CEDRecordingInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.datainterfaces.ecephys.generatorrecordinginterface import GeneratorRecordingInterface
+from neuroconv.datainterfaces.ecephys.generatorrecordinginterface import (
+    GeneratorRecordingInterface,
+)
 
 python_version = Version(get_python_version())
 
@@ -36,7 +38,12 @@ class TestRecordingInterface(TestCase):
     def test_stub_multi_segment(self):
         interface = self.multi_segment_recording_interface
         metadata = interface.get_metadata()
-        interface.run_conversion(stub_test=True, metadata=metadata)
+        # Test that assertion is risen when the next statement is run
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="Stub test and channel subset only supported for single segment recordings.",
+        ):
+            interface.run_conversion(stub_test=True, metadata=metadata)
 
 
 class TestAssertions(TestCase):

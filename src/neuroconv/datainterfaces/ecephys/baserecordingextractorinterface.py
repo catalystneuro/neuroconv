@@ -183,6 +183,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         from ...tools.spikeinterface import write_recording
 
         if stub_test or self.subset_channels is not None:
+            assert (
+                self.recording_extractor.get_num_segments() == 1
+            ), "Stub test and channel subset only supported for single segment recordings."
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
