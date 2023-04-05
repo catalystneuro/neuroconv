@@ -7,7 +7,11 @@ import numpy as np
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import make_or_load_nwbfile
-from .utils import get_schema_from_method_signature, load_dict_from_file, dict_deep_update
+from .utils import (
+    dict_deep_update,
+    get_schema_from_method_signature,
+    load_dict_from_file,
+)
 
 
 class BaseDataInterface(ABC):
@@ -165,6 +169,6 @@ class BaseDataInterface(ABC):
         metadata = dict_deep_update(base_metadata, metadata)
 
         with make_or_load_nwbfile(
-                nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
+            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             return self._run_conversion(nwbfile_out, metadata, **conversion_options)

@@ -1,6 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import Optional, Literal
+from typing import Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -32,10 +32,7 @@ from roiextractors import (
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, get_module
-from ...utils import (
-    calculate_regular_series_rate,
-    dict_deep_update,
-)
+from ...utils import calculate_regular_series_rate, dict_deep_update
 
 
 def get_default_ophys_metadata() -> dict:
