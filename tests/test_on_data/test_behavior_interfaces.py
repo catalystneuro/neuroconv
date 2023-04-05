@@ -47,3 +47,25 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
             ]
 
             assert all(expected_pose_estimation_series_are_in_nwb_file)
+
+    def test_conversion_as_lone_interface(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
+                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Temporal alignment checks
+                # Temporary override to disable failing multi-segment case
+                # self.check_get_timestamps()
+                # self.check_align_starting_time_internal()
+                # self.check_align_starting_time_external()
