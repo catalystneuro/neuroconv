@@ -35,6 +35,8 @@ def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType
                             dict(name="Video1", description="This is the first video.."),
                             dict(name="SecondVideo", description="Video #2 details..."),
                 ]
+
+    Returns
     -------
     videos_metadata_unique: list of dict
         if metadata has common names (case when the user intends to put multiple video files
