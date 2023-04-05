@@ -101,14 +101,16 @@ class DeepLabCutInterface(BaseDataInterface):
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
-    def _run_conversion(self, nwbfile: NWBFile):
+    def _run_conversion(self, nwbfile: NWBFile, metadata=None):
         """
         Conversion from DLC output files to nwb. Derived from dlc2nwb library.
 
         Parameters
         ----------
-        nwbfile: NWBFile
+        nwbfile : NWBFile
             NWB file to which the recording information is to be added
+        metadata : dict
+            unused
         """
 
         write_subject_to_nwb(
