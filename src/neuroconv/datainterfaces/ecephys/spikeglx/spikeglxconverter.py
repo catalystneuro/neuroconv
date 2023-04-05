@@ -104,5 +104,4 @@ class SpikeGLXConverter(ConverterPipe):
             verbose=self.verbose,
         ) as nwbfile_out:
             for interface_name, data_interface in self.data_interface_objects.items():
-                print(interface_name)
                 data_interface.run_conversion(nwbfile=nwbfile_out, metadata=metadata)
