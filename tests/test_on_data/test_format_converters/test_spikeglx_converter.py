@@ -9,7 +9,7 @@ from unittest import TestCase
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
 
-from neuroconv import ConverterPipe
+from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.converters import SpikeGLXConverter
 from neuroconv.utils import load_dict_from_file
 
@@ -64,6 +64,18 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         converter_pipe = ConverterPipe(data_interfaces=[spikeglx_converter])
 
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_converter_pipe.nwb"
-        converter_pipe.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+        converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
+
+        self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
+
+    def test_in_nwbconverter(self):
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(SpikeGLX=SpikeGLXConverter)
+
+        source_data = dict(SpikeGLX=dict(folder_path=str(SPIKEGLX_PATH / "Noise4Sam_g0")))
+        converter_pipe = TestConverter(source_data=source_data)
+
+        nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_nwbconverter.nwb"
+        converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)

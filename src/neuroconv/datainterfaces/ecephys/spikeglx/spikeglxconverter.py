@@ -17,7 +17,7 @@ class SpikeGLXConverter(ConverterPipe):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = get_schema_from_method_signature(class_method=cls.__init__, exclude=["streams"])
+        source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["streams"])
         source_schema["properties"]["folder_path"]["description"] = "Path to the folder containing SpikeGLX streams."
         return source_schema
 
@@ -91,7 +91,6 @@ class SpikeGLXConverter(ConverterPipe):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
-        conversion_options: Optional[dict] = None,
     ):
         if metadata is None:
             metadata = self.get_metadata()
@@ -105,6 +104,5 @@ class SpikeGLXConverter(ConverterPipe):
             verbose=self.verbose,
         ) as nwbfile_out:
             for interface_name, data_interface in self.data_interface_objects.items():
-                data_interface.run_conversion(
-                    nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options
-                )
+                print(interface_name)
+                data_interface.run_conversion(nwbfile=nwbfile_out, metadata=metadata)
