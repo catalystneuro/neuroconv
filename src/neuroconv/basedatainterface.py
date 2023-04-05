@@ -163,7 +163,7 @@ class BaseDataInterface(ABC):
         **conversion_options: dict, optional
         """
 
-        assert bool(nwbfile) != bool(nwbfile_path), "You must provide nwbfile or nwbfile_path, but not both."
+        assert not (nwbfile and nwbfile_path), "You cannot provide both nwbfile and nwbfile_path."
 
         base_metadata = self.get_metadata()
         metadata = dict_deep_update(base_metadata, metadata)
