@@ -28,3 +28,10 @@ Convert TIFF imaging data to NWB using
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+
+.. note::
+
+    The :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface` is designed for
+    imaging data where all of the frames are in a multi-page TIFF file. It is not appropriate for datasets where the
+    TIFF data is distributed across many files, for example from Bruker acquisition software.
