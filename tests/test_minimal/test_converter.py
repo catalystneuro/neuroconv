@@ -37,7 +37,7 @@ def test_converter():
             def align_timestamps(self, aligned_timestamps: np.ndarray):
                 self.timestamps = aligned_timestamps
 
-            def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+            def _run_conversion(self, nwbfile: NWBFile, metadata: dict):
                 events = LabeledEvents(
                     name="LabeledEvents",
                     description="events from my experiment",
@@ -75,7 +75,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
             def align_timestamps(self):
                 pass
 
-            def run_conversion(self):
+            def _run_conversion(self):
                 pass
 
         cls.InterfaceA = InterfaceA
@@ -93,7 +93,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
             def align_timestamps(self):
                 pass
 
-            def run_conversion(self):
+            def _run_conversion(self):
                 pass
 
         cls.InterfaceB = InterfaceB

@@ -6,7 +6,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
+from ...utils import get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -126,12 +126,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return recording_extractor
 
-    def run_conversion(
+    def _run_conversion(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
@@ -146,18 +144,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to this location.
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             NWBFile to which the recording information is to be added
         metadata : dict, optional
             metadata info for constructing the NWB file.
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
-        overwrite: bool, default: False
-            Whether to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -206,11 +199,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         write_recording(
             recording=recording,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,

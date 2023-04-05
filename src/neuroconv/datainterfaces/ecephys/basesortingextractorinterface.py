@@ -94,12 +94,10 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return stub_sorting_extractor
 
-    def run_conversion(
+    def _run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
     ):
@@ -108,11 +106,8 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, the context will always write to this location.
-        nwbfile : NWBFile, optional
-            If passed, this function will fill the relevant fields within the NWBFile object.
+        nwbfile : NWBFile
+            Fill the relevant fields within the NWBFile object.
             E.g., calling
                 write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
             will result in the appropriate changes to the my_nwbfile object.
@@ -123,9 +118,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             Should be of the format::
 
                 metadata["Ecephys"]["UnitProperties"] = dict(name=my_name, description=my_description)
-        overwrite : bool, optional
-            Whether to overwrite the NWB file if one exists at the nwbfile_path.
-            The default is False (append mode).
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_ecephys_metadata : bool, default: False
@@ -171,10 +163,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                         )
         write_sorting(
             sorting_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             property_descriptions=property_descriptions,
         )

@@ -9,8 +9,7 @@ from scipy.io.wavfile import read
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _check_duplicates
 from neuroconv.tools.audio import add_acoustic_waveform_series
-from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
-from neuroconv.utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
+from neuroconv.utils import get_base_schema, get_schema_from_hdmf_class
 
 
 def _check_file_paths(file_paths, metadata: dict):
@@ -122,10 +121,9 @@ class AudioInterface(BaseDataInterface):
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
-    def run_conversion(
+    def _run_conversion(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         stub_frames: int = 1000,
@@ -133,16 +131,12 @@ class AudioInterface(BaseDataInterface):
         starting_times: Optional[list] = None,
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
-        overwrite: bool = False,
-        verbose: bool = True,
     ):
         """
 
         Parameters
         ----------
-        nwbfile_path : FilePathType, optional
-            If a file exists at this path, append to it. If not, write the file here.
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             Append to this NWBFile object
         metadata : dict, optional
         stub_test : bool, default: False
@@ -156,8 +150,6 @@ class AudioInterface(BaseDataInterface):
             Dictionary of options for the SliceableDataChunkIterator.
         compression_options : dict, optional
             Dictionary of options for compressing the data for H5DataIO.
-        overwrite : bool, default: False
-        verbose : bool, default: True
 
         Returns
         -------
@@ -175,25 +167,22 @@ class AudioInterface(BaseDataInterface):
 
         starting_times = _check_starting_times(starting_times=starting_times, metadata=audio_metadata_unique)
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            for file_ind, (acoustic_waveform_series_metadata, file_path) in enumerate(
-                zip(audio_metadata_unique, unpacked_file_paths_unique)
-            ):
-                sampling_rate, acoustic_series = read(filename=file_path, mmap=True)
-                if stub_test:
-                    acoustic_series = acoustic_series[:stub_frames]
+        for file_ind, (acoustic_waveform_series_metadata, file_path) in enumerate(
+            zip(audio_metadata_unique, unpacked_file_paths_unique)
+        ):
+            sampling_rate, acoustic_series = read(filename=file_path, mmap=True)
+            if stub_test:
+                acoustic_series = acoustic_series[:stub_frames]
 
-                add_acoustic_waveform_series(
-                    acoustic_series=acoustic_series,
-                    nwbfile=nwbfile_out,
-                    rate=sampling_rate,
-                    metadata=acoustic_waveform_series_metadata,
-                    write_as=write_as,
-                    starting_time=starting_times[file_ind],
-                    iterator_options=iterator_options,
-                    compression_options=compression_options,
-                )
+            add_acoustic_waveform_series(
+                acoustic_series=acoustic_series,
+                nwbfile=nwbfile,
+                rate=sampling_rate,
+                metadata=acoustic_waveform_series_metadata,
+                write_as=write_as,
+                starting_time=starting_times[file_ind],
+                iterator_options=iterator_options,
+                compression_options=compression_options,
+            )
 
-        return nwbfile_out
+        return nwbfile

@@ -89,12 +89,10 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
-    def run_conversion(
+    def _run_conversion(
         self,
-        nwbfile_path: OptionalFilePathType = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
@@ -108,9 +106,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         write_imaging(
             imaging=imaging_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
         )

@@ -5,9 +5,9 @@ from typing import List, Optional
 
 import numpy as np
 from pynwb import NWBFile
-from pynwb.file import Subject
 
-from .utils import get_schema_from_method_signature, load_dict_from_file
+from .tools.nwb_helpers import make_or_load_nwbfile
+from .utils import get_schema_from_method_signature, load_dict_from_file, dict_deep_update
 
 
 class BaseDataInterface(ABC):
@@ -20,12 +20,13 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose: bool = True, **source_data):
         self.source_data = source_data
+        self.verbose = verbose
 
     def get_conversion_options_schema(self):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(self.run_conversion, exclude=["nwbfile", "metadata"])
+        return get_schema_from_method_signature(self._run_conversion, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -129,12 +130,15 @@ class BaseDataInterface(ABC):
         )
 
     @abstractmethod
+    def _run_conversion(self, nwbfile: NWBFile, metadata: Optional[dict] = None, **conversion_options):
+        pass
+
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
         nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
         overwrite: bool = False,
+        metadata: Optional[dict] = None,
         **conversion_options,
     ):
         """
@@ -147,10 +151,20 @@ class BaseDataInterface(ABC):
             If specified, the context will always write to this location.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
-        metadata : dict, optional
-            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        **conversion_options: dict, optional
         """
-        raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
+
+        assert nwbfile ^ nwbfile_path, "You must provide nwbfile or nwbfile_path, but not both."
+
+        base_metadata = self.get_metadata()
+        metadata = dict_deep_update(base_metadata, metadata)
+
+        with make_or_load_nwbfile(
+                nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
+        ) as nwbfile_out:
+            return self._run_conversion(nwbfile_out, metadata, **conversion_options)

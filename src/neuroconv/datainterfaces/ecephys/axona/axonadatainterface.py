@@ -143,15 +143,16 @@ class AxonaPositionDataInterface(BaseDataInterface):
 
     def __init__(self, file_path: str):
         super().__init__(filename=file_path)
-        self.source_data(file_path=file_path)
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+    def _run_conversion(self, nwbfile: NWBFile, metadata: dict):
         """
         Run conversion for this data interface.
+
         Parameters
         ----------
         nwbfile : NWBFile
         metadata : dict
+            unused.
         """
         file_path = self.source_data["file_path"]
 

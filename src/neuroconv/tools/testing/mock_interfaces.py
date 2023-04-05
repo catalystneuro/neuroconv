@@ -21,7 +21,7 @@ class MockBehaviorEventInterface(BaseDataInterface):
         source_schema["additionalProperties"] = True
         return source_schema
 
-    def __init__(self, event_times: Optional[ArrayType] = None):
+    def __init__(self, event_times: Optional[ArrayType] = None, verbose: bool = True):
         """
         Define event times for some behavior.
 
@@ -34,6 +34,7 @@ class MockBehaviorEventInterface(BaseDataInterface):
         event_times = event_times or [1.2, 2.3, 3.4]
         self.event_times = np.array(event_times)
         self.original_event_times = np.array(event_times)  # Make a copy of the initial loaded timestamps
+        self.verbose = verbose
 
     def get_original_timestamps(self) -> np.ndarray:
         return self.original_event_times
@@ -44,7 +45,7 @@ class MockBehaviorEventInterface(BaseDataInterface):
     def align_timestamps(self, aligned_timestamps: np.ndarray):
         self.event_times = aligned_timestamps
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+    def _run_conversion(self, nwbfile: NWBFile, metadata: dict):
         table = DynamicTable(name="BehaviorEvents", description="Times of various classified behaviors.")
         table.add_column(name="event_time", description="Time of each event.")
         for timestamp in self.get_timestamps():  # adding data by column gives error
@@ -111,7 +112,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
         self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
         self.subset_channels = None
-        self.verbose = None
+        self.verbose = False
         self.es_key = "ElectricalSeriesNIDQ"
 
 

@@ -1,5 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
-from typing import Optional
+from typing import Optional, Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -80,12 +80,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
-    def run_conversion(
+    def _run_conversion(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
         include_roi_centroids: bool = True,
@@ -98,12 +96,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType, optional
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             The NWBFile to add the plane segmentation to.
         metadata : dict, optional
             The metadata for the interface
-        overwrite : bool, default: False
         stub_test : bool, default: False
         stub_frames : int, default: 100
         include_roi_centroids : bool, default: True
@@ -144,11 +140,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         write_segmentation(
             segmentation_extractor=segmentation_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,

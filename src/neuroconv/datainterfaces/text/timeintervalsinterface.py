@@ -6,7 +6,6 @@ import numpy as np
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
-from ...tools.nwb_helpers import make_or_load_nwbfile
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import load_dict_from_file
 from ...utils.types import FilePathType
@@ -111,28 +110,24 @@ class TimeIntervalsInterface(BaseDataInterface):
             column=column,
         )
 
-    def run_conversion(
+    def _run_conversion(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         tag: str = "trials",
         column_name_mapping: Dict[str, str] = None,
         column_descriptions: Dict[str, str] = None,
     ):
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            self.time_intervals = convert_df_to_time_intervals(
-                self.dataframe,
-                column_name_mapping=column_name_mapping,
-                column_descriptions=column_descriptions,
-                **metadata["TimeIntervals"][tag],
-            )
-            nwbfile_out.add_time_intervals(self.time_intervals)
+        self.time_intervals = convert_df_to_time_intervals(
+            self.dataframe,
+            column_name_mapping=column_name_mapping,
+            column_descriptions=column_descriptions,
+            **metadata["TimeIntervals"][tag],
+        )
+        nwbfile.add_time_intervals(self.time_intervals)
 
-        return nwbfile_out
+        return nwbfile
 
     @abstractmethod
     def _read_file(self, file_path: FilePathType, **read_kwargs):
