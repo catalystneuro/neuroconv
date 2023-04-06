@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pynwb import NWBHDF5IO
 
-from neuroconv.datainterfaces import DeepLabCutInterface
+from neuroconv.datainterfaces import DeepLabCutInterface, SLEAPInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
@@ -69,3 +69,33 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
                 # self.check_get_timestamps()
                 # self.check_align_starting_time_internal()
                 # self.check_align_starting_time_external()
+
+
+class TestSLEAPInterface(DataInterfaceTestMixin, unittest.TestCase):
+    data_interface_cls = SLEAPInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),
+        video_file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def run_conversion(self, nwbfile_path: str):
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "behavior" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
+            assert "PoseEstimation" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
+            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
+
+            expected_pose_estimation_series_are_in_nwb_file = [
+                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
+            ]
+
+            assert all(expected_pose_estimation_series_are_in_nwb_file)
