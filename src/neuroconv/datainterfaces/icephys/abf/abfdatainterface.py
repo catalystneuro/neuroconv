@@ -142,3 +142,8 @@ class AbfInterface(BaseIcephysInterface):
             iii += 1
 
         return metadata
+
+    def align_starting_time(self, starting_time: float):
+        number_of_segments = self.readers_list[0].header["nb_segment"][0]
+        for segment_index in range(number_of_segments):
+            self.readers_list[0]._t_starts[segment_index] += starting_time
