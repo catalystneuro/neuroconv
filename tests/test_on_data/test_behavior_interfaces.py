@@ -87,15 +87,23 @@ class TestSLEAPInterface(DataInterfaceTestMixin, unittest.TestCase):
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
+            assert "SLEAP_VIDEO_000_20190128_113421" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"].data_interfaces
+            assert "track=track_0" in processing_module_interfaces
 
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
-
-            expected_pose_estimation_series_are_in_nwb_file = [
-                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
+            pose_estimation_series_in_nwb = processing_module_interfaces["track=track_0"].pose_estimation_series
+            expected_pose_estimation_series = [
+                "abdomen",
+                "eyeL",
+                "eyeR",
+                "forelegL4",
+                "forelegR4",
+                "head" "hindlegL4",
+                "hindlegR4",
+                "midlegL4",
+                "midlegR4",
+                "thorax",
+                "wingL",
+                "wingR",
             ]
-
-            assert all(expected_pose_estimation_series_are_in_nwb_file)
+            self.assertCountEqual(first=pose_estimation_series_in_nwb, second=expected_pose_estimation_series)

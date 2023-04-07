@@ -57,6 +57,7 @@ class DataInterfaceTestMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
+    maxDiff = None
 
     def test_source_schema_valid(self):
         schema = self.data_interface_cls.get_source_schema()
