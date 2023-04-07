@@ -15,6 +15,7 @@ from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
+from neuroconv.tools.testing.data_interface_mixins import AudioInterfaceTestMixin
 from neuroconv.utils import FilePathType
 
 
@@ -37,7 +38,7 @@ def create_audio_files(
     return audio_file_names
 
 
-class TestAudioInterface(TestCase):
+class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
@@ -53,6 +54,8 @@ class TestAudioInterface(TestCase):
             sampling_rate=cls.sampling_rate,
             num_frames=cls.num_frames,
         )
+        cls.data_interface_cls = AudioInterface
+        cls.interface_kwargs = dict(file_paths=cls.file_paths)
 
     def setUp(self):
         self.nwbfile_path = str(self.test_dir / "audio_test.nwb")

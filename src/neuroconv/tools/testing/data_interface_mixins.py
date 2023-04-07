@@ -15,6 +15,7 @@ from spikeinterface.core.testing import check_recordings_equal, check_sortings_e
 from spikeinterface.extractors import NwbRecordingExtractor, NwbSortingExtractor
 
 from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv.datainterfaces import AudioInterface
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -291,3 +292,8 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                 # self.check_get_timestamps()
                 # self.check_align_starting_time_internal()
                 # self.check_align_starting_time_external()
+
+
+class AudioInterfaceTestMixin(DataInterfaceTestMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        pass  # TODO?
