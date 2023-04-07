@@ -49,10 +49,11 @@ class SLEAPInterface(BaseDataInterface):
                 "Unable to fetch the original timestamps from the video! "
                 "Please specify 'video_file_path' when initializing the interface."
             )
-        return extract_timestamps(self.video_file_path)
+        return np.array(extract_timestamps(self.video_file_path))
 
     def get_timestamps(self) -> np.ndarray:
-        return self._timestamps or self.get_original_timestamps()
+        timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
+        return timestamps
 
     def align_timestamps(self, aligned_timestamps: np.ndarray):
         self._timestamps = aligned_timestamps
