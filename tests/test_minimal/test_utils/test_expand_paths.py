@@ -1,8 +1,7 @@
 import os
 from pathlib import Path
 
-from neuroconv.utils import expand_paths
-
+from neuroconv.utils import LocalPathExpander
 
 #  helper functions to test for equivalence between set-like lists of dicts.
 def freeze(obj):
@@ -20,6 +19,9 @@ def are_equivalent_lists(list1, list2):
 
 
 def test_expand_paths(tmpdir):
+
+    expander = LocalPathExpander()
+
     # set up directory for parsing
     base = Path(tmpdir)
     for subject_id in ("001", "002"):
@@ -30,11 +32,16 @@ def test_expand_paths(tmpdir):
             (base / f"sub-{subject_id}" / f"session_{session_id}" / "xyz").touch()
 
     # run path parsing
-    out = expand_paths(
-        base,
+    out = expander.expand_paths(
         dict(
-            aa=dict(file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "abc")),
-            bb=dict(file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "xyz")),
+            aa=dict(
+                folder=base, 
+                file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "abc") 
+            ),
+            bb=dict(
+                folder=base, 
+                file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "xyz")
+            ),
         ),
     )
 

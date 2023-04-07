@@ -1,4 +1,4 @@
-from path_expansion import LocalPathExpander
+from .path_expansion import LocalPathExpander
 
 from .checks import calculate_regular_series_rate
 from .dict import (

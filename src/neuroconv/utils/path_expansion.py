@@ -85,7 +85,7 @@ class AbstractPathExpander(abc.ABC):
         for interface, source_data in source_data_spec.items():
             for path_type in ("file_path", "folder_path"):
                 if path_type in source_data:
-                    for path, metadata in self.extract_metadata(source_data["folder"], source_data["paths"][path_type]):
+                    for path, metadata in self.extract_metadata(source_data["folder"], source_data[path_type]):
                         key = tuple(sorted(metadata.items()))
                         out[key]["source_data"][interface][path_type] = path
                         if "session_id" in metadata:
@@ -95,10 +95,11 @@ class AbstractPathExpander(abc.ABC):
         return list(_unddict(out).values())
 
 
-class LocalPathExpander(object):
+class LocalPathExpander(AbstractPathExpander):
     def __init__(self):
         pass
 
     def list_directory(self, folder: Union[FilePathType, FolderPathType]):
-        li = glob(os.path.join(str(folder), "**", "*"), recursive=True)
-        yield (x[len(folder) + 1 :] for x in li)
+        folder_str = str(folder)
+        li = glob(os.path.join(folder_str, "**", "*"), recursive=True)
+        return (x[len(folder_str) + 1 :] for x in li)
