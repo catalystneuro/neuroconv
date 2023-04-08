@@ -32,9 +32,6 @@ def _unddict(d):
 
 
 class AbstractPathExpander(abc.ABC):
-    @abc.abstractmethod
-    def __init__(self, *args, **kwargs):
-        pass
 
     def extract_metadata(self, folder, format_: str):
         for filepath in self.list_directory(folder):
