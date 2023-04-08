@@ -93,8 +93,6 @@ class AbstractPathExpander(abc.ABC):
 
 
 class LocalPathExpander(AbstractPathExpander):
-    def __init__(self):
-        pass
 
     def list_directory(self, folder: Union[FilePathType, FolderPathType]):
         folder_str = str(folder)
