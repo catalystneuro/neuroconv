@@ -3,6 +3,7 @@ from pathlib import Path
 
 from neuroconv.utils import LocalPathExpander
 
+
 #  helper functions to test for equivalence between set-like lists of dicts.
 def freeze(obj):
     if isinstance(obj, dict):
@@ -19,7 +20,6 @@ def are_equivalent_lists(list1, list2):
 
 
 def test_expand_paths(tmpdir):
-
     expander = LocalPathExpander()
 
     # set up directory for parsing
@@ -34,14 +34,8 @@ def test_expand_paths(tmpdir):
     # run path parsing
     out = expander.expand_paths(
         dict(
-            aa=dict(
-                folder=base, 
-                file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "abc") 
-            ),
-            bb=dict(
-                folder=base, 
-                file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "xyz")
-            ),
+            aa=dict(folder=base, file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "abc")),
+            bb=dict(folder=base, file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "xyz")),
         ),
     )
 

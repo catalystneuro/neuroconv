@@ -1,5 +1,3 @@
-from .path_expansion import LocalPathExpander
-
 from .checks import calculate_regular_series_rate
 from .dict import (
     append_replace_dict_in_list,
@@ -16,6 +14,7 @@ from .json_schema import (
     get_schema_from_method_signature,
     unroot_schema,
 )
+from .path_expansion import LocalPathExpander
 from .types import (
     ArrayType,
     FilePathType,
