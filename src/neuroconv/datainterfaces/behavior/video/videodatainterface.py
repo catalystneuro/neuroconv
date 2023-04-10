@@ -35,6 +35,8 @@ def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType
                             dict(name="Video1", description="This is the first video.."),
                             dict(name="SecondVideo", description="Video #2 details..."),
                 ]
+
+    Returns
     -------
     videos_metadata_unique: list of dict
         if metadata has common names (case when the user intends to put multiple video files
@@ -70,7 +72,7 @@ class VideoInterface(BaseDataInterface):
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         """
-        get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         super().__init__(file_paths=file_paths)
 

@@ -23,3 +23,6 @@ experiments:
             session_start_time: "2020-10-09T21:19:09+00:00"
           Subject:
             subject_id: "1"
+            sex: F
+            age: P35D
+            species: Mus musculus

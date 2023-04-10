@@ -18,7 +18,7 @@ from ...utils import (
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     """Parent class for all SegmentationExtractorInterfaces."""
 
-    ExtractorModuleName: Optional[str] = "roiextractors"
+    ExtractorModuleName = "roiextractors"
 
     def __init__(self, **source_data):
         super().__init__(**source_data)

@@ -12,7 +12,8 @@ from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
     """Parent class for all RecordingExtractorInterfaces."""
 
-    ExtractorModuleName: Optional[str] = "spikeinterface.extractors"
+    keywords = BaseExtractorInterface.keywords + ["extracellular electrophysiology", "voltage", "recording"]
+    ExtractorModuleName = "spikeinterface.extractors"
 
     def __init__(self, verbose: bool = True, es_key: str = "ElectricalSeries", **source_data):
         """
@@ -109,14 +110,20 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        kwargs = dict()
-        if stub_test:
-            num_frames = 100
-            end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
-            kwargs.update(end_frame=end_frame)
-        if self.subset_channels is not None:
-            kwargs.update(channel_ids=self.subset_channels)
-        recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
+        from spikeinterface.core.segmentutils import ConcatenateSegmentRecording
+
+        max_frames = 100
+
+        recording_extractor = self.recording_extractor
+        number_of_segments = recording_extractor.get_num_segments()
+        recording_segments = [recording_extractor.select_segments([index]) for index in range(number_of_segments)]
+        end_frame_list = [min(max_frames, segment.get_num_frames()) for segment in recording_segments]
+        recording_segments_stubbed = [
+            segment.frame_slice(start_frame=0, end_frame=end_frame)
+            for segment, end_frame in zip(recording_segments, end_frame_list)
+        ]
+        recording_extractor = ConcatenateSegmentRecording(recording_segments_stubbed)
+
         return recording_extractor
 
     def run_conversion(
@@ -175,9 +182,20 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 buffer_gb : float, default: 1.0
                     In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
                     buffer shape.
+                buffer_shape : tuple, optional
+                    Manual specification of buffer shape to return on each iteration.
+                    Must be a multiple of chunk_shape along each axis.
+                    Cannot be set if `buffer_gb` is specified.
                 chunk_mb : float. default: 1.0
                     Should be below 1 MB. Automatically calculates suitable chunk shape.
-            If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
+                chunk_shape : tuple, optional
+                    Manual specification of the internal chunk shape for the HDF5 dataset.
+                    Cannot be set if `chunk_mb` is also specified.
+                display_progress : bool, default: False
+                    Display a progress bar with iteration rate and estimated completion time.
+                progress_bar_options : dict, optional
+                    Dictionary of keyword arguments to be passed directly to tqdm.
+                    See https://github.com/tqdm/tqdm#parameters for options.
         """
         from ...tools.spikeinterface import write_recording
 
