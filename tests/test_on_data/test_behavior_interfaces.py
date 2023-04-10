@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pynwb import NWBHDF5IO
 
-from neuroconv.datainterfaces import DeepLabCutInterface
+from neuroconv.datainterfaces import DeepLabCutInterface, VideoInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
@@ -69,3 +69,15 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
                 # self.check_get_timestamps()
                 # self.check_align_starting_time_internal()
                 # self.check_align_starting_time_external()
+
+
+class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
+    data_interface_cls = VideoInterface
+    interface_kwargs = [
+        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")),
+        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")),
+        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")),
+        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")),
+        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")),
+    ]
+    save_directory = OUTPUT_PATH
