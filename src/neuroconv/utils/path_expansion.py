@@ -32,7 +32,6 @@ def _unddict(d):
 
 
 class AbstractPathExpander(abc.ABC):
-
     def extract_metadata(self, folder, format_: str):
         for filepath in self.list_directory(folder):
             result = parse(format_, filepath)
@@ -93,7 +92,6 @@ class AbstractPathExpander(abc.ABC):
 
 
 class LocalPathExpander(AbstractPathExpander):
-
     def list_directory(self, folder: Union[FilePathType, FolderPathType]):
         folder_str = str(folder)
         li = glob(os.path.join(folder_str, "**", "*"), recursive=True)
