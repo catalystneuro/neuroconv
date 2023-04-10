@@ -84,7 +84,7 @@ class AbstractPathExpander(abc.ABC):
                 if path_type in source_data:
                     for path, metadata in self.extract_metadata(source_data["folder"], source_data[path_type]):
                         key = tuple(sorted(metadata.items()))
-                        out[key]["source_data"][interface][path_type] = path
+                        out[key]["source_data"][interface][path_type] = os.path.join(source_data["folder"], path) # return the absolute path
                         if "session_id" in metadata:
                             out[key]["metadata"]["NWBFile"]["session_id"] = metadata["session_id"]
                         if "subject_id" in metadata:
