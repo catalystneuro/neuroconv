@@ -1,48 +1,23 @@
+import json
 from pathlib import Path
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 from warnings import warn
 
 import numpy as np
+import scipy
 from pynwb import NWBFile, TimeSeries
-from scipy.io.wavfile import read
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _check_duplicates
 from neuroconv.tools.audio import add_acoustic_waveform_series
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
-from neuroconv.utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
-
-
-def _check_file_paths(file_paths, metadata: dict):
-    number_of_file_paths = len(file_paths)
-    assert len(metadata) == number_of_file_paths, (
-        f"Incomplete metadata, the number of metadata for Audio is ({len(metadata)}) "
-        f"is not equal to the number of expected metadata ({number_of_file_paths})."
-    )
+from neuroconv.utils import FilePathType, get_base_schema
 
 
 def _check_audio_names_are_unique(metadata: dict):
     neurodata_names = [neurodata["name"] for neurodata in metadata]
     neurodata_names_are_unique = len(set(neurodata_names)) == len(neurodata_names)
     assert neurodata_names_are_unique, f"Some of the names for Audio metadata are not unique."
-
-
-def _check_starting_times(starting_times: list, metadata: dict) -> list:
-    if starting_times is not None:
-        assert isinstance(starting_times, list) and all(
-            [isinstance(x, float) for x in starting_times]
-        ), "Argument 'starting_times' must be a list of floats."
-
-    if len(metadata) == 1 and starting_times is None:
-        warn("starting_times not provided, setting to 0.0")
-        starting_times = [0.0]
-
-    assert len(starting_times) == len(metadata), (
-        f"The number of entries in 'starting_times' ({len(starting_times)}) must be equal to number of unique "
-        f"AcousticWaveformSeries ({len(metadata)}). \n"
-        f"'starting_times' provided as input {starting_times}."
-    )
-    return starting_times
 
 
 class AudioInterface(BaseDataInterface):
@@ -70,14 +45,23 @@ class AudioInterface(BaseDataInterface):
                 "The currently supported file format for audio is WAV file. "
                 f"Some of the provided files does not match this format: {format_is_not_supported}."
             )
+
+        self._number_of_audio_files = len(file_paths)
         self.verbose = verbose
         super().__init__(file_paths=file_paths)
+        self._starting_times = None
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
-        time_series_metadata_schema = get_schema_from_hdmf_class(TimeSeries)
-        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+
+        time_series_metadata_schema_path = (
+            Path(__file__).parent.parent.parent.parent / "schemas" / "time_series_schema.json"
+        )
+        with open(file=time_series_metadata_schema_path) as fp:
+            time_series_metadata_schema = json.load(fp=fp)
         time_series_metadata_schema.update(required=["name"])
+
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"].update(
             required=["Audio"],
             properties=dict(
@@ -107,20 +91,27 @@ class AudioInterface(BaseDataInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
+        raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+
+    def get_timestamps(self) -> Optional[np.ndarray]:
+        raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+
+    def align_timestamps(self, aligned_timestamps: List[np.ndarray]):
+        raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+
+    def align_starting_time(self, starting_times: List[float]):
+        assert isinstance(starting_times, list) and all(
+            [isinstance(x, float) for x in starting_times]
+        ), "Argument 'starting_times' must be a list of floats."
+        assert len(starting_times) == self._number_of_audio_files, (
+            f"The number of entries in 'starting_times' ({len(starting_times)}) must be equal to the number of "
+            f"audio file paths ({self._number_of_audio_files})."
         )
 
-    def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
-        )
+        self._starting_times = starting_times
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
-        )
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+        raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def run_conversion(
         self,
@@ -130,14 +121,12 @@ class AudioInterface(BaseDataInterface):
         stub_test: bool = False,
         stub_frames: int = 1000,
         write_as: Literal["stimulus", "acquisition"] = "stimulus",
-        starting_times: Optional[list] = None,
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
         overwrite: bool = False,
         verbose: bool = True,
     ):
         """
-
         Parameters
         ----------
         nwbfile_path : FilePathType, optional
@@ -150,8 +139,6 @@ class AudioInterface(BaseDataInterface):
         write_as : {'stimulus', 'acquisition'}
             The acoustic waveform series can be added to the NWB file either as
             "stimulus" or as "acquisition".
-        starting_times : list, optional
-            Starting time for each AcousticWaveformSeries
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
         compression_options : dict, optional
@@ -162,26 +149,31 @@ class AudioInterface(BaseDataInterface):
         Returns
         -------
         NWBFile
-
         """
         file_paths = self.source_data["file_paths"]
         audio_metadata = metadata["Behavior"]["Audio"]
-        # Checks for metadata
-        _check_file_paths(file_paths=file_paths, metadata=audio_metadata)
         _check_audio_names_are_unique(metadata=audio_metadata)
+        assert len(audio_metadata) == self._number_of_audio_files, (
+            f"The Audio metadata is incomplete ({len(audio_metadata)} entry)! "
+            f"Expected {self._number_of_audio_files} (one for each entry of 'file_paths')."
+        )
 
         audio_metadata_unique, file_paths_unique = _check_duplicates(audio_metadata, file_paths)
         unpacked_file_paths_unique = [file_path[0] for file_path in file_paths_unique]
 
-        starting_times = _check_starting_times(starting_times=starting_times, metadata=audio_metadata_unique)
+        if self._number_of_audio_files > 1 and self._starting_times is None:
+            raise ValueError(
+                "If you have multiple audio files, then you must specify each starting time with '.align_starting_time(...)'!"
+            )
+        starting_times = self._starting_times or [0.0]
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-            for file_ind, (acoustic_waveform_series_metadata, file_path) in enumerate(
+            for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(
                 zip(audio_metadata_unique, unpacked_file_paths_unique)
             ):
-                sampling_rate, acoustic_series = read(filename=file_path, mmap=True)
+                sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
                 if stub_test:
                     acoustic_series = acoustic_series[:stub_frames]
 
@@ -191,7 +183,7 @@ class AudioInterface(BaseDataInterface):
                     rate=sampling_rate,
                     metadata=acoustic_waveform_series_metadata,
                     write_as=write_as,
-                    starting_time=starting_times[file_ind],
+                    starting_time=starting_times[file_index],
                     iterator_options=iterator_options,
                     compression_options=compression_options,
                 )

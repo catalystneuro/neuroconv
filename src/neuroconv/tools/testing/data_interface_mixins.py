@@ -126,6 +126,9 @@ class DataInterfaceTestMixin:
         expected_timestamps = unaligned_timestamps + starting_time
         assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
 
+    def check_align_starting_time_external(self):
+        pass  # TODO: generalize
+
     def check_align_timestamps_internal(self):
         unaligned_timestamps = self.interface.get_original_timestamps()
 
@@ -134,9 +137,6 @@ class DataInterfaceTestMixin:
 
         retrieved_aligned_timestamps = self.interface.get_timestamps()
         assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
-
-    def check_align_starting_time_external(self):
-        pass  # TODO: generalize
 
     def test_conversion_as_lone_interface(self):
         interface_kwargs = self.interface_kwargs
@@ -297,3 +297,12 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
 class AudioInterfaceTestMixin(DataInterfaceTestMixin):
     def check_read_nwb(self, nwbfile_path: str):
         pass  # TODO?
+
+    def check_get_timestamps(self):
+        pass  # TODO - add timestamps support
+
+    def check_align_starting_time_internal(self):
+        pass  # TODO - cannot test internal adjustment until timestamp support
+
+    def check_align_starting_time_external(self):
+        pass  # This is tested in 'test_run_conversion' of 'test_audio_interface.py'
