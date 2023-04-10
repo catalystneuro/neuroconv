@@ -2,7 +2,6 @@ from typing import Literal, Optional
 from warnings import warn
 
 from hdmf.backends.hdf5 import H5DataIO
-from ndx_sound import AcousticWaveformSeries
 from pynwb import NWBFile
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
@@ -50,6 +49,8 @@ def add_acoustic_waveform_series(
     -------
         The nwbfile passed as an input with the AcousticWaveformSeries added.
     """
+    from ndx_sound import AcousticWaveformSeries
+    
     assert write_as in [
         "stimulus",
         "acquisition",
