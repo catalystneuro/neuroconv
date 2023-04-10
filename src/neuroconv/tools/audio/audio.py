@@ -50,7 +50,7 @@ def add_acoustic_waveform_series(
         The nwbfile passed as an input with the AcousticWaveformSeries added.
     """
     from ndx_sound import AcousticWaveformSeries
-    
+
     assert write_as in [
         "stimulus",
         "acquisition",
