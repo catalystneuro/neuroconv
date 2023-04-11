@@ -10,7 +10,7 @@ from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import MovieInterface
+from neuroconv.datainterfaces import VideoInterface
 
 try:
     import cv2
@@ -21,7 +21,7 @@ except ImportError:
 
 
 @unittest.skipIf(skip_test, "cv2 not installed")
-class TestMovieInterface(TestCase):
+class TestVideoInterface(TestCase):
     def setUp(self) -> None:
         self.test_dir = Path(tempfile.mkdtemp())
         self.video_files = self.create_videos()
@@ -71,14 +71,14 @@ class TestMovieInterface(TestCase):
         return [video_file1, video_file2]
 
     def create_video_converter(self):
-        class MovieTestNWBConverter(NWBConverter):
-            data_interface_classes = dict(Movie=MovieInterface)
+        class VideoTestNWBConverter(NWBConverter):
+            data_interface_classes = dict(Video=VideoInterface)
 
-        source_data = dict(Movie=dict(file_paths=self.video_files))
-        return MovieTestNWBConverter(source_data)
+        source_data = dict(Video=dict(file_paths=self.video_files))
+        return VideoTestNWBConverter(source_data)
 
     def test_video_starting_times(self):
-        conversion_opts = dict(Movie=dict(starting_times=self.starting_times, external_mode=False))
+        conversion_opts = dict(Video=dict(starting_times=self.starting_times, external_mode=False))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -89,13 +89,13 @@ class TestMovieInterface(TestCase):
             nwbfile = io.read()
             mod = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for no in range(len(metadata["Behavior"]["Movies"])):
-                video_interface_name = metadata["Behavior"]["Movies"][no]["name"]
+            for no in range(len(metadata["Behavior"]["Videos"])):
+                video_interface_name = metadata["Behavior"]["Videos"][no]["name"]
                 assert video_interface_name in mod
                 assert self.starting_times[no] == mod[video_interface_name].starting_time
 
     def test_video_no_starting_times(self):
-        conversion_opts = dict(Movie=dict(external_mode=False))
+        conversion_opts = dict(Video=dict(external_mode=False))
         with self.assertRaises(ValueError):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
@@ -105,10 +105,10 @@ class TestMovieInterface(TestCase):
             )
 
     def test_video_no_starting_times_with_exernal_mode(self):
-        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0, 0]]))
+        conversion_opts = dict(Video=dict(external_mode=True, starting_frames=[[0, 0]]))
         metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Movies"][0]["name"]
-        metadata["Behavior"]["Movies"][1]["name"] = video_interface_name
+        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
+        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -125,7 +125,7 @@ class TestMovieInterface(TestCase):
         module_name = "TestModule"
         module_description = "This is a test module."
         conversion_opts = dict(
-            Movie=dict(
+            Video=dict(
                 starting_times=self.starting_times,
                 external_mode=False,
                 module_name=module_name,
@@ -145,7 +145,7 @@ class TestMovieInterface(TestCase):
 
     def test_video_chunking(self):
         conv_ops = dict(
-            Movie=dict(external_mode=False, stub_test=True, starting_times=self.starting_times, chunk_data=False)
+            Video=dict(external_mode=False, stub_test=True, starting_times=self.starting_times, chunk_data=False)
         )
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path, overwrite=True, conversion_options=conv_ops, metadata=self.metadata
@@ -155,12 +155,12 @@ class TestMovieInterface(TestCase):
             nwbfile = io.read()
             mod = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for video_metadata in metadata["Behavior"]["Movies"]:
+            for video_metadata in metadata["Behavior"]["Videos"]:
                 video_interface_name = video_metadata["name"]
                 assert mod[video_interface_name].data.chunks is not None  # TODO retrieve storage_layout of hdf5 dataset
 
     def test_video_external_mode(self):
-        conversion_opts = dict(Movie=dict(starting_times=self.starting_times, external_mode=True))
+        conversion_opts = dict(Video=dict(starting_times=self.starting_times, external_mode=True))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -171,15 +171,15 @@ class TestMovieInterface(TestCase):
             nwbfile = io.read()
             mod = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for index, video_metadata in enumerate(metadata["Behavior"]["Movies"]):
+            for index, video_metadata in enumerate(metadata["Behavior"]["Videos"]):
                 video_interface_name = video_metadata["name"]
                 assert mod[video_interface_name].external_file[0] == str(self.video_files[index])
 
     def test_video_duplicate_names_with_external_mode(self):
-        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0, 0]]))
+        conversion_opts = dict(Video=dict(external_mode=True, starting_frames=[[0, 0]]))
         metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Movies"][0]["name"]
-        metadata["Behavior"]["Movies"][1]["name"] = video_interface_name
+        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
+        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -194,10 +194,10 @@ class TestMovieInterface(TestCase):
             assert len(mod[video_interface_name].external_file) == 2
 
     def test_external_mode_assertion_with_video_name_duplication(self):
-        conversion_opts = dict(Movie=dict(external_mode=False))
+        conversion_opts = dict(Video=dict(external_mode=False))
         metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Movies"][0]["name"]
-        metadata["Behavior"]["Movies"][1]["name"] = video_interface_name
+        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
+        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
         with self.assertRaises(AssertionError):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
@@ -209,7 +209,7 @@ class TestMovieInterface(TestCase):
     def test_video_stub(self):
         timestamps = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15]
         conversion_opts = dict(
-            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=False, stub_test=True)
+            Video=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=False, stub_test=True)
         )
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
@@ -221,15 +221,15 @@ class TestMovieInterface(TestCase):
             nwbfile = io.read()
             mod = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for no in range(len(metadata["Behavior"]["Movies"])):
-                video_interface_name = metadata["Behavior"]["Movies"][no]["name"]
+            for no in range(len(metadata["Behavior"]["Videos"])):
+                video_interface_name = metadata["Behavior"]["Videos"][no]["name"]
                 assert mod[video_interface_name].data.shape[0] == 10
                 assert mod[video_interface_name].timestamps.shape[0] == 10
 
     def test_video_irregular_timestamps(self):
         timestamps = [1, 2, 4]
         conversion_opts = dict(
-            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
+            Video=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
         )
 
         self.nwb_converter.run_conversion(
@@ -243,14 +243,14 @@ class TestMovieInterface(TestCase):
             nwbfile = io.read()
             acquisition_module = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for video_metadata in metadata["Behavior"]["Movies"]:
+            for video_metadata in metadata["Behavior"]["Videos"]:
                 video_interface_name = video_metadata["name"]
                 np.testing.assert_array_equal(timestamps, acquisition_module[video_interface_name].timestamps[:])
 
     def test_video_regular_timestamps(self):
         timestamps = [2.2, 2.4, 2.6]
         conversion_opts = dict(
-            Movie=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
+            Video=dict(starting_times=self.starting_times, timestamps=timestamps, external_mode=True)
         )
 
         expected_warn_msg = (
@@ -269,17 +269,17 @@ class TestMovieInterface(TestCase):
             nwbfile = io.read()
             acquisition_module = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for video_metadata in metadata["Behavior"]["Movies"]:
+            for video_metadata in metadata["Behavior"]["Videos"]:
                 video_interface_name = video_metadata["name"]
                 expected_rate = round(1 / (timestamps[1] - timestamps[0]), 2)
                 assert acquisition_module[video_interface_name].rate == expected_rate
                 assert acquisition_module[video_interface_name].timestamps is None
 
     def test_starting_frames_type_error(self):
-        conversion_opts = dict(Movie=dict(external_mode=True))
+        conversion_opts = dict(Video=dict(external_mode=True))
         metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Movies"][0]["name"]
-        metadata["Behavior"]["Movies"][1]["name"] = video_interface_name
+        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
+        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
 
         with self.assertRaisesWith(
             exc_type=TypeError,
@@ -293,10 +293,10 @@ class TestMovieInterface(TestCase):
             )
 
     def test_starting_frames_value_error(self):
-        conversion_opts = dict(Movie=dict(external_mode=True, starting_frames=[[0]]))
+        conversion_opts = dict(Video=dict(external_mode=True, starting_frames=[[0]]))
         metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Movies"][0]["name"]
-        metadata["Behavior"]["Movies"][1]["name"] = video_interface_name
+        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
+        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
 
         with self.assertRaisesWith(
             exc_type=ValueError,
