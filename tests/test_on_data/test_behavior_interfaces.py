@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime
+from pathlib import Path
 
 from pynwb import NWBHDF5IO
 
@@ -74,10 +75,17 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
 class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
     data_interface_cls = VideoInterface
     interface_kwargs = [
-        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")),
-        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")),
-        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")),
-        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")),
-        dict(file_path=str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")]),
     ]
     save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            print(nwbfile.acquisition)
+            video_type = Path(self.test_kwargs["file_paths"][0]).suffix[1:]
+            assert f"Video: video_{video_type}" in nwbfile.acquisition
