@@ -8,7 +8,7 @@ from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
 
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import DeepLabCutInterface, VideoInterface, SLEAPInterface
+from neuroconv.datainterfaces import DeepLabCutInterface, SLEAPInterface, VideoInterface
 
 # enable to run locally in interactive mode
 try:
