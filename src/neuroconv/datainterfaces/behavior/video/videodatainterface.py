@@ -74,6 +74,8 @@ class VideoInterface(BaseDataInterface):
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
+        self._number_of_files = len(file_paths)
+        self._timestamps = None
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -108,21 +110,114 @@ class VideoInterface(BaseDataInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def get_original_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+        """
+        Retrieve the original unaltered timestamps for the data in this interface.
+
+        This function should retrieve the data on-demand by re-initializing the IO.
+
+        Returns
+        -------
+        timestamps : numpy.ndarray
+            The timestamps for the data stream.
+        stub_test : bool, default: False
+            This method scans through each video; a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        max_frames = 10 if stub_test else None
+        timestamps = list()
+        for j, file_path in enumerate(self.source_data["file_paths"]):
+            with VideoCaptureContext(file_path=str(file_path)) as video:
+                # fps = video.get_video_fps()  # There is some debate about whether the OpenCV timestamp
+                # method is simply returning range(length) / fps 100% of the time for any given format
+                timestamps.append(video.get_video_timestamps(max_frames=max_frames))
+        return timestamps
+
+    def get_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        timestamps : numpy.ndarray
+            The timestamps for the data stream.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
+
+    def align_timestamps(self, aligned_timestamps: List[np.ndarray]):
+        """
+        Replace all timestamps for this interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_timestamps : list of numpy.ndarray
+            The synchronized timestamps for data in this interface.
+        """
+        self._timestamps = aligned_timestamps
+
+    def align_starting_time(self, starting_time: float):
         raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
+            "The VideoInterface operates on a list of file paths; to reduce ambiguity, please choose "
+            "between `align_global_starting_time` (shift starting time of each video by the same value) "
+            "and `align_starting_times` (specify a list of values to use in shifting the starting time for each video)."
         )
 
-    def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+    def align_global_starting_time(self, starting_time: float, stub_test: bool = False):
+        """
+        Align all starting times for all videos in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_time : float
+            The starting time for all temporal data in this interface.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        self.align_timestamps(
+            aligned_timestamps=[timestamps + starting_time for timestamps in self.get_timestamps(stub_test=stub_test)]
         )
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+    def align_starting_times(self, starting_times: List[float], stub_test: bool = False):
+        """
+        Align the individual starting time for each video in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_times : list of floats
+            The relative starting times of each video.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        self.align_timestamps(
+            aligned_timestamps=[
+                timestamps + starting_time
+                for timestamps, starting_time in zip(self.get_timestamps(stub_test=stub_test), starting_times)
+            ]
         )
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+        raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
 
     def run_conversion(
         self,
@@ -132,9 +227,7 @@ class VideoInterface(BaseDataInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_times: Optional[list] = None,
         starting_frames: Optional[list] = None,
-        timestamps: Optional[list] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
@@ -181,14 +274,9 @@ class VideoInterface(BaseDataInterface):
         external_mode : bool, default: True
             :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external video files.
             If True, this utilizes the more efficient method of writing the relative path to the video files (recommended).
-        starting_times : list, optional
-            List of start times for each video. If unspecified, assumes that the videos in the file_paths list are in
-            sequential order and are contiguous.
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             Required if more than one path is specified per ImageSeries in external mode.
-        timestamps : list, optional
-            List of timestamps for the videos. If unspecified, timestamps are extracted from each video data.
         chunk_data : bool, default: True
             If True, uses a DataChunkIterator to read and write the video, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
@@ -210,11 +298,6 @@ class VideoInterface(BaseDataInterface):
         """
         file_paths = self.source_data["file_paths"]
 
-        if starting_times is not None:
-            assert isinstance(starting_times, list) and all(
-                [isinstance(x, float) for x in starting_times]
-            ), "Argument 'starting_times' must be a list of floats."
-
         videos_metadata = metadata.get("Behavior", dict()).get("Movies", None)
         if videos_metadata is None:
             videos_metadata = self.get_metadata()["Behavior"]["Movies"]
@@ -233,34 +316,16 @@ class VideoInterface(BaseDataInterface):
 
         videos_metadata_unique, file_paths_list = _check_duplicates(videos_metadata, file_paths)
 
-        if starting_times is not None:
-            assert len(starting_times) == len(videos_metadata_unique), (
-                f"starting times list length {len(starting_times)} must be equal to number of unique "
-                f"ImageSeries {len(videos_metadata_unique)} \n"
-                f"Movies metadata provided as input {videos_metadata} \n"
-                f"starting times = {starting_times} \n"
-                f"Image series after _check_duplicates {videos_metadata_unique}"
-            )
-        else:
-            if len(videos_metadata_unique) == 1:
-                warn("starting_times not provided, setting to 0.0")
-                starting_times = [0.0]
-            else:
-                raise ValueError("provide starting times as a list of len " f"{len(videos_metadata_unique)}")
-
         # Iterate over unique videos
         stub_frames = 10
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
+            all_video_timestamps = self.get_timestamps(stub_test=stub_test)
             for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
+                video_timestamps = all_video_timestamps[j]
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_video_fps()
-                    max_frames = stub_frames if stub_test else None
-                    extracted_timestamps = vc.get_video_timestamps(max_frames)
-                    video_timestamps = (
-                        starting_times[j] + extracted_timestamps if timestamps is None else timestamps[:max_frames]
-                    )
 
                 if external_mode:
                     num_files = len(file_list)
@@ -354,7 +419,7 @@ class VideoInterface(BaseDataInterface):
                         )
                     # Add the rate rounded to two decimals
                     rounded_rate = round(rate, 2)
-                    image_series_kwargs.update(starting_time=starting_times[j], rate=rounded_rate)
+                    image_series_kwargs.update(starting_time=video_timestamps[0], rate=rounded_rate)
                 else:
                     image_series_kwargs.update(timestamps=video_timestamps)
 
@@ -367,11 +432,3 @@ class VideoInterface(BaseDataInterface):
                     get_module(nwbfile=nwbfile_out, name=module_name, description=module_description).add(image_series)
 
         return nwbfile_out
-
-
-class MovieInterface(VideoInterface):
-    def __init__(self, file_paths: list, verbose: bool = False):
-        super().__init__(file_paths, verbose)
-        warnings.warn(
-            "MovieInterface is to be deprecated after April 2023, use VideoInterface instead", DeprecationWarning
-        )
