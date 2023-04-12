@@ -129,6 +129,7 @@ interface_list = [
     # Behavior
     MovieInterface,  # TO-DO: deprecate on April 2023
     VideoInterface,
+    AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     # Text
