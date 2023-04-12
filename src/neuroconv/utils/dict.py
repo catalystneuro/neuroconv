@@ -198,3 +198,22 @@ def dict_deep_update(
             dict_to_update[key_to_update] = update_values
 
     return dict_to_update
+
+
+class DeepDict(dict):
+    """A defaultdict of defaultdicts"""
+    def __getitem__(self, item):
+        try:
+            return dict.__getitem__(self, item)
+        except KeyError:
+            self[item] = DeepDict()
+            return self[item]
+
+    def to_dict(self):
+        def _to_dict(d):
+            """Turn a ddict into a normal dictionary"""
+            return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, DeepDict) else d
+        return _to_dict(self)
+
+    def __repr__(self):
+        return "DeepDict: " + dict.__repr__(self.to_dict())
