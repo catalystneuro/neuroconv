@@ -1,6 +1,6 @@
 import warnings
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -23,46 +23,10 @@ from ....utils import (
 )
 
 
-def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType]):
-    """
-    Accumulates metadata for when multiple video files go in one ImageSeries container.
-
-    Parameters
-    ----------
-    videos_metadata: list of dict
-        The metadata corresponding to the videos should be organized as follow
-                videos_metadata =[
-                            dict(name="Video1", description="This is the first video.."),
-                            dict(name="SecondVideo", description="Video #2 details..."),
-                ]
-
-    Returns
-    -------
-    videos_metadata_unique: list of dict
-        if metadata has common names (case when the user intends to put multiple video files
-        under the same ImageSeries container), this removes the duplicate names.
-    file_paths_list: List[List[str]]
-        len(file_paths_list)==len(videos_metadata_unique)
-    """
-    keys_set = []
-    videos_metadata_unique = []
-    file_paths_list = []
-    for n, video in enumerate(videos_metadata):
-        if video["name"] not in keys_set:
-            keys_set.append(video["name"])
-            file_paths_list.append([file_paths[n]])
-            videos_metadata_unique.append(dict(video))
-        else:
-            idx = keys_set.index(video["name"])
-            file_paths_list[idx].append(file_paths[n])
-
-    return videos_metadata_unique, file_paths_list
-
-
 class VideoInterface(BaseDataInterface):
     """Data interface for writing videos as ImageSeries."""
 
-    def __init__(self, file_paths: list, verbose: bool = False):
+    def __init__(self, file_paths: list, verbose: bool = False):  # TODO - debug why List[FilePathType] fails
         """
         Create the interface for writing videos as ImageSeries.
 
@@ -88,9 +52,9 @@ class VideoInterface(BaseDataInterface):
             image_series_metadata_schema["properties"].pop(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"].update(
-            required=["Movies"],
+            required=["Videos"],
             properties=dict(
-                Movies=dict(
+                Videos=dict(
                     type="array",
                     minItems=1,
                     items=image_series_metadata_schema,
@@ -102,7 +66,7 @@ class VideoInterface(BaseDataInterface):
     def get_metadata(self):
         metadata = super().get_metadata()
         behavior_metadata = dict(
-            Movies=[
+            Videos=[
                 dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
@@ -297,14 +261,14 @@ class VideoInterface(BaseDataInterface):
             nwb file to which the recording information is to be added
         metadata : dict, optional
             Dictionary of metadata information such as names and description of each video.
-            Metadata should be passed for each video file passed in the file_paths argument during ``__init__``.
+            Metadata should be passed for each video file passed in the file_paths.
             If storing as 'external mode', then provide duplicate metadata for video files that go in the
-            same :py:class:`~pynwb.image.ImageSeries` container. ``len(metadata["Behavior"]["Movies"]==len(file_paths)``.
+            same :py:class:`~pynwb.image.ImageSeries` container.
             Should be organized as follows::
 
                 metadata = dict(
                     Behavior=dict(
-                        Movies=[
+                        Videos=[
                             dict(name="Video1", description="This is the first video.."),
                             dict(name="SecondVideo", description="Video #2 details..."),
                             ...
@@ -313,7 +277,7 @@ class VideoInterface(BaseDataInterface):
                 )
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-            The list for the 'Movies' key should correspond one to the video files in the file_paths list.
+            The list for the 'Videos' key should correspond one to the video files in the file_paths list.
             If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
             Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
         overwrite : bool, default: False
@@ -347,55 +311,54 @@ class VideoInterface(BaseDataInterface):
         """
         file_paths = self.source_data["file_paths"]
 
-        videos_metadata = metadata.get("Behavior", dict()).get("Movies", None)
+        videos_metadata = metadata.get("Behavior", dict()).get("Videos", None)
         if videos_metadata is None:
-            videos_metadata = self.get_metadata()["Behavior"]["Movies"]
+            videos_metadata = self.get_metadata()["Behavior"]["Videos"]
 
-        number_of_file_paths = len(file_paths)
-        assert len(videos_metadata) == number_of_file_paths, (
+        assert len(videos_metadata) == self._number_of_files, (
             "Incomplete metadata "
             f"(number of metadata in video {len(videos_metadata)})"
-            f"is not equal to the number of file_paths {number_of_file_paths}"
+            f"is not equal to the number of file_paths {self._number_of_files}"
         )
 
         videos_name_list = [video["name"] for video in videos_metadata]
-        some_video_names_are_not_unique = len(set(videos_name_list)) < len(videos_name_list)
-        if some_video_names_are_not_unique:
-            assert external_mode, "For multiple video files under the same ImageSeries name, use exernal_mode=True."
-
-        videos_metadata_unique, file_paths_list = _check_duplicates(videos_metadata, file_paths)
+        any_duplicated_video_names = len(set(videos_name_list)) < len(videos_name_list)
+        if any_duplicated_video_names:
+            raise ValueError("There are duplicated file names in the metadata!")
 
         # Iterate over unique videos
         stub_frames = 10
+        timing_type = self.get_timing_type()
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-            for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-                if external_mode:
-                    if self._number_of_files > 1 and starting_frames is None:
-                        raise TypeError(
-                            f"Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!"
-                        )
-                    elif self._number_of_files > 1 and num_files != len(starting_frames[j]):
-                        raise ValueError(
-                            f"Multiple paths ({num_files}) were specified for ImageSeries index {j}, "
-                            f"but the length of starting_frames ({len(starting_frames[j])}) did not match the number of paths!"
-                        )
-                    elif self._number_of_files > 1:
-                        image_series_kwargs.update(starting_frame=starting_frames[j])
-
-                    image_series_kwargs.update(
-                        format="external",
-                        external_file=file_list,
+            if external_mode:
+                image_series_kwargs = videos_metadata[0]
+                if starting_frames is not None and self._number_of_files != len(starting_frames):
+                    raise ValueError(
+                        f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
+                        f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
                     )
-                else:
-                    if num_files > 1:
+                elif starting_frames is not None:
+                    image_series_kwargs.update(starting_frame=starting_frames)
+
+                image_series_kwargs.update(format="external", external_file=file_paths)
+
+                if timing_type == "starting_time and rate":
+                    starting_time = self._starting_times[0] if self._starting_times is not None else 0.0
+                    with VideoCaptureContext(file_path=str(file_paths[0])) as video:
+                        rate = video.get_video_fps()
+                    image_series_kwargs.update(starting_time=starting_time, rate=rate)
+                elif timing_type == "timestamps":
+                    image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
+            else:
+                for file_index, (image_series_kwargs, file) in enumerate(zip(videos_metadata, file_paths)):
+                    if self._number_of_files > 1:
                         raise NotImplementedError(
-                            "Multiple nested file_paths with external_mode=False is not yet supported! "
-                            "Please flatten the list to write each as a separate ImageSeries."
+                            "Multiple file_paths with external_mode=False is not yet supported! "
+                            "Please initialize a separate VideoInterface for each file."
                         )
 
-                    file = file_list[0]
                     uncompressed_estimate = Path(file).stat().st_size * 70
                     available_memory = psutil.virtual_memory().available
                     if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
@@ -457,15 +420,13 @@ class VideoInterface(BaseDataInterface):
                     )
                     image_series_kwargs.update(data=wrapped_io_data)
 
-                # Store sampling rate if timestamps are regular
-                timing_type = self.get_timing_type()
-                if timing_type == "starting_time and rate":
-                    starting_time = self._starting_times[j] if self._starting_times is not None else 0.0
-                    with VideoCaptureContext(str(file_list[0])) as vc:
-                        fps = vc.get_video_fps()
-                    image_series_kwargs.update(starting_time=starting_time, rate=fps)
-                elif timing_type == "timestamps":
-                    image_series_kwargs.update(timestamps=self._timestamps[j])
+                    if timing_type == "starting_time and rate":
+                        starting_time = self._starting_times[file_index] if self._starting_times is not None else 0.0
+                        with VideoCaptureContext(file_path=str(file)) as video:
+                            rate = video.get_video_fps()
+                        image_series_kwargs.update(starting_time=starting_time, rate=rate)
+                    elif timing_type == "timestamps":
+                        image_series_kwargs.update(timestamps=self._timestamps[file_index])
 
                 # Attach image series
                 image_series = ImageSeries(**image_series_kwargs)
