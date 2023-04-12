@@ -88,7 +88,6 @@ class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
-            print(nwbfile.acquisition)
             video_type = Path(self.test_kwargs["file_paths"][0]).suffix[1:]
             assert f"Video: video_{video_type}" in nwbfile.acquisition
 

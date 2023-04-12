@@ -76,6 +76,7 @@ class VideoInterface(BaseDataInterface):
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None
+        self._starting_times = None
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -134,6 +135,37 @@ class VideoInterface(BaseDataInterface):
                 timestamps.append(video.get_video_timestamps(max_frames=max_frames))
         return timestamps
 
+    def get_timing_type(self) -> Literal["starting_time and rate", "timestamps"]:
+        """
+        Determine the type of timing used by this interface.
+
+        Returns
+        -------
+        timing_type : 'starting_time and rate' or 'timestamps'
+            The type of timing that has been set explicitly according to alignment.
+
+            If only timestamps have been set, then only those will be used.
+            If only starting times have been set, then only those will be used.
+
+            If timestamps were set, and then starting times were set, the timestamps will take precedence
+            as they will then be shifted by the corresponding starting times.
+
+            If neither has been set, and there is only one video in the file_paths,
+            it is assumed the video is regularly sampled and pre-aligned with
+            a starting_time of 0.0 relative to the session start time.
+        """
+        if self._timestamps is not None:
+            return "timestamps"
+        elif self._starting_times is not None:
+            return "starting_time and rate"
+        elif self._timestamps is None and self._starting_times is None and self._number_of_files == 1:
+            return "starting_time and rate"  # default behavior assumes data is pre-aligned; starting_times = [0.0]
+        else:
+            raise ValueError(
+                f"No timing information is specified and there are {self._number_of_files} total video files! "
+                "Please specify the temporal alignment of each video."
+            )
+
     def get_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
         """
         Retrieve the timestamps for the data in this interface.
@@ -162,6 +194,9 @@ class VideoInterface(BaseDataInterface):
         aligned_timestamps : list of numpy.ndarray
             The synchronized timestamps for data in this interface.
         """
+        assert (
+            self._starting_times is None
+        ), "If setting both timestamps and starting times, please set the timestamps first so they can be shifted by the starting times."
         self._timestamps = aligned_timestamps
 
     def align_starting_time(self, starting_time: float):
@@ -171,7 +206,7 @@ class VideoInterface(BaseDataInterface):
             "and `align_starting_times` (specify a list of values to use in shifting the starting time for each video)."
         )
 
-    def align_global_starting_time(self, starting_time: float, stub_test: bool = False):
+    def align_global_starting_time(self, global_starting_time: float, stub_test: bool = False):
         """
         Align all starting times for all videos in this interface relative to the common session start time.
 
@@ -179,7 +214,7 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        starting_time : float
+        global_starting_time : float
             The starting time for all temporal data in this interface.
         stub_test : bool, default: False
             If timestamps have not been set to this interface, it will attempt to retrieve them
@@ -188,9 +223,16 @@ class VideoInterface(BaseDataInterface):
 
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
-        self.align_timestamps(
-            aligned_timestamps=[timestamps + starting_time for timestamps in self.get_timestamps(stub_test=stub_test)]
-        )
+        if self._timestamps is not None:
+            self.align_timestamps(
+                aligned_timestamps=[
+                    timestamps + global_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
+                ]
+            )
+        elif self._starting_times is not None:
+            self._starting_times = [starting_time + global_starting_time for starting_time in self._starting_times]
+        else:
+            raise ValueError("There are no timestamps or starting times set to shift by a global value!")
 
     def align_starting_times(self, starting_times: List[float], stub_test: bool = False):
         """
@@ -209,12 +251,19 @@ class VideoInterface(BaseDataInterface):
 
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
-        self.align_timestamps(
-            aligned_timestamps=[
-                timestamps + starting_time
-                for timestamps, starting_time in zip(self.get_timestamps(stub_test=stub_test), starting_times)
-            ]
-        )
+        starting_times_length = len(starting_times)
+        assert (
+            starting_times_length == self._number_of_files
+        ), f"The length of the starting_times list ({starting_times_length}) does not match the number of video files ({self._number_of_files})!"
+        if self._timestamps is not None:
+            self.align_timestamps(
+                aligned_timestamps=[
+                    timestamps + starting_time
+                    for timestamps, starting_time in zip(self.get_timestamps(stub_test=stub_test), starting_times)
+                ]
+            )
+        else:
+            self._starting_times = starting_times
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
@@ -321,24 +370,18 @@ class VideoInterface(BaseDataInterface):
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-            all_video_timestamps = self.get_timestamps(stub_test=stub_test)
             for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-                video_timestamps = all_video_timestamps[j]
-                with VideoCaptureContext(str(file_list[0])) as vc:
-                    fps = vc.get_video_fps()
-
                 if external_mode:
-                    num_files = len(file_list)
-                    if num_files > 1 and starting_frames is None:
+                    if self._number_of_files > 1 and starting_frames is None:
                         raise TypeError(
                             f"Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!"
                         )
-                    elif num_files > 1 and num_files != len(starting_frames[j]):
+                    elif self._number_of_files > 1 and num_files != len(starting_frames[j]):
                         raise ValueError(
                             f"Multiple paths ({num_files}) were specified for ImageSeries index {j}, "
                             f"but the length of starting_frames ({len(starting_frames[j])}) did not match the number of paths!"
                         )
-                    elif num_files > 1:
+                    elif self._number_of_files > 1:
                         image_series_kwargs.update(starting_frame=starting_frames[j])
 
                     image_series_kwargs.update(
@@ -346,6 +389,12 @@ class VideoInterface(BaseDataInterface):
                         external_file=file_list,
                     )
                 else:
+                    if num_files > 1:
+                        raise NotImplementedError(
+                            "Multiple nested file_paths with external_mode=False is not yet supported! "
+                            "Please flatten the list to write each as a separate ImageSeries."
+                        )
+
                     file = file_list[0]
                     uncompressed_estimate = Path(file).stat().st_size * 70
                     available_memory = psutil.virtual_memory().available
@@ -409,19 +458,14 @@ class VideoInterface(BaseDataInterface):
                     image_series_kwargs.update(data=wrapped_io_data)
 
                 # Store sampling rate if timestamps are regular
-                rate = calculate_regular_series_rate(series=video_timestamps)
-                if rate is not None:
-                    if round(fps, 2) != round(rate, 2):
-                        warn(
-                            f"The fps={fps:.2g} from video data is unequal to the difference in "
-                            f"regular timestamps. Using fps={rate:.2g} from timestamps instead.",
-                            UserWarning,
-                        )
-                    # Add the rate rounded to two decimals
-                    rounded_rate = round(rate, 2)
-                    image_series_kwargs.update(starting_time=video_timestamps[0], rate=rounded_rate)
-                else:
-                    image_series_kwargs.update(timestamps=video_timestamps)
+                timing_type = self.get_timing_type()
+                if timing_type == "starting_time and rate":
+                    starting_time = self._starting_times[j] if self._starting_times is not None else 0.0
+                    with VideoCaptureContext(str(file_list[0])) as vc:
+                        fps = vc.get_video_fps()
+                    image_series_kwargs.update(starting_time=starting_time, rate=fps)
+                elif timing_type == "timestamps":
+                    image_series_kwargs.update(timestamps=self._timestamps[j])
 
                 # Attach image series
                 image_series = ImageSeries(**image_series_kwargs)
