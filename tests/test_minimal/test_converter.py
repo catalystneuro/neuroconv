@@ -27,6 +27,7 @@ def test_converter():
             def __init__(self):
                 self.timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
                 self.original_timestamps = np.array(self.timestamps)
+                self.verbose = True
 
             def get_original_timestamps(self) -> np.ndarray:
                 return self.original_timestamps

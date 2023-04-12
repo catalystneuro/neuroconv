@@ -30,7 +30,10 @@ class BaseDataInterface(ABC):
 
     def get_conversion_options_schema(self):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(self._run_conversion, exclude=["nwbfile", "metadata"])
+        try:
+            return get_schema_from_method_signature(self._run_conversion, exclude=["nwbfile", "metadata"])
+        except ValueError:
+            return get_schema_from_method_signature(self.run_conversion, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -133,9 +136,8 @@ class BaseDataInterface(ABC):
             aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
         )
 
-    @abstractmethod
     def _run_conversion(self, nwbfile: NWBFile, metadata: Optional[dict] = None, **conversion_options):
-        pass
+        raise NotImplementedError("_run_conversion not implemented for this class.")
 
     def run_conversion(
         self,

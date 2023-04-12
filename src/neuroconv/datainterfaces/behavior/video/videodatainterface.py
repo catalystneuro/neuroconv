@@ -14,7 +14,7 @@ from tqdm import tqdm
 from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
-from ....tools.nwb_helpers import get_module
+from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
 from ....utils import (
     FilePathType,
     calculate_regular_series_rate,
@@ -124,10 +124,12 @@ class VideoInterface(BaseDataInterface):
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
-    def _run_conversion(
+    def run_conversion(
         self,
-        nwbfile: NWBFile,
+        nwbfile_path: Optional[FilePathType] = None,
+        nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
+        overwrite: bool = False,
         stub_test: bool = False,
         external_mode: bool = True,
         starting_times: Optional[list] = None,
@@ -146,8 +148,11 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        nwbfile : NWBFile
-            NWB file to which the recording information is to be added
+        nwbfile_path : FilePathType, optional
+            Path for where to write or load (if overwrite=False) the NWB file.
+            If specified, this context will always write to this location.
+        nwbfile : NWBFile, optional
+            nwb file to which the recording information is to be added
         metadata : dict, optional
             Dictionary of metadata information such as names and description of each video.
             Metadata should be passed for each video file passed in the file_paths argument during ``__init__``.
@@ -169,6 +174,8 @@ class VideoInterface(BaseDataInterface):
             The list for the 'Movies' key should correspond one to the video files in the file_paths list.
             If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
             Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
+        overwrite : bool, default: False
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
         external_mode : bool, default: True
@@ -243,120 +250,123 @@ class VideoInterface(BaseDataInterface):
 
         # Iterate over unique videos
         stub_frames = 10
-        for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-            with VideoCaptureContext(str(file_list[0])) as vc:
-                fps = vc.get_video_fps()
-                max_frames = stub_frames if stub_test else None
-                extracted_timestamps = vc.get_video_timestamps(max_frames)
-                video_timestamps = (
-                    starting_times[j] + extracted_timestamps if timestamps is None else timestamps[:max_frames]
-                )
-
-            if external_mode:
-                num_files = len(file_list)
-                if num_files > 1 and starting_frames is None:
-                    raise TypeError(
-                        f"Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!"
-                    )
-                elif num_files > 1 and num_files != len(starting_frames[j]):
-                    raise ValueError(
-                        f"Multiple paths ({num_files}) were specified for ImageSeries index {j}, "
-                        f"but the length of starting_frames ({len(starting_frames[j])}) did not match the number of paths!"
-                    )
-                elif num_files > 1:
-                    image_series_kwargs.update(starting_frame=starting_frames[j])
-
-                image_series_kwargs.update(
-                    format="external",
-                    external_file=file_list,
-                )
-            else:
-                file = file_list[0]
-                uncompressed_estimate = Path(file).stat().st_size * 70
-                available_memory = psutil.virtual_memory().available
-                if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
-                    warn(
-                        f"Not enough memory (estimated {round(uncompressed_estimate/1e9, 2)} GB) to load video file as "
-                        f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
-                    )
-                    chunk_data = True
-                with VideoCaptureContext(str(file)) as video_capture_ob:
-                    if stub_test:
-                        video_capture_ob.frame_count = stub_frames
-                    total_frames = video_capture_ob.get_video_frame_count()
-                    frame_shape = video_capture_ob.get_frame_shape()
-
-                maxshape = (total_frames, *frame_shape)
-                tqdm_pos, tqdm_mininterval = (0, 10)
-
-                if chunk_data:
-                    chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
-                    video_capture_ob = VideoCaptureContext(str(file))
-                    if stub_test:
-                        video_capture_ob.frame_count = stub_frames
-                    iterable = DataChunkIterator(
-                        data=tqdm(
-                            iterable=video_capture_ob,
-                            desc=f"Copying video data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval,
-                        ),
-                        iter_axis=0,  # nwb standard is time as zero axis
-                        maxshape=maxshape,
+        with make_or_load_nwbfile(
+                nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
+        ) as nwbfile_out:
+            for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
+                with VideoCaptureContext(str(file_list[0])) as vc:
+                    fps = vc.get_video_fps()
+                    max_frames = stub_frames if stub_test else None
+                    extracted_timestamps = vc.get_video_timestamps(max_frames)
+                    video_timestamps = (
+                        starting_times[j] + extracted_timestamps if timestamps is None else timestamps[:max_frames]
                     )
 
+                if external_mode:
+                    num_files = len(file_list)
+                    if num_files > 1 and starting_frames is None:
+                        raise TypeError(
+                            f"Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!"
+                        )
+                    elif num_files > 1 and num_files != len(starting_frames[j]):
+                        raise ValueError(
+                            f"Multiple paths ({num_files}) were specified for ImageSeries index {j}, "
+                            f"but the length of starting_frames ({len(starting_frames[j])}) did not match the number of paths!"
+                        )
+                    elif num_files > 1:
+                        image_series_kwargs.update(starting_frame=starting_frames[j])
+
+                    image_series_kwargs.update(
+                        format="external",
+                        external_file=file_list,
+                    )
                 else:
-                    # Load the video
-                    chunks = None
-                    video = np.zeros(shape=maxshape, dtype="uint8")
+                    file = file_list[0]
+                    uncompressed_estimate = Path(file).stat().st_size * 70
+                    available_memory = psutil.virtual_memory().available
+                    if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
+                        warn(
+                            f"Not enough memory (estimated {round(uncompressed_estimate/1e9, 2)} GB) to load video file as "
+                            f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
+                        )
+                        chunk_data = True
                     with VideoCaptureContext(str(file)) as video_capture_ob:
                         if stub_test:
                             video_capture_ob.frame_count = stub_frames
-                        with tqdm(
-                            desc=f"Reading video data for {Path(file).name}",
-                            position=tqdm_pos,
-                            total=total_frames,
-                            mininterval=tqdm_mininterval,
-                        ) as pbar:
-                            for n, frame in enumerate(video_capture_ob):
-                                video[n, :, :, :] = frame
-                                pbar.update(1)
-                    iterable = video
+                        total_frames = video_capture_ob.get_video_frame_count()
+                        frame_shape = video_capture_ob.get_frame_shape()
 
-                # Wrap data for compression
-                wrapped_io_data = H5DataIO(
-                    iterable,
-                    compression=compression,
-                    compression_opts=compression_options,
-                    chunks=chunks,
-                )
-                image_series_kwargs.update(data=wrapped_io_data)
+                    maxshape = (total_frames, *frame_shape)
+                    tqdm_pos, tqdm_mininterval = (0, 10)
 
-            # Store sampling rate if timestamps are regular
-            rate = calculate_regular_series_rate(series=video_timestamps)
-            if rate is not None:
-                if round(fps, 2) != round(rate, 2):
-                    warn(
-                        f"The fps={fps:.2g} from video data is unequal to the difference in "
-                        f"regular timestamps. Using fps={rate:.2g} from timestamps instead.",
-                        UserWarning,
+                    if chunk_data:
+                        chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
+                        video_capture_ob = VideoCaptureContext(str(file))
+                        if stub_test:
+                            video_capture_ob.frame_count = stub_frames
+                        iterable = DataChunkIterator(
+                            data=tqdm(
+                                iterable=video_capture_ob,
+                                desc=f"Copying video data for {Path(file).name}",
+                                position=tqdm_pos,
+                                total=total_frames,
+                                mininterval=tqdm_mininterval,
+                            ),
+                            iter_axis=0,  # nwb standard is time as zero axis
+                            maxshape=maxshape,
+                        )
+
+                    else:
+                        # Load the video
+                        chunks = None
+                        video = np.zeros(shape=maxshape, dtype="uint8")
+                        with VideoCaptureContext(str(file)) as video_capture_ob:
+                            if stub_test:
+                                video_capture_ob.frame_count = stub_frames
+                            with tqdm(
+                                    desc=f"Reading video data for {Path(file).name}",
+                                    position=tqdm_pos,
+                                    total=total_frames,
+                                    mininterval=tqdm_mininterval,
+                            ) as pbar:
+                                for n, frame in enumerate(video_capture_ob):
+                                    video[n, :, :, :] = frame
+                                    pbar.update(1)
+                        iterable = video
+
+                    # Wrap data for compression
+                    wrapped_io_data = H5DataIO(
+                        iterable,
+                        compression=compression,
+                        compression_opts=compression_options,
+                        chunks=chunks,
                     )
-                # Add the rate rounded to two decimals
-                rounded_rate = round(rate, 2)
-                image_series_kwargs.update(starting_time=starting_times[j], rate=rounded_rate)
-            else:
-                image_series_kwargs.update(timestamps=video_timestamps)
+                    image_series_kwargs.update(data=wrapped_io_data)
 
-            # Attach image series
-            image_series = ImageSeries(**image_series_kwargs)
+                # Store sampling rate if timestamps are regular
+                rate = calculate_regular_series_rate(series=video_timestamps)
+                if rate is not None:
+                    if round(fps, 2) != round(rate, 2):
+                        warn(
+                            f"The fps={fps:.2g} from video data is unequal to the difference in "
+                            f"regular timestamps. Using fps={rate:.2g} from timestamps instead.",
+                            UserWarning,
+                        )
+                    # Add the rate rounded to two decimals
+                    rounded_rate = round(rate, 2)
+                    image_series_kwargs.update(starting_time=starting_times[j], rate=rounded_rate)
+                else:
+                    image_series_kwargs.update(timestamps=video_timestamps)
 
-            if module_name is None:
-                nwbfile.add_acquisition(image_series)
-            else:
-                get_module(nwbfile=nwbfile, name=module_name, description=module_description).add(image_series)
+                # Attach image series
+                image_series = ImageSeries(**image_series_kwargs)
 
-        return nwbfile
+                if module_name is None:
+                    nwbfile_out.add_acquisition(image_series)
+                else:
+                    get_module(nwbfile=nwbfile_out, name=module_name, description=module_description).add(image_series)
+
+        return nwbfile_out
 
 
 class MovieInterface(VideoInterface):
