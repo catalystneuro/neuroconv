@@ -19,12 +19,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         Parameters
         ----------
-        verbose : bool, default True
+        verbose : bool, default: True
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
-            key of this ElectricalSeries in the metadata dictionary
+            The key of this ElectricalSeries in the metadata dictionary.
         source_data : dict
-            key-value pairs of extractor-specific arguments.
+            The key-value pairs of extractor-specific arguments.
 
         """
         super().__init__(**source_data)
