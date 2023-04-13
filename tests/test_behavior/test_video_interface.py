@@ -100,7 +100,7 @@ class TestExternalVideoInterface(TestVideoInterface):
         interface.align_timestamps(aligned_timestamps=timestamps)
         interface.align_starting_times(starting_times=self.starting_times)
 
-        conversion_options = dict(Video=dict(external_mode=True))
+        conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -111,28 +111,7 @@ class TestExternalVideoInterface(TestVideoInterface):
             nwbfile = io.read()
             module = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
-            for index, video_metadata in enumerate(metadata["Behavior"]["Videos"]):
-                video_interface_name = video_metadata["name"]
-                print(module)
-                assert module.external_file[0] == str(self.video_files[index])
-
-    def test_video_duplicate_names_with_external_mode(self):
-        conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
-        metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
-        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
-        self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path,
-            overwrite=True,
-            conversion_options=conversion_options,
-            metadata=metadata,
-        )
-        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            mod = nwbfile.acquisition
-            assert len(mod) == 1
-            assert video_interface_name in mod
-            assert len(mod[video_interface_name].external_file) == 2
+            self.assertListEqual(list1=list(module["Video: test1"].external_file[:]), list2=self.video_files)
 
     def test_video_irregular_timestamps(self):
         timestamps = [np.array([1, 2, 4]), np.array([5, 6, 7])]

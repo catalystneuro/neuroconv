@@ -334,7 +334,11 @@ class VideoInterface(BaseDataInterface):
         ) as nwbfile_out:
             if external_mode:
                 image_series_kwargs = videos_metadata[0]
-                if starting_frames is not None and self._number_of_files != len(starting_frames):
+                if self._number_of_files > 1 and starting_frames is None:
+                    raise TypeError(
+                        "Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
+                    )
+                elif self._number_of_files != len(starting_frames) and starting_frames is not None:
                     raise ValueError(
                         f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
                         f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
@@ -428,12 +432,11 @@ class VideoInterface(BaseDataInterface):
                     elif timing_type == "timestamps":
                         image_series_kwargs.update(timestamps=self._timestamps[file_index])
 
-                # Attach image series
-                image_series = ImageSeries(**image_series_kwargs)
-
-                if module_name is None:
-                    nwbfile_out.add_acquisition(image_series)
-                else:
-                    get_module(nwbfile=nwbfile_out, name=module_name, description=module_description).add(image_series)
+            # Attach image series
+            image_series = ImageSeries(**image_series_kwargs)
+            if module_name is None:
+                nwbfile_out.add_acquisition(image_series)
+            else:
+                get_module(nwbfile=nwbfile_out, name=module_name, description=module_description).add(image_series)
 
         return nwbfile_out
