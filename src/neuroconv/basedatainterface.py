@@ -5,7 +5,6 @@ from typing import List, Optional
 
 import numpy as np
 from pynwb import NWBFile
-from pynwb.file import Subject
 
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
