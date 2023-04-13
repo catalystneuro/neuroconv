@@ -487,7 +487,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_pixel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
-        assert_array_equal(plane_segmentation["pixel_mask"][:], true_pixel_masks)
+        assert_array_equal(plane_segmentation["pixel_mask"], true_pixel_masks)
 
     def test_voxel_masks(self):
         """Test the voxel mask option for writing a plane segmentation table."""
@@ -518,7 +518,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
-        assert_array_equal(plane_segmentation["voxel_mask"][:], true_voxel_masks)
+        assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
 
     def test_none_masks(self):
         """Test the None mask_type option for writing a plane segmentation table."""
@@ -576,7 +576,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
-        assert_array_equal(plane_segmentation["pixel_mask"][:], true_voxel_masks)
+        assert_array_equal(plane_segmentation["pixel_mask"], true_voxel_masks)
 
     def test_voxel_masks_auto_switch(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(
@@ -613,7 +613,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
-        assert_array_equal(plane_segmentation["voxel_mask"][:], true_voxel_masks)
+        assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
 
     def test_not_overwriting_plane_segmentation_if_same_name(self):
         """Test that adding a plane segmentation with the same name will not overwrite
