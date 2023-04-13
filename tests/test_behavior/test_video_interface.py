@@ -80,12 +80,14 @@ class TestVideoInterface(TestCase):
 
 @unittest.skipIf(skip_test, "cv2 not installed")
 class TestExternalVideoInterface(TestVideoInterface):
-    def test_video_internal_mode_multiple_file_paths_error(self):
-        conversion_opts = dict(Video=dict(external_mode=False))
+    def test_video_external_mode_multiple_file_paths_error(self):
+        conversion_opts = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
         with self.assertRaisesWith(
             exc_type=ValueError,
-            exc_msg="No timing information is specified and there are 2 total video files! "
-            "Please specify the temporal alignment of each video.",
+            exc_msg=(
+                "No timing information is specified and there are 2 total video files! "
+                "Please specify the temporal alignment of each video."
+            ),
         ):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
@@ -114,12 +116,12 @@ class TestExternalVideoInterface(TestVideoInterface):
             self.assertListEqual(list1=list(module["Video: test1"].external_file[:]), list2=self.video_files)
 
     def test_video_irregular_timestamps(self):
-        timestamps = [np.array([1, 2, 4]), np.array([5, 6, 7])]
+        timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
         interface = self.nwb_converter.data_interface_objects["Video"]
         interface.align_timestamps(aligned_timestamps=timestamps)
         interface.align_starting_times(starting_times=self.starting_times)
 
-        conversion_options = dict(Video=dict(external_mode=True))
+        conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
         self.nwb_converter.run_conversion(
             nwbfile_path=self.nwbfile_path,
             overwrite=True,
@@ -127,52 +129,22 @@ class TestExternalVideoInterface(TestVideoInterface):
             metadata=self.metadata,
         )
 
+        expected_timestamps = timestamps = np.array([1.0, 2.0, 4.0, 55.0, 56.0, 57.0])
         with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            acquisition_module = nwbfile.acquisition
-            metadata = self.nwb_converter.get_metadata()
-            for video_metadata in metadata["Behavior"]["Videos"]:
-                video_interface_name = video_metadata["name"]
-                np.testing.assert_array_equal(timestamps, acquisition_module[video_interface_name].timestamps[:])
+            np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video: test1"].timestamps[:])
 
-    def test_video_regular_timestamps(self):
+    def test_starting_frames_type_error(self):
         timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
         interface = self.nwb_converter.data_interface_objects["Video"]
         interface.align_timestamps(aligned_timestamps=timestamps)
-        interface.align_starting_times(starting_times=self.starting_times)
 
-        conversion_opts = dict(Video=dict(external_mode=True))
-        expected_warn_msg = (
-            "The fps=25 from video data is unequal to the difference in "
-            "regular timestamps. Using fps=5 from timestamps instead."
-        )
-        with self.assertWarnsWith(warn_type=UserWarning, exc_msg=expected_warn_msg):
-            self.nwb_converter.run_conversion(
-                nwbfile_path=self.nwbfile_path,
-                overwrite=True,
-                conversion_options=conversion_opts,
-                metadata=self.metadata,
-            )
-
-        with NWBHDF5IO(path=self.nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            acquisition_module = nwbfile.acquisition
-            metadata = self.nwb_converter.get_metadata()
-            for video_metadata in metadata["Behavior"]["Videos"]:
-                video_interface_name = video_metadata["name"]
-                expected_rate = round(1 / (timestamps[1] - timestamps[0]), 2)
-                assert acquisition_module[video_interface_name].rate == expected_rate
-                assert acquisition_module[video_interface_name].timestamps is None
-
-    def test_starting_frames_type_error(self):
         conversion_opts = dict(Video=dict(external_mode=True))
         metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
-        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
 
         with self.assertRaisesWith(
             exc_type=TypeError,
-            exc_msg="Multiple paths were specified for ImageSeries index 0, but no starting_frames were specified!",
+            exc_msg="Multiple paths were specified for the ImageSeries, but no starting_frames were specified!",
         ):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
@@ -182,14 +154,16 @@ class TestExternalVideoInterface(TestVideoInterface):
             )
 
     def test_starting_frames_value_error(self):
-        conversion_opts = dict(Video=dict(external_mode=True, starting_frames=[[0]]))
+        timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
+        interface = self.nwb_converter.data_interface_objects["Video"]
+        interface.align_timestamps(aligned_timestamps=timestamps)
+
+        conversion_opts = dict(Video=dict(external_mode=True, starting_frames=[0]))
         metadata = self.metadata
-        video_interface_name = metadata["Behavior"]["Videos"][0]["name"]
-        metadata["Behavior"]["Videos"][1]["name"] = video_interface_name
 
         with self.assertRaisesWith(
             exc_type=ValueError,
-            exc_msg="Multiple paths (2) were specified for ImageSeries index 0, but the length of starting_frames (1) did not match the number of paths!",
+            exc_msg="Multiple paths (2) were specified for the ImageSeries, but the length of starting_frames (1) did not match the number of paths!",
         ):
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
