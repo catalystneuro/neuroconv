@@ -245,10 +245,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 # Temporal alignment checks
-                # Temporary override to disable failing multi-segment case
-                # self.check_get_timestamps()
-                # self.check_align_starting_time_internal()
-                # self.check_align_starting_time_external()
+                self.check_get_timestamps()
+                self.check_align_starting_time_internal()
+                self.check_align_starting_time_external()
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
