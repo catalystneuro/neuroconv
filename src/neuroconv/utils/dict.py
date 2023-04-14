@@ -211,7 +211,7 @@ class DeepDict(defaultdict):
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
-    def deep_update(self, other: Union[dict, 'DeepDict']) -> None:
+    def deep_update(self, other: Union[dict, "DeepDict"]) -> None:
         for key, value in other.items():
             if key in self and isinstance(self[key], dict) and isinstance(value, dict):
                 self[key].deep_update(value)
@@ -219,7 +219,7 @@ class DeepDict(defaultdict):
                 self[key] = value
 
     def to_dict(self) -> dict:
-        def _to_dict(d: Union[dict, 'DeepDict']) -> dict:
+        def _to_dict(d: Union[dict, "DeepDict"]) -> dict:
             """Turn a DeepDict into a normal dictionary"""
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 
@@ -227,4 +227,3 @@ class DeepDict(defaultdict):
 
     def __repr__(self) -> str:
         return "DeepDict: " + dict.__repr__(self.to_dict())
-
