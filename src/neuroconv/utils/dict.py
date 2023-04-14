@@ -1,8 +1,11 @@
 import collections.abc
 import json
 import warnings
+from collections import defaultdict
 from copy import deepcopy
+from ctypes import Union
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import yaml
@@ -198,3 +201,33 @@ def dict_deep_update(
             dict_to_update[key_to_update] = update_values
 
     return dict_to_update
+
+
+class DeepDict(defaultdict):
+    """A defaultdict of defaultdicts"""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(lambda: DeepDict(), *args, **kwargs)
+        for key, value in self.items():
+            if isinstance(value, dict):
+                self[key] = DeepDict(value)
+
+    def deep_update(self, other: Union[dict, "DeepDict"]) -> None:
+        for key, value in other.items():
+            if key in self and isinstance(self[key], dict) and isinstance(value, dict):
+                self[key].deep_update(value)
+            else:
+                self[key] = value
+
+    def to_dict(self) -> dict:
+        def _to_dict(d: Union[dict, "DeepDict"]) -> dict:
+            """Turn a DeepDict into a normal dictionary"""
+            return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
+
+        return _to_dict(self)
+
+    def __dict__(self) -> dict:
+        return self.to_dict()
+
+    def __repr__(self) -> str:
+        return "DeepDict: " + dict.__repr__(self.to_dict())

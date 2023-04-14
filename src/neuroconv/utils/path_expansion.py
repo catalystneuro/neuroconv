@@ -1,34 +1,12 @@
 import abc
 import os
-from collections import defaultdict
-from glob import glob
+from pathlib import Path
 from typing import Dict, List, Union
 
 from parse import parse
 
+from .dict import DeepDict
 from .types import FilePathType, FolderPathType
-
-
-def _ddict():
-    """
-    Create a defaultdict of defaultdicts
-
-    This allows you to easily nest hierarchical dictionaries. For example, this syntax
-    >>> a = dict(b=dict(c=dict(d=5)))
-
-    becomes
-    >>> a = _ddict()["b"]["c"]["d"] = 5
-
-    It becomes particularly useful when modifying an existing hierarchical dictionary,
-    because the next level is only created if it does not already exist.
-
-    """
-    return defaultdict(_ddict)
-
-
-def _unddict(d):
-    """Turn a ddict into a normal dictionary"""
-    return {key: _unddict(value) for key, value in d.items()} if isinstance(d, defaultdict) else d
 
 
 class AbstractPathExpander(abc.ABC):
@@ -56,7 +34,6 @@ class AbstractPathExpander(abc.ABC):
 
         Parameters
         ----------
-        folder
         source_data_spec : dict
             Source spec.
 
@@ -77,7 +54,7 @@ class AbstractPathExpander(abc.ABC):
         ... )
 
         """
-        out = _ddict()
+        out = DeepDict()
         for interface, source_data in source_data_spec.items():
             for path_type in ("file_path", "folder_path"):
                 if path_type in source_data:
@@ -90,7 +67,7 @@ class AbstractPathExpander(abc.ABC):
                             out[key]["metadata"]["NWBFile"]["session_id"] = metadata["session_id"]
                         if "subject_id" in metadata:
                             out[key]["metadata"]["Subject"]["subject_id"] = metadata["subject_id"]
-        return list(_unddict(out).values())
+        return list(dict(out).values())
 
 
 class LocalPathExpander(AbstractPathExpander):
