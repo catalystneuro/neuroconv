@@ -4,7 +4,7 @@ import warnings
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 import numpy as np
 import yaml
