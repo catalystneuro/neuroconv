@@ -11,7 +11,7 @@ from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
-from ...utils import ArrayType, dict_deep_update, get_schema_from_method_signature
+from ...utils import ArrayType, get_schema_from_method_signature
 
 
 class MockBehaviorEventInterface(BaseDataInterface):
@@ -140,5 +140,5 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
-        metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+        metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
