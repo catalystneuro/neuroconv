@@ -99,12 +99,58 @@ class AudioInterface(BaseDataInterface):
     def align_timestamps(self, aligned_timestamps: List[np.ndarray]):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def align_starting_time(self, starting_times: List[float]):
+    def align_starting_time(self, starting_time: float):
+        raise NotImplementedError(
+            "The VideoInterface operates on a list of file paths; to reduce ambiguity, please choose "
+            "between `align_global_starting_time` (shift starting time of each video by the same value) "
+            "and `align_starting_times` (specify a list of values to use in shifting the starting time for each video)."
+        )
+
+    def align_global_starting_time(self, global_starting_time: float, stub_test: bool = False):
+        """
+        Align all starting times for all videos in this interface relative to the common session start time.
+        Must be in units seconds relative to the common 'session_start_time'.
+        Parameters
+        ----------
+        global_starting_time : float
+            The starting time for all temporal data in this interface.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        if self._timestamps is not None:
+            self.align_timestamps(
+                aligned_timestamps=[
+                    timestamps + global_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
+                ]
+            )
+        elif self._starting_times is not None:
+            self._starting_times = [starting_time + global_starting_time for starting_time in self._starting_times]
+        else:
+            raise ValueError("There are no timestamps or starting times set to shift by a global value!")
+
+    def align_starting_times(self, starting_times: List[float], stub_test: bool = False):
+        """
+        Align the individual starting time for each video in this interface relative to the common session start time.
+        Must be in units seconds relative to the common 'session_start_time'.
+        Parameters
+        ----------
+        starting_times : list of floats
+            The relative starting times of each video.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        starting_times_length = len(starting_times)
         assert isinstance(starting_times, list) and all(
             [isinstance(x, float) for x in starting_times]
         ), "Argument 'starting_times' must be a list of floats."
-        assert len(starting_times) == self._number_of_audio_files, (
-            f"The number of entries in 'starting_times' ({len(starting_times)}) must be equal to the number of "
+        assert starting_times_length == self._number_of_audio_files, (
+            f"The number of entries in 'starting_times' ({starting_times_length}) must be equal to the number of "
             f"audio file paths ({self._number_of_audio_files})."
         )
 

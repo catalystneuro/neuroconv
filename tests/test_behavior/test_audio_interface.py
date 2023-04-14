@@ -77,7 +77,7 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
         source_data = dict(Audio=dict(file_paths=self.file_paths))
         self.nwb_converter = AudioTestNWBConverter(source_data)
         self.interface = self.nwb_converter.data_interface_objects["Audio"]
-        self.interface.align_starting_time(starting_times=self.starting_times)
+        self.interface.align_starting_times(starting_times=self.starting_times)
 
     def test_unsupported_format(self):
         exc_msg = "The currently supported file format for audio is WAV file. Some of the provided files does not match this format: ['.test']."
@@ -160,14 +160,33 @@ On instance['Audio']['write_as']:
         with self.assertRaisesWith(
             exc_type=AssertionError, exc_msg="Argument 'starting_times' must be a list of floats."
         ):
-            self.interface.align_starting_time(starting_times=[0, 1, 2])
+            self.interface.align_starting_times(starting_times=[0, 1, 2])
 
     def test_starting_times_length_mismatch(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
             exc_msg="The number of entries in 'starting_times' (4) must be equal to the number of audio file paths (3).",
         ):
-            self.interface.align_starting_time(starting_times=[0.0, 1.0, 2.0, 4.0])
+            self.interface.align_starting_times(starting_times=[0.0, 1.0, 2.0, 4.0])
+
+    def check_align_starting_times(self):
+        fresh_interface = self.data_interface_cls(**self.file_paths[:1])
+
+        starting_times = [0.0, 1.0]
+        fresh_interface.align_starting_times(starting_times=starting_times)
+
+        assert_array_equal(x=self.interface._starting_times, y=self.starting_times)
+
+    def check_align_global_starting_time(self):
+        fresh_interface = self.data_interface_cls(**self.file_paths[:1])
+
+        global_starting_time = 1.23
+        relative_starting_times = [0.0, 1.0]
+        fresh_interface.align_starting_times(starting_times=relative_starting_times)
+        fresh_interface.align_global_starting_time(global_starting_time=global_starting_time)
+
+        expecting_starting_times = [starting_time + global_starting_time for starting_time in relative_starting_times]
+        assert_array_equal(x=self._starting_times, y=expected_timestamps)
 
     def test_run_conversion(self):
         file_paths = self.nwb_converter.data_interface_objects["Audio"].source_data["file_paths"]
