@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, Union, List
 
 import numpy as np
 from pynwb import NWBFile
