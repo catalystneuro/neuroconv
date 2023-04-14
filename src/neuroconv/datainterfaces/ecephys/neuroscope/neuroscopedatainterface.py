@@ -11,7 +11,7 @@ from ..baselfpextractorinterface import BaseLFPExtractorInterface
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, FolderPathType, dict_deep_update
+from ....utils import FilePathType, FolderPathType
 
 
 def subset_shank_channels(recording_extractor, xml_file_path: str):
@@ -124,7 +124,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+            metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
 
@@ -226,6 +226,6 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         metadata["Ecephys"] = NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+            metadata["NWBFile"]["session_start_time"] = session_start_time
 
         return metadata

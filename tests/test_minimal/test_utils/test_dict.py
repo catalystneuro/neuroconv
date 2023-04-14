@@ -1,4 +1,5 @@
 import unittest
+from copy import deepcopy
 
 from neuroconv.utils.dict import DeepDict
 
@@ -43,3 +44,10 @@ class TestDeepDict(unittest.TestCase):
         self.dd.deep_update(update_data)
         expected = {"a": {"b": {"c": 42, "d": 55}, "e": {"f": 66}}, "g": {"h": 77}}
         self.assertEqual(dict(self.dd), expected)
+
+    def test_deepcopy(self):
+        dd2 = deepcopy(self.dd)
+        dd2["a"]["b"]["c"] = 0
+        self.assertEqual(dd2["a"]["b"]["c"], 0)
+        self.assertEqual(self.dd["a"]["b"]["c"], 42)
+
