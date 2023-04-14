@@ -98,7 +98,8 @@ class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
 
         global_starting_time = 1.23
-        fresh_interface.align_global_starting_time(starting_time=global_starting_time)
+        fresh_interface.align_timestamps(aligned_timestamps=fresh_interface.get_original_timestamps())
+        fresh_interface.align_global_starting_time(global_starting_time=global_starting_time)
         all_aligned_timestamps = fresh_interface.get_timestamps()
 
         unaligned_timestamps = fresh_interface.get_original_timestamps()

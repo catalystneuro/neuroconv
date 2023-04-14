@@ -338,7 +338,7 @@ class VideoInterface(BaseDataInterface):
                     raise TypeError(
                         "Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
                     )
-                elif self._number_of_files != len(starting_frames) and starting_frames is not None:
+                elif starting_frames is not None and len(starting_frames) != self._number_of_files:
                     raise ValueError(
                         f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
                         f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
