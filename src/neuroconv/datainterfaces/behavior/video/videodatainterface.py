@@ -251,7 +251,7 @@ class VideoInterface(BaseDataInterface):
         # Iterate over unique videos
         stub_frames = 10
         with make_or_load_nwbfile(
-                nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
+            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
                 with VideoCaptureContext(str(file_list[0])) as vc:
@@ -324,10 +324,10 @@ class VideoInterface(BaseDataInterface):
                             if stub_test:
                                 video_capture_ob.frame_count = stub_frames
                             with tqdm(
-                                    desc=f"Reading video data for {Path(file).name}",
-                                    position=tqdm_pos,
-                                    total=total_frames,
-                                    mininterval=tqdm_mininterval,
+                                desc=f"Reading video data for {Path(file).name}",
+                                position=tqdm_pos,
+                                total=total_frames,
+                                mininterval=tqdm_mininterval,
                             ) as pbar:
                                 for n, frame in enumerate(video_capture_ob):
                                     video[n, :, :, :] = frame

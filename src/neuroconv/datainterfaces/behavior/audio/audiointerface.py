@@ -10,7 +10,7 @@ from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.behavior.video.videodatainterface import _check_duplicates
 from neuroconv.tools.audio import add_acoustic_waveform_series
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
-from neuroconv.utils import get_base_schema, get_schema_from_hdmf_class, FilePathType
+from neuroconv.utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 def _check_file_paths(file_paths, metadata: dict):
@@ -176,7 +176,7 @@ class AudioInterface(BaseDataInterface):
         starting_times = _check_starting_times(starting_times=starting_times, metadata=audio_metadata_unique)
 
         with make_or_load_nwbfile(
-                nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
+            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             for file_ind, (acoustic_waveform_series_metadata, file_path) in enumerate(
                 zip(audio_metadata_unique, unpacked_file_paths_unique)

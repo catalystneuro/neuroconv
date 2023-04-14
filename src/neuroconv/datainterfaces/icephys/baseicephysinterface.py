@@ -141,9 +141,9 @@ class BaseIcephysInterface(BaseExtractorInterface):
                 nwbfile_path = save_path
 
         if (
-                HAVE_NDX_DANDI_ICEPHYS
-                and "ndx-dandi-icephys" in metadata
-                and "DandiIcephysMetadata" not in nwbfile.lab_meta_data
+            HAVE_NDX_DANDI_ICEPHYS
+            and "ndx-dandi-icephys" in metadata
+            and "DandiIcephysMetadata" not in nwbfile.lab_meta_data
         ):
             nwbfile.add_lab_meta_data(DandiIcephysMetadata(**metadata["ndx-dandi-icephys"]))
 
