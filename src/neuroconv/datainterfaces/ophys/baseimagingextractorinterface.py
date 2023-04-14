@@ -9,7 +9,6 @@ from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     OptionalFilePathType,
-    dict_deep_update,
     fill_defaults,
     get_base_schema,
     get_schema_from_hdmf_class,
@@ -61,8 +60,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
-        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
-        metadata = dict_deep_update(default_metadata, metadata)
+        metadata.deep_update(get_nwb_imaging_metadata(self.imaging_extractor))
 
         # fix troublesome data types
         if "TwoPhotonSeries" in metadata["Ophys"]:

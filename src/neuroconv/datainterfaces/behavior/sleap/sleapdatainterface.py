@@ -8,7 +8,7 @@ from .sleap_utils import extract_timestamps
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FilePathType, OptionalFilePathType, dict_deep_update
+from ....utils import FilePathType, OptionalFilePathType
 
 
 class SLEAPInterface(BaseDataInterface):
@@ -79,11 +79,11 @@ class SLEAPInterface(BaseDataInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         """
 
-        base_metadata = self.get_metadata()
-        metadata = dict_deep_update(base_metadata, metadata)
+        _metadata = self.get_metadata()
+        _metadata.deep_update(metadata)
 
         pose_estimation_metadata = dict()
         if self.video_file_path:
