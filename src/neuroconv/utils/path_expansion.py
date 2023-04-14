@@ -95,6 +95,4 @@ class AbstractPathExpander(abc.ABC):
 
 class LocalPathExpander(AbstractPathExpander):
     def list_directory(self, folder: Union[FilePathType, FolderPathType]):
-        folder_str = str(folder)
-        li = glob(os.path.join(folder_str, "**", "*"), recursive=True)
-        return (x[len(folder_str) + 1 :] for x in li)
+        return (str(path.relative_to(folder)) for path in Path(folder).rglob("*"))
