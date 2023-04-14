@@ -173,4 +173,4 @@ class BaseDataInterface(ABC):
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-            return self._run_conversion(nwbfile_out, metadata, **conversion_options)
+            self._run_conversion(nwbfile_out, metadata, **conversion_options)
