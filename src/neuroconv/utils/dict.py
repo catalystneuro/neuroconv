@@ -225,5 +225,8 @@ class DeepDict(defaultdict):
 
         return _to_dict(self)
 
+    def __dict__(self) -> dict:
+        return self.to_dict()
+
     def __repr__(self) -> str:
         return "DeepDict: " + dict.__repr__(self.to_dict())

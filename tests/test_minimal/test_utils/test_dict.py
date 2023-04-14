@@ -25,6 +25,10 @@ class TestDeepDict(unittest.TestCase):
         expected = self.data
         self.assertEqual(self.dd.to_dict(), expected)
 
+    def test_dict_magic(self):
+        expected = self.data
+        self.assertEqual(dict(self.dd), expected)
+
     def test_recursive_conversion(self):
         dd = DeepDict(self.data)
         self.assertIsInstance(dd["a"], DeepDict)
@@ -38,4 +42,4 @@ class TestDeepDict(unittest.TestCase):
         update_data = {"a": {"b": {"d": 55}, "e": {"f": 66}}, "g": {"h": 77}}
         self.dd.deep_update(update_data)
         expected = {"a": {"b": {"c": 42, "d": 55}, "e": {"f": 66}}, "g": {"h": 77}}
-        self.assertEqual(self.dd.to_dict(), expected)
+        self.assertEqual(dict(self.dd), expected)
