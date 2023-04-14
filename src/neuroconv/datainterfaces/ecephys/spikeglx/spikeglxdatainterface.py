@@ -9,7 +9,7 @@ from .spikeglx_utils import (
     get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import FilePathType, dict_deep_update, get_schema_from_method_signature
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
@@ -92,7 +92,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
-            metadata["NWBFile"]["session_start_time"] = session_start_time
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
 
         # Device metadata
         device = get_device_metadata(self.meta)

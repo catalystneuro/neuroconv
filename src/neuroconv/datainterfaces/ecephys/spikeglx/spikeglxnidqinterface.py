@@ -6,7 +6,7 @@ import numpy as np
 from .spikeglx_utils import get_device_metadata, get_session_start_time
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
-from ....utils import FilePathType, get_schema_from_method_signature
+from ....utils import FilePathType, dict_deep_update, get_schema_from_method_signature
 
 
 class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
@@ -64,7 +64,7 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
 
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
-            metadata["NWBFile"]["session_start_time"] = session_start_time
+            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
 
         # Device metadata
         device = get_device_metadata(self.meta)

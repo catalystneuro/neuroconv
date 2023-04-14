@@ -82,7 +82,8 @@ class NWBConverter:
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
-            metadata.deep_update(interface.get_metadata())
+            interface_metadata = interface.get_metadata()
+            metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
 
     def validate_metadata(self, metadata: Dict[str, dict]):

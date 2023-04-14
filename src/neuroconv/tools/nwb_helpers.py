@@ -8,7 +8,7 @@ from warnings import warn
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from ..utils import FilePathType
+from ..utils import FilePathType, dict_deep_update
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -46,21 +46,20 @@ def get_default_nwbfile_metadata():
 
 def make_nwbfile_from_metadata(metadata: dict):
     """Make NWBFile from available metadata."""
-    _metadata = get_default_nwbfile_metadata()
-    _metadata.update(metadata)
-    nwbfile_kwargs = _metadata["NWBFile"]
-    if "Subject" in _metadata:
+    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
+    nwbfile_kwargs = metadata["NWBFile"]
+    if "Subject" in metadata:
         # convert ISO 8601 string to datetime
-        if "date_of_birth" in _metadata["Subject"] and isinstance(_metadata["Subject"]["date_of_birth"], str):
-            _metadata["Subject"]["date_of_birth"] = datetime.fromisoformat(_metadata["Subject"]["date_of_birth"])
-        nwbfile_kwargs.update(subject=Subject(**_metadata["Subject"]))
+        if "date_of_birth" in metadata["Subject"] and isinstance(metadata["Subject"]["date_of_birth"], str):
+            metadata["Subject"]["date_of_birth"] = datetime.fromisoformat(metadata["Subject"]["date_of_birth"])
+        nwbfile_kwargs.update(subject=Subject(**metadata["Subject"]))
     # convert ISO 8601 string to datetime
     assert "session_start_time" in nwbfile_kwargs, (
         "'session_start_time' was not found in metadata['NWBFile']! Please add the correct start time of the "
         "session in ISO8601 format (%Y-%m-%dT%H:%M:%S) to this key of the metadata."
     )
     if isinstance(nwbfile_kwargs.get("session_start_time", None), str):
-        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(_metadata["NWBFile"]["session_start_time"])
+        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
     return NWBFile(**nwbfile_kwargs)
 
 
@@ -136,7 +135,7 @@ def make_or_load_nwbfile(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite: bool, optional
-        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
