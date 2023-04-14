@@ -34,7 +34,6 @@ files in Excel or Google Sheets and export the data as .csv.
 
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface, DeepLabCutInterface
-    from neuroconv.utils.dict import dict_deep_update
 
 
     df_subjects = pd.read_csv("subjects.csv")
@@ -58,8 +57,7 @@ files in Excel or Google Sheets and export the data as .csv.
         converter = ConverterPipe([spikeglx_interface, dlc_interface])
 
         metadata = converter.get_metadata()
-        metadata = dict_deep_update(
-            metadata,
+        metadata = metadata.deep_update(
             dict(
                 NWBFile=session_metadata,
                 Subject=subject_metadata,

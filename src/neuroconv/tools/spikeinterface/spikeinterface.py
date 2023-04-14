@@ -20,6 +20,7 @@ from .spikeinterfacerecordingdatachunkiterator import (
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import FilePathType, calculate_regular_series_rate, dict_deep_update
+from ...utils.dict import DeepDict
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
@@ -837,7 +838,9 @@ def write_recording(
     compression = "gzip" if compression is None else compression
 
     if hasattr(recording, "nwb_metadata"):
-        metadata = dict_deep_update(recording.nwb_metadata, metadata)
+        _metadata = DeepDict(recording.nwb_metadata)
+        _metadata.deep_update(metadata)
+        metadata = _metadata
     elif metadata is None:
         metadata = get_nwb_metadata(recording=recording)
 
