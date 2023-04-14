@@ -11,6 +11,11 @@ class TestDeepDict(unittest.TestCase):
     def test_getitem(self):
         self.assertEqual(self.dd['a']['b']['c'], 42)
 
+    def test_getitem_hashable(self):
+        dd = DeepDict()
+        dd["key1"][1][(3,)] = 42
+        self.assertEqual(dd["key1"][1][(3,)], 42)
+
     def test_missing_key(self):
         dd = DeepDict()
         self.assertIsInstance(dd['non_existent'], DeepDict)
