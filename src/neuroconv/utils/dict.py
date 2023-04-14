@@ -1,8 +1,10 @@
 import collections.abc
 import json
 import warnings
+from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
+from typing import Any, Union
 
 import numpy as np
 import yaml
@@ -200,22 +202,29 @@ def dict_deep_update(
     return dict_to_update
 
 
-class DeepDict(dict):
+class DeepDict(defaultdict):
     """A defaultdict of defaultdicts"""
 
-    def __getitem__(self, item):
-        try:
-            return dict.__getitem__(self, item)
-        except KeyError:
-            self[item] = DeepDict()
-            return self[item]
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(lambda: DeepDict(), *args, **kwargs)
+        for key, value in self.items():
+            if isinstance(value, dict):
+                self[key] = DeepDict(value)
 
-    def to_dict(self):
-        def _to_dict(d):
-            """Turn a ddict into a normal dictionary"""
-            return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, DeepDict) else d
+    def deep_update(self, other: Union[dict, 'DeepDict']) -> None:
+        for key, value in other.items():
+            if key in self and isinstance(self[key], dict) and isinstance(value, dict):
+                self[key].deep_update(value)
+            else:
+                self[key] = value
+
+    def to_dict(self) -> dict:
+        def _to_dict(d: Union[dict, 'DeepDict']) -> dict:
+            """Turn a DeepDict into a normal dictionary"""
+            return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 
         return _to_dict(self)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DeepDict: " + dict.__repr__(self.to_dict())
+
