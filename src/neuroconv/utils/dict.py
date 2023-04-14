@@ -220,6 +220,7 @@ class DeepDict(defaultdict):
 
     def to_dict(self) -> dict:
         """Turn a DeepDict into a normal dictionary"""
+
         def _to_dict(d: Union[dict, "DeepDict"]) -> dict:
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 

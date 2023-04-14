@@ -50,4 +50,3 @@ class TestDeepDict(unittest.TestCase):
         dd2["a"]["b"]["c"] = 0
         self.assertEqual(dd2["a"]["b"]["c"], 0)
         self.assertEqual(self.dd["a"]["b"]["c"], 42)
-
