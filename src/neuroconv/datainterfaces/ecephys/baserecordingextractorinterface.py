@@ -7,6 +7,7 @@ from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
+from ...utils.dict import DeepDict
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -71,7 +72,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         channel_groups_array = self.recording_extractor.get_channel_groups()

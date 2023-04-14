@@ -5,7 +5,7 @@ from collections import defaultdict
 from copy import deepcopy
 from ctypes import Union
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 import numpy as np
 import yaml
