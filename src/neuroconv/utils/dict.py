@@ -4,7 +4,7 @@ import warnings
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import numpy as np
 import yaml
@@ -211,8 +211,8 @@ class DeepDict(defaultdict):
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
-    def deep_update(self, other: Union[dict, "DeepDict"]) -> None:
-        for key, value in other.items():
+    def deep_update(self, other: Optional[Union[dict, "DeepDict"]] = None, **kwargs) -> None:
+        for key, value in (other or kwargs).items():
             if key in self and isinstance(self[key], dict) and isinstance(value, dict):
                 self[key].deep_update(value)
             else:

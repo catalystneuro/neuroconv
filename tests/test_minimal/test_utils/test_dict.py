@@ -45,6 +45,12 @@ class TestDeepDict(unittest.TestCase):
         expected = {"a": {"b": {"c": 42, "d": 55}, "e": {"f": 66}}, "g": {"h": 77}}
         self.assertEqual(dict(self.dd), expected)
 
+    def test_deep_update_kwargs_input(self):
+        update_data = {"a": {"b": {"d": 55}, "e": {"f": 66}}, "g": {"h": 77}}
+        self.dd.deep_update(**update_data)
+        expected = {"a": {"b": {"c": 42, "d": 55}, "e": {"f": 66}}, "g": {"h": 77}}
+        self.assertEqual(dict(self.dd), expected)
+
     def test_deepcopy(self):
         dd2 = deepcopy(self.dd)
         dd2["a"]["b"]["c"] = 0
