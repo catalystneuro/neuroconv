@@ -6,6 +6,7 @@ import numpy as np
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
+from ....utils.json_schema import dict_deep_update
 
 
 class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
@@ -48,9 +49,8 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         neo_metadata = {k: str(v) for k, v in neo_metadata.items()}
         nwb_metadata["NWBFile"]["notes"] = json.dumps(neo_metadata, ensure_ascii=True)
-        metadata = super().get_metadata()
-        metadata.deep_update(nwb_metadata)
-        return metadata
+
+        return dict_deep_update(super().get_metadata(), nwb_metadata)
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):

@@ -5,7 +5,7 @@ from collections import defaultdict
 from copy import deepcopy
 from ctypes import Union
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import yaml
@@ -114,7 +114,7 @@ def dict_deep_update(
     copy: bool = True,
     compare_key: str = "name",
     list_dict_deep_update: bool = True,
-) -> dict:
+) -> collections.abc.Mapping:
     """
     Perform an update to all nested keys of dictionary d(input) from dictionary u(updating dict).
 
@@ -142,7 +142,7 @@ def dict_deep_update(
                 ]
             }
             >>> u = [{"name": "timeseries1", "desc": "desc2 of u", "unit": "n.a."}]
-            >>> # if compre_key='name' output is below
+            >>> # if compare_key='name' output is below
             >>> output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0, "unit": "n.a."},
                 {"name": "timeseries2", "desc": "desc2"},
@@ -212,22 +212,35 @@ class DeepDict(defaultdict):
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
-    def deep_update(self, other: Union[dict, "DeepDict"]) -> None:
-        for key, value in other.items():
+    def deep_update(self, other: Optional[Union[dict, "DeepDict"]] = None, **kwargs) -> None:
+        for key, value in (other or kwargs).items():
             if key in self and isinstance(self[key], dict) and isinstance(value, dict):
                 self[key].deep_update(value)
             else:
                 self[key] = value
 
     def to_dict(self) -> dict:
+        """Turn a DeepDict into a normal dictionary"""
+
         def _to_dict(d: Union[dict, "DeepDict"]) -> dict:
-            """Turn a DeepDict into a normal dictionary"""
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 
         return _to_dict(self)
 
-    def __dict__(self) -> dict:
-        return self.to_dict()
+    def __deepcopy__(self, memodict={}):
+        """
+
+        Parameters
+        ----------
+        memodict: dict
+            unused
+
+        Returns
+        -------
+        DeepDict
+
+        """
+        return DeepDict(deepcopy(self.to_dict()))
 
     def __repr__(self) -> str:
         return "DeepDict: " + dict.__repr__(self.to_dict())

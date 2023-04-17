@@ -61,7 +61,7 @@ dictionary using :py:meth:`~neuroconv.utils.dict.load_dict_from_file`. Then the 
 .. code-block:: python
 
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface
-    from neuroconv.utils.dict import load_dict_from_file
+    from neuroconv.utils.dict import load_dict_from_file, dict_deep_update
 
     spikeglx_interface = SpikeGLXRecordingInterface(file_path="path/to/towersTask_g0_t0.imec0.ap.bin")
 
@@ -70,7 +70,7 @@ dictionary using :py:meth:`~neuroconv.utils.dict.load_dict_from_file`. Then the 
     metadata_from_yaml = load_dict_from_file(file_path=metadata_path)
 
     metadata = spikeglx_interface.get_metadata()
-    metadata.deep_update(metadata_from_yaml)
+    metadata = dict_deep_update(metadata, metadata_from_yaml)
 
     spikeglx_interface.run_conversion(
         save_path="path/to/destination.nwb",

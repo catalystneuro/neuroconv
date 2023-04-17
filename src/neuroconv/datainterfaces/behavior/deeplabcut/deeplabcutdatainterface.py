@@ -7,7 +7,7 @@ from pynwb.file import NWBFile
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FilePathType
+from ....utils import FilePathType, dict_deep_update
 
 
 def write_subject_to_nwb(nwbfile: NWBFile, h5file: FilePathType, individual_name: str, config_file: FilePathType):
@@ -123,13 +123,13 @@ class DeepLabCutInterface(BaseDataInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         overwrite: bool, optional
-            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
         """
-        _metadata = self.get_metadata()
-        _metadata.deep_update(metadata)
+        base_metadata = self.get_metadata()
+        metadata = dict_deep_update(base_metadata, metadata)
 
         with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=_metadata, overwrite=overwrite, verbose=self.verbose
+            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             write_subject_to_nwb(
                 nwbfile=nwbfile_out,

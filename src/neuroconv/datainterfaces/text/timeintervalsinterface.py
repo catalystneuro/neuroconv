@@ -37,14 +37,15 @@ class TimeIntervalsInterface(BaseDataInterface):
         self.time_intervals = None
 
     def get_metadata(self) -> dict:
-        return dict(
-            TimeIntervals=dict(
-                trials=dict(
-                    table_name="trials",
-                    table_description=f"experimental trials generated from {self.source_data['file_path']}",
-                )
+        metadata = super().get_metadata()
+        metadata["TimeIntervals"] = dict(
+            trials=dict(
+                table_name="trials",
+                table_description=f"experimental trials generated from {self.source_data['file_path']}",
             )
         )
+
+        return metadata
 
     def get_metadata_schema(self) -> dict:
         fpath = os.path.join(os.path.split(__file__)[0], "timeintervals.schema.json")
@@ -120,7 +121,35 @@ class TimeIntervalsInterface(BaseDataInterface):
         tag: str = "trials",
         column_name_mapping: Dict[str, str] = None,
         column_descriptions: Dict[str, str] = None,
-    ):
+    ) -> NWBFile:
+        """
+        Run the NWB conversion for the instantiated data interface.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePathType
+            Path for where to write or load (if overwrite=False) the NWBFile.
+            If specified, the context will always write to this location.
+        nwbfile : NWBFile, optional
+            An in-memory NWBFile object to write to the location.
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        overwrite : bool, default: False
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
+            The default is False (append mode).
+        tag : str, default: "trials"
+        column_name_mapping: dict, optional
+            If passed, rename subset of columns from key to value.
+        column_descriptions: dict, optional
+            Keys are the names of the columns (after renaming) and values are the descriptions. If not passed,
+            the names of the columns are used as descriptions.
+
+        Returns
+        -------
+        NWBFile
+
+        """
+        metadata = metadata or self.get_metadata()
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
