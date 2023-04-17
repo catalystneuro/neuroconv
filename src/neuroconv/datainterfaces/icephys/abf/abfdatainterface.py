@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from typing import List
 from warnings import warn
 
 from ..baseicephysinterface import BaseIcephysInterface
@@ -144,6 +145,49 @@ class AbfInterface(BaseIcephysInterface):
         return metadata
 
     def align_starting_time(self, starting_time: float):
-        number_of_segments = self.readers_list[0].header["nb_segment"][0]
-        for segment_index in range(number_of_segments):
-            self.readers_list[0]._t_starts[segment_index] += starting_time
+        raise NotImplementedError(
+            "The AbfInterface operates on a list of file paths; to reduce ambiguity, please choose "
+            "between `align_global_starting_time` (shift starting time of each video by the same value) "
+            "and `align_starting_times` (specify a list of values to use in shifting the starting time for each video)."
+        )
+
+    def align_global_starting_time(self, global_starting_time: float):
+        """
+        Align all starting times for all videos in this interface relative to the common session start time.
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        global_starting_time : float
+            The starting time for all temporal data in this interface.
+        """
+        for reader in self.readers_list:
+            number_of_segments = reader.header["nb_segment"][0]
+            for segment_index in range(number_of_segments):
+                reader._t_starts[segment_index] += global_starting_time
+
+    def align_starting_times(self, starting_times: List[List[float]], stub_test: bool = False):
+        """
+        Align the individual starting time for each video in this interface relative to the common session start time.
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_times : list of list of floats
+            The relative starting times of each video.
+            Outer list is over file paths (readers).
+            Inner list is over segments of each recording.
+        """
+        number_of_files_from_starting_times = len(starting_times)
+        assert number_of_files_from_starting_times == len(self.readers_list), (
+            f"The length of the outer list of 'starting_times' ({number_of_files_from_starting_times}) "
+            "does not match the number of files ({len(self.readers_list)})!"
+        )
+
+        for file_index, (reader, starting_times_per_segment) in enumerate(zip(self.readers_list, starting_times)):
+            number_of_segments = reader.header["nb_segment"][0]
+            assert number_of_segments == len(
+                starting_times_per_segment
+            ), f"The length of starting times index {file_index} does not match the number of segments of that reader!"
+
+            reader._t_starts = starting_times_per_segment
