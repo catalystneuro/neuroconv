@@ -1,7 +1,9 @@
-from typing import List, Optional
+from typing import List
+
+from dateutil.parser import parse
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FolderPathType, get_schema_from_method_signature
+from ....utils import FolderPathType
 
 
 class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
@@ -56,14 +58,14 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         return stream_names
 
     def get_metadata(self):
-        """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
-        import pyopenephys
-
         metadata = super().get_metadata()
 
-        folder_path = self.source_data["folder_path"]
-        fileobj = pyopenephys.File(foldername=folder_path)
-        session_start_time = fileobj.experiments[0].datetime
-
-        metadata["NWBFile"].update(session_start_time=session_start_time)
+        neo_reader = self.recording_extractor.neo_reader
+        block_annotations = neo_reader.raw_annotations.get("blocks", [])
+        if block_annotations:
+            segment_annotations = block_annotations[0].get("segments", [])
+            if segment_annotations:
+                date_created = segment_annotations[0]["date_created"]
+                session_start_time = parse(date_created)
+                metadata["NWBFile"].update(session_start_time=session_start_time)
         return metadata
