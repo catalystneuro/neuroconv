@@ -52,7 +52,7 @@ def test_expand_paths(tmpdir):
                 "bb": {"file_path": str(base / "sub-001" / "session_102" / "xyz")},
             },
             "metadata": {"NWBFile": {"session_id": "102"}, "Subject": {"subject_id": "001"}},
-        }
+        },
     ]
 
     # test results
