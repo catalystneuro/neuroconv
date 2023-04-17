@@ -1,7 +1,7 @@
 import abc
 import os
 from pathlib import Path
-from typing import Dict, List, Union, Tuple
+from typing import Dict, List, Tuple, Union
 
 from parse import parse
 
