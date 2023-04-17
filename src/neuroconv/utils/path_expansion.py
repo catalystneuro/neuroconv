@@ -28,7 +28,7 @@ class AbstractPathExpander(abc.ABC):
         """
         pass
 
-    def expand_paths(self, source_data_spec: dict) -> List[Dict]:
+    def expand_paths(self, source_data_spec: dict) -> List[DeepDict]:
         """
         Match paths in a directory to specs and extract metadata from the paths.
 
