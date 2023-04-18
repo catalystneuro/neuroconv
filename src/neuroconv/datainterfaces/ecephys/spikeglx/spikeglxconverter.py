@@ -3,16 +3,14 @@ from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
-from pynwb import NWBFile
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
-from ....nwbconverter import ConverterPipe
-from ....tools.nwb_helpers import make_or_load_nwbfile
+from ....nwbconverter import NWBConverter
 from ....utils import FolderPathType, get_schema_from_method_signature
 
 
-class SpikeGLXConverterPipe(ConverterPipe):
+class SpikeGLXConverter(NWBConverter):
     """Primary conversion class for handling multiple SpikeGLX data streams."""
 
     @classmethod
@@ -82,26 +80,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
 
-    def get_conversion_options(self) -> dict:  # Must override the parent method here
-        return dict()  # or else the parent call from a unifying ConverterPipe runs into problems
-
-    def run_conversion(
-        self,
-        nwbfile_path: Optional[str] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
-        overwrite: bool = False,
-    ):
-        if metadata is None:
-            metadata = self.get_metadata()
-        self.validate_metadata(metadata=metadata)
-
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            for interface_name, data_interface in self.data_interface_objects.items():
-                data_interface.run_conversion(nwbfile=nwbfile_out, metadata=metadata)
+    def get_conversion_options_schema(self) -> dict:
+        return {
+            name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()
+        }
