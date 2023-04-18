@@ -137,6 +137,11 @@ class DataInterfaceTestMixin:
     def check_align_starting_time_external(self):
         pass  # TODO: generalize
 
+    def check_temporal_alignment(self):
+        self.check_get_timestamps()
+        self.check_align_starting_time_internal()
+        self.check_align_starting_time_external()
+
     def test_conversion_as_lone_interface(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
@@ -154,9 +159,7 @@ class DataInterfaceTestMixin:
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 # Temporal alignment checks
-                self.check_get_timestamps()
-                self.check_align_starting_time_internal()
-                self.check_align_starting_time_external()
+                self.check_temporal_alignment()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
@@ -253,6 +256,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
     data_interface_cls: BaseSortingExtractorInterface
+    associated_recording_cls: Optional[BaseRecordingExtractorInterface] = None
+    associated_recording_kwargs: Optional[dict] = None
 
     def check_read_nwb(self, nwbfile_path: str):
         sorting = self.interface.sorting_extractor
@@ -270,24 +275,13 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
             )
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
-    def test_conversion_as_lone_interface(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+    def check_temporal_alignment(self):
+        if self.associated_recording_cls is None:
+            return
 
-                # Temporal alignment checks
-                # Temporary override to disable failing multi-segment case and general sorting application
-                # self.check_get_timestamps()
-                # self.check_align_starting_time_internal()
-                # self.check_align_starting_time_external()
+        recording_interface = associated_recording_cls(**associated_recording_kwargs)
+        self.interface.register_recording(recording_interface=recording_interface)
+
+        self.check_get_timestamps()
+        self.check_align_starting_time_internal()
+        self.check_align_starting_time_external()
