@@ -6,11 +6,11 @@ import numpy as np
 
 from .spikeglxdatainterface import SpikeGLXRecordingInterface
 from .spikeglxnidqinterface import SpikeGLXNIDQInterface
-from ....nwbconverter import NWBConverter
+from ....nwbconverter import ConverterPipe
 from ....utils import FolderPathType, get_schema_from_method_signature
 
 
-class SpikeGLXConverter(NWBConverter):
+class SpikeGLXConverterPipe(ConverterPipe):
     """Primary conversion class for handling multiple SpikeGLX data streams."""
 
     @classmethod
