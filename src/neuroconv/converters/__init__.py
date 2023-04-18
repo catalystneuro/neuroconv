@@ -1,1 +1,1 @@
-from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverterPipe
+from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverter
