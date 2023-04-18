@@ -3,7 +3,7 @@ import tempfile
 from abc import abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import List, Type, Union
+from typing import List, Optional, Type, Union
 
 import numpy as np
 from jsonschema.validators import Draft7Validator, validate
@@ -125,7 +125,7 @@ class DataInterfaceTestMixin:
         expected_timestamps = unaligned_timestamps + starting_time
         assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
 
-    def check_align_timestamps_internal(self):
+    def check_align_starting_time_external(self):
         unaligned_timestamps = self.interface.get_original_timestamps()
 
         aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
@@ -279,9 +279,40 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
         if self.associated_recording_cls is None:
             return
 
-        recording_interface = associated_recording_cls(**associated_recording_kwargs)
+        recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
         self.interface.register_recording(recording_interface=recording_interface)
 
         self.check_get_timestamps()
         self.check_align_starting_time_internal()
         self.check_align_starting_time_external()
+
+    def check_align_starting_time_internal(self):
+        fresh_interface = self.data_interface_cls(**self.test_kwargs)
+
+        original_t_starts = [
+            sorting_segment._t_start for sorting_segment in fresh_interface.sorting_extractor._sorting_segments
+        ]
+
+        starting_time = 1.23
+        fresh_interface.align_starting_time(starting_time=starting_time)
+
+        aligned_starting_times = [
+            sorting_segment._t_start for sorting_segment in fresh_interface.sorting_extractor._sorting_segments
+        ]
+        expected_starting_times = [starting_time + original_t_start for original_t_start in original_t_starts]
+        self.assertListEqual(list1=aligned_starting_times, list2=expected_starting_times)
+
+    def check_align_starting_time_external(self):
+        # normally this uses the 'original' timestamps, but SortingInterfaces don't have those so use fresh instead
+        fresh_interface = self.data_interface_cls(**self.test_kwargs)
+
+        recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
+        fresh_interface.register_recording(recording_interface=recording_interface)
+
+        unaligned_timestamps = fresh_interface.get_timestamps()
+
+        aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
+        self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
+
+        retrieved_aligned_timestamps = fresh_interface.get_timestamps()
+        assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
