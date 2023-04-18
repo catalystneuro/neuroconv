@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional, List
+from typing import List, Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -46,7 +46,6 @@ def _check_starting_times(starting_times: list, metadata: List[dict]) -> list:
 
 
 class AudioInterface(BaseDataInterface):
-
     def __init__(self, file_paths: list, verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.
