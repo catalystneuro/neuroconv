@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, List
 from warnings import warn
 
 import numpy as np
@@ -27,7 +27,7 @@ def _check_audio_names_are_unique(metadata: dict):
     assert neurodata_names_are_unique, f"Some of the names for Audio metadata are not unique."
 
 
-def _check_starting_times(starting_times: list, metadata: dict) -> list:
+def _check_starting_times(starting_times: list, metadata: List[dict]) -> list:
     if starting_times is not None:
         assert isinstance(starting_times, list) and all(
             [isinstance(x, float) for x in starting_times]
@@ -46,19 +46,20 @@ def _check_starting_times(starting_times: list, metadata: dict) -> list:
 
 
 class AudioInterface(BaseDataInterface):
-    """Data interface for writing acoustic recordings to an NWB file."""
 
     def __init__(self, file_paths: list, verbose: bool = False):
         """
-        Create the interface for writing acoustic recordings as AcousticWaveformSeries.
+        Data interface for writing acoustic recordings to an NWB file.
+
+        Writes acoustic recordings as an ``AcousticWaveformSeries`` from the ndx_sound extension.
 
         Parameters
         ----------
         file_paths : list of FilePathTypes
             The file paths to the audio recordings in sorted, consecutive order.
-            We recommend using `natsort` to ensure the files are in consecutive order.
-            from natsort import natsorted
-            natsorted(file_paths)
+            We recommend using ``natsort`` to ensure the files are in consecutive order.
+                >>> from natsort import natsorted
+                >>> natsorted(file_paths)
         verbose : bool, default: False
         """
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
