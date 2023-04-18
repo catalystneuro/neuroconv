@@ -153,10 +153,12 @@ class DataInterfaceTestMixin:
                 self.run_conversion(nwbfile_path=self.nwbfile_path)
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
-                # Temporal alignment checks
-                self.check_get_timestamps()
-                self.check_align_starting_time_internal()
-                self.check_align_starting_time_external()
+                self.check_temporal_alignment()
+
+    def check_temporal_alignment(self):
+        self.check_get_timestamps()
+        self.check_align_starting_time_internal()
+        self.check_align_starting_time_external()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
