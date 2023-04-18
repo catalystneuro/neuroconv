@@ -1,8 +1,8 @@
 Behavior
 ========
 
-Movie Data
-----------
+Video
+-----
 .. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
 
 DeepLabCut
