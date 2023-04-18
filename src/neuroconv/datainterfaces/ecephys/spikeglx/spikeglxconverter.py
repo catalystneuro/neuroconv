@@ -10,7 +10,7 @@ from ....nwbconverter import ConverterPipe
 from ....utils import FolderPathType, get_schema_from_method_signature
 
 
-class SpikeGLXConverterPipe(ConverterPipe):
+class SpikeGLXConverter(ConverterPipe):
     """Primary conversion class for handling multiple SpikeGLX data streams."""
 
     @classmethod
