@@ -10,7 +10,7 @@ from pydantic import FilePath
 from pynwb import NWBHDF5IO
 
 from neuroconv import ConverterPipe, NWBConverter
-from neuroconv.converters import SpikeGLXConverterPipe
+from neuroconv.converters import SpikeGLXConverter
 from neuroconv.utils import load_dict_from_file
 
 from ..setup_paths import ECEPHY_DATA_PATH
@@ -44,7 +44,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
             assert "s0" in nwbfile.electrode_groups
 
     def test_single_probe_spikeglx_converter(self):
-        converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+        converter = SpikeGLXConverter(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         # import json
         metadata = converter.get_metadata()
 
@@ -60,7 +60,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
 
     def test_in_converter_pipe(self):
-        spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+        spikeglx_converter = SpikeGLXConverter(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
         converter_pipe = ConverterPipe(data_interfaces=[spikeglx_converter])
 
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_in_converter_pipe.nwb"
@@ -70,7 +70,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
     def test_in_nwbconverter(self):
         class TestConverter(NWBConverter):
-            data_interface_classes = dict(SpikeGLX=SpikeGLXConverterPipe)
+            data_interface_classes = dict(SpikeGLX=SpikeGLXConverter)
 
         source_data = dict(SpikeGLX=dict(folder_path=str(SPIKEGLX_PATH / "Noise4Sam_g0")))
         converter_pipe = TestConverter(source_data=source_data)
