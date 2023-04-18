@@ -73,7 +73,7 @@ class AudioInterface(BaseDataInterface):
         self.verbose = verbose
         super().__init__(file_paths=file_paths)
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         time_series_metadata_schema = get_schema_from_hdmf_class(TimeSeries)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
