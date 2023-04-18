@@ -4,7 +4,7 @@ metadata:
     institution: My Institution
 
 data_interfaces:
-  mov: MovieInterface
+  video: VideoInterface
 
 experiments:
   ymaze:
@@ -15,7 +15,7 @@ experiments:
     sessions:
       - nwbfile_name: example_converter_spec_1
         source_data:
-          mov:
+          video:
             file_paths:
               - videos/CFR/video_mp4.mp4
         metadata:
