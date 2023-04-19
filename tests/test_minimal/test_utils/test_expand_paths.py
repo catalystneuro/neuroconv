@@ -19,8 +19,8 @@ def test_expand_paths(tmpdir):
     # run path parsing
     out = expander.expand_paths(
         dict(
-            aa=dict(folder=base, file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "abc")),
-            bb=dict(folder=base, file_path=os.path.join("sub-{subject_id:3}", "session_{session_id:3}", "xyz")),
+            aa=dict(folder=base, file_path="sub-{subject_id:3}/session_{session_id:3}/abc"),
+            bb=dict(folder=base, file_path="sub-{subject_id:3}/session_{session_id:3}/xyz"),
         ),
     )
 
