@@ -2,6 +2,8 @@ import platform
 from datetime import datetime
 from unittest import TestCase, skipIf
 
+from numpy.testing import assert_array_almost_equal
+
 from neuroconv.datainterfaces import (
     BrukerTiffImagingInterface,
     Hdf5ImagingInterface,
@@ -72,3 +74,6 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
         assert metadata["Ophys"]["Device"][0]["description"] == "Version 5.6.64.400"
         assert metadata["Ophys"]["ImagingPlane"][0]["imaging_rate"] == 30.345939461428763
         assert metadata["Ophys"]["ImagingPlane"][0]["description"] == "The plane imaged at 5e-06 meters depth."
+        assert_array_almost_equal(
+            metadata["Ophys"]["ImagingPlane"][0]["grid_spacing"], [2.16369629e-09, 2.16369629e-09]
+        )
