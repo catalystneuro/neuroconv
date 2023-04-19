@@ -3,6 +3,7 @@ from datetime import datetime
 from unittest import TestCase, skipIf
 
 from neuroconv.datainterfaces import (
+    BrukerTiffImagingInterface,
     Hdf5ImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
@@ -54,3 +55,20 @@ class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
         dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / f"sample.sbx")),
     ]
     save_directory = OUTPUT_PATH
+
+
+class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "Brukertif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
+        assert metadata["Ophys"]["Device"][0]["name"] == "Bruker Fluorescence Microscope"
+        assert metadata["Ophys"]["Device"][0]["description"] == "Version 5.6.64.400"
+        assert metadata["Ophys"]["ImagingPlane"][0]["imaging_rate"] == 30.345939461428763
+        assert metadata["Ophys"]["ImagingPlane"][0]["description"] == "The plane imaged at 5e-06 meters depth."
