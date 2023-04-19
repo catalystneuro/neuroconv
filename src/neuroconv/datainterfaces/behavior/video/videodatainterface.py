@@ -301,7 +301,7 @@ class VideoInterface(BaseDataInterface):
         module_description: str, optional
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
-        compression: str, optional
+        compression: str, default: "gzip"
             Compression strategy to use for :py:class:`hdmf.backends.hdf5.h5_utils.H5DataIO`. For full list of currently
             supported filters, see
             https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
