@@ -1,6 +1,3 @@
-from pathlib import Path
-from xml.etree import ElementTree
-
 import numpy as np
 from dateutil.parser import parse
 
@@ -31,13 +28,6 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         """
         super().__init__(folder_path=folder_path, verbose=verbose)
 
-    def _get_env_root(self):
-        folder_path = Path(self.source_data["folder_path"])
-        env_file_path = folder_path / f"{folder_path.stem}.env"
-        assert env_file_path.is_file(), f"The ENV configuration file is not found at '{folder_path}'."
-        tree = ElementTree.parse(env_file_path)
-        return tree.getroot()
-
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
 
@@ -54,12 +44,6 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
 
-        root = self._get_env_root()
-        laser_wavelength_param = root.find(".//NyquistSamplingController")
-        if laser_wavelength_param:
-            excitation_lambda = laser_wavelength_param.attrib["laserWavelength"]
-            imaging_plane_metadata.update(excitation_lambda=float(excitation_lambda))
-
         microns_per_pixel = xml_metadata["micronsPerPixel"]
         if microns_per_pixel:
             image_size = self.imaging_extractor.get_image_size()
@@ -75,8 +59,5 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
             device=device_name,
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
-
-        if xml_metadata["notes"]:
-            metadata["NWBFile"].update(session_description=xml_metadata["notes"])
 
         return metadata
