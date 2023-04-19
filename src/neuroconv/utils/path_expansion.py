@@ -11,6 +11,8 @@ from .types import FilePathType, FolderPathType
 
 class AbstractPathExpander(abc.ABC):
     def extract_metadata(self, folder, format_: str):
+        format_ = format_.replace("\", os.sep)
+        format_ = format_.replace("/", os.sep)  # our f-string uses '/' to communicate os-independent separators
         for filepath in self.list_directory(folder):
             result = parse(format_, filepath)
             if result:
