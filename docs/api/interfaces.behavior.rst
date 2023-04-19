@@ -5,8 +5,8 @@ Audio
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.audio.audiointerface
 
-Movie Data
-----------
+Video
+-----
 .. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
 
 DeepLabCut
