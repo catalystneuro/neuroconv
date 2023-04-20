@@ -4,6 +4,7 @@ from .dict import (
     dict_deep_update,
     exist_dict_in_list,
     load_dict_from_file,
+    DeepDict,
 )
 from .json_schema import (
     NWBMetaDataEncoder,
@@ -14,7 +15,6 @@ from .json_schema import (
     get_schema_from_method_signature,
     unroot_schema,
 )
-from .path_expansion import LocalPathExpander
 from .types import (
     ArrayType,
     FilePathType,

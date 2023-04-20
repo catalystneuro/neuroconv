@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from neuroconv.utils import LocalPathExpander
+from neuroconv.tools import LocalPathExpander
 
 
 def test_expand_paths(tmpdir):

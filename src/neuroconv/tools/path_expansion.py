@@ -1,12 +1,12 @@
 import abc
 import os
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Iterable, Union
 
 from parse import parse
+from pydantic import FilePath, DirectoryPath
 
-from .dict import DeepDict
-from .types import FilePathType, FolderPathType
+from ..utils import DeepDict
 
 
 class AbstractPathExpander(abc.ABC):
@@ -19,14 +19,14 @@ class AbstractPathExpander(abc.ABC):
                 yield filepath, result.named
 
     @abc.abstractmethod
-    def list_directory(self, folder: Union[FilePathType, FolderPathType]) -> Tuple[str]:
+    def list_directory(self, folder: Union[FilePath, DirectoryPath]) -> Iterable[str]:
         """
-        List all folders and files in a directory recursively
+        List all folders and files in a directory recursively.
 
         Yields
-        ------
-        str
-
+        -------
+        sub_paths : iterable of strings
+            Generator that yields all sub-paths of file and folders from the common root `folder`.
         """
         pass
 
@@ -41,6 +41,7 @@ class AbstractPathExpander(abc.ABC):
 
         Returns
         -------
+        deep_dicts : list of DeepDict objects
 
         Examples
         --------
@@ -54,7 +55,6 @@ class AbstractPathExpander(abc.ABC):
         ...         )
         ...     )
         ... )
-
         """
         out = DeepDict()
         for interface, source_data in source_data_spec.items():
@@ -73,5 +73,5 @@ class AbstractPathExpander(abc.ABC):
 
 
 class LocalPathExpander(AbstractPathExpander):
-    def list_directory(self, folder: Union[FilePathType, FolderPathType]):
+    def list_directory(self, folder: Union[FilePath, DirectoryPath]) -> Iterable[str]:
         return (str(path.relative_to(folder)) for path in Path(folder).rglob("*"))
