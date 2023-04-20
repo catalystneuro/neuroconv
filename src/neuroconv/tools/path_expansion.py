@@ -1,10 +1,10 @@
 import abc
 import os
 from pathlib import Path
-from typing import List, Iterable, Union
+from typing import Iterable, List, Union
 
 from parse import parse
-from pydantic import FilePath, DirectoryPath
+from pydantic import DirectoryPath, FilePath
 
 from ..utils import DeepDict
 

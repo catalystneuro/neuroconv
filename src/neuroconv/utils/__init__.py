@@ -1,10 +1,10 @@
 from .checks import calculate_regular_series_rate
 from .dict import (
+    DeepDict,
     append_replace_dict_in_list,
     dict_deep_update,
     exist_dict_in_list,
     load_dict_from_file,
-    DeepDict,
 )
 from .json_schema import (
     NWBMetaDataEncoder,
