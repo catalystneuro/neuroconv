@@ -28,7 +28,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         """
         super().__init__(folder_path=folder_path, verbose=verbose)
 
-    def get_metadata(self) -> dict:
+    def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
         xml_metadata = self.imaging_extractor.xml_metadata
