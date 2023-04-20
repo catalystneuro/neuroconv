@@ -29,19 +29,21 @@ def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType
 
     Parameters
     ----------
-    videos_metadata: list of dict
-        The metadata corresponding to the videos should be organized as follow
-                videos_metadata =[
-                            dict(name="Video1", description="This is the first video.."),
-                            dict(name="SecondVideo", description="Video #2 details..."),
-                ]
+    videos_metadata: list of dicts
+
+        The metadata corresponding to the videos should be organized as follows
+
+            >>> videos_metadata = [
+            >>>     dict(name="Video1", description="This is the first video.."),
+            >>>     dict(name="SecondVideo", description="Video #2 details..."),
+            >>> ]
 
     Returns
     -------
-    videos_metadata_unique: list of dict
+    videos_metadata_unique: list of dicts
         if metadata has common names (case when the user intends to put multiple video files
         under the same ImageSeries container), this removes the duplicate names.
-    file_paths_list: List[List[str]]
+    file_paths_list: list of lists of strings
         len(file_paths_list)==len(videos_metadata_unique)
     """
     keys_set = []
@@ -200,7 +202,7 @@ class VideoInterface(BaseDataInterface):
         module_description: str, optional
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
-        compression: str, optional
+        compression: str, default: "gzip"
             Compression strategy to use for :py:class:`hdmf.backends.hdf5.h5_utils.H5DataIO`. For full list of currently
             supported filters, see
             https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
