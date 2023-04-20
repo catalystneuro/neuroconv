@@ -39,9 +39,9 @@ jobs:
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
 
-      - name: Run subset of tests that are live services
+      - name: Run subset of tests that use S3 live services
         run: pytest -rsx -n auto tests/test_minimal/test_tools/s3_tools.py
-      - name: Run subset of tests that are live services
+      - name: Run subset of tests that use DANDI live services
         run: pytest -rsx -n auto tests/test_minimal/test_tools/dandi_transfer_tools.py
-      - name: Run subset of tests that are live services
+      - name: Run subset of tests that use Globus live services
         run: pytest -rsx -n auto tests/test_minimal/test_tools/globus_transfer_tools.py
