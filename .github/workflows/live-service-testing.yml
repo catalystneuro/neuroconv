@@ -40,6 +40,6 @@ jobs:
         run: pip install -e .[full]
 
       - name: Run subset of tests that are live services
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/dandi_transfer_tools_test.py
+        run: pytest -rsx -n auto tests/test_minimal/test_tools/dandi_transfer_tools.py
       - name: Run subset of tests that are live services
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/globus_transfer_tools_test.py
+        run: pytest -rsx -n auto tests/test_minimal/test_tools/globus_transfer_tools.py
