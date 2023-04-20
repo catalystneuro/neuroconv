@@ -64,7 +64,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
     data_interface_cls = BrukerTiffImagingInterface
     interface_kwargs = dict(
         folder_path=str(
-            OPHYS_DATA_PATH / "imaging_datasets" / "Brukertif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
         )
     )
     save_directory = OUTPUT_PATH
