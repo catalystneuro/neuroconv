@@ -1,5 +1,6 @@
 import platform
 from datetime import datetime
+from pathlib import Path
 from unittest import TestCase, skipIf
 
 from numpy.testing import assert_array_almost_equal
@@ -69,11 +70,15 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 2, 20, 15, 58, 25)
-        assert metadata["Ophys"]["Device"][0]["name"] == "Bruker Fluorescence Microscope"
-        assert metadata["Ophys"]["Device"][0]["description"] == "Version 5.6.64.400"
-        assert metadata["Ophys"]["ImagingPlane"][0]["imaging_rate"] == 30.345939461428763
-        assert metadata["Ophys"]["ImagingPlane"][0]["description"] == "The plane imaged at 5e-06 meters depth."
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 2, 20, 15, 58, 25))
+        self.assertEqual(metadata["Ophys"]["Device"][0]["name"], "Bruker Fluorescence Microscope")
+        self.assertEqual(metadata["Ophys"]["Device"][0]["description"], "Version 5.6.64.400")
+        self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["imaging_rate"], 30.345939461428763)
+        self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["description"], "The plane imaged at 5e-06 meters depth.")
         assert_array_almost_equal(
             metadata["Ophys"]["ImagingPlane"][0]["grid_spacing"], [2.16369629e-09, 2.16369629e-09]
         )
+        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["unit"], "px")
+        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["field_of_view"], [0.0005672, 0.0005672, 5e-06])
+        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["format"], "tiff")
+        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["scan_line_rate"], 15840.580398865815)
