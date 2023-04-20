@@ -23,6 +23,11 @@ class AbstractPathExpander(abc.ABC):
         """
         List all folders and files in a directory recursively.
 
+        Parameters
+        ----------
+        folder : FilePath or DirectoryPath
+            The base folder whose contents will be iterated recursively.
+
         Yields
         -------
         sub_paths : iterable of strings
