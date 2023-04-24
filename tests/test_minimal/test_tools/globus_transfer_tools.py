@@ -7,8 +7,8 @@ from tempfile import mkdtemp
 import pytest
 from hdmf.testing import TestCase
 
+from neuroconv.tools import deploy_process
 from neuroconv.tools.data_transfers import (
-    deploy_process,
     estimate_s3_conversion_cost,
     estimate_total_conversion_runtime,
     get_globus_dataset_content_sizes,
