@@ -1,11 +1,11 @@
 from .checks import calculate_regular_series_rate
 from .dict import (
+    DeepDict,
     append_replace_dict_in_list,
     dict_deep_update,
     exist_dict_in_list,
     load_dict_from_file,
 )
-from .globbing import decompose_f_string, parse_f_string
 from .json_schema import (
     NWBMetaDataEncoder,
     fill_defaults,
