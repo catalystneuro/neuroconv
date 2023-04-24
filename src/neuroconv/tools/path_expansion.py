@@ -1,7 +1,7 @@
 import abc
 import os
 from pathlib import Path
-from typing import Iterable, List, Union, Dict
+from typing import Dict, Iterable, List, Union
 
 from parse import parse
 from pydantic import DirectoryPath, FilePath
@@ -35,7 +35,7 @@ class AbstractPathExpander(abc.ABC):
         """
         pass
 
-    def expand_paths(self, source_data_spec: Dict[str,dict]) -> List[DeepDict]:
+    def expand_paths(self, source_data_spec: Dict[str, dict]) -> List[DeepDict]:
         """
         Match paths in a directory to specs and extract metadata from the paths.
 
