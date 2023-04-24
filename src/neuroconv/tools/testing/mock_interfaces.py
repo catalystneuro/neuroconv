@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 import numpy as np
@@ -7,6 +8,9 @@ from pynwb.base import DynamicTable
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.ecephys.baserecordingextractorinterface import (
+    BaseRecordingExtractorInterface,
+)
 from ...utils import ArrayType, get_schema_from_method_signature
 
 
@@ -109,3 +113,32 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         self.subset_channels = None
         self.verbose = None
         self.es_key = "ElectricalSeriesNIDQ"
+
+
+class MockRecordingInterface(BaseRecordingExtractorInterface):
+    """An interface with a spikeinterface recording object for testing purposes."""
+
+    def __init__(
+        self,
+        num_channels=4,
+        sampling_frequency=30_000.0,
+        durations=[1.0],
+        seed=0,
+        verbose=True,
+        es_key: str = "ElectricalSeries",
+    ):
+        from spikeinterface.core.generate import generate_recording
+
+        # TODO: Use the true generator recording once spikeinterface is updated to 0.98
+        self.recording_extractor = generate_recording(
+            num_channels=num_channels, sampling_frequency=sampling_frequency, durations=durations, seed=seed
+        )
+        self.subset_channels = None
+        self.verbose = verbose
+        self.es_key = es_key
+
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
+        session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata

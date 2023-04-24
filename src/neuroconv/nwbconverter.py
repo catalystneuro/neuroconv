@@ -15,6 +15,7 @@ from .utils import (
     load_dict_from_file,
     unroot_schema,
 )
+from .utils.dict import DeepDict
 from .utils.json_schema import NWBMetaDataEncoder
 
 
@@ -78,7 +79,7 @@ class NWBConverter:
         fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
