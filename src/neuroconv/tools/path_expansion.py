@@ -1,7 +1,7 @@
 import abc
 import os
 from pathlib import Path
-from typing import Iterable, List, Union
+from typing import Iterable, List, Union, Dict
 
 from parse import parse
 from pydantic import DirectoryPath, FilePath
