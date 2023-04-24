@@ -1,7 +1,8 @@
+"""Helpful classes for expanding file or folder paths on a system given a f-string rule for matching patterns."""
 import abc
 import os
 from pathlib import Path
-from typing import Dict, Iterable, List, Union
+from typing import Dict, Iterable, List
 
 from parse import parse
 from pydantic import DirectoryPath, FilePath
@@ -25,13 +26,13 @@ class AbstractPathExpander(abc.ABC):
 
         Parameters
         ----------
-        folder : FilePath or DirectoryPath
-            The base folder whose contents will be iterated recursively.
+        base_directory : DirectoryPath
+            The base directory whose contents will be iterated recursively.
 
         Yields
-        -------
+        ------
         sub_paths : iterable of strings
-            Generator that yields all sub-paths of file and folders from the common root `folder`.
+            Generator that yields all sub-paths of file and folders from the common root `base_directory`.
         """
         pass
 
@@ -53,7 +54,7 @@ class AbstractPathExpander(abc.ABC):
         >>> path_expander.expand_paths(
         ...     dict(
         ...         spikeglx=dict(
-        ...             folder="source_folder",
+        ...             base_directory="source_folder",
         ...             paths=dict(
         ...                 file_path="sub-{subject_id}/sub-{subject_id}_ses-{session_id}"
         ...             )
@@ -65,10 +66,10 @@ class AbstractPathExpander(abc.ABC):
         for interface, source_data in source_data_spec.items():
             for path_type in ("file_path", "folder_path"):
                 if path_type in source_data:
-                    for path, metadata in self.extract_metadata(source_data["folder"], source_data[path_type]):
+                    for path, metadata in self.extract_metadata(source_data["base_directory"], source_data[path_type]):
                         key = tuple(sorted(metadata.items()))
                         out[key]["source_data"][interface][path_type] = os.path.join(
-                            source_data["folder"], path
+                            source_data["base_directory"], path
                         )  # return the absolute path
                         if "session_id" in metadata:
                             out[key]["metadata"]["NWBFile"]["session_id"] = metadata["session_id"]
@@ -79,4 +80,5 @@ class AbstractPathExpander(abc.ABC):
 
 class LocalPathExpander(AbstractPathExpander):
     def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:
-        return (str(path.relative_to(base_directory)) for path in Path(folder).rglob("*"))
+        assert base_directory.is_dir(), f"The specified 'base_directory' ({base_directory}) is not a directory!"
+        return (str(path.relative_to(base_directory)) for path in Path(base_directory).rglob("*"))
