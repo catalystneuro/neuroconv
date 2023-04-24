@@ -13,17 +13,17 @@ SpikeGLXConverter
 ~~~~~~~~~~~~~~~~~
 
 We can easily convert all data stored in the native SpikeGLX folder structure to NWB using
-:py:class:`~neuroconv.converters.SpikeGLXConverter`.
+:py:class:`~neuroconv.converters.SpikeGLXConverterPipe`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv.converters import SpikeGLXConverter
+    >>> from neuroconv.converters import SpikeGLXConverterPipe
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0"
-    >>> converter = SpikeGLXRecordingInterface(folder_path=folder_path)
+    >>> converter = SpikeGLXConverterPipe(folder_path=folder_path)
     >>> ...
     >>>
     >>> # Extract what metadata we can from the source files
