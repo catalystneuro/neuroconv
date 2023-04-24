@@ -3,6 +3,7 @@ import json
 import warnings
 from collections import defaultdict
 from copy import deepcopy
+from ctypes import Union
 from pathlib import Path
 from typing import Any, Optional, Union
 
