@@ -2,21 +2,20 @@
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
 from time import sleep, time
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 from warnings import warn
 
-import psutil
 from dandi.download import download as dandi_download
 from dandi.organize import organize as dandi_organize
 from dandi.upload import upload as dandi_upload
 from pynwb import NWBHDF5IO
 from tqdm import tqdm
 
+from .processes import deploy_process
 from ..utils import FolderPathType, OptionalFolderPathType
 
 try:  # pragma: no cover
@@ -25,26 +24,6 @@ try:  # pragma: no cover
     HAVE_GLOBUS = True
 except ModuleNotFoundError:
     HAVE_GLOBUS = False
-
-
-def _kill_process(proc):
-    """Private helper for ensuring a process and any subprocesses are properly terminated after a timeout period."""
-    try:
-        process = psutil.Process(proc.pid)
-        for proc in process.children(recursive=True):
-            proc.kill()
-        process.kill()
-    except psutil.NoSuchProcess:  # good process cleaned itself up
-        pass
-
-
-def deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
-    """Private helper for efficient submission and cleanup of shell processes."""
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True)
-    output = proc.communicate()[0].strip() if catch_output else None
-    proc.wait(timeout=timeout)
-    _kill_process(proc=proc)
-    return output
 
 
 def get_globus_dataset_content_sizes(

@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from typing import Callable, Literal
 
+import hdmf.data_utils
 import numpy as np
 import pynwb
 from pynwb.device import Device
@@ -205,6 +206,11 @@ def get_schema_from_hdmf_class(hdmf_class):
         elif docval_arg["type"] is collections.abc.Iterable or (
             isinstance(docval_arg["type"], tuple) and collections.abc.Iterable in docval_arg["type"]
         ):
+            schema_arg[docval_arg["name"]].update(type="array")
+        elif isinstance(docval_arg["type"], tuple) and (
+            np.ndarray in docval_arg["type"] and hdmf.data_utils.DataIO not in docval_arg["type"]
+        ):
+            # extend type array without including type where DataIO in tuple
             schema_arg[docval_arg["name"]].update(type="array")
         # type datetime
         elif docval_arg["type"] is datetime or (
