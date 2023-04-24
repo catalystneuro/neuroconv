@@ -22,9 +22,8 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> from pathlib import Path
     >>> from neuroconv.converters import SpikeGLXConverterPipe
     >>>
-    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0"
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/spikeglx/Noise4Sam_g0"
     >>> converter = SpikeGLXConverterPipe(folder_path=folder_path)
-    >>> ...
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
@@ -33,8 +32,9 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = output_folder / "my_spikeglx_session.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    root pynwb.file.NWBFile at ...
 
 
 
