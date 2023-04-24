@@ -78,5 +78,5 @@ class AbstractPathExpander(abc.ABC):
 
 
 class LocalPathExpander(AbstractPathExpander):
-    def list_directory(self, folder: Union[FilePath, DirectoryPath]) -> Iterable[str]:
-        return (str(path.relative_to(folder)) for path in Path(folder).rglob("*"))
+    def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:
+        return (str(path.relative_to(base_directory)) for path in Path(folder).rglob("*"))
