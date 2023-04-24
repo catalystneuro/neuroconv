@@ -1,0 +1,41 @@
+from dateutil.parser import parse
+
+from neuroconv.utils import FolderPathType
+
+from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+
+
+class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
+    """Data Interface for MicroManagerTiffImagingExtractor."""
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "The path that points to the folder containing the OME-TIF image files."
+        return source_schema
+
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+        """
+        Data Interface for MicroManagerTiffImagingExtractor.
+
+        Parameters
+        ----------
+        folder_path : FolderPathType
+            The folder path that contains the OME-TIF image files (.ome.tif files) and
+           the 'DisplaySettings' JSON file.
+        verbose : bool, default: True
+        """
+        super().__init__(folder_path=folder_path)
+        self.verbose = verbose
+
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
+
+        micromanager_metadata = self.imaging_extractor.micromanager_metadata
+        session_start_time = parse(micromanager_metadata["Summary"]["StartTime"])
+        metadata["NWBFile"].update(session_start_time=session_start_time)
+
+        return metadata
