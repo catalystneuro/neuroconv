@@ -4,17 +4,12 @@ on:
     - cron: "0 16 * * *"  # Daily at noon EST
   workflow_call:
     secrets:
-      DANDI_API_KEY:
-        required: true
       AWS_ACCESS_KEY_ID:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
       S3_GIN_BUCKET:
         required: true
-
-env:
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
 jobs:
   run:
@@ -117,7 +112,7 @@ jobs:
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         name: Install and configure AWS CLI
         run: |
-          pip install awscli==1.25.27
+          pip install awscli
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false

@@ -1,6 +1,9 @@
-# This module is meant for the tests to be run as stand-alone so as to emulate a fresh import
-# Run them by using:
-# pytest tests/import_structure.py::TestImportStructure::test_name
+"""
+This module is meant for the tests to be run as stand-alone so as to emulate a fresh import.
+
+Run them by using:
+pytest tests/import_structure.py::TestImportStructure::test_name
+"""
 
 from unittest import TestCase
 
@@ -40,7 +43,6 @@ class TestImportStructure(TestCase):
 
     def test_tools(self):
         """Python dir() calls (and __dict__ as well) update dynamically based on global imports."""
-
         from neuroconv import tools
 
         current_structure = _strip_magic_module_attributes(ls=tools.__dict__)
@@ -50,8 +52,10 @@ class TestImportStructure(TestCase):
             # Sub-modules
             "importing",  # Attached to namespace by importing get_package
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
-            # Functions imported on the __init__
+            # Functions and classes imported on the __init__
             "get_package",
+            "processes",
+            "deploy_process",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
