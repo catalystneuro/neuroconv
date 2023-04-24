@@ -36,6 +36,14 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
 
+
+  run-live-service-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: catalystneuro/neuroconv/.github/workflows/live-service-testing.yml@separate_workflow_for_live_services
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+
   run-dev-tests:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}

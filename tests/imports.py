@@ -54,6 +54,8 @@ class TestImportStructure(TestCase):
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
             # Functions and classes imported on the __init__
             "get_package",
+            "processes",
+            "deploy_process",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
