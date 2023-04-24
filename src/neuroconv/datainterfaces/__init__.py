@@ -61,9 +61,9 @@ from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
-from .ophys.brukertiff.brukertiffdatainterface import BrukerTiffImagingInterface
 
 # Ophys
+from .ophys.brukertiff.brukertiffdatainterface import BrukerTiffImagingInterface
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
