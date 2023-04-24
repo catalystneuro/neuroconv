@@ -19,7 +19,7 @@ class AbstractPathExpander(abc.ABC):
                 yield filepath, result.named
 
     @abc.abstractmethod
-    def list_directory(self, folder: Union[FilePath, DirectoryPath]) -> Iterable[str]:
+    def list_directory(self, folder: DirectoryPath) -> Iterable[FilePath]:
         """
         List all folders and files in a directory recursively.
 
