@@ -10,10 +10,10 @@ from ..utils import DeepDict
 
 
 class AbstractPathExpander(abc.ABC):
-    def extract_metadata(self, folder, format_: str):
+    def extract_metadata(self, base_directory: DirectoryPath, format_: str):
         format_ = format_.replace("\\", os.sep)  # Actual character is a single back-slash; first is an escape for that
         format_ = format_.replace("/", os.sep)  # our f-string uses '/' to communicate os-independent separators
-        for filepath in self.list_directory(folder):
+        for filepath in self.list_directory(base_directory):
             result = parse(format_, filepath)
             if result:
                 yield filepath, result.named
