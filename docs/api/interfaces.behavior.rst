@@ -1,8 +1,12 @@
 Behavior
 ========
 
-Movie Data
-----------
+Audio
+-----
+.. automodule:: neuroconv.datainterfaces.behavior.audio.audiointerface
+
+Video
+-----
 .. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
 
 DeepLabCut
@@ -10,5 +14,5 @@ DeepLabCut
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface
 
 SLEAP
---------
+-----
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface

@@ -9,6 +9,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from ..utils import FilePathType, dict_deep_update
+from ..utils.dict import DeepDict
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -26,21 +27,21 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
         return nwbfile.create_processing_module(name=name, description=description)
 
 
-def get_default_nwbfile_metadata():
+def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
 
     These standard defaults are
         metadata["NWBFile"]["session_description"] = "no description"
-        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)
+        metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
     Proper conversions should override these fields prior to calling NWBConverter.run_conversion()
     """
-    metadata = dict(
-        NWBFile=dict(
-            session_description="no description",
-            identifier=str(uuid.uuid4()),
-        )
+    metadata = DeepDict()
+    metadata["NWBFile"].deep_update(
+        session_description="no description",
+        identifier=str(uuid.uuid4()),
     )
+
     return metadata
 
 
