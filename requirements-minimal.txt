@@ -5,8 +5,10 @@ PyYAML>=5.4
 scipy>=1.4.1
 h5py>=2.10.0
 hdmf>=3.4.7
-pynwb>=1.4.0
+pynwb>=1.4.0;python_version>='3.8'
+pynwb>=1.4.0,<2.3.2;python_version>='3.11'
 psutil>=5.8.0
 tqdm>=4.60.0
 dandi>=0.46.2
 pandas
+parse

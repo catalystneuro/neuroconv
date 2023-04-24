@@ -7,6 +7,8 @@ from typing import List, Type, Union
 
 import numpy as np
 from jsonschema.validators import Draft7Validator, validate
+from numpy.testing import assert_array_equal
+from pynwb import NWBHDF5IO
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
@@ -92,6 +94,49 @@ class DataInterfaceTestMixin:
         """Override this method to make assertions about specific extracted metadata values."""
         pass
 
+    def check_get_original_timestamps(self):
+        """
+        Just to ensure each interface can call .get_original_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        timestamps = self.interface.get_original_timestamps()
+
+        assert len(timestamps) != 0
+
+    def check_get_timestamps(self):
+        """
+        Just to ensure each interface can call .get_timestamps() without an error raising.
+
+        Also, that it always returns non-empty.
+        """
+        timestamps = self.interface.get_timestamps()
+
+        assert len(timestamps) != 0
+
+    def check_align_starting_time_internal(self):
+        fresh_interface = self.data_interface_cls(**self.test_kwargs)
+        unaligned_timestamps = fresh_interface.get_timestamps()
+
+        starting_time = 1.23
+        fresh_interface.align_starting_time(starting_time=starting_time)
+
+        aligned_timestamps = fresh_interface.get_timestamps()
+        expected_timestamps = unaligned_timestamps + starting_time
+        assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+
+    def check_align_timestamps_internal(self):
+        unaligned_timestamps = self.interface.get_original_timestamps()
+
+        aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
+        self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
+
+        retrieved_aligned_timestamps = self.interface.get_timestamps()
+        assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
+
+    def check_align_starting_time_external(self):
+        pass  # TODO: generalize
+
     def test_conversion_as_lone_interface(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
@@ -99,13 +144,19 @@ class DataInterfaceTestMixin:
         for num, kwargs in enumerate(interface_kwargs):
             with self.subTest(str(num)):
                 self.case = num
-                self.interface = self.data_interface_cls(**kwargs)
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
-                nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path)
-                self.check_read_nwb(nwbfile_path=nwbfile_path)
+                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
+                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Temporal alignment checks
+                self.check_get_timestamps()
+                self.check_align_starting_time_internal()
+                self.check_align_starting_time_external()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
@@ -120,6 +171,25 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
             exclude_channel_comparison = True
 
         check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
+
+    def check_align_starting_time_external(self):
+        nwbfile_path = str(
+            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+        )
+
+        interface = self.data_interface_cls(**self.test_kwargs)
+
+        starting_time = 1.23
+        interface.align_starting_time(starting_time=starting_time)
+
+        metadata = interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition["TwoPhotonSeries"].starting_time == starting_time
 
 
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin):
@@ -158,6 +228,28 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                 if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
+    def test_conversion_as_lone_interface(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
+                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Temporal alignment checks
+                # Temporary override to disable failing multi-segment case
+                # self.check_get_timestamps()
+                # self.check_align_starting_time_internal()
+                # self.check_align_starting_time_external()
+
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
     data_interface_cls: BaseSortingExtractorInterface
@@ -177,3 +269,25 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                 unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
             )
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
+
+    def test_conversion_as_lone_interface(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
+                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Temporal alignment checks
+                # Temporary override to disable failing multi-segment case and general sorting application
+                # self.check_get_timestamps()
+                # self.check_align_starting_time_internal()
+                # self.check_align_starting_time_external()
