@@ -61,8 +61,8 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
             y_position_in_meters = float(microns_per_pixel[1]["YAxis"]) / 1e6
             z_plane_position_in_meters = float(microns_per_pixel[2]["ZAxis"]) / 1e6
             grid_spacing = [
-                y_position_in_meters / image_size_in_pixels[1],
-                x_position_in_meters / image_size_in_pixels[0],
+                y_position_in_meters,
+                x_position_in_meters,
             ]
 
             imaging_plane_metadata.update(
