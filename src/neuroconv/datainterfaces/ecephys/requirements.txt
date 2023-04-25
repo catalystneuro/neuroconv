@@ -1,2 +1,2 @@
-spikeinterface>=0.97.1
+git+https://github.com/catalystneuro/spikeinterface.git@refactor_nwb_extractor
 packaging<22.0
