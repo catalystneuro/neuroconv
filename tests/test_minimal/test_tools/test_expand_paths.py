@@ -58,3 +58,14 @@ def test_expand_paths(tmpdir):
     for x in out:
         assert x in expected
     assert len(out) == len(expected)
+    
+    # test again with string inputs to `base_directory`
+    string_directory_out = expander.expand_paths(
+        dict(
+            aa=dict(base_directory=str(base_directory), file_path="sub-{subject_id:3}/session_{session_id:3}/abc"),
+            bb=dict(base_directory=str(base_directory), file_path="sub-{subject_id:3}/session_{session_id:3}/xyz"),
+        ),
+    )
+    for x in string_directory_out:
+        assert x in expected
+    assert len(string_directory_out) == len(expected)
