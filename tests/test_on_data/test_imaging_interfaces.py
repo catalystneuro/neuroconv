@@ -67,6 +67,10 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(
-            2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)
+        self.assertEqual(
+            metadata["NWBFile"]["session_start_time"],
+            datetime(2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)),
         )
+        self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["imaging_rate"], 20.0)
+        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["unit"], "px")
+        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["format"], "tiff")

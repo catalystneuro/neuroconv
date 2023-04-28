@@ -37,4 +37,12 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         session_start_time = parse(micromanager_metadata["Summary"]["StartTime"])
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
+        metadata["Ophys"]["ImagingPlane"][0].update(
+            imaging_rate=self.imaging_extractor.get_sampling_frequency(),
+        )
+        metadata["Ophys"]["TwoPhotonSeries"][0].update(
+            unit="px",
+            format="tiff",
+        )
+
         return metadata
