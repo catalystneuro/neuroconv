@@ -17,7 +17,7 @@ Convert Bruker TIFF imaging data to NWB using
     >>>
     >>> # The 'folder_path' is the path to the folder containing the OME-TIF image files and the XML configuration file.
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
-    >>> interface = MicroManagerTiffImagingInterface(folder_path=folder_path)
+    >>> interface = BrukerTiffImagingInterface(folder_path=folder_path)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
