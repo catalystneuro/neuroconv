@@ -23,8 +23,8 @@ Convert Micro-Manager TIFF imaging data to NWB using
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> if session_start_time.tzinfo is None:
-    >>>     tzinfo = tz.gettz("US/Pacific")
-    >>>     metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
+    ...     tzinfo = tz.gettz("US/Pacific")
+    ...     metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
