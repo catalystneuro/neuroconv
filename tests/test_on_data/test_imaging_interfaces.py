@@ -2,8 +2,11 @@ import platform
 from datetime import datetime
 from unittest import TestCase, skipIf
 
+from dateutil.tz import tzoffset
+
 from neuroconv.datainterfaces import (
     Hdf5ImagingInterface,
+    MicroManagerTiffImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
     TiffImagingInterface,
@@ -54,3 +57,16 @@ class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
         dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / f"sample.sbx")),
     ]
     save_directory = OUTPUT_PATH
+
+
+class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = MicroManagerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(
+            2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)
+        )
