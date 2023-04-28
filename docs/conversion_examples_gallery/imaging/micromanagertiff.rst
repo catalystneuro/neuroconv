@@ -15,6 +15,7 @@ Convert Micro-Manager TIFF imaging data to NWB using
     >>> from dateutil import tz
     >>> from neuroconv.datainterfaces import MicroManagerTiffImagingInterface
     >>>
+    >>> # The 'folder_path' is the path to the folder containing the OME-TIF image files and the 'DisplaySettings.json' file with the Micro-Manager properties.
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1"
     >>> interface = MicroManagerTiffImagingInterface(folder_path=folder_path)
     >>>
