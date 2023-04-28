@@ -68,6 +68,7 @@ Imaging
     HDF5 <imaging/hdf5imaging>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
+    Micro-Manager Tiff <imaging/micromanagertiff>
 
 Segmentation
 ~~~~~~~~~~~~
