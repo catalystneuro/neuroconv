@@ -45,6 +45,8 @@ class BaseIcephysInterface(BaseExtractorInterface):
         self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
         self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
 
+        self._timestamps = None
+
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
         if DandiIcephysMetadata:
@@ -66,20 +68,19 @@ class BaseIcephysInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
+        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
 
     def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
-        )
+        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
 
     def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
-        )
+        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
+
+    def align_starting_time(self, starting_time: float):
+        raise NotImplementedError("This icephys interface has not specified the method for aligning starting time.")
 
     def run_conversion(
         self,

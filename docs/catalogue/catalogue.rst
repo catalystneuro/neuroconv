@@ -21,7 +21,7 @@ NeuroConv v0.2
 `Dr. Misha Ahrens' lab <https://ahrenslab.org>`_ at Janelia converted the imaging data corresponding to the
 publication `Mu Y, Bennett DV, Rubinov M, Narayan S, Yang CT, Tanimoto M, Mensh BD, Looger LL, Ahrens MB.
 Glia Accumulate Evidence that Actions Are Futile and Suppress Unsuccessful Behavior. Cell. 2019
-<https://www.cell.com/cell/fulltext/S0092-8674(19)30621-X?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS009286741930621X%3Fshowall%3Dtrue>`_
+<https://doi.org/10.1016/j.cell.2019.05.050>`_
 and shared the data on the DANDI archive. In this experiment, paralyzed zebra-fish were placed in a virtual reality
 environment which systematically responded to their attempts to swim by either mimicking movement effects within the
 environment or not (test of futility). While the subject attempts to engage in swimming behaviors, a light-sheet
