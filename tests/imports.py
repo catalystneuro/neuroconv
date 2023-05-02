@@ -52,10 +52,12 @@ class TestImportStructure(TestCase):
             # Sub-modules
             "importing",  # Attached to namespace by importing get_package
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
+            "path_expansion",
             # Functions and classes imported on the __init__
             "get_package",
             "processes",
             "deploy_process",
+            "LocalPathExpander",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
