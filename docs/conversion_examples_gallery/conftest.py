@@ -12,3 +12,4 @@ def add_data_space(doctest_namespace, tmp_path):
     doctest_namespace["TEXT_DATA_PATH"] = TEXT_DATA_PATH
 
     doctest_namespace["path_to_save_nwbfile"] = Path(tmp_path) / "file.nwb"
+    doctest_namespace["output_folder"] = Path(tmp_path)
