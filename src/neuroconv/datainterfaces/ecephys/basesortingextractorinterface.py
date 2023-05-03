@@ -83,7 +83,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
 
     def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
-        print(self.sorting_extractor._recording)
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "

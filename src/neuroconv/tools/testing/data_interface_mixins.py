@@ -312,7 +312,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
         unaligned_timestamps = fresh_interface.get_timestamps()
 
         aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
-        self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
+        fresh_interface.align_timestamps(aligned_timestamps=aligned_timestamps)
 
         retrieved_aligned_timestamps = fresh_interface.get_timestamps()
         assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
