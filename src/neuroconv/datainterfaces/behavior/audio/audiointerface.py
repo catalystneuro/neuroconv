@@ -21,19 +21,19 @@ def _check_audio_names_are_unique(metadata: dict):
 
 
 class AudioInterface(BaseDataInterface):
-    """Data interface for writing acoustic recordings to an NWB file."""
-
     def __init__(self, file_paths: list, verbose: bool = False):
         """
-        Create the interface for writing acoustic recordings as AcousticWaveformSeries.
+        Data interface for writing acoustic recordings to an NWB file.
+
+        Writes acoustic recordings as an ``AcousticWaveformSeries`` from the ndx_sound extension.
 
         Parameters
         ----------
         file_paths : list of FilePathTypes
             The file paths to the audio recordings in sorted, consecutive order.
-            We recommend using `natsort` to ensure the files are in consecutive order.
-            from natsort import natsorted
-            natsorted(file_paths)
+            We recommend using ``natsort`` to ensure the files are in consecutive order.
+                >>> from natsort import natsorted
+                >>> natsorted(file_paths)
         verbose : bool, default: False
         """
         suffixes = [suffix for file_path in file_paths for suffix in Path(file_path).suffixes]
@@ -51,7 +51,7 @@ class AudioInterface(BaseDataInterface):
         super().__init__(file_paths=file_paths)
         self._starting_times = None
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
 
         time_series_metadata_schema_path = (
