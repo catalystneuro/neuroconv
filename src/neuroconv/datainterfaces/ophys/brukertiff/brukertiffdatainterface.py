@@ -36,7 +36,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
         description = f"Version {xml_metadata['version']}"
-        device_name = "BrukerFluorescenceMicroscope"
+        device_name = "BrukerTwoPhotonMicroscope"
         metadata["Ophys"]["Device"][0].update(
             name=device_name,
             description=description,
@@ -49,6 +49,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         )
         two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
         two_photon_series_metadata.update(
+            description="Imaging data acquired from the Bruker Two-Photon Microscope.",
             unit="px",
             format="tiff",
             scan_line_rate=1 / float(xml_metadata["scanLinePeriod"]),
