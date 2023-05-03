@@ -4,9 +4,12 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Union
 
+from pynwb.ophys import ImagingPlane, TwoPhotonSeries
+
 from neuroconv.utils import (
     dict_deep_update,
     fill_defaults,
+    get_schema_from_hdmf_class,
     get_schema_from_method_signature,
     load_dict_from_file,
 )
@@ -214,3 +217,16 @@ def test_load_metadata_from_file():
 
     m2 = load_dict_from_file(file_path=json_file_path)
     compare_dicts_2(m0, m2)
+
+
+def test_get_schema_from_ImagingPlane_array_type():
+    imaging_plane_schema = get_schema_from_hdmf_class(ImagingPlane)
+    assert "origin_coords" in imaging_plane_schema["properties"]
+    assert "grid_spacing" in imaging_plane_schema["properties"]
+
+
+def test_get_schema_from_TwoPhotonSeries_array_type():
+    two_photon_series_schema = get_schema_from_hdmf_class(TwoPhotonSeries)
+    assert "data" not in two_photon_series_schema["properties"]
+    assert "timestamps" not in two_photon_series_schema["properties"]
+    assert "external_file" not in two_photon_series_schema["properties"]
