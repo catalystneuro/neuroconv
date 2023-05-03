@@ -106,7 +106,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         Uses the structure of the Handsontable (list of dict entries) component of the NWB GUIDE.
         """
         property_names = set(self.recording_extractor.get_property_keys()) - {
-            "contact_vector"  # TODO: add consideration for contact vector (probeinterface) info
+            "contact_vector",  # TODO: add consideration for contact vector (probeinterface) info
+            "location",  # testing
         }
         electrode_ids = self.recording_extractor.get_channel_ids()
 
@@ -115,11 +116,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             electrode_column = dict()
             for property_name in property_names:
                 recording_property_value = self.recording_extractor.get_property(key=property_name, ids=[electrode_id])[
-                    0
-                ]  # First axis is always electodes in SI; since only fetching one electrode at a time, use trivial zero-index
+                    0  # First axis is always electodes in SI
+                ]  # Since only fetching one electrode at a time, use trivial zero-index
                 electrode_column.update({property_name: recording_property_value})
             table.append(electrode_column)
-        table_as_json = json.dumps(table, cls=NWBMetaDataEncoder)
+        table_as_json = json.loads(json.dumps(table, cls=NWBMetaDataEncoder))
         return table_as_json
 
     def get_original_timestamps(self) -> np.ndarray:

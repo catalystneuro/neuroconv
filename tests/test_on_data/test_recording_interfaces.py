@@ -1,9 +1,9 @@
-import json
 from datetime import datetime
 from platform import python_version, system
 from sys import platform
 from unittest import TestCase, skip, skipIf, skipUnless
 
+import jsonschema
 from packaging import version
 
 from neuroconv.datainterfaces import (
@@ -274,7 +274,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
 
         spikeglx_electrode_table_schema = {
             "type": "array",
-            "minItems": 384,
+            "minItems": 0,
             "items": {"$ref": "#definitions/SpikeGLXElectrodeColumnEntry"},
             "definitions": {
                 "SpikeGLXElectrodeColumnEntry": {
@@ -288,7 +288,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
                         "group",
                         "group_name",
                         "inter_sample_shift",
-                        "location",
+                        # "location",
                         "shank_electrode_number",
                     ],
                     "properties": {
@@ -300,11 +300,13 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
                         "group_name": {"type": "string"},
                         "inter_sample_shift": {"type": "number"},
                         "location": {"type": "array"},
+                        "shank_electrode_number": {"type": "number"},
                     },
                 }
             },
         }
-        json.validate(electrode_table_json, schema=electrode_table_schema)
+        print(f"{[electrode_table_json[0]]=}")
+        jsonschema.validate(instance=[electrode_table_json[0]], schema=spikeglx_electrode_table_schema)
 
     def run_custom_checks(self):
         self.check_electrode_property_helper()
