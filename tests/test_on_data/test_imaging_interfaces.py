@@ -2,6 +2,7 @@ import platform
 from datetime import datetime
 from unittest import TestCase, skipIf
 
+import numpy as np
 from numpy.testing import assert_array_equal
 
 from neuroconv.datainterfaces import (
@@ -70,12 +71,39 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
 
     def check_extracted_metadata(self, metadata: dict):
         self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 2, 20, 15, 58, 25))
-        self.assertEqual(metadata["Ophys"]["Device"][0]["name"], "Bruker Fluorescence Microscope")
-        self.assertEqual(metadata["Ophys"]["Device"][0]["description"], "Version 5.6.64.400")
-        self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["imaging_rate"], 30.345939461428763)
-        self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["description"], "The plane imaged at 5e-06 meters depth.")
-        assert_array_equal(metadata["Ophys"]["ImagingPlane"][0]["grid_spacing"], [1.1078125e-06, 1.1078125e-06])
-        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["unit"], "px")
-        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["field_of_view"], [0.0005672, 0.0005672, 5e-06])
-        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["format"], "tiff")
-        self.assertEqual(metadata["Ophys"]["TwoPhotonSeries"][0]["scan_line_rate"], 15840.580398865815)
+        expected_ophys_metadata = {
+            "Device": [{"name": "BrukerFluorescenceMicroscope", "description": "Version 5.6.64.400"}],
+            "ImagingPlane": [
+                {
+                    "name": "ImagingPlane",
+                    "description": "The plane imaged at 5e-06 meters depth.",
+                    "excitation_lambda": np.NAN,
+                    "indicator": "unknown",
+                    "location": "unknown",
+                    "device": "BrukerFluorescenceMicroscope",
+                    "optical_channel": [
+                        {
+                            "name": "Ch2",
+                            "emission_lambda": np.NAN,
+                            "description": "An optical channel of the microscope.",
+                        }
+                    ],
+                    "imaging_rate": 30.345939461428763,
+                    "grid_spacing": [1.1078125e-06, 1.1078125e-06],
+                }
+            ],
+            "TwoPhotonSeries": [
+                {
+                    "name": "TwoPhotonSeries",
+                    "description": "Imaging data from two-photon excitation microscopy.",
+                    "unit": "px",
+                    "dimension": [512, 512],
+                    "imaging_plane": "ImagingPlane",
+                    "format": "tiff",
+                    "scan_line_rate": 15840.580398865815,
+                    "field_of_view": [0.0005672, 0.0005672, 5e-06],
+                }
+            ],
+        }
+
+        self.assertEqual(metadata["Ophys"], expected_ophys_metadata)
