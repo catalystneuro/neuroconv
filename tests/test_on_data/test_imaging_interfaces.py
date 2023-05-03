@@ -72,7 +72,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.device_metadata = dict(name="BrukerTwoPhotonMicroscope", description="Version 5.6.64.400")
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
         cls.optical_channel_metadata = dict(
             name="Ch2",
             emission_lambda=np.NAN,
