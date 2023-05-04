@@ -109,7 +109,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
 
     def check_extracted_metadata(self, metadata: dict):
         self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 2, 20, 15, 58, 25))
-        self.assertEqual(metadata["Ophys"], self.ophys_metadata)
+        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         """Check the ophys metadata made it to the NWB file"""
