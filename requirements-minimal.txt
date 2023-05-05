@@ -1,5 +1,5 @@
-numpy>=1.21.0;python_version<'3.8'
-numpy>=1.22.0;python_version>='3.8'
+numpy>=1.22.0,<1.24;python_version<'3.11'
+numpy>=1.22.0;python_version>='3.11'
 jsonschema>=3.2.0
 PyYAML>=5.4
 scipy>=1.4.1
@@ -11,3 +11,4 @@ psutil>=5.8.0
 tqdm>=4.60.0
 dandi>=0.46.2
 pandas
+parse
