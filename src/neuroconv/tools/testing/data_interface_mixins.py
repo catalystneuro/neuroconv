@@ -160,13 +160,13 @@ class DataInterfaceTestMixin:
 
                 self.check_temporal_alignment()
 
+                # Any extra custom checks to run
+                self.run_custom_checks()
+
     def check_temporal_alignment(self):
         self.check_get_timestamps()
         self.check_align_starting_time_internal()
         self.check_align_starting_time_external()
-
-                # Any extra custom checks to run
-                self.run_custom_checks()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
