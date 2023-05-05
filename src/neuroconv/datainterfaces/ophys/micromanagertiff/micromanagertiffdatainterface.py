@@ -41,9 +41,6 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         imaging_plane_metadata.update(
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
-        optical_channel_metadata = imaging_plane_metadata["optical_channel"][0]
-        optical_channel_name = "OpticalChannel" + self.imaging_extractor.get_channel_names()[0]
-        optical_channel_metadata.update(name=optical_channel_name)
         metadata["Ophys"]["TwoPhotonSeries"][0].update(
             unit="px",
             format="tiff",
