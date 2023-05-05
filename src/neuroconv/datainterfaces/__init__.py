@@ -63,6 +63,7 @@ from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .icephys.abf.abfdatainterface import AbfInterface
 
 # Ophys
+from .ophys.brukertiff.brukertiffdatainterface import BrukerTiffImagingInterface
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
@@ -125,6 +126,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
+    BrukerTiffImagingInterface,
     # Behavior
     MovieInterface,  # TO-DO: deprecate on April 2023
     VideoInterface,

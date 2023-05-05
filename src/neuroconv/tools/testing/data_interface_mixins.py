@@ -138,6 +138,10 @@ class DataInterfaceTestMixin:
     def check_align_starting_time_external(self):
         pass  # TODO: generalize
 
+    def run_custom_checks(self):
+        """Override this in child classes to inject additional custom checks."""
+        pass
+
     def test_conversion_as_lone_interface(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
@@ -158,6 +162,9 @@ class DataInterfaceTestMixin:
                 self.check_get_timestamps()
                 self.check_align_starting_time_internal()
                 self.check_align_starting_time_external()
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
@@ -250,6 +257,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                 # self.check_get_timestamps()
                 # self.check_align_starting_time_internal()
                 # self.check_align_starting_time_external()
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
