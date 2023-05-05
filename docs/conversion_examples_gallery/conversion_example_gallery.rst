@@ -69,6 +69,7 @@ Imaging
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
     Bruker Tiff <imaging/brukertiff>
+    Micro-Manager Tiff <imaging/micromanagertiff>
 
 Segmentation
 ~~~~~~~~~~~~
