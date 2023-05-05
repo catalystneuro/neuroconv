@@ -57,6 +57,7 @@ class DataInterfaceTestMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
+    maxDiff = None
 
     def test_source_schema_valid(self):
         schema = self.data_interface_cls.get_source_schema()
@@ -137,6 +138,10 @@ class DataInterfaceTestMixin:
     def check_align_starting_time_external(self):
         pass  # TODO: generalize
 
+    def run_custom_checks(self):
+        """Override this in child classes to inject additional custom checks."""
+        pass
+
     def test_conversion_as_lone_interface(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
@@ -159,6 +164,9 @@ class DataInterfaceTestMixin:
         self.check_get_timestamps()
         self.check_align_starting_time_internal()
         self.check_align_starting_time_external()
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
@@ -274,6 +282,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                     all_retrieved_aligned_timestamps, all_aligned_timestamps
                 )
             ]
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
