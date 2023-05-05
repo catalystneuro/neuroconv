@@ -13,7 +13,7 @@ of proprietary formats to the Neurodata Without Borders (NWB) standard.
 
 Features:
 
-* Reads data from 38 popular neurophysiology data formats and writes to NWB using best practices.
+* Reads data from 40 popular neurophysiology data formats and writes to NWB using best practices.
 * Extracts relevant metadata from each format.
 * Handles large data volume by reading datasets piece-wise.
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
