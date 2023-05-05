@@ -29,6 +29,9 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         """
         super().__init__(folder_path=folder_path)
         self.verbose = verbose
+        # Micro-Manager uses "Default" as channel name, for clarity we rename it to  'OpticalChannelDefault'
+        channel_name = self.imaging_extractor._channel_names[0]
+        self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
