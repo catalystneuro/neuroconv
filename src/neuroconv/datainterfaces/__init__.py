@@ -68,6 +68,9 @@ from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.micromanagertiff.micromanagertiffdatainterface import (
+    MicroManagerTiffImagingInterface,
+)
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
@@ -127,6 +130,7 @@ interface_list = [
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
     BrukerTiffImagingInterface,
+    MicroManagerTiffImagingInterface,
     # Behavior
     MovieInterface,  # TO-DO: deprecate on April 2023
     VideoInterface,
