@@ -14,7 +14,8 @@ class AbstractPathExpander(abc.ABC):
     def extract_metadata(self, base_directory: DirectoryPath, format_: str):
         format_ = format_.replace("\\", os.sep)  # Actual character is a single back-slash; first is an escape for that
         format_ = format_.replace("/", os.sep)  # our f-string uses '/' to communicate os-independent separators
-        for filepath in self.list_directory(base_directory):
+
+        for filepath in self.list_directory(base_directory=Path(base_directory)):
             result = parse(format_, filepath)
             if result:
                 yield filepath, result.named
@@ -80,5 +81,6 @@ class AbstractPathExpander(abc.ABC):
 
 class LocalPathExpander(AbstractPathExpander):
     def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:
+        base_directory = Path(base_directory)
         assert base_directory.is_dir(), f"The specified 'base_directory' ({base_directory}) is not a directory!"
-        return (str(path.relative_to(base_directory)) for path in Path(base_directory).rglob("*"))
+        return (str(path.relative_to(base_directory)) for path in base_directory.rglob("*"))

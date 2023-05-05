@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+import json
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -6,7 +7,12 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
+from ...utils import (
+    FilePathType,
+    NWBMetaDataEncoder,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -32,6 +38,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
+        self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
@@ -93,14 +100,138 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
-        return self.get_extractor()(**self.source_data).get_times()
+    def get_electrode_table_json(self) -> List[Dict[str, Any]]:
+        """
+        A convenience function for collecting and organizing the property values of the underlying recording extractor.
 
-    def get_timestamps(self) -> np.ndarray:
-        return self.recording_extractor.get_times()
+        Uses the structure of the Handsontable (list of dict entries) component of the NWB GUIDE.
+        """
+        property_names = set(self.recording_extractor.get_property_keys()) - {
+            "contact_vector",  # TODO: add consideration for contact vector (probeinterface) info
+            "location",  # testing
+        }
+        electrode_ids = self.recording_extractor.get_channel_ids()
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self.recording_extractor.set_times(times=aligned_timestamps)
+        table = list()
+        for electrode_id in electrode_ids:
+            electrode_column = dict()
+            for property_name in property_names:
+                recording_property_value = self.recording_extractor.get_property(key=property_name, ids=[electrode_id])[
+                    0  # First axis is always electodes in SI
+                ]  # Since only fetching one electrode at a time, use trivial zero-index
+                electrode_column.update({property_name: recording_property_value})
+            table.append(electrode_column)
+        table_as_json = json.loads(json.dumps(table, cls=NWBMetaDataEncoder))
+        return table_as_json
+
+    def get_original_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+        """
+        Retrieve the original unaltered timestamps for the data in this interface.
+
+        This function should retrieve the data on-demand by re-initializing the IO.
+
+        Returns
+        -------
+        timestamps: numpy.ndarray or list of numpy.ndarray
+            The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
+        """
+        new_recording = self.get_extractor()(**self.source_data)
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
+
+    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        timestamps: numpy.ndarray or list of numpy.ndarray
+            The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
+        """
+        if self._number_of_segments == 1:
+            return self.recording_extractor.get_times()
+        else:
+            return [
+                self.recording_extractor.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
+
+    def align_timestamps(self, aligned_timestamps: Union[np.ndarray, List[np.ndarray]]) -> None:
+        """
+        Replace all timestamps for this interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_timestamps : numpy.ndarray or list of numpy.ndarray
+            The synchronized timestamps for data in this interface.
+        """
+        if self._number_of_segments == 1:
+            self.recording_extractor.set_times(times=aligned_timestamps)
+        else:
+            assert isinstance(
+                aligned_timestamps, list
+            ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
+            assert (
+                len(aligned_timestamps) == self._number_of_segments
+            ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+
+            for segment_index in range(self._number_of_segments):
+                self.recording_extractor.set_times(times=aligned_timestamps[segment_index], segment_index=segment_index)
+
+    def align_starting_time(self, starting_time: float):
+        if self._number_of_segments == 1:
+            self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
+        else:
+            self.align_timestamps(
+                aligned_timestamps=[timestamps + starting_time for timestamps in self.get_timestamps()]
+            )
+
+    def align_by_interpolation(
+        self,
+        unaligned_timestamps: Union[np.ndarray, List[np.ndarray]],
+        aligned_timestamps: Union[np.ndarray, List[np.ndarray]],
+    ):
+        """
+        Interpolate the timestamps of this interface using a mapping from some unaligned time basis to its aligned one.
+
+        Use this method if the unaligned timestamps of the data in this interface are not directly tracked by a primary
+        system, but are known to occur between timestamps that are tracked, then align the timestamps of this interface
+        by interpolating between the two.
+
+        An example could be a metronomic TTL pulse (e.g., every second) from a secondary data stream to the primary
+        timing system; if the time references of this interface are recorded within the relative time of the secondary
+        data stream, then their exact time in the primary system is inferred given the pulse times.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        unaligned_timestamps : numpy.ndarray or list of numpy.ndarray
+            The timestamps of the unaligned secondary time basis.
+        aligned_timestamps : numpy.ndarray or list of numpy.ndarray
+            The timestamps aligned to the primary time basis.
+        """
+        if self._number_of_segments == 1:
+            self.align_timestamps(
+                aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
+            )
+        else:
+            current_timestamps = self.get_timestamps()
+            for segment_index in range(self._number_of_segments):
+                self.align_timestamps(
+                    aligned_timestamps=np.interp(
+                        x=current_timestamps[segment_index],
+                        xp=unaligned_timestamps[segment_index],
+                        fp=aligned_timestamps[segment_index],
+                    )
+                )
 
     def subset_recording(self, stub_test: bool = False):
         """
