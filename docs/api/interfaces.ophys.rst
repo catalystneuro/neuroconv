@@ -5,29 +5,29 @@ Base Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.baseimagingextractorinterface
 
-Hdf5 Imaging
+Bruker Tiff Imaging
+-------------------
+.. automodule:: neuroconv.datainterfaces.ophys.brukertiff.brukertiffdatainterface
+
+HDF5 Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface
+
+MicroManager Tiff Imaging
+-------------------------
+.. automodule:: neuroconv.datainterfaces.ophys.micromanagertiff.micromanagertiffdatainterface
 
 Sbx Imaging
 -----------
 .. automodule:: neuroconv.datainterfaces.ophys.sbx.sbxdatainterface
 
-Tiff Imaging
-------------
-.. automodule:: neuroconv.datainterfaces.ophys.tiff.tiffdatainterface
-
 ScanImage Imaging
 -----------------
 .. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterface
 
-Bruker Tiff Imaging
--------------------
-.. automodule:: neuroconv.datainterfaces.ophys.brukertiff.brukertiffdatainterface
-
-MicroManager Tiff Imaging
--------------------------
-.. automodule:: neuroconv.datainterfaces.ophys.micromanagertiff.micromanagertiffdatainterface
+Tiff Imaging
+------------
+.. automodule:: neuroconv.datainterfaces.ophys.tiff.tiffdatainterface
 
 
 Segmentation
