@@ -2,8 +2,15 @@ import platform
 from datetime import datetime
 from unittest import TestCase, skipIf
 
+import numpy as np
+from dateutil.tz import tzoffset
+from numpy.testing import assert_array_equal
+from pynwb import NWBHDF5IO
+
 from neuroconv.datainterfaces import (
+    BrukerTiffImagingInterface,
     Hdf5ImagingInterface,
+    MicroManagerTiffImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
     TiffImagingInterface,
@@ -54,3 +61,152 @@ class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
         dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / f"sample.sbx")),
     ]
     save_directory = OUTPUT_PATH
+
+
+class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.optical_channel_metadata = dict(
+            name="Ch2",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+        cls.imaging_plane_metadata = dict(
+            name="ImagingPlane",
+            description="The plane imaged at 5e-06 meters depth.",
+            excitation_lambda=np.NAN,
+            indicator="unknown",
+            location="unknown",
+            device=cls.device_metadata["name"],
+            optical_channel=[cls.optical_channel_metadata],
+            imaging_rate=30.345939461428763,
+            grid_spacing=[1.1078125e-06, 1.1078125e-06],
+        )
+
+        cls.two_photon_series_metadata = dict(
+            name="TwoPhotonSeries",
+            description="Imaging data acquired from the Bruker Two-Photon Microscope.",
+            unit="px",
+            dimension=[512, 512],
+            imaging_plane=cls.imaging_plane_metadata["name"],
+            format="tiff",
+            scan_line_rate=15840.580398865815,
+            field_of_view=[0.0005672, 0.0005672, 5e-06],
+        )
+
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            TwoPhotonSeries=[cls.two_photon_series_metadata],
+        )
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 2, 20, 15, 58, 25))
+        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Check the ophys metadata made it to the NWB file"""
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            self.assertIn(self.device_metadata["name"], nwbfile.devices)
+            self.assertEqual(
+                nwbfile.devices[self.device_metadata["name"]].description, self.device_metadata["description"]
+            )
+            self.assertIn(self.imaging_plane_metadata["name"], nwbfile.imaging_planes)
+            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
+            optical_channel = imaging_plane.optical_channel[0]
+            self.assertEqual(optical_channel.name, self.optical_channel_metadata["name"])
+            self.assertEqual(optical_channel.description, self.optical_channel_metadata["description"])
+            self.assertEqual(imaging_plane.description, self.imaging_plane_metadata["description"])
+            self.assertEqual(imaging_plane.imaging_rate, self.imaging_plane_metadata["imaging_rate"])
+            assert_array_equal(imaging_plane.grid_spacing[:], self.imaging_plane_metadata["grid_spacing"])
+            self.assertIn(self.two_photon_series_metadata["name"], nwbfile.acquisition)
+            two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
+            self.assertEqual(two_photon_series.description, self.two_photon_series_metadata["description"])
+            self.assertEqual(two_photon_series.unit, self.two_photon_series_metadata["unit"])
+            self.assertEqual(two_photon_series.format, self.two_photon_series_metadata["format"])
+            self.assertEqual(two_photon_series.scan_line_rate, self.two_photon_series_metadata["scan_line_rate"])
+            assert_array_equal(two_photon_series.field_of_view[:], self.two_photon_series_metadata["field_of_view"])
+
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
+class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = MicroManagerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.device_metadata = dict(name="Microscope")
+        cls.optical_channel_metadata = dict(
+            name="OpticalChannelDefault",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+        cls.imaging_plane_metadata = dict(
+            name="ImagingPlane",
+            description="The plane or volume being imaged by the microscope.",
+            excitation_lambda=np.NAN,
+            indicator="unknown",
+            location="unknown",
+            device=cls.device_metadata["name"],
+            optical_channel=[cls.optical_channel_metadata],
+            imaging_rate=20.0,
+        )
+        cls.two_photon_series_metadata = dict(
+            name="TwoPhotonSeries",
+            description="Imaging data from two-photon excitation microscopy.",
+            unit="px",
+            dimension=[1024, 1024],
+            format="tiff",
+            imaging_plane=cls.imaging_plane_metadata["name"],
+        )
+
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            TwoPhotonSeries=[cls.two_photon_series_metadata],
+        )
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(
+            metadata["NWBFile"]["session_start_time"],
+            datetime(2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)),
+        )
+        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Check the ophys metadata made it to the NWB file"""
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            self.assertIn(self.imaging_plane_metadata["name"], nwbfile.imaging_planes)
+            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
+            optical_channel = imaging_plane.optical_channel[0]
+            self.assertEqual(optical_channel.name, self.optical_channel_metadata["name"])
+            self.assertEqual(optical_channel.description, self.optical_channel_metadata["description"])
+            self.assertEqual(imaging_plane.description, self.imaging_plane_metadata["description"])
+            self.assertEqual(imaging_plane.imaging_rate, self.imaging_plane_metadata["imaging_rate"])
+            self.assertIn(self.two_photon_series_metadata["name"], nwbfile.acquisition)
+            two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
+            self.assertEqual(two_photon_series.description, self.two_photon_series_metadata["description"])
+            self.assertEqual(two_photon_series.unit, self.two_photon_series_metadata["unit"])
+            self.assertEqual(two_photon_series.format, self.two_photon_series_metadata["format"])
+            assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
+
+        super().check_read_nwb(nwbfile_path=nwbfile_path)

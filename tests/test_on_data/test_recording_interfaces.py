@@ -3,6 +3,7 @@ from platform import python_version, system
 from sys import platform
 from unittest import TestCase, skip, skipIf, skipUnless
 
+import jsonschema
 from packaging import version
 
 from neuroconv.datainterfaces import (
@@ -89,6 +90,12 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
+
+    def check_temporal_alignment(self):
+        self.check_get_timestamps()
+        # TODO - debug hanging I/O from pyedflib
+        # self.check_align_starting_time_internal()
+        # self.check_align_starting_time_external()
 
 
 class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -266,6 +273,49 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
             "}",
             manufacturer="Imec",
         )
+
+    def check_electrode_property_helper(self):
+        """Check that the helper function returns in the way the NWB GUIDE table component expects."""
+        electrode_table_json = self.interface.get_electrode_table_json()
+
+        spikeglx_electrode_table_schema = {
+            "type": "array",
+            "minItems": 0,
+            "items": {"$ref": "#definitions/SpikeGLXElectrodeColumnEntry"},
+            "definitions": {
+                "SpikeGLXElectrodeColumnEntry": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [
+                        "channel_name",
+                        "contact_shapes",
+                        "gain_to_uV",
+                        "offset_to_uV",
+                        "group",
+                        "group_name",
+                        "inter_sample_shift",
+                        # "location",
+                        "shank_electrode_number",
+                    ],
+                    "properties": {
+                        "channel_name": {"type": "string"},
+                        "contact_shapes": {"type": "string"},
+                        "gain_to_uV": {"type": "number"},
+                        "offset_to_uV": {"type": "number"},
+                        "group": {"type": "number"},
+                        "group_name": {"type": "string"},
+                        "inter_sample_shift": {"type": "number"},
+                        "location": {"type": "array"},
+                        "shank_electrode_number": {"type": "number"},
+                    },
+                }
+            },
+        }
+        print(f"{[electrode_table_json[0]]=}")
+        jsonschema.validate(instance=[electrode_table_json[0]], schema=spikeglx_electrode_table_schema)
+
+    def run_custom_checks(self):
+        self.check_electrode_property_helper()
 
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
