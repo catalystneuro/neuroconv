@@ -283,9 +283,6 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
                 )
             ]
 
-                # Any extra custom checks to run
-                self.run_custom_checks()
-
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
     data_interface_cls: BaseSortingExtractorInterface
