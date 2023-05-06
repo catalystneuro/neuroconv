@@ -49,7 +49,7 @@ class AudioInterface(BaseDataInterface):
         self._number_of_audio_files = len(file_paths)
         self.verbose = verbose
         super().__init__(file_paths=file_paths)
-        self._starting_times = None
+        self._segment_starting_times = None
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
@@ -100,61 +100,50 @@ class AudioInterface(BaseDataInterface):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def align_starting_time(self, starting_time: float):
-        raise NotImplementedError(
-            "The VideoInterface operates on a list of file paths; to reduce ambiguity, please choose "
-            "between `align_global_starting_time` (shift starting time of each video by the same value) "
-            "and `align_starting_times` (specify a list of values to use in shifting the starting time for each video)."
-        )
-
-    def align_global_starting_time(self, global_starting_time: float, stub_test: bool = False):
         """
         Align all starting times for all videos in this interface relative to the common session start time.
-        Must be in units seconds relative to the common 'session_start_time'.
-        Parameters
-        ----------
-        global_starting_time : float
-            The starting time for all temporal data in this interface.
-        stub_test : bool, default: False
-            If timestamps have not been set to this interface, it will attempt to retrieve them
-            using the `.get_original_timestamps` method, which scans through each video;
-            a process which can take some time to complete.
-            To limit that scan to a small number of frames, set `stub_test=True`.
-        """
-        if self._timestamps is not None:
-            self.align_timestamps(
-                aligned_timestamps=[
-                    timestamps + global_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
-                ]
-            )
-        elif self._starting_times is not None:
-            self._starting_times = [starting_time + global_starting_time for starting_time in self._starting_times]
-        else:
-            raise ValueError("There are no timestamps or starting times set to shift by a global value!")
 
-    def align_starting_times(self, starting_times: List[float], stub_test: bool = False):
-        """
-        Align the individual starting time for each video in this interface relative to the common session start time.
         Must be in units seconds relative to the common 'session_start_time'.
+
         Parameters
         ----------
-        starting_times : list of floats
-            The relative starting times of each video.
-        stub_test : bool, default: False
-            If timestamps have not been set to this interface, it will attempt to retrieve them
-            using the `.get_original_timestamps` method, which scans through each video;
-            a process which can take some time to complete.
-            To limit that scan to a small number of frames, set `stub_test=True`.
+        starting_time : float
+            The common starting time for all temporal data in this interface.
+            Applies to all segments if there are multiple file paths used by the interface.
         """
-        starting_times_length = len(starting_times)
-        assert isinstance(starting_times, list) and all(
-            [isinstance(x, float) for x in starting_times]
-        ), "Argument 'starting_times' must be a list of floats."
-        assert starting_times_length == self._number_of_audio_files, (
-            f"The number of entries in 'starting_times' ({starting_times_length}) must be equal to the number of "
+        if self._segment_starting_times is None and self._number_of_audio_files == 1:
+            self._segment_starting_times = [starting_time]
+        elif self._segment_starting_times is not None and self._number_of_audio_files > 1:
+            self._segment_starting_times = [
+                segment_starting_time + starting_time for segment_starting_time in self._segment_starting_times
+            ]
+        else:
+            raise ValueError(
+                "There are no segment starting times to shift by a common value! "
+                "Please set them using 'align_segment_starting_times'."
+            )
+
+    def align_segment_starting_times(self, segment_starting_times: List[float]):
+        """
+        Align the individual starting time for each file in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        segment_starting_times : list of floats
+            The relative starting times of each audio file (segment).
+        """
+        segment_starting_times_length = len(segment_starting_times)
+        assert isinstance(segment_starting_times, list) and all(
+            [isinstance(x, float) for x in segment_starting_times]
+        ), "Argument 'segment_starting_times' must be a list of floats."
+        assert segment_starting_times_length == self._number_of_audio_files, (
+            f"The number of entries in 'segment_starting_times' ({segment_starting_times_length}) must be equal to the number of "
             f"audio file paths ({self._number_of_audio_files})."
         )
 
-        self._starting_times = starting_times
+        self._segment_starting_times = segment_starting_times
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
@@ -207,11 +196,12 @@ class AudioInterface(BaseDataInterface):
         audio_metadata_unique, file_paths_unique = _check_duplicates(audio_metadata, file_paths)
         unpacked_file_paths_unique = [file_path[0] for file_path in file_paths_unique]
 
-        if self._number_of_audio_files > 1 and self._starting_times is None:
+        if self._number_of_audio_files > 1 and self._segment_starting_times is None:
             raise ValueError(
-                "If you have multiple audio files, then you must specify each starting time with '.align_starting_time(...)'!"
+                "If you have multiple audio files, then you must specify each starting time by calling "
+                "'.align_segment_starting_times(segment_starting_times=...)'!"
             )
-        starting_times = self._starting_times or [0.0]
+        starting_times = self._segment_starting_times or [0.0]
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
