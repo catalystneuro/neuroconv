@@ -64,12 +64,12 @@ Imaging
 .. toctree::
     :maxdepth: 1
 
-    Tiff <imaging/tiff>
+    Bruker <imaging/brukertiff>
     HDF5 <imaging/hdf5imaging>
+    Micro-Manager <imaging/micromanagertiff>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
-    Bruker Tiff <imaging/brukertiff>
-    Micro-Manager Tiff <imaging/micromanagertiff>
+    Tiff <imaging/tiff>
 
 Segmentation
 ~~~~~~~~~~~~
