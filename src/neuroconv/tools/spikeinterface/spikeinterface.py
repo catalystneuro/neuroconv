@@ -1250,7 +1250,7 @@ def add_waveforms(
     template_means = []
     template_stds = []
     for unit_id in unit_ids:
-        unit_index = sorting.id_to_unit_index(unit_id)
+        unit_index = sorting.id_to_index(unit_id)
         template_means.append(all_template_means[unit_index])
         template_stds.append(all_template_stds[unit_index])
 
