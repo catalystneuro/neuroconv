@@ -1,15 +1,14 @@
-"""Author: Heberto Mayorquin."""
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
+import numpy as np
 from pynwb.file import NWBFile
 
-from ....basedatainterface import BaseDataInterface
-from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....tools import get_package
-from ....utils import dict_deep_update, FilePathType, OptionalFilePathType
-
 from .sleap_utils import extract_timestamps
+from ....basedatainterface import BaseDataInterface
+from ....tools import get_package
+from ....tools.nwb_helpers import make_or_load_nwbfile
+from ....utils import FilePathType, OptionalFilePathType, dict_deep_update
 
 
 class SLEAPInterface(BaseDataInterface):
@@ -43,6 +42,22 @@ class SLEAPInterface(BaseDataInterface):
         self.video_sample_rate = frames_per_second
         self.verbose = verbose
         super().__init__(file_path=file_path)
+
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def run_conversion(
         self,
@@ -81,7 +96,6 @@ class SLEAPInterface(BaseDataInterface):
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-
             labels = self.sleap_io.load_slp(self.file_path)
             nwbfile_out = self.sleap_io.io.nwb.append_nwb_data(
                 labels=labels, nwbfile=nwbfile_out, pose_estimation_metadata=pose_estimation_metadata

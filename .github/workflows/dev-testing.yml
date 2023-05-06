@@ -46,11 +46,11 @@ jobs:
 
 
       - name: Dev gallery - ROIExtractors
-        run: pip install git+https://github.com/CatalystNeuro/roiextractors@master
+        run: pip install git+https://github.com/CatalystNeuro/roiextractors@main
       - name: Dev gallery - PyNWB
         run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
       - name: Dev gallery - SpikeInterface
-        run: pip install git+https://github.com/SpikeInterface/spikeinterface@master
+        run: pip install git+https://github.com/spikeinterface/spikeinterface@master
       - name: Dev gallery - NEO
         run: pip install git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
@@ -91,7 +91,7 @@ jobs:
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         name: Install and configure AWS CLI
         run: |
-          pip install awscli==1.25.27
+          pip install awscli
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false

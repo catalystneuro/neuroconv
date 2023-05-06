@@ -1,20 +1,20 @@
 import unittest
-from unittest.mock import Mock
-from tempfile import mkdtemp
-from pathlib import Path
-from datetime import datetime
 from copy import deepcopy
-from typing import Optional, List
+from datetime import datetime
+from pathlib import Path
+from tempfile import mkdtemp
 from types import MethodType
+from typing import List, Literal, Optional
+from unittest.mock import Mock
 
-import psutil
 import numpy as np
-from numpy.typing import ArrayLike
+import psutil
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
-from parameterized import parameterized, param
-from pynwb import NWBFile, NWBHDF5IO, H5DataIO
+from numpy.typing import ArrayLike
+from parameterized import param, parameterized
+from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.device import Device
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
@@ -24,15 +24,17 @@ from roiextractors.testing import (
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     add_devices,
-    add_imaging_plane,
-    add_two_photon_series,
-    add_plane_segmentation,
-    add_image_segmentation,
-    add_summary_images,
     add_fluorescence_traces,
+    add_image_segmentation,
+    add_imaging_plane,
+    add_plane_segmentation,
+    add_summary_images,
+    add_two_photon_series,
     check_if_imaging_fits_into_memory,
 )
-from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
+from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
+    ImagingExtractorDataChunkIterator,
+)
 
 
 class TestAddDevices(unittest.TestCase):
@@ -58,10 +60,9 @@ class TestAddDevices(unittest.TestCase):
         assert device_name in devices
 
     def test_add_device_with_further_metadata(self):
-
         device_name = "new_device"
         description = "device_description"
-        manufacturer = "manufactuer"
+        manufacturer = "manufacturer"
 
         device_list = [dict(name=device_name, description=description, manufacturer=manufacturer)]
         self.metadata["Ophys"].update(Device=device_list)
@@ -120,7 +121,6 @@ class TestAddDevices(unittest.TestCase):
         assert device_name1 in devices
 
     def test_add_device_defaults(self):
-
         add_devices(self.nwbfile, metadata=self.metadata)
 
         devices = self.nwbfile.devices
@@ -129,7 +129,6 @@ class TestAddDevices(unittest.TestCase):
         assert "Microscope" in devices
 
     def test_add_empty_device_list_in_metadata(self):
-
         device_list = []
         self.metadata["Ophys"].update(Device=device_list)
         add_devices(self.nwbfile, metadata=self.metadata)
@@ -139,7 +138,6 @@ class TestAddDevices(unittest.TestCase):
         assert len(devices) == 0
 
     def test_device_object(self):
-
         device_name = "device_object"
         device_object = Device(name=device_name)
         device_list = [device_object]
@@ -152,7 +150,6 @@ class TestAddDevices(unittest.TestCase):
         assert device_name in devices
 
     def test_device_object_and_metadata_mix(self):
-
         device_object = Device(name="device_object")
         device_metadata = dict(name="device_metadata")
         device_list = [device_object, device_metadata]
@@ -202,7 +199,6 @@ class TestAddImagingPlane(unittest.TestCase):
         self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
 
     def test_add_imaging_plane(self):
-
         add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
 
         imaging_planes = self.nwbfile.imaging_planes
@@ -213,7 +209,6 @@ class TestAddImagingPlane(unittest.TestCase):
         assert imaging_plane.description == self.imaging_plane_description
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
-
         add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
 
         self.imaging_plane_metadata["description"] = "modified description"
@@ -224,7 +219,6 @@ class TestAddImagingPlane(unittest.TestCase):
         assert self.imaging_plane_name in imaging_planes
 
     def test_add_two_imaging_planes(self):
-
         # Add the first imaging plane
         first_imaging_plane_name = "first_imaging_plane_name"
         first_imaging_plane_description = "first_imaging_plane_description"
@@ -282,7 +276,7 @@ class TestAddImageSegmentation(unittest.TestCase):
         self.assertEqual(image_segmentation.name, self.image_segmentation_name)
 
 
-def _generate_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+def _generate_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
     masks = list()
     size = 3 if mask_type == "pixel" else 4
     for idx in range(1, num_rois + 1):
@@ -290,7 +284,7 @@ def _generate_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "vo
     return masks
 
 
-def _generate_casted_test_masks(num_rois: int, mask_type: str):  # Literal["pixel", "voxel"]
+def _generate_casted_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
     original_mask = _generate_test_masks(num_rois=num_rois, mask_type=mask_type)
     casted_masks = list()
     for per_roi_mask in original_mask:
@@ -465,7 +459,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert_array_equal(plane_segmentation_accepted_roi_ids, accepted_roi_ids)
 
     def test_pixel_masks(self):
-        """Test the voxel mask option for writing a plane segementation table."""
+        """Test the voxel mask option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,
@@ -496,7 +490,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert_array_equal(plane_segmentation["pixel_mask"], true_pixel_masks)
 
     def test_voxel_masks(self):
-        """Test the voxel mask option for writing a plane segementation table."""
+        """Test the voxel mask option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,
@@ -527,7 +521,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
 
     def test_none_masks(self):
-        """Test the None mask_type option for writing a plane segementation table."""
+        """Test the None mask_type option for writing a plane segmentation table."""
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rois=self.num_rois,
             num_frames=self.num_frames,
@@ -1218,7 +1212,6 @@ class TestAddTwoPhotonSeries(TestCase):
             )
 
     def test_non_iterative_write_assertion(self):
-
         # Estimate num of frames required to exceed memory capabilities
         dtype = self.imaging_extractor.get_dtype()
         element_size_in_bytes = dtype.itemsize
@@ -1306,7 +1299,6 @@ class TestAddTwoPhotonSeries(TestCase):
         self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
 
     def test_add_two_photon_series_roundtrip(self):
-
         metadata = self.metadata
 
         add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
@@ -1349,7 +1341,6 @@ class TestAddSummaryImages(unittest.TestCase):
         )
 
     def test_add_sumary_images(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
         images_set_name = "images_set_name"
@@ -1370,7 +1361,6 @@ class TestAddSummaryImages(unittest.TestCase):
             np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
 
     def test_extractor_with_one_summary_image_suppressed(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
         segmentation_extractor._image_correlation = None
 
@@ -1389,7 +1379,6 @@ class TestAddSummaryImages(unittest.TestCase):
         assert extracted_images_number == expected_images_number
 
     def test_extractor_with_no_summary_images(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rows=10, num_columns=15, has_summary_images=False
         )
@@ -1405,7 +1394,6 @@ class TestAddSummaryImages(unittest.TestCase):
         assert images_set_name not in ophys.data_interfaces
 
     def test_extractor_with_no_summary_images_and_no_ophys_module(self):
-
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rows=10, num_columns=15, has_summary_images=False
         )

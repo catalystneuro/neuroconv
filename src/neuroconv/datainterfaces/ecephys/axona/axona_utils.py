@@ -93,7 +93,7 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
     """
     Read LFP data from all Axona `.eeg` or `.egf` files in file_path's directory.
     E.g. if file_path='/my/directory/my_file.eeg', all .eeg channels will be conactenated
-    to a single np.array (chans x nobs). For .egf files substitude the file suffix.
+    to a single np.array (chans x nobs). For .egf files substitute the file suffix.
 
     Parameters
     ---------
@@ -111,7 +111,6 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
     eeg_memmaps = list()
     sampling_rates = set()
     for fname in file_path_list:
-
         sampling_rates.add(get_eeg_sampling_frequency(parent_path / fname))
 
         eeg_memmaps.append(read_eeg_file_lfp_data(parent_path / fname))
@@ -123,7 +122,7 @@ def read_all_eeg_file_lfp_data(file_path: FilePathType) -> np.ndarray:
 
 
 # Helper functions for AxonaPositionDataInterface
-def parse_generic_header(file_path: FilePathType, params: Union[list, set]):
+def parse_generic_header(file_path: FilePathType, params: Union[list, set]) -> dict:
     """
     Given a binary file with phrases and line breaks, enters the
     first word of a phrase as dictionary key and the following
@@ -397,7 +396,6 @@ def get_position_object(file_path: FilePathType) -> Position:
     position_timestamps = position_data[:, 0]
 
     for ichan in range(position_data.shape[1]):
-
         spatial_series = SpatialSeries(
             name=position_channel_names[ichan],
             timestamps=position_timestamps,

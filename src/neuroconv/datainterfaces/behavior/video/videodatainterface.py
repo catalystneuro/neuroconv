@@ -1,11 +1,10 @@
-"""Authors: Heberto Mayorquin, Saksham Sharda, Cody Baker and Ben Dichter."""
-from pathlib import Path
-from typing import Optional, List
-from warnings import warn
 import warnings
-import psutil
+from pathlib import Path
+from typing import List, Optional
+from warnings import warn
 
 import numpy as np
+import psutil
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
@@ -16,7 +15,12 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
-from ....utils import get_schema_from_hdmf_class, get_base_schema, calculate_regular_series_rate, FilePathType
+from ....utils import (
+    FilePathType,
+    calculate_regular_series_rate,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType]):
@@ -25,17 +29,21 @@ def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType
 
     Parameters
     ----------
-    videos_metadata: list of dict
-        The metadata corresponding to the videos should be organized as follow
-                videos_metadata =[
-                            dict(name="Video1", description="This is the first video.."),
-                            dict(name="SecondVideo", description="Video #2 details..."),
-                ]
+    videos_metadata: list of dicts
+
+        The metadata corresponding to the videos should be organized as follows
+
+            >>> videos_metadata = [
+            >>>     dict(name="Video1", description="This is the first video.."),
+            >>>     dict(name="SecondVideo", description="Video #2 details..."),
+            >>> ]
+
+    Returns
     -------
-    videos_metadata_unique: list of dict
+    videos_metadata_unique: list of dicts
         if metadata has common names (case when the user intends to put multiple video files
         under the same ImageSeries container), this removes the duplicate names.
-    file_paths_list: List[List[str]]
+    file_paths_list: list of lists of strings
         len(file_paths_list)==len(videos_metadata_unique)
     """
     keys_set = []
@@ -66,7 +74,7 @@ class VideoInterface(BaseDataInterface):
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         """
-        get_package(package_name="cv2", installation_instructions="pip install opencv-python")
+        get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         super().__init__(file_paths=file_paths)
 
@@ -91,7 +99,6 @@ class VideoInterface(BaseDataInterface):
         return metadata_schema
 
     def get_metadata(self):
-
         metadata = super().get_metadata()
         behavior_metadata = dict(
             Movies=[
@@ -102,6 +109,22 @@ class VideoInterface(BaseDataInterface):
         metadata["Behavior"] = behavior_metadata
 
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve the original unaltered timestamps for this interface! "
+            "Define the `get_original_timestamps` method for this interface."
+        )
+
+    def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        raise NotImplementedError(
+            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        )
 
     def run_conversion(
         self,
@@ -179,7 +202,7 @@ class VideoInterface(BaseDataInterface):
         module_description: str, optional
             If the processing module specified by module_name does not exist, it will be created with this description.
             The default description is the same as used by the conversion_tools.get_module function.
-        compression: str, optional
+        compression: str, default: "gzip"
             Compression strategy to use for :py:class:`hdmf.backends.hdf5.h5_utils.H5DataIO`. For full list of currently
             supported filters, see
             https://docs.h5py.org/en/latest/high/dataset.html#lossless-compression-filters
@@ -233,7 +256,6 @@ class VideoInterface(BaseDataInterface):
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-
                 with VideoCaptureContext(str(file_list[0])) as vc:
                     fps = vc.get_video_fps()
                     max_frames = stub_frames if stub_test else None

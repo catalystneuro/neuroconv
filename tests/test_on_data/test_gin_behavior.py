@@ -1,27 +1,26 @@
 import unittest
-import pytest
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-from parameterized import parameterized, param
-from pynwb import NWBHDF5IO
-from neuroconv import NWBConverter
-from neuroconv.datainterfaces import MovieInterface, DeepLabCutInterface, SLEAPInterface
-
+import pytest
 import sleap_io
+from parameterized import param, parameterized
+from pynwb import NWBHDF5IO
+
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces import DeepLabCutInterface, MovieInterface, SLEAPInterface
 
 # enable to run locally in interactive mode
 try:
-    from .setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+    from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import OUTPUT_PATH, BEHAVIOR_DATA_PATH
+    from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 if not BEHAVIOR_DATA_PATH.exists():
     pytest.fail(f"No folder found in location: {BEHAVIOR_DATA_PATH}!")
 
 
 class TestSLEAPInterface(unittest.TestCase):
-
     savedir = OUTPUT_PATH
 
     @parameterized.expand(
@@ -100,7 +99,9 @@ class TestSLEAPInterface(unittest.TestCase):
         slp_predictions_path = interface_kwargs["file_path"]
         labels = sleap_io.load_slp(slp_predictions_path)
 
-        from neuroconv.datainterfaces.behavior.sleap.sleap_utils import extract_timestamps
+        from neuroconv.datainterfaces.behavior.sleap.sleap_utils import (
+            extract_timestamps,
+        )
 
         expected_timestamps = set(extract_timestamps(interface_kwargs["video_file_path"]))
 
@@ -132,48 +133,6 @@ class TestSLEAPInterface(unittest.TestCase):
 
                     # Some frames do not have predictions associated with them, so we test for sub-set
                     assert set(extracted_timestamps).issubset(expected_timestamps)
-
-
-class TestDeepLabCutInterface(unittest.TestCase):
-    savedir = OUTPUT_PATH
-
-    @parameterized.expand(
-        [
-            param(
-                data_interface=DeepLabCutInterface,
-                interface_kwargs=dict(
-                    file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
-                    config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
-                    subject_name="ind1",
-                ),
-            )
-        ]
-    )
-    def test_deeplabcut_to_nwb(self, data_interface, interface_kwargs):
-        nwbfile_path = self.savedir / f"{data_interface.__name__}.nwb"
-
-        class TestConverter(NWBConverter):
-            data_interface_classes = dict(TestBehavior=data_interface)
-
-        converter = TestConverter(source_data=dict(TestBehavior=dict(interface_kwargs)))
-        metadata = converter.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            assert "behavior" in nwbfile.processing
-            processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-            assert "PoseEstimation" in processing_module_interfaces
-
-            pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimation"].pose_estimation_series
-            expected_pose_estimation_series = ["ind1_leftear", "ind1_rightear", "ind1_snout", "ind1_tailbase"]
-
-            expected_pose_estimation_series_are_in_nwb_file = [
-                pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
-            ]
-
-            assert all(expected_pose_estimation_series_are_in_nwb_file)
 
 
 class TestVideoConversions(unittest.TestCase):
@@ -294,7 +253,7 @@ class TestVideoConversions(unittest.TestCase):
             metadata = self.nwb_converter.get_metadata()
             for no in range(len(metadata["Behavior"]["Movies"])):
                 video_interface_name = metadata["Behavior"]["Movies"][no]["name"]
-                assert mod[video_interface_name].data.chunks is not None  # TODO retrive storage_layout of hdf5 dataset
+                assert mod[video_interface_name].data.chunks is not None  # TODO retrieve storage_layout of hdf5 dataset
 
     def test_external_mode(self):
         starting_times = self.starting_times

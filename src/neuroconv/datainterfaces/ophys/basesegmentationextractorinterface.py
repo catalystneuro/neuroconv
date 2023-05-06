@@ -1,22 +1,28 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import get_schema_from_hdmf_class, fill_defaults, FilePathType, get_base_schema
+from ...utils import (
+    FilePathType,
+    fill_defaults,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     """Parent class for all SegmentationExtractorInterfaces."""
 
-    ExtractorModuleName: Optional[str] = "roiextractors"
+    ExtractorModuleName = "roiextractors"
 
     def __init__(self, **source_data):
         super().__init__(**source_data)
-        self.segmentation_extractor = self.Extractor(**source_data)
+        self.segmentation_extractor = self.get_extractor()(**source_data)
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
@@ -57,6 +63,18 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata = super().get_metadata()
         metadata.update(get_nwb_segmentation_metadata(self.segmentation_extractor))
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.segmentation_extractor.frame_to_time(
+            frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
+        )
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        self.segmentation_extractor.set_times(times=aligned_timestamps)
 
     def run_conversion(
         self,

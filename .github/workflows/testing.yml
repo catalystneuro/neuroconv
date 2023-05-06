@@ -4,17 +4,12 @@ on:
     - cron: "0 16 * * *"  # Daily at noon EST
   workflow_call:
     secrets:
-      DANDI_API_KEY:
-        required: true
       AWS_ACCESS_KEY_ID:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
       S3_GIN_BUCKET:
         required: true
-
-env:
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
 
 jobs:
   run:
@@ -23,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: s-weigand/setup-conda@v1
@@ -56,6 +51,16 @@ jobs:
 
 
 
+      - name: Install with ecephys requirements
+        run: pip install .[ecephys]
+      - name: Run ecephys tests
+        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
+
+      - name: Install with ophys requirements
+        run: pip install .[ophys]
+      - name: Run ophys tests
+        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
+
       - name: Install with behavior requirements
         run: pip install .[behavior]
       - name: Run behavior tests
@@ -66,16 +71,6 @@ jobs:
 
       #- name: Run icephys tests  # There are no icephys specific tests without data
       #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
-
-      - name: Install with ecephys requirements
-        run: pip install .[ecephys]
-      - name: Run ecephys tests
-        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
-
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
 
 
 
@@ -117,7 +112,7 @@ jobs:
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         name: Install and configure AWS CLI
         run: |
-          pip install awscli==1.25.27
+          pip install awscli
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false
@@ -136,7 +131,7 @@ jobs:
         run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./codecov.xml

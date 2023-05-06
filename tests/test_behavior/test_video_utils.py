@@ -1,15 +1,18 @@
 import os
 import tempfile
 import unittest
+from datetime import datetime
 
 import numpy as np
-from numpy.testing import assert_array_equal
-from pynwb.image import ImageSeries
-from pynwb import NWBHDF5IO
-from datetime import datetime
 from hdmf.backends.hdf5.h5_utils import H5DataIO
+from numpy.testing import assert_array_equal
+from pynwb import NWBHDF5IO
+from pynwb.image import ImageSeries
 
-from neuroconv.datainterfaces.behavior.video.video_utils import VideoCaptureContext, VideoDataChunkIterator
+from neuroconv.datainterfaces.behavior.video.video_utils import (
+    VideoCaptureContext,
+    VideoDataChunkIterator,
+)
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
 
 try:
@@ -22,7 +25,6 @@ except:
 
 @unittest.skipIf(not CV2_INSTALLED, "cv2 not installed")
 class TestVideoContext(unittest.TestCase):
-
     frame_shape = (100, 200, 3)
     number_of_frames = 30
     fps = 25
@@ -121,7 +123,6 @@ class TestVideoContext(unittest.TestCase):
 
 @unittest.skipIf(not CV2_INSTALLED, "cv2 not installed")
 class TestMovieInterface(unittest.TestCase):
-
     frame_shape = (800, 600, 3)
     number_of_frames = 50
     fps = 25

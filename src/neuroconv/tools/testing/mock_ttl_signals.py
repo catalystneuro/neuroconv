@@ -1,12 +1,11 @@
-"""Author: Cody Baker."""
-from typing import Optional, Union
 from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
 from nwbinspector.tools import make_minimal_nwbfile
 from nwbinspector.utils import is_module_installed
-from pynwb import NWBHDF5IO, TimeSeries, H5DataIO
+from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
 
 from ...utils import ArrayType, FolderPathType
 
@@ -113,7 +112,8 @@ def generate_mock_ttl_signal(
         ttl_times = np.array(ttl_times)
     else:
         ttl_times = np.arange(start=1.0, stop=signal_duration, step=2.0)
-    assert not any(
+
+    assert len(ttl_times) == 1 or not any(  # np.diff errors out when len(ttl_times) < 2
         np.diff(ttl_times) <= ttl_duration
     ), "There are overlapping TTL 'on' intervals! Please specify disjoint on/off periods."
 

@@ -1,31 +1,32 @@
 """Author: Ben Dichter."""
 from typing import Optional
 
+import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
-    get_schema_from_hdmf_class,
-    fill_defaults,
-    get_base_schema,
     OptionalFilePathType,
     dict_deep_update,
+    fill_defaults,
+    get_base_schema,
+    get_schema_from_hdmf_class,
 )
 
 
 class BaseImagingExtractorInterface(BaseExtractorInterface):
     """Parent class for all ImagingExtractorInterfaces."""
 
-    ExtractorModuleName: Optional[str] = "roiextractors"
+    ExtractorModuleName = "roiextractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.imaging_extractor = self.Extractor(**source_data)
+        self.imaging_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["required"] = ["Ophys"]
@@ -56,7 +57,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         from ...tools.roiextractors import get_nwb_imaging_metadata
 
         metadata = super().get_metadata()
@@ -71,6 +72,16 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                 if "rate" in two_photon_series:
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        self.imaging_extractor.set_times(times=aligned_timestamps)
 
     def run_conversion(
         self,
