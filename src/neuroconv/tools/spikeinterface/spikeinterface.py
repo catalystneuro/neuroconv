@@ -1244,11 +1244,15 @@ def add_waveforms(
     if unit_ids is None:
         unit_ids = sorting.unit_ids
     # retrieve templates and stds
+    # TODO: always get full templates
+    all_template_means = waveform_extractor.get_all_templates()
+    all_template_stds = waveform_extractor.get_all_templates(mode="std")
     template_means = []
     template_stds = []
     for unit_id in unit_ids:
-        template_means.append(waveform_extractor.get_template(unit_id))
-        template_stds.append(waveform_extractor.get_template(unit_id, mode="std"))
+        unit_index = sorting.id_to_unit_index(unit_id)
+        template_means.append(all_template_means[unit_index])
+        template_stds.append(all_template_stds[unit_index])
 
     # metrics properties (quality, template) are added as properties to the sorting copy
     sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
@@ -1273,12 +1277,12 @@ def add_waveforms(
         electrode_group_indices = electrode_group_indices[channel_mask]
 
     # Handle waveform sparsity
-    if not waveform_extractor.is_sparse():
-        unit_electrode_indices = [electrode_group_indices] * len(sorting.unit_ids)
-    else:
-        sparsity = waveform_extractor.sparsity
-        unit_electrode_indices = [electrode_group_indices[sparse_indices]
-                                  for sparse_indices in sparsity.unit_id_to_channel_indices.values()]
+    # if not waveform_extractor.is_sparse():
+    unit_electrode_indices = [electrode_group_indices] * len(unit_ids)
+    # else:
+    #     sparsity = waveform_extractor.sparsity
+    #     unit_electrode_indices = [electrode_group_indices[sparsity.unit_id_to_channel_indices[unit_id]]
+    #                               for unit_id in unit_ids]
 
     add_units_table(
         sorting=sorting_copy,
