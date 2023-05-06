@@ -94,31 +94,32 @@ class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
     def check_align_starting_time_internal(self):
         pass  # disabled since this interface follows a different strategy
 
-    def check_align_global_starting_time(self):
+    def check_align_starting_time(self):
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
 
-        global_starting_time = 1.23
+        starting_time = 1.23
         fresh_interface.align_timestamps(aligned_timestamps=fresh_interface.get_original_timestamps())
-        fresh_interface.align_global_starting_time(global_starting_time=global_starting_time)
+        fresh_interface.align_starting_time(starting_time=starting_time)
         all_aligned_timestamps = fresh_interface.get_timestamps()
 
         unaligned_timestamps = fresh_interface.get_original_timestamps()
-        all_expected_timestamps = [timestamps + global_starting_time for timestamps in unaligned_timestamps]
+        all_expected_timestamps = [timestamps + starting_time for timestamps in unaligned_timestamps]
         [
             assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
             for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps)
         ]
 
-    def check_align_starting_times(self):
+    def check_align_segment_starting_times(self):
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
 
-        starting_times = [1.23 * file_path_index for file_path_index in range(len(self.test_kwargs))]
-        fresh_interface.align_starting_times(starting_times=starting_times)
+        segment_starting_times = [1.23 * file_path_index for file_path_index in range(len(self.test_kwargs))]
+        fresh_interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
         all_aligned_timestamps = fresh_interface.get_timestamps()
 
         unaligned_timestamps = fresh_interface.get_original_timestamps()
         all_expected_timestamps = [
-            timestamps + starting_time for timestamps, starting_time in zip(unaligned_timestamps, starting_times)
+            timestamps + segment_starting_time
+            for timestamps, segment_starting_time in zip(unaligned_timestamps, segment_starting_times)
         ]
         [
             assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
@@ -154,8 +155,8 @@ class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
                 self.check_get_timestamps()
-                self.check_align_global_starting_time()
-                self.check_align_starting_times()
+                self.check_align_starting_time()
+                self.check_align_segment_starting_times()
                 self.check_align_timestamps_internal()
 
 

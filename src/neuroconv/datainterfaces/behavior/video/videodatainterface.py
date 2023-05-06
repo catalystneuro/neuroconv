@@ -40,7 +40,7 @@ class VideoInterface(BaseDataInterface):
         self.verbose = verbose
         self._number_of_files = len(file_paths)
         self._timestamps = None
-        self._starting_times = None
+        self._segment_starting_times = None
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -120,9 +120,9 @@ class VideoInterface(BaseDataInterface):
         """
         if self._timestamps is not None:
             return "timestamps"
-        elif self._starting_times is not None:
+        elif self._segment_starting_times is not None:
             return "starting_time and rate"
-        elif self._timestamps is None and self._starting_times is None and self._number_of_files == 1:
+        elif self._timestamps is None and self._segment_starting_times is None and self._number_of_files == 1:
             return "starting_time and rate"  # default behavior assumes data is pre-aligned; starting_times = [0.0]
         else:
             raise ValueError(
@@ -159,18 +159,11 @@ class VideoInterface(BaseDataInterface):
             The synchronized timestamps for data in this interface.
         """
         assert (
-            self._starting_times is None
+            self._segment_starting_times is None
         ), "If setting both timestamps and starting times, please set the timestamps first so they can be shifted by the starting times."
         self._timestamps = aligned_timestamps
 
-    def align_starting_time(self, starting_time: float):
-        raise NotImplementedError(
-            "The VideoInterface operates on a list of file paths; to reduce ambiguity, please choose "
-            "between `align_global_starting_time` (shift starting time of each video by the same value) "
-            "and `align_starting_times` (specify a list of values to use in shifting the starting time for each video)."
-        )
-
-    def align_global_starting_time(self, global_starting_time: float, stub_test: bool = False):
+    def align_starting_time(self, starting_time: float, stub_test: bool = False):
         """
         Align all starting times for all videos in this interface relative to the common session start time.
 
@@ -178,8 +171,8 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        global_starting_time : float
-            The starting time for all temporal data in this interface.
+        starting_time : float
+            The common starting time for all segments of temporal data in this interface.
         stub_test : bool, default: False
             If timestamps have not been set to this interface, it will attempt to retrieve them
             using the `.get_original_timestamps` method, which scans through each video;
@@ -190,17 +183,19 @@ class VideoInterface(BaseDataInterface):
         if self._timestamps is not None:
             self.align_timestamps(
                 aligned_timestamps=[
-                    timestamps + global_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
+                    timestamps + starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
                 ]
             )
-        elif self._starting_times is not None:
-            self._starting_times = [starting_time + global_starting_time for starting_time in self._starting_times]
+        elif self._segment_starting_times is not None:
+            self._segment_starting_times = [
+                starting_time + starting_time for starting_time in self._segment_starting_times
+            ]
         else:
-            raise ValueError("There are no timestamps or starting times set to shift by a global value!")
+            raise ValueError("There are no timestamps or starting times set to shift by a common value!")
 
-    def align_starting_times(self, starting_times: List[float], stub_test: bool = False):
+    def align_segment_starting_times(self, segment_starting_times: List[float], stub_test: bool = False):
         """
-        Align the individual starting time for each video in this interface relative to the common session start time.
+        Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
@@ -215,19 +210,22 @@ class VideoInterface(BaseDataInterface):
 
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
-        starting_times_length = len(starting_times)
-        assert (
-            starting_times_length == self._number_of_files
-        ), f"The length of the starting_times list ({starting_times_length}) does not match the number of video files ({self._number_of_files})!"
+        segment_starting_times_length = len(segment_starting_times)
+        assert segment_starting_times_length == self._number_of_files, (
+            f"The length of the 'segment_starting_times' list ({segment_starting_times_length}) does not match the "
+            "number of video files ({self._number_of_files})!"
+        )
         if self._timestamps is not None:
             self.align_timestamps(
                 aligned_timestamps=[
-                    timestamps + starting_time
-                    for timestamps, starting_time in zip(self.get_timestamps(stub_test=stub_test), starting_times)
+                    timestamps + segment_starting_time
+                    for timestamps, segment_starting_time in zip(
+                        self.get_timestamps(stub_test=stub_test), segment_starting_times
+                    )
                 ]
             )
         else:
-            self._starting_times = starting_times
+            self._segment_starting_times = segment_starting_times
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
@@ -349,7 +347,7 @@ class VideoInterface(BaseDataInterface):
                 image_series_kwargs.update(format="external", external_file=file_paths)
 
                 if timing_type == "starting_time and rate":
-                    starting_time = self._starting_times[0] if self._starting_times is not None else 0.0
+                    starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
                     with VideoCaptureContext(file_path=str(file_paths[0])) as video:
                         rate = video.get_video_fps()
                     image_series_kwargs.update(starting_time=starting_time, rate=rate)
@@ -425,7 +423,11 @@ class VideoInterface(BaseDataInterface):
                     image_series_kwargs.update(data=wrapped_io_data)
 
                     if timing_type == "starting_time and rate":
-                        starting_time = self._starting_times[file_index] if self._starting_times is not None else 0.0
+                        starting_time = (
+                            self._segment_starting_times[file_index]
+                            if self._segment_starting_times is not None
+                            else 0.0
+                        )
                         with VideoCaptureContext(file_path=str(file)) as video:
                             rate = video.get_video_fps()
                         image_series_kwargs.update(starting_time=starting_time, rate=rate)
