@@ -29,7 +29,7 @@ class TestVideoInterface(TestCase):
         self.metadata = self.nwb_converter.get_metadata()
         self.metadata["NWBFile"].update(session_start_time=datetime.now(tz=gettz(name="US/Pacific")))
         self.nwbfile_path = self.test_dir / "video_test.nwb"
-        self.starting_times = [0.0, 50.0]
+        self.segment_starting_times = [0.0, 50.0]
 
     def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
@@ -100,7 +100,7 @@ class TestExternalVideoInterface(TestVideoInterface):
         timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
         interface = self.nwb_converter.data_interface_objects["Video"]
         interface.align_timestamps(aligned_timestamps=timestamps)
-        interface.align_starting_times(starting_times=self.starting_times)
+        interface.align_segment_starting_times(segment_starting_times=self.segment_starting_times)
 
         conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
         self.nwb_converter.run_conversion(
@@ -119,7 +119,7 @@ class TestExternalVideoInterface(TestVideoInterface):
         timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
         interface = self.nwb_converter.data_interface_objects["Video"]
         interface.align_timestamps(aligned_timestamps=timestamps)
-        interface.align_starting_times(starting_times=self.starting_times)
+        interface.align_segment_starting_times(segment_starting_times=self.segment_starting_times)
 
         conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
         self.nwb_converter.run_conversion(
@@ -224,7 +224,7 @@ class TestInternalVideoInterface(TestVideoInterface):
         timestamps = [np.array([1, 2, 4, 5, 6, 7, 8, 9, 10, 11])]
         interface = self.nwb_converter.data_interface_objects["Video"]
         interface.align_timestamps(aligned_timestamps=timestamps)
-        interface.align_starting_times(starting_times=[self.starting_times[0]])
+        interface.align_segment_starting_times(segment_starting_times=[self.segment_starting_times[0]])
 
         conversion_options = dict(Video=dict(external_mode=False, stub_test=True))
         self.nwb_converter.run_conversion(
