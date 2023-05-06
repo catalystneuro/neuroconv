@@ -142,7 +142,7 @@ class TestVideoConversions(TestCase):
         cls.video_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
         cls.video_files.sort()
         cls.number_of_video_files = len(cls.video_files)
-        cls.starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
+        cls.segment_starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
 
     def _get_metadata(self):
         """TODO: temporary helper function to fetch new metadata each time; need to debug in follow-up."""
@@ -152,7 +152,9 @@ class TestVideoConversions(TestCase):
 
     def test_real_videos(self):
         # TODO - merge this with the data mixin in follow-up
-        for file_index, (file_path, starting_time) in enumerate(zip(self.video_files, self.starting_times)):
+        for file_index, (file_path, segment_starting_time) in enumerate(
+            zip(self.video_files, self.segment_starting_times)
+        ):
             self.file_index = file_index
 
             class VideoTestNWBConverter(NWBConverter):
@@ -161,7 +163,9 @@ class TestVideoConversions(TestCase):
             source_data = dict(Video=dict(file_paths=[file_path]))
             self.converter = VideoTestNWBConverter(source_data)
             self.interface = self.converter.data_interface_objects["Video"]
-            self.interface.align_starting_times(starting_times=[self.starting_times[self.file_index]])
+            self.interface.align_segment_starting_times(
+                segment_starting_times=[self.segment_starting_times[self.file_index]]
+            )
 
             self.check_video_starting_times()
             self.check_video_custom_module()
@@ -183,9 +187,9 @@ class TestVideoConversions(TestCase):
             self.image_series = nwbfile.acquisition[self.image_series_name]
 
             if self.image_series.starting_time is not None:
-                assert self.starting_times[self.file_index] == self.image_series.starting_time
+                assert self.segment_starting_times[self.file_index] == self.image_series.starting_time
             else:
-                assert self.starting_times[self.file_index] == self.image_series.timestamps[0]
+                assert self.segment_starting_times[self.file_index] == self.image_series.timestamps[0]
 
     def check_video_custom_module(self):
         self._get_metadata()
@@ -207,12 +211,8 @@ class TestVideoConversions(TestCase):
         )
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            print(module_name)
             assert module_name in nwbfile.processing
-            print(nwbfile.processing)
             assert module_description == nwbfile.processing[module_name].description
-            print(self.image_series_name)
-            print(nwbfile.processing[module_name])
             assert self.image_series_name in nwbfile.processing[module_name].data_interfaces
 
     def check_video_chunking(self):
