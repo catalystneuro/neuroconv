@@ -515,10 +515,10 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
+    compression_kwargs: Optional[dict] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
+    backend: Literal["hdf5", "zarr"] = "hdf5"
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
@@ -550,10 +550,15 @@ def add_electrical_series(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression : {'gzip', 'lzf'}, optional
-        Type of compression to use. Set to None to disable all compression.
-    compression_opts: int, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
+    compression_kwargs : dict, optional
+        Controls compression arguments. The compression options depend on the `backend` argument:
+
+        - backend = "hdf5": compression_kwargs = {'compression': 'gzip', 'compression_opts': 4}.
+          Additional arguments of the H5DataIO class (e.g., `shuffle`) can be added to the 
+          dictionary. For no compression, set compression_kwargs = {'compression': None}.
+        - backend = "zarr": compression_kwargs = {'compressor': Blosc(cname="zstd", clevel=5)}.
+          Additional arguments of the ZarrDataIO class (e.g., `filters`, `chunks`) can be added to 
+          the dictionary. For no compression, set compression_kwargs = {'compressor': None}.
     iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -563,6 +568,8 @@ def add_electrical_series(
         Dictionary of options for the iterator.
         See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
         for the full list of options.
+    backend: {"hdf5", "zarr"}, default: "hdf5"
+        The backend to use for writing the traces. If "hdf5", the traces are written using the H5DataIO class.
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
@@ -641,6 +648,33 @@ def add_electrical_series(
     if not write_scaled:
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
+    if backend == "zarr":
+        try:
+            from hdmf_zarr import ZarrDataIO
+        except ImportError:
+            raise ImportError("To use the 'zarr' backend install hdmf-zarr: >>> pip install hdmf-zarr")
+        dataio = ZarrDataIO
+        if compression_kwargs is None:
+            from numcodecs import Blosc
+            compression_kwargs = {"compressor": Blosc(cname="zstd", clevel=5,
+                                                      shuffle=Blosc.BITSHUFFLE)}
+        else:
+            assert "compressor" in compression_kwargs, (
+                "For the zarr backend, you need to specify the `compressor` field in the "
+                "`compression_kwargs` dict"
+                )
+        dataio_kwargs = compression_kwargs
+    else:
+        dataio = H5DataIO
+        if compression_kwargs is None:
+            compression_kwargs = {"compression": "gzip", "compression_opts": 4}
+        else:
+            assert "compression" in compression_kwargs, (
+                "For the HDF5 backend, you need to specify the `compressor` field in the "
+                "`compression_kwargs` dict"
+                )
+        dataio_kwargs = compression_kwargs
+
     # Iterator
     ephys_data_iterator = _recording_traces_to_hdmf_iterator(
         recording=recording,
@@ -649,7 +683,7 @@ def add_electrical_series(
         iterator_opts=iterator_opts,
     )
     eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+        data=dataio(data=ephys_data_iterator, **dataio_kwargs)
     )
 
     # Timestamps vs rate
@@ -659,11 +693,14 @@ def add_electrical_series(
 
     if rate:
         starting_time = starting_time + timestamps[0]
-        eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+        eseries_kwargs.update(
+            starting_time=starting_time,
+            rate=float(recording.get_sampling_frequency())
+        )
     else:
         shifted_time_stamps = starting_time + timestamps
-        wrapped_timestamps = H5DataIO(
-            data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
+        wrapped_timestamps = dataio(
+            data=shifted_time_stamps, **dataio_kwargs
         )
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 
@@ -725,10 +762,10 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
-    compression_opts: Optional[int] = None,
+    compression_kwargs: Optional[dict] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
+    backend: Literal["h5py", "zarr"] = "h5py",
 ) -> pynwb.NWBFile:
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -797,11 +834,15 @@ def write_recording(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: {None, 'gzip', 'lzp'}
-        Type of compression to use.
-        Set to None to disable all compression.
-    compression_opts: int, optional, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
+        compression_kwargs : dict, optional
+        Controls compression arguments. The compression options depend on the `backend` argument:
+
+        - backend = "hdf5": compression_kwargs = {'compression': 'gzip', 'compression_opts': 4}.
+          Additional arguments of the H5DataIO class (e.g., `shuffle`) can be added to the 
+          dictionary. For no compression, set compression_kwargs = {'compression': None}.
+        - backend = "zarr": compression_kwargs = {'compressor': Blosc(cname="zstd", clevel=5)}.
+          Additional arguments of the ZarrDataIO class (e.g., `filters`, `chunks`) can be added to 
+          the dictionary. For no compression, set compression_kwargs = {'compressor': None}.
     iterator_type: {"v2", "v1",  None}
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -827,6 +868,8 @@ def write_recording(
             progress_bar_options : dict, optional
                 Dictionary of keyword arguments to be passed directly to tqdm.
                 See https://github.com/tqdm/tqdm#parameters for options.
+    backend : str, default: "h5py"
+        The backend to use for writing the data. Valid options are "h5py" and "zarr".
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -834,7 +877,6 @@ def write_recording(
         "1.3.3"
     ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
     write_as = "raw" if write_as is None else write_as
-    compression = "gzip" if compression is None else compression
 
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
@@ -859,10 +901,10 @@ def write_recording(
                     write_as=write_as,
                     es_key=es_key,
                     write_scaled=write_scaled,
-                    compression=compression,
-                    compression_opts=compression_opts,
+                    compression_kwargs=compression_kwargs,
                     iterator_type=iterator_type,
                     iterator_opts=iterator_opts,
+                    backend=backend
                 )
     return nwbfile_out
 
