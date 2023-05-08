@@ -1312,6 +1312,45 @@ class TestWriteWaveforms(TestCase):
         # reset original channel groups
         self.single_segment_we.recording.set_channel_groups(original_channel_groups)
 
+    def test_write_preprocessed_waveforms_and_raw_recording(self):
+        """This test that the waveforms are computed on subset of "good" channels, but the 
+        raw recording contains a superset of channels"""
+        # we write the first set of waveforms as belonging to group 0
+        we = self.single_segment_we
+        recording_raw = we.recording
+        recording_preprocessed = recording_raw.remove_channels(recording_raw.channel_ids[::2])
+
+        waveform_preprocessed = extract_waveforms(recording_preprocessed, we.sorting,
+                                                  folder=None, mode="memory")
+        # make recordingless
+        waveform_preprocessed._recording = None
+
+        write_waveforms(
+            waveform_extractor=waveform_preprocessed,
+            nwbfile=self.nwbfile,
+            write_electrical_series=True,
+            recording=recording_raw,
+        )
+        self.assertEqual(len(self.nwbfile.electrodes), len(recording_raw.channel_ids))
+        # in this case, it is the same as sparse waveforms
+        sparse_indices = recording_raw.ids_to_indices(waveform_preprocessed.channel_ids)
+        non_sparse_indices = np.setdiff1d(np.arange(recording_raw.get_num_channels()),
+                                          sparse_indices)
+        unit_ids = waveform_preprocessed.sorting.unit_ids
+        for i, row in enumerate(self.nwbfile.units.id):
+            waveform_proc_mean = self.nwbfile.units[row].waveform_mean.values[0]
+            waveform_proc_std = self.nwbfile.units[row].waveform_sd.values[0]
+            self.assertEqual(waveform_proc_mean.shape, (210, 4))
+            np.testing.assert_array_equal(waveform_proc_mean[:, non_sparse_indices],
+                                          np.zeros_like(waveform_proc_mean[:, non_sparse_indices]))
+            np.testing.assert_array_equal(waveform_proc_mean[:, sparse_indices],
+                                          waveform_preprocessed.get_template(unit_ids[i]))
+            self.assertEqual(waveform_proc_std.shape, (210, 4))
+            np.testing.assert_array_equal(waveform_proc_std[:, non_sparse_indices],
+                                          np.zeros_like(waveform_proc_std[:, non_sparse_indices]))
+            np.testing.assert_array_equal(waveform_proc_std[:, sparse_indices],
+                                          waveform_preprocessed.get_template(unit_ids[i], mode="std"))
+
     def test_missing_electrode_group(self):
         """This tests that waveforms are correctly written even if the 'group' property is not available"""
         groups = self.single_segment_we.recording.get_channel_groups()
@@ -1355,9 +1394,12 @@ class TestWriteWaveforms(TestCase):
         all_indices = np.arange(self.we_sparse.recording.get_num_channels())
         for i, row in enumerate(self.nwbfile.units.id):
             non_sparse_indices = np.setdiff1d(all_indices, sparse_indices[unit_ids[i]])
-            sparse_waveform = self.nwbfile.units[row].waveform_mean.values[0]
-            np.testing.assert_array_equal(sparse_waveform[:, non_sparse_indices],
-                                          np.zeros_like(sparse_waveform[:, non_sparse_indices]))
+            sparse_waveform_mean = self.nwbfile.units[row].waveform_mean.values[0]
+            np.testing.assert_array_equal(sparse_waveform_mean[:, non_sparse_indices],
+                                          np.zeros_like(sparse_waveform_mean[:, non_sparse_indices]))
+            sparse_waveform_sd = self.nwbfile.units[row].waveform_sd.values[0]
+            np.testing.assert_array_equal(sparse_waveform_sd[:, non_sparse_indices],
+                                          np.zeros_like(sparse_waveform_sd[:, non_sparse_indices]))
 
 
 if __name__ == "__main__":
