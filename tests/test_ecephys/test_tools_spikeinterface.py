@@ -1140,8 +1140,17 @@ class TestWriteWaveforms(TestCase):
         slice_sorting = single_segment_sort.select_units(single_segment_sort.unit_ids[::2])
         cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
 
-        # recordingless
         cls.tmpdir = Path(mkdtemp())
+        cls.waveform_recording3_path = cls.tmpdir / "waveforms_less_channels"
+        single_segment_rec_3channels = single_segment_rec.remove_channels([single_segment_rec.channel_ids[0]])
+
+        we3 = extract_waveforms(single_segment_rec_3channels, single_segment_sort,
+                                folder=cls.waveform_recording3_path)
+        # reload without recording
+        cls.we_rec3chan = we3
+        cls.we_rec3chan_recording = single_segment_rec_3channels
+
+        # recordingless
         cls.waveform_recordingless_path = cls.tmpdir / "waveforms_recordingless"
         we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.waveform_recordingless_path)
         # reload without recording
@@ -1308,6 +1317,57 @@ class TestWriteWaveforms(TestCase):
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
             else:
                 self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6, 7])
+
+        # reset original channel groups
+        self.single_segment_we.recording.set_channel_groups(original_channel_groups)
+
+    def test_write_multiple_probes_with_different_channels(self):
+        """This test that the waveforms are written to different electrode groups"""
+        # we write the first set of waveforms as belonging to group 0
+        recording = self.single_segment_we.recording
+        original_channel_groups = recording.get_channel_groups()
+        self.single_segment_we.recording.set_channel_groups([0] * len(recording.channel_ids))
+        metadata = dict(
+            Ecephys=dict(
+                ElectricalSeriesRaw1=dict(name="ElectricalSeriesRaw1", description="raw series"),
+                ElectricalSeriesRaw2=dict(name="ElectricalSeriesRaw2", description="lfp series"),
+            )
+        )
+        add_electrical_series_kwargs1 = dict(es_key="ElectricalSeriesRaw1")
+        write_waveforms(
+            waveform_extractor=self.single_segment_we,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            metadata=metadata,
+            add_electrical_series_kwargs=add_electrical_series_kwargs1,
+        )
+        self.assertEqual(len(self.nwbfile.electrodes), len(recording.channel_ids))
+
+        # now we set new channel groups to mimic a different probe and call the function again
+        recording3 = self.we_rec3chan_recording
+        self.we_rec3chan.recording.set_channel_groups([1] * len(recording3.channel_ids))
+        add_electrical_series_kwargs2 = dict(es_key="ElectricalSeriesRaw2")
+        write_waveforms(
+            waveform_extractor=self.we_rec3chan,
+            nwbfile=self.nwbfile,
+            write_electrical_series=False,
+            metadata=metadata,
+            add_electrical_series_kwargs=add_electrical_series_kwargs2,
+        )
+        # check that we have 2 groups
+        self.assertEqual(len(self.nwbfile.electrode_groups), 2)
+        self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
+        self.assertEqual(len(self.nwbfile.electrodes),
+                         len(recording.channel_ids) + len(recording3.channel_ids))
+
+        # check that we have correct number of units
+        self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
+        # check electrode regions of units
+        for row in self.nwbfile.units.id:
+            if row < len(self.we_recless.unit_ids):
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [0, 1, 2, 3])
+            else:
+                self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [4, 5, 6])
 
         # reset original channel groups
         self.single_segment_we.recording.set_channel_groups(original_channel_groups)
