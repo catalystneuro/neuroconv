@@ -1177,11 +1177,13 @@ class TestWriteWaveforms(TestCase):
         assert len(we.unit_ids) == len(nwbfile.units)
         # test that waveforms and stds are the same
         unit_ids = we.unit_ids
+        all_templates = we.get_all_templates()
+        all_stds = we.get_all_templates(mode="std")
         for unit_index, _ in enumerate(nwbfile.units.id):
-            wf_mean_si = we.get_template(unit_ids[unit_index])
+            wf_mean_si = all_templates[unit_index]
             wf_mean_nwb = nwbfile.units[unit_index]["waveform_mean"].values[0]
             np.testing.assert_array_almost_equal(wf_mean_si, wf_mean_nwb)
-            wf_sd_si = we.get_template(unit_ids[unit_index], mode="std")
+            wf_sd_si = all_stds[unit_index]
             wf_sd_nwb = nwbfile.units[unit_index]["waveform_sd"].values[0]
             np.testing.assert_array_almost_equal(wf_sd_si, wf_sd_nwb)
 
@@ -1346,10 +1348,16 @@ class TestWriteWaveforms(TestCase):
         """This tests that the waveforms are written appropriately when they are sparse"""
         write_waveforms(waveform_extractor=self.we_sparse, nwbfile=self.nwbfile, write_electrical_series=False)
         self._test_waveform_write(self.we_sparse, self.nwbfile)
+
+        # here we check that channels which do not belong to the sparsity are set to 0
         unit_ids = self.we_sparse.unit_ids
         sparse_indices = self.we_sparse.sparsity.unit_id_to_channel_indices
+        all_indices = np.arange(self.we_sparse.recording.get_num_channels())
         for i, row in enumerate(self.nwbfile.units.id):
-            self.assertEqual(self.nwbfile.units[row].electrodes.values[0], list(sparse_indices[unit_ids[i]]))
+            non_sparse_indices = np.setdiff1d(all_indices, sparse_indices[unit_ids[i]])
+            sparse_waveform = self.nwbfile.units[row].waveform_mean.values[0]
+            np.testing.assert_array_equal(sparse_waveform[:, non_sparse_indices],
+                                          np.zeros_like(sparse_waveform[:, non_sparse_indices]))
 
 
 if __name__ == "__main__":
