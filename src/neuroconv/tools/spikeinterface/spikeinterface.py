@@ -518,7 +518,7 @@ def add_electrical_series(
     compression_kwargs: Optional[dict] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
-    backend: Literal["hdf5", "zarr"] = "hdf5"
+    backend: Literal["hdf5", "zarr"] = "hdf5",
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
@@ -554,10 +554,10 @@ def add_electrical_series(
         Controls compression arguments. The compression options depend on the `backend` argument:
 
         - backend = "hdf5": compression_kwargs = {'compression': 'gzip', 'compression_opts': 4}.
-          Additional arguments of the H5DataIO class (e.g., `shuffle`) can be added to the 
+          Additional arguments of the H5DataIO class (e.g., `shuffle`) can be added to the
           dictionary. For no compression, set compression_kwargs = {'compression': None}.
         - backend = "zarr": compression_kwargs = {'compressor': Blosc(cname="zstd", clevel=5)}.
-          Additional arguments of the ZarrDataIO class (e.g., `filters`, `chunks`) can be added to 
+          Additional arguments of the ZarrDataIO class (e.g., `filters`, `chunks`) can be added to
           the dictionary. For no compression, set compression_kwargs = {'compressor': None}.
     iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
@@ -656,13 +656,12 @@ def add_electrical_series(
         dataio = ZarrDataIO
         if compression_kwargs is None:
             from numcodecs import Blosc
-            compression_kwargs = {"compressor": Blosc(cname="zstd", clevel=5,
-                                                      shuffle=Blosc.BITSHUFFLE)}
+
+            compression_kwargs = {"compressor": Blosc(cname="zstd", clevel=5, shuffle=Blosc.BITSHUFFLE)}
         else:
             assert "compressor" in compression_kwargs, (
-                "For the zarr backend, you need to specify the `compressor` field in the "
-                "`compression_kwargs` dict"
-                )
+                "For the zarr backend, you need to specify the `compressor` field in the " "`compression_kwargs` dict"
+            )
         dataio_kwargs = compression_kwargs
     else:
         dataio = H5DataIO
@@ -670,9 +669,8 @@ def add_electrical_series(
             compression_kwargs = {"compression": "gzip", "compression_opts": 4}
         else:
             assert "compression" in compression_kwargs, (
-                "For the HDF5 backend, you need to specify the `compressor` field in the "
-                "`compression_kwargs` dict"
-                )
+                "For the HDF5 backend, you need to specify the `compressor` field in the " "`compression_kwargs` dict"
+            )
         dataio_kwargs = compression_kwargs
 
     # Iterator
@@ -682,9 +680,7 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    eseries_kwargs.update(
-        data=dataio(data=ephys_data_iterator, **dataio_kwargs)
-    )
+    eseries_kwargs.update(data=dataio(data=ephys_data_iterator, **dataio_kwargs))
 
     # Timestamps vs rate
     timestamps = recording.get_times(segment_index=segment_index)
@@ -693,15 +689,10 @@ def add_electrical_series(
 
     if rate:
         starting_time = starting_time + timestamps[0]
-        eseries_kwargs.update(
-            starting_time=starting_time,
-            rate=float(recording.get_sampling_frequency())
-        )
+        eseries_kwargs.update(starting_time=starting_time, rate=float(recording.get_sampling_frequency()))
     else:
         shifted_time_stamps = starting_time + timestamps
-        wrapped_timestamps = dataio(
-            data=shifted_time_stamps, **dataio_kwargs
-        )
+        wrapped_timestamps = dataio(data=shifted_time_stamps, **dataio_kwargs)
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
@@ -838,10 +829,10 @@ def write_recording(
         Controls compression arguments. The compression options depend on the `backend` argument:
 
         - backend = "hdf5": compression_kwargs = {'compression': 'gzip', 'compression_opts': 4}.
-          Additional arguments of the H5DataIO class (e.g., `shuffle`) can be added to the 
+          Additional arguments of the H5DataIO class (e.g., `shuffle`) can be added to the
           dictionary. For no compression, set compression_kwargs = {'compression': None}.
         - backend = "zarr": compression_kwargs = {'compressor': Blosc(cname="zstd", clevel=5)}.
-          Additional arguments of the ZarrDataIO class (e.g., `filters`, `chunks`) can be added to 
+          Additional arguments of the ZarrDataIO class (e.g., `filters`, `chunks`) can be added to
           the dictionary. For no compression, set compression_kwargs = {'compressor': None}.
     iterator_type: {"v2", "v1",  None}
         The type of DataChunkIterator to use.
@@ -905,7 +896,7 @@ def write_recording(
                     compression_kwargs=compression_kwargs,
                     iterator_type=iterator_type,
                     iterator_opts=iterator_opts,
-                    backend=backend
+                    backend=backend,
                 )
     return nwbfile_out
 
