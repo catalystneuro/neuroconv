@@ -1243,8 +1243,10 @@ def add_waveforms(
     sorting = waveform_extractor.sorting
     if unit_ids is None:
         unit_ids = sorting.unit_ids
-    # retrieve templates and stds
-    # TODO: always get full templates
+
+    # retrieve templates and stds. Note that even if waveforms are sparse, the wavevorm_mean and stds are written
+    # as dense (and padded with zeros). This is because all waveform_mean entries must have the same shape, which 
+    # cannot be ensured with sparse waveforms
     all_template_means = waveform_extractor.get_all_templates()
     all_template_stds = waveform_extractor.get_all_templates(mode="std")
     template_means = []
@@ -1253,6 +1255,8 @@ def add_waveforms(
         unit_index = sorting.id_to_index(unit_id)
         template_means.append(all_template_means[unit_index])
         template_stds.append(all_template_stds[unit_index])
+    template_means = np.array(template_means)
+    template_stds = np.array(template_stds)
 
     # metrics properties (quality, template) are added as properties to the sorting copy
     sorting_copy = sorting.select_units(unit_ids=sorting.unit_ids)
@@ -1267,22 +1271,21 @@ def add_waveforms(
             if prop not in sorting_copy.get_property_keys():
                 sorting_copy.set_property(prop, tm[prop])
 
+    # find electrode table region corresponding to the recording
     add_electrodes_info(recording, nwbfile=nwbfile, metadata=metadata)
     electrode_group_indices = get_electrode_group_indices(recording, nwbfile=nwbfile)
+    unit_electrode_indices = [electrode_group_indices] * len(unit_ids)
 
-    # Handle the case where the recording has more channels than the waveform extractor,
+    # handle the case where the recording has more channels than the waveform extractor,
     # for example if some channels were removed for preprocessing
     if recording.get_num_channels() > waveform_extractor.get_num_channels():
         channel_mask = np.in1d(recording.channel_ids, waveform_extractor.channel_ids)
-        electrode_group_indices = electrode_group_indices[channel_mask]
-
-    # Handle waveform sparsity
-    # if not waveform_extractor.is_sparse():
-    unit_electrode_indices = [electrode_group_indices] * len(unit_ids)
-    # else:
-    #     sparsity = waveform_extractor.sparsity
-    #     unit_electrode_indices = [electrode_group_indices[sparsity.unit_id_to_channel_indices[unit_id]]
-    #                               for unit_id in unit_ids]
+        templates_means_all = np.zeros((template_means.shape[0], template_means.shape[1], recording.get_num_channels()))
+        templates_stds_all = np.zeros((template_stds.shape[0], template_stds.shape[1], recording.get_num_channels()))
+        templates_means_all[:, :, channel_mask] = template_means
+        templates_stds_all[:, :, channel_mask] = template_stds
+        template_means = templates_means_all
+        template_stds = templates_stds_all
 
     add_units_table(
         sorting=sorting_copy,
