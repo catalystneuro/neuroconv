@@ -158,10 +158,10 @@ class TemporallyAlignedDataInterface(BaseDataInterface):
     """When the data stream of an interface is already temporally aligned, the various alignment methods may be ignored."""
 
     def get_original_timestamps(self):
-        pass
+        return super().get_original_timestamps()
 
     def get_timestamps(self):
-        pass
+        return super().get_timestamps()
 
     def align_timestamps(self):
-        pass
+        return super().align_timestamps()
