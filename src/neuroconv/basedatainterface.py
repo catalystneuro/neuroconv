@@ -152,3 +152,16 @@ class BaseDataInterface(ABC):
             The default is False (append mode).
         """
         raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
+
+
+class TemporallyAlignedDataInterface(BaseDataInterface):
+    """When the data stream of an interface is already temporally aligned, the various alignment methods may be ignored."""
+
+    def get_original_timestamps(self):
+        return super().get_original_timestamps()
+
+    def get_timestamps(self):
+        return super().get_timestamps()
+
+    def align_timestamps(self):
+        return super().align_timestamps()
