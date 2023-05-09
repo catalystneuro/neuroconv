@@ -1248,7 +1248,7 @@ def add_waveforms(
         unit_ids = sorting.unit_ids
 
     # retrieve templates and stds. Note that even if waveforms are sparse, the wavevorm_mean and stds are written
-    # as dense (and padded with zeros). This is because all waveform_mean entries must have the same shape, which 
+    # as dense (and padded with zeros). This is because all waveform_mean entries must have the same shape, which
     # cannot be ensured with sparse waveforms
     all_template_means = waveform_extractor.get_all_templates()
     all_template_stds = waveform_extractor.get_all_templates(mode="std")
@@ -1286,10 +1286,12 @@ def add_waveforms(
         channel_mask = np.in1d(recording.channel_ids, waveform_extractor.channel_ids)
 
         if force_dense:
-            templates_means_all = np.zeros((all_template_means.shape[0], all_template_means.shape[1],
-                                            recording.get_num_channels()))
-            templates_stds_all = np.zeros((all_template_stds.shape[0], all_template_stds.shape[1],
-                                           recording.get_num_channels()))
+            templates_means_all = np.zeros(
+                (all_template_means.shape[0], all_template_means.shape[1], recording.get_num_channels())
+            )
+            templates_stds_all = np.zeros(
+                (all_template_stds.shape[0], all_template_stds.shape[1], recording.get_num_channels())
+            )
             templates_means_all[:, :, channel_mask] = template_means
             templates_stds_all[:, :, channel_mask] = template_stds
             template_means = templates_means_all
@@ -1300,8 +1302,7 @@ def add_waveforms(
     # handle sparsity
     if waveform_extractor.is_sparse() and not force_dense:
         unit_id_to_channel_indices = waveform_extractor.sparsity.unit_id_to_channel_indices
-        unit_electrode_indices = [electrode_group_indices[unit_id_to_channel_indices[unit]]
-                                  for unit in unit_ids]
+        unit_electrode_indices = [electrode_group_indices[unit_id_to_channel_indices[unit]] for unit in unit_ids]
     else:
         unit_electrode_indices = [electrode_group_indices] * len(unit_ids)
 
@@ -1417,7 +1418,7 @@ def write_waveforms(
             write_as=write_as,
             units_name=units_name,
             units_description=units_description,
-            force_dense=force_dense
+            force_dense=force_dense,
         )
 
 
@@ -1433,4 +1434,3 @@ def get_electrode_group_indices(recording, nwbfile):
     else:
         electrode_group_indices = nwbfile.electrodes.to_dataframe().query(f"group_name in {group_names}").index.values
     return electrode_group_indices
-

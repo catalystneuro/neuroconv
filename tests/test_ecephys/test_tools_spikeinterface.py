@@ -1144,8 +1144,7 @@ class TestWriteWaveforms(TestCase):
         cls.waveform_recording3_path = cls.tmpdir / "waveforms_less_channels"
         single_segment_rec_3channels = single_segment_rec.remove_channels([single_segment_rec.channel_ids[0]])
 
-        we3 = extract_waveforms(single_segment_rec_3channels, single_segment_sort,
-                                folder=cls.waveform_recording3_path)
+        we3 = extract_waveforms(single_segment_rec_3channels, single_segment_sort, folder=cls.waveform_recording3_path)
         # reload without recording
         cls.we_rec3chan = we3
         cls.we_rec3chan_recording = single_segment_rec_3channels
@@ -1160,8 +1159,7 @@ class TestWriteWaveforms(TestCase):
         # sparse
         cls.waveform_sparse_path = cls.tmpdir / "waveforms_sparse"
         sparsity = compute_sparsity(cls.single_segment_we, method="radius", radius_um=30)
-        cls.we_sparse = cls.single_segment_we.save(folder=cls.waveform_sparse_path,
-                                                   sparsity=sparsity)
+        cls.we_sparse = cls.single_segment_we.save(folder=cls.waveform_sparse_path, sparsity=sparsity)
 
     @classmethod
     def tearDownClass(cls):
@@ -1174,7 +1172,7 @@ class TestWriteWaveforms(TestCase):
         )
         self.h5file = self.tmpdir / "waveforms.h5"
 
-    def _test_waveform_write(self, we, nwbfile, test_properties=True,test_waveforms=False):
+    def _test_waveform_write(self, we, nwbfile, test_properties=True, test_waveforms=False):
         # test unit columns
         self.assertIn("waveform_mean", nwbfile.units.colnames)
         self.assertIn("waveform_sd", nwbfile.units.colnames)
@@ -1359,8 +1357,7 @@ class TestWriteWaveforms(TestCase):
         # check that we have 2 groups
         self.assertEqual(len(self.nwbfile.electrode_groups), 2)
         self.assertEqual(len(np.unique(self.nwbfile.electrodes["group_name"])), 2)
-        self.assertEqual(len(self.nwbfile.electrodes),
-                         len(recording.channel_ids) + len(recording3.channel_ids))
+        self.assertEqual(len(self.nwbfile.electrodes), len(recording.channel_ids) + len(recording3.channel_ids))
 
         # check that we have correct number of units
         self.assertEqual(len(self.nwbfile.units), 2 * len(self.we_recless.unit_ids))
@@ -1375,15 +1372,14 @@ class TestWriteWaveforms(TestCase):
         self.single_segment_we.recording.set_channel_groups(original_channel_groups)
 
     def test_write_preprocessed_waveforms_and_raw_recording(self):
-        """This test that the waveforms are computed on subset of "good" channels, but the 
+        """This test that the waveforms are computed on subset of "good" channels, but the
         raw recording contains a superset of channels"""
         # we write the first set of waveforms as belonging to group 0
         we = self.single_segment_we
         recording_raw = we.recording
         recording_preprocessed = recording_raw.remove_channels(recording_raw.channel_ids[::2])
 
-        waveform_preprocessed = extract_waveforms(recording_preprocessed, we.sorting,
-                                                  folder=None, mode="memory")
+        waveform_preprocessed = extract_waveforms(recording_preprocessed, we.sorting, folder=None, mode="memory")
         # make recordingless
         waveform_preprocessed._recording = None
 
@@ -1392,7 +1388,7 @@ class TestWriteWaveforms(TestCase):
             nwbfile=self.nwbfile,
             write_electrical_series=True,
             recording=recording_raw,
-            force_dense=False
+            force_dense=False,
         )
         # check that electrodes are set correctly
         self.assertEqual(len(self.nwbfile.electrodes), len(recording_raw.channel_ids))
@@ -1404,15 +1400,14 @@ class TestWriteWaveforms(TestCase):
             self.assertEqual(self.nwbfile.units[row].electrodes.values[0], [1, 3])
 
     def test_write_preprocessed_waveforms_and_raw_recording_force_dense(self):
-        """This test that the waveforms are computed on subset of "good" channels, but the 
+        """This test that the waveforms are computed on subset of "good" channels, but the
         raw recording contains a superset of channels"""
         # we write the first set of waveforms as belonging to group 0
         we = self.single_segment_we
         recording_raw = we.recording
         recording_preprocessed = recording_raw.remove_channels(recording_raw.channel_ids[::2])
 
-        waveform_preprocessed = extract_waveforms(recording_preprocessed, we.sorting,
-                                                  folder=None, mode="memory")
+        waveform_preprocessed = extract_waveforms(recording_preprocessed, we.sorting, folder=None, mode="memory")
         # make recordingless
         waveform_preprocessed._recording = None
 
@@ -1421,27 +1416,30 @@ class TestWriteWaveforms(TestCase):
             nwbfile=self.nwbfile,
             write_electrical_series=True,
             recording=recording_raw,
-            force_dense=True
+            force_dense=True,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(recording_raw.channel_ids))
         # in this case, it is the same as sparse waveforms
         sparse_indices = recording_raw.ids_to_indices(waveform_preprocessed.channel_ids)
-        non_sparse_indices = np.setdiff1d(np.arange(recording_raw.get_num_channels()),
-                                          sparse_indices)
+        non_sparse_indices = np.setdiff1d(np.arange(recording_raw.get_num_channels()), sparse_indices)
         unit_ids = waveform_preprocessed.sorting.unit_ids
         for i, row in enumerate(self.nwbfile.units.id):
             waveform_proc_mean = self.nwbfile.units[row].waveform_mean.values[0]
             waveform_proc_std = self.nwbfile.units[row].waveform_sd.values[0]
             self.assertEqual(waveform_proc_mean.shape, (210, 4))
-            np.testing.assert_array_equal(waveform_proc_mean[:, non_sparse_indices],
-                                          np.zeros_like(waveform_proc_mean[:, non_sparse_indices]))
-            np.testing.assert_array_equal(waveform_proc_mean[:, sparse_indices],
-                                          waveform_preprocessed.get_template(unit_ids[i]))
+            np.testing.assert_array_equal(
+                waveform_proc_mean[:, non_sparse_indices], np.zeros_like(waveform_proc_mean[:, non_sparse_indices])
+            )
+            np.testing.assert_array_equal(
+                waveform_proc_mean[:, sparse_indices], waveform_preprocessed.get_template(unit_ids[i])
+            )
             self.assertEqual(waveform_proc_std.shape, (210, 4))
-            np.testing.assert_array_equal(waveform_proc_std[:, non_sparse_indices],
-                                          np.zeros_like(waveform_proc_std[:, non_sparse_indices]))
-            np.testing.assert_array_equal(waveform_proc_std[:, sparse_indices],
-                                          waveform_preprocessed.get_template(unit_ids[i], mode="std"))
+            np.testing.assert_array_equal(
+                waveform_proc_std[:, non_sparse_indices], np.zeros_like(waveform_proc_std[:, non_sparse_indices])
+            )
+            np.testing.assert_array_equal(
+                waveform_proc_std[:, sparse_indices], waveform_preprocessed.get_template(unit_ids[i], mode="std")
+            )
 
     def test_missing_electrode_group(self):
         """This tests that waveforms are correctly written even if the 'group' property is not available"""
@@ -1486,8 +1484,9 @@ class TestWriteWaveforms(TestCase):
 
     def test_write_sparse_waveforms_force_dense(self):
         """This tests that the waveforms are written appropriately when they are sparse"""
-        write_waveforms(waveform_extractor=self.we_sparse, nwbfile=self.nwbfile, write_electrical_series=False,
-                        force_dense=True)
+        write_waveforms(
+            waveform_extractor=self.we_sparse, nwbfile=self.nwbfile, write_electrical_series=False, force_dense=True
+        )
         self._test_waveform_write(self.we_sparse, self.nwbfile, test_waveforms=False)
         unit_ids = self.we_sparse.unit_ids
         sparse_indices = self.we_sparse.sparsity.unit_id_to_channel_indices
@@ -1504,8 +1503,9 @@ class TestWriteWaveforms(TestCase):
 
     def test_write_sparse_waveforms_to_file_force_dense(self):
         """This tests that the waveforms are written appropriately when they are sparse, but force_dense is True"""
-        write_waveforms(waveform_extractor=self.we_sparse, nwbfile=self.nwbfile, write_electrical_series=False,
-                        force_dense=True)
+        write_waveforms(
+            waveform_extractor=self.we_sparse, nwbfile=self.nwbfile, write_electrical_series=False, force_dense=True
+        )
         with NWBHDF5IO(self.h5file, "w") as io:
             io.write(self.nwbfile)
 
