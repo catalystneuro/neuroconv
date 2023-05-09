@@ -7,8 +7,12 @@ from tempfile import mkdtemp
 import numpy as np
 from pynwb import NWBFile
 
-from neuroconv import ConverterPipe, NWBConverter
-from neuroconv.basedatainterface import BaseDataInterface
+from neuroconv import (
+    BaseDataInterface,
+    ConverterPipe,
+    NWBConverter,
+    TemporallyAlignedDataInterface,
+)
 
 try:
     from ndx_events import LabeledEvents
@@ -80,18 +84,9 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
 
         cls.InterfaceA = InterfaceA
 
-        class InterfaceB(BaseDataInterface):
+        class InterfaceB(TemporallyAlignedDataInterface):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
-
-            def get_original_timestamps(self):
-                pass
-
-            def get_timestamps(self):
-                pass
-
-            def align_timestamps(self):
-                pass
 
             def run_conversion(self):
                 pass
