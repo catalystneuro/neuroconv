@@ -353,6 +353,8 @@ class VideoInterface(BaseDataInterface):
                     image_series_kwargs.update(starting_time=starting_time, rate=rate)
                 elif timing_type == "timestamps":
                     image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
+                else:
+                    raise ValueError(f"Unrecognized timing_type: {timing_type}")
             else:
                 for file_index, (image_series_kwargs, file) in enumerate(zip(videos_metadata, file_paths)):
                     if self._number_of_files > 1:
