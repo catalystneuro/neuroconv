@@ -320,44 +320,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin):
     def check_read_nwb(self, nwbfile_path: str):
-        pass  # TODO?
+        pass  # asserted in the testing suite; could be refactored in future PR
 
-    def check_get_timestamps(self):
-        pass  # TODO - add timestamps support
-
-    def check_align_starting_time_internal(self):
-        pass  # TODO - cannot test internal adjustment until timestamp support
-
-    def check_align_starting_time_external(self):
-        pass  # This is tested in 'test_run_conversion' of 'test_audio_interface.py'
-
-    def check_align_starting_time_internal(self):
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
-
-        original_t_starts = [
-            sorting_segment._t_start for sorting_segment in fresh_interface.sorting_extractor._sorting_segments
-        ]
-
-        starting_time = 1.23
-        fresh_interface.align_starting_time(starting_time=starting_time)
-
-        aligned_starting_times = [
-            sorting_segment._t_start for sorting_segment in fresh_interface.sorting_extractor._sorting_segments
-        ]
-        expected_starting_times = [starting_time + original_t_start for original_t_start in original_t_starts]
-        self.assertListEqual(list1=aligned_starting_times, list2=expected_starting_times)
-
-    def check_align_starting_time_external(self):
-        # normally this uses the 'original' timestamps, but SortingInterfaces don't have those so use fresh instead
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
-
-        recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
-        fresh_interface.register_recording(recording_interface=recording_interface)
-
-        unaligned_timestamps = fresh_interface.get_timestamps()
-
-        aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
-        fresh_interface.align_timestamps(aligned_timestamps=aligned_timestamps)
-
-        retrieved_aligned_timestamps = fresh_interface.get_timestamps()
-        assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
+    def check_temporal_alignment(self):
+        pass  # defined in the testing suite
