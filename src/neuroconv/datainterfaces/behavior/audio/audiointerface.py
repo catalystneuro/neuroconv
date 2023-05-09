@@ -8,7 +8,6 @@ import scipy
 from pynwb import NWBFile, TimeSeries
 
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.datainterfaces.behavior.video.videodatainterface import _check_duplicates
 from neuroconv.tools.audio import add_acoustic_waveform_series
 from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
 from neuroconv.utils import FilePathType, get_base_schema
@@ -193,8 +192,10 @@ class AudioInterface(BaseDataInterface):
             f"Expected {self._number_of_audio_files} (one for each entry of 'file_paths')."
         )
 
-        audio_metadata_unique, file_paths_unique = _check_duplicates(audio_metadata, file_paths)
-        unpacked_file_paths_unique = [file_path[0] for file_path in file_paths_unique]
+        audio_name_list = [audio["name"] for audio in audio_metadata]
+        any_duplicated_audio_names = len(set(audio_name_list)) < len(file_paths)
+        if any_duplicated_audio_names:
+            raise ValueError("There are duplicated file names in the metadata!")
 
         if self._number_of_audio_files > 1 and self._segment_starting_times is None:
             raise ValueError(
@@ -210,6 +211,7 @@ class AudioInterface(BaseDataInterface):
                 zip(audio_metadata_unique, unpacked_file_paths_unique)
             ):
                 sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+
                 if stub_test:
                     acoustic_series = acoustic_series[:stub_frames]
 
