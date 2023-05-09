@@ -208,7 +208,7 @@ class AudioInterface(BaseDataInterface):
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
             for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(
-                zip(audio_metadata_unique, unpacked_file_paths_unique)
+                zip(audio_metadata, file_paths)
             ):
                 sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
 
