@@ -135,9 +135,12 @@ class TestSortingInterface(unittest.TestCase):
         minimal_nwbfile = self.test_dir / "temp2.nwb"
         metadata = self.test_sorting_interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        units_description = "The processed units."
         conversion_options = dict(
             TestSortingInterface=dict(
-                write_as="processing", units_name="processed_units", units_description="The processed units."
+                write_as="processing",
+                units_name="processed_units",
+                units_description=units_description,
             )
         )
         self.test_sorting_interface.run_conversion(
@@ -151,4 +154,4 @@ class TestSortingInterface(unittest.TestCase):
             ecephys = get_module(nwbfile, "ecephys")
             self.assertIsNone(nwbfile.units)
             self.assertIn("processed_units", ecephys.data_interfaces)
-            self.assertEqual(ecephys["processed_units"].description, "The processed units.")
+            self.assertEqual(ecephys["processed_units"].description, units_description)
