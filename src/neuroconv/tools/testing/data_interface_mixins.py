@@ -312,7 +312,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
 
         recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
         self.interface.register_recording(recording_interface=recording_interface)
-        
+
         self.check_get_timestamps()
         self.check_align_starting_time_internal()
         self.check_align_starting_time_external()
