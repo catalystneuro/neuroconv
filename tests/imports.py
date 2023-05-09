@@ -36,6 +36,8 @@ class TestImportStructure(TestCase):
             # Exposed attributes
             "NWBConverter",
             "ConverterPipe",
+            "BaseDataInterface",
+            "TemporallyAlignedDataInterface",
             "basedatainterface",  # Imported by ConverterPipe as a type-hint
             "run_conversion_from_yaml",
         ]
