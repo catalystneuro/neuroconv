@@ -1,9 +1,11 @@
+import shutil
 import unittest
 from datetime import datetime
 from pathlib import Path
 from platform import python_version as get_python_version
 from sys import platform
 from tempfile import mkdtemp
+from warnings import warn
 
 import numpy as np
 import pytest
@@ -17,6 +19,7 @@ from neuroconv.datainterfaces import CEDRecordingInterface
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
+from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
 python_version = Version(get_python_version())
@@ -69,13 +72,15 @@ class TestAssertions(TestCase):
 
 
 class TestSortingInterface(unittest.TestCase):
-    def setUp(self) -> None:
-        self.sorting_start_frames = [100, 200, 300]
-        self.num_frames = 1000
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.test_dir = Path(mkdtemp())
+        cls.sorting_start_frames = [100, 200, 300]
+        cls.num_frames = 1000
         times = np.array([], dtype="int")
         labels = np.array([], dtype="int")
-        for i, start_frame in enumerate(self.sorting_start_frames):
-            times_i = np.arange(start_frame, self.num_frames, dtype="int")
+        for i, start_frame in enumerate(cls.sorting_start_frames):
+            times_i = np.arange(start_frame, cls.num_frames, dtype="int")
             labels_i = (i + 1) * np.ones_like(times_i, dtype="int")
             times = np.concatenate((times, times_i))
             labels = np.concatenate((labels, labels_i))
@@ -93,11 +98,17 @@ class TestSortingInterface(unittest.TestCase):
             data_interface_classes = dict(TestSortingInterface=TestSortingInterface)
 
         source_data = dict(TestSortingInterface=dict())
-        self.test_sorting_interface = TempConverter(source_data)
+        cls.test_sorting_interface = TempConverter(source_data)
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            shutil.rmtree(cls.test_dir)
+        except PermissionError:  # Windows CI bug
+            warn(f"Unable to fully clean the temporary directory: {cls.test_dir}\n\nPlease remove it manually.")
 
     def test_sorting_stub(self):
-        test_dir = Path(mkdtemp())
-        minimal_nwbfile = test_dir / "stub_temp.nwb"
+        minimal_nwbfile = self.test_dir / "stub_temp.nwb"
         conversion_options = dict(TestSortingInterface=dict(stub_test=True))
         metadata = self.test_sorting_interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
@@ -111,8 +122,7 @@ class TestSortingInterface(unittest.TestCase):
                 assert len(nwbfile.units["spike_times"][i]) == (start_frame_max * 1.1) - start_times
 
     def test_sorting_full(self):
-        test_dir = Path(mkdtemp())
-        minimal_nwbfile = test_dir / "temp.nwb"
+        minimal_nwbfile = self.test_dir / "temp.nwb"
         metadata = self.test_sorting_interface.get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         self.test_sorting_interface.run_conversion(nwbfile_path=minimal_nwbfile, metadata=metadata)
@@ -120,3 +130,28 @@ class TestSortingInterface(unittest.TestCase):
             nwbfile = io.read()
             for i, start_times in enumerate(self.sorting_start_frames):
                 assert len(nwbfile.units["spike_times"][i]) == self.num_frames - start_times
+
+    def test_sorting_propagate_conversion_options(self):
+        minimal_nwbfile = self.test_dir / "temp2.nwb"
+        metadata = self.test_sorting_interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        units_description = "The processed units."
+        conversion_options = dict(
+            TestSortingInterface=dict(
+                write_as="processing",
+                units_name="processed_units",
+                units_description=units_description,
+            )
+        )
+        self.test_sorting_interface.run_conversion(
+            nwbfile_path=minimal_nwbfile,
+            metadata=metadata,
+            conversion_options=conversion_options,
+        )
+
+        with NWBHDF5IO(minimal_nwbfile, "r") as io:
+            nwbfile = io.read()
+            ecephys = get_module(nwbfile, "ecephys")
+            self.assertIsNone(nwbfile.units)
+            self.assertIn("processed_units", ecephys.data_interfaces)
+            self.assertEqual(ecephys["processed_units"].description, units_description)

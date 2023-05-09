@@ -1,7 +1,7 @@
 # Behavior
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
-from .behavior.video.videodatainterface import MovieInterface, VideoInterface
+from .behavior.video.videodatainterface import VideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
@@ -132,7 +132,6 @@ interface_list = [
     BrukerTiffImagingInterface,
     MicroManagerTiffImagingInterface,
     # Behavior
-    MovieInterface,  # TO-DO: deprecate on April 2023
     VideoInterface,
     DeepLabCutInterface,
     SLEAPInterface,
