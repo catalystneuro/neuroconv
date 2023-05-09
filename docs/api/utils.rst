@@ -1,10 +1,6 @@
 Utils
 =====
 
-Globbing
---------
-.. automodule:: neuroconv.utils.globbing
-
 Dictionaries
 ------------
 .. automodule:: neuroconv.utils.dict
