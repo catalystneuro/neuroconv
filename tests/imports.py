@@ -30,7 +30,6 @@ class TestImportStructure(TestCase):
         current_structure = _strip_magic_module_attributes(ls=neuroconv.__dict__)
         expected_structure = [
             # Sub-modules
-            "datainterfaces",
             "basedatainterface",
             "basetemporalalignmentinterface",
             "baseextractorinterface",
