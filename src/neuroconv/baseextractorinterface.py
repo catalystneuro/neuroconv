@@ -2,7 +2,7 @@
 from abc import ABC
 from typing import Optional
 
-from .basedatainterface import BaseDataInterface
+from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from .tools import get_package
 
 

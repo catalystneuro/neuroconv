@@ -30,9 +30,11 @@ class TestImportStructure(TestCase):
         current_structure = _strip_magic_module_attributes(ls=neuroconv.__dict__)
         expected_structure = [
             # Sub-modules
+            "datainterfaces",
             "basedatainterface",
             "basetemporalalignmentinterface",
-            "baseextractorinterface" "nwbconverter",
+            "baseextractorinterface",
+            "nwbconverter",
             "tools",  # Attached to namespace by NWBConverter import
             "utils",  # Attached to namespace by NWBconverter import
             # Exposed attributes
@@ -54,6 +56,8 @@ class TestImportStructure(TestCase):
             # Sub-Packages
             "yaml_conversion_specification",  # Attached to namespace  by top __init__ call of NWBConverter
             # Sub-modules
+            "signal_processing",
+            "text",
             "importing",  # Attached to namespace by importing get_package
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
             "path_expansion",
