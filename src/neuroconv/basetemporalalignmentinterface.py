@@ -1,13 +1,8 @@
-import uuid
-from abc import ABC, abstractmethod
-from pathlib import Path
-from typing import List, Optional
+from abc import abstractmethod
 
 import numpy as np
-from pynwb import NWBFile
 
-from .utils import get_schema_from_method_signature, load_dict_from_file
-from .utils.dict import DeepDict
+from .basedatainterface import BaseDataInterface
 
 
 class BaseTemporalAlignmentInterface(BaseDataInterface):
