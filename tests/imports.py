@@ -55,8 +55,6 @@ class TestImportStructure(TestCase):
             # Sub-Packages
             "yaml_conversion_specification",  # Attached to namespace  by top __init__ call of NWBConverter
             # Sub-modules
-            "signal_processing",
-            "text",
             "importing",  # Attached to namespace by importing get_package
             "nwb_helpers",  # Attached to namespace by top __init__ call of NWBConverter
             "path_expansion",
