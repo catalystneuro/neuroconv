@@ -20,3 +20,4 @@ and synchronize data across multiple sources.
   nwbconverter
   yaml
   csvs
+  expand_path
