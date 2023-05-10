@@ -6,10 +6,10 @@ import numpy as np
 from pynwb import NWBFile, TimeSeries
 from scipy.io.wavfile import read
 
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.tools.audio import add_acoustic_waveform_series
-from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
-from neuroconv.utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
+from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ...tools.audio import add_acoustic_waveform_series
+from ...tools.nwb_helpers import make_or_load_nwbfile
+from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 def _check_file_paths(file_paths, metadata: dict):
@@ -44,7 +44,7 @@ def _check_starting_times(starting_times: list, metadata: List[dict]) -> list:
     return starting_times
 
 
-class AudioInterface(BaseDataInterface):
+class AudioInterface(BaseTemporalAlignmentInterface):
     def __init__(self, file_paths: list, verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.

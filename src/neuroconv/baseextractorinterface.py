@@ -6,7 +6,7 @@ from .basedatainterface import BaseDataInterface
 from .tools import get_package
 
 
-class BaseExtractorInterface(BaseDataInterface, ABC):
+class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     """
     Abstract class defining the structure of all Extractor-based Interfaces.
     """
