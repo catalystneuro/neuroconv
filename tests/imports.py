@@ -30,15 +30,17 @@ class TestImportStructure(TestCase):
         current_structure = _strip_magic_module_attributes(ls=neuroconv.__dict__)
         expected_structure = [
             # Sub-modules
-            "nwbconverter",
+            "basedatainterface",
+            "basetemporalalignmentinterface",
+            "baseextractorinterface" "nwbconverter",
             "tools",  # Attached to namespace by NWBConverter import
             "utils",  # Attached to namespace by NWBconverter import
             # Exposed attributes
             "NWBConverter",
             "ConverterPipe",
             "BaseDataInterface",
-            "TemporallyAlignedDataInterface",
-            "basedatainterface",  # Imported by ConverterPipe as a type-hint
+            "BaseTemporalAlignmentInterface",
+            "BaseExtractorInterface",
             "run_conversion_from_yaml",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
