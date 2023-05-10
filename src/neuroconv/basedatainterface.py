@@ -42,6 +42,37 @@ class BaseDataInterface(ABC):
         return metadata
 
     @abstractmethod
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[str] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        **conversion_options,
+    ):
+        """
+        Run the NWB conversion for the instantiated data interface.
+
+        Parameters
+        ----------
+        nwbfile_path : FilePathType
+            Path for where to write or load (if overwrite=False) the NWBFile.
+            If specified, the context will always write to this location.
+        nwbfile : NWBFile, optional
+            An in-memory NWBFile object to write to the location.
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        overwrite : bool, default: False
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
+            The default is False (append mode).
+        """
+        raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
+
+
+class BaseTemporalAlignmentInterface(BaseDataInterface):
+    """An extension of the BaseDataInterface that includes several methods for performing temporal alignment."""
+
+    @abstractmethod
     def get_original_timestamps(self) -> np.ndarray:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
@@ -125,43 +156,3 @@ class BaseDataInterface(ABC):
         self.align_timestamps(
             aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
         )
-
-    @abstractmethod
-    def run_conversion(
-        self,
-        nwbfile_path: Optional[str] = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
-        overwrite: bool = False,
-        **conversion_options,
-    ):
-        """
-        Run the NWB conversion for the instantiated data interface.
-
-        Parameters
-        ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, the context will always write to this location.
-        nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
-        metadata : dict, optional
-            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        overwrite : bool, default: False
-            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
-            The default is False (append mode).
-        """
-        raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
-
-
-class TemporallyAlignedDataInterface(BaseDataInterface):
-    """When the data stream of an interface is already temporally aligned, the various alignment methods may be ignored."""
-
-    def get_original_timestamps(self):
-        return super().get_original_timestamps()
-
-    def get_timestamps(self):
-        return super().get_timestamps()
-
-    def align_timestamps(self):
-        return super().align_timestamps()
