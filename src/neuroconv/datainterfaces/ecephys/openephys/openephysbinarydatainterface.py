@@ -73,7 +73,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         except Exception as error:
             # Type of error might depend on pyopenephys version and/or platform
             error_case_1 = (
-                type(error) == ValueError
+                type(error) == Exception
                 and str(error) == "Only 'binary' and 'openephys' format are supported by pyopenephys"
             )
             error_case_2 = type(error) == OSError and "Unique settings file not found in" in str(error)
