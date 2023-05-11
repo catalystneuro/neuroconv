@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from dateutil.parser import parse
 
@@ -9,6 +9,13 @@ from ....utils import FolderPathType
 class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting legacy Open Ephys data (.continuous files).
     Uses :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor`."""
+
+    @classmethod
+    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+        from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
+
+        stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
+        return stream_names
 
     @classmethod
     def get_source_schema(cls):
@@ -23,7 +30,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
-        stream_name: str = "Signals CH",
+        stream_name: Optional[str] = None,
         verbose: bool = True,
     ):
         """
@@ -34,28 +41,17 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to OpenEphys directory.
-        stream_name : str, default: "Signals CH"
+        stream_name : str, optional
             The name of the recording stream.
         verbose : bool, default: True
         """
-
         available_streams = self.get_stream_names(folder_path=folder_path)
-        assert (
-            stream_name in available_streams
-        ), f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
+        if len(available_streams) > 1 and stream_name not in available_streams:
+            raise ValueError(
+                f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
+            )
 
-        super().__init__(
-            folder_path=folder_path,
-            stream_name=stream_name,
-            verbose=verbose,
-        )
-
-    @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
-        from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
-
-        stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
-        return stream_names
+        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose)
 
     def get_metadata(self):
         metadata = super().get_metadata()

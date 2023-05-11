@@ -1,9 +1,10 @@
 from datetime import datetime
 from platform import python_version, system
 from sys import platform
-from unittest import TestCase, skip, skipIf, skipUnless
+from unittest import skip, skipIf, skipUnless
 
 import jsonschema
+from hdmf.testing import TestCase
 from packaging import version
 
 from neuroconv.datainterfaces import (
@@ -21,6 +22,7 @@ from neuroconv.datainterfaces import (
     NeuroScopeRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
+    OpenEphysRecordingInterface,
     PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
@@ -226,10 +228,89 @@ class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin, Tes
     save_directory = OUTPUT_PATH
 
 
-class TestOpenEphysBinaryRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
+class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = []
+    save_directory = OUTPUT_PATH
+
+    def test_get_stream_names(self):
+        self.assertCountEqual(
+            first=self.data_interface_cls.get_stream_names(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream")
+            ),
+            second=["Record_Node_107#Neuropix-PXI-116.0", "Record_Node_107#Neuropix-PXI-116.1"],
+        )
+
+    def test_folder_structure_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "Unable to identify the OpenEphys folder structure! Please check that your `folder_path` contains sub-folders of the "
+                "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
+            ),
+        ):
+            OpenEphysBinaryRecordingInterface(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream"),
+                stream_name="Record_Node_107#Neuropix-PXI-116.0",
+            )
+
+    def test_stream_name_missing_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "More than one stream is detected! Please specify which stream you wish to load with the `stream_name` argument. "
+                "To see what streams are available, call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
+            ),
+        ):
+            OpenEphysBinaryRecordingInterface(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107")
+            )
+
+    def test_stream_name_not_available_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "The selected stream 'not_a_stream' is not in the available streams "
+                "'['Record_Node_107#Neuropix-PXI-116.0', 'Record_Node_107#Neuropix-PXI-116.1']'!"
+            ),
+        ):
+            OpenEphysBinaryRecordingInterface(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+                stream_name="not_a_stream",
+            )
+
+
+class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = OpenEphysBinaryRecordingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 2, 15, 17, 20, 4)
+
+
+class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+        stream_name="Record_Node_107#Neuropix-PXI-116.0",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 24, 15, 46, 56)
+
+
+class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream2(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+        stream_name="Record_Node_107#Neuropix-PXI-116.1",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 24, 15, 46, 56)
 
 
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -239,6 +320,23 @@ class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 10, 3, 13, 16, 50)
+
+
+class TestOpenEphysRecordingInterfaceRouter(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysRecordingInterface
+    interface_kwargs = [
+        dict(folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1")),
+        dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
+        dict(
+            folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+            stream_name="Record_Node_107#Neuropix-PXI-116.0",
+        ),
+        dict(
+            folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+            stream_name="Record_Node_107#Neuropix-PXI-116.1",
+        ),
+    ]
+    save_directory = OUTPUT_PATH
 
 
 class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
