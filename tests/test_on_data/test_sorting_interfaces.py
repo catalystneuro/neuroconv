@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest import TestCase
 
 from neuroconv.datainterfaces import (
+    BlackrockRecordingInterface,
     BlackrockSortingInterface,
     CellExplorerSortingInterface,
     NeuralynxSortingInterface,
@@ -24,6 +25,10 @@ except ImportError:
 class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = BlackrockSortingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"))
+
+    associated_recording_cls = BlackrockRecordingInterface
+    associated_recording_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"))
+
     save_directory = OUTPUT_PATH
 
 
