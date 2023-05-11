@@ -71,9 +71,13 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         try:
             _open_with_pyopenephys(folder_path=folder_path)
         except Exception as error:
-            if (
-                str(error) == "Only 'binary' and 'openephys' format are supported by pyopenephys"
-            ):  # Raise a more informative error instead.
+            # Type of error might depend on pyopenephys version and/or platform
+            error_case_1 = (
+                type(error) == ValueError
+                and str(error) == "Only 'binary' and 'openephys' format are supported by pyopenephys"
+            )
+            error_case_2 = type(error) == OSError and "Unique settings file not found in" in str(error)
+            if error_case_1 or error_case_2:  # Raise a more informative error instead.
                 raise ValueError(
                     "Unable to identify the OpenEphys folder structure! Please check that your `folder_path` contains sub-folders of the "
                     "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
