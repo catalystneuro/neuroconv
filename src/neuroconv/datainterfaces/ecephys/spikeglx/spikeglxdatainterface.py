@@ -102,7 +102,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         electrode_groups = [
             dict(
                 name=group_name,
-                description=f"a group representing shank {group_name}",
+                description=f"A group representing shank {group_name}.",
                 location="unknown",
                 device=device["name"],
             )
@@ -111,10 +111,31 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
 
         # Electrodes columns descriptions
+        custom_keys = set(self.recording_extractor.get_property_keys()) - set(
+            [
+                "location",  # this is mapped to (rel_x,rel_y,(rel_z)))]),
+                "group",  # this is auto-assigned as a link using the group_name
+                "contact_vector",  # contains various probeinterface related info but not yet unpacked or fully used
+            ]
+        )
+        default_descriptions = dict(
+            channel_name="The name of this channel.",
+            group_name="The name of the ElectrodeGroup this channel's electrode is a part of.",
+            shank_electrode_number="0-based index of the electrode on the shank.",
+            contact_shapes="The shape of the electrode.",
+            inter_sample_shift="Time-delay of each channel sampling in proportion to the per-frame sampling period.",
+            gain_to_uV="The scaling factor from the data type to microVolts, applied before the offset.",
+            offset_to_uV="The offset from the data type to microVolts, applied after the gain.",
+        )
         metadata["Ecephys"]["Electrodes"] = [
-            dict(name="shank_electrode_number", description="0-indexed channel within a shank."),
-            dict(name="group_name", description="Name of the ElectrodeGroup this electrode is a part of."),
-            dict(name="contact_shapes", description="The shape of the electrode"),
+            dict(
+                name=property_name,
+                description=default_descriptions.get(property_name, "No description."),
+                data_type=type(
+                    self.recording_extractor.get_property(key=property_name)[0],
+                ).__name__.replace("_", ""),
+            )
+            for property_name in custom_keys
         ]
 
         return metadata

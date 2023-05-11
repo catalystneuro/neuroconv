@@ -66,8 +66,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 additionalProperties=False,
                 required=["name"],
                 properties=dict(
-                    name=dict(type="string", description="name of this electrodes column"),
-                    description=dict(type="string", description="description of this electrodes column"),
+                    name=dict(type="string", description="The name of this electrodes column."),
+                    description=dict(type="string", description="The description of this electrodes column."),
+                    data_type=dict(
+                        type="string", description="The data type to use for decoding values of this column."
+                    ),
                 ),
             ),
         )
