@@ -34,7 +34,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         hdf5storage = get_package(package_name="hdf5storage")
 
-        super().__init__(spikes_matfile_path=file_path, verbose=verbose)
+        super().__init__(file_path=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 
