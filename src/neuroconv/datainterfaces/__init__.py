@@ -34,12 +34,12 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
 )
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
-    OpenEphysSortingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
 from .ecephys.openephys.openephyslegacydatainterface import (
     OpenEphysLegacyRecordingInterface,
 )
+from .ecephys.openephys.openephyssortingdatainterface import OpenEphysSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.plexon.plexondatainterface import (
     PlexonRecordingInterface,
