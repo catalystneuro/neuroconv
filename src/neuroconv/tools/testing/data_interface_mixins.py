@@ -117,6 +117,7 @@ class DataInterfaceTestMixin:
         assert len(timestamps) != 0
 
     def check_align_starting_time_internal(self):
+        """Ensure that internal mechanisms for shifting timestamps given a starting time match expectation."""
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
         unaligned_timestamps = fresh_interface.get_timestamps()
 
@@ -128,6 +129,7 @@ class DataInterfaceTestMixin:
         assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
 
     def check_align_timestamps_internal(self):
+        """Ensure that internal mechanisms for the timestamps getter/setter work as expected."""
         unaligned_timestamps = self.interface.get_original_timestamps()
 
         aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
@@ -315,7 +317,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
 
         self.check_get_timestamps()
         self.check_align_starting_time_internal()
-        self.check_align_starting_time_external()
+        self.check_align_timestamps_external()
 
     def check_align_starting_time_internal(self):
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
@@ -333,7 +335,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
         expected_starting_times = [starting_time + original_t_start for original_t_start in original_t_starts]
         self.assertListEqual(list1=aligned_starting_times, list2=expected_starting_times)
 
-    def check_align_starting_time_external(self):
+    def check_align_timestamps_external(self):
         # normally this uses the 'original' timestamps, but SortingInterfaces don't have those so use fresh instead
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
 
@@ -342,8 +344,8 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
 
         unaligned_timestamps = fresh_interface.get_timestamps()
 
-        aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
-        fresh_interface.align_timestamps(aligned_timestamps=aligned_timestamps)
+        external_aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
+        fresh_interface.align_timestamps(aligned_timestamps=external_aligned_timestamps)
 
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin):

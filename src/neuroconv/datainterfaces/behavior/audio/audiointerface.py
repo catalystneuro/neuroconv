@@ -100,7 +100,7 @@ class AudioInterface(BaseDataInterface):
 
     def align_starting_time(self, starting_time: float):
         """
-        Align all starting times for all videos in this interface relative to the common session start time.
+        Align all starting times for all audio files in this interface relative to the common session start time.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
@@ -124,7 +124,7 @@ class AudioInterface(BaseDataInterface):
 
     def align_segment_starting_times(self, segment_starting_times: List[float]):
         """
-        Align the individual starting time for each file in this interface relative to the common session start time.
+        Align the individual starting time for each audio file in this interface relative to the common session start time.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
