@@ -1,4 +1,5 @@
 import json
+import pandas
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
@@ -107,7 +108,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         A convenience function for collecting and organizing the property values of the underlying recording extractor.
 
-        Uses the structure of the Handsontable (list of dict entries) component of the NWB GUIDE.
+        Uses the structure expected of the table component of the NWB GUIDE (a list of dictionaries).
         """
         property_names = set(self.recording_extractor.get_property_keys()) - {
             "contact_vector",  # TODO: add consideration for contact vector (probeinterface) info
@@ -126,6 +127,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             table.append(electrode_column)
         table_as_json = json.loads(json.dumps(table, cls=NWBMetaDataEncoder))
         return table_as_json
+
+    def get_electrode_table_schema(self) -> dict:
+        """Generates the JSON schema for the object returned by `get_electrode_table_json`."""
+        table = pandas.DataFrame(data=self.get_electrode_table_json())
+        return pandas.io.json.build_table_schema(table, index=False)
 
     def get_original_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
         """
