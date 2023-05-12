@@ -1,8 +1,8 @@
 import json
-import pandas
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
+import pandas
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
