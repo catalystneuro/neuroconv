@@ -6,7 +6,7 @@ import numpy as np
 from pynwb import NWBFile, TimeSeries
 from scipy.io.wavfile import read
 
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ....basedatainterface import BaseDataInterface
 from ....tools.audio import add_acoustic_waveform_series
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
@@ -44,7 +44,7 @@ def _check_starting_times(starting_times: list, metadata: List[dict]) -> list:
     return starting_times
 
 
-class AudioInterface(BaseTemporalAlignmentInterface):
+class AudioInterface(BaseDataInterface):
     def __init__(self, file_paths: list, verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.
@@ -104,22 +104,6 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
         metadata.update(Behavior=behavior_metadata)
         return metadata
-
-    def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
-
-    def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
-        )
-
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
-        )
 
     def run_conversion(
         self,
