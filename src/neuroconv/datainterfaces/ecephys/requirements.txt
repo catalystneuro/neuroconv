@@ -1,2 +1,2 @@
-spikeinterface @ git+https://github.com/catalystneuro/spikeinterface.git@improve_cell_explorer
+spikeinterface>=0.97.1
 packaging<22.0

@@ -35,9 +35,15 @@ class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase
 class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CellExplorerSortingInterface
     interface_kwargs = [
-        dict(folder_path=str(DATA_PATH / "cellexplorer" / "dataset_1")),
-        dict(folder_path=str(DATA_PATH / "cellexplorer" / "dataset_2")),
-        dict(folder_path=str(DATA_PATH / "cellexplorer" / "dataset_3")),
+        dict(
+            file_path=str(
+                DATA_PATH / "cellexplorer" / "dataset_1" / "20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
+            )
+        ),
+        dict(file_path=str(DATA_PATH / "cellexplorer" / "dataset_2" / "20170504_396um_0um_merge.spikes.cellinfo.mat")),
+        dict(
+            file_path=str(DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat")
+        ),
     ]
     save_directory = OUTPUT_PATH
 

@@ -6,19 +6,19 @@ import scipy
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FolderPathType
+from ....utils import FilePathType
 
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
 
-    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
+    def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
         Initialize read of Cell Explorer file.
 
         Parameters
         ----------
-        folder_path: FolderPathType
+        file_path: FilePathType
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
         """
@@ -34,15 +34,11 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         hdf5storage = get_package(package_name="hdf5storage")
 
-        super().__init__(FolderPathType=folder_path, verbose=verbose)
-        self.source_data = dict(folder_path=folder_path)
-        self.folder_path = Path(folder_path)
+        super().__init__(spikes_matfile_path=file_path, verbose=verbose)
+        self.source_data = dict(file_path=file_path)
+        spikes_matfile_path = Path(file_path)
 
-        mat_file_path = next((path for path in self.folder_path.iterdir() if path.suffix == ".mat"), None)
-        self.session_id = mat_file_path.stem.split(".")[0]
-        spikes_matfile_path = self.folder_path / f"{self.session_id}.spikes.cellinfo.mat"
-
-        session_path = Path(self.folder_path)
+        session_path = Path(file_path).parent
         session_id = session_path.stem
 
         assert (
