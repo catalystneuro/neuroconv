@@ -2,11 +2,11 @@
 from abc import ABC
 from typing import Optional
 
-from .basedatainterface import BaseDataInterface
+from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from .tools import get_package
 
 
-class BaseExtractorInterface(BaseDataInterface, ABC):
+class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     """
     Abstract class defining the structure of all Extractor-based Interfaces.
     """

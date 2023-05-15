@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 from pynwb.file import NWBFile
 
-from ....basedatainterface import BaseDataInterface
+from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import FilePathType, dict_deep_update
@@ -40,12 +40,10 @@ def write_subject_to_nwb(nwbfile: NWBFile, h5file: FilePathType, individual_name
     )
 
 
-class DeepLabCutInterface(BaseDataInterface):
+class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
-    keywords = BaseDataInterface.keywords + [
-        "DLC",
-    ]
+    keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
 
     def __init__(
         self,

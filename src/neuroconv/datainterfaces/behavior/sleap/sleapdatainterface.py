@@ -5,13 +5,13 @@ import numpy as np
 from pynwb.file import NWBFile
 
 from .sleap_utils import extract_timestamps
-from ....basedatainterface import BaseDataInterface
+from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import FilePathType, dict_deep_update
 
 
-class SLEAPInterface(BaseDataInterface):
+class SLEAPInterface(BaseTemporalAlignmentInterface):
     """Data interface for SLEAP datasets."""
 
     def __init__(
