@@ -7,10 +7,10 @@ import numpy as np
 import scipy
 from pynwb import NWBFile, TimeSeries
 
-from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.tools.audio import add_acoustic_waveform_series
-from neuroconv.tools.nwb_helpers import make_or_load_nwbfile
-from neuroconv.utils import FilePathType, get_base_schema
+from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ....tools.audio import add_acoustic_waveform_series
+from ....tools.nwb_helpers import make_or_load_nwbfile
+from ....utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 def _check_audio_names_are_unique(metadata: dict):
@@ -19,7 +19,7 @@ def _check_audio_names_are_unique(metadata: dict):
     assert neurodata_names_are_unique, f"Some of the names for Audio metadata are not unique."
 
 
-class AudioInterface(BaseDataInterface):
+class AudioInterface(BaseTemporalAlignmentInterface):
     def __init__(self, file_paths: list, verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.

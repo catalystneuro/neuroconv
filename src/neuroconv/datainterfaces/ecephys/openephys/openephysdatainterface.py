@@ -15,7 +15,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
     def __new__(
         cls,
         folder_path: FolderPathType,
-        stream_name: Optional[str] = "Signals CH",
+        stream_name: Optional[str] = None,
         verbose: bool = True,
     ):
         """
@@ -27,7 +27,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to OpenEphys directory (.continuous or .dat files).
-        stream_name : str, default: "Signals CH"
+        stream_name : str, optional
             The name of the recording stream.
             When the recording stream is not specified the channel stream is chosen if available.
             When channel stream is not available the name of the stream must be specified.
@@ -37,17 +37,10 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
 
         folder_path = Path(folder_path)
         if any(folder_path.rglob("*.continuous")):
-            return OpenEphysLegacyRecordingInterface(
-                folder_path=folder_path,
-                stream_name=stream_name,
-                verbose=verbose,
-            )
+            return OpenEphysLegacyRecordingInterface(folder_path=folder_path, stream_name=stream_name, verbose=verbose)
 
         elif any(folder_path.rglob("*.dat")):
-            return OpenEphysBinaryRecordingInterface(
-                folder_path=folder_path,
-                verbose=verbose,
-            )
+            return OpenEphysBinaryRecordingInterface(folder_path=folder_path, stream_name=stream_name, verbose=verbose)
 
         else:
             raise AssertionError("The Open Ephys data must be in 'legacy' (.continuous) or in 'binary' (.dat) format.")

@@ -9,9 +9,9 @@ from pynwb import NWBFile
 
 from neuroconv import (
     BaseDataInterface,
+    BaseTemporalAlignmentInterface,
     ConverterPipe,
     NWBConverter,
-    TemporallyAlignedDataInterface,
 )
 
 try:
@@ -66,7 +66,7 @@ def test_converter():
 class TestNWBConverterAndPipeInitialization(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        class InterfaceA(BaseDataInterface):
+        class InterfaceA(BaseTemporalAlignmentInterface):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
 
@@ -84,7 +84,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
 
         cls.InterfaceA = InterfaceA
 
-        class InterfaceB(TemporallyAlignedDataInterface):
+        class InterfaceB(BaseDataInterface):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
 
