@@ -42,7 +42,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             # Otherwise, issue a DeprecationWarning
             else:
                 warnings.warn(
-                    "The spikes_matfile_path argument is deprecated and will be removed in six months. "
+                    f"The spikes_matfile_path argument is deprecated and will be removed in {deprecation_deadline} "
                     "Use file_path instead.",
                     DeprecationWarning,
                 )
