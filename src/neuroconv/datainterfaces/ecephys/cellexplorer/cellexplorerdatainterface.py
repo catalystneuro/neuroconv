@@ -1,5 +1,7 @@
+import datetime
+import warnings
 from pathlib import Path
-from warnings import warn
+from typing import Optional
 
 import numpy as np
 import scipy
@@ -12,7 +14,9 @@ from ....utils import FilePathType
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
+    def __init__(
+        self, file_path: FilePathType, verbose: bool = True, spikes_matfile_path: Optional[FilePathType] = None
+    ):
         """
         Initialize read of Cell Explorer file.
 
@@ -21,20 +25,33 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         file_path: FilePathType
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
+        spikes_matfile_path: FilePathType, default: None
+            Deprecated. Use file_path instead.
         """
-        # TODO: Remove spikeextractors backend
-        warn(
-            message=(
-                "Interfaces using a spikeextractors backend will soon be deprecated! "
-                "Please use the SpikeInterface backend instead."
-            ),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
+        assert (
+            file_path is not None or spikes_matfile_path is not None
+        ), "Either file_path or spikes_matfile_path must be provided!"
+
+        if spikes_matfile_path is not None:
+            # Raise an error if the warning period has expired
+            deprecation_issued = datetime.datetime(2023, 4, 1)
+            deprecation_deadline = deprecation_issued + datetime.timedelta(days=180)
+            if datetime.datetime.now() > deprecation_deadline:
+                raise ValueError("The spikes_matfile_path argument is no longer supported in. Use file_path instead.")
+
+            # Otherwise, issue a DeprecationWarning
+            else:
+                warnings.warn(
+                    "The spikes_matfile_path argument is deprecated and will be removed in six months. "
+                    "Use file_path instead.",
+                    DeprecationWarning,
+                )
+            file_path = file_path or spikes_matfile_path
 
         hdf5storage = get_package(package_name="hdf5storage")
 
         super().__init__(file_path=file_path, verbose=verbose)
+
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 
