@@ -111,8 +111,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         Uses the structure expected of the table component of the NWB GUIDE (a list of dictionaries).
         """
         property_names = set(self.recording_extractor.get_property_keys()) - {
-            "contact_vector",  # TODO: add consideration for contact vector (probeinterface) info
-            "location",  # testing
+            "location",  # this is mapped to (rel_x,rel_y,(rel_z)))]),
+            "group",  # this is auto-assigned as a link using the group_name
+            "contact_vector",  # contains various probeinterface related info but not yet unpacked or fully used
         }
         electrode_ids = self.recording_extractor.get_channel_ids()
 
