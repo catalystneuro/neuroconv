@@ -129,7 +129,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         table_as_json = json.loads(json.dumps(table, cls=NWBMetaDataEncoder))
         return table_as_json
 
-    def update_electrode_table(self, electrode_table_json: List[Dict[str, Any]]):
+    def update_electrode_table(self, metadata: dict, electrode_table_json: List[Dict[str, Any]]):
+        electrode_column_info = metadata["Ecephys"]["Electrodes"]
+        electrode_column_data_types = {column["name"]: column["data_type"] for column in electrode_column_info}
+
         channel_ids = self.recording_extractor.get_channel_ids()
         stream_prefix = channel_ids[0].split("#")[0]  # TODO: see if this generalized across formats
         for entry in electrode_table_json:
@@ -137,7 +140,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             channel_name = electrode_properties.pop("channel_name")
             for property_name, property_value in electrode_properties.items():
                 self.recording_extractor.set_property(
-                    key=property_name, values=[property_value], ids=[stream_prefix + "#" + channel_name]
+                    key=property_name, values=np.array([property_value], dtype=electrode_column_data_types[property_name]), ids=[stream_prefix + "#" + channel_name]
                 )
 
     def get_electrode_table_schema(self) -> dict:
