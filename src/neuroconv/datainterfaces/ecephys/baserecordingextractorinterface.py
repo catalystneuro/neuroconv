@@ -140,7 +140,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             channel_name = electrode_properties.pop("channel_name")
             for property_name, property_value in electrode_properties.items():
                 self.recording_extractor.set_property(
-                    key=property_name, values=np.array([property_value], dtype=electrode_column_data_types[property_name]), ids=[stream_prefix + "#" + channel_name]
+                    key=property_name,
+                    values=np.array([property_value], dtype=electrode_column_data_types[property_name]),
+                    ids=[stream_prefix + "#" + channel_name],
                 )
 
     def get_electrode_table_schema(self) -> dict:
