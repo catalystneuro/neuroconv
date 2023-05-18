@@ -131,12 +131,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     def update_electrode_table(self, electrode_table_json: List[Dict[str, Any]]):
         channel_ids = self.recording_extractor.get_channel_ids()
-        stream_prefix = channel_ids[0].split("#")[0] # TODO: see if this generalized across formats
+        stream_prefix = channel_ids[0].split("#")[0]  # TODO: see if this generalized across formats
         for entry in electrode_table_json:
             electrode_properties = dict(entry)  # copy
             channel_name = electrode_properties.pop("channel_name")
             for property_name, property_value in electrode_properties.items():
-                self.recording_extractor.set_property(key=property_name, values=[property_value], ids=[stream_prefix + channel_name])
+                self.recording_extractor.set_property(
+                    key=property_name, values=[property_value], ids=[stream_prefix + channel_name]
+                )
 
     def get_electrode_table_schema(self) -> dict:
         """Generates the JSON schema for the object returned by `get_electrode_table_json`."""
