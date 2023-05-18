@@ -129,6 +129,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         table_as_json = json.loads(json.dumps(table, cls=NWBMetaDataEncoder))
         return table_as_json
 
+    def update_electrode_table(self, electrode_table_json: List[Dict[str, Any]]):
+        for entry in electrode_table_json:
+            electrode_properties = dict(entry)  # copy
+            channel_name = electrode_properties.pop("channel_name")
+            for property_name, property_value in electrode_properties.items():
+                self.recording_extractor.set_property(key=property_name, values=[property_value], ids=[channel_name])
+    
     def get_electrode_table_schema(self) -> dict:
         """Generates the JSON schema for the object returned by `get_electrode_table_json`."""
         table = pandas.DataFrame(data=self.get_electrode_table_json())
