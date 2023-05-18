@@ -144,7 +144,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                     ids=[stream_prefix + "#" + channel_name],
                 )
 
-
     def get_electrode_table_schema(self) -> dict:
         """Generates the JSON schema for the object returned by `get_electrode_table_json`."""
         table = pandas.DataFrame(data=self.get_electrode_table_json())
