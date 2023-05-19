@@ -215,12 +215,12 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     if metadata is not None:
         electrodes_metadata = metadata.get("Ecephys", dict()).get("Electrodes", list())
 
-    required_keys = {"name", "description"}
+    required_keys = {"name", "description", "data_type"}
     assert all(
         [isinstance(property, dict) and set(property.keys()) == required_keys for property in electrodes_metadata]
     ), (
         "Expected metadata['Ecephys']['Electrodes'] to be a list of dictionaries, "
-        "containing the keys 'name' and 'description'"
+        "containing the keys 'name', 'description', and 'data_type'"
     )
 
     assert all(
