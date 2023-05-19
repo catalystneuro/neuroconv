@@ -1,4 +1,5 @@
 # Behavior
+from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
@@ -133,6 +134,7 @@ interface_list = [
     MicroManagerTiffImagingInterface,
     # Behavior
     VideoInterface,
+    AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     # Text
