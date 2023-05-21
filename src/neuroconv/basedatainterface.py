@@ -1,10 +1,13 @@
 """Authors: Cody Baker and Ben Dichter."""
 from abc import abstractmethod, ABC
 import uuid
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Literal
 
 from pynwb import NWBFile
 
+from .backends import backends
+from .tools.nwb_helpers import make_nwbfile_from_metadata
 from .utils import get_base_schema, get_schema_from_method_signature
 
 
@@ -51,6 +54,13 @@ class BaseDataInterface(ABC):
         """Child DataInterface classes should override this to match their conversion options."""
         return dict()
 
+    def configure_datasets(self, nwbfile: NWBFile, backend: str, dataset_configs: dict = None):
+        dataset_configs = dataset_configs or dict()
+        for container_id, field in self.datasets:
+            dset_config = dataset_configs.get((container_id, field), backends[backend].data_io_defaults)
+            data = nwbfile.get_object(container_id).getattr(field)
+            nwbfile.get_object(container_id).setattr(field, backends[backend].data_io(data=data, **dset_config))
+
     @abstractmethod
     def run_conversion(
         self,
@@ -58,6 +68,8 @@ class BaseDataInterface(ABC):
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        backend: Literal["hdf5", "zarr"] = "hdf5",
+        dataset_configs: Optional[dict] = None,
         **conversion_options,
     ):
         """
@@ -73,10 +85,33 @@ class BaseDataInterface(ABC):
         metadata: dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
+        backend: {"hdf5", "zarr"}
+        dataset_configs: dict, optional
         verbose: bool, optional
             If 'nwbfile_path' is specified, informs user after a successful write operation.
             The default is True.
         """
-        raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
+        if nwbfile_path and nwbfile:
+            raise ValueError("Provide either nwbfile or nwbfile_path to `run_conversion`, not both.")
+
+        if not (nwbfile or nwbfile_path):
+            raise ValueError("Provide either nwbfile or nwbfile_path to `run_conversion`.")
+
+        if Path(nwbfile_path).exists():
+            with backends[backend].nwb_io(nwbfile_path, mode="w" if overwrite else "r+", load_namespaces=True) as io:
+                nwbfile = io.read()
+                self.add_to_nwb(nwbfile)
+                self.configure_datasets(nwbfile, backend, dataset_configs)
+                io.write(nwbfile, nwbfile_path, backend=backend, dataset_configs=dataset_configs)
+        else:
+            if not nwbfile:
+                nwbfile = make_nwbfile_from_metadata(metadata)
+            self.add_to_nwb(nwbfile)
+            self.configure_datasets(nwbfile, backend, dataset_configs)
+            with backends[backend].nwb_io(nwbfile, mode="w" if overwrite else "r+", load_namespaces=True) as io:
+                io.write(nwbfile, nwbfile_path)
+
+    def add_to_nwb(self, nwbfile: NWBFile):
+        raise NotImplementedError()
