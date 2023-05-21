@@ -44,7 +44,7 @@ expander will find all matching paths and automatically extract the specified me
         print(metadata)
 
 The ``expand_paths`` method returns a list of :py:class:`~neuroconv.utils.dict.DeepDict` objects that contain two
-dictionaries: ``source_data`` and ``metadata``. The ``source_data`` dictionary contains the resolved filepath of each
+dictionaries: ``source_data`` and ``metadata``. The ``source_data`` dictionary contains the resolved path of each
 interface, while the ``metadata`` dictionary contains the metadata extracted from the filepaths. Currently, only
 ``subject_id``, ``session_id``, and ``session_start_time`` are supported, but this approach could in principle be
 extended to support extraction of more metadata.
