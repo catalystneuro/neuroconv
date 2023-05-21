@@ -11,7 +11,7 @@ Local Path Expander
 -------------------
 Use the :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find matching paths in your local filesystem.
 This class requires a source data specification, in which you can list multiple data interfaces by name, and for each
-provide a ``base_directory`` path and a ``"file_path"`` or ``"folder_path"`` argument in f-string format. The path
+provide a ``base_directory`` path and a "``file_path``" or "``folder_path``" argument in f-string format. The path
 expander will find all matching paths and automatically extract the specified metadata.
 
 .. code-block:: python
