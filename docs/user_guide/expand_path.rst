@@ -1,8 +1,8 @@
 Path Expansion
 ===============
 
-Source data often follows a file and folder organizational structure where some of the metadata of the experiment,
-such as the subject and session id, are included in the filepath of the data files. The
+Source data are often stored in an organizational structure where some of the metadata of the experiment,
+such as the subject and session IDs, are included in the folder names and file paths of the data. The
 :py:mod:`~neuroconv.tools.path_expansion` module allows a user to specify this path pattern so that NeuroConv can
 identify all matching data and automatically extract the relevant metadata.
 
