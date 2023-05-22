@@ -109,9 +109,8 @@ extract their session IDs, you could use the following code.
      'source_data': {'allen-visual-coding': {'file_path': '/allen-brain-observatory/visual-coding-2p/ophys_movies/ophys_experiment_645691416.h5'}}}
     ...
 
-Example 2: `Buszaki Lab SenzaiY Dataset 
-<https://app.globus.org/file-manager?origin_id=188a6110-96db-11eb-b7a9-f57b2d55370d&origin_path=%2FSenzaiY%2F>`_
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Example 2: `Buszaki Lab SenzaiY Dataset <https://app.globus.org/file-manager?origin_id=188a6110-96db-11eb-b7a9-f57b2d55370d&origin_path=%2FSenzaiY%2F>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Buszaki Lab's SenzaiY dataset contains spiking and LFP data from mouse V1 with the directory structure
 shown below.
