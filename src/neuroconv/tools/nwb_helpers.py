@@ -205,5 +205,7 @@ def configure_datasets(nwbfile: NWBFile, backend: str, dataset_configs: dict = N
     dataset_configs = dataset_configs or dict()
     for container_id, field in get_io_datasets(nwbfile):
         dset_config = dataset_configs.get((container_id, field), backends[backend].data_io_defaults)
-        data = nwbfile.get_object(container_id).getattr(field)
-        nwbfile.get_object(container_id).setattr(field, backends[backend].data_io(data=data, **dset_config))
+        object_ = nwbfile.get_object(container_id)
+        data = object_.getattr(field)
+        new_data = backends[backend].data_io(data=data, **dset_config)
+        object_.setattr(field, new_data)
