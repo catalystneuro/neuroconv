@@ -1,3 +1,3 @@
-from .spikeinterface import spikeinterface
-from .roiextractors import roiextractors
-from .neo import neo
+from .importing import get_package
+from .path_expansion import LocalPathExpander
+from .processes import deploy_process

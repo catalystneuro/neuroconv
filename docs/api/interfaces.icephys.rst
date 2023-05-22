@@ -1,5 +1,5 @@
 Intracellular electrophysiology
-===================
+===============================
 
 Base Interface
 --------------
@@ -7,5 +7,5 @@ Base Interface
 
 
 Abf Interface
--------------------
+-------------
 .. automodule:: neuroconv.datainterfaces.icephys.abf.abfdatainterface

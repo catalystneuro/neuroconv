@@ -1,12 +1,9 @@
-"""Author: Luiz Tauffer."""
-from datetime import datetime, timedelta
-from pathlib import Path
-from warnings import warn
 import json
-from neo import AxonIO
+from datetime import datetime, timedelta
+from typing import List
+from warnings import warn
 
 from ..baseicephysinterface import BaseIcephysInterface
-from ....tools.neo import get_number_of_electrodes, get_number_of_segments
 
 
 def get_start_datetime(neo_reader):
@@ -26,11 +23,10 @@ def get_start_datetime(neo_reader):
 
 
 class AbfInterface(BaseIcephysInterface):
-
-    neo_class = AxonIO
+    ExtractorName = "AxonIO"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_paths"] = dict(
             type="array",
@@ -52,18 +48,22 @@ class AbfInterface(BaseIcephysInterface):
 
         Parameters
         ----------
-            file_paths: list
-                List of files to be converted to the same nwb file.
-            icephys_metadata: dict, optional
-                Dictionary containing the Icephys-specific metadata. Defaults to None.
-            icephys_metadata_file_path: str, optional
-                JSON file containing the Icephys-specific metadata. Defaults to None.
+        file_paths : list
+            List of files to be converted to the same NWB file.
+        icephys_metadata : dict, optional
+            Dictionary containing the Icephys-specific metadata.
+        icephys_metadata_file_path : str, optional
+            JSON file containing the Icephys-specific metadata.
         """
         super().__init__(file_paths=file_paths)
-        self.source_data["icephys_metadata"] = icephys_metadata
-        self.source_data["icephys_metadata_file_path"] = icephys_metadata_file_path
+        self.source_data.update(
+            icephys_metadata=icephys_metadata,
+            icephys_metadata_file_path=icephys_metadata_file_path,
+        )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
+        from ....tools.neo import get_number_of_electrodes, get_number_of_segments
+
         metadata = super().get_metadata()
 
         if self.source_data["icephys_metadata"]:
@@ -143,3 +143,51 @@ class AbfInterface(BaseIcephysInterface):
             iii += 1
 
         return metadata
+
+    def align_starting_time(self, starting_time: float):
+        raise NotImplementedError(
+            "The AbfInterface operates on a list of file paths; to reduce ambiguity, please choose "
+            "between `align_global_starting_time` (shift starting time of each video by the same value) "
+            "and `align_starting_times` (specify a list of values to use in shifting the starting time for each video)."
+        )
+
+    def align_global_starting_time(self, global_starting_time: float):
+        """
+        Align all starting times for all videos in this interface relative to the common session start time.
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        global_starting_time : float
+            The starting time for all temporal data in this interface.
+        """
+        for reader in self.readers_list:
+            number_of_segments = reader.header["nb_segment"][0]
+            for segment_index in range(number_of_segments):
+                reader._t_starts[segment_index] += global_starting_time
+
+    def align_starting_times(self, starting_times: List[List[float]], stub_test: bool = False):
+        """
+        Align the individual starting time for each video in this interface relative to the common session start time.
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_times : list of list of floats
+            The relative starting times of each video.
+            Outer list is over file paths (readers).
+            Inner list is over segments of each recording.
+        """
+        number_of_files_from_starting_times = len(starting_times)
+        assert number_of_files_from_starting_times == len(self.readers_list), (
+            f"The length of the outer list of 'starting_times' ({number_of_files_from_starting_times}) "
+            "does not match the number of files ({len(self.readers_list)})!"
+        )
+
+        for file_index, (reader, starting_times_per_segment) in enumerate(zip(self.readers_list, starting_times)):
+            number_of_segments = reader.header["nb_segment"][0]
+            assert number_of_segments == len(
+                starting_times_per_segment
+            ), f"The length of starting times index {file_index} does not match the number of segments of that reader!"
+
+            reader._t_starts = starting_times_per_segment

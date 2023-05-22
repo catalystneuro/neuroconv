@@ -1,0 +1,2 @@
+dlc2nwb>=0.3
+tables  # imported by package but not included in pip setup (is included in setup.cfg)

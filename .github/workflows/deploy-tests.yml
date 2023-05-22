@@ -1,0 +1,78 @@
+name: Deploy tests
+
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+concurrency:  # Cancel previous workflows on the same pull request
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  assess-file-changes:
+    uses: catalystneuro/neuroconv/.github/workflows/assess-file-changes.yml@main
+
+  detect-changelog-updates:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    name: Auto-detecting CHANGELOG.md updates
+    runs-on: ubuntu-latest
+    steps:
+      - if:  ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'true' }}
+        run: echo "CHANGELOG.md has been updated."
+      - if:  ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
+        run: |
+          echo "CHANGELOG.md has not been updated."
+          0
+
+  run-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: catalystneuro/neuroconv/.github/workflows/testing.yml@main
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+
+
+  run-live-service-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: catalystneuro/neuroconv/.github/workflows/live-service-testing.yml@main
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+
+  run-dev-tests:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' }}
+    uses: catalystneuro/neuroconv/.github/workflows/dev-testing.yml@main
+    secrets:
+      DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
+
+  run-doctests-only:
+    needs: assess-file-changes
+    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' && needs.assess-file-changes.outputs.SOURCE_CHANGED != 'true' }}
+    uses: catalystneuro/neuroconv/.github/workflows/doctests.yml@main
+
+  check-final-status:
+    name: All tests passing
+    if: always()
+
+    needs:
+    - run-tests
+    - run-dev-tests
+    - run-doctests-only
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Decide whether the all jobs succeeded or at least one failed
+      uses: re-actors/alls-green@release/v1
+      with:
+        allowed-skips: run-tests, run-dev-tests, run-doctests-only  # Each has the option to skip depending on whether src changed
+        jobs: ${{ toJSON(needs) }}

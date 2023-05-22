@@ -1,22 +1,21 @@
-"""Authors: Cody Baker and Ben Dichter."""
 import json
-from jsonschema import validate
-from typing import Optional, Dict
+from collections import Counter
 from pathlib import Path
+from typing import Dict, List, Optional, Union
 
+from jsonschema import validate
 from pynwb import NWBFile
-from pynwb.file import Subject
 
-from .tools.nwb_helpers import get_default_nwbfile_metadata, make_nwbfile_from_metadata, make_or_load_nwbfile
+from .basedatainterface import BaseDataInterface
+from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
 from .utils import (
-    get_schema_from_hdmf_class,
-    get_schema_for_NWBFile,
     dict_deep_update,
-    get_base_schema,
-    unroot_schema,
     fill_defaults,
+    get_base_schema,
+    load_dict_from_file,
+    unroot_schema,
 )
-
+from .utils.dict import DeepDict
 from .utils.json_schema import NWBMetaDataEncoder
 
 
@@ -39,8 +38,7 @@ class NWBConverter:
             source_schema["properties"].update({interface_name: unroot_schema(data_interface.get_source_schema())})
         return source_schema
 
-    @classmethod
-    def get_conversion_options_schema(cls):
+    def get_conversion_options_schema(self):
         """Compile conversion option schemas from each of the data interface classes."""
         conversion_options_schema = get_base_schema(
             root=True,
@@ -49,7 +47,7 @@ class NWBConverter:
             description="Schema for the conversion options",
             version="0.1.0",
         )
-        for interface_name, data_interface in cls.data_interface_classes.items():
+        for interface_name, data_interface in self.data_interface_objects.items():
             conversion_options_schema["properties"].update(
                 {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
             )
@@ -72,15 +70,7 @@ class NWBConverter:
 
     def get_metadata_schema(self):
         """Compile metadata schemas from each of the data interface objects."""
-        metadata_schema = get_base_schema(
-            id_="metadata.schema.json",
-            root=True,
-            title="Metadata",
-            description="Schema for the metadata",
-            version="0.1.0",
-            required=["NWBFile"],
-            properties=dict(NWBFile=get_schema_for_NWBFile(), Subject=get_schema_from_hdmf_class(Subject)),
-        )
+        metadata_schema = load_dict_from_file(Path(__file__).parent / "schemas" / "base_metadata_schema.json")
         for data_interface in self.data_interface_objects.values():
             interface_schema = unroot_schema(data_interface.get_metadata_schema())
             metadata_schema = dict_deep_update(metadata_schema, interface_schema)
@@ -89,20 +79,13 @@ class NWBConverter:
         fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
             interface_metadata = interface.get_metadata()
             metadata = dict_deep_update(metadata, interface_metadata)
         return metadata
-
-    def get_conversion_options(self):
-        """Auto-fill as much of the conversion options as possible. Must comply with conversion_options_schema."""
-        conversion_options = dict()
-        for interface_name, interface in self.data_interface_objects.items():
-            conversion_options[interface_name] = interface.get_conversion_options()
-        return conversion_options
 
     def validate_metadata(self, metadata: Dict[str, dict]):
         """Validate metadata against Converter metadata_schema."""
@@ -135,26 +118,21 @@ class NWBConverter:
     ) -> NWBFile:
         """
         Run the NWB conversion over all the instantiated data interfaces.
-
         Parameters
         ----------
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
-        nwbfile: NWBFile, optional
+        nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
-        metadata: dict, optional
+        metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        overwrite : bool, default: False
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
-        verbose: bool, optional
-            If 'nwbfile_path' is specified, informs user after a successful write operation.
-            The default is True.
-        conversion_options: dict, optional
+        conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
-
         Returns
         -------
         nwbfile: NWBFile
@@ -166,9 +144,8 @@ class NWBConverter:
 
         if conversion_options is None:
             conversion_options = dict()
-        default_conversion_options = self.get_conversion_options()
-        conversion_options_to_run = dict_deep_update(default_conversion_options, conversion_options)
-        self.validate_conversion_options(conversion_options=conversion_options_to_run)
+
+        self.validate_conversion_options(conversion_options=conversion_options)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
@@ -179,6 +156,52 @@ class NWBConverter:
         ) as nwbfile_out:
             for interface_name, data_interface in self.data_interface_objects.items():
                 data_interface.run_conversion(
-                    nwbfile=nwbfile_out, metadata=metadata, **conversion_options_to_run.get(interface_name, dict())
+                    nwbfile=nwbfile_out, metadata=metadata, **conversion_options.get(interface_name, dict())
                 )
+
         return nwbfile_out
+
+
+class ConverterPipe(NWBConverter):
+    """Takes a list or dict of pre-initialized interfaces as arguments to build an NWBConverter class"""
+
+    def get_conversion_options_schema(self):
+        """Compile conversion option schemas from each of the data interface classes."""
+        conversion_options_schema = get_base_schema(
+            root=True,
+            id_="conversion_options.schema.json",
+            title="Conversion options schema",
+            description="Schema for the conversion options",
+            version="0.1.0",
+        )
+        for interface_name, data_interface in self.data_interface_objects.items():
+            conversion_options_schema["properties"].update(
+                {interface_name: unroot_schema(data_interface.get_conversion_options_schema())}
+            )
+        return conversion_options_schema
+
+    def get_source_schema(self):
+        raise NotImplementedError("Source data not available with previously initialized classes")
+
+    def validate_source(self):
+        raise NotImplementedError("Source data not available with previously initialized classes")
+
+    def __init__(self, data_interfaces: Union[List[BaseDataInterface], Dict[str, BaseDataInterface]], verbose=True):
+        self.verbose = verbose
+        if isinstance(data_interfaces, list):
+            # Create unique names for each interface
+            counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
+            total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
+            self.data_interface_objects = dict()
+            for interface in data_interfaces:
+                class_name = interface.__class__.__name__
+                counter[class_name] += 1
+                unique_signature = f"{counter[class_name]:03}" if total_counts[class_name] > 1 else ""
+                interface_name = f"{class_name}{unique_signature}"
+                self.data_interface_objects[interface_name] = interface
+        elif isinstance(data_interfaces, dict):
+            self.data_interface_objects = data_interfaces
+
+        self.data_interface_classes = {
+            name: interface.__class__ for name, interface in self.data_interface_objects.items()
+        }

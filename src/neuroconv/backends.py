@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 
-from pynwb import NWBHDF5IO
-from hdmf.backends.io import HDMFIO
 from hdmf.backends.hdf5.h5tools import H5DataIO
+from hdmf.backends.io import HDMFIO
 from hdmf.data_utils import DataIO
-
 from hdmf_zarr.nwb import NWBZarrIO
 from hdmf_zarr.utils import ZarrDataIO
+from pynwb import NWBHDF5IO
 
 
 @dataclass
@@ -26,5 +25,5 @@ backends = dict(
         nwb_io=NWBZarrIO,
         data_io=ZarrDataIO,
         data_io_defaults=dict(),
-    )
+    ),
 )
