@@ -43,7 +43,7 @@ class BaseDataInterface(ABC):
 
     def run_conversion(
         self,
-        nwbfile_path: Optional[str] = None,
+        nwbfile_path: str,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
@@ -58,9 +58,8 @@ class BaseDataInterface(ABC):
         ----------
         nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, the context will always write to this location.
         nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+            An in-memory NWBFile object to append to.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
