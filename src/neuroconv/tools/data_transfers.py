@@ -98,7 +98,7 @@ def transfer_globus_content(
     destination_folder : FolderPathType
         Absolute path to a local folder where all content will be transfered to.
     display_progress : bool, optional
-        Whether or not to display the transfer as progress bars using `tqdm`.
+        Whether to display the transfer as progress bars using `tqdm`.
         Defaults to True.
     progress_update_rate : float, optional
         How frequently (in seconds) to update the progress bar display tracking the data transfer.
@@ -327,7 +327,7 @@ def automatic_dandi_upload(
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
     cleanup : bool, optional
-        Whether or not to remove the dandiset folder path and nwb_folder_path.
+        Whether to remove the dandiset folder path and nwb_folder_path.
         Defaults to False.
     """
     dandiset_folder_path = (

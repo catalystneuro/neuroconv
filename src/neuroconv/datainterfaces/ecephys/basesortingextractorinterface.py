@@ -130,7 +130,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
 
                 metadata["Ecephys"]["UnitProperties"] = dict(name=my_name, description=my_description)
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         stub_test: bool, optional (default False)
             If True, will truncate the data to run the conversion faster and take up less memory.

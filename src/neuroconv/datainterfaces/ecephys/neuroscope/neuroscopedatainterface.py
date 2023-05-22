@@ -296,7 +296,7 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         folder_path : FolderPathType
             Path to folder containing .clu and .res files.
         keep_mua_units : bool
-            Optional. Whether or not to return sorted spikes from multi-unit activity.
+            Optional. Whether to return sorted spikes from multi-unit activity.
             The default is True.
         exclude_shanks : list
             Optional. List of indices to ignore. The set of all possible indices is chosen by default, extracted as the

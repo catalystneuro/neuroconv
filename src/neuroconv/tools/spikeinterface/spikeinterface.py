@@ -951,7 +951,7 @@ def write_recording(
         Note that data intended to be added to the electrodes table of the NWBFile should be set as channel
         properties in the RecordingExtractor object.
     overwrite: bool, optional
-        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
@@ -1390,7 +1390,7 @@ def write_sorting(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite: bool, optional
-        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.

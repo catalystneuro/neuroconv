@@ -75,7 +75,7 @@ class DeepLabCutInterface(BaseDataInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         """
 
         base_metadata = self.get_metadata()

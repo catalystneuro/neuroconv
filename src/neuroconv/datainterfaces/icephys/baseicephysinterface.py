@@ -94,7 +94,7 @@ class BaseIcephysInterface(BaseDataInterface, ABC):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         overwrite: bool
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         icephys_experiment_type: str (optional)
             Type of Icephys experiment. Allowed types are: 'voltage_clamp', 'current_clamp' and 'izero' (all current and amplifier settings turned off).
             If no value is passed, 'voltage_clamp' is used as default.

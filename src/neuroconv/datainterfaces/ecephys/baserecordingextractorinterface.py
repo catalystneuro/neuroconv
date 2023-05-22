@@ -127,7 +127,7 @@ class BaseRecordingExtractorInterface(BaseDataInterface, ABC):
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
         starting_time: float (optional)
             Sets the starting time of the ElectricalSeries to a manually set value.
