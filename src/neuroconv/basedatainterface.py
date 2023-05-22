@@ -102,16 +102,16 @@ class BaseDataInterface(ABC):
         if Path(nwbfile_path).exists():
             with backends[backend].nwb_io(nwbfile_path, mode="w" if overwrite else "r+", load_namespaces=True) as io:
                 nwbfile = io.read()
-                self.add_to_nwb(nwbfile)
+                self.add_to_nwbfile(nwbfile)
                 self.configure_datasets(nwbfile, backend, dataset_configs)
                 io.write(nwbfile, nwbfile_path, backend=backend, dataset_configs=dataset_configs)
         else:
             if not nwbfile:
                 nwbfile = make_nwbfile_from_metadata(metadata)
-            self.add_to_nwb(nwbfile)
+            self.add_to_nwbfile(nwbfile)
             self.configure_datasets(nwbfile, backend, dataset_configs)
             with backends[backend].nwb_io(nwbfile, mode="w" if overwrite else "r+", load_namespaces=True) as io:
                 io.write(nwbfile, nwbfile_path)
 
-    def add_to_nwb(self, nwbfile: NWBFile):
+    def add_to_nwbfile(self, nwbfile: NWBFile):
         raise NotImplementedError()
