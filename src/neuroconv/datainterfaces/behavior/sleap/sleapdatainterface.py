@@ -78,7 +78,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         """
         base_metadata = self.get_metadata()
         metadata = dict_deep_update(base_metadata, metadata)
