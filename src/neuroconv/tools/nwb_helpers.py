@@ -10,9 +10,9 @@ from hdmf.data_utils import DataIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.file import Subject
 
+from ..backends import backends
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict
-from ..backends import backends
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
