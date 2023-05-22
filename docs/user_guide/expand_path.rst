@@ -71,6 +71,130 @@ If your session start time is present in your data path, you can indicate this f
 `1989 C standard format codes`_ for datetimes. For example, ``"{session_start_time:%Y-%m-%d}"`` will match
 ``"2021-01-02"`` and evaluate it to ``datetime.datetime(2021, 1, 2)``.
 
+Example Usage
+-----------------------
+
+Below are some full examples of how this feature can be used on some organizational patterns taken from real datasets.
+
+Example 1: `Allen Institute Visual Coding Dataset <https://registry.opendata.aws/allen-brain-observatory/>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Allen Institute's Visual Coding dataset contains, among other data, motion-corrected videos of each 
+experimental session, with the directory structure shown below. 
+
+.. code-block:: bash
+
+    allen-brain-observatory/
+    ¦   visual-coding-2p/
+    ¦   +-- ophys_movies/
+    ¦   ¦   +-- ophys_experiment_645691416.h5
+    ¦   ¦   +-- ophys_experiment_<session_id>.h5
+    ¦   ¦   +-- ...
+
+To use :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find all ``ophys_movies`` files and
+extract their session IDs, you could use the following code.
+
+.. code-block:: python
+
+    >>> source_data_spec = {
+    ...     "allen-visual-coding": {
+    ...         "base_directory": "/allen-brain-observatory/visual-coding-2p",
+    ...         "file_path": "ophys_movies/ophys_experiment_{session_id}.h5"
+    ...     }
+    ... }
+    >>> metadata_list = path_expander.expand_paths(source_data_spec)
+    >>> for metadata in metadata_list:
+    ...     pprint(metadata)
+    {'metadata': {'NWBFile': {'session_id': '645691416'}}
+     'source_data': {'allen-visual-coding': {'file_path': '/allen-brain-observatory/visual-coding-2p/ophys_movies/ophys_experiment_645691416.h5'}}}
+    ...
+
+Example 2: `Buszaki Lab SenzaiY Dataset 
+<https://app.globus.org/file-manager?origin_id=188a6110-96db-11eb-b7a9-f57b2d55370d&origin_path=%2FSenzaiY%2F>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Buszaki Lab's SenzaiY dataset contains spiking and LFP data from mouse V1 with the directory structure
+shown below.
+
+.. code-block:: bash
+
+    SenzaiY/
+    ¦   YMV01/
+    ¦   +-- YMV01_170818/
+    ¦   ¦   +-- YMV01_170818.dat
+    ¦   ¦   +-- ...
+    ¦   <subject_id>/
+    ¦   +-- <subject_id>_<session_start_time>/
+    ¦   ¦   +-- <subject_id>_<session_start_time>.dat
+    ¦   ¦   +-- ...
+    ¦   ...
+
+We can use :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find all of these ``.dat`` files and
+extract both their subject ID and the session start time, which is formatted as ``yymmdd``.
+
+.. code-block:: python
+
+    >>> source_data_spec = {
+    ...     "SenzaiY": {
+    ...         "base_directory": "/SenzaiY/",
+    ...         "file_path": "{subject_id}/{subject_id}_{session_start_time:%y%m%d}/{subject_id}_{session_start_time:%y%m%d}.dat"
+    ...     }
+    ... }
+    >>> metadata_list = path_expander.expand_paths(source_data_spec)
+    >>> for metadata in metadata_list:
+    ...     pprint(metadata)
+    {'metadata': {'NWBFile': {'session_start_time': datetime.datetime(2017, 8, 18, 0, 0)}, 
+                  'Subject': {'subject_id': 'YMV01'}}
+     'source_data': {'SenzaiY': {'file_path': '/SenzaiY/YMV01/YMV01_170818/YMV01_170818.dat'}}}
+    ...
+
+Example 3: `IBL Brain Wide Map Data <https://ibl.flatironinstitute.org/public>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The IBL's Brain Wide Map features data from several labs of mice performing a visual decision-making task. Some
+experimental sessions, such as those from the Steinmetz Lab, include video recordings of the experiments from three 
+cameras, stored in the following directory structure.
+
+.. code-block:: bash
+
+    steinmetzlab/
+    ¦   Subjects/
+    ¦   +-- NR_0017/
+    ¦   ¦   +-- 2022-03-22/
+    ¦   ¦   ¦   +-- 001/
+    ¦   ¦   ¦   ¦   +-- raw_video_data/
+    ¦   ¦   ¦   ¦   ¦   +-- _iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4
+    ¦   ¦   ¦   ¦   ¦   +-- ...
+    ¦   ¦   ¦   ¦   +-- ...
+    ¦   +-- <subject_id>/
+    ¦   ¦   +-- <session_start_time>/
+    ¦   ¦   ¦   +-- 001/
+    ¦   ¦   ¦   ¦   +-- raw_video_data/
+    ¦   ¦   ¦   ¦   ¦   +-- _iblrig_leftCamera.raw.<session_id>.mp4
+    ¦   ¦   ¦   ¦   ¦   +-- ...
+    ¦   ¦   ¦   ¦   +-- ...
+    ¦   ...
+
+We can use :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find these left camera video files and
+extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and the session ID, which is a 128-bit
+hash.
+
+.. code-block:: python
+
+    >>> source_data_spec = {
+    ...     "IBL": {
+    ...         "base_directory": "/steinmetzlab/",
+    ...         "file_path": "Subjects/{subject_id}/{session_start_time:%Y-%m-%d}/001/raw_video_data/_iblrig_leftCamera.raw.{session_id}.mp4"
+    ...     }
+    ... }
+    >>> metadata_list = path_expander.expand_paths(source_data_spec)
+    >>> for metadata in metadata_list:
+    ...     pprint(metadata)
+    {'metadata': {'NWBFile': {'session_id': '6252a2f0-c10f-4e49-b085-75749ba29c35', 
+                             'session_start_time': datetime.datetime(2022, 3, 22, 0, 0)}, 
+                             'Subject': {'subject_id': 'NR_0017'}}
+     'source_data': {'IBL': {'file_path': 'steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4'}}, }
+    ...
 
 Non-local Path Expansion
 ------------------------
