@@ -5,11 +5,14 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-from pynwb import NWBHDF5IO, NWBFile
+from hdmf.common import VectorData
+from hdmf.data_utils import DataIO
+from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.file import Subject
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict
+from ..backends import backends
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -184,3 +187,19 @@ def make_or_load_nwbfile(
 
                 if not success and not file_initially_exists:
                     nwbfile_path_in.unlink()
+
+
+def get_io_datasets(nwbfile):
+    for object_ in nwbfile.objects():
+        if isinstance(object_, TimeSeries) or isinstance(object_, VectorData):
+            for field in object_.__fields__:  # search for datasets
+                if field in ("data", "timestamps") and not isinstance(getattr(object_, field), DataIO):
+                    yield object_.id, field
+
+
+def configure_datasets(nwbfile: NWBFile, backend: str, dataset_configs: dict = None):
+    dataset_configs = dataset_configs or dict()
+    for container_id, field in get_io_datasets(nwbfile):
+        dset_config = dataset_configs.get((container_id, field), backends[backend].data_io_defaults)
+        data = nwbfile.get_object(container_id).getattr(field)
+        nwbfile.get_object(container_id).setattr(field, backends[backend].data_io(data=data, **dset_config))

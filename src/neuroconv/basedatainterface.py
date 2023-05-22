@@ -1,12 +1,12 @@
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 from pynwb import NWBFile
 
 from .backends import backends
-from .tools.nwb_helpers import make_nwbfile_from_metadata
+from .tools.nwb_helpers import make_nwbfile_from_metadata, configure_datasets
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
@@ -41,14 +41,6 @@ class BaseDataInterface(ABC):
 
         return metadata
 
-    def configure_datasets(self, nwbfile: NWBFile, backend: str, dataset_configs: dict = None):
-        dataset_configs = dataset_configs or dict()
-        for container_id, field in self.datasets:
-            dset_config = dataset_configs.get((container_id, field), backends[backend].data_io_defaults)
-            data = nwbfile.get_object(container_id).getattr(field)
-            nwbfile.get_object(container_id).setattr(field, backends[backend].data_io(data=data, **dset_config))
-
-    @abstractmethod
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
@@ -76,9 +68,6 @@ class BaseDataInterface(ABC):
             The default is False (append mode).
         backend: {"hdf5", "zarr"}
         dataset_configs: dict, optional
-        verbose: bool, optional
-            If 'nwbfile_path' is specified, informs user after a successful write operation.
-            The default is True.
         """
         if nwbfile_path and nwbfile:
             raise ValueError("Provide either nwbfile or nwbfile_path to `run_conversion`, not both.")
@@ -90,13 +79,13 @@ class BaseDataInterface(ABC):
             with backends[backend].nwb_io(nwbfile_path, mode="w" if overwrite else "r+", load_namespaces=True) as io:
                 nwbfile = io.read()
                 self.add_to_nwbfile(nwbfile)
-                self.configure_datasets(nwbfile, backend, dataset_configs)
-                io.write(nwbfile, nwbfile_path, backend=backend, dataset_configs=dataset_configs)
+                configure_datasets(nwbfile, backend, dataset_configs)
+                io.write(nwbfile, nwbfile_path)
         else:
             if not nwbfile:
                 nwbfile = make_nwbfile_from_metadata(metadata)
             self.add_to_nwbfile(nwbfile)
-            self.configure_datasets(nwbfile, backend, dataset_configs)
+            configure_datasets(nwbfile, backend, dataset_configs)
             with backends[backend].nwb_io(nwbfile, mode="w" if overwrite else "r+", load_namespaces=True) as io:
                 io.write(nwbfile, nwbfile_path)
 
