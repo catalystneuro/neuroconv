@@ -1,12 +1,12 @@
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Literal
+from typing import List, Literal, Optional
 
 from pynwb import NWBFile
 
 from .backends import backends
-from .tools.nwb_helpers import make_nwbfile_from_metadata, configure_datasets
+from .tools.nwb_helpers import configure_datasets, make_nwbfile_from_metadata
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
