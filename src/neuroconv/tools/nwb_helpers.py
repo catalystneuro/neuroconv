@@ -154,6 +154,8 @@ def make_or_load_nwbfile(
         "'nwbfile_path' exists at location, 'overwrite' is False (append mode), but an in-memory 'nwbfile' object was "
         "passed! Cannot reconcile which nwbfile object to write."
     )
+    if nwbfile is not None:
+        assert isinstance(nwbfile, NWBFile), "'nwbfile' should be a pynwb.NWBFile object!"
 
     load_kwargs = dict()
     success = True

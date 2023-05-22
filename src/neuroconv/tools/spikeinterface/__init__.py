@@ -9,4 +9,6 @@ from .spikeinterface import (
     write_recording,
     write_sorting,
     write_waveforms,
+    add_recording,
+    add_sorting,
 )
