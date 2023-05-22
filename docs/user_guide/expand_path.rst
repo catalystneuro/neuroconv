@@ -105,7 +105,7 @@ extract their session IDs, you could use the following code.
     >>> metadata_list = path_expander.expand_paths(source_data_spec)
     >>> for metadata in metadata_list:
     ...     pprint(metadata)
-    {'metadata': {'NWBFile': {'session_id': '645691416'}}
+    {'metadata': {'NWBFile': {'session_id': '645691416'}},
      'source_data': {'allen-visual-coding': {'file_path': '/allen-brain-observatory/visual-coding-2p/ophys_movies/ophys_experiment_645691416.h5'}}}
     ...
 
@@ -144,7 +144,7 @@ extract both their subject ID and the session start time, which is formatted as 
     >>> for metadata in metadata_list:
     ...     pprint(metadata)
     {'metadata': {'NWBFile': {'session_start_time': datetime.datetime(2017, 8, 18, 0, 0)}, 
-                  'Subject': {'subject_id': 'YMV01'}}
+                  'Subject': {'subject_id': 'YMV01'}},
      'source_data': {'SenzaiY': {'file_path': '/SenzaiY/YMV01/YMV01_170818/YMV01_170818.dat'}}}
     ...
 
@@ -192,8 +192,8 @@ hash.
     ...     pprint(metadata)
     {'metadata': {'NWBFile': {'session_id': '6252a2f0-c10f-4e49-b085-75749ba29c35', 
                              'session_start_time': datetime.datetime(2022, 3, 22, 0, 0)}, 
-                             'Subject': {'subject_id': 'NR_0017'}}
-     'source_data': {'IBL': {'file_path': 'steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4'}}, }
+                             'Subject': {'subject_id': 'NR_0017'}},
+     'source_data': {'IBL': {'file_path': 'steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4'}}}
     ...
 
 Non-local Path Expansion
