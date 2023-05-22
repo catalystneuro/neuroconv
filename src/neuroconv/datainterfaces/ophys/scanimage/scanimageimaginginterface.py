@@ -1,35 +1,29 @@
 import json
-from dateutil.parser import parse as dateparse
 from typing import Optional
 
-from roiextractors import ScanImageTiffImagingExtractor
-
-try:
-    from ScanImageTiffReader import ScanImageTiffReader
-
-    HAVE_SCAN_IMAGE_TIFF = True
-except ImportError:
-    HAVE_SCAN_IMAGE_TIFF = False
-
+from dateutil.parser import parse as dateparse
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
+from ....tools import get_package
 from ....utils import FilePathType
 
 
-def extract_extra_metadata(file_path):
+def extract_extra_metadata(file_path) -> dict:
+    ScanImageTiffReader = get_package(
+        package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
+    )
 
-    description = ScanImageTiffReader(str(file_path)).description(iframe=0)
+    description = ScanImageTiffReader.ScanImageTiffReader(str(file_path)).description(iframe=0)
     extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in description.split("\r") if "=" in x}
 
     return extra_metadata
 
 
 class ScanImageImagingInterface(BaseImagingExtractorInterface):
-
-    IX = ScanImageTiffImagingExtractor
+    ExtractorName = "ScanImageTiffImagingExtractor"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
         return source_schema
@@ -52,10 +46,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             The sampling frequency can usually be extracted from the scanimage metadata in
             exif:ImageDescription:state.acq.frameRate. If not, use this.
         """
-
-        assert (
-            HAVE_SCAN_IMAGE_TIFF
-        ), "To use the ScanImageTiffExtractor install scanimage-tiff-reader: \n\n pip install scanimage-tiff-reader\n\n"
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
         if "state.acq.frameRate" in self.image_metadata:
@@ -70,7 +60,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         device_number = 0  # Imaging plane metadata is a list with metadata for each plane
 
         metadata = super().get_metadata()

@@ -1,19 +1,25 @@
-Axona data converison
-^^^^^^^^^^^^^^^^^^^^^
+Axona data conversion
+---------------------
 
-Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingExtractorInterface`.
+Install NeuroConv with the additional dependencies necessary for reading Axona data.
+
+.. code-block:: bash
+
+    pip install neuroconv[axona]
+
+Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axona.axonadatainterface.AxonaRecordingInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import AxonaRecordingExtractorInterface
+    >>> from neuroconv.datainterfaces import AxonaRecordingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``.bin`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/axona/axona_raw.bin"
     >>> # Change the file_path to the location in your system
-    >>> interface = AxonaRecordingExtractorInterface(file_path=file_path, verbose=False)
+    >>> interface = AxonaRecordingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
@@ -25,7 +31,3 @@ Convert axona data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.axo
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>>
-    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(nwbfile_path).is_file()
-    True

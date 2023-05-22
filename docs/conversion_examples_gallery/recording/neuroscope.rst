@@ -1,19 +1,26 @@
-Neuroscope data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+NeuroScope data conversion
+--------------------------
 
-Convert Neuroscope data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroscopeRecordingInterface`.
+Install NeuroConv with the additional dependencies necessary for reading NeuroScope data.
+
+.. code-block:: bash
+
+    pip install neuroconv[neuroscope]
+
+Convert NeuroScope data to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeRecordingInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import NeuroscopeRecordingInterface
+    >>> from neuroconv.datainterfaces import NeuroScopeRecordingInterface
     >>>
     >>> # For Neuroscope we need to pass the location of the `.dat` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/neuroscope/test1/test1.dat"
     >>> # Change the file_path to the location in your system
-    >>> interface = NeuroscopeRecordingInterface(file_path=file_path, verbose=False)
+    >>> interface = NeuroScopeRecordingInterface(file_path=file_path, verbose=False)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
@@ -25,7 +32,3 @@ Convert Neuroscope data to NWB using :py:class:`~neuroconv.datainterfaces.ecephy
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>>
-    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(nwbfile_path).is_file()
-    True

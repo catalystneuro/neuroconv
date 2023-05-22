@@ -1,18 +1,16 @@
-"""Authors: Heberto Mayorquin, Cody Baker."""
-from typing import Optional
-
-from spikeinterface.extractors import KiloSortSortingExtractor
-
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType
 
 
-class KilosortSortingInterface(BaseSortingExtractorInterface):
+class KiloSortSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a KiloSortingExtractor from spikeinterface."""
 
-    SX = KiloSortSortingExtractor
-
-    def __init__(self, folder_path: FolderPathType, keep_good_only: bool = False, verbose: bool = True):
+    def __init__(
+        self,
+        folder_path: FolderPathType,
+        keep_good_only: bool = False,
+        verbose: bool = True,
+    ):
         """
         Load and prepare sorting data for kilosort
 
@@ -20,7 +18,8 @@ class KilosortSortingInterface(BaseSortingExtractorInterface):
         ----------
         folder_path: str or Path
             Path to the output Phy folder (containing the params.py)
-        keep_good_only: bool
+        keep_good_only: bool, default: False
             If True, only Kilosort-labeled 'good' units are returned
+        verbose: bool, default: True
         """
         super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose)

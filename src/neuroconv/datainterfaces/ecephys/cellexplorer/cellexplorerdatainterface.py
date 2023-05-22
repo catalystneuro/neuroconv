@@ -1,27 +1,39 @@
-"""Authors: Cody Baker and Ben Dichter."""
 from pathlib import Path
+from warnings import warn
 
-import spikeextractors as se
 import numpy as np
+import scipy
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
+from ....tools import get_package
 from ....utils import FilePathType
-
-try:
-    import scipy.io
-    import hdf5storage
-
-    HAVE_SCIPY_AND_HDF5STORAGE = True
-except ImportError:
-    HAVE_SCIPY_AND_HDF5STORAGE = False
 
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting Cell Explorer spiking data."""
 
-    SX = se.CellExplorerSortingExtractor
-
     def __init__(self, file_path: FilePathType, verbose: bool = True):
+        """
+        Initialize read of Cell Explorer file.
+
+        Parameters
+        ----------
+        file_path: FilePathType
+            Path to .spikes.cellinfo.mat file.
+        verbose: bool, default: True
+        """
+        # TODO: Remove spikeextractors backend
+        warn(
+            message=(
+                "Interfaces using a spikeextractors backend will soon be deprecated! "
+                "Please use the SpikeInterface backend instead."
+            ),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+
+        hdf5storage = get_package(package_name="hdf5storage")
+
         super().__init__(spikes_matfile_path=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
@@ -42,43 +54,50 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         cell_info = spikes_mat.get("spikes", np.empty(0))
         self.cell_info_fields = cell_info.dtype.names
 
+        unit_ids = self.sorting_extractor.get_unit_ids()
         if self.read_spikes_info_with_scipy:
-            unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [int(x) for x in cell_info["cluID"][0][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="clu_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0][0]]
+                )
             if "shankID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [f"Group{x}" for x in cell_info["shankID"][0][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="group_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0][0]]
+                )
             if "region" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0][0]]
+                )
         else:  # Logic for hdf5storage
-            unit_ids = self.sorting_extractor.get_unit_ids()
             if "cluID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [int(x) for x in cell_info["cluID"][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="clu_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"][0][0]]
+                )
             if "shankID" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [f"Group{x}" for x in cell_info["shankID"][0][0]]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="group_id", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="group_id", values=[f"Group{x}" for x in cell_info["shankID"][0][0]]
+                )
             if "region" in self.cell_info_fields:
-                for unit_id, value in zip(unit_ids, [str(x[0]) for x in cell_info["region"][0]][0]):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="location", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0]]
+                )
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
             celltype_info = scipy.io.loadmat(celltype_file_path).get("CellClass", np.empty(0))
             if "label" in celltype_info.dtype.names:
-                for unit_id, value in zip(
-                    unit_ids, [str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]]
-                ):
-                    self.sorting_extractor.set_unit_property(unit_id=unit_id, property_name="cell_type", value=value)
+                self.sorting_extractor.set_property(
+                    ids=unit_ids,
+                    key="cell_type",
+                    values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
+                )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         # TODO: add condition for retrieving ecephys metadata if no recording or lfp are included in conversion
-        metadata = dict(NWBFile=dict(session_id=session_id))
+        metadata["NWBFile"].update(session_id=session_id)
 
         unit_properties = []
         cellinfo_file_path = session_path / f"{session_id}.spikes.cellinfo.mat"

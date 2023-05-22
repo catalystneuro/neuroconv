@@ -1,10 +1,11 @@
-"""Authors: Luiz Tauffer, Cody Baker, Saksham Sharda and Ben Dichter."""
 import collections.abc
-import json
 import inspect
+import json
 from datetime import datetime
-import numpy as np
+from typing import Callable, Literal
 
+import hdmf.data_utils
+import numpy as np
 import pynwb
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
@@ -14,17 +15,25 @@ from .types import FilePathType, FolderPathType
 
 
 class NWBMetaDataEncoder(json.JSONEncoder):
-    def default(self, o):
+    def default(self, obj):
         # Over-write behaviors for datetime object
-        if isinstance(o, datetime):
-            return o.isoformat()
+        if isinstance(obj, datetime):
+            return obj.isoformat()
 
         # This should transforms numpy generic integers and floats to python floats
-        if isinstance(o, np.generic):
-            return o.item()
+        if isinstance(obj, np.generic):
+            return obj.item()
+
+        # Numpy-versions of various numeric types
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
 
         # The base-class handles it
-        return super().default(o)
+        return super().default(obj)
 
 
 def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
@@ -40,17 +49,19 @@ def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
     return base_schema
 
 
-def get_schema_from_method_signature(class_method: classmethod, exclude: list = None) -> dict:
+def get_schema_from_method_signature(method: Callable, exclude: list = None) -> dict:
     """
     Take a class method and return a json-schema of the input args.
 
     Parameters
     ----------
-    class_method: function
+    method: function
     exclude: list, optional
+
     Returns
     -------
     dict
+
     """
     if exclude is None:
         exclude = ["self", "kwargs"]
@@ -68,46 +79,62 @@ def get_schema_from_method_signature(class_method: classmethod, exclude: list = 
         FilePathType="string",
         FolderPathType="string",
     )
-    for param_name, param in inspect.signature(class_method).parameters.items():
-        if param_name not in exclude:
-            if param.annotation:
-                if hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
-                    args = param.annotation.__args__
-                    valid_args = [x.__name__ in annotation_json_type_map for x in args]
-                    if any(valid_args):
-                        param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
-                    else:
-                        raise ValueError("No valid arguments were found in the json type mapping!")
-                    if len(set(param_types)) > 1:
-                        raise ValueError(
-                            "Conflicting json parameter types were detected from the annotation! "
-                            f"{param.annotation.__args__} found."
-                        )
-                    param_type = param_types[0]
+    args_spec = dict()
+    for param_name, param in inspect.signature(method).parameters.items():
+        if param_name in exclude:
+            continue
+        args_spec[param_name] = dict()
+        if param.annotation:
+            if getattr(param.annotation, "__origin__", None) == Literal:
+                args_spec[param_name]["enum"] = list(param.annotation.__args__)
+            elif getattr(param.annotation, "__origin__", None) == dict:
+                args_spec[param_name] = dict(type="object")
+                if param.annotation.__args__ == (str, str):
+                    args_spec[param_name].update(additionalProperties={"^.*$": dict(type="string")})
                 else:
-                    arg = param.annotation
-                    if arg.__name__ in annotation_json_type_map:
-                        param_type = annotation_json_type_map[arg.__name__]
-                    else:
-                        raise ValueError(
-                            f"No valid arguments were found in the json type mapping {arg} for parameter {param}"
-                        )
-                    if arg == FilePathType:
-                        input_schema["properties"].update({param_name: dict(format="file")})
-                    if arg == FolderPathType:
-                        input_schema["properties"].update({param_name: dict(format="directory")})
-            else:
-                raise NotImplementedError(
-                    f"The annotation type of '{param}' in function '{class_method}' is not implemented! "
-                    "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
-                    "or create the json-schema for this method manually."
+                    args_spec[param_name].update(additionalProperties=True)
+            elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
+                args = param.annotation.__args__
+                valid_args = [x.__name__ in annotation_json_type_map for x in args]
+                if any(valid_args):
+                    param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
+                else:
+                    raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
+                num_params = len(set(param_types))
+                conflict_message = (
+                    "Conflicting json parameter types were detected from the annotation! "
+                    f"{param.annotation.__args__} found."
                 )
-            arg_spec = {param_name: dict(type=param_type)}
-            if param.default is param.empty:
-                input_schema["required"].append(param_name)
-            elif param.default is not None:
-                arg_spec[param_name].update(default=param.default)
-            input_schema["properties"] = dict_deep_update(input_schema["properties"], arg_spec)
+                # Normally cannot support Union[...] of multiple annotation types
+                if num_params > 2:
+                    raise ValueError(conflict_message)
+                # Special condition for Optional[...]
+                if num_params == 2 and not args[1] is type(None):  # noqa: E721
+                    raise ValueError(conflict_message)
+                args_spec[param_name]["type"] = param_types[0]
+            else:
+                arg = param.annotation
+                if arg.__name__ in annotation_json_type_map:
+                    args_spec[param_name]["type"] = annotation_json_type_map[arg.__name__]
+                else:
+                    raise ValueError(
+                        f"No valid arguments were found in the json type mapping '{arg}' for parameter {param}"
+                    )
+                if arg == FilePathType:
+                    input_schema["properties"].update({param_name: dict(format="file")})
+                if arg == FolderPathType:
+                    input_schema["properties"].update({param_name: dict(format="directory")})
+        else:
+            raise NotImplementedError(
+                f"The annotation type of '{param}' in function '{method}' is not implemented! "
+                "Please request it to be added at github.com/catalystneuro/nwb-conversion-tools/issues "
+                "or create the json-schema for this method manually."
+            )
+        if param.default is param.empty:
+            input_schema["required"].append(param_name)
+        elif param.default is not None:
+            args_spec[param_name].update(default=param.default)
+        input_schema["properties"] = dict_deep_update(input_schema["properties"], args_spec)
         input_schema["additionalProperties"] = param.kind == inspect.Parameter.VAR_KEYWORD
     return input_schema
 
@@ -122,7 +149,13 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     defaults: dict
     overwrite: bool
     """
-    for key, val in schema["properties"].items():
+    # patternProperties introduced with the CsvTimeIntervalsInterface
+    # caused issue with NWBConverter.get_metadata_schema() call leading here
+    properties_reference = "properties"
+    if properties_reference not in schema and "patternProperties" in schema:
+        properties_reference = "patternProperties"
+
+    for key, val in schema[properties_reference].items():
         if key in defaults:
             if val["type"] == "object":
                 fill_defaults(val, defaults[key], overwrite=overwrite)
@@ -161,8 +194,9 @@ def get_schema_from_hdmf_class(hdmf_class):
         schema_arg = {docval_arg["name"]: dict(description=docval_arg["doc"])}
 
         # type float
-        if docval_arg["type"] == "float" or (
-            isinstance(docval_arg["type"], tuple) and any([it in docval_arg["type"] for it in [float, "float"]])
+        if docval_arg["type"] in (float, "float", int, "int") or (
+            isinstance(docval_arg["type"], tuple)
+            and any([it in docval_arg["type"] for it in [float, "float", int, "int"]])
         ):
             schema_arg[docval_arg["name"]].update(type="number")
         # type string
@@ -172,6 +206,11 @@ def get_schema_from_hdmf_class(hdmf_class):
         elif docval_arg["type"] is collections.abc.Iterable or (
             isinstance(docval_arg["type"], tuple) and collections.abc.Iterable in docval_arg["type"]
         ):
+            schema_arg[docval_arg["name"]].update(type="array")
+        elif isinstance(docval_arg["type"], tuple) and (
+            np.ndarray in docval_arg["type"] and hdmf.data_utils.DataIO not in docval_arg["type"]
+        ):
+            # extend type array without including type where DataIO in tuple
             schema_arg[docval_arg["name"]].update(type="array")
         # type datetime
         elif docval_arg["type"] is datetime or (
@@ -216,76 +255,6 @@ def get_schema_from_hdmf_class(hdmf_class):
         schema["properties"].update(schema_arg)
     if "allow_extra" in docval:
         schema["additionalProperties"] = docval["allow_extra"]
-    return schema
-
-
-# TODO - centralize into schema folder
-def get_schema_for_NWBFile():
-    schema = get_base_schema()
-    schema["tag"] = "pynwb.file.NWBFile"
-    schema["required"] = ["session_description", "identifier", "session_start_time"]
-    schema["properties"] = {
-        "session_description": {
-            "type": "string",
-            "format": "long",
-            "description": "a description of the session where this data was generated",
-        },
-        "identifier": {"type": "string", "description": "a unique text identifier for the file"},
-        "session_start_time": {
-            "type": "string",
-            "description": "the start date and time of the recording session",
-            "format": "date-time",
-        },
-        "experimenter": {
-            "type": "array",
-            "items": {"type": "string", "title": "experimenter"},
-            "description": "name of person who performed experiment",
-        },
-        "experiment_description": {"type": "string", "description": "general description of the experiment"},
-        "session_id": {"type": "string", "description": "lab-specific ID for the session"},
-        "institution": {"type": "string", "description": "institution(s) where experiment is performed"},
-        "notes": {"type": "string", "description": "Notes about the experiment."},
-        "pharmacology": {
-            "type": "string",
-            "description": "Description of drugs used, including how and when they were administered. Anesthesia(s), "
-            "painkiller(s), etc., plus dosage, concentration, etc.",
-        },
-        "protocol": {
-            "type": "string",
-            "description": "Experimental protocol, if applicable. E.g., include IACUC protocol",
-        },
-        "related_publications": {
-            "type": "string",
-            "description": "Publication information.PMID, DOI, URL, etc. If multiple, concatenate together and describe"
-            " which is which. such as PMID, DOI, URL, etc",
-        },
-        "slices": {
-            "type": "string",
-            "description": "Description of slices, including information about preparation thickness, orientation, "
-            "temperature and bath solution",
-        },
-        "source_script": {"type": "string", "description": "Script file used to create this NWB file."},
-        "source_script_file_name": {"type": "string", "description": "Name of the source_script file"},
-        "data_collection": {"type": "string", "description": "Notes about data collection and analysis."},
-        "surgery": {
-            "type": "string",
-            "description": (
-                "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
-            ),
-        },
-        "virus": {
-            "type": "string",
-            "description": "Information about virus(es) used in experiments, including virus ID, source, date made, "
-            "injection location, volume, etc.",
-        },
-        "stimulus_notes": {"type": "string", "description": "Notes about stimuli, such as how and where presented."},
-        "lab": {"type": "string", "description": "lab where experiment was performed"},
-        "keywords": {
-            "description": "Terms to search over",
-            "type": "array",
-            "items": {"title": "keyword", "type": "string"},
-        },
-    }
     return schema
 
 

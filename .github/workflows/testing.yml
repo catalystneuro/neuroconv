@@ -2,10 +2,14 @@ name: Minimal and Full Tests
 on:
   schedule:
     - cron: "0 16 * * *"  # Daily at noon EST
-  pull_request:
-
-env:
-  DANDI_API_KEY: ${{ secrets.DANDI_API_KEY }}
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      S3_GIN_BUCKET:
+        required: true
 
 jobs:
   run:
@@ -14,14 +18,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: s-weigand/setup-conda@v1
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -32,10 +36,44 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
           pip install wheel # Needed for scan image
+
+
+
       - name: Install neuroconv with minimal requirements
         run: pip install .[test]
+      - name: Run import tests
+        run: |
+          pytest tests/imports.py::TestImportStructure::test_top_level
+          pytest tests/imports.py::TestImportStructure::test_tools
+          pytest tests/imports.py::TestImportStructure::test_datainterfaces
       - name: Run minimal tests
-        run: pytest tests/test_internals -n auto --dist loadscope
+        run: pytest tests/test_minimal -rsx -n auto --dist loadscope
+
+
+
+      - name: Install with ecephys requirements
+        run: pip install .[ecephys]
+      - name: Run ecephys tests
+        run: pytest tests/test_ecephys -rsx -n auto --dist loadscope
+
+      - name: Install with ophys requirements
+        run: pip install .[ophys]
+      - name: Run ophys tests
+        run: pytest tests/test_ophys -rsx -n auto --dist loadscope
+
+      - name: Install with behavior requirements
+        run: pip install .[behavior]
+      - name: Run behavior tests
+        run: pytest tests/test_behavior -rsx -n auto --dist loadscope
+
+      - name: Install with icephys requirements
+        run: pip install .[icephys]
+
+      #- name: Run icephys tests  # There are no icephys specific tests without data
+      #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
+
+
+
       - name: Install full requirements (-e needed for codecov report)
         run: pip install -e .[full]
 
@@ -74,10 +112,9 @@ jobs:
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false || steps.cache-ophys-datasets.outputs.cache-hit == false || steps.cache-behavior-datasets.outputs.cache-hit == false
         name: Install and configure AWS CLI
         run: |
-          pip install awscli==1.25.27
+          pip install awscli
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
       - if: steps.cache-ephys-datasets.outputs.cache-hit == false
         name: Download ephys dataset from S3
         run: aws s3 cp --recursive ${{ secrets.S3_GIN_BUCKET }}/ephy_testing_data ./ephy_testing_data
@@ -91,10 +128,10 @@ jobs:
 
 
       - name: Run full pytest with coverage
-        run: pytest -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
-      - if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest'}}
-        name: Upload full coverage to Codecov
-        uses: codecov/codecov-action@v1
+        run: pytest -rsx -n auto --dist loadscope --cov=./ --cov-report xml:./codecov.xml
+      - name: Upload full coverage to Codecov
+        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./codecov.xml

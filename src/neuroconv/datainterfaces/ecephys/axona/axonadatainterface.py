@@ -1,26 +1,34 @@
-"""Authors: Heberto Mayorquin, Steffen Buergers."""
-
-import spikeextractors as se
-from spikeinterface.extractors import AxonaRecordingExtractor, NumpyRecording
-
 from pynwb import NWBFile
 
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .axona_utils import (
+    get_eeg_sampling_frequency,
+    get_position_object,
+    read_all_eeg_file_lfp_data,
+)
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
-from ....utils import get_schema_from_method_signature, FilePathType
-
-from .axona_utils import read_all_eeg_file_lfp_data, get_eeg_sampling_frequency, get_position_object
+from ....utils import FilePathType, get_schema_from_method_signature
 
 
-class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a AxonaRecordingExtractor"""
+class AxonaRecordingInterface(BaseRecordingExtractorInterface):
+    """
+    DataInterface for converting raw Axona data using a :py:class:`~spikeinterface.extractors.AxonaRecordingExtractor`.
+    """
 
-    RX = AxonaRecordingExtractor
+    def __init__(self, file_path: FilePathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
+        """
 
-    def __init__(self, file_path: FilePathType, verbose: bool = True):
-        super().__init__(file_path=file_path, all_annotations=True, verbose=verbose)
+        Parameters
+        ----------
+        file_path: FilePathType
+            Path to .bin file.
+        verbose: bool, optional, default: True
+        es_key: str, default: "ElectricalSeries"
+        """
+
+        super().__init__(file_path=file_path, all_annotations=True, verbose=verbose, es_key=es_key)
         self.source_data = dict(file_path=file_path, verbose=verbose)
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 
@@ -28,8 +36,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         tetrode_id = self.recording_extractor.get_property("tetrode_id")
         self.recording_extractor.set_channel_groups(tetrode_id)
 
-    def extract_nwb_file_metadata(self):
-
+    def extract_nwb_file_metadata(self) -> dict:
         raw_annotations = self.recording_extractor.neo_reader.raw_annotations
         session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
@@ -38,7 +45,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         nwbfile_metadata = dict(
             session_start_time=session_start_time,
             session_description=session_description,
-            experimenter=[experimenter],  # The schema expects an array of strings
+            experimenter=[experimenter] if experimenter else None,  # The schema expects an array of strings
         )
 
         # Filter empty values
@@ -46,7 +53,7 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
 
         return nwbfile_metadata
 
-    def extract_ecephys_metadata(self):
+    def extract_ecephys_metadata(self) -> dict:
         unique_elec_group_names = set(self.recording_extractor.get_channel_groups())
         sw_version = self.metadata_in_set_file["sw_version"]
         description = f"Axona DacqUSB, sw_version={sw_version}"
@@ -73,25 +80,22 @@ class AxonaRecordingExtractorInterface(BaseRecordingExtractorInterface):
         return ecephys_metadata
 
     def get_metadata(self):
-
         metadata = super().get_metadata()
 
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)
 
         ecephys_metadata = self.extract_ecephys_metadata()
-        metadata["Ecephys"] = ecephys_metadata
+        metadata["Ecephys"].update(ecephys_metadata)
 
         return metadata
 
 
-class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
+class AxonaUnitRecordingInterface(AxonaRecordingInterface):
     """Primary data interface class for converting a AxonaRecordingExtractor"""
 
-    RX = se.AxonaUnitRecordingExtractor
-
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         return dict(
             required=["file_path"],
             properties=dict(
@@ -111,12 +115,10 @@ class AxonaUnitRecordingExtractorInterface(AxonaRecordingExtractorInterface):
 
 
 class AxonaLFPDataInterface(BaseLFPExtractorInterface):
-    """..."""
-
-    RX = NumpyRecording
+    ExtractorName = "NumpyRecording"
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         return dict(
             required=["file_path"],
             properties=dict(file_path=dict(type="string")),
@@ -125,7 +127,6 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
         )
 
     def __init__(self, file_path: FilePathType):
-
         data = read_all_eeg_file_lfp_data(file_path).T
         sampling_frequency = get_eeg_sampling_frequency(file_path)
         super().__init__(traces_list=[data], sampling_frequency=sampling_frequency)
@@ -137,7 +138,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
     """Primary data interface class for converting Axona position data"""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         return get_schema_from_method_signature(cls.__init__)
 
     def __init__(self, file_path: str):
@@ -147,7 +148,6 @@ class AxonaPositionDataInterface(BaseDataInterface):
     def run_conversion(self, nwbfile: NWBFile, metadata: dict):
         """
         Run conversion for this data interface.
-
         Parameters
         ----------
         nwbfile : NWBFile

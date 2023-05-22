@@ -9,31 +9,31 @@ Base Sorting
 ------------
 .. automodule:: neuroconv.datainterfaces.ecephys.basesortingextractorinterface
 
-Tutorial Recording & Sorting
-----------------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.tutorial.recordingtutorialdatainterface
-
 Axona Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.axona.axonadatainterface
+
+Biocam Recording
+-------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.biocam.biocamdatainterface
 
 Blackrock Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.blackrock.blackrockdatainterface
 
-Cambridge Electronic Design (CED) Recording
--------------------------------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.ced.ceddatainterface
-
 CellExplorer Sorting
 --------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface
+
+European Data Format (EDF) Recording
+------------------------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
 
 Intan Recording
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
 
-Kilosort Sorting
+KiloSort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
@@ -41,7 +41,7 @@ Neuralynx Recording & Sorting
 -----------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
 
-Neuroscope Recording & Sorting
+NeuroScope Recording & Sorting
 ------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface
 
@@ -53,6 +53,10 @@ Phy Sorting
 -----------
 .. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
 
+Spike2
+------
+.. automodule:: neuroconv.datainterfaces.ecephys.spike2.spike2datainterface
+
 Spikegadgets Recording
 ----------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.spikegadgets.spikegadgetsdatainterface
@@ -61,6 +65,7 @@ SpikeGLX Recording
 ------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
 
-European Data Format (EDF) Recording
-------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
+
+Tucker-Davis Technologies (TDT) Recording
+-----------------------------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface

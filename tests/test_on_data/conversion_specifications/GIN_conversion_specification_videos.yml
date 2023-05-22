@@ -1,0 +1,28 @@
+metadata:
+  NWBFile:
+    lab: My Lab
+    institution: My Institution
+
+data_interfaces:
+  video: VideoInterface
+
+experiments:
+  ymaze:
+    metadata:
+      NWBFile:
+        session_description: Subject navigating a Y-shaped maze.
+
+    sessions:
+      - nwbfile_name: example_converter_spec_1
+        source_data:
+          video:
+            file_paths:
+              - videos/CFR/video_mp4.mp4
+        metadata:
+          NWBFile:
+            session_start_time: "2020-10-09T21:19:09+00:00"
+          Subject:
+            subject_id: "1"
+            sex: F
+            age: P35D
+            species: Mus musculus

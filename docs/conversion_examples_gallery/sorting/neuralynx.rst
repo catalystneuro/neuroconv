@@ -1,7 +1,14 @@
 Neuralynx data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
-Convert Neuralynx data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxSortingInterface`.
+Install NeuroConv with the additional dependencies necessary for reading neuralynx data.
+
+.. code-block:: bash
+
+    pip install neuroconv[neuralynx]
+
+Convert Neuralynx data to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface.NeuralynxSortingInterface`.
 
 .. code-block:: python
 
@@ -9,7 +16,7 @@ Convert Neuralynx data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys
     >>> from dateutil import tz
     >>> from pathlib import Path
     >>>
-    >>> from neuroconv import NeuralynxSortingInterface
+    >>> from neuroconv.datainterfaces import NeuralynxSortingInterface
     >>>
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuralynx/Cheetah_v5.5.1/original_data"
     >>> # Change the folder_path to the location of the data in your system
@@ -20,7 +27,3 @@ Convert Neuralynx data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./neuralynx_conversion.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>>
-    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(nwbfile_path).is_file()
-    True

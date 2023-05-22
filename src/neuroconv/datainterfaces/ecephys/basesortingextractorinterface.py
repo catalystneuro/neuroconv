@@ -1,32 +1,30 @@
-"""Authors: Cody Baker and Ben Dichter."""
-from abc import ABC
-from typing import Optional
+from typing import List, Literal, Optional, Union
 
-import spikeinterface as si
-import spikeextractors as se
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
-from ...basedatainterface import BaseDataInterface
-from ...tools.spikeinterface import add_devices, add_electrode_groups, add_electrodes, write_sorting
-from ...utils import get_base_schema, get_schema_from_hdmf_class, OptionalFilePathType
+from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ...baseextractorinterface import BaseExtractorInterface
+from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
-class BaseSortingExtractorInterface(BaseDataInterface, ABC):
-    """Primary class for all SortingExtractor intefaces."""
+class BaseSortingExtractorInterface(BaseExtractorInterface):
+    """Primary class for all SortingExtractor interfaces."""
 
-    SX = None
+    keywords = BaseExtractorInterface.keywords + ["extracellular electrophysiology", "spike sorting"]
+
+    ExtractorModuleName = "spikeinterface.extractors"
 
     def __init__(self, verbose=True, **source_data):
         super().__init__(**source_data)
-        self.sorting_extractor = self.SX(**source_data)
+        self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
+        self._number_of_segments = self.sorting_extractor.get_num_segments()
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
-        metadata_schema = super().get_metadata_schema()
 
         # Initiate Ecephys metadata
         metadata_schema = super().get_metadata_schema()
@@ -76,6 +74,73 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         )
         return metadata_schema
 
+    def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
+        self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
+
+    def get_original_timestamps(self) -> np.ndarray:
+        raise NotImplementedError(
+            "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
+        )
+
+    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+        if not self.sorting_extractor.has_recording():
+            raise NotImplementedError(
+                "In order to align timestamps for a SortingInterface, it must have a recording "
+                "object attached to it! Please attach one by calling `.register_recording(recording_interface=...)`."
+            )
+        if self._number_of_segments == 1:
+            return self.sorting_extractor._recording.get_times()
+        else:
+            return [
+                self.sorting_extractor._recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
+
+    def align_timestamps(self, aligned_timestamps: Union[np.ndarray, List[np.ndarray]]):
+        """
+        Replace all timestamps for the attached interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+        Must have a RecordingInterface attached; call `.register_recording(recording_interface=...)` to accomplish this.
+
+        When a SortingInterface has a recording attached, it infers the timing via the frame indices of the
+        timestamps from the corresponding recording segment. This method aligns the timestamps of that recording
+        so that the SortingExtractor can automatically infer the timing from the frames.
+
+        Parameters
+        ----------
+        aligned_timestamps : numpy.ndarray or list of numpy.ndarray
+            The synchronized timestamps for data in this interface.
+            If there is more than one segment in the sorting/recording pair, then
+        """
+        if not self.sorting_extractor.has_recording():
+            raise NotImplementedError(
+                "In order to align timestamps for a SortingInterface, it must have a recording "
+                "object attached to it! Please attach one by calling `.register_recording(recording_interface=...)`."
+            )
+
+        if self._number_of_segments == 1:
+            self.sorting_extractor._recording.set_times(times=aligned_timestamps)
+        else:
+            assert isinstance(
+                aligned_timestamps, list
+            ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
+            assert (
+                len(aligned_timestamps) == self._number_of_segments
+            ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+
+            for segment_index in range(self._number_of_segments):
+                self.sorting_extractor._recording.set_times(
+                    times=aligned_timestamps[segment_index], segment_index=segment_index
+                )
+
+    def align_starting_time(self, starting_time: float):
+        for sorting_segment in self.sorting_extractor._sorting_segments:
+            if sorting_segment._t_start is None:
+                sorting_segment._t_start = starting_time
+            else:
+                sorting_segment._t_start += starting_time
+
     def subset_sorting(self):
         max_min_spike_time = max(
             [
@@ -86,17 +151,7 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             ]
         )
         end_frame = 1.1 * max_min_spike_time
-        if isinstance(self.sorting_extractor, se.SortingExtractor):
-            stub_sorting_extractor = se.SubSortingExtractor(
-                self.sorting_extractor,
-                unit_ids=self.sorting_extractor.get_unit_ids(),
-                start_frame=0,
-                end_frame=end_frame,
-            )
-        elif isinstance(self.sorting_extractor, si.BaseSorting):
-            stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
-        else:
-            raise TypeError(f"{self.sorting_extractor} should be either se.SortingExtractor or si.BaseSorting")
+        stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return stub_sorting_extractor
 
     def run_conversion(
@@ -107,40 +162,58 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
         overwrite: bool = False,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
-        save_path: OptionalFilePathType = None,  # TODO: to be removed
+        write_as: Literal["units", "processing"] = "units",
+        units_name: str = "units",
+        units_description: str = "Autogenerated by neuroconv.",
     ):
         """
         Primary function for converting the data in a SortingExtractor to NWB format.
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
+        nwbfile_path : FilePathType
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
-        nwbfile: NWBFile, optional
+        nwbfile : NWBFile, optional
             If passed, this function will fill the relevant fields within the NWBFile object.
             E.g., calling
                 write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
             will result in the appropriate changes to the my_nwbfile object.
-            If neither 'save_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
+            If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
             and returned by the function.
-        metadata: dict
-            Information for constructing the nwb file (optional) and units table descriptions.
+        metadata : dict
+            Information for constructing the NWB file (optional) and units table descriptions.
             Should be of the format::
 
                 metadata["Ecephys"]["UnitProperties"] = dict(name=my_name, description=my_description)
-        overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        overwrite : bool, optional
+            Whether to overwrite the NWB file if one exists at the nwbfile_path.
             The default is False (append mode).
-        stub_test: bool, optional (default False)
+        stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
-        write_ecephys_metadata: bool (optional, defaults to False)
+        write_ecephys_metadata : bool, default: False
             Write electrode information contained in the metadata.
+        write_as : {'units', 'processing'}
+            How to save the units table in the nwb file. Options:
+            - 'units' will save it to the official NWBFile.Units position; recommended only for the final form of the data.
+            - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
+        units_name : str, default: 'units'
+            The name of the units table. If write_as=='units', then units_name must also be 'units'.
+        units_description : str, default: 'Autogenerated by neuroconv.'
         """
+        from spikeinterface import NumpyRecording
+
+        from ...tools.spikeinterface import (
+            add_devices,
+            add_electrode_groups,
+            add_electrodes,
+            write_sorting,
+        )
+
         if write_ecephys_metadata and "Ecephys" in metadata:
             n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])
-            recording = si.NumpyRecording(
-                traces_list=[np.array(range(n_channels))],
+            recording = NumpyRecording(
+                traces_list=[np.empty(shape=n_channels)],
                 sampling_frequency=self.sorting_extractor.get_sampling_frequency(),
             )
             add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
@@ -173,6 +246,8 @@ class BaseSortingExtractorInterface(BaseDataInterface, ABC):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
-            save_path=save_path,
             property_descriptions=property_descriptions,
+            write_as=write_as,
+            units_name=units_name,
+            units_description=units_description,
         )

@@ -1,31 +1,32 @@
 """Author: Ben Dichter."""
 from typing import Optional
-from abc import ABC
 
+import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
-from ...basedatainterface import BaseDataInterface
-from ...tools.roiextractors import write_imaging, get_nwb_imaging_metadata
+from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
-    get_schema_from_hdmf_class,
-    fill_defaults,
-    get_base_schema,
     OptionalFilePathType,
     dict_deep_update,
+    fill_defaults,
+    get_base_schema,
+    get_schema_from_hdmf_class,
 )
 
 
-class BaseImagingExtractorInterface(BaseDataInterface, ABC):
-    IX = None
+class BaseImagingExtractorInterface(BaseExtractorInterface):
+    """Parent class for all ImagingExtractorInterfaces."""
+
+    ExtractorModuleName = "roiextractors"
 
     def __init__(self, verbose: bool = True, **source_data):
         super().__init__(**source_data)
-        self.imaging_extractor = self.IX(**source_data)
+        self.imaging_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
 
-    def get_metadata_schema(self):
+    def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["required"] = ["Ophys"]
@@ -56,7 +57,9 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
+        from ...tools.roiextractors import get_nwb_imaging_metadata
+
         metadata = super().get_metadata()
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor)
         metadata = dict_deep_update(default_metadata, metadata)
@@ -70,6 +73,16 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
+    def get_original_timestamps(self) -> np.ndarray:
+        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
+
+    def get_timestamps(self) -> np.ndarray:
+        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
+
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
+        self.imaging_extractor.set_times(times=aligned_timestamps)
+
     def run_conversion(
         self,
         nwbfile_path: OptionalFilePathType = None,
@@ -78,8 +91,8 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
         overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
-        save_path: OptionalFilePathType = None,
     ):
+        from ...tools.roiextractors import write_imaging
 
         if stub_test:
             stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
@@ -94,5 +107,4 @@ class BaseImagingExtractorInterface(BaseDataInterface, ABC):
             metadata=metadata,
             overwrite=overwrite,
             verbose=self.verbose,
-            save_path=save_path,
         )

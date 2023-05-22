@@ -1,32 +1,20 @@
-"""Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
 from pathlib import Path
 from typing import Optional
 
-import spikeextractors as se
-from spikeinterface.core.old_api_utils import OldToNewRecording
-from pynwb.ecephys import ElectricalSeries
-
-from spikeinterface import BaseRecording
-from spikeinterface.extractors import NeuroScopeRecordingExtractor, NeuroScopeSortingExtractor
-
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
+from .neuroscope_utils import (
+    get_channel_groups,
+    get_session_start_time,
+    get_shank_channels,
+    get_xml_file_path,
+)
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
+from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
-from ....utils import FilePathType, FolderPathType, OptionalFilePathType, get_schema_from_hdmf_class, dict_deep_update
-from .neuroscope_utils import get_session_start_time
-
-try:
-    import lxml
-    from .neuroscope_utils import get_xml_file_path, get_channel_groups, get_shank_channels
-
-    HAVE_LXML = True
-
-except ImportError:
-    HAVE_LXML = False
-INSTALL_MESSAGE = "Please install lxml to use this interface!"
+from ....tools import get_package
+from ....utils import FilePathType, FolderPathType
 
 
-def subset_shank_channels(recording_extractor: BaseRecording, xml_file_path: str) -> BaseRecording:
+def subset_shank_channels(recording_extractor, xml_file_path: str):
     """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
     shank_channels = get_shank_channels(xml_file_path=xml_file_path)
 
@@ -40,9 +28,7 @@ def subset_shank_channels(recording_extractor: BaseRecording, xml_file_path: str
     return sub_recording
 
 
-def add_recording_extractor_properties(
-    recording_extractor: BaseRecording, xml_file_path: str, gain: Optional[float] = None
-) -> BaseRecording:
+def add_recording_extractor_properties(recording_extractor, xml_file_path: str, gain: Optional[float] = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
@@ -70,20 +56,17 @@ def add_recording_extractor_properties(
     )
 
 
-class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting a NeuroscopeRecordingExtractor."""
-
-    RX = NeuroScopeRecordingExtractor
+class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
+    """Primary data interface for converting a NeuroScope data. Uses
+    :py:class:`~spikeinterface.extractors.NeuroScopeRecordingExtractor`."""
 
     @staticmethod
-    def get_ecephys_metadata(xml_file_path: str):
+    def get_ecephys_metadata(xml_file_path: str) -> dict:
         """Auto-populates ecephys metadata from the xml_file_path."""
         channel_groups = get_channel_groups(xml_file_path=xml_file_path)
         ecephys_metadata = dict(
             ElectrodeGroup=[
-                dict(
-                    name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="Device_ecephys"
-                )
+                dict(name=f"Group{n + 1}", description=f"Group{n + 1} electrodes.", location="", device="DeviceEcephys")
                 for n, _ in enumerate(channel_groups)
             ],
             Electrodes=[
@@ -97,9 +80,9 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
         self,
         file_path: FilePathType,
         gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
-        spikeextractors_backend: bool = False,
+        xml_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -112,26 +95,19 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
-        xml_file_path : OptionalFilePathType, optional
+        xml_file_path : FilePathType, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
+        es_key: str, default: "ElectricalSeries"
         """
-        assert HAVE_LXML, INSTALL_MESSAGE
+        get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        if spikeextractors_backend:
-            self.RX = se.NeuroscopeRecordingExtractor
-            super().__init__(file_path=file_path, xml_file_path=xml_file_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(file_path=file_path, verbose=verbose)
-            self.source_data["xml_file_path"] = xml_file_path
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        self.source_data["xml_file_path"] = xml_file_path
 
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
@@ -140,86 +116,28 @@ class NeuroscopeRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
         )
 
-    def get_metadata_schema(self):
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Ecephys"]["properties"].update(
-            ElectricalSeries_raw=get_schema_from_hdmf_class(ElectricalSeries)
-        )
-        return metadata_schema
-
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
         metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
-        metadata["Ecephys"].update(
-            ElectricalSeries_raw=dict(name="ElectricalSeries_raw", description="Raw acquisition traces.")
-        )
+        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+            metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
 
-class NeuroscopeMultiRecordingTimeInterface(NeuroscopeRecordingInterface):
-    """Primary data interface class for converting a NeuroscopeMultiRecordingTimeExtractor."""
-
-    RX = se.NeuroscopeMultiRecordingTimeExtractor
-
-    def __init__(
-        self,
-        folder_path: FolderPathType,
-        gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
-    ):
-        """
-        Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
-
-        For all the .dat files in the folder_path, this concatenates them in time assuming no gaps in between.
-        If there are gaps, timestamps inside the RecordingExtractor should be overridden.
-
-        Parameters
-        ----------
-        folder_path : FolderPathType
-            Path to folder of multiple .dat files.
-        gain : Optional[float], optional
-            Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
-            Most common value is 0.195 for an intan recording system.
-            The default is None.
-        xml_file_path : OptionalFilePathType, optional
-            Path to .xml file containing device and electrode configuration.
-            If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
-            The default is None.
-        """
-        assert HAVE_LXML, INSTALL_MESSAGE
-
-        if xml_file_path is None:
-            xml_file_path = get_xml_file_path(data_file_path=folder_path)
-        super(NeuroscopeRecordingInterface, self).__init__(
-            folder_path=folder_path,
-            gain=gain,
-            xml_file_path=xml_file_path,
-        )
-        self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-
-        self.recording_extractor = subset_shank_channels(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
-        )
-        add_recording_extractor_properties(recording_extractor=self.recording_extractor, xml_file_path=xml_file_path)
-
-
-class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
+class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     """Primary data interface class for converting Neuroscope LFP data."""
 
-    RX = NeuroScopeRecordingExtractor
+    ExtractorName = "NeuroScopeRecordingExtractor"
 
     def __init__(
         self,
         file_path: FilePathType,
         gain: Optional[float] = None,
-        xml_file_path: OptionalFilePathType = None,
-        spikeextractors_backend: bool = False,
+        xml_file_path: Optional[FilePathType] = None,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -236,22 +154,14 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         """
-        assert HAVE_LXML, INSTALL_MESSAGE
+        get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        if spikeextractors_backend:
-            self.RX = se.NeuroscopeRecordingExtractor
-            super().__init__(file_path=file_path, xml_file_path=xml_file_path)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(file_path=file_path)
-            self.source_data["xml_file_path"] = xml_file_path
+        super().__init__(file_path=file_path)
+        self.source_data["xml_file_path"] = xml_file_path
 
         add_recording_extractor_properties(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
@@ -260,33 +170,25 @@ class NeuroscopeLFPInterface(BaseLFPExtractorInterface):
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
         session_path = Path(self.source_data["file_path"]).parent
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
         metadata = super().get_metadata()
-        metadata["Ecephys"].update(NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
+        metadata["Ecephys"].update(NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
         return metadata
 
 
-class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
+class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     """Primary data interface class for converting a NeuroscopeSortingExtractor."""
-
-    SX = NeuroScopeSortingExtractor
 
     def __init__(
         self,
         folder_path: FolderPathType,
         keep_mua_units: bool = True,
         exclude_shanks: Optional[list] = None,
-        xml_file_path: OptionalFilePathType = None,
+        xml_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
-        spikeextractors_backend: bool = False,
-        # TODO: we can enable this once
-        #     a) waveforms on unit columns support conversion factor in NWB
-        #     b) write_sorting utils support writing said waveforms properly to a units table
-        # load_waveforms: bool = False,
-        # gain: Optional[float] = None,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).
@@ -295,34 +197,18 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
         ----------
         folder_path : FolderPathType
             Path to folder containing .clu and .res files.
-        keep_mua_units : bool
-            Optional. Whether or not to return sorted spikes from multi-unit activity.
+        keep_mua_units : bool, default: True
+            Optional. Whether to return sorted spikes from multi-unit activity.
             The default is True.
-        exclude_shanks : list
-            Optional. List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
+        exclude_shanks : list, optional
+            List of indices to ignore. The set of all possible indices is chosen by default, extracted as the
             final integer of all the .res.%i and .clu.%i pairs.
-        xml_file_path : OptionalFilePathType, optional
+        xml_file_path : FilePathType, optional
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
-        load_waveforms : bool, optional
-            If True, extracts waveform data from .spk.%i files in the path corresponding to
-            the .res.%i and .clue.%i files and sets these as unit spike features.
-            The default is False.
-            Not currently in use pending updates to NWB waveforms.
-        gain : float, optional
-            If loading waveforms, this value converts the data type of the waveforms to units of microvolts.
-            Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
-            Most common value is 0.195 for an intan recording system.
-            The default is None.
-            Not currently in use pending updates to NWB waveforms.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
         """
-        assert HAVE_LXML, INSTALL_MESSAGE
-        if spikeextractors_backend:
-            self.SX = se.NeuroscopeMultiSortingExtractor
+        get_package(package_name="lxml")
 
         super().__init__(
             folder_path=folder_path,
@@ -330,21 +216,16 @@ class NeuroscopeSortingInterface(BaseSortingExtractorInterface):
             exclude_shanks=exclude_shanks,
             xml_file_path=xml_file_path,
             verbose=verbose,
-            # TODO: we can enable this once
-            #     a) waveforms on unit columns support conversion factor in NWB
-            #     b) write_sorting utils support writing said waveforms properly to a units table
-            # load_waveforms=load_waveforms,
-            # gain=gain,
         )
 
-    def get_metadata(self):
+    def get_metadata(self) -> dict:
+        metadata = super().get_metadata()
         session_path = Path(self.source_data["folder_path"])
         session_id = session_path.stem
         xml_file_path = self.source_data.get("xml_file_path", str(session_path / f"{session_id}.xml"))
-        metadata = dict(Ecephys=NeuroscopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path))
-
+        metadata["Ecephys"] = NeuroScopeRecordingInterface.get_ecephys_metadata(xml_file_path=xml_file_path)
         session_start_time = get_session_start_time(str(xml_file_path))
         if session_start_time is not None:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+            metadata["NWBFile"]["session_start_time"] = session_start_time
 
         return metadata

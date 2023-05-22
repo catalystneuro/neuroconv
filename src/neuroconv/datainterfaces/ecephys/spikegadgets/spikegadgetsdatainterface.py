@@ -1,34 +1,26 @@
-"""Authors: Heberto Mayorquin, Cody Baker."""
-
-import spikeextractors as se
-from spikeinterface.extractors import SpikeGadgetsRecordingExtractor
-from spikeinterface.core.old_api_utils import OldToNewRecording
+from typing import Optional
+from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, OptionalFilePathType, OptionalArrayType
+from ....utils import ArrayType, FilePathType
 
 
 class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting the SpikeGadgets format."""
-
-    RX = SpikeGadgetsRecordingExtractor
+    """Data interface class for converting data in the SpikeGadgets format.
+    Uses :py:class:`~spikeinterface.extractors.SpikeGadgetsRecordingExtractor`."""
 
     @classmethod
-    def get_source_schema(cls):
+    def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"].update(description="Path to SpikeGadgets (.rec) file.")
-        source_schema["properties"]["probe_file_path"].update(
-            description="Optional path to a probe (.prb) file describing electrode features."
-        )
         return source_schema
 
     def __init__(
         self,
         file_path: FilePathType,
-        gains: OptionalArrayType = None,
-        probe_file_path: OptionalFilePathType = None,
+        gains: Optional[ArrayType] = None,
         verbose: bool = True,
-        spikeextractors_backend: bool = False,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -37,29 +29,13 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         file_path : FilePathType
             Path to the .rec file.
-        gains : ArrayType, optional
-            The early versions of SpikeGadgest do not automatically record the conversion factor ('gain') of the
+        gains : array_like, optional
+            The early versions of SpikeGadgets do not automatically record the conversion factor ('gain') of the
             acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
-        probe_file_path : FilePathType, optional
-            Set channel properties and geometry through a .prb file.
-            See https://github.com/SpikeInterface/probeinterface for more information.
-        spikeextractors_backend : bool
-            False by default. When True the interface uses the old extractor from the spikextractors library instead
-            of a new spikeinterface object.
+        es_key : str, default: "ElectricalSeries"
         """
-
-        if spikeextractors_backend:
-            self.RX = se.SpikeGadgetsRecordingExtractor
-            if probe_file_path is not None:
-                self.recording_extractor = se.load_probe_file(
-                    recording=self.recording_extractor, probe_file=probe_file_path
-                )
-
-            super().__init__(filename=file_path, verbose=verbose)
-            self.recording_extractor = OldToNewRecording(oldapi_recording_extractor=self.recording_extractor)
-        else:
-            super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose)
+        super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose, es_key=es_key)
 
         self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:

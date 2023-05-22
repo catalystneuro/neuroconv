@@ -1,14 +1,20 @@
-Cell Explorer data conversion
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CellExplorer data conversion
+-----------------------------
 
-Convert cell explorer sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface.CellExplorerSortingInterface`.
+Install NeuroConv with the additional dependencies necessary for reading CellExplorer data.
+
+.. code-block:: bash
+
+    pip install neuroconv[cellexplorer]
+
+Convert CellExplorer sorting data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.cellexplorer.cellexplorerdatainterface.CellExplorerSortingInterface`.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
-    >>> from neuroconv import CellExplorerSortingInterface
+    >>> from neuroconv.datainterfaces import CellExplorerSortingInterface
     >>>
     >>> # For this interface we need to pass the location of the ``cellinfo.mat`` file
     >>> file_path = f"{ECEPHY_DATA_PATH}/cellexplorer/dataset_1/20170311_684um_2088um_170311_134350.spikes.cellinfo.mat"
@@ -25,7 +31,3 @@ Convert cell explorer sorting data to NWB using :py:class:`~neuroconv.datainterf
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    >>>
-    >>> # If the conversion was successful this should evaluate to ``True`` as the file was created.
-    >>> Path(nwbfile_path).is_file()
-    True

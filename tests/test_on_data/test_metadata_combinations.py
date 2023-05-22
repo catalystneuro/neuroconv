@@ -1,12 +1,12 @@
 import unittest
 from datetime import datetime
 
-from parameterized import parameterized, param
+from parameterized import param, parameterized
 
-from neuroconv import Suite2pSegmentationInterface, TiffImagingInterface
 from neuroconv import NWBConverter
-from .setup_paths import OPHYS_DATA_PATH
+from neuroconv.datainterfaces import Suite2pSegmentationInterface, TiffImagingInterface
 
+from .setup_paths import OPHYS_DATA_PATH
 
 TiffImagingInterface_source_data = dict(
     file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"), sampling_frequency=15.0

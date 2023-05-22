@@ -1,15 +1,15 @@
-"""Authors: Cody Baker, Alessio Buccino."""
 import uuid
-from datetime import datetime
-from warnings import warn
 from contextlib import contextmanager
-from typing import Optional
+from datetime import datetime
 from pathlib import Path
+from typing import Optional
+from warnings import warn
 
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from ..utils import dict_deep_update, FilePathType
+from ..utils import FilePathType, dict_deep_update
+from ..utils.dict import DeepDict
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -27,21 +27,21 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
         return nwbfile.create_processing_module(name=name, description=description)
 
 
-def get_default_nwbfile_metadata():
+def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
 
     These standard defaults are
         metadata["NWBFile"]["session_description"] = "no description"
-        metadata["NWBFile"]["session_start_time"] = datetime(1970, 1, 1)
+        metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
     Proper conversions should override these fields prior to calling NWBConverter.run_conversion()
     """
-    metadata = dict(
-        NWBFile=dict(
-            session_description="no description",
-            identifier=str(uuid.uuid4()),
-        )
+    metadata = DeepDict()
+    metadata["NWBFile"].deep_update(
+        session_description="no description",
+        identifier=str(uuid.uuid4()),
     )
+
     return metadata
 
 
@@ -153,9 +153,11 @@ def make_or_load_nwbfile(
     )
 
     load_kwargs = dict()
-    if nwbfile_path:
-        load_kwargs.update(path=nwbfile_path)
-        if nwbfile_path_in.is_file() and not overwrite:
+    success = True
+    file_initially_exists = nwbfile_path_in.is_file() if nwbfile_path_in is not None else None
+    if nwbfile_path_in:
+        load_kwargs.update(path=nwbfile_path_in)
+        if file_initially_exists and not overwrite:
             load_kwargs.update(mode="r+", load_namespaces=True)
         else:
             load_kwargs.update(mode="w")
@@ -166,12 +168,19 @@ def make_or_load_nwbfile(
         elif nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         yield nwbfile
+    except Exception as e:
+        success = False
+        raise e
     finally:
-        if nwbfile_path:
+        if nwbfile_path_in:
             try:
-                io.write(nwbfile)
+                if success:
+                    io.write(nwbfile)
 
-                if verbose:
-                    print(f"NWB file saved at {nwbfile_path}!")
+                    if verbose:
+                        print(f"NWB file saved at {nwbfile_path_in}!")
             finally:
                 io.close()
+
+                if not success and not file_initially_exists:
+                    nwbfile_path_in.unlink()

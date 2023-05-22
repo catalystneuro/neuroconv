@@ -1,28 +1,31 @@
-Welcome to the documentation for NeuroConv!
-======================================================
+NeuroConv
+=========
+
+.. image:: img/neuroconv_logo.png
+  :width: 300
 
 ..
   :scale: 100 %
   :align: right
 
-NeuroConv is a Python package designed to improve the accessibility and reliability of converting various
-types of neural data to the Neurodata Without Borders (NWB) standard.
+NeuroConv is a Python package for converting neurophysiology data in a variety
+of proprietary formats to the Neurodata Without Borders (NWB) standard.
 
+Features:
 
-.. note::
-
-    This packages is in alpha development; as such, we make every effort towards
-    a stable environment but bugs are known to occur. If you use this software
-    for your conversion, and discover any issues, please let us know through
-    the `GitHub Issues <https://github.com/catalystneuro/neuroconv/issues>`_ page.
+* Reads data from 40 popular neurophysiology data formats and writes to NWB using best practices.
+* Extracts relevant metadata from each format.
+* Handles large data volume by reading datasets piece-wise.
+* Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
+* Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
 .. toctree::
   :maxdepth: 2
   :caption: Contents
 
-  user_guide
-  conversion_example_gallery
-  tutorials
+  user_guide/user_guide
+  conversion_examples_gallery/conversion_example_gallery
+  catalogue/catalogue
   developer_guide
 
 .. toctree::
@@ -30,6 +33,7 @@ types of neural data to the Neurodata Without Borders (NWB) standard.
   :caption: API Documentation
 
   NWBConverter <api/nwbconverter>
+  BaseDataInterface <api/basedatainterface>
   Interfaces <api/interfaces>
   Tools <api/tools>
   Utils <api/utils>

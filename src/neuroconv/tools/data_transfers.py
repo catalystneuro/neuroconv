@@ -1,22 +1,21 @@
 """Collection of helper functions for assessing and performing automated data transfers."""
-import os
-import subprocess
 import json
+import os
 import re
-from typing import Dict, Optional, List, Union, Tuple
 from pathlib import Path
-from warnings import warn
 from shutil import rmtree
-from time import sleep, time
 from tempfile import mkdtemp
+from time import sleep, time
+from typing import Dict, List, Tuple, Union
+from warnings import warn
 
-import psutil
-from tqdm import tqdm
-from pynwb import NWBHDF5IO
 from dandi.download import download as dandi_download
 from dandi.organize import organize as dandi_organize
 from dandi.upload import upload as dandi_upload
+from pynwb import NWBHDF5IO
+from tqdm import tqdm
 
+from .processes import deploy_process
 from ..utils import FolderPathType, OptionalFolderPathType
 
 try:  # pragma: no cover
@@ -25,26 +24,6 @@ try:  # pragma: no cover
     HAVE_GLOBUS = True
 except ModuleNotFoundError:
     HAVE_GLOBUS = False
-
-
-def _kill_process(proc):
-    """Private helper for ensuring a process and any subprocesses are properly terminated after a timeout period."""
-    try:
-        process = psutil.Process(proc.pid)
-        for proc in process.children(recursive=True):
-            proc.kill()
-        process.kill()
-    except psutil.NoSuchProcess:  # good process cleaned itself up
-        pass
-
-
-def deploy_process(command, catch_output: bool = False, timeout: Optional[float] = None):
-    """Private helper for efficient submission and cleanup of shell processes."""
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True, text=True)
-    output = proc.communicate()[0].strip() if catch_output else None
-    proc.wait(timeout=timeout)
-    _kill_process(proc=proc)
-    return output
 
 
 def get_globus_dataset_content_sizes(
@@ -81,7 +60,7 @@ def transfer_globus_content(
 
     Parameters
     ----------
-    source_endpoint_id : string
+    source_endpoint_id : str
         Source Globus ID.
     source_files : string, or list of strings, or list of lists of strings
         A string path or list-of-lists of string paths of files to transfer from the source_endpoint_id.
@@ -93,20 +72,17 @@ def transfer_globus_content(
 
         It is also generally recommended to submit up to 3 simultaneous transfer,
         *i.e.*, `source_files` is recommended to have at most 3 items all of similar total byte size.
-    destination_endpoint_id : string
+    destination_endpoint_id : str
         Destination Globus ID.
     destination_folder : FolderPathType
-        Absolute path to a local folder where all content will be transfered to.
-    display_progress : bool, optional
-        Whether or not to display the transfer as progress bars using `tqdm`.
-        Defaults to True.
-    progress_update_rate : float, optional
+        Absolute path to a local folder where all content will be transferred to.
+    display_progress : bool, default: True
+        Whether to display the transfer as progress bars using `tqdm`.
+    progress_update_rate : float, default: 60.0
         How frequently (in seconds) to update the progress bar display tracking the data transfer.
-        Defaults to 30 seconds.
-    progress_update_tiemout : float, optional
+    progress_update_timeout : float, default: 600.0
         Maximum amount of time to monitor the transfer progress.
         You may wish to set this to be longer when transferring very large files.
-        Defaults to 10 minutes.
 
     Returns
     -------
@@ -243,15 +219,15 @@ def estimate_total_conversion_runtime(
     ----------
     total_mb: float
         The total amount of data (in MB) that will be transferred, converted, and uploaded to dandi.
-    transfer_rate_mb: float, optional
+    transfer_rate_mb : float, default: 20.0
         Estimate of the transfer rate for the data.
-    conversion_rate_mb: float, optional
+    conversion_rate_mb : float, default: 17.0
         Estimate of the conversion rate for the data. Can vary widely depending on conversion options and type of data.
         Figure of 17MB/s is based on extensive compression of high-volume, high-resolution ecephys.
-    upload_rate_mb: float, optional
+    upload_rate_mb : float, default: 40.0
         Estimate of the upload rate of a single file to the DANDI archive.
-    compression_ratio: float, optional
-        Esimate of the final average compression ratio for datasets in the file. Can vary widely.
+    compression_ratio : float, default: 1.7
+        Estimate of the final average compression ratio for datasets in the file. Can vary widely.
     """
     c = 1 / compression_ratio  # compressed_size = total_size * c
     return total_mb * (1 / transfer_rate_mb + 1 / conversion_rate_mb + c / upload_rate_mb)
@@ -261,7 +237,7 @@ def estimate_s3_conversion_cost(
     total_mb: float,
     transfer_rate_mb: float = 20.0,
     conversion_rate_mb: float = 17.0,
-    upload_rate_mb: float = 40,
+    upload_rate_mb: float = 40.0,
     compression_ratio: float = 1.7,
 ):
     """
@@ -271,15 +247,15 @@ def estimate_s3_conversion_cost(
     ----------
     total_mb: float
         The total amount of data (in MB) that will be transferred, converted, and uploaded to dandi.
-    transfer_rate_mb: float, optional
+    transfer_rate_mb : float, default: 20.0
         Estimate of the transfer rate for the data.
-    conversion_rate_mb: float, optional
+    conversion_rate_mb : float, default: 17.0
         Estimate of the conversion rate for the data. Can vary widely depending on conversion options and type of data.
         Figure of 17MB/s is based on extensive compression of high-volume, high-resolution ecephys.
-    upload_rate_mb: float, optional
-        Estimate of the upload rate of a single file to the DANDI archive.
-    compression_ratio: float, optional
-        Esimate of the final average compression ratio for datasets in the file. Can vary widely.
+    upload_rate_mb : float, default: 40.0
+        Estimate of the upload rate of a single file to the DANDI Archive.
+    compression_ratio : float, default: 1.7
+        Estimate of the final average compression ratio for datasets in the file. Can vary widely.
     """
     c = 1 / compression_ratio  # compressed_size = total_size * c
     total_mb_s = (
@@ -294,7 +270,7 @@ def automatic_dandi_upload(
     dandiset_id: str,
     nwb_folder_path: FolderPathType,
     dandiset_folder_path: OptionalFolderPathType = None,
-    version: Optional[str] = None,
+    version: str = "draft",
     staging: bool = False,
     cleanup: bool = False,
 ):
@@ -304,9 +280,9 @@ def automatic_dandi_upload(
     Requires an API token set as an envrinment variable named DANDI_API_KEY.
 
     To set this in your bash terminal in Linux or MacOS, run
-        export DANDI_API_KEY="..."
+        export DANDI_API_KEY=...
     or in Windows
-        set DANDI_API_KEY="..."
+        set DANDI_API_KEY=...
 
     DO NOT STORE THIS IN ANY PUBLICLY SHARED CODE.
 
@@ -320,21 +296,19 @@ def automatic_dandi_upload(
         A separate folder location within which to download the dandiset.
         Used in cases where you do not have write permissions for the parent of the 'nwb_folder_path' directory.
         Default behavior downloads the DANDISet to a folder adjacent to the 'nwb_folder_path'.
-    version : str, optional
-        "draft" or "version".
+    version : {None, "draft", "version"}
         The default is "draft".
-    staging : bool, optional
+    staging : bool, default: False
         Is the DANDISet hosted on the staging server? This is mostly for testing purposes.
         The default is False.
-    cleanup : bool, optional
-        Whether or not to remove the dandiset folder path and nwb_folder_path.
+    cleanup : bool, default: False
+        Whether to remove the dandiset folder path and nwb_folder_path.
         Defaults to False.
     """
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
     )
     dandiset_path = dandiset_folder_path / dandiset_id
-    version = "draft" if version is None else version
     assert os.getenv("DANDI_API_KEY"), (
         "Unable to find environment variable 'DANDI_API_KEY'. "
         "Please retrieve your token from DANDI and set this environment variable."
@@ -349,7 +323,7 @@ def automatic_dandi_upload(
     organized_nwbfiles = dandiset_path.rglob("*.nwb")
 
     # DANDI has yet to implement forcing of session_id inclusion in organize step
-    # This manually enforces it when only a single sesssion per subject is organized
+    # This manually enforces it when only a single session per subject is organized
     for organized_nwbfile in organized_nwbfiles:
         if "ses" not in organized_nwbfile.stem:
             with NWBHDF5IO(path=organized_nwbfile, mode="r") as io:
@@ -365,7 +339,7 @@ def automatic_dandi_upload(
 
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
-    dandi_instance = "dandi-staging" if staging else "dandi"
+    dandi_instance = "dandi-staging" if staging else "dandi"  # Test
     dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance)
 
     # Cleanup should be confirmed manually; Windows especially can complain
