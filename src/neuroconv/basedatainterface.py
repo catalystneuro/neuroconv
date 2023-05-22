@@ -71,7 +71,7 @@ class BaseDataInterface(ABC):
             An in-memory NWBFile object to write to the location.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        overwrite: bool, optional
+        overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         backend: {"hdf5", "zarr"}
