@@ -41,10 +41,6 @@ class BaseDataInterface(ABC):
 
         return metadata
 
-    def get_conversion_options(self):
-        """Child DataInterface classes should override this to match their conversion options."""
-        return dict()
-
     def configure_datasets(self, nwbfile: NWBFile, backend: str, dataset_configs: dict = None):
         dataset_configs = dataset_configs or dict()
         for container_id, field in self.datasets:
