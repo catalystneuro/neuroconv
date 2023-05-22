@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-from hdmf.common import VectorData, DynamicTable
+from hdmf.common import DynamicTable, VectorData
 from hdmf.data_utils import DataIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.file import Subject
