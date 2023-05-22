@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-from hdmf.common import VectorData
+from hdmf.common import VectorData, DynamicTable
 from hdmf.data_utils import DataIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.file import Subject
@@ -191,9 +191,13 @@ def make_or_load_nwbfile(
 
 def get_io_datasets(nwbfile):
     for object_ in nwbfile.objects():
-        if isinstance(object_, TimeSeries) or isinstance(object_, VectorData):
-            for field in object_.__fields__:  # search for datasets
-                if field in ("data", "timestamps") and not isinstance(getattr(object_, field), DataIO):
+        if isinstance(object_, TimeSeries):
+            for field in ("data", "timestamps"):
+                if getattr(object_, field) is not None and not isinstance(getattr(object_, field), DataIO):
+                    yield object_.id, field
+        if isinstance(object_, DynamicTable):
+            for field in getattr(object_, "colnames"):
+                if getattr(object_, field) is not None and not isinstance(getattr(object_, field), DataIO):
                     yield object_.id, field
 
 
