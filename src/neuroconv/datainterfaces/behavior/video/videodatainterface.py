@@ -416,9 +416,7 @@ class VideoInterface(BaseDataInterface):
 
                 if timing_type == "starting_time and rate":
                     starting_time = (
-                        self._segment_starting_times[file_index]
-                        if self._segment_starting_times is not None
-                        else 0.0
+                        self._segment_starting_times[file_index] if self._segment_starting_times is not None else 0.0
                     )
                     with VideoCaptureContext(file_path=str(file)) as video:
                         rate = video.get_video_fps()

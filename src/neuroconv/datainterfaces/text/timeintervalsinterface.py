@@ -114,7 +114,7 @@ class TimeIntervalsInterface(BaseDataInterface):
 
     def add_to_nwbfile(
         self,
-        nwbfile:  NWBFile,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         tag: str = "trials",
         column_name_mapping: Dict[str, str] = None,
