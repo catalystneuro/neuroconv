@@ -10,7 +10,12 @@ from pynwb import NWBFile, TimeSeries
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools.audio import add_acoustic_waveform_series
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FilePathType, get_base_schema, get_schema_from_hdmf_class, DeepDict
+from ....utils import (
+    DeepDict,
+    FilePathType,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 def _check_audio_names_are_unique(metadata: dict):

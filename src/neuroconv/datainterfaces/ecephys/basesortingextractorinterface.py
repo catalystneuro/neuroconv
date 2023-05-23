@@ -7,7 +7,12 @@ from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class, DeepDict
+from ...utils import (
+    DeepDict,
+    OptionalFilePathType,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
