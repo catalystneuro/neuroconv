@@ -79,8 +79,8 @@ Below are some full examples of how this feature can be used on some organizatio
 Example 1: `Allen Institute Visual Coding Dataset <https://registry.opendata.aws/allen-brain-observatory/>`_
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Allen Institute's Visual Coding dataset contains, among other data, motion-corrected videos of each 
-experimental session, with the directory structure shown below. 
+The Allen Institute's Visual Coding dataset contains, among other data, motion-corrected videos of each
+experimental session, with the directory structure shown below.
 
 .. code-block:: bash
 
@@ -142,7 +142,7 @@ extract both their subject ID and the session start time, which is formatted as 
     >>> metadata_list = path_expander.expand_paths(source_data_spec)
     >>> for metadata in metadata_list:
     ...     pprint(metadata)
-    {'metadata': {'NWBFile': {'session_start_time': datetime.datetime(2017, 8, 18, 0, 0)}, 
+    {'metadata': {'NWBFile': {'session_start_time': datetime.datetime(2017, 8, 18, 0, 0)},
                   'Subject': {'subject_id': 'YMV01'}},
      'source_data': {'SenzaiY': {'file_path': '/SenzaiY/YMV01/YMV01_170818/YMV01_170818.dat'}}}
     ...
@@ -151,7 +151,7 @@ Example 3: `IBL Brain Wide Map Data <https://ibl.flatironinstitute.org/public>`_
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The IBL's Brain Wide Map features data from several labs of mice performing a visual decision-making task. Some
-experimental sessions, such as those from the Steinmetz Lab, include video recordings of the experiments from three 
+experimental sessions, such as those from the Steinmetz Lab, include video recordings of the experiments from three
 cameras, stored in the following directory structure.
 
 .. code-block:: bash
@@ -175,7 +175,7 @@ cameras, stored in the following directory structure.
     ¦   ...
 
 We can use :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find these left camera video files and
-extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and a hash that we'll treat as 
+extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and a hash that we'll treat as
 the session ID.
 
 .. code-block:: python
@@ -189,13 +189,13 @@ the session ID.
     >>> metadata_list = path_expander.expand_paths(source_data_spec)
     >>> for metadata in metadata_list:
     ...     pprint(metadata)
-    {'metadata': {'NWBFile': {'session_id': '6252a2f0-c10f-4e49-b085-75749ba29c35', 
-                             'session_start_time': datetime.datetime(2022, 3, 22, 0, 0)}, 
+    {'metadata': {'NWBFile': {'session_id': '6252a2f0-c10f-4e49-b085-75749ba29c35',
+                             'session_start_time': datetime.datetime(2022, 3, 22, 0, 0)},
                              'Subject': {'subject_id': 'NR_0017'}},
      'source_data': {'IBL': {'file_path': 'steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4'}}}
     ...
 
-If you'd like to experiment with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` locally, you can use 
+If you'd like to experiment with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` locally, you can use
 the following commands on Linux to generate some dummy files mimicking the structure of the IBL data shown above.
 
 .. code-block:: bash
