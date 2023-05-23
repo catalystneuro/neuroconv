@@ -201,9 +201,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             )
         starting_times = self._segment_starting_times or [0.0]
 
-        for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(
-            zip(audio_metadata, file_paths)
-        ):
+        for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
             sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
 
             if stub_test:

@@ -108,7 +108,6 @@ class BaseIcephysInterface(BaseExtractorInterface):
         if nwbfile is None:
             nwbfile = make_nwbfile_from_metadata(metadata)
 
-
         if (
             HAVE_NDX_DANDI_ICEPHYS
             and "ndx-dandi-icephys" in metadata

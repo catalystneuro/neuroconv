@@ -1,6 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import Optional, Literal
+from typing import Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -974,9 +974,7 @@ def add_segmentation(
 
     # Adding summary images (mean and correlation)
     images_set_name = "SegmentationImages" if plane_num == 0 else f"SegmentationImages_Plane{plane_num}"
-    add_summary_images(
-        nwbfile=nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
-    )
+    add_summary_images(nwbfile=nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name)
 
 
 def write_segmentation(
