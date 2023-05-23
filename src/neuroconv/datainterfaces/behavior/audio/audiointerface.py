@@ -147,10 +147,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         stub_frames: int = 1000,
@@ -163,9 +162,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         """
         Parameters
         ----------
-        nwbfile_path : FilePathType, optional
-            If a file exists at this path, append to it. If not, write the file here.
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             Append to this NWBFile object
         metadata : dict, optional
         stub_test : bool, default: False
@@ -204,26 +201,23 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             )
         starting_times = self._segment_starting_times or [0.0]
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(
-                zip(audio_metadata, file_paths)
-            ):
-                sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+        for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(
+            zip(audio_metadata, file_paths)
+        ):
+            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
 
-                if stub_test:
-                    acoustic_series = acoustic_series[:stub_frames]
+            if stub_test:
+                acoustic_series = acoustic_series[:stub_frames]
 
-                add_acoustic_waveform_series(
-                    acoustic_series=acoustic_series,
-                    nwbfile=nwbfile_out,
-                    rate=sampling_rate,
-                    metadata=acoustic_waveform_series_metadata,
-                    write_as=write_as,
-                    starting_time=starting_times[file_index],
-                    iterator_options=iterator_options,
-                    compression_options=compression_options,
-                )
+            add_acoustic_waveform_series(
+                acoustic_series=acoustic_series,
+                nwbfile=nwbfile,
+                rate=sampling_rate,
+                metadata=acoustic_waveform_series_metadata,
+                write_as=write_as,
+                starting_time=starting_times[file_index],
+                iterator_options=iterator_options,
+                compression_options=compression_options,
+            )
 
-        return nwbfile_out
+        return nwbfile

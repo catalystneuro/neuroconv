@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from pynwb import NWBFile
 
+from .tools.nwb_helpers import make_or_load_nwbfile
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
@@ -39,6 +40,9 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options):
+        raise NotImplementedError()
+
     @abstractmethod
     def run_conversion(
         self,
@@ -64,4 +68,11 @@ class BaseDataInterface(ABC):
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         """
-        raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
+
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+        ) as nwbfile:
+            self.add_to_nwbfile(nwbfile, **conversion_options)
