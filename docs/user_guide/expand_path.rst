@@ -175,8 +175,8 @@ cameras, stored in the following directory structure.
     ¦   ...
 
 We can use :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find these left camera video files and
-extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and the session ID, which is a 128-bit
-hash.
+extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and a hash that we'll treat as 
+the session ID.
 
 .. code-block:: python
 
@@ -194,6 +194,18 @@ hash.
                              'Subject': {'subject_id': 'NR_0017'}},
      'source_data': {'IBL': {'file_path': 'steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4'}}}
     ...
+
+If you'd like to experiment with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` locally, you can use 
+the following commands on Linux to generate some dummy files mimicking the structure of the IBL data shown above.
+
+.. code-block:: bash
+
+    mkdir -p steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/
+    mkdir -p steinmetzlab/Subjects/NR_0019/2022-04-29/001/raw_video_data/
+    mkdir -p steinmetzlab/Subjects/NR_0019/2022-05-03/001/raw_video_data/
+    touch steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4
+    touch steinmetzlab/Subjects/NR_0019/2022-04-29/001/raw_video_data/_iblrig_leftCamera.raw.9041b63e-02e2-480e-aaa7-4f6b776a647f.mp4
+    touch steinmetzlab/Subjects/NR_0019/2022-05-03/001/raw_video_data/_iblrig_leftCamera.raw.05576d90-6fb7-4aba-99ae-7ba63cc50a9a.mp4
 
 Non-local Path Expansion
 ------------------------
