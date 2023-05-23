@@ -300,6 +300,8 @@ class VideoInterface(BaseDataInterface):
             Parameter(s) for compression filter. Currently, only supports the compression level (integer from 0 to 9) of
             compression="gzip".
         """
+        metadata = metadata or dict()
+
         file_paths = self.source_data["file_paths"]
 
         videos_metadata = metadata.get("Behavior", dict()).get("Videos", None)

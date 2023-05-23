@@ -25,7 +25,7 @@ class BaseDataInterface(ABC):
 
     def get_conversion_options_schema(self):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(self.run_conversion, exclude=["nwbfile", "metadata"])
+        return get_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -40,10 +40,10 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    @abstractmethod
     def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options):
         raise NotImplementedError()
 
-    @abstractmethod
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
@@ -51,7 +51,7 @@ class BaseDataInterface(ABC):
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         **conversion_options,
-    ):
+    ) -> NWBFile:
         """
         Run the NWB conversion for the instantiated data interface.
 
@@ -74,5 +74,7 @@ class BaseDataInterface(ABC):
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
-        ) as nwbfile:
-            self.add_to_nwbfile(nwbfile, **conversion_options)
+        ) as nwbfile_out:
+            self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
+
+        return nwbfile_out

@@ -84,7 +84,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         stub_frames: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[Literal["image", "pixel", "voxel"]] = "image",
+        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):

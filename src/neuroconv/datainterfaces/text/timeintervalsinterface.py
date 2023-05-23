@@ -119,7 +119,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         tag: str = "trials",
         column_name_mapping: Dict[str, str] = None,
         column_descriptions: Dict[str, str] = None,
-    ):
+    ) -> NWBFile:
         """
         Run the NWB conversion for the instantiated data interface.
 
@@ -145,6 +145,8 @@ class TimeIntervalsInterface(BaseDataInterface):
             **metadata["TimeIntervals"][tag],
         )
         nwbfile.add_time_intervals(self.time_intervals)
+
+        return nwbfile
 
     @abstractmethod
     def _read_file(self, file_path: FilePathType, **read_kwargs):

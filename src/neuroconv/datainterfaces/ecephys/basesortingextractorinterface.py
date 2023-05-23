@@ -7,7 +7,7 @@ from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class
+from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class, DeepDict
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -157,7 +157,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: Optional[DeepDict] = None,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
         write_as: Literal["units", "processing"] = "units",
@@ -171,7 +171,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         ----------
         nwbfile : NWBFile
             Fill the relevant fields within the NWBFile object.
-        metadata : dict
+        metadata : DeepDict
             Information for constructing the NWB file (optional) and units table descriptions.
             Should be of the format::
 
@@ -203,7 +203,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 traces_list=[np.empty(shape=n_channels)],
                 sampling_frequency=self.sorting_extractor.get_sampling_frequency(),
             )
-            add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_devices(nwbfile=nwbfile, metadata=metadata)
             add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
         if stub_test:
@@ -211,7 +211,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         else:
             sorting_extractor = self.sorting_extractor
         property_descriptions = dict()
-        for metadata_column in metadata.get("Ecephys", dict()).get("UnitProperties", []):
+        for metadata_column in metadata["Ecephys"].get("UnitProperties", []):
             property_descriptions.update({metadata_column["name"]: metadata_column["description"]})
             for unit_id in sorting_extractor.get_unit_ids():
                 # Special condition for wrapping electrode group pointers to actual object ids rather than string names

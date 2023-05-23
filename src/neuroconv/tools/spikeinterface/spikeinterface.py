@@ -19,7 +19,7 @@ from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import FilePathType, calculate_regular_series_rate, dict_deep_update
+from ...utils import FilePathType, calculate_regular_series_rate, dict_deep_update, DeepDict
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
@@ -48,7 +48,7 @@ def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
     return metadata
 
 
-def add_devices(nwbfile: pynwb.NWBFile, metadata: dict = None):
+def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
     """
     Add device information to nwbfile object.
 
@@ -59,7 +59,7 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: dict = None):
     ----------
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
-    metadata: dict
+    metadata: DeepDict
         metadata info for constructing the nwb file (optional).
         Should be of the format
             metadata['Ecephys']['Device'] = [
@@ -718,15 +718,24 @@ def add_recording(
     nwbfile: pynwb.NWBFile,
     metadata: Optional[dict] = None,
     starting_time: Optional[float] = None,
-    write_as: Optional[str] = None,
+    write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
+    compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
+    assert get_package_version("pynwb") >= Version(
+        "1.3.3"
+    ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
+
+    if hasattr(recording, "nwb_metadata"):
+        metadata = dict_deep_update(recording.nwb_metadata, metadata)
+    elif metadata is None:
+        metadata = get_nwb_metadata(recording=recording)
+
     # Convenience function to add device, electrode groups and electrodes info
     add_electrodes_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
@@ -757,11 +766,11 @@ def write_recording(
     overwrite: bool = False,
     verbose: bool = True,
     starting_time: Optional[float] = None,
-    write_as: Optional[str] = None,
+    write_as: Optional[str] = "raw",
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
+    compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
@@ -864,18 +873,6 @@ def write_recording(
                 Dictionary of keyword arguments to be passed directly to tqdm.
                 See https://github.com/tqdm/tqdm#parameters for options.
     """
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    assert get_package_version("pynwb") >= Version(
-        "1.3.3"
-    ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
-    write_as = "raw" if write_as is None else write_as
-    compression = "gzip" if compression is None else compression
-
-    if hasattr(recording, "nwb_metadata"):
-        metadata = dict_deep_update(recording.nwb_metadata, metadata)
-    elif metadata is None:
-        metadata = get_nwb_metadata(recording=recording)
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose

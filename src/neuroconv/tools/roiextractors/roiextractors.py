@@ -934,7 +934,7 @@ def add_segmentation(
     plane_num: int = 0,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
-    mask_type: Optional[Literal["image", "pixel"]] = "image",
+    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ):
@@ -986,7 +986,7 @@ def write_segmentation(
     verbose: bool = True,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
-    mask_type: Optional[Literal["image", "pixel"]] = "image",
+    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
@@ -996,7 +996,7 @@ def write_segmentation(
     Parameters
     ----------
     segmentation_extractor: SegmentationExtractor
-        The segentation extractor object to be written to nwb
+        The segmentation extractor object to be written to nwb
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
