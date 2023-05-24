@@ -5,6 +5,7 @@ from .dict import (
     dict_deep_update,
     exist_dict_in_list,
     load_dict_from_file,
+    get_metadata_value,
 )
 from .json_schema import (
     NWBMetaDataEncoder,
