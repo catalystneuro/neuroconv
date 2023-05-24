@@ -4,8 +4,8 @@ from .dict import (
     append_replace_dict_in_list,
     dict_deep_update,
     exist_dict_in_list,
-    load_dict_from_file,
     get_metadata_value,
+    load_dict_from_file,
 )
 from .json_schema import (
     NWBMetaDataEncoder,

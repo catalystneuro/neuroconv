@@ -56,6 +56,7 @@ def exist_dict_in_list(d, ls):
     """Check if an identical dictionary exists in the list."""
     return any([d == i for i in ls])
 
+
 def get_metadata_value(d: dict, *args):
     """
     Select the value corresponding to the first requested keyword that exists
