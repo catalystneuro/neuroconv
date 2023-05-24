@@ -5,17 +5,22 @@ from dateutil.parser import parse as dateparse
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType
+from ....utils import FilePathType, get_metadata_value
 
 
 def extract_extra_metadata(file_path) -> dict:
     ScanImageTiffReader = get_package(
         package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
     )
-
-    description = ScanImageTiffReader.ScanImageTiffReader(str(file_path)).description(iframe=0)
-    extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in description.split("\r") if "=" in x}
-
+    src_file = ScanImageTiffReader.ScanImageTiffReader(str(file_path))
+    extra_metadata = {}
+    for metadata_string in (src_file.description(iframe=0), src_file.metadata()):
+        metadata_dict = {
+            x.split("=")[0].strip(): x.split("=")[1].strip()
+            for x in metadata_string.replace("\n", "\r").split("\r")
+            if "=" in x
+        }
+        extra_metadata = dict(**extra_metadata, **metadata_dict)
     return extra_metadata
 
 
@@ -48,9 +53,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
-        if "state.acq.frameRate" in self.image_metadata:
-            sampling_frequency = float(self.image_metadata["state.acq.frameRate"])
-        else:
+        try:
+            sampling_frequency = float(
+                get_metadata_value(self.image_metadata, "state.acq.frameRate", "SI.hRoiManager.scanFrameRate")
+            )
+        except ValueError:
             assert_msg = (
                 "sampling frequency not found in image metadata, "
                 "input the frequency using the argument `fallback_sampling_frequency`"
@@ -65,9 +72,16 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         metadata = super().get_metadata()
 
-        if "state.internal.triggerTimeString" in self.image_metadata:
-            extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
+        try:
+            extracted_session_start_time = get_metadata_value(
+                self.image_metadata,
+                "state.internal.triggerTimeString",
+                "epoch",
+            )
             metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
+        except ValueError:
+            # If not present, ignore this aspect
+            pass
 
         # Extract many scan image properties and attach them as dic in the description
         ophys_metadata = metadata["Ophys"]
