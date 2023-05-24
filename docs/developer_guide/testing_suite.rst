@@ -10,22 +10,25 @@ Run all tests
 -------------
 To run all tests, first clone the repo and ``cd`` into it.
 
-```
-git clone https://github.com/catalystneuro/neuroconv.git
-cd neuroconv
-```
+.. code:: bash
+
+  git clone https://github.com/catalystneuro/neuroconv.git
+  cd neuroconv
+
 
 Then install all required and optional dependencies in a fresh environment.
 
-```
-pip install -e . neuroconv[test,full]
-```
+.. code:: bash
+
+  pip install -e . neuroconv[test,full]
+
 
 Then simply run all tests with pytest
 
-```
-pytest
-```
+.. code:: bash
+
+  pytest
+
 
 Minimal
 -------
