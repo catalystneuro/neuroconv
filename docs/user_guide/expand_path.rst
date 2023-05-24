@@ -92,9 +92,9 @@ experimental session, with the directory structure shown below.
     ¦   ¦   +-- ophys_experiment_496935917.h5
     ¦   ¦   +-- ...
 
-The video files are all stored in the directory ``ophys_movies/``, and their file names follow the pattern 
-``ophys_experiment_`` plus a 9-digit session ID. We can use 
-:py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find all of these ``ophys_movies`` files and extract 
+The video files are all stored in the directory ``ophys_movies/``, and their file names follow the pattern
+``ophys_experiment_`` plus a 9-digit session ID. We can use
+:py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find all of these ``ophys_movies`` files and extract
 their session IDs with the following code block.
 
 .. code-block:: python
@@ -107,7 +107,7 @@ their session IDs with the following code block.
     }
     metadata_list = path_expander.expand_paths(source_data_spec)
 
-The ``metadata_list`` now contains the information extracted for each matching file found by 
+The ``metadata_list`` now contains the information extracted for each matching file found by
 :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`. The information for the first file is shown below.
 
 .. code-block:: python
@@ -124,13 +124,13 @@ The ``metadata_list`` now contains the information extracted for each matching f
             }
         }
     }
-    
+
 Example 2: `Buszaki Lab SenzaiY Dataset <https://app.globus.org/file-manager?origin_id=188a6110-96db-11eb-b7a9-f57b2d55370d&origin_path=%2FSenzaiY%2F>`_
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Buszaki Lab's SenzaiY dataset contains spiking and LFP data from mouse V1 with the directory structure
-shown below. Sorted unit spiking data are stored in the ``.res.1`` and ``.clu.1`` files, while the LFP data are 
-stored in the ``.eeg`` files. 
+shown below. Sorted unit spiking data are stored in the ``.res.1`` and ``.clu.1`` files, while the LFP data are
+stored in the ``.eeg`` files.
 
 .. code-block:: bash
 
@@ -149,11 +149,11 @@ stored in the ``.eeg`` files.
     ¦   ¦   +-- ...
     ¦   ...
 
-The data are organized into folders first by subject (``YMV01``, ``YMV02``, etc.) and then by session start times in 
-the format ``yymmdd`` (``170818``, ``170815``, etc). We can use 
-:py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find both the LFP data files and the sorted unit 
+The data are organized into folders first by subject (``YMV01``, ``YMV02``, etc.) and then by session start times in
+the format ``yymmdd`` (``170818``, ``170815``, etc). We can use
+:py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find both the LFP data files and the sorted unit
 spiking and extract their corresponding subject IDs and session start times. For the sorted unit spiking, we'll search
-for a matching ``folder_path`` instead, as ``neuroconv`` interfaces for such data, like 
+for a matching ``folder_path`` instead, as ``neuroconv`` interfaces for such data, like
 ``NeuroScopeSortingInterface``, expect a ``folder_path`` as input.
 
 .. code-block:: python
@@ -170,7 +170,7 @@ for a matching ``folder_path`` instead, as ``neuroconv`` interfaces for such dat
     }
     metadata_list = path_expander.expand_paths(source_data_spec)
 
-The ``metadata_list`` now contains the information extracted for each matching file and directory found by 
+The ``metadata_list`` now contains the information extracted for each matching file and directory found by
 :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`. The information for the first file is shown below.
 
 .. code-block:: python
@@ -252,7 +252,7 @@ the session ID (though in actuality it is an object-specific identifier).
     }
     metadata_list = path_expander.expand_paths(source_data_spec)
 
-The ``metadata_list`` now contains the information extracted for each matching file found by 
+The ``metadata_list`` now contains the information extracted for each matching file found by
 :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`. The information for the first file is shown below.
 
 .. code-block:: python
@@ -274,7 +274,7 @@ The ``metadata_list`` now contains the information extracted for each matching f
         }
     }
 
-If you would like to experiment locally with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`, we 
+If you would like to experiment locally with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`, we
 provide a helper method in ``neuroconv.tools.path_expansion`` that generates the directory structure of the IBL data with dummy
 files on your machine.
 
