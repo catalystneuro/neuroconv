@@ -247,7 +247,7 @@ the session ID (though in actuality it is an object-specific identifier).
 .. code-block:: python
 
     source_data_spec = {
-        "IBL": {
+        "IBL_video": {
             "base_directory": "/steinmetzlab/",
             "file_path": "Subjects/{subject_id}/{session_start_time:%Y-%m-%d}/001/raw_video_data/_iblrig_leftCamera.raw.{session_id}.mp4"
         }
@@ -262,7 +262,7 @@ The ``metadata_list`` now contains the information extracted for each matching f
 
     {
         "source_data": {
-            "IBL": {
+            "IBL_video": {
                 "file_path": "/steinmetzlab/Subjects/NR_0017/2022-03-22/001/raw_video_data/_iblrig_leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35.mp4"
             }
         },
