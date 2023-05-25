@@ -105,6 +105,7 @@ their session IDs with the following code block.
             "file_path": "ophys_movies/ophys_experiment_{session_id}.h5"
         }
     }
+    path_expander = LocalPathExpander()
     metadata_list = path_expander.expand_paths(source_data_spec)
 
 The ``metadata_list`` now contains the information extracted for each matching file found by
@@ -153,7 +154,7 @@ The data are organized into folders first by subject (``YMV01``, ``YMV02``, etc.
 the format ``yymmdd`` (``170818``, ``170815``, etc). We can use
 :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find both the LFP data files and the sorted unit
 spiking and extract their corresponding subject IDs and session start times. For the sorted unit spiking, we'll search
-for a matching ``folder_path`` instead, as ``neuroconv`` interfaces for such data, like
+for a matching ``folder_path`` instead of a ``file_path``, as ``neuroconv`` interfaces for such data, like
 ``NeuroScopeSortingInterface``, expect a ``folder_path`` as input.
 
 .. code-block:: python
@@ -168,6 +169,7 @@ for a matching ``folder_path`` instead, as ``neuroconv`` interfaces for such dat
             "folder_path": "{subject_id}/{subject_id}_{session_start_time:%y%m%d}/"
         }
     }
+    path_expander = LocalPathExpander()
     metadata_list = path_expander.expand_paths(source_data_spec)
 
 The ``metadata_list`` now contains the information extracted for each matching file and directory found by
@@ -250,6 +252,7 @@ the session ID (though in actuality it is an object-specific identifier).
             "file_path": "Subjects/{subject_id}/{session_start_time:%Y-%m-%d}/001/raw_video_data/_iblrig_leftCamera.raw.{session_id}.mp4"
         }
     }
+    path_expander = LocalPathExpander()
     metadata_list = path_expander.expand_paths(source_data_spec)
 
 The ``metadata_list`` now contains the information extracted for each matching file found by
@@ -275,8 +278,8 @@ The ``metadata_list`` now contains the information extracted for each matching f
     }
 
 If you would like to experiment locally with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`, we
-provide a helper method in ``neuroconv.tools.path_expansion`` that generates the directory structure of the IBL data with dummy
-files on your machine.
+provide a helper method in ``neuroconv.tools.path_expansion`` that partially replicates the directory structure of 
+the IBL data with dummy files on your machine.
 
 .. code-block:: python
 

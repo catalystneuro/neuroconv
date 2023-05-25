@@ -91,7 +91,7 @@ class LocalPathExpander(AbstractPathExpander):
         return (str(path.relative_to(base_directory)) for path in base_directory.rglob("*"))
 
 
-def generate_path_expander_ibl_demo(folder_path: Optional[str] = None) -> None:
+def generate_path_expander_demo_ibl(folder_path: Optional[str] = None) -> None:
     """
     Partially replicate the file structure of IBL data with dummy files for
     experimentation with `LocalPathExpander`. Specifically, it recreates the
@@ -105,7 +105,8 @@ def generate_path_expander_ibl_demo(folder_path: Optional[str] = None) -> None:
         If None, the current working directory will be used.
     """
     if folder_path is None:
-        folder_path = Path(os.getcwd())
+        folder_path = os.getcwd()
+    folder_path = Path(folder_path)
 
     IBL_TREE = [
         {
