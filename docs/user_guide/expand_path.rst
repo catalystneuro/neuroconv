@@ -278,7 +278,7 @@ The ``metadata_list`` now contains the information extracted for each matching f
     }
 
 If you would like to experiment locally with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`, we
-provide a helper method in ``neuroconv.tools.path_expansion`` that partially replicates the directory structure of 
+provide a helper method in ``neuroconv.tools.path_expansion`` that partially replicates the directory structure of
 the IBL data with dummy files on your machine.
 
 .. code-block:: python
