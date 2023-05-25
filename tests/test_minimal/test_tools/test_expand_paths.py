@@ -127,29 +127,33 @@ def test_expand_paths_ibl(tmpdir):
     for file_path in base_directory.glob("steinmetzlab/Subjects/*/*/*/raw_video_data/_iblrig_leftCamera.raw.*.mp4"):
         subject_id = file_path.parts[-5]
         session_start_time = datetime.strptime(file_path.parts[-4], "%Y-%m-%d")
-        session_id = file_path.parts[-1].split('.')[-2]
-        expected.append({
-            "source_data": {
-                "ibl_video_file": {"file_path": str(file_path)},
-            },
-            "metadata": {
-                "NWBFile": {"session_id": session_id, "session_start_time": session_start_time},
-                "Subject": {"subject_id": subject_id},
-            },
-        })
+        session_id = file_path.parts[-1].split(".")[-2]
+        expected.append(
+            {
+                "source_data": {
+                    "ibl_video_file": {"file_path": str(file_path)},
+                },
+                "metadata": {
+                    "NWBFile": {"session_id": session_id, "session_start_time": session_start_time},
+                    "Subject": {"subject_id": subject_id},
+                },
+            }
+        )
     for folder_path in base_directory.glob("steinmetzlab/Subjects/*/*/*/raw_video_data/"):
         subject_id = folder_path.parts[-4]
         session_start_time = datetime.strptime(folder_path.parts[-3], "%Y-%m-%d")
-        expected.append({
-            "source_data": {
-                "ibl_video_directory": {"folder_path": str(folder_path)},
-            },
-            "metadata": {
-                "NWBFile": {"session_start_time": session_start_time},
-                "Subject": {"subject_id": subject_id},
-            },
-        })
-    
+        expected.append(
+            {
+                "source_data": {
+                    "ibl_video_directory": {"folder_path": str(folder_path)},
+                },
+                "metadata": {
+                    "NWBFile": {"session_start_time": session_start_time},
+                    "Subject": {"subject_id": subject_id},
+                },
+            }
+        )
+
     # test results
     for x in out:
         assert x in expected
