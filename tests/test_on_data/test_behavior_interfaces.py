@@ -7,7 +7,10 @@ from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import DeepLabCutInterface, SLEAPInterface, VideoInterface
-from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin, TemporalAlignmentMixin
+from neuroconv.tools.testing.data_interface_mixins import (
+    DataInterfaceTestMixin,
+    TemporalAlignmentMixin,
+)
 
 try:
     from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
