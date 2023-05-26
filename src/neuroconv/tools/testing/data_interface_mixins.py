@@ -234,27 +234,14 @@ class TemporalAlignmentMixin:
         """Check the temporally aligned timing information makes it into the NWB file."""
         pass  # TODO: will be easier to add when interface have 'add' methods separate from .run_conversion()
 
-    def test_conversion_as_lone_interface(self):
+    def test_interface_alignment(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
             interface_kwargs = [interface_kwargs]
         for num, kwargs in enumerate(interface_kwargs):
             with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
-
                 self.check_interface_temporal_alignment()
                 self.check_nwbfile_temporal_alignment()
-
-                # Any extra custom checks to run
-                self.run_custom_checks()
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
