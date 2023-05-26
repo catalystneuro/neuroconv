@@ -161,8 +161,6 @@ class NWBConverter:
         ) as nwbfile_out:
             self.add_to_nwbfile(nwbfile_out, metadata, conversion_options)
 
-        return nwbfile_out
-
 
 class ConverterPipe(NWBConverter):
     """Takes a list or dict of pre-initialized interfaces as arguments to build an NWBConverter class"""

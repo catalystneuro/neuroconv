@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from pynwb import NWBFile
 
-from .tools.nwb_helpers import make_or_load_nwbfile
+from .tools.nwb_helpers import make_or_load_nwbfile, make_nwbfile_from_metadata
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
@@ -41,8 +41,13 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    def create_nwbfile(self, metadata=None, **kwargs):
+        nwbfile = make_nwbfile_from_metadata(metadata)
+        self.add_to_nwbfile(nwbfile, metadata=metadata)
+        return nwbfile
+
     @abstractmethod
-    def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options):
+    def add_to_nwbfile(self, nwbfile: NWBFile, **kwargs):
         raise NotImplementedError()
 
     def run_conversion(
