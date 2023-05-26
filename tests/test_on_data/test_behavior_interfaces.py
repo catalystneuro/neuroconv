@@ -7,7 +7,7 @@ from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import DeepLabCutInterface, SLEAPInterface, VideoInterface
-from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin, TemporalAlignmentMixin
 
 try:
     from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
@@ -15,7 +15,7 @@ except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 
-class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
+class TestDeepLabCutInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
@@ -74,7 +74,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
                 # self.check_align_starting_time_external()
 
 
-class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
+class TestVideoInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
     data_interface_cls = VideoInterface
     interface_kwargs = [
         dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")]),
@@ -160,7 +160,7 @@ class TestVideoInterface(DataInterfaceTestMixin, unittest.TestCase):
                 self.check_align_timestamps_internal()
 
 
-class TestSLEAPInterface(DataInterfaceTestMixin, unittest.TestCase):
+class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
     data_interface_cls = SLEAPInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),

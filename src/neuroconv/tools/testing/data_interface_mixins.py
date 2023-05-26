@@ -257,7 +257,7 @@ class TemporalAlignmentMixin:
                 self.run_custom_checks()
 
 
-class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
+class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseImagingExtractorInterface
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -290,7 +290,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
             assert nwbfile.acquisition["TwoPhotonSeries"].starting_time == starting_time
 
 
-class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin):
+class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseSegmentationExtractorInterface
 
     def check_read(self, nwbfile_path: str):
@@ -299,7 +299,7 @@ class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin):
         check_segmentations_equal(segmentation, nwb_segmentation)
 
 
-class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
+class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: Type[BaseRecordingExtractorInterface]
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -373,7 +373,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
             ]
 
 
-class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
+class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseSortingExtractorInterface
     associated_recording_cls: Optional[BaseRecordingExtractorInterface] = None
     associated_recording_kwargs: Optional[dict] = None
@@ -434,7 +434,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin):
         fresh_interface.align_timestamps(aligned_timestamps=external_aligned_timestamps)
 
 
-class AudioInterfaceTestMixin(DataInterfaceTestMixin):
+class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
         pass  # asserted in the testing suite; could be refactored in future PR
 
