@@ -6,9 +6,8 @@ from pathlib import Path
 from typing import List, Optional, Type, Union
 
 import numpy as np
-from numpy.testing import assert_array_equal
 from jsonschema.validators import Draft7Validator, validate
-from numpy.testing import assert_array_almost_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 from pynwb import NWBHDF5IO
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
@@ -28,8 +27,8 @@ from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
-from neuroconv.utils import NWBMetaDataEncoder
 from neuroconv.tools.testing import MockBehaviorEventInterface
+from neuroconv.utils import NWBMetaDataEncoder
 
 
 class DataInterfaceTestMixin:
