@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -122,37 +123,20 @@ def test_expand_paths_ibl(tmpdir):
         ),
     )
 
-    # build expected output with glob and manual parsing
-    expected = []
-    for file_path in base_directory.glob("steinmetzlab/Subjects/*/*/*/raw_video_data/_iblrig_leftCamera.raw.*.mp4"):
-        subject_id = file_path.parts[-5]
-        session_start_time = datetime.strptime(file_path.parts[-4], "%Y-%m-%d")
-        session_id = file_path.parts[-1].split(".")[-2]
-        expected.append(
-            {
-                "source_data": {
-                    "ibl_video_file": {"file_path": str(file_path)},
-                },
-                "metadata": {
-                    "NWBFile": {"session_id": session_id, "session_start_time": session_start_time},
-                    "Subject": {"subject_id": subject_id},
-                },
-            }
-        )
-    for folder_path in base_directory.glob("steinmetzlab/Subjects/*/*/*/raw_video_data/"):
-        subject_id = folder_path.parts[-4]
-        session_start_time = datetime.strptime(folder_path.parts[-3], "%Y-%m-%d")
-        expected.append(
-            {
-                "source_data": {
-                    "ibl_video_directory": {"folder_path": str(folder_path)},
-                },
-                "metadata": {
-                    "NWBFile": {"session_start_time": session_start_time},
-                    "Subject": {"subject_id": subject_id},
-                },
-            }
-        )
+    # build expected output from file
+    expected_file_path = Path(__file__).parent / "expand_paths_ibl_expected.json"
+    with open(expected_file_path, 'r') as f:
+        expected = json.load(f)
+    for entry in expected:
+        if "NWBFile" in entry["metadata"]: # `datetime` is not JSON serializable, so convert from string
+            if "session_start_time" in entry["metadata"]["NWBFile"]:
+                datetime_str = entry["metadata"]["NWBFile"].pop("session_start_time")
+                entry["metadata"]["NWBFile"]["session_start_time"] = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S.%f")
+        for source_data in entry["source_data"].values(): # update paths with base_directory
+            if "file_path" in source_data.keys():
+                source_data["file_path"] = str(base_directory / source_data["file_path"])
+            if "folder_path" in source_data.keys():
+                source_data["folder_path"] = str(base_directory / source_data["folder_path"])
 
     # test results
     for x in out:
