@@ -1,7 +1,7 @@
 from datetime import datetime
-from platform import python_version, system
+from platform import python_version
 from sys import platform
-from unittest import skip, skipIf, skipUnless
+from unittest import skip, skipIf
 
 import jsonschema
 from hdmf.testing import TestCase
@@ -103,13 +103,12 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
 class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = IntanRecordingInterface
     interface_kwargs = [
-        dict(file_path=str(DATA_PATH / "intan" / f"intan_rhd_test_1.rhd")),
-        dict(file_path=str(DATA_PATH / "intan" / f"intan_rhs_test_1.rhs")),
+        dict(file_path=str(DATA_PATH / "intan" / "intan_rhd_test_1.rhd")),
+        dict(file_path=str(DATA_PATH / "intan" / "intan_rhs_test_1.rhs")),
     ]
     save_directory = OUTPUT_PATH
 
 
-# @skipUnless(system() == "Linux", reason="MaxOneRecordingInterface is only supported on Linux.")
 @skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = MaxOneRecordingInterface
