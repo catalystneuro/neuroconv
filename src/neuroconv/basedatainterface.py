@@ -20,7 +20,8 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose=False, **source_data):
+        self.verbose = verbose
         self.source_data = source_data
 
     def get_conversion_options_schema(self):
@@ -51,7 +52,7 @@ class BaseDataInterface(ABC):
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         **conversion_options,
-    ) -> NWBFile:
+    ):
         """
         Run the NWB conversion for the instantiated data interface.
 
@@ -74,7 +75,6 @@ class BaseDataInterface(ABC):
             nwbfile=nwbfile,
             metadata=metadata,
             overwrite=overwrite,
+            verbose=getattr(self, "verbose", False),
         ) as nwbfile_out:
             self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
-
-        return nwbfile_out
