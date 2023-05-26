@@ -239,6 +239,10 @@ class TemporalAlignmentMixin:
             interface_kwargs = [interface_kwargs]
         for num, kwargs in enumerate(interface_kwargs):
             with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+
                 self.check_interface_temporal_alignment()
                 self.check_nwbfile_temporal_alignment()
 
