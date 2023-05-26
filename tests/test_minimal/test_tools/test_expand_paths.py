@@ -125,14 +125,16 @@ def test_expand_paths_ibl(tmpdir):
 
     # build expected output from file
     expected_file_path = Path(__file__).parent / "expand_paths_ibl_expected.json"
-    with open(expected_file_path, 'r') as f:
+    with open(expected_file_path, "r") as f:
         expected = json.load(f)
     for entry in expected:
-        if "NWBFile" in entry["metadata"]: # `datetime` is not JSON serializable, so convert from string
+        if "NWBFile" in entry["metadata"]:  # `datetime` is not JSON serializable, so convert from string
             if "session_start_time" in entry["metadata"]["NWBFile"]:
                 datetime_str = entry["metadata"]["NWBFile"].pop("session_start_time")
-                entry["metadata"]["NWBFile"]["session_start_time"] = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S.%f")
-        for source_data in entry["source_data"].values(): # update paths with base_directory
+                entry["metadata"]["NWBFile"]["session_start_time"] = datetime.strptime(
+                    datetime_str, "%Y-%m-%d %H:%M:%S.%f"
+                )
+        for source_data in entry["source_data"].values():  # update paths with base_directory
             if "file_path" in source_data.keys():
                 source_data["file_path"] = str(base_directory / source_data["file_path"])
             if "folder_path" in source_data.keys():
