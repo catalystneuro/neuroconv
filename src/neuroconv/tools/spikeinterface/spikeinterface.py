@@ -19,7 +19,12 @@ from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import FilePathType, calculate_regular_series_rate, dict_deep_update, DeepDict
+from ...utils import (
+    DeepDict,
+    FilePathType,
+    calculate_regular_series_rate,
+    dict_deep_update,
+)
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
