@@ -159,7 +159,7 @@ class TemporalAlignmentMixin:
         retrieved_aligned_timestamps = fresh_interface.get_timestamps()
         assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
 
-    def check_interface_align_starting_time_shifts_timestamps(self):
+    def check_shift_timestamps_by_start_time(self):
         """Ensure that internal mechanisms for shifting timestamps by a starting time work as expected."""
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
         unaligned_timestamps = fresh_interface.get_original_timestamps()
@@ -218,7 +218,7 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 
         check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
 
-    def check_temporal_alignment_in_nwbfile(self):
+    def check_nwbfile_temporal_alignment(self):
         nwbfile_path = str(
             self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
         )
@@ -297,7 +297,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             ):
                 assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
 
-    def check_interface_align_starting_time_shifts_timestamps(self):
+    def check_shift_timestamps_by_start_time(self):
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
         all_unaligned_timestamps = fresh_interface.get_timestamps()
 
@@ -339,44 +339,29 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
             )
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
-    def check_temporal_alignment(self):
-        if self.associated_recording_cls is None:
-            return
+    def test_interface_alignment(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
 
-        recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
-        self.interface.register_recording(recording_interface=recording_interface)
+                if self.associated_recording_cls is None:
+                    return
 
-        self.check_get_timestamps()
-        self.check_align_starting_time_internal()
-        self.check_align_timestamps_external()
+                recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
+                self.interface.register_recording(recording_interface=recording_interface)
 
-    def check_align_starting_time_internal(self):
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
+                self.check_interface_get_original_timestamps()
+                self.check_interface_get_timestamps()
+                self.check_interface_align_timestamps()
+                self.check_interface_align_starting_time_shifts_timestamps()
+                self.check_interface_align_timestamps_mutation()
 
-        original_t_starts = [
-            sorting_segment._t_start for sorting_segment in fresh_interface.sorting_extractor._sorting_segments
-        ]
-
-        starting_time = 1.23
-        fresh_interface.align_starting_time(starting_time=starting_time)
-
-        aligned_starting_times = [
-            sorting_segment._t_start for sorting_segment in fresh_interface.sorting_extractor._sorting_segments
-        ]
-        expected_starting_times = [starting_time + original_t_start for original_t_start in original_t_starts]
-        self.assertListEqual(list1=aligned_starting_times, list2=expected_starting_times)
-
-    def check_align_timestamps_external(self):
-        # normally this uses the 'original' timestamps, but SortingInterfaces don't have those so use fresh instead
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
-
-        recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
-        fresh_interface.register_recording(recording_interface=recording_interface)
-
-        unaligned_timestamps = fresh_interface.get_timestamps()
-
-        external_aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
-        fresh_interface.align_timestamps(aligned_timestamps=external_aligned_timestamps)
+                self.check_nwbfile_temporal_alignment()
 
 
 class AudioInterfaceTestMixin(DataInterfaceTestMixin):
