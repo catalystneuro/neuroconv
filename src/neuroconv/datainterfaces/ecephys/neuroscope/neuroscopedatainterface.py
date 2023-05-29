@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -34,26 +35,26 @@ def add_recording_extractor_properties(recording_extractor, xml_file_path: str, 
     if gain:
         recording_extractor.set_channel_gains(gain)
 
-    channel_groups = get_channel_groups(xml_file_path=xml_file_path)
+    channel_ids = recording_extractor.get_channel_ids()
+    channel_names = recording_extractor.get_property(key="channel_name")
+    channel_groups = [int(name.split("grp")[1]) for name in channel_names]
 
-    channel_map = {
-        channel_id: idx
-        for idx, channel_id in enumerate([channel_id for group in channel_groups for channel_id in group])
-    }
-    group_electrode_numbers = [x for channels in channel_groups for x, _ in enumerate(channels)]
-    group_nums = [n + 1 for n, channels in enumerate(channel_groups) for _ in channels]
-    group_names = [f"Group{n}" for n in group_nums]
+    channel_group_names = [f"Group{group_index}" for group_index in channel_groups]
+    recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
+    recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
 
-    channel_groups_mapped = [group_nums[channel_map[channel_id]] for channel_id in channel_map.keys()]
-    group_names_mapped = [group_names[channel_map[channel_id]] for channel_id in channel_map.keys()]
-    shank_electrode_number = [group_electrode_numbers[channel_map[channel_id]] for channel_id in channel_map.keys()]
+    unique_groups = set(channel_groups)
+    channel_id_to_shank_electrode_number = dict()
+    for group_index in unique_groups:
+        channel_in_groups = [
+            channel_id for channel_id, group in zip(channel_ids, channel_groups) if group == group_index
+        ]
+        channel_id_to_shank_electrode_number.update(
+            {channel_id: electrode_number for electrode_number, channel_id in enumerate(channel_in_groups)}
+        )
 
-    channel_ids_mapped = recording_extractor.get_channel_ids()
-    recording_extractor.set_property(key="group", ids=channel_ids_mapped, values=channel_groups_mapped)
-    recording_extractor.set_property(key="group_name", ids=channel_ids_mapped, values=group_names_mapped)
-    recording_extractor.set_property(
-        key="shank_electrode_number", ids=channel_ids_mapped, values=shank_electrode_number
-    )
+    group_electrode_numbers = [channel_id_to_shank_electrode_number[channel_id] for channel_id in channel_ids]
+    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=group_electrode_numbers)
 
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
