@@ -131,7 +131,7 @@ def test_expand_paths_ibl(tmpdir):
     with open(expected_file_path, "r") as f:
         expected = json.load(f)
     for entry in expected:
-        for source_data in entry["source_data"].values(): # update paths with base_directory
+        for source_data in entry["source_data"].values():  # update paths with base_directory
             if "file_path" in source_data.keys():
                 source_data["file_path"] = str(base_directory / source_data["file_path"])
             if "folder_path" in source_data.keys():
