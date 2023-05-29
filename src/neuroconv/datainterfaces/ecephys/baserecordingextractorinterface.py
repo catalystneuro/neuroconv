@@ -135,7 +135,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         timestamps: numpy.ndarray or list of numpy.ndarray
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
-        new_recording = self.get_extractor()(**self.source_data)
+        new_recording = self.get_extractor()(
+            **{keyword: value for keyword, value in self.source_data.items() if keyword not in ["verbose", "es_key"]}
+        )
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:

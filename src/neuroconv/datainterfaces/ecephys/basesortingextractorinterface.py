@@ -135,11 +135,19 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 )
 
     def align_starting_time(self, starting_time: float):
-        for sorting_segment in self.sorting_extractor._sorting_segments:
-            if sorting_segment._t_start is None:
-                sorting_segment._t_start = starting_time
+        if self.sorting_extractor.has_recording():
+            if self._number_of_segments == 1:
+                self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
             else:
-                sorting_segment._t_start += starting_time
+                self.align_timestamps(
+                    aligned_timestamps=[timestamps + starting_time for timestamps in self.get_timestamps()]
+                )
+        else:
+            for sorting_segment in self.sorting_extractor._sorting_segments:
+                if sorting_segment._t_start is None:
+                    sorting_segment._t_start = starting_time
+                else:
+                    sorting_segment._t_start += starting_time
 
     def subset_sorting(self):
         max_min_spike_time = max(
