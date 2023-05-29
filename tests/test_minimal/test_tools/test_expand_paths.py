@@ -1,9 +1,11 @@
 import json
+import unittest
 from datetime import datetime
 from pathlib import Path
 
 from neuroconv.tools import LocalPathExpander
 from neuroconv.tools.testing import generate_path_expander_demo_ibl
+from neuroconv.utils import NWBMetaDataEncoder
 
 
 def test_expand_paths(tmpdir):
@@ -110,7 +112,7 @@ def test_expand_paths_ibl(tmpdir):
     base_directory = Path(tmpdir)
 
     # NOTE: empty brackets used b/c for some reason NR_0021/2022-06-30/ subdir is 002/ instead of 001/
-    out = expander.expand_paths(
+    path_expansion_results = expander.expand_paths(
         dict(
             ibl_video_file=dict(
                 base_directory=base_directory,
@@ -122,25 +124,18 @@ def test_expand_paths_ibl(tmpdir):
             ),
         ),
     )
+    path_expansion_results = json.loads(json.dumps(path_expansion_results, cls=NWBMetaDataEncoder))
 
     # build expected output from file
     expected_file_path = Path(__file__).parent / "expand_paths_ibl_expected.json"
     with open(expected_file_path, "r") as f:
         expected = json.load(f)
     for entry in expected:
-        if "NWBFile" in entry["metadata"]:  # `datetime` is not JSON serializable, so convert from string
-            if "session_start_time" in entry["metadata"]["NWBFile"]:
-                datetime_str = entry["metadata"]["NWBFile"].pop("session_start_time")
-                entry["metadata"]["NWBFile"]["session_start_time"] = datetime.strptime(
-                    datetime_str, "%Y-%m-%d %H:%M:%S.%f"
-                )
-        for source_data in entry["source_data"].values():  # update paths with base_directory
+        for source_data in entry["source_data"].values(): # update paths with base_directory
             if "file_path" in source_data.keys():
                 source_data["file_path"] = str(base_directory / source_data["file_path"])
             if "folder_path" in source_data.keys():
                 source_data["folder_path"] = str(base_directory / source_data["folder_path"])
 
-    # test results
-    for x in out:
-        assert x in expected
-    assert len(out) == len(expected)
+    tc = unittest.TestCase()
+    tc.assertCountEqual(path_expansion_results, expected)
