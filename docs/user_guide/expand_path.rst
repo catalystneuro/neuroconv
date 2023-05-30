@@ -155,7 +155,8 @@ the format ``yymmdd`` (``170818``, ``170815``, etc). We can use
 :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find both the LFP data files and the sorted unit
 spiking and extract their corresponding subject IDs and session start times. For the sorted unit spiking, we'll search
 for a matching ``folder_path`` instead of a ``file_path``, as ``neuroconv`` interfaces for such data, like
-``NeuroScopeSortingInterface``, expect a ``folder_path`` as input.
+:py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeSortingInterface`, expect a 
+``folder_path`` as input.
 
 .. code-block:: python
 
@@ -241,15 +242,15 @@ cameras, stored in the following directory structure.
     ¦   ...
 
 We can use :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find these left camera video files and
-extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and a hash that we'll treat as
-the session ID (though in actuality it is an object-specific identifier).
+extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and a session number (``001`` for 
+both files shown).
 
 .. code-block:: python
 
     source_data_spec = {
         "IBL_video": {
             "base_directory": "/steinmetzlab/",
-            "file_path": "Subjects/{subject_id}/{session_start_time:%Y-%m-%d}/001/raw_video_data/_iblrig_leftCamera.raw.{session_id}.mp4"
+            "file_path": "Subjects/{subject_id}/{session_start_time:%Y-%m-%d}/{session_id}/raw_video_data/_iblrig_leftCamera.raw.{}.mp4"
         }
     }
     path_expander = LocalPathExpander()
@@ -268,7 +269,7 @@ The ``metadata_list`` now contains the information extracted for each matching f
         },
         "metadata": {
             "NWBFile": {
-                "session_id": "6252a2f0-c10f-4e49-b085-75749ba29c35",
+                "session_id": "001",
                 "session_start_time": datetime.datetime(2022, 3, 22, 0, 0)
             },
             "Subject": {
@@ -278,8 +279,8 @@ The ``metadata_list`` now contains the information extracted for each matching f
     }
 
 If you would like to experiment locally with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`, we
-provide a helper method in ``neuroconv.tools.testing`` that partially replicates the directory structure of
-the IBL data with dummy files on your machine.
+provide a helper method in :py:mod:`neuroconv.tools.testing <neuroconv.tools.testing.mock_files>` that partially 
+replicates the directory structure of the IBL data with dummy files on your machine.
 
 .. code-block:: python
 
