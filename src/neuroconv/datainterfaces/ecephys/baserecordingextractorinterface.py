@@ -163,7 +163,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def align_timestamps(self, aligned_timestamps: Union[np.ndarray, List[np.ndarray]]) -> None:
+    def align_timestamps(self, aligned_timestamps: np.ndarray):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
@@ -174,18 +174,22 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         aligned_timestamps : numpy.ndarray or list of numpy.ndarray
             The synchronized timestamps for data in this interface.
         """
-        if self._number_of_segments == 1:
-            self.recording_extractor.set_times(times=aligned_timestamps)
-        else:
-            assert isinstance(
-                aligned_timestamps, list
-            ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
-            assert (
-                len(aligned_timestamps) == self._number_of_segments
-            ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+        assert (
+            self._number_of_segments == 1
+        ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
 
-            for segment_index in range(self._number_of_segments):
-                self.recording_extractor.set_times(times=aligned_timestamps[segment_index], segment_index=segment_index)
+        self.recording_extractor.set_times(times=aligned_timestamps)
+
+    def align_segment_timestamps(self, aligned_timestamps: List[np.ndarray]):
+        assert isinstance(
+            aligned_timestamps, list
+        ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
+        assert (
+            len(aligned_timestamps) == self._number_of_segments
+        ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+
+        for segment_index in range(self._number_of_segments):
+            self.recording_extractor.set_times(times=aligned_timestamps[segment_index], segment_index=segment_index)
 
     def align_starting_time(self, starting_time: float):
         if self._number_of_segments == 1:
@@ -193,6 +197,18 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             self.align_timestamps(
                 aligned_timestamps=[timestamps + starting_time for timestamps in self.get_timestamps()]
+            )
+
+    def align_segment_starting_times(self, starting_times: List[float]):
+        assert (
+            len(starting_times) == self._number_of_segments
+        ), "The length of the starting_times ({len(starting_times)}) does not match the number of segments ({self._number_of_segments})!"
+
+        if self._number_of_segments == 1:
+            self.align_starting_time(starting_time=starting_times[0])
+        else:
+            self.align_segment_timestamps(
+                aligned_timestamps=[timestamps + starting_times[segment_index] for timestamps in self.get_timestamps()]
             )
 
     def align_by_interpolation(
