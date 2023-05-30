@@ -72,7 +72,7 @@ If your session start time is present in your data path, you can indicate this f
 ``"2021-01-02"`` and evaluate it to ``datetime.datetime(2021, 1, 2)``.
 
 Example Usage
------------------------
+----------------
 
 Below are some full examples of how this feature can be used on some organizational patterns taken from real datasets.
 
