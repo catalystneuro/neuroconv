@@ -39,7 +39,7 @@ def add_recording_extractor_properties(recording_extractor, xml_file_path: str, 
     channel_names = recording_extractor.get_property(key="channel_name")
     channel_groups = [int(name.split("grp")[1]) for name in channel_names]
 
-    channel_group_names = [f"Group{group_index}" for group_index in channel_groups]
+    channel_group_names = [f"Group{group_index + 1}" for group_index in channel_groups]
     recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
     recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
 
