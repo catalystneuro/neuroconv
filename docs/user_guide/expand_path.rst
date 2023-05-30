@@ -155,7 +155,7 @@ the format ``yymmdd`` (``170818``, ``170815``, etc). We can use
 :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find both the LFP data files and the sorted unit
 spiking and extract their corresponding subject IDs and session start times. For the sorted unit spiking, we'll search
 for a matching ``folder_path`` instead of a ``file_path``, as ``neuroconv`` interfaces for such data, like
-:py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeSortingInterface`, expect a 
+:py:class:`~neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface.NeuroScopeSortingInterface`, expect a
 ``folder_path`` as input.
 
 .. code-block:: python
@@ -242,7 +242,7 @@ cameras, stored in the following directory structure.
     ¦   ...
 
 We can use :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander` to find these left camera video files and
-extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and a session number (``001`` for 
+extract the subject ID, the session start time (formatted as ``yyyy-mm-dd``), and a session number (``001`` for
 both files shown).
 
 .. code-block:: python
@@ -279,7 +279,7 @@ The ``metadata_list`` now contains the information extracted for each matching f
     }
 
 If you would like to experiment locally with :py:class:`~neuroconv.tools.path_expansion.LocalPathExpander`, we
-provide a helper method in :py:mod:`neuroconv.tools.testing <neuroconv.tools.testing.mock_files>` that partially 
+provide a helper method in :py:mod:`neuroconv.tools.testing <neuroconv.tools.testing.mock_files>` that partially
 replicates the directory structure of the IBL data with dummy files on your machine.
 
 .. code-block:: python
