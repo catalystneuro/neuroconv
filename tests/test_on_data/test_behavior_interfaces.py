@@ -32,10 +32,19 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, un
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
-    def check_align_starting_time_internal(self):
+    def check_interface_get_original_timestamps(self):
         pass  # TODO in separate PR
 
-    def check_align_timestamps_internal(self):
+    def check_interface_get_timestamps(self):
+        pass  # TODO in separate PR
+
+    def check_interface_align_timestamps(self):
+        pass  # TODO in separate PR
+
+    def check_shift_timestamps_by_start_time(self):
+        pass  # TODO in separate PR
+
+    def check_nwbfile_temporal_alignment(self):
         pass  # TODO in separate PR
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -53,28 +62,6 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, un
             ]
 
             assert all(expected_pose_estimation_series_are_in_nwb_file)
-
-    def test_conversion_as_lone_interface(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
-
-                # Temporal alignment checks
-                # Temporary override to disable failing multi-segment case
-                # self.check_get_timestamps()
-                # self.check_align_starting_time_internal()
-                # self.check_align_starting_time_external()
 
 
 class TestVideoInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
@@ -94,42 +81,7 @@ class TestVideoInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittes
             video_type = Path(self.test_kwargs["file_paths"][0]).suffix[1:]
             assert f"Video: video_{video_type}" in nwbfile.acquisition
 
-    def check_align_starting_time_internal(self):
-        pass  # disabled since this interface follows a different strategy
-
-    def check_align_starting_time(self):
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
-
-        starting_time = 1.23
-        fresh_interface.align_timestamps(aligned_timestamps=fresh_interface.get_original_timestamps())
-        fresh_interface.align_starting_time(starting_time=starting_time)
-        all_aligned_timestamps = fresh_interface.get_timestamps()
-
-        unaligned_timestamps = fresh_interface.get_original_timestamps()
-        all_expected_timestamps = [timestamps + starting_time for timestamps in unaligned_timestamps]
-        [
-            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
-            for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps)
-        ]
-
-    def check_align_segment_starting_times(self):
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
-
-        segment_starting_times = [1.23 * file_path_index for file_path_index in range(len(self.test_kwargs))]
-        fresh_interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
-        all_aligned_timestamps = fresh_interface.get_timestamps()
-
-        unaligned_timestamps = fresh_interface.get_original_timestamps()
-        all_expected_timestamps = [
-            timestamps + segment_starting_time
-            for timestamps, segment_starting_time in zip(unaligned_timestamps, segment_starting_times)
-        ]
-        [
-            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
-            for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps)
-        ]
-
-    def check_align_timestamps_internal(self):
+    def check_interface_align_timestamps(self):
         all_unaligned_timestamps = self.interface.get_original_timestamps()
 
         aligned_timestamps = [
@@ -141,7 +93,57 @@ class TestVideoInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittes
         retrieved_aligned_timestamps = self.interface.get_timestamps()
         assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
 
-    def test_conversion_as_lone_interface(self):
+    def check_shift_timestamps_by_start_time(self):
+        self.setUpFreshInterface()
+
+        starting_time = 1.23
+        self.interface.align_timestamps(aligned_timestamps=self.interface.get_original_timestamps())
+        self.interface.align_starting_time(starting_time=starting_time)
+        all_aligned_timestamps = self.interface.get_timestamps()
+
+        unaligned_timestamps = self.interface.get_original_timestamps()
+        all_expected_timestamps = [timestamps + starting_time for timestamps in unaligned_timestamps]
+        [
+            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+            for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps)
+        ]
+
+    def check_align_segment_starting_times(self):
+        self.setUpFreshInterface()
+
+        segment_starting_times = [1.23 * file_path_index for file_path_index in range(len(self.test_kwargs))]
+        self.interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
+        all_aligned_timestamps = self.interface.get_timestamps()
+
+        unaligned_timestamps = self.interface.get_original_timestamps()
+        all_expected_timestamps = [
+            timestamps + segment_starting_time
+            for timestamps, segment_starting_time in zip(unaligned_timestamps, segment_starting_times)
+        ]
+        for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps):
+            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+
+    def check_interface_original_timestamps_inmutability(self):
+        self.setUpFreshInterface()
+
+        all_pre_alignment_original_timestamps = self.interface.get_original_timestamps()
+
+        all_aligned_timestamps = [
+            pre_alignment_original_timestamps + 1.23
+            for pre_alignment_original_timestamps in all_pre_alignment_original_timestamps
+        ]
+        self.interface.align_timestamps(aligned_timestamps=all_aligned_timestamps)
+
+        all_post_alignment_original_timestamps = self.interface.get_original_timestamps()
+        for post_alignment_original_timestamps, pre_alignment_original_timestamps in zip(
+            all_post_alignment_original_timestamps, all_pre_alignment_original_timestamps
+        ):
+            assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
+
+    def check_nwbfile_temporal_alignment(self):
+        pass  # TODO in separate PR
+
+    def test_interface_alignment(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
             interface_kwargs = [interface_kwargs]
@@ -149,18 +151,15 @@ class TestVideoInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittes
             with self.subTest(str(num)):
                 self.case = num
                 self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
-                self.check_get_timestamps()
-                self.check_align_starting_time()
+                self.check_interface_get_original_timestamps()
+                self.check_interface_get_timestamps()
+                self.check_interface_align_timestamps()
+                self.check_shift_timestamps_by_start_time()
+                self.check_interface_original_timestamps_inmutability()
                 self.check_align_segment_starting_times()
-                self.check_align_timestamps_internal()
+
+                self.check_nwbfile_temporal_alignment()
 
 
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
