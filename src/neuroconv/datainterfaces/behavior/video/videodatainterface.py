@@ -30,12 +30,27 @@ class VideoInterface(BaseDataInterface):
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
         """
+        super().__init__(file_paths=file_paths)
+
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
         self._number_of_files = len(file_paths)
+
+        total_frames_per_video = list()
+        fps_per_video = list()
+        for file_index, file_path in enumerate(file_paths):
+            with VideoCaptureContext(file_path=str(file_path)) as video_capture:
+                total_frames_per_video.append(video_capture.get_video_frame_count())
+                fps_per_video.append(video_capture.get_video_fps())
+
+        self._starting_frames = [0]
+        self._starting_frames.extend(
+            list(np.cumsum(total_frames_per_video[:-1]))
+        )  # start the count from 0 and do not include last
+        self._segment_starting_times = [
+            total_frames / fps for total_frames, fps in zip(self._starting_frames, fps_per_video)
+        ]
         self._timestamps = None
-        self._segment_starting_times = None
-        super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
