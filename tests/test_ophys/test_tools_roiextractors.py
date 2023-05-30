@@ -16,6 +16,7 @@ from numpy.typing import ArrayLike
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.device import Device
+from pynwb.ophys import OnePhotonSeries
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
     generate_dummy_segmentation_extractor,
@@ -27,9 +28,9 @@ from neuroconv.tools.roiextractors import (
     add_fluorescence_traces,
     add_image_segmentation,
     add_imaging_plane,
+    add_photon_series,
     add_plane_segmentation,
     add_summary_images,
-    add_two_photon_series,
     check_if_imaging_fits_into_memory,
 )
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
@@ -1121,7 +1122,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             assert_array_equal(roi_response_series[series_name].timestamps.data, times)
 
 
-class TestAddTwoPhotonSeries(TestCase):
+class TestAddPhotonSeries(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now().astimezone()
@@ -1172,7 +1173,7 @@ class TestAddTwoPhotonSeries(TestCase):
 
     def test_default_values(self):
         """Test adding two photon series with default values."""
-        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
+        add_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
 
         # Check data
         acquisition_modules = self.nwbfile.acquisition
@@ -1204,7 +1205,7 @@ class TestAddTwoPhotonSeries(TestCase):
             AssertionError,
             "'iterator_type' must be either 'v1', 'v2' (recommended), or None.",
         ):
-            add_two_photon_series(
+            add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.metadata,
@@ -1237,7 +1238,7 @@ class TestAddTwoPhotonSeries(TestCase):
 
     def test_non_iterative_two_photon(self):
         """Test adding two photon series with using DataChunkIterator as iterator type."""
-        add_two_photon_series(
+        add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -1257,7 +1258,7 @@ class TestAddTwoPhotonSeries(TestCase):
 
     def test_v1_iterator(self):
         """Test adding two photon series with using DataChunkIterator as iterator type."""
-        add_two_photon_series(
+        add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -1283,7 +1284,7 @@ class TestAddTwoPhotonSeries(TestCase):
         """Test that iterator options are propagated to the data chunk iterator."""
         buffer_shape = (20, 5, 5)
         chunk_shape = (10, 5, 5)
-        add_two_photon_series(
+        add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=self.metadata,
@@ -1301,7 +1302,7 @@ class TestAddTwoPhotonSeries(TestCase):
     def test_add_two_photon_series_roundtrip(self):
         metadata = self.metadata
 
-        add_two_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
+        add_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
 
         # Write the data to disk
         nwbfile_path = Path(mkdtemp()) / "two_photon_roundtrip.nwb"
@@ -1329,6 +1330,49 @@ class TestAddTwoPhotonSeries(TestCase):
             imaging_planes_in_file = read_nwbfile.imaging_planes
             assert self.imaging_plane_name in imaging_planes_in_file
             assert len(imaging_planes_in_file) == 1
+
+    def test_add_invalid_photon_series_type(self):
+        """Test error is raised when adding photon series with invalid 'photon_series_type'."""
+        with self.assertRaisesWith(
+            AssertionError,
+            "'photon_series_type' must be either 'OnePhotonSeries' or 'TwoPhotonSeries'.",
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.metadata,
+                photon_series_type="invalid",
+            )
+
+    def test_add_one_photon_series(self):
+        """Test adding one photon series with metadata."""
+
+        one_photon_series_name = "one_photon_series_name"
+        one_photon_series_metadata = dict(
+            name=one_photon_series_name,
+            pmt_gain=60.0,
+            binning=2,
+            power=500.0,
+            imaging_plane=self.imaging_plane_name,
+            unit="n.a.",
+        )
+        metadata = deepcopy(self.metadata)
+        _ = metadata["Ophys"].pop("TwoPhotonSeries")
+        metadata["Ophys"].update(OnePhotonSeries=[one_photon_series_metadata])
+
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=metadata,
+            photon_series_type="OnePhotonSeries",
+        )
+        self.assertIn(one_photon_series_name, self.nwbfile.acquisition)
+        one_photon_series = self.nwbfile.acquisition[one_photon_series_name]
+        self.assertIsInstance(one_photon_series, OnePhotonSeries)
+        self.assertEqual(one_photon_series.pmt_gain, 60.0)
+        self.assertEqual(one_photon_series.binning, 2)
+        self.assertEqual(one_photon_series.power, 500.0)
+        self.assertEqual(one_photon_series.unit, "n.a.")
 
 
 class TestAddSummaryImages(unittest.TestCase):
