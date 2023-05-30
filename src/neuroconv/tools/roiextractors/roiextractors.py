@@ -1,6 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import Optional
+from typing import Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -18,6 +18,7 @@ from pynwb.ophys import (
     Fluorescence,
     ImageSegmentation,
     ImagingPlane,
+    OnePhotonSeries,
     OpticalChannel,
     PlaneSegmentation,
     RoiResponseSeries,
@@ -83,6 +84,12 @@ def get_default_ophys_metadata() -> dict:
         unit="n.a.",
     )
 
+    default_one_photon_series = dict(
+        name="OnePhotonSeries",
+        description="Imaging data from one-photon excitation microscopy.",
+        unit="n.a.",
+    )
+
     default_image_segmentation = dict(
         name="ImageSegmentation",
         plane_segmentations=[
@@ -101,13 +108,17 @@ def get_default_ophys_metadata() -> dict:
             ImageSegmentation=default_image_segmentation,
             ImagingPlane=[default_imaging_plane],
             TwoPhotonSeries=[default_two_photon_series],
+            OnePhotonSeries=[default_one_photon_series],
         ),
     )
 
     return metadata
 
 
-def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
+def get_nwb_imaging_metadata(
+    imgextractor: ImagingExtractor,
+    photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+) -> dict:
     """
     Convert metadata from the ImagingExtractor into nwb specific metadata.
 
@@ -135,10 +146,16 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
             )
 
     # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()))
+    metadata["Ophys"][photon_series_type][0].update(dimension=list(imgextractor.get_image_size()))
 
     plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
-    metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
+    metadata["Ophys"][photon_series_type][0]["imaging_plane"] = plane_name
+
+    if photon_series_type == "TwoPhotonSeries":
+        photon_series_to_pop = "OnePhotonSeries"
+    else:
+        photon_series_to_pop = "TwoPhotonSeries"
+    _ = metadata["Ophys"].pop(photon_series_to_pop)
 
     # remove what Segmentation extractor will input:
     _ = metadata["Ophys"].pop("ImageSegmentation")
@@ -269,11 +286,12 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     return nwbfile
 
 
-def add_two_photon_series(
+def add_photon_series(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict,
-    two_photon_series_index: int = 0,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+    photon_series_index: int = 0,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
@@ -295,50 +313,61 @@ def add_two_photon_series(
     iterator_options = iterator_options or dict()
 
     metadata_copy = deepcopy(metadata)
-    metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy, append_list=False)
+    assert photon_series_type in [
+        "OnePhotonSeries",
+        "TwoPhotonSeries",
+    ], "'photon_series_type' must be either 'OnePhotonSeries' or 'TwoPhotonSeries'."
+    metadata_copy = dict_deep_update(
+        get_nwb_imaging_metadata(imaging, photon_series_type=photon_series_type), metadata_copy, append_list=False
+    )
 
-    # Tests if TwoPhotonSeries already exists in acquisition
-    two_photon_series_metadata = metadata_copy["Ophys"]["TwoPhotonSeries"][two_photon_series_index]
-    two_photon_series_name = two_photon_series_metadata["name"]
+    # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
+    photon_series_metadata = metadata_copy["Ophys"][photon_series_type][photon_series_index]
+    photon_series_name = photon_series_metadata["name"]
 
-    if two_photon_series_name in nwbfile.acquisition:
-        warn(f"{two_photon_series_name} already on nwbfile")
+    if photon_series_name in nwbfile.acquisition:
+        warn(f"{photon_series_name} already on nwbfile")
         return nwbfile
 
     # Add the image plane to nwb
     nwbfile = add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy)
-    imaging_plane_name = two_photon_series_metadata["imaging_plane"]
+    imaging_plane_name = photon_series_metadata["imaging_plane"]
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
-    two_photon_series_metadata.update(imaging_plane=imaging_plane)
+    photon_series_metadata.update(imaging_plane=imaging_plane)
 
     # Add the data
-    two_p_series_kwargs = two_photon_series_metadata
+    photon_series_kwargs = photon_series_metadata
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
     data = H5DataIO(data=frames_to_iterator, compression=True)
-    two_p_series_kwargs.update(data=data)
+    photon_series_kwargs.update(data=data)
 
     # Add dimension
-    two_p_series_kwargs.update(dimension=imaging.get_image_size())
+    photon_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
     if imaging.has_time_vector():
         timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
         estimated_rate = calculate_regular_series_rate(series=timestamps)
         if estimated_rate:
-            two_p_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+            photon_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
-            two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            photon_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
         rate = float(imaging.get_sampling_frequency())
-        two_p_series_kwargs.update(starting_time=0.0, rate=rate)
+        photon_series_kwargs.update(starting_time=0.0, rate=rate)
 
     # Add the TwoPhotonSeries to the nwbfile
-    two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
-    nwbfile.add_acquisition(two_photon_series)
+    photon_series = dict(
+        OnePhotonSeries=OnePhotonSeries,
+        TwoPhotonSeries=TwoPhotonSeries,
+    )[
+        photon_series_type
+    ](**photon_series_kwargs)
+    nwbfile.add_acquisition(photon_series)
 
     return nwbfile
 
@@ -429,6 +458,7 @@ def write_imaging(
     verbose: bool = True,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
@@ -492,10 +522,11 @@ def write_imaging(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         add_devices(nwbfile=nwbfile_out, metadata=metadata)
-        add_two_photon_series(
+        add_photon_series(
             imaging=imaging,
             nwbfile=nwbfile_out,
             metadata=metadata,
+            photon_series_type=photon_series_type,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
