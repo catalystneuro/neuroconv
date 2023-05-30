@@ -44,6 +44,9 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, un
     def check_shift_timestamps_by_start_time(self):
         pass  # TODO in separate PR
 
+    def check_interface_original_timestamps_inmutability(self):
+        pass  # TODO in separate PR
+
     def check_nwbfile_temporal_alignment(self):
         pass  # TODO in separate PR
 

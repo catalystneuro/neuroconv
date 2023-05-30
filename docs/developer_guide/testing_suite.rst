@@ -58,24 +58,41 @@ These can be run in isolation using ``pip install -e neuroconv[test,<modality>]`
 
 
 
-On Data
--------
+Testing On Example Data
+-----------------------
 
-For proprietary formats, we regularly test our conversions against small snippets of real data. To reduce the
-complexity of the testing suite, the tests simply assume that the example datasets exist somewhere on your system.
-These can each by downloaded using `Datalad <https://www.datalad.org/>`_ and the example datasets can be found at
+For proprietary formats, we regularly test our conversions against small snippets of real data, stored somewhere on
+your local system. These can each by downloaded using `Datalad <https://www.datalad.org/>`_
 
 For electrophysiology data
 """"""""""""""""""""""""""
-``datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data``
+.. code:: bash
+
+    datalad install -rg https://gin.g-node.org/NeuralEnsemble/ephy_testing_data
 
 For optical physiology data
 """""""""""""""""""""""""""
-``datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data``
+.. code:: bash
+
+    datalad install -rg https://gin.g-node.org/CatalystNeuro/ophys_testing_data
+
 
 For behavioral data
 """""""""""""""""""
-``datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data``
+.. code:: bash
+
+    datalad install -rg https://gin.g-node.org/CatalystNeuro/behavior_testing_data
+
+
+Update existing test data
+"""""""""""""""""""""""""
+If you have downloaded these data repositories previously and want to update them, ``cd`` into the directory you want
+to update and run
+
+.. code:: bash
+
+    datalad update --how=ff-only --reobtain-data
+
 
 Once the data is downloaded to your system, you must manually modify the testing config file
 (`example <https://github.com/catalystneuro/neuroconv/blob/main/base_gin_test_config.json>`_). This file should be
