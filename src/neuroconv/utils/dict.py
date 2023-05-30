@@ -57,44 +57,6 @@ def exist_dict_in_list(d, ls):
     return any([d == i for i in ls])
 
 
-def get_metadata_value(d: dict, *args):
-    """
-    Select the value corresponding to the first requested keyword that exists
-
-    In cases where metadata structures have changed over time, a value might exist under one of several possible
-    keywords.
-
-    Parameters
-    ----------
-    d : dict
-        The dictionary from which to select values
-    args
-        The set of keywords from which to attempt selecting a value. Keywords are attempted in order, and the first
-        matching keyword's val will be taken
-
-    Returns
-    -------
-    obj : the value of the first requested keyword to exist
-
-    Raises
-    ------
-    ValueError : if none of the requested keywords exist in the dictionary
-
-    Example
-    -------
-    >>> d = {"system.framerate": 3.4}
-    >>> get_metadata_value(d, "SI.frame_rate", "SI.framerate", "system.framerate")
-        3.4
-
-    >>> get_metadata_value(d, "asdf", "fghy")
-        ValueError("No requested keyword found in dictionary")
-    """
-    for kw in args:
-        if kw in d.keys():
-            return d.get(kw)
-    raise ValueError("No requested keyword found in dictionary")
-
-
 def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool = True, remove_repeats: bool = True):
     """
     Update the list ls with the dict d.
