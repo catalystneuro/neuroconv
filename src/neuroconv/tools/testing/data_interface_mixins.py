@@ -158,8 +158,8 @@ class TemporalAlignmentMixin:
         self.setUpFreshInterface()
         unaligned_timestamps = self.interface.get_timestamps()
 
-        np.random.default_rng(seed=0)
-        aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
+        generator = np.random.default_rng(seed=0)
+        aligned_timestamps = unaligned_timestamps + 1.23 + generator.random(size=unaligned_timestamps.shape)
         self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
 
         retrieved_aligned_timestamps = self.interface.get_timestamps()
@@ -281,17 +281,20 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
     def check_interface_align_timestamps(self):
         fresh_interface = self.data_interface_cls(**self.test_kwargs)
+        generator = np.random.default_rng(seed=0)
         if fresh_interface._number_of_segments == 1:
             unaligned_timestamps = self.interface.get_timestamps()
-            aligned_timestamps = unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
+
+            aligned_timestamps = unaligned_timestamps + 1.23 + generator.random(size=unaligned_timestamps.shape)
             self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
         else:
             all_unaligned_timestamps = self.interface.get_timestamps()
+
             all_aligned_timestamps = [
-                unaligned_timestamps + 1.23 + np.random.random(size=unaligned_timestamps.shape)
+                unaligned_timestamps + 1.23 + generator.random(size=unaligned_timestamps.shape)
                 for unaligned_timestamps in all_unaligned_timestamps
             ]
             self.interface.align_timestamps(aligned_timestamps=all_aligned_timestamps)
