@@ -1,11 +1,12 @@
 import json
+import datetime
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType, get_metadata_value
+from ....utils import FilePathType
 
 
 def extract_extra_metadata(file_path) -> dict:
@@ -53,11 +54,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         self.image_metadata = extract_extra_metadata(file_path=file_path)
 
-        try:
-            sampling_frequency = float(
-                get_metadata_value(self.image_metadata, "state.acq.frameRate", "SI.hRoiManager.scanFrameRate")
-            )
-        except ValueError:
+        if "state.acq.frameRate" in self.image_metadata:
+            sampling_frequency = float(self.image_metadata["state.acq.frameRate"])
+        elif "SI.hRoiManager.scanFrameRate" in self.image_metadata:
+            sampling_frequency = float(self.image_metadata["SI.hRoiManager.scanFrameRate"])
+        else:
             assert_msg = (
                 "sampling frequency not found in image metadata, "
                 "input the frequency using the argument `fallback_sampling_frequency`"
@@ -72,16 +73,18 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         metadata = super().get_metadata()
 
-        try:
-            extracted_session_start_time = get_metadata_value(
-                self.image_metadata,
-                "state.internal.triggerTimeString",
-                "epoch",
+        if "state.internal.triggerTimeString" in self.image_metadata:
+            extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
+            metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
+        elif "epoch" in self.image_metadata:
+            # Versions of ScanImage at least as recent as 2020, and possibly earlier, store the start time under keyword
+            # `epoch`, as a string encoding of a Matlab array, example `'[2022  8  8 16 56 7.329]'`
+            # dateparse can't cope with this representation, so using strptime directly
+            extracted_session_start_time = datetime.datetime.strptime(
+                self.image_metadata["epoch"],
+                '[%Y %m %d %H %M %S.%f]'
             )
             metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
-        except ValueError:
-            # If not present, ignore this aspect
-            pass
 
         # Extract many scan image properties and attach them as dic in the description
         ophys_metadata = metadata["Ophys"]
