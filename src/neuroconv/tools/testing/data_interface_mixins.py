@@ -127,6 +127,10 @@ class TemporalAlignmentMixin:
     This mixin must be paired with a unittest.TestCase class.
     """
 
+    data_interface_cls: Type[BaseDataInterface]
+    interface_kwargs: Union[dict, List[dict]]
+    maxDiff = None
+
     def setUpFreshInterface(self):
         """Protocol for creating a fresh instance of the interface."""
         self.interface = self.data_interface_cls(**self.test_kwargs)
@@ -158,8 +162,10 @@ class TemporalAlignmentMixin:
         self.setUpFreshInterface()
         unaligned_timestamps = self.interface.get_timestamps()
 
-        generator = np.random.default_rng(seed=0)
-        aligned_timestamps = unaligned_timestamps + 1.23 + generator.random(size=unaligned_timestamps.shape)
+        random_number_generator = np.random.default_rng(seed=0)
+        aligned_timestamps = (
+            unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+        )
         self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
 
         retrieved_aligned_timestamps = self.interface.get_timestamps()
@@ -280,12 +286,15 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                     check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
 
     def check_interface_align_timestamps(self):
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
-        generator = np.random.default_rng(seed=0)
+        self.setUpFreshInterface()
+
+        random_number_generator = np.random.default_rng(seed=0)
         if fresh_interface._number_of_segments == 1:
             unaligned_timestamps = self.interface.get_timestamps()
 
-            aligned_timestamps = unaligned_timestamps + 1.23 + generator.random(size=unaligned_timestamps.shape)
+            aligned_timestamps = (
+                unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+            )
             self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
@@ -294,7 +303,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             all_unaligned_timestamps = self.interface.get_timestamps()
 
             all_aligned_timestamps = [
-                unaligned_timestamps + 1.23 + generator.random(size=unaligned_timestamps.shape)
+                unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
                 for unaligned_timestamps in all_unaligned_timestamps
             ]
             self.interface.align_timestamps(aligned_timestamps=all_aligned_timestamps)
@@ -306,18 +315,18 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
 
     def check_shift_timestamps_by_start_time(self):
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
-        all_unaligned_timestamps = fresh_interface.get_timestamps()
+        self.setUpFreshInterface()
+        all_unaligned_timestamps = self.interface.get_timestamps()
 
         starting_time = 1.23
-        fresh_interface.align_starting_time(starting_time=starting_time)
+        self.interface.align_starting_time(starting_time=starting_time)
 
         if fresh_interface._number_of_segments == 1:
-            aligned_timestamps = fresh_interface.get_timestamps()
+            aligned_timestamps = self.interface.get_timestamps()
             expected_timestamps = all_unaligned_timestamps + starting_time
             assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
         else:
-            all_aligned_timestamps = fresh_interface.get_timestamps()
+            all_aligned_timestamps = self.interface.get_timestamps()
             all_expected_timestamps = [
                 unaligned_timestamps + starting_time for unaligned_timestamps in all_unaligned_timestamps
             ]
@@ -327,25 +336,25 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
     def check_interface_original_timestamps_inmutability(self):
         """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
-        fresh_interface = self.data_interface_cls(**self.test_kwargs)
+        self.setUpFreshInterface()
 
         if fresh_interface._number_of_segments == 1:
-            pre_alignment_original_timestamps = fresh_interface.get_original_timestamps()
+            pre_alignment_original_timestamps = self.interface.get_original_timestamps()
 
             aligned_timestamps = pre_alignment_original_timestamps + 1.23
-            fresh_interface.align_timestamps(aligned_timestamps=aligned_timestamps)
+            self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)
 
-            post_alignment_original_timestamps = fresh_interface.get_original_timestamps()
+            post_alignment_original_timestamps = self.interface.get_original_timestamps()
             assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
         else:
-            all_pre_alignement_timestamps = fresh_interface.get_original_timestamps()
+            all_pre_alignement_timestamps = self.interface.get_original_timestamps()
 
             all_aligned_timestamps = [
                 unaligned_timestamps + 1.23 for unaligned_timestamps in all_pre_alignement_timestamps
             ]
-            fresh_interface.align_timestamps(aligned_timestamps=all_aligned_timestamps)
+            self.interface.align_timestamps(aligned_timestamps=all_aligned_timestamps)
 
-            all_post_alignment_original_timestamps = fresh_interface.get_original_timestamps()
+            all_post_alignment_original_timestamps = self.interface.get_original_timestamps()
             for post_alignment_original_timestamps, pre_alignment_original_timestamps in zip(
                 all_post_alignment_original_timestamps, all_pre_alignement_timestamps
             ):
