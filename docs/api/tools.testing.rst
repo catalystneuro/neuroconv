@@ -13,3 +13,7 @@ Mock Interfaces
 Mock TTL Signals
 ----------------
 .. automodule:: neuroconv.tools.testing.mock_ttl_signals
+
+Mock Files
+----------
+.. automodule:: neuroconv.tools.testing.mock_files
