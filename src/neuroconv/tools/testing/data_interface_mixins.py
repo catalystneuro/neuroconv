@@ -289,7 +289,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         self.setUpFreshInterface()
 
         random_number_generator = np.random.default_rng(seed=0)
-        if fresh_interface._number_of_segments == 1:
+        if self.interface._number_of_segments == 1:
             unaligned_timestamps = self.interface.get_timestamps()
 
             aligned_timestamps = (
@@ -321,7 +321,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         starting_time = 1.23
         self.interface.align_starting_time(starting_time=starting_time)
 
-        if fresh_interface._number_of_segments == 1:
+        if self.interface._number_of_segments == 1:
             aligned_timestamps = self.interface.get_timestamps()
             expected_timestamps = all_unaligned_timestamps + starting_time
             assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
@@ -338,7 +338,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         """Check aligning the timestamps for the interface does not change the value of .get_original_timestamps()."""
         self.setUpFreshInterface()
 
-        if fresh_interface._number_of_segments == 1:
+        if self.interface._number_of_segments == 1:
             pre_alignment_original_timestamps = self.interface.get_original_timestamps()
 
             aligned_timestamps = pre_alignment_original_timestamps + 1.23
