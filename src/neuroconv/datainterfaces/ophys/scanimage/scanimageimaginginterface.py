@@ -1,5 +1,5 @@
-import json
 import datetime
+import json
 from typing import Optional
 
 from dateutil.parser import parse as dateparse
@@ -81,8 +81,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             # `epoch`, as a string encoding of a Matlab array, example `'[2022  8  8 16 56 7.329]'`
             # dateparse can't cope with this representation, so using strptime directly
             extracted_session_start_time = datetime.datetime.strptime(
-                self.image_metadata["epoch"],
-                '[%Y %m %d %H %M %S.%f]'
+                self.image_metadata["epoch"], "[%Y %m %d %H %M %S.%f]"
             )
             metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
 
