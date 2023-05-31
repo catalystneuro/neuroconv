@@ -124,7 +124,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def get_original_timestamps(self) -> np.ndarray:
         new_recording = self.get_extractor()(
             folder_path=self.source_data["folder_path"], stream_id=self.source_data["stream_id"]
-        )
+        )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:

@@ -87,9 +87,9 @@ class TestVideoInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittes
     def check_interface_align_timestamps(self):
         all_unaligned_timestamps = self.interface.get_original_timestamps()
 
-        generator = np.random.default_rng(seed=0)
+        random_number_generator = np.random.default_rng(seed=0)
         aligned_timestamps = [
-            unaligned_timestamps + 1.23 + generator.random(size=unaligned_timestamps.shape)
+            unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
             for unaligned_timestamps in all_unaligned_timestamps
         ]
         self.interface.align_timestamps(aligned_timestamps=aligned_timestamps)

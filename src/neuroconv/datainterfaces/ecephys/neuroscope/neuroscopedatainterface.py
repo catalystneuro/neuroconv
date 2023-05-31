@@ -130,6 +130,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        # TODO: add generic method for aliasing from NeuroConv signature to SI init
         new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
         if self._number_of_segments == 1:
             return new_recording.get_times()
