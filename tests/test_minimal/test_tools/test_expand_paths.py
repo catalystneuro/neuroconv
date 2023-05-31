@@ -1,7 +1,11 @@
+import json
+import unittest
 from datetime import datetime
 from pathlib import Path
 
 from neuroconv.tools import LocalPathExpander
+from neuroconv.tools.testing import generate_path_expander_demo_ibl
+from neuroconv.utils import NWBMetaDataEncoder
 
 
 def test_expand_paths(tmpdir):
@@ -98,3 +102,40 @@ def test_expand_paths(tmpdir):
     for x in string_directory_out:
         assert x in expected
     assert len(string_directory_out) == len(expected)
+
+
+def test_expand_paths_ibl(tmpdir):
+    expander = LocalPathExpander()
+
+    # set up IBL Steinmetz video file structure
+    generate_path_expander_demo_ibl(tmpdir)
+    base_directory = Path(tmpdir)
+
+    # NOTE: empty brackets used b/c for some reason NR_0021/2022-06-30/ subdir is 002/ instead of 001/
+    path_expansion_results = expander.expand_paths(
+        dict(
+            ibl_video_file=dict(
+                base_directory=base_directory,
+                file_path="steinmetzlab/Subjects/{subject_id}/{session_start_time:%Y-%m-%d}/{}/raw_video_data/_iblrig_leftCamera.raw.{session_id}.mp4",
+            ),
+            ibl_video_directory=dict(
+                base_directory=base_directory,
+                folder_path="steinmetzlab/Subjects/{subject_id}/{session_start_time:%Y-%m-%d}/{}/raw_video_data",
+            ),
+        ),
+    )
+    path_expansion_results = json.loads(json.dumps(path_expansion_results, cls=NWBMetaDataEncoder))
+
+    # build expected output from file
+    expected_file_path = Path(__file__).parent / "expand_paths_ibl_expected.json"
+    with open(expected_file_path, "r") as f:
+        expected = json.load(f)
+    for entry in expected:
+        for source_data in entry["source_data"].values():  # update paths with base_directory
+            if "file_path" in source_data.keys():
+                source_data["file_path"] = str(base_directory / source_data["file_path"])
+            if "folder_path" in source_data.keys():
+                source_data["folder_path"] = str(base_directory / source_data["folder_path"])
+
+    tc = unittest.TestCase()
+    tc.assertCountEqual(path_expansion_results, expected)
