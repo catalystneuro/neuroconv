@@ -1,7 +1,7 @@
 from datetime import datetime
-from platform import python_version, system
+from platform import python_version
 from sys import platform
-from unittest import skip, skipIf, skipUnless
+from unittest import skip, skipIf
 
 import jsonschema
 from hdmf.testing import TestCase
@@ -84,7 +84,7 @@ class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     save_directory = OUTPUT_PATH
 
 
-@skipIf(platform == "darwin", reason="Not supported for OSX")
+@skipIf(platform == "darwin", reason="Not supported for OSX.")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf"))
@@ -93,23 +93,36 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
-    def check_temporal_alignment(self):
-        self.check_get_timestamps()
-        # TODO - debug hanging I/O from pyedflib
-        # self.check_align_starting_time_internal()
-        # self.check_align_starting_time_external()
+    def test_interface_alignment(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+
+                # TODO - debug hanging I/O from pyedflib
+                # self.check_interface_get_original_timestamps()
+                # self.check_interface_get_timestamps()
+                # self.check_align_starting_time_internal()
+                # self.check_align_starting_time_external()
+                # self.check_interface_align_timestamps()
+                # self.check_shift_timestamps_by_start_time()
+                # self.check_interface_original_timestamps_inmutability()
+
+                self.check_nwbfile_temporal_alignment()
 
 
 class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = IntanRecordingInterface
     interface_kwargs = [
-        dict(file_path=str(DATA_PATH / "intan" / f"intan_rhd_test_1.rhd")),
-        dict(file_path=str(DATA_PATH / "intan" / f"intan_rhs_test_1.rhs")),
+        dict(file_path=str(DATA_PATH / "intan" / "intan_rhd_test_1.rhd")),
+        dict(file_path=str(DATA_PATH / "intan" / "intan_rhs_test_1.rhs")),
     ]
     save_directory = OUTPUT_PATH
 
 
-# @skipUnless(system() == "Linux", reason="MaxOneRecordingInterface is only supported on Linux.")
 @skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = MaxOneRecordingInterface
