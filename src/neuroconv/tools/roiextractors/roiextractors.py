@@ -358,8 +358,8 @@ def add_photon_series(
     )
 
     # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
-    photon_series_metadata = metadata_copy["Ophys"][photon_series_type][photon_series_index]
-    photon_series_name = photon_series_metadata["name"]
+    photon_series_kwargs = metadata_copy["Ophys"][photon_series_type][photon_series_index]
+    photon_series_name = photon_series_kwargs["name"]
 
     if photon_series_name in nwbfile.acquisition:
         warn(f"{photon_series_name} already on nwbfile")
@@ -367,12 +367,11 @@ def add_photon_series(
 
     # Add the image plane to nwb
     nwbfile = add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy)
-    imaging_plane_name = photon_series_metadata["imaging_plane"]
+    imaging_plane_name = photon_series_kwargs["imaging_plane"]
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
-    photon_series_metadata.update(imaging_plane=imaging_plane)
+    photon_series_kwargs.update(imaging_plane=imaging_plane)
 
     # Add the data
-    photon_series_kwargs = photon_series_metadata
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging,
         iterator_type=iterator_type,
@@ -396,7 +395,7 @@ def add_photon_series(
         rate = float(imaging.get_sampling_frequency())
         photon_series_kwargs.update(starting_time=0.0, rate=rate)
 
-    # Add the TwoPhotonSeries to the nwbfile
+    # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
     photon_series = dict(
         OnePhotonSeries=OnePhotonSeries,
         TwoPhotonSeries=TwoPhotonSeries,
