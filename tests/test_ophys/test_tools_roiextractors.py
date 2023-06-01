@@ -1344,6 +1344,18 @@ class TestAddPhotonSeries(TestCase):
                 photon_series_type="invalid",
             )
 
+    def test_add_photon_series_inconclusive_metadata(self):
+        """Test error is raised when `photon_series_type` specifies 'TwoPhotonSeries' but metadata contains 'OnePhotonSeries'."""
+        with self.assertRaisesWith(
+            AssertionError,
+            "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified.",
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.one_photon_series_metadata,
+            )
+
     def test_add_one_photon_series(self):
         """Test adding one photon series with metadata."""
 
