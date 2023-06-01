@@ -34,14 +34,15 @@ from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
 from ...utils import (
+    DeepDict,
     OptionalFilePathType,
     calculate_regular_series_rate,
     dict_deep_update,
 )
 
 
-def get_default_ophys_metadata() -> dict:
-    """Fill default metadata for optical physiology."""
+def get_default_ophys_metadata() -> DeepDict:
+    """Fill default metadata for Device and ImagingPlane."""
     metadata = get_default_nwbfile_metadata()
 
     default_device = dict(name="Microscope")
@@ -62,6 +63,45 @@ def get_default_ophys_metadata() -> dict:
         optical_channel=[default_optical_channel],
     )
 
+    metadata.update(
+        Ophys=dict(
+            Device=[default_device],
+            ImagingPlane=[default_imaging_plane],
+        ),
+    )
+
+    return metadata
+
+
+def get_default_imaging_metadata(
+    photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+) -> DeepDict:
+    """Fill default metadata for imaging.
+
+    Parameters
+    photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series metadata to add. The default is to fill metadata for TwoPhotonSeries.
+    """
+    metadata = get_default_ophys_metadata()
+    imaging_plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
+
+    one_photon_description = "Imaging data from one-photon excitation microscopy."
+    two_photon_description = "Imaging data from two-photon excitation microscopy."
+    default_photon_series = dict(
+        name=photon_series_type,
+        description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
+        unit="n.a.",
+        imaging_plane=imaging_plane_name,
+    )
+    metadata["Ophys"].update({photon_series_type: [default_photon_series]})
+
+    return metadata
+
+
+def get_default_segmentation_metadata() -> DeepDict:
+    """Fill default metadata for segmentation."""
+    metadata = get_default_ophys_metadata()
+
     default_fluorescence_roi_response_series = dict(
         name="RoiResponseSeries", description="Array of raw fluorescence traces.", unit="n.a."
     )
@@ -71,23 +111,15 @@ def get_default_ophys_metadata() -> dict:
         roi_response_series=[default_fluorescence_roi_response_series],
     )
 
-    default_dff_roi_response_series = dict(name="RoiResponseSeries", description="Array of df/F traces.", unit="n.a.")
+    default_dff_roi_response_series = dict(
+        name="RoiResponseSeries",
+        description="Array of df/F traces.",
+        unit="n.a.",
+    )
 
     default_df_over_f = dict(
         name="DfOverF",
         roi_response_series=[default_dff_roi_response_series],
-    )
-
-    default_two_photon_series = dict(
-        name="TwoPhotonSeries",
-        description="Imaging data from two-photon excitation microscopy.",
-        unit="n.a.",
-    )
-
-    default_one_photon_series = dict(
-        name="OnePhotonSeries",
-        description="Imaging data from one-photon excitation microscopy.",
-        unit="n.a.",
     )
 
     default_image_segmentation = dict(
@@ -100,15 +132,11 @@ def get_default_ophys_metadata() -> dict:
         ],
     )
 
-    metadata.update(
-        Ophys=dict(
-            Device=[default_device],
+    metadata["Ophys"].update(
+        dict(
             Fluorescence=default_fluorescence,
             DfOverF=default_df_over_f,
             ImageSegmentation=default_image_segmentation,
-            ImagingPlane=[default_imaging_plane],
-            TwoPhotonSeries=[default_two_photon_series],
-            OnePhotonSeries=[default_one_photon_series],
         ),
     )
 
@@ -124,9 +152,10 @@ def get_nwb_imaging_metadata(
 
     Parameters
     ----------
-    imgextractor: ImagingExtractor
+    imgextractor : ImagingExtractor
+    photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
     """
-    metadata = get_default_ophys_metadata()
+    metadata = get_default_imaging_metadata(photon_series_type=photon_series_type)
 
     channel_name_list = imgextractor.get_channel_names() or (
         ["OpticalChannel"]
@@ -145,22 +174,8 @@ def get_nwb_imaging_metadata(
                 )
             )
 
-    # TwoPhotonSeries update:
     metadata["Ophys"][photon_series_type][0].update(dimension=list(imgextractor.get_image_size()))
 
-    plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
-    metadata["Ophys"][photon_series_type][0]["imaging_plane"] = plane_name
-
-    if photon_series_type == "TwoPhotonSeries":
-        photon_series_to_pop = "OnePhotonSeries"
-    else:
-        photon_series_to_pop = "TwoPhotonSeries"
-    _ = metadata["Ophys"].pop(photon_series_to_pop)
-
-    # remove what Segmentation extractor will input:
-    _ = metadata["Ophys"].pop("ImageSegmentation")
-    _ = metadata["Ophys"].pop("Fluorescence")
-    _ = metadata["Ophys"].pop("DfOverF")
     return metadata
 
 
@@ -271,7 +286,7 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    default_metadata = get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
@@ -541,7 +556,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     ----------
     sgmextractor: SegmentationExtractor
     """
-    metadata = get_default_ophys_metadata()
+    metadata = get_default_segmentation_metadata()
     # Optical Channel name:
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
@@ -563,8 +578,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
                     description=f"description of {trace_name} traces",
                 )
             )
-    # remove what imaging extractor will input:
-    _ = metadata["Ophys"].pop("TwoPhotonSeries")
+
     return metadata
 
 
@@ -633,7 +647,7 @@ def add_plane_segmentation(
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    default_metadata = get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
@@ -758,7 +772,7 @@ def add_fluorescence_traces(
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    default_metadata = get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     # df/F metadata
