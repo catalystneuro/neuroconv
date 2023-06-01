@@ -315,7 +315,28 @@ def add_photon_series(
     """
     Auxiliary static method for nwbextractor.
 
-    Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
+    Adds photon series from ImagingExtractor to NWB file object.
+    The photon series can be added to the NWB file either as a TwoPhotonSeries
+    or OnePhotonSeries object.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The imaging extractor to get the data from.
+    nwbfile : NWBFile
+        The nwbfile to add the photon series to.
+    metadata: dict
+        The metadata for the photon series.
+    photon_series_type: {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to add, default is TwoPhotonSeries.
+    photon_series_index: int, default: 0
+        The metadata for the photon series is a list of the different photon series to add.
+        Specify which element of the list with this parameter.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile passed as an input with the photon series added.
     """
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
