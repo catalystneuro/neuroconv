@@ -93,7 +93,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
             if expected_write_module == "raw":
                 nwb_lfp_electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
             else:
-                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLF"]
+                nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
             nwb_lfp_unscaled = nwb_lfp_electrical_series.data[:]
             nwb_lfp_conversion = nwb_lfp_electrical_series.conversion
             if not isinstance(recording, BaseRecording):
