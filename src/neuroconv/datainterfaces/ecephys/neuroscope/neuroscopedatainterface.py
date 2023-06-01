@@ -111,11 +111,12 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
         self.source_data["xml_file_path"] = xml_file_path
 
-        self.recording_extractor = subset_shank_channels(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
-        )
         add_recording_extractor_properties(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
+        )
+
+        self.recording_extractor = subset_shank_channels(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
     def get_metadata(self) -> dict:
@@ -176,12 +177,12 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         super().__init__(file_path=file_path)
         self.source_data["xml_file_path"] = xml_file_path
 
-        self.recording_extractor = subset_shank_channels(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
-        )
-
         add_recording_extractor_properties(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
+        )
+
+        self.recording_extractor = subset_shank_channels(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
     def get_metadata(self) -> dict:
