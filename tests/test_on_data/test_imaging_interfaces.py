@@ -54,7 +54,7 @@ class TestScanImageImagingInterfaceRecent(ImagingExtractorInterfaceTestMixin, Te
     # each of several cases
     data_interface_cls = ScanImageImagingInterface
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "scanimage_20220801_volume.tif")
+        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
     )
     save_directory = OUTPUT_PATH
 
