@@ -1126,10 +1126,50 @@ class TestAddPhotonSeries(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now().astimezone()
-        cls.device_name = "optical_device"
         cls.num_frames = 30
         cls.num_rows = 10
         cls.num_columns = 15
+
+        metadata = dict(Ophys=dict())
+
+        cls.device_name = "optical_device"
+        device_metadata = dict(name=cls.device_name)
+
+        optical_channel_metadata = dict(
+            name="optical_channel",
+            emission_lambda=np.nan,
+            description="description",
+        )
+
+        cls.imaging_plane_name = "imaging_plane_name"
+        imaging_plane_metadata = dict(
+            name=cls.imaging_plane_name,
+            optical_channel=[optical_channel_metadata],
+            description="image_plane_description",
+            device=cls.device_name,
+            excitation_lambda=np.nan,
+            indicator="unknown",
+            location="unknown",
+        )
+
+        metadata["Ophys"].update(
+            Device=[device_metadata],
+            ImagingPlane=[imaging_plane_metadata],
+        )
+
+        photon_series_metadata = dict(imaging_plane=cls.imaging_plane_name, unit="n.a.")
+
+        cls.two_photon_series_metadata = deepcopy(metadata)
+        cls.two_photon_series_name = "two_photon_series_name"
+        cls.two_photon_series_metadata["Ophys"].update(
+            dict(TwoPhotonSeries=[dict(name=cls.two_photon_series_name, **photon_series_metadata)])
+        )
+
+        cls.one_photon_series_metadata = deepcopy(metadata)
+        cls.one_photon_series_name = "one_photon_series_name"
+        cls.one_photon_series_metadata["Ophys"].update(
+            dict(OnePhotonSeries=[dict(name=cls.one_photon_series_name, **photon_series_metadata)])
+        )
 
     def setUp(self):
         self.nwbfile = NWBFile(
@@ -1137,35 +1177,6 @@ class TestAddPhotonSeries(TestCase):
             identifier="file_id",
             session_start_time=self.session_start_time,
         )
-        self.metadata = dict(Ophys=dict())
-
-        self.device_metadata = dict(name=self.device_name)
-        self.metadata["Ophys"].update(Device=[self.device_metadata])
-
-        self.optical_channel_metadata = dict(
-            name="optical_channel",
-            emission_lambda=np.nan,
-            description="description",
-        )
-
-        self.imaging_plane_name = "imaging_plane_name"
-        self.imaging_plane_metadata = dict(
-            name=self.imaging_plane_name,
-            optical_channel=[self.optical_channel_metadata],
-            description="image_plane_description",
-            device=self.device_name,
-            excitation_lambda=np.nan,
-            indicator="unknown",
-            location="unknown",
-        )
-
-        self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
-
-        self.two_photon_series_name = "two_photon_series_name"
-        self.two_photon_series_metadata = dict(
-            name=self.two_photon_series_name, imaging_plane=self.imaging_plane_name, unit="n.a."
-        )
-        self.metadata["Ophys"].update(TwoPhotonSeries=[self.two_photon_series_metadata])
 
         self.imaging_extractor = generate_dummy_imaging_extractor(
             self.num_frames, num_rows=self.num_rows, num_columns=self.num_columns
@@ -1173,7 +1184,9 @@ class TestAddPhotonSeries(TestCase):
 
     def test_default_values(self):
         """Test adding two photon series with default values."""
-        add_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.metadata)
+        add_photon_series(
+            imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
+        )
 
         # Check data
         acquisition_modules = self.nwbfile.acquisition
@@ -1208,7 +1221,7 @@ class TestAddPhotonSeries(TestCase):
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
-                metadata=self.metadata,
+                metadata=self.two_photon_series_metadata,
                 iterator_type="invalid",
             )
 
@@ -1241,7 +1254,7 @@ class TestAddPhotonSeries(TestCase):
         add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
-            metadata=self.metadata,
+            metadata=self.two_photon_series_metadata,
             iterator_type=None,
         )
 
@@ -1261,7 +1274,7 @@ class TestAddPhotonSeries(TestCase):
         add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
-            metadata=self.metadata,
+            metadata=self.two_photon_series_metadata,
             iterator_type="v1",
         )
 
@@ -1287,7 +1300,7 @@ class TestAddPhotonSeries(TestCase):
         add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
-            metadata=self.metadata,
+            metadata=self.two_photon_series_metadata,
             iterator_type="v2",
             iterator_options=dict(buffer_shape=buffer_shape, chunk_shape=chunk_shape),
         )
@@ -1300,9 +1313,9 @@ class TestAddPhotonSeries(TestCase):
         self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
 
     def test_add_two_photon_series_roundtrip(self):
-        metadata = self.metadata
-
-        add_photon_series(imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=metadata)
+        add_photon_series(
+            imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
+        )
 
         # Write the data to disk
         nwbfile_path = Path(mkdtemp()) / "two_photon_roundtrip.nwb"
@@ -1340,7 +1353,7 @@ class TestAddPhotonSeries(TestCase):
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
-                metadata=self.metadata,
+                metadata=self.two_photon_series_metadata,
                 photon_series_type="invalid",
             )
 
@@ -1359,32 +1372,51 @@ class TestAddPhotonSeries(TestCase):
     def test_add_one_photon_series(self):
         """Test adding one photon series with metadata."""
 
-        one_photon_series_name = "one_photon_series_name"
-        one_photon_series_metadata = dict(
-            name=one_photon_series_name,
+        metadata = deepcopy(self.one_photon_series_metadata)
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+        one_photon_series_metadata.update(
             pmt_gain=60.0,
             binning=2,
             power=500.0,
-            imaging_plane=self.imaging_plane_name,
-            unit="n.a.",
         )
-        metadata = deepcopy(self.metadata)
-        _ = metadata["Ophys"].pop("TwoPhotonSeries")
-        metadata["Ophys"].update(OnePhotonSeries=[one_photon_series_metadata])
-
         add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
             metadata=metadata,
             photon_series_type="OnePhotonSeries",
         )
-        self.assertIn(one_photon_series_name, self.nwbfile.acquisition)
-        one_photon_series = self.nwbfile.acquisition[one_photon_series_name]
+        self.assertIn(self.one_photon_series_name, self.nwbfile.acquisition)
+        one_photon_series = self.nwbfile.acquisition[self.one_photon_series_name]
         self.assertIsInstance(one_photon_series, OnePhotonSeries)
         self.assertEqual(one_photon_series.pmt_gain, 60.0)
         self.assertEqual(one_photon_series.binning, 2)
         self.assertEqual(one_photon_series.power, 500.0)
         self.assertEqual(one_photon_series.unit, "n.a.")
+
+    def test_add_one_photon_series_roundtrip(self):
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.one_photon_series_metadata,
+            photon_series_type="OnePhotonSeries",
+        )
+
+        # Write the data to disk
+        nwbfile_path = Path(mkdtemp()) / "one_photon_roundtrip.nwb"
+        with NWBHDF5IO(nwbfile_path, "w") as io:
+            io.write(self.nwbfile)
+
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            read_nwbfile = io.read()
+
+            # Check data
+            acquisition_modules = read_nwbfile.acquisition
+            assert self.one_photon_series_name in acquisition_modules
+            one_photon_series = acquisition_modules[self.one_photon_series_name].data
+
+            # NWB stores images as num_columns x num_rows
+            expected_one_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
+            assert one_photon_series.shape == expected_one_photon_series_shape
 
 
 class TestAddSummaryImages(unittest.TestCase):
