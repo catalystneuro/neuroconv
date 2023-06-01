@@ -202,7 +202,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def align_segment_starting_times(self, starting_times: List[float]):
         assert (
             len(starting_times) == self._number_of_segments
-        ), "The length of the starting_times ({len(starting_times)}) does not match the number of segments ({self._number_of_segments})!"
+        ), f"The length of the starting_times ({len(starting_times)}) does not match the number of segments ({self._number_of_segments})!"
 
         if self._number_of_segments == 1:
             self.align_starting_time(starting_time=starting_times[0])
