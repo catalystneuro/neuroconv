@@ -90,7 +90,7 @@ class TestEcephysLFPNwbConversions(unittest.TestCase):
         recording = converter.data_interface_objects["TestLFP"].recording_extractor
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            if expected_write_module == "raw":
+            if expected_write_module == "raw":  # This is for SpikeGLX only
                 nwb_lfp_electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
             else:
                 nwb_lfp_electrical_series = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"]
