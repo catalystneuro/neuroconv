@@ -227,7 +227,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
         self.assertNWBFileTimesAligned(nwbfile_path=nwbfile_path)
 
 
-class TestExternalPuleTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
+class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
     """
     This test case is less about ensuring the functionality (which is identical to above) and more about depicting
     the intended usage in practice.
