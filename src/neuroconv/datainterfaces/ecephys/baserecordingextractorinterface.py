@@ -195,7 +195,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if self._number_of_segments == 1:
             self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
         else:
-            self.align_timestamps(
+            self.align_segment_timestamps(
                 aligned_timestamps=[timestamps + starting_time for timestamps in self.get_timestamps()]
             )
 
@@ -208,7 +208,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self.align_starting_time(starting_time=starting_times[0])
         else:
             self.align_segment_timestamps(
-                aligned_timestamps=[timestamps + starting_times[segment_index] for timestamps in self.get_timestamps()]
+                aligned_timestamps=[
+                    timestamps + starting_time
+                    for timestamps, starting_time in zip(self.get_timestamps(), starting_times)
+                ]
             )
 
     def align_by_interpolation(
