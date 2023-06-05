@@ -73,31 +73,6 @@ def get_default_ophys_metadata() -> DeepDict:
     return metadata
 
 
-def get_default_imaging_metadata(
-    photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
-) -> DeepDict:
-    """Fill default metadata for imaging.
-
-    Parameters
-    photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
-        The type of photon series metadata to add. The default is to fill metadata for TwoPhotonSeries.
-    """
-    metadata = get_default_ophys_metadata()
-    imaging_plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
-
-    one_photon_description = "Imaging data from one-photon excitation microscopy."
-    two_photon_description = "Imaging data from two-photon excitation microscopy."
-    default_photon_series = dict(
-        name=photon_series_type,
-        description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
-        unit="n.a.",
-        imaging_plane=imaging_plane_name,
-    )
-    metadata["Ophys"].update({photon_series_type: [default_photon_series]})
-
-    return metadata
-
-
 def get_default_segmentation_metadata() -> DeepDict:
     """Fill default metadata for segmentation."""
     metadata = get_default_ophys_metadata()
@@ -155,18 +130,20 @@ def get_nwb_imaging_metadata(
     imgextractor : ImagingExtractor
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
     """
-    metadata = get_default_imaging_metadata(photon_series_type=photon_series_type)
+    metadata = get_default_ophys_metadata()
 
     channel_name_list = imgextractor.get_channel_names() or (
         ["OpticalChannel"]
         if imgextractor.get_num_channels() == 1
         else [f"OpticalChannel{idx}" for idx in range(imgextractor.get_num_channels())]
     )
+
+    imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
-            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][index]["name"] = channel_name
+            imaging_plane["optical_channel"][index]["name"] = channel_name
         else:
-            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"].append(
+            imaging_plane["optical_channel"].append(
                 dict(
                     name=channel_name,
                     emission_lambda=np.nan,
@@ -174,7 +151,16 @@ def get_nwb_imaging_metadata(
                 )
             )
 
-    metadata["Ophys"][photon_series_type][0].update(dimension=list(imgextractor.get_image_size()))
+    one_photon_description = "Imaging data from one-photon excitation microscopy."
+    two_photon_description = "Imaging data from two-photon excitation microscopy."
+    photon_series_metadata = dict(
+        name=photon_series_type,
+        description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
+        unit="n.a.",
+        imaging_plane=imaging_plane["name"],
+        dimension=list(imgextractor.get_image_size()),
+    )
+    metadata["Ophys"].update({photon_series_type: [photon_series_metadata]})
 
     return metadata
 
