@@ -323,7 +323,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             all_aligned_segment_timestamps = [
                 unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
             ]
-            self.interface.align_segment_timestamps(aligned_timestamps=all_aligned_segment_timestamps)
+            self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             assert_array_equal(x=retrieved_aligned_timestamps, y=all_aligned_segment_timestamps[0])
@@ -333,7 +333,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
                 for unaligned_timestamps in all_unaligned_timestamps
             ]
-            self.interface.align_segment_timestamps(aligned_timestamps=all_aligned_segment_timestamps)
+            self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
             all_retrieved_aligned_timestamps = self.interface.get_timestamps()
             for retrieved_aligned_timestamps, aligned_segment_timestamps in zip(
@@ -365,24 +365,24 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     def check_shift_segment_timestamps_by_starting_times(self):
         self.setUpFreshInterface()
 
-        starting_times = list(np.arange(float(self.interface._number_of_segments)) + 1.23)
+        segment_starting_times = list(np.arange(float(self.interface._number_of_segments)) + 1.23)
         if self.interface._number_of_segments == 1:
             unaligned_timestamps = self.interface.get_timestamps()
 
-            self.interface.align_segment_starting_times(starting_times=starting_times)
+            self.interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
-            expected_aligned_timestamps = unaligned_timestamps + starting_times[0]
+            expected_aligned_timestamps = unaligned_timestamps + segment_starting_times[0]
             assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
         else:
             all_unaligned_timestamps = self.interface.get_timestamps()
 
-            self.interface.align_segment_starting_times(starting_times=starting_times)
+            self.interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
 
             all_retrieved_aligned_timestamps = self.interface.get_timestamps()
             all_expected_aligned_timestamps = [
-                timestamps + starting_time
-                for timestamps, starting_time in zip(all_unaligned_timestamps, starting_times)
+                timestamps + segment_starting_time
+                for timestamps, segment_starting_time in zip(all_unaligned_timestamps, segment_starting_times)
             ]
             for retrieved_aligned_timestamps, expected_aligned_timestamps in zip(
                 all_retrieved_aligned_timestamps, all_expected_aligned_timestamps
@@ -460,6 +460,62 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
             )
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
+    def check_interface_align_segment_timestamps(self):
+        self.setUpFreshInterface()
+
+        if self.interface.sorting_extractor.has_recording():
+            random_number_generator = np.random.default_rng(seed=0)
+            if self.interface._number_of_segments == 1:
+                unaligned_timestamps = self.interface.get_timestamps()
+
+                all_aligned_segment_timestamps = [
+                    unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+                ]
+                self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
+
+                retrieved_aligned_timestamps = self.interface.get_timestamps()
+                assert_array_equal(x=retrieved_aligned_timestamps, y=all_aligned_segment_timestamps[0])
+            else:
+                all_unaligned_timestamps = self.interface.get_timestamps()
+                all_aligned_segment_timestamps = [
+                    unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+                    for unaligned_timestamps in all_unaligned_timestamps
+                ]
+                self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
+
+                all_retrieved_aligned_timestamps = self.interface.get_timestamps()
+                for retrieved_aligned_timestamps, aligned_segment_timestamps in zip(
+                    all_retrieved_aligned_timestamps, all_aligned_segment_timestamps
+                ):
+                    assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_segment_timestamps)
+
+    def check_shift_segment_timestamps_by_starting_times(self):
+        self.setUpFreshInterface()
+
+        segment_starting_times = list(np.arange(float(self.interface._number_of_segments)) + 1.23)
+        if self.interface._number_of_segments == 1:
+            unaligned_timestamps = self.interface.get_timestamps()
+
+            self.interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
+
+            retrieved_aligned_timestamps = self.interface.get_timestamps()
+            expected_aligned_timestamps = unaligned_timestamps + segment_starting_times[0]
+            assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
+        else:
+            all_unaligned_timestamps = self.interface.get_timestamps()
+
+            self.interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
+
+            all_retrieved_aligned_timestamps = self.interface.get_timestamps()
+            all_expected_aligned_timestamps = [
+                segment_timestamps + segment_starting_time
+                for segment_timestamps, segment_starting_time in zip(all_unaligned_timestamps, segment_starting_times)
+            ]
+            for retrieved_aligned_timestamps, expected_aligned_timestamps in zip(
+                all_retrieved_aligned_timestamps, all_expected_aligned_timestamps
+            ):
+                assert_array_equal(x=retrieved_aligned_timestamps, y=expected_aligned_timestamps)
+
     def test_interface_alignment(self):
         interface_kwargs = self.interface_kwargs
         if isinstance(interface_kwargs, dict):
@@ -475,7 +531,9 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                 # Skip get_original_timestamps() checks since unsupported
                 self.check_interface_get_timestamps()
                 self.check_interface_align_timestamps()
+                self.check_interface_align_segment_timestamps()
                 self.check_shift_timestamps_by_start_time()
+                self.check_shift_segment_timestamps_by_starting_times()
 
                 self.check_nwbfile_temporal_alignment()
 
