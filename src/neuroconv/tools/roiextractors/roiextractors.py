@@ -293,6 +293,7 @@ def add_photon_series(
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
+    two_photon_series_index: int = 0,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
@@ -331,6 +332,8 @@ def add_photon_series(
             "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
             "Specify as a key in the new 'iterator_options' dictionary instead."
         )
+    if two_photon_series_index:
+        warn("Keyword argument 'two_photon_series_index' is deprecated. Use 'photon_series_index' instead.")
 
     iterator_options = iterator_options or dict()
 
