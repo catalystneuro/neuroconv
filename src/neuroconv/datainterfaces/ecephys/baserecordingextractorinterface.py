@@ -163,7 +163,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         assert (
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
@@ -186,7 +186,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
         assert (
             len(aligned_segment_timestamps) == self._number_of_segments
-        ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+        ), f"The number of timestamp vectors ({len(aligned_segment_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
 
         for segment_index in range(self._number_of_segments):
             self.recording_extractor.set_times(
@@ -195,7 +195,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     def align_starting_time(self, starting_time: float):
         if self._number_of_segments == 1:
-            self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
+            self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
         else:
             self.align_segment_timestamps(
                 aligned_segment_timestamps=[
@@ -216,7 +216,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         assert (
             len(segment_starting_times) == self._number_of_segments
-        ), f"The length of the starting_times ({len(starting_times)}) does not match the number of segments ({self._number_of_segments})!"
+        ), f"The length of the starting_times ({len(segment_starting_times)}) does not match the number of segments ({self._number_of_segments})!"
 
         if self._number_of_segments == 1:
             self.align_starting_time(starting_time=segment_starting_times[0])
@@ -233,7 +233,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         aligned_timestamps: np.ndarray,
     ):
         if self._number_of_segments == 1:
-            self.align_timestamps(
+            self.set_aligned_timestamps(
                 aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
             )
         else:

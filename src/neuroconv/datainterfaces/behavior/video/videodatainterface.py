@@ -141,7 +141,7 @@ class VideoInterface(BaseDataInterface):
         """
         return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
 
-    def align_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
@@ -175,7 +175,7 @@ class VideoInterface(BaseDataInterface):
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
         if self._timestamps is not None:
-            self.align_timestamps(
+            self.set_aligned_timestamps(
                 aligned_timestamps=[
                     timestamps + starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
                 ]
@@ -210,7 +210,7 @@ class VideoInterface(BaseDataInterface):
             "number of video files ({self._number_of_files})!"
         )
         if self._timestamps is not None:
-            self.align_timestamps(
+            self.set_aligned_timestamps(
                 aligned_timestamps=[
                     timestamps + segment_starting_time
                     for timestamps, segment_starting_time in zip(

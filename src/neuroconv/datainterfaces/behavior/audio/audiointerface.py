@@ -95,7 +95,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def get_timestamps(self) -> Optional[np.ndarray]:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def align_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def align_starting_time(self, starting_time: float):
