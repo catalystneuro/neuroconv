@@ -8,7 +8,7 @@ from typing import List, Optional, Type, Union
 import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
 from jsonschema.validators import Draft7Validator, validate
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
 from roiextractors.testing import check_imaging_equal, check_segmentations_equal
@@ -28,7 +28,6 @@ from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
 from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
-from neuroconv.tools.testing import MockBehaviorEventInterface
 from neuroconv.utils import NWBMetaDataEncoder
 
 
@@ -555,3 +554,112 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
         pass  # asserted in the testing suite; could be refactored in future PR
+
+
+class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_interface_get_original_timestamps(self):
+        pass  # TODO in separate PR
+
+    def check_interface_get_timestamps(self):
+        pass  # TODO in separate PR
+
+    def check_interface_set_aligned_timestamps(self):
+        pass  # TODO in separate PR
+
+    def check_shift_timestamps_by_start_time(self):
+        pass  # TODO in separate PR
+
+    def check_interface_original_timestamps_inmutability(self):
+        pass  # TODO in separate PR
+
+    def check_nwbfile_temporal_alignment(self):
+        pass  # TODO in separate PR
+
+
+class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            video_type = Path(self.test_kwargs["file_paths"][0]).suffix[1:]
+            assert f"Video: video_{video_type}" in nwbfile.acquisition
+
+    def check_interface_set_aligned_timestamps(self):
+        all_unaligned_timestamps = self.interface.get_original_timestamps()
+
+        random_number_generator = np.random.default_rng(seed=0)
+        aligned_timestamps = [
+            unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
+            for unaligned_timestamps in all_unaligned_timestamps
+        ]
+        self.interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+
+        retrieved_aligned_timestamps = self.interface.get_timestamps()
+        assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
+
+    def check_shift_timestamps_by_start_time(self):
+        self.setUpFreshInterface()
+
+        starting_time = 1.23
+        self.interface.set_aligned_timestamps(aligned_timestamps=self.interface.get_original_timestamps())
+        self.interface.align_starting_time(starting_time=starting_time)
+        all_aligned_timestamps = self.interface.get_timestamps()
+
+        unaligned_timestamps = self.interface.get_original_timestamps()
+        all_expected_timestamps = [timestamps + starting_time for timestamps in unaligned_timestamps]
+        [
+            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+            for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps)
+        ]
+
+    def check_align_segment_starting_times(self):
+        self.setUpFreshInterface()
+
+        segment_starting_times = [1.23 * file_path_index for file_path_index in range(len(self.test_kwargs))]
+        self.interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
+        all_aligned_timestamps = self.interface.get_timestamps()
+
+        unaligned_timestamps = self.interface.get_original_timestamps()
+        all_expected_timestamps = [
+            timestamps + segment_starting_time
+            for timestamps, segment_starting_time in zip(unaligned_timestamps, segment_starting_times)
+        ]
+        for aligned_timestamps, expected_timestamps in zip(all_aligned_timestamps, all_expected_timestamps):
+            assert_array_equal(x=aligned_timestamps, y=expected_timestamps)
+
+    def check_interface_original_timestamps_inmutability(self):
+        self.setUpFreshInterface()
+
+        all_pre_alignment_original_timestamps = self.interface.get_original_timestamps()
+
+        all_aligned_timestamps = [
+            pre_alignment_original_timestamps + 1.23
+            for pre_alignment_original_timestamps in all_pre_alignment_original_timestamps
+        ]
+        self.interface.set_aligned_timestamps(aligned_timestamps=all_aligned_timestamps)
+
+        all_post_alignment_original_timestamps = self.interface.get_original_timestamps()
+        for post_alignment_original_timestamps, pre_alignment_original_timestamps in zip(
+            all_post_alignment_original_timestamps, all_pre_alignment_original_timestamps
+        ):
+            assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
+
+    def check_nwbfile_temporal_alignment(self):
+        pass  # TODO in separate PR
+
+    def test_interface_alignment(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+
+                self.check_interface_get_original_timestamps()
+                self.check_interface_get_timestamps()
+                self.check_interface_set_aligned_timestamps()
+                self.check_shift_timestamps_by_start_time()
+                self.check_interface_original_timestamps_inmutability()
+                self.check_align_segment_starting_times()
+
+                self.check_nwbfile_temporal_alignment()
