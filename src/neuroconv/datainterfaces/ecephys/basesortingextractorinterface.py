@@ -199,14 +199,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             if self._number_of_segments == 1:
                 self.align_timestamps(aligned_timestamps=self.get_timestamps() + segment_starting_times[0])
             else:
-                self.align_segment_timestamps(
-                    aligned_segment_timestamps=[
-                        segment_timestamps + segment_starting_time
-                        for segment_timestamps, segment_starting_time in zip(
-                            self.get_timestamps(), segment_starting_times
-                        )
-                    ]
-                )
+                aligned_segment_timestamps = [
+                    segment_timestamps + segment_starting_time
+                    for segment_timestamps, segment_starting_time in zip(self.get_timestamps(), segment_starting_times)
+                ]
+                self.align_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
         else:
             for sorting_segment, starting_time in zip(self.sorting_extractor._sorting_segments, segment_starting_times):
                 sorting_segment._t_start = starting_time
