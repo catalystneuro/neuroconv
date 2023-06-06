@@ -62,26 +62,26 @@ class TestIcephysNwbConversions(unittest.TestCase):
         )
     ]
 
-    def check_align_global_starting_time(self):
+    def check_align_starting_time(self):  # TODO - use the mixin class in the future
         fresh_interface = self.data_interface_cls(file_paths=self.file_paths)
 
         global_starting_time = 1.23
-        relative_starting_times = [[0.1]]
-        fresh_interface.align_starting_times(starting_times=relative_starting_times)
+        relative_segment_starting_times = [[0.1]]
+        fresh_interface.align_segment_starting_times(segment_starting_times=relative_segment_starting_times)
         fresh_interface.align_global_starting_time(global_starting_time=global_starting_time)
 
         neo_reader_starting_times = [reader._t_starts for reader in fresh_interface.readers_list]
         expecting_starting_times = [[1.33]]
         self.assertListEqual(list1=neo_reader_starting_times, list2=expecting_starting_times)
 
-    def check_align_starting_times(self):
+    def check_align_segment_starting_times(self):
         fresh_interface = self.data_interface_cls(file_paths=self.file_paths)
 
-        starting_times = [[1.2]]
-        fresh_interface.align_starting_times(starting_times=starting_times)
+        segment_starting_times = [[1.2]]
+        fresh_interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
 
         neo_reader_starting_times = [reader._t_starts for reader in fresh_interface.readers_list]
-        self.assertListEqual(list1=neo_reader_starting_times, list2=starting_times)
+        self.assertListEqual(list1=neo_reader_starting_times, list2=segment_starting_times)
 
     @parameterized.expand(input=parameterized_recording_list, name_func=custom_name_func)
     def test_convert_abf_to_nwb(self, data_interface, interface_kwargs):
