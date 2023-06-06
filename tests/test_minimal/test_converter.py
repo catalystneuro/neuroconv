@@ -30,16 +30,16 @@ def test_converter():
         class NdxEventsInterface(BaseTemporalAlignmentInterface):
             def __init__(self):
                 self._timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
-                self.original_timestamps = np.array(self.timestamps)
+                self._original_timestamps = np.array(self._timestamps)
 
             def get_original_timestamps(self) -> np.ndarray:
-                return self.original_timestamps
+                return self._original_timestamps
 
             def get_timestamps(self) -> np.ndarray:
                 return self._timestamps
 
             def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-                self.timestamps = aligned_timestamps
+                self._timestamps = aligned_timestamps
 
             def run_conversion(self, nwbfile: NWBFile, metadata: dict):
                 events = LabeledEvents(
