@@ -293,7 +293,7 @@ def add_photon_series(
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
-    two_photon_series_index: int = 0,  # TODO: to be removed
+    two_photon_series_index: Optional[int] = None,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
@@ -334,6 +334,7 @@ def add_photon_series(
         )
     if two_photon_series_index:
         warn("Keyword argument 'two_photon_series_index' is deprecated. Use 'photon_series_index' instead.")
+        photon_series_index = two_photon_series_index
 
     iterator_options = iterator_options or dict()
 
