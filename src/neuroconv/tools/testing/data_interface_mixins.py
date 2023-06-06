@@ -260,6 +260,14 @@ class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAl
 
 
 class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    """
+    Generic class for testing any recording interface.
+
+    Runs all the basic DataInterface tests as well as temporal alignment tests.
+
+    This mixin must be paired with a hdmf.testing.TestCase class.
+    """
+
     data_interface_cls: Type[BaseRecordingExtractorInterface]
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -301,6 +309,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             assert_array_equal(x=retrieved_aligned_timestamps, y=aligned_timestamps)
         else:
+            assert isinstance(
+                self, HDMFTestCase
+            ), "The RecordingExtractorInterfaceTestMixin must be mixed-in with the TestCase from hdmf.testing!"
             with self.assertRaisesWith(
                 exc_type=AssertionError,
                 exc_msg="This recording has multiple segments; please use 'align_segment_timestamps' instead.",
@@ -402,6 +413,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             post_alignment_original_timestamps = self.interface.get_original_timestamps()
             assert_array_equal(x=post_alignment_original_timestamps, y=pre_alignment_original_timestamps)
         else:
+            assert isinstance(
+                self, HDMFTestCase
+            ), "The RecordingExtractorInterfaceTestMixin must be mixed-in with the TestCase from hdmf.testing!"
             with self.assertRaisesWith(
                 exc_type=AssertionError,
                 exc_msg="This recording has multiple segments; please use 'align_segment_timestamps' instead.",
