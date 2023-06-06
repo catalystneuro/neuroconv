@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
 from types import MethodType
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Tuple
 from unittest.mock import Mock
 
 import numpy as np
@@ -293,6 +293,15 @@ def _generate_casted_test_masks(num_rois: int, mask_type: Literal["pixel", "voxe
     return casted_masks
 
 
+def assert_masks_equal(mask: List[List[Tuple[int, int, int]]], expected_mask: List[List[Tuple[int, int, int]]]):
+    """
+    Asserts that two lists of pixel masks of inhomogeneous shape are equal.
+    """
+    assert len(mask) == len(expected_mask)
+    for mask_ind in range(len(mask)):
+        assert_array_equal(mask[mask_ind], expected_mask[mask_ind])
+
+
 class TestAddPlaneSegmentation(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -488,7 +497,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_pixel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
-        assert_array_equal(plane_segmentation["pixel_mask"], true_pixel_masks)
+        assert_masks_equal(plane_segmentation["pixel_mask"][:], true_pixel_masks)
 
     def test_voxel_masks(self):
         """Test the voxel mask option for writing a plane segmentation table."""
@@ -519,7 +528,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
-        assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
+        assert_masks_equal(plane_segmentation["voxel_mask"][:], true_voxel_masks)
 
     def test_none_masks(self):
         """Test the None mask_type option for writing a plane segmentation table."""
@@ -577,7 +586,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
-        assert_array_equal(plane_segmentation["pixel_mask"], true_voxel_masks)
+        assert_masks_equal(plane_segmentation["pixel_mask"][:], true_voxel_masks)
 
     def test_voxel_masks_auto_switch(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(
@@ -614,7 +623,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         plane_segmentation = plane_segmentations[self.plane_segmentation_name]
 
         true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
-        assert_array_equal(plane_segmentation["voxel_mask"], true_voxel_masks)
+        assert_masks_equal(plane_segmentation["voxel_mask"][:], true_voxel_masks)
 
     def test_not_overwriting_plane_segmentation_if_same_name(self):
         """Test that adding a plane segmentation with the same name will not overwrite
