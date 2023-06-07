@@ -73,14 +73,14 @@ class BaseIcephysInterface(BaseExtractorInterface):
     def get_timestamps(self) -> np.ndarray:
         raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
+
+    def set_aligned_starting_time(self, aligned_starting_time: float):
+        raise NotImplementedError("This icephys interface has not specified the method for aligning starting time.")
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
-
-    def align_starting_time(self, starting_time: float):
-        raise NotImplementedError("This icephys interface has not specified the method for aligning starting time.")
 
     def add_to_nwbfile(
         self,

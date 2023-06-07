@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Optional
 
@@ -12,10 +13,15 @@ def extract_extra_metadata(file_path) -> dict:
     ScanImageTiffReader = get_package(
         package_name="ScanImageTiffReader", installation_instructions="pip install scanimage-tiff-reader"
     )
-
-    description = ScanImageTiffReader.ScanImageTiffReader(str(file_path)).description(iframe=0)
-    extra_metadata = {x.split("=")[0]: x.split("=")[1] for x in description.split("\r") if "=" in x}
-
+    src_file = ScanImageTiffReader.ScanImageTiffReader(str(file_path))
+    extra_metadata = {}
+    for metadata_string in (src_file.description(iframe=0), src_file.metadata()):
+        metadata_dict = {
+            x.split("=")[0].strip(): x.split("=")[1].strip()
+            for x in metadata_string.replace("\n", "\r").split("\r")
+            if "=" in x
+        }
+        extra_metadata = dict(**extra_metadata, **metadata_dict)
     return extra_metadata
 
 
@@ -50,6 +56,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         if "state.acq.frameRate" in self.image_metadata:
             sampling_frequency = float(self.image_metadata["state.acq.frameRate"])
+        elif "SI.hRoiManager.scanFrameRate" in self.image_metadata:
+            sampling_frequency = float(self.image_metadata["SI.hRoiManager.scanFrameRate"])
         else:
             assert_msg = (
                 "sampling frequency not found in image metadata, "
@@ -67,6 +75,14 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
+            metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
+        elif "epoch" in self.image_metadata:
+            # Versions of ScanImage at least as recent as 2020, and possibly earlier, store the start time under keyword
+            # `epoch`, as a string encoding of a Matlab array, example `'[2022  8  8 16 56 7.329]'`
+            # dateparse can't cope with this representation, so using strptime directly
+            extracted_session_start_time = datetime.datetime.strptime(
+                self.image_metadata["epoch"], "[%Y %m %d %H %M %S.%f]"
+            )
             metadata["NWBFile"].update(session_start_time=extracted_session_start_time)
 
         # Extract many scan image properties and attach them as dic in the description

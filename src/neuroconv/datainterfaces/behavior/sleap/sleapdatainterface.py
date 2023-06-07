@@ -55,7 +55,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         return timestamps
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self._timestamps = aligned_timestamps
 
     def add_to_nwbfile(

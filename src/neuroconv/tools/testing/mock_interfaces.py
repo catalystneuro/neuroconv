@@ -41,7 +41,7 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
     def get_timestamps(self) -> np.ndarray:
         return self.event_times
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.event_times = aligned_timestamps
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
