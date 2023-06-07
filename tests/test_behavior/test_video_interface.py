@@ -29,7 +29,7 @@ class TestVideoInterface(TestCase):
         self.metadata = self.nwb_converter.get_metadata()
         self.metadata["NWBFile"].update(session_start_time=datetime.now(tz=gettz(name="US/Pacific")))
         self.nwbfile_path = self.test_dir / "video_test.nwb"
-        self.segment_starting_times = [0.0, 50.0]
+        self.aligned_segment_starting_times = [0.0, 50.0]
 
     def tearDown(self) -> None:
         shutil.rmtree(self.test_dir)
@@ -100,7 +100,7 @@ class TestExternalVideoInterface(TestVideoInterface):
         timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
         interface = self.nwb_converter.data_interface_objects["Video"]
         interface.set_aligned_timestamps(aligned_timestamps=timestamps)
-        interface.align_segment_starting_times(segment_starting_times=self.segment_starting_times)
+        interface.set_aligned_segment_starting_times(aligned_segment_starting_times=self.aligned_segment_starting_times)
 
         conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
         self.nwb_converter.run_conversion(
@@ -116,10 +116,10 @@ class TestExternalVideoInterface(TestVideoInterface):
             self.assertListEqual(list1=list(module["Video: test1"].external_file[:]), list2=self.video_files)
 
     def test_video_irregular_timestamps(self):
-        timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
+        aligned_timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
         interface = self.nwb_converter.data_interface_objects["Video"]
-        interface.set_aligned_timestamps(aligned_timestamps=timestamps)
-        interface.align_segment_starting_times(segment_starting_times=self.segment_starting_times)
+        interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+        interface.set_aligned_segment_starting_times(aligned_segment_starting_times=self.aligned_segment_starting_times)
 
         conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
         self.nwb_converter.run_conversion(
@@ -221,10 +221,12 @@ class TestInternalVideoInterface(TestVideoInterface):
                 assert mod[video_interface_name].data.chunks is not None  # TODO retrieve storage_layout of hdf5 dataset
 
     def test_video_stub(self):
-        timestamps = [np.array([1, 2, 4, 5, 6, 7, 8, 9, 10, 11])]
+        aligned_timestamps = [np.array([1, 2, 4, 5, 6, 7, 8, 9, 10, 11])]
         interface = self.nwb_converter.data_interface_objects["Video"]
-        interface.set_aligned_timestamps(aligned_timestamps=timestamps)
-        interface.align_segment_starting_times(segment_starting_times=[self.segment_starting_times[0]])
+        interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+        interface.set_aligned_segment_starting_times(
+            aligned_segment_starting_times=[self.aligned_segment_starting_times[0]]
+        )
 
         conversion_options = dict(Video=dict(external_mode=False, stub_test=True))
         self.nwb_converter.run_conversion(

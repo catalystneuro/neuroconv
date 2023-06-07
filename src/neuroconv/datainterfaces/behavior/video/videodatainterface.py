@@ -175,11 +175,10 @@ class VideoInterface(BaseDataInterface):
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
         if self._timestamps is not None:
-            self.set_aligned_timestamps(
-                aligned_timestamps=[
-                    timestamps + aligned_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
-                ]
-            )
+            aligned_timestamps = [
+                timestamps + aligned_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
+            ]
+            self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
         elif self._segment_starting_times is not None:
             self._segment_starting_times = [
                 segment_starting_time + aligned_starting_time for segment_starting_time in self._segment_starting_times
