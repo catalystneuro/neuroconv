@@ -5,10 +5,10 @@ on:
     # Map the workflow outputs to job outputs
     outputs:
       SOURCE_CHANGED:
-        description: "Whether or not the files under /src/ were changed."
+        description: "Whether the files under /src/ were changed."
         value: ${{ jobs.build.outputs.SOURCE_CHANGED }}
       CONVERSION_GALLERY_CHANGED:
-        description: "Whether or not the files under /docs/conversion_examples_gallery/ were changed."
+        description: "Whether the files under /docs/conversion_examples_gallery/ were changed."
         value: ${{ jobs.build.outputs.CONVERSION_GALLERY_CHANGED }}
       CHANGELOG_UPDATED:
         description: "Whether or the CHANGELOG.md file was updated."

@@ -2,11 +2,11 @@
 from abc import ABC
 from typing import Optional
 
-from .basedatainterface import BaseDataInterface
+from .basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from .tools import get_package
 
 
-class BaseExtractorInterface(BaseDataInterface, ABC):
+class BaseExtractorInterface(BaseTemporalAlignmentInterface, ABC):
     """
     Abstract class defining the structure of all Extractor-based Interfaces.
     """
@@ -15,7 +15,7 @@ class BaseExtractorInterface(BaseDataInterface, ABC):
     # Note that values set at the level of class definition are called upon import.
     ExtractorModuleName: Optional[str] = None
     ExtractorName: Optional[str] = None  # Defaults to __name__.replace("Interface", "Extractor").
-    Extractor = None  # Loads dynamically on first access attempt
+    Extractor = None  # Class loads dynamically on first call to .get_extractor()
 
     @classmethod
     def get_extractor(cls):

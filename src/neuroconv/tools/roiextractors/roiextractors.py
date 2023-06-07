@@ -1,6 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import Optional
+from typing import Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -18,6 +18,7 @@ from pynwb.ophys import (
     Fluorescence,
     ImageSegmentation,
     ImagingPlane,
+    OnePhotonSeries,
     OpticalChannel,
     PlaneSegmentation,
     RoiResponseSeries,
@@ -33,14 +34,15 @@ from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from ..hdmf import SliceableDataChunkIterator
 from ..nwb_helpers import get_default_nwbfile_metadata, get_module, make_or_load_nwbfile
 from ...utils import (
+    DeepDict,
     OptionalFilePathType,
     calculate_regular_series_rate,
     dict_deep_update,
 )
 
 
-def get_default_ophys_metadata() -> dict:
-    """Fill default metadata for optical physiology."""
+def get_default_ophys_metadata() -> DeepDict:
+    """Fill default metadata for Device and ImagingPlane."""
     metadata = get_default_nwbfile_metadata()
 
     default_device = dict(name="Microscope")
@@ -61,6 +63,20 @@ def get_default_ophys_metadata() -> dict:
         optical_channel=[default_optical_channel],
     )
 
+    metadata.update(
+        Ophys=dict(
+            Device=[default_device],
+            ImagingPlane=[default_imaging_plane],
+        ),
+    )
+
+    return metadata
+
+
+def get_default_segmentation_metadata() -> DeepDict:
+    """Fill default metadata for segmentation."""
+    metadata = get_default_ophys_metadata()
+
     default_fluorescence_roi_response_series = dict(
         name="RoiResponseSeries", description="Array of raw fluorescence traces.", unit="n.a."
     )
@@ -70,17 +86,15 @@ def get_default_ophys_metadata() -> dict:
         roi_response_series=[default_fluorescence_roi_response_series],
     )
 
-    default_dff_roi_response_series = dict(name="RoiResponseSeries", description="Array of df/F traces.", unit="n.a.")
+    default_dff_roi_response_series = dict(
+        name="RoiResponseSeries",
+        description="Array of df/F traces.",
+        unit="n.a.",
+    )
 
     default_df_over_f = dict(
         name="DfOverF",
         roi_response_series=[default_dff_roi_response_series],
-    )
-
-    default_two_photon_series = dict(
-        name="TwoPhotonSeries",
-        description="Imaging data from two-photon excitation microscopy.",
-        unit="n.a.",
     )
 
     default_image_segmentation = dict(
@@ -93,27 +107,28 @@ def get_default_ophys_metadata() -> dict:
         ],
     )
 
-    metadata.update(
-        Ophys=dict(
-            Device=[default_device],
+    metadata["Ophys"].update(
+        dict(
             Fluorescence=default_fluorescence,
             DfOverF=default_df_over_f,
             ImageSegmentation=default_image_segmentation,
-            ImagingPlane=[default_imaging_plane],
-            TwoPhotonSeries=[default_two_photon_series],
         ),
     )
 
     return metadata
 
 
-def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
+def get_nwb_imaging_metadata(
+    imgextractor: ImagingExtractor,
+    photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+) -> dict:
     """
     Convert metadata from the ImagingExtractor into nwb specific metadata.
 
     Parameters
     ----------
-    imgextractor: ImagingExtractor
+    imgextractor : ImagingExtractor
+    photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
     """
     metadata = get_default_ophys_metadata()
 
@@ -122,11 +137,13 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
         if imgextractor.get_num_channels() == 1
         else [f"OpticalChannel{idx}" for idx in range(imgextractor.get_num_channels())]
     )
+
+    imaging_plane = metadata["Ophys"]["ImagingPlane"][0]
     for index, channel_name in enumerate(channel_name_list):
         if index == 0:
-            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"][index]["name"] = channel_name
+            imaging_plane["optical_channel"][index]["name"] = channel_name
         else:
-            metadata["Ophys"]["ImagingPlane"][0]["optical_channel"].append(
+            imaging_plane["optical_channel"].append(
                 dict(
                     name=channel_name,
                     emission_lambda=np.nan,
@@ -134,16 +151,17 @@ def get_nwb_imaging_metadata(imgextractor: ImagingExtractor) -> dict:
                 )
             )
 
-    # TwoPhotonSeries update:
-    metadata["Ophys"]["TwoPhotonSeries"][0].update(dimension=list(imgextractor.get_image_size()))
+    one_photon_description = "Imaging data from one-photon excitation microscopy."
+    two_photon_description = "Imaging data from two-photon excitation microscopy."
+    photon_series_metadata = dict(
+        name=photon_series_type,
+        description=two_photon_description if photon_series_type == "TwoPhotonSeries" else one_photon_description,
+        unit="n.a.",
+        imaging_plane=imaging_plane["name"],
+        dimension=list(imgextractor.get_image_size()),
+    )
+    metadata["Ophys"].update({photon_series_type: [photon_series_metadata]})
 
-    plane_name = metadata["Ophys"]["ImagingPlane"][0]["name"]
-    metadata["Ophys"]["TwoPhotonSeries"][0]["imaging_plane"] = plane_name
-
-    # remove what Segmentation extractor will input:
-    _ = metadata["Ophys"].pop("ImageSegmentation")
-    _ = metadata["Ophys"].pop("Fluorescence")
-    _ = metadata["Ophys"].pop("DfOverF")
     return metadata
 
 
@@ -254,7 +272,7 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     """
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    default_metadata = get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
@@ -269,11 +287,13 @@ def add_image_segmentation(nwbfile: NWBFile, metadata: dict) -> NWBFile:
     return nwbfile
 
 
-def add_two_photon_series(
+def add_photon_series(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict,
-    two_photon_series_index: int = 0,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+    photon_series_index: int = 0,
+    two_photon_series_index: Optional[int] = None,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
@@ -282,7 +302,28 @@ def add_two_photon_series(
     """
     Auxiliary static method for nwbextractor.
 
-    Adds two photon series from imaging object as TwoPhotonSeries to nwbfile object.
+    Adds photon series from ImagingExtractor to NWB file object.
+    The photon series can be added to the NWB file either as a TwoPhotonSeries
+    or OnePhotonSeries object.
+
+    Parameters
+    ----------
+    imaging : ImagingExtractor
+        The imaging extractor to get the data from.
+    nwbfile : NWBFile
+        The nwbfile to add the photon series to.
+    metadata: dict
+        The metadata for the photon series.
+    photon_series_type: {'OnePhotonSeries', 'TwoPhotonSeries'}, optional
+        The type of photon series to add, default is TwoPhotonSeries.
+    photon_series_index: int, default: 0
+        The metadata for the photon series is a list of the different photon series to add.
+        Specify which element of the list with this parameter.
+
+    Returns
+    -------
+    NWBFile
+        The NWBFile passed as an input with the photon series added.
     """
     if use_times:
         warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
@@ -291,54 +332,71 @@ def add_two_photon_series(
             "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
             "Specify as a key in the new 'iterator_options' dictionary instead."
         )
+    if two_photon_series_index:
+        warn("Keyword argument 'two_photon_series_index' is deprecated. Use 'photon_series_index' instead.")
+        photon_series_index = two_photon_series_index
 
     iterator_options = iterator_options or dict()
 
     metadata_copy = deepcopy(metadata)
-    metadata_copy = dict_deep_update(get_nwb_imaging_metadata(imaging), metadata_copy, append_list=False)
+    assert photon_series_type in [
+        "OnePhotonSeries",
+        "TwoPhotonSeries",
+    ], "'photon_series_type' must be either 'OnePhotonSeries' or 'TwoPhotonSeries'."
+    metadata_copy = dict_deep_update(
+        get_nwb_imaging_metadata(imaging, photon_series_type=photon_series_type), metadata_copy, append_list=False
+    )
+    if photon_series_type == "TwoPhotonSeries":
+        assert (
+            "OnePhotonSeries" not in metadata_copy["Ophys"]
+        ), "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified."
 
-    # Tests if TwoPhotonSeries already exists in acquisition
-    two_photon_series_metadata = metadata_copy["Ophys"]["TwoPhotonSeries"][two_photon_series_index]
-    two_photon_series_name = two_photon_series_metadata["name"]
+    # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
+    photon_series_kwargs = metadata_copy["Ophys"][photon_series_type][photon_series_index]
+    photon_series_name = photon_series_kwargs["name"]
 
-    if two_photon_series_name in nwbfile.acquisition:
-        warn(f"{two_photon_series_name} already on nwbfile")
+    if photon_series_name in nwbfile.acquisition:
+        warn(f"{photon_series_name} already on nwbfile")
         return nwbfile
 
     # Add the image plane to nwb
     nwbfile = add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy)
-    imaging_plane_name = two_photon_series_metadata["imaging_plane"]
+    imaging_plane_name = photon_series_kwargs["imaging_plane"]
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
-    two_photon_series_metadata.update(imaging_plane=imaging_plane)
+    photon_series_kwargs.update(imaging_plane=imaging_plane)
 
     # Add the data
-    two_p_series_kwargs = two_photon_series_metadata
     frames_to_iterator = _imaging_frames_to_hdmf_iterator(
         imaging=imaging,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
     data = H5DataIO(data=frames_to_iterator, compression=True)
-    two_p_series_kwargs.update(data=data)
+    photon_series_kwargs.update(data=data)
 
     # Add dimension
-    two_p_series_kwargs.update(dimension=imaging.get_image_size())
+    photon_series_kwargs.update(dimension=imaging.get_image_size())
 
     # Add timestamps or rate
     if imaging.has_time_vector():
         timestamps = imaging.frame_to_time(np.arange(imaging.get_num_frames()))
         estimated_rate = calculate_regular_series_rate(series=timestamps)
         if estimated_rate:
-            two_p_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
+            photon_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
-            two_p_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            photon_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
         rate = float(imaging.get_sampling_frequency())
-        two_p_series_kwargs.update(starting_time=0.0, rate=rate)
+        photon_series_kwargs.update(starting_time=0.0, rate=rate)
 
-    # Add the TwoPhotonSeries to the nwbfile
-    two_photon_series = TwoPhotonSeries(**two_p_series_kwargs)
-    nwbfile.add_acquisition(two_photon_series)
+    # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
+    photon_series = dict(
+        OnePhotonSeries=OnePhotonSeries,
+        TwoPhotonSeries=TwoPhotonSeries,
+    )[
+        photon_series_type
+    ](**photon_series_kwargs)
+    nwbfile.add_acquisition(photon_series)
 
     return nwbfile
 
@@ -429,6 +487,7 @@ def write_imaging(
     verbose: bool = True,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     buffer_size: Optional[int] = None,  # TODO: to be removed
 ):
     """
@@ -451,7 +510,7 @@ def write_imaging(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite: bool, optional
-        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
@@ -492,10 +551,11 @@ def write_imaging(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
         add_devices(nwbfile=nwbfile_out, metadata=metadata)
-        add_two_photon_series(
+        add_photon_series(
             imaging=imaging,
             nwbfile=nwbfile_out,
             metadata=metadata,
+            photon_series_type=photon_series_type,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
@@ -510,7 +570,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
     ----------
     sgmextractor: SegmentationExtractor
     """
-    metadata = get_default_ophys_metadata()
+    metadata = get_default_segmentation_metadata()
     # Optical Channel name:
     for i in range(sgmextractor.get_num_channels()):
         ch_name = sgmextractor.get_channel_names()[i]
@@ -532,8 +592,7 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
                     description=f"description of {trace_name} traces",
                 )
             )
-    # remove what imaging extractor will input:
-    _ = metadata["Ophys"].pop("TwoPhotonSeries")
+
     return metadata
 
 
@@ -602,7 +661,7 @@ def add_plane_segmentation(
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    default_metadata = get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
@@ -727,7 +786,7 @@ def add_fluorescence_traces(
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
-    default_metadata = get_default_ophys_metadata()
+    default_metadata = get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     # df/F metadata

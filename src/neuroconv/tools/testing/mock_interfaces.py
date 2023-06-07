@@ -6,7 +6,7 @@ from pynwb import NWBFile
 from pynwb.base import DynamicTable
 
 from .mock_ttl_signals import generate_mock_ttl_signal
-from ...basedatainterface import BaseDataInterface
+from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
@@ -14,7 +14,7 @@ from ...datainterfaces.ecephys.baserecordingextractorinterface import (
 from ...utils import ArrayType, get_schema_from_method_signature
 
 
-class MockBehaviorEventInterface(BaseDataInterface):
+class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = get_schema_from_method_signature(method=cls.__init__, exclude=["event_times"])
@@ -41,7 +41,7 @@ class MockBehaviorEventInterface(BaseDataInterface):
     def get_timestamps(self) -> np.ndarray:
         return self.event_times
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.event_times = aligned_timestamps
 
     def run_conversion(self, nwbfile: NWBFile, metadata: dict):

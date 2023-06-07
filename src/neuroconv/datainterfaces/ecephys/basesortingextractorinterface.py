@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
+from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class
 
@@ -20,6 +21,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         super().__init__(**source_data)
         self.sorting_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
+        self._number_of_segments = self.sorting_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
@@ -72,14 +74,144 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
         return metadata_schema
 
+    def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
+        self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
+
     def get_original_timestamps(self) -> np.ndarray:
-        return self.get_extractor()(**self.source_data).get_times()
+        raise NotImplementedError(
+            "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
+        )
 
-    def get_timestamps(self) -> np.ndarray:
-        return self.sorting_extractor.get_times()
+    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+        if not self.sorting_extractor.has_recording():
+            raise NotImplementedError(
+                "In order to align timestamps for a SortingInterface, it must have a recording "
+                "object attached to it! Please attach one by calling `.register_recording(recording_interface=...)`."
+            )
+        if self._number_of_segments == 1:
+            return self.sorting_extractor._recording.get_times()
+        else:
+            return [
+                self.sorting_extractor._recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
 
-    def align_timestamps(self, synchronized_timestamps: np.ndarray):
-        self.sorting_extractor.set_times(times=synchronized_timestamps)
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        """
+        Replace all timestamps for the attached interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+        Must have a single-segment RecordingInterface attached; call `.register_recording(recording_interface=...)` to accomplish this.
+
+        When a SortingInterface has a recording attached, it infers the timing via the frame indices of the
+        timestamps from the corresponding recording segment. This method aligns the timestamps of that recording
+        so that the SortingExtractor can automatically infer the timing from the frames.
+
+        Parameters
+        ----------
+        aligned_timestamps : numpy.ndarray or list of numpy.ndarray
+            The synchronized timestamps for data in this interface.
+            If there is more than one segment in the sorting/recording pair, then
+        """
+        if not self.sorting_extractor.has_recording():
+            raise NotImplementedError(
+                "In order to align timestamps for a SortingInterface, it must have a recording "
+                "object attached to it! Please attach one by calling `.register_recording(recording_interface=...)`."
+            )
+        assert (
+            self._number_of_segments == 1
+        ), "This recording has multiple segments; please use 'set_aligned_segment_timestamps' instead."
+
+        if self._number_of_segments == 1:
+            self.sorting_extractor._recording.set_times(times=aligned_timestamps)
+        else:
+            assert isinstance(
+                aligned_timestamps, list
+            ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
+            assert (
+                len(aligned_timestamps) == self._number_of_segments
+            ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+
+            for segment_index in range(self._number_of_segments):
+                self.sorting_extractor._recording.set_times(
+                    times=aligned_timestamps[segment_index], segment_index=segment_index
+                )
+
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
+        """
+        Replace all timestamps for all segments in this interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+        Must have a multi-segment RecordingInterface attached by calling `.register_recording(recording_interface=...)`.
+
+        Parameters
+        ----------
+        aligned_segment_timestamps : list of numpy.ndarray
+            The synchronized timestamps for segment of data in this interface.
+        """
+        if not self.sorting_extractor.has_recording():
+            raise NotImplementedError(
+                "In order to align timestamps for a SortingInterface, it must have a recording "
+                "object attached to it! Please attach one by calling `.register_recording(recording_interface=...)`."
+            )
+        assert isinstance(
+            aligned_segment_timestamps, list
+        ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
+        assert (
+            len(aligned_segment_timestamps) == self._number_of_segments
+        ), f"The number of timestamp vectors ({len(aligned_segment_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+
+        for segment_index in range(self._number_of_segments):
+            self.sorting_extractor._recording.set_times(
+                times=aligned_segment_timestamps[segment_index], segment_index=segment_index
+            )
+
+    def set_aligned_starting_time(self, aligned_starting_time: float):
+        if self.sorting_extractor.has_recording():
+            if self._number_of_segments == 1:
+                self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
+            else:
+                self.set_aligned_segment_timestamps(
+                    aligned_timestamps=[
+                        segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
+                    ]
+                )
+        else:
+            for sorting_segment in self.sorting_extractor._sorting_segments:
+                sorting_segment._t_start += aligned_starting_time
+
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+        """
+        Align the starting time for each segment in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_segment_starting_times : list of floats
+            The starting time for each segment of data in this interface.
+        """
+        assert len(aligned_segment_starting_times) == self._number_of_segments, (
+            f"The length of the starting_times ({len(aligned_segment_starting_times)}) does not match the number "
+            f"of segments ({self._number_of_segments})!"
+        )
+
+        if self.sorting_extractor.has_recording():
+            if self._number_of_segments == 1:
+                self.set_aligned_starting_time(aligned_starting_time=aligned_segment_starting_times[0])
+            else:
+                aligned_segment_timestamps = [
+                    segment_timestamps + aligned_segment_starting_time
+                    for segment_timestamps, aligned_segment_starting_time in zip(
+                        self.get_timestamps(), aligned_segment_starting_times
+                    )
+                ]
+                self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
+        else:
+            for sorting_segment, aligned_segment_starting_time in zip(
+                self.sorting_extractor._sorting_segments, aligned_segment_starting_times
+            ):
+                sorting_segment._t_start = aligned_segment_starting_time
 
     def subset_sorting(self):
         max_min_spike_time = max(
@@ -102,6 +234,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
+        write_as: Literal["units", "processing"] = "units",
+        units_name: str = "units",
+        units_description: str = "Autogenerated by neuroconv.",
     ):
         """
         Primary function for converting the data in a SortingExtractor to NWB format.
@@ -130,6 +265,13 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_ecephys_metadata : bool, default: False
             Write electrode information contained in the metadata.
+        write_as : {'units', 'processing'}
+            How to save the units table in the nwb file. Options:
+            - 'units' will save it to the official NWBFile.Units position; recommended only for the final form of the data.
+            - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
+        units_name : str, default: 'units'
+            The name of the units table. If write_as=='units', then units_name must also be 'units'.
+        units_description : str, default: 'Autogenerated by neuroconv.'
         """
         from spikeinterface import NumpyRecording
 
@@ -177,4 +319,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             overwrite=overwrite,
             verbose=self.verbose,
             property_descriptions=property_descriptions,
+            write_as=write_as,
+            units_name=units_name,
+            units_description=units_description,
         )

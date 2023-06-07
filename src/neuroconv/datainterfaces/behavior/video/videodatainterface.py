@@ -1,6 +1,5 @@
-import warnings
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Literal, Optional
 from warnings import warn
 
 import numpy as np
@@ -15,56 +14,13 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module, make_or_load_nwbfile
-from ....utils import (
-    FilePathType,
-    calculate_regular_series_rate,
-    get_base_schema,
-    get_schema_from_hdmf_class,
-)
-
-
-def _check_duplicates(videos_metadata: List[dict], file_paths: List[FilePathType]):
-    """
-    Accumulates metadata for when multiple video files go in one ImageSeries container.
-
-    Parameters
-    ----------
-    videos_metadata: list of dicts
-
-        The metadata corresponding to the videos should be organized as follows
-
-            >>> videos_metadata = [
-            >>>     dict(name="Video1", description="This is the first video.."),
-            >>>     dict(name="SecondVideo", description="Video #2 details..."),
-            >>> ]
-
-    Returns
-    -------
-    videos_metadata_unique: list of dicts
-        if metadata has common names (case when the user intends to put multiple video files
-        under the same ImageSeries container), this removes the duplicate names.
-    file_paths_list: list of lists of strings
-        len(file_paths_list)==len(videos_metadata_unique)
-    """
-    keys_set = []
-    videos_metadata_unique = []
-    file_paths_list = []
-    for n, video in enumerate(videos_metadata):
-        if video["name"] not in keys_set:
-            keys_set.append(video["name"])
-            file_paths_list.append([file_paths[n]])
-            videos_metadata_unique.append(dict(video))
-        else:
-            idx = keys_set.index(video["name"])
-            file_paths_list[idx].append(file_paths[n])
-
-    return videos_metadata_unique, file_paths_list
+from ....utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
 
 
 class VideoInterface(BaseDataInterface):
     """Data interface for writing videos as ImageSeries."""
 
-    def __init__(self, file_paths: list, verbose: bool = False):
+    def __init__(self, file_paths: list, verbose: bool = False):  # TODO - debug why List[FilePathType] fails
         """
         Create the interface for writing videos as ImageSeries.
 
@@ -76,6 +32,9 @@ class VideoInterface(BaseDataInterface):
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         self.verbose = verbose
+        self._number_of_files = len(file_paths)
+        self._timestamps = None
+        self._segment_starting_times = None
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
@@ -87,9 +46,9 @@ class VideoInterface(BaseDataInterface):
             image_series_metadata_schema["properties"].pop(key)
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"].update(
-            required=["Movies"],
+            required=["Videos"],
             properties=dict(
-                Movies=dict(
+                Videos=dict(
                     type="array",
                     minItems=1,
                     items=image_series_metadata_schema,
@@ -101,7 +60,7 @@ class VideoInterface(BaseDataInterface):
     def get_metadata(self):
         metadata = super().get_metadata()
         behavior_metadata = dict(
-            Movies=[
+            Videos=[
                 dict(name=f"Video: {Path(file_path).stem}", description="Video recorded by camera.", unit="Frames")
                 for file_path in self.source_data["file_paths"]
             ]
@@ -110,21 +69,159 @@ class VideoInterface(BaseDataInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
+    def get_original_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+        """
+        Retrieve the original unaltered timestamps for the data in this interface.
 
-    def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
-        )
+        This function should retrieve the data on-demand by re-initializing the IO.
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
+        Returns
+        -------
+        timestamps : numpy.ndarray
+            The timestamps for the data stream.
+        stub_test : bool, default: False
+            This method scans through each video; a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        max_frames = 10 if stub_test else None
+        timestamps = list()
+        for j, file_path in enumerate(self.source_data["file_paths"]):
+            with VideoCaptureContext(file_path=str(file_path)) as video:
+                # fps = video.get_video_fps()  # There is some debate about whether the OpenCV timestamp
+                # method is simply returning range(length) / fps 100% of the time for any given format
+                timestamps.append(video.get_video_timestamps(max_frames=max_frames))
+        return timestamps
+
+    def get_timing_type(self) -> Literal["starting_time and rate", "timestamps"]:
+        """
+        Determine the type of timing used by this interface.
+
+        Returns
+        -------
+        timing_type : 'starting_time and rate' or 'timestamps'
+            The type of timing that has been set explicitly according to alignment.
+
+            If only timestamps have been set, then only those will be used.
+            If only starting times have been set, then only those will be used.
+
+            If timestamps were set, and then starting times were set, the timestamps will take precedence
+            as they will then be shifted by the corresponding starting times.
+
+            If neither has been set, and there is only one video in the file_paths,
+            it is assumed the video is regularly sampled and pre-aligned with
+            a starting_time of 0.0 relative to the session start time.
+        """
+        if self._timestamps is not None:
+            return "timestamps"
+        elif self._segment_starting_times is not None:
+            return "starting_time and rate"
+        elif self._timestamps is None and self._segment_starting_times is None and self._number_of_files == 1:
+            return "starting_time and rate"  # default behavior assumes data is pre-aligned; starting_times = [0.0]
+        else:
+            raise ValueError(
+                f"No timing information is specified and there are {self._number_of_files} total video files! "
+                "Please specify the temporal alignment of each video."
+            )
+
+    def get_timestamps(self, stub_test: bool = False) -> List[np.ndarray]:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        timestamps : numpy.ndarray
+            The timestamps for the data stream.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
+
+    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
+        """
+        Replace all timestamps for this interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_timestamps : list of numpy.ndarray
+            The synchronized timestamps for data in this interface.
+        """
+        assert (
+            self._segment_starting_times is None
+        ), "If setting both timestamps and starting times, please set the timestamps first so they can be shifted by the starting times."
+        self._timestamps = aligned_timestamps
+
+    def set_aligned_starting_time(self, aligned_starting_time: float, stub_test: bool = False):
+        """
+        Align all starting times for all videos in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_starting_time : float
+            The common starting time for all segments of temporal data in this interface.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        if self._timestamps is not None:
+            aligned_timestamps = [
+                timestamps + aligned_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
+            ]
+            self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+        elif self._segment_starting_times is not None:
+            self._segment_starting_times = [
+                segment_starting_time + aligned_starting_time for segment_starting_time in self._segment_starting_times
+            ]
+        else:
+            raise ValueError("There are no timestamps or starting times set to shift by a common value!")
+
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float], stub_test: bool = False):
+        """
+        Align the individual starting time for each video (segment) in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        starting_times : list of floats
+            The relative starting times of each video.
+        stub_test : bool, default: False
+            If timestamps have not been set to this interface, it will attempt to retrieve them
+            using the `.get_original_timestamps` method, which scans through each video;
+            a process which can take some time to complete.
+
+            To limit that scan to a small number of frames, set `stub_test=True`.
+        """
+        aligned_segment_starting_times_length = len(aligned_segment_starting_times)
+        assert aligned_segment_starting_times_length == self._number_of_files, (
+            f"The length of the 'aligned_segment_starting_times' list ({aligned_segment_starting_times_length}) does not match the "
+            "number of video files ({self._number_of_files})!"
         )
+        if self._timestamps is not None:
+            self.set_aligned_timestamps(
+                aligned_timestamps=[
+                    timestamps + segment_starting_time
+                    for timestamps, segment_starting_time in zip(
+                        self.get_timestamps(stub_test=stub_test), aligned_segment_starting_times
+                    )
+                ]
+            )
+        else:
+            self._segment_starting_times = aligned_segment_starting_times
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+        raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
 
     def run_conversion(
         self,
@@ -134,9 +231,7 @@ class VideoInterface(BaseDataInterface):
         overwrite: bool = False,
         stub_test: bool = False,
         external_mode: bool = True,
-        starting_times: Optional[list] = None,
         starting_frames: Optional[list] = None,
-        timestamps: Optional[list] = None,
         chunk_data: bool = True,
         module_name: Optional[str] = None,
         module_description: Optional[str] = None,
@@ -157,14 +252,14 @@ class VideoInterface(BaseDataInterface):
             nwb file to which the recording information is to be added
         metadata : dict, optional
             Dictionary of metadata information such as names and description of each video.
-            Metadata should be passed for each video file passed in the file_paths argument during ``__init__``.
+            Metadata should be passed for each video file passed in the file_paths.
             If storing as 'external mode', then provide duplicate metadata for video files that go in the
-            same :py:class:`~pynwb.image.ImageSeries` container. ``len(metadata["Behavior"]["Movies"]==len(file_paths)``.
+            same :py:class:`~pynwb.image.ImageSeries` container.
             Should be organized as follows::
 
                 metadata = dict(
                     Behavior=dict(
-                        Movies=[
+                        Videos=[
                             dict(name="Video1", description="This is the first video.."),
                             dict(name="SecondVideo", description="Video #2 details..."),
                             ...
@@ -173,7 +268,7 @@ class VideoInterface(BaseDataInterface):
                 )
             and may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
-            The list for the 'Movies' key should correspond one to the video files in the file_paths list.
+            The list for the 'Videos' key should correspond one to the video files in the file_paths list.
             If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
             Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
         overwrite : bool, default: False
@@ -183,14 +278,9 @@ class VideoInterface(BaseDataInterface):
         external_mode : bool, default: True
             :py:class:`~pynwb.image.ImageSeries` may contain either video data or file paths to external video files.
             If True, this utilizes the more efficient method of writing the relative path to the video files (recommended).
-        starting_times : list, optional
-            List of start times for each video. If unspecified, assumes that the videos in the file_paths list are in
-            sequential order and are contiguous.
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             Required if more than one path is specified per ImageSeries in external mode.
-        timestamps : list, optional
-            List of timestamps for the videos. If unspecified, timestamps are extracted from each video data.
         chunk_data : bool, default: True
             If True, uses a DataChunkIterator to read and write the video, reducing overhead RAM usage at the cost of
             reduced conversion speed (compared to loading video entirely into RAM as an array). This will also force to
@@ -212,78 +302,60 @@ class VideoInterface(BaseDataInterface):
         """
         file_paths = self.source_data["file_paths"]
 
-        if starting_times is not None:
-            assert isinstance(starting_times, list) and all(
-                [isinstance(x, float) for x in starting_times]
-            ), "Argument 'starting_times' must be a list of floats."
-
-        videos_metadata = metadata.get("Behavior", dict()).get("Movies", None)
+        videos_metadata = metadata.get("Behavior", dict()).get("Videos", None)
         if videos_metadata is None:
-            videos_metadata = self.get_metadata()["Behavior"]["Movies"]
+            videos_metadata = self.get_metadata()["Behavior"]["Videos"]
 
-        number_of_file_paths = len(file_paths)
-        assert len(videos_metadata) == number_of_file_paths, (
+        assert len(videos_metadata) == self._number_of_files, (
             "Incomplete metadata "
             f"(number of metadata in video {len(videos_metadata)})"
-            f"is not equal to the number of file_paths {number_of_file_paths}"
+            f"is not equal to the number of file_paths {self._number_of_files}"
         )
 
         videos_name_list = [video["name"] for video in videos_metadata]
-        some_video_names_are_not_unique = len(set(videos_name_list)) < len(videos_name_list)
-        if some_video_names_are_not_unique:
-            assert external_mode, "For multiple video files under the same ImageSeries name, use exernal_mode=True."
-
-        videos_metadata_unique, file_paths_list = _check_duplicates(videos_metadata, file_paths)
-
-        if starting_times is not None:
-            assert len(starting_times) == len(videos_metadata_unique), (
-                f"starting times list length {len(starting_times)} must be equal to number of unique "
-                f"ImageSeries {len(videos_metadata_unique)} \n"
-                f"Movies metadata provided as input {videos_metadata} \n"
-                f"starting times = {starting_times} \n"
-                f"Image series after _check_duplicates {videos_metadata_unique}"
-            )
-        else:
-            if len(videos_metadata_unique) == 1:
-                warn("starting_times not provided, setting to 0.0")
-                starting_times = [0.0]
-            else:
-                raise ValueError("provide starting times as a list of len " f"{len(videos_metadata_unique)}")
+        any_duplicated_video_names = len(set(videos_name_list)) < len(videos_name_list)
+        if any_duplicated_video_names:
+            raise ValueError("There are duplicated file names in the metadata!")
 
         # Iterate over unique videos
         stub_frames = 10
+        timing_type = self.get_timing_type()
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
         ) as nwbfile_out:
-            for j, (image_series_kwargs, file_list) in enumerate(zip(videos_metadata_unique, file_paths_list)):
-                with VideoCaptureContext(str(file_list[0])) as vc:
-                    fps = vc.get_video_fps()
-                    max_frames = stub_frames if stub_test else None
-                    extracted_timestamps = vc.get_video_timestamps(max_frames)
-                    video_timestamps = (
-                        starting_times[j] + extracted_timestamps if timestamps is None else timestamps[:max_frames]
+            if external_mode:
+                image_series_kwargs = videos_metadata[0]
+                if self._number_of_files > 1 and starting_frames is None:
+                    raise TypeError(
+                        "Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
                     )
-
-                if external_mode:
-                    num_files = len(file_list)
-                    if num_files > 1 and starting_frames is None:
-                        raise TypeError(
-                            f"Multiple paths were specified for ImageSeries index {j}, but no starting_frames were specified!"
-                        )
-                    elif num_files > 1 and num_files != len(starting_frames[j]):
-                        raise ValueError(
-                            f"Multiple paths ({num_files}) were specified for ImageSeries index {j}, "
-                            f"but the length of starting_frames ({len(starting_frames[j])}) did not match the number of paths!"
-                        )
-                    elif num_files > 1:
-                        image_series_kwargs.update(starting_frame=starting_frames[j])
-
-                    image_series_kwargs.update(
-                        format="external",
-                        external_file=file_list,
+                elif starting_frames is not None and len(starting_frames) != self._number_of_files:
+                    raise ValueError(
+                        f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
+                        f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
                     )
+                elif starting_frames is not None:
+                    image_series_kwargs.update(starting_frame=starting_frames)
+
+                image_series_kwargs.update(format="external", external_file=file_paths)
+
+                if timing_type == "starting_time and rate":
+                    starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
+                    with VideoCaptureContext(file_path=str(file_paths[0])) as video:
+                        rate = video.get_video_fps()
+                    image_series_kwargs.update(starting_time=starting_time, rate=rate)
+                elif timing_type == "timestamps":
+                    image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
                 else:
-                    file = file_list[0]
+                    raise ValueError(f"Unrecognized timing_type: {timing_type}")
+            else:
+                for file_index, (image_series_kwargs, file) in enumerate(zip(videos_metadata, file_paths)):
+                    if self._number_of_files > 1:
+                        raise NotImplementedError(
+                            "Multiple file_paths with external_mode=False is not yet supported! "
+                            "Please initialize a separate VideoInterface for each file."
+                        )
+
                     uncompressed_estimate = Path(file).stat().st_size * 70
                     available_memory = psutil.virtual_memory().available
                     if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
@@ -345,35 +417,23 @@ class VideoInterface(BaseDataInterface):
                     )
                     image_series_kwargs.update(data=wrapped_io_data)
 
-                # Store sampling rate if timestamps are regular
-                rate = calculate_regular_series_rate(series=video_timestamps)
-                if rate is not None:
-                    if round(fps, 2) != round(rate, 2):
-                        warn(
-                            f"The fps={fps:.2g} from video data is unequal to the difference in "
-                            f"regular timestamps. Using fps={rate:.2g} from timestamps instead.",
-                            UserWarning,
+                    if timing_type == "starting_time and rate":
+                        starting_time = (
+                            self._segment_starting_times[file_index]
+                            if self._segment_starting_times is not None
+                            else 0.0
                         )
-                    # Add the rate rounded to two decimals
-                    rounded_rate = round(rate, 2)
-                    image_series_kwargs.update(starting_time=starting_times[j], rate=rounded_rate)
-                else:
-                    image_series_kwargs.update(timestamps=video_timestamps)
+                        with VideoCaptureContext(file_path=str(file)) as video:
+                            rate = video.get_video_fps()
+                        image_series_kwargs.update(starting_time=starting_time, rate=rate)
+                    elif timing_type == "timestamps":
+                        image_series_kwargs.update(timestamps=self._timestamps[file_index])
 
-                # Attach image series
-                image_series = ImageSeries(**image_series_kwargs)
-
-                if module_name is None:
-                    nwbfile_out.add_acquisition(image_series)
-                else:
-                    get_module(nwbfile=nwbfile_out, name=module_name, description=module_description).add(image_series)
+            # Attach image series
+            image_series = ImageSeries(**image_series_kwargs)
+            if module_name is None:
+                nwbfile_out.add_acquisition(image_series)
+            else:
+                get_module(nwbfile=nwbfile_out, name=module_name, description=module_description).add(image_series)
 
         return nwbfile_out
-
-
-class MovieInterface(VideoInterface):
-    def __init__(self, file_paths: list, verbose: bool = False):
-        super().__init__(file_paths, verbose)
-        warnings.warn(
-            "MovieInterface is to be deprecated after April 2023, use VideoInterface instead", DeprecationWarning
-        )

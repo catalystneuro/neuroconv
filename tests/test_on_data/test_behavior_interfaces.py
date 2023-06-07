@@ -1,10 +1,14 @@
 import unittest
-from datetime import datetime
 
 from pynwb import NWBHDF5IO
 
-from neuroconv.datainterfaces import DeepLabCutInterface
-from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
+from neuroconv.datainterfaces import DeepLabCutInterface, SLEAPInterface, VideoInterface
+from neuroconv.tools.testing.data_interface_mixins import (
+    DataInterfaceTestMixin,
+    DeepLabCutInterfaceMixin,
+    TemporalAlignmentMixin,
+    VideoInterfaceMixin,
+)
 
 try:
     from .setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
@@ -12,7 +16,19 @@ except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
 
-class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
+class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):
+    data_interface_cls = VideoInterface
+    interface_kwargs = [
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")]),
+        dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")]),
+    ]
+    save_directory = OUTPUT_PATH
+
+
+class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
@@ -21,18 +37,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
     )
     save_directory = OUTPUT_PATH
 
-    def run_conversion(self, nwbfile_path: str):
-        metadata = self.interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
-
-    def check_align_starting_time_internal(self):
-        pass  # TODO in separate PR
-
-    def check_align_timestamps_internal(self):
-        pass  # TODO in separate PR
-
-    def check_read_nwb(self, nwbfile_path: str):
+    def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             assert "behavior" in nwbfile.processing
@@ -48,24 +53,36 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin, unittest.TestCase):
 
             assert all(expected_pose_estimation_series_are_in_nwb_file)
 
-    def test_conversion_as_lone_interface(self):
-        interface_kwargs = self.interface_kwargs
-        if isinstance(interface_kwargs, dict):
-            interface_kwargs = [interface_kwargs]
-        for num, kwargs in enumerate(interface_kwargs):
-            with self.subTest(str(num)):
-                self.case = num
-                self.test_kwargs = kwargs
-                self.interface = self.data_interface_cls(**self.test_kwargs)
-                self.check_metadata_schema_valid()
-                self.check_conversion_options_schema_valid()
-                self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
-                self.run_conversion(nwbfile_path=self.nwbfile_path)
-                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
-                # Temporal alignment checks
-                # Temporary override to disable failing multi-segment case
-                # self.check_get_timestamps()
-                # self.check_align_starting_time_internal()
-                # self.check_align_starting_time_external()
+class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+    data_interface_cls = SLEAPInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),
+        video_file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert "SLEAP_VIDEO_000_20190128_113421" in nwbfile.processing
+            processing_module_interfaces = nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"].data_interfaces
+            assert "track=track_0" in processing_module_interfaces
+
+            pose_estimation_series_in_nwb = processing_module_interfaces["track=track_0"].pose_estimation_series
+            expected_pose_estimation_series = [
+                "abdomen",
+                "eyeL",
+                "eyeR",
+                "forelegL4",
+                "forelegR4",
+                "head",
+                "hindlegL4",
+                "hindlegR4",
+                "midlegL4",
+                "midlegR4",
+                "thorax",
+                "wingL",
+                "wingR",
+            ]
+            self.assertCountEqual(first=pose_estimation_series_in_nwb, second=expected_pose_estimation_series)

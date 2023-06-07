@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 from pynwb.file import NWBFile
 
-from ....basedatainterface import BaseDataInterface
+from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import FilePathType, dict_deep_update
@@ -40,12 +40,10 @@ def write_subject_to_nwb(nwbfile: NWBFile, h5file: FilePathType, individual_name
     )
 
 
-class DeepLabCutInterface(BaseDataInterface):
+class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     """Data interface for DeepLabCut datasets."""
 
-    keywords = BaseDataInterface.keywords + [
-        "DLC",
-    ]
+    keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
 
     def __init__(
         self,
@@ -98,7 +96,7 @@ class DeepLabCutInterface(BaseDataInterface):
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
         )
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         raise NotImplementedError(
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
@@ -123,7 +121,7 @@ class DeepLabCutInterface(BaseDataInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         overwrite: bool, optional
-            Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         """
         base_metadata = self.get_metadata()
         metadata = dict_deep_update(base_metadata, metadata)

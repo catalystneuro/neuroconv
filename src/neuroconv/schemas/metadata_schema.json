@@ -248,6 +248,19 @@
               "imaging_plane": {"type": "string"}
             }
           }
+        },
+        "OnePhotonSeries": {
+          "type": "array",
+          "items": {
+            "title": "OnePhotonSeries",
+            "type": "object",
+            "required": ["name", "description"],
+            "properties": {
+              "name": {"type": "string", "default": "OnePhotonSeries"},
+              "description": {"type": "string"},
+              "imaging_plane": {"type": "string"}
+            }
+          }
         }
       }
     }

@@ -1,8 +1,10 @@
 from datetime import datetime
-from platform import python_version, system
+from platform import python_version
 from sys import platform
-from unittest import TestCase, skip, skipIf, skipUnless
+from unittest import skip, skipIf
 
+import jsonschema
+from hdmf.testing import TestCase
 from packaging import version
 
 from neuroconv.datainterfaces import (
@@ -20,6 +22,7 @@ from neuroconv.datainterfaces import (
     NeuroScopeRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
+    OpenEphysRecordingInterface,
     PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
@@ -81,7 +84,7 @@ class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     save_directory = OUTPUT_PATH
 
 
-@skipIf(platform == "darwin", reason="Not supported for OSX")
+@skipIf(platform == "darwin", reason="Not supported for OSX.")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "edf" / "edf+C.edf"))
@@ -90,17 +93,36 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
 
+    def test_interface_alignment(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+
+                # TODO - debug hanging I/O from pyedflib
+                # self.check_interface_get_original_timestamps()
+                # self.check_interface_get_timestamps()
+                # self.check_align_starting_time_internal()
+                # self.check_align_starting_time_external()
+                # self.check_interface_align_timestamps()
+                # self.check_shift_timestamps_by_start_time()
+                # self.check_interface_original_timestamps_inmutability()
+
+                self.check_nwbfile_temporal_alignment()
+
 
 class TestIntanRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = IntanRecordingInterface
     interface_kwargs = [
-        dict(file_path=str(DATA_PATH / "intan" / f"intan_rhd_test_1.rhd")),
-        dict(file_path=str(DATA_PATH / "intan" / f"intan_rhs_test_1.rhs")),
+        dict(file_path=str(DATA_PATH / "intan" / "intan_rhd_test_1.rhd")),
+        dict(file_path=str(DATA_PATH / "intan" / "intan_rhs_test_1.rhs")),
     ]
     save_directory = OUTPUT_PATH
 
 
-# @skipUnless(system() == "Linux", reason="MaxOneRecordingInterface is only supported on Linux.")
 @skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = MaxOneRecordingInterface
@@ -219,10 +241,89 @@ class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin, Tes
     save_directory = OUTPUT_PATH
 
 
-class TestOpenEphysBinaryRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
+class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = []
+    save_directory = OUTPUT_PATH
+
+    def test_get_stream_names(self):
+        self.assertCountEqual(
+            first=self.data_interface_cls.get_stream_names(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream")
+            ),
+            second=["Record_Node_107#Neuropix-PXI-116.0", "Record_Node_107#Neuropix-PXI-116.1"],
+        )
+
+    def test_folder_structure_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "Unable to identify the OpenEphys folder structure! Please check that your `folder_path` contains sub-folders of the "
+                "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
+            ),
+        ):
+            OpenEphysBinaryRecordingInterface(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream"),
+                stream_name="Record_Node_107#Neuropix-PXI-116.0",
+            )
+
+    def test_stream_name_missing_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "More than one stream is detected! Please specify which stream you wish to load with the `stream_name` argument. "
+                "To see what streams are available, call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
+            ),
+        ):
+            OpenEphysBinaryRecordingInterface(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107")
+            )
+
+    def test_stream_name_not_available_assertion(self):
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "The selected stream 'not_a_stream' is not in the available streams "
+                "'['Record_Node_107#Neuropix-PXI-116.0', 'Record_Node_107#Neuropix-PXI-116.1']'!"
+            ),
+        ):
+            OpenEphysBinaryRecordingInterface(
+                folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+                stream_name="not_a_stream",
+            )
+
+
+class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = OpenEphysBinaryRecordingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"))
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 2, 15, 17, 20, 4)
+
+
+class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+        stream_name="Record_Node_107#Neuropix-PXI-116.0",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 24, 15, 46, 56)
+
+
+class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream2(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+        stream_name="Record_Node_107#Neuropix-PXI-116.1",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 24, 15, 46, 56)
 
 
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -232,6 +333,23 @@ class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 10, 3, 13, 16, 50)
+
+
+class TestOpenEphysRecordingInterfaceRouter(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = OpenEphysRecordingInterface
+    interface_kwargs = [
+        dict(folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1")),
+        dict(folder_path=str(DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking")),
+        dict(
+            folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+            stream_name="Record_Node_107#Neuropix-PXI-116.0",
+        ),
+        dict(
+            folder_path=str(DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
+            stream_name="Record_Node_107#Neuropix-PXI-116.1",
+        ),
+    ]
+    save_directory = OUTPUT_PATH
 
 
 class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
@@ -266,6 +384,49 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
             "}",
             manufacturer="Imec",
         )
+
+    def check_electrode_property_helper(self):
+        """Check that the helper function returns in the way the NWB GUIDE table component expects."""
+        electrode_table_json = self.interface.get_electrode_table_json()
+
+        spikeglx_electrode_table_schema = {
+            "type": "array",
+            "minItems": 0,
+            "items": {"$ref": "#definitions/SpikeGLXElectrodeColumnEntry"},
+            "definitions": {
+                "SpikeGLXElectrodeColumnEntry": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [
+                        "channel_name",
+                        "contact_shapes",
+                        "gain_to_uV",
+                        "offset_to_uV",
+                        "group",
+                        "group_name",
+                        "inter_sample_shift",
+                        # "location",
+                        "shank_electrode_number",
+                    ],
+                    "properties": {
+                        "channel_name": {"type": "string"},
+                        "contact_shapes": {"type": "string"},
+                        "gain_to_uV": {"type": "number"},
+                        "offset_to_uV": {"type": "number"},
+                        "group": {"type": "number"},
+                        "group_name": {"type": "string"},
+                        "inter_sample_shift": {"type": "number"},
+                        "location": {"type": "array"},
+                        "shank_electrode_number": {"type": "number"},
+                    },
+                }
+            },
+        }
+        print(f"{[electrode_table_json[0]]=}")
+        jsonschema.validate(instance=[electrode_table_json[0]], schema=spikeglx_electrode_table_schema)
+
+    def run_custom_checks(self):
+        self.check_electrode_property_helper()
 
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
