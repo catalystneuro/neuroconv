@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from spikeinterface.core import BaseRecording
 
 from .neuroscope_utils import (
     get_channel_groups,
@@ -31,7 +30,7 @@ def subset_shank_channels(recording_extractor, xml_file_path: str):
     return sub_recording
 
 
-def add_recording_extractor_properties(recording_extractor: BaseRecording, gain: Optional[float] = None):
+def add_recording_extractor_properties(recording_extractor, gain: Optional[float] = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
