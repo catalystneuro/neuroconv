@@ -31,7 +31,7 @@ def subset_shank_channels(recording_extractor, xml_file_path: str):
     return sub_recording
 
 
-def add_recording_extractor_properties(recording_extractor, xml_file_path: str, gain: Optional[float] = None):
+def add_recording_extractor_properties(recording_extractor, gain: Optional[float] = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
