@@ -99,7 +99,7 @@ class TestExternalVideoInterface(TestVideoInterface):
     def test_video_external_mode(self):
         timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
         interface = self.nwb_converter.data_interface_objects["Video"]
-        interface.align_timestamps(aligned_timestamps=timestamps)
+        interface.set_aligned_timestamps(aligned_timestamps=timestamps)
         interface.align_segment_starting_times(segment_starting_times=self.segment_starting_times)
 
         conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
@@ -118,7 +118,7 @@ class TestExternalVideoInterface(TestVideoInterface):
     def test_video_irregular_timestamps(self):
         timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
         interface = self.nwb_converter.data_interface_objects["Video"]
-        interface.align_timestamps(aligned_timestamps=timestamps)
+        interface.set_aligned_timestamps(aligned_timestamps=timestamps)
         interface.align_segment_starting_times(segment_starting_times=self.segment_starting_times)
 
         conversion_options = dict(Video=dict(external_mode=True, starting_frames=[0, 4]))
@@ -137,7 +137,7 @@ class TestExternalVideoInterface(TestVideoInterface):
     def test_starting_frames_type_error(self):
         timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
         interface = self.nwb_converter.data_interface_objects["Video"]
-        interface.align_timestamps(aligned_timestamps=timestamps)
+        interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 
         conversion_opts = dict(Video=dict(external_mode=True))
         metadata = self.metadata
@@ -156,7 +156,7 @@ class TestExternalVideoInterface(TestVideoInterface):
     def test_starting_frames_value_error(self):
         timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
         interface = self.nwb_converter.data_interface_objects["Video"]
-        interface.align_timestamps(aligned_timestamps=timestamps)
+        interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 
         conversion_opts = dict(Video=dict(external_mode=True, starting_frames=[0]))
         metadata = self.metadata
@@ -223,7 +223,7 @@ class TestInternalVideoInterface(TestVideoInterface):
     def test_video_stub(self):
         timestamps = [np.array([1, 2, 4, 5, 6, 7, 8, 9, 10, 11])]
         interface = self.nwb_converter.data_interface_objects["Video"]
-        interface.align_timestamps(aligned_timestamps=timestamps)
+        interface.set_aligned_timestamps(aligned_timestamps=timestamps)
         interface.align_segment_starting_times(segment_starting_times=[self.segment_starting_times[0]])
 
         conversion_options = dict(Video=dict(external_mode=False, stub_test=True))

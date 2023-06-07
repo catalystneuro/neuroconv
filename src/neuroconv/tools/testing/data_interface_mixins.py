@@ -555,6 +555,9 @@ class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
         pass  # asserted in the testing suite; could be refactored in future PR
 
+    def test_interface_alignment(self):
+        pass  # Currently asserted in the testing suite
+
 
 class DeepLabCutInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_interface_get_original_timestamps(self):
