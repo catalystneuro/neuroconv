@@ -2,6 +2,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from .neuroscope_utils import (
     get_channel_groups,
     get_session_start_time,
@@ -110,11 +112,12 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
         self.source_data["xml_file_path"] = xml_file_path
 
-        self.recording_extractor = subset_shank_channels(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
-        )
         add_recording_extractor_properties(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
+        )
+
+        self.recording_extractor = subset_shank_channels(
+            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
     def get_metadata(self) -> dict:
@@ -127,6 +130,17 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
 
 
 class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
@@ -167,6 +181,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         add_recording_extractor_properties(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
         )
+
         self.recording_extractor = subset_shank_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
