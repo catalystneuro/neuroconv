@@ -55,7 +55,6 @@ def add_recording_extractor_properties(recording_extractor: BaseRecording, gain:
 
     group_electrode_numbers = [channel_id_to_shank_electrode_number[channel_id] for channel_id in channel_ids]
     recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=group_electrode_numbers)
-    recording_extractor.set_channel_property()
 
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
