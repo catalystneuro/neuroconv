@@ -47,6 +47,7 @@ def add_recording_extractor_properties(recording_extractor, gain: Optional[float
     unique_groups = set(channel_groups)
     channel_id_to_shank_electrode_number = dict()
 
+    # For each group, get the corresponding channels and enumerate them to have the shank electrode number
     for group_index in unique_groups:
         group_channels = [channel_id for channel_id, group in zip(channel_ids, channel_groups) if group == group_index]
         group_mapping = {channel_id: electrode_number for electrode_number, channel_id in enumerate(group_channels)}
