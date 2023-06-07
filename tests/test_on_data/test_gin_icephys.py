@@ -65,10 +65,10 @@ class TestIcephysNwbConversions(unittest.TestCase):
     def check_align_starting_time(self):  # TODO - use the mixin class in the future
         fresh_interface = self.data_interface_cls(file_paths=self.file_paths)
 
-        global_starting_time = 1.23
+        starting_time = 1.23
         relative_segment_starting_times = [[0.1]]
         fresh_interface.align_segment_starting_times(segment_starting_times=relative_segment_starting_times)
-        fresh_interface.align_global_starting_time(global_starting_time=global_starting_time)
+        fresh_interface.align_starting_time(starting_time=starting_time)
 
         neo_reader_starting_times = [reader._t_starts for reader in fresh_interface.readers_list]
         expecting_starting_times = [[1.33]]
@@ -116,8 +116,8 @@ class TestIcephysNwbConversions(unittest.TestCase):
             # Test number of traces = n_electrodes * n_segments
             npt.assert_equal(len(nwbfile.acquisition), n_electrodes * n_segments)
 
-            self.check_align_global_starting_time()
-            self.check_align_starting_times()
+            self.check_align_starting_time()
+            self.check_align_segment_starting_times()
 
 
 if __name__ == "__main__":

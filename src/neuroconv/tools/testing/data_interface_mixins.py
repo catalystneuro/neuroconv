@@ -323,7 +323,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 ]
                 self.interface.set_aligned_timestamps(aligned_timestamps=all_aligned_segment_timestamps)
 
-    def check_interface_align_segment_timestamps(self):
+    def check_interface_set_aligned_segment_timestamps(self):
         self.setUpFreshInterface()
 
         random_number_generator = np.random.default_rng(seed=0)
@@ -333,7 +333,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             all_aligned_segment_timestamps = [
                 unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
             ]
-            self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
+            self.interface.set_aligned_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
             retrieved_aligned_timestamps = self.interface.get_timestamps()
             assert_array_equal(x=retrieved_aligned_timestamps, y=all_aligned_segment_timestamps[0])
@@ -343,7 +343,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
                 for unaligned_timestamps in all_unaligned_timestamps
             ]
-            self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
+            self.interface.set_aligned_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
             all_retrieved_aligned_timestamps = self.interface.get_timestamps()
             for retrieved_aligned_timestamps, aligned_segment_timestamps in zip(
@@ -438,7 +438,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.check_interface_get_original_timestamps()
                 self.check_interface_get_timestamps()
                 self.check_interface_set_aligned_timestamps()
-                self.check_interface_align_segment_timestamps()
+                self.check_interface_set_aligned_segment_timestamps()
                 self.check_shift_timestamps_by_start_time()
                 self.check_shift_segment_timestamps_by_starting_times()
                 self.check_interface_original_timestamps_inmutability()
@@ -473,7 +473,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
             )
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
-    def check_interface_align_segment_timestamps(self):
+    def check_interface_set_aligned_segment_timestamps(self):
         self.setUpFreshInterface()
 
         if self.interface.sorting_extractor.has_recording():
@@ -484,7 +484,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                 all_aligned_segment_timestamps = [
                     unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
                 ]
-                self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
+                self.interface.set_aligned_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
                 retrieved_aligned_timestamps = self.interface.get_timestamps()
                 assert_array_equal(x=retrieved_aligned_timestamps, y=all_aligned_segment_timestamps[0])
@@ -494,7 +494,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                     unaligned_timestamps + 1.23 + random_number_generator.random(size=unaligned_timestamps.shape)
                     for unaligned_timestamps in all_unaligned_timestamps
                 ]
-                self.interface.align_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
+                self.interface.set_aligned_segment_timestamps(aligned_segment_timestamps=all_aligned_segment_timestamps)
 
                 all_retrieved_aligned_timestamps = self.interface.get_timestamps()
                 for retrieved_aligned_timestamps, aligned_segment_timestamps in zip(
@@ -544,7 +544,7 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                 # Skip get_original_timestamps() checks since unsupported
                 self.check_interface_get_timestamps()
                 self.check_interface_set_aligned_timestamps()
-                self.check_interface_align_segment_timestamps()
+                self.check_interface_set_aligned_segment_timestamps()
                 self.check_shift_timestamps_by_start_time()
                 self.check_shift_segment_timestamps_by_starting_times()
 

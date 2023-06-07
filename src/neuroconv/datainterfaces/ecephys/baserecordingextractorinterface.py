@@ -170,7 +170,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         self.recording_extractor.set_times(times=aligned_timestamps)
 
-    def align_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
         """
         Replace all timestamps for all segments in this interface with those aligned to the common session start time.
 
@@ -197,7 +197,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if self._number_of_segments == 1:
             self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
         else:
-            self.align_segment_timestamps(
+            self.set_aligned_segment_timestamps(
                 aligned_segment_timestamps=[
                     segment_timestamps + starting_time for segment_timestamps in self.get_timestamps()
                 ]
@@ -225,7 +225,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 segment_timestamps + segment_starting_time
                 for segment_timestamps, segment_starting_time in zip(self.get_timestamps(), segment_starting_times)
             ]
-            self.align_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
+            self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
 
     def align_by_interpolation(
         self,
