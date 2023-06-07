@@ -63,11 +63,11 @@ class TimeIntervalsInterface(BaseDataInterface):
 
         return self.dataframe[column].values
 
-    def align_starting_time(self, starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         timing_columns = [column for column in self.dataframe.columns if column.endswith("_time")]
 
         for column in timing_columns:
-            self.dataframe[column] += starting_time
+            self.dataframe[column] += aligned_starting_time
 
     def set_aligned_timestamps(
         self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False

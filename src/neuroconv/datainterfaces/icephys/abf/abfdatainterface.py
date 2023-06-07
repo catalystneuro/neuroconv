@@ -144,13 +144,15 @@ class AbfInterface(BaseIcephysInterface):
 
         return metadata
 
-    def align_starting_time(self, starting_time: float):
+    def align_starting_time(self, aligned_starting_time: float):
         for reader in self.readers_list:
             number_of_segments = reader.header["nb_segment"][0]
             for segment_index in range(number_of_segments):
-                reader._t_starts[segment_index] += starting_time
+                reader._t_starts[segment_index] += aligned_starting_time
 
-    def align_segment_starting_times(self, segment_starting_times: List[List[float]], stub_test: bool = False):
+    def set_aligned_segment_starting_times(
+        self, aligned_segment_starting_times: List[List[float]], stub_test: bool = False
+    ):
         """
         Align the individual starting time for each video in this interface relative to the common session start time.
 
@@ -158,21 +160,23 @@ class AbfInterface(BaseIcephysInterface):
 
         Parameters
         ----------
-        segment_starting_times : list of list of floats
+        aligned_segment_starting_times : list of list of floats
             The relative starting times of each video.
             Outer list is over file paths (readers).
             Inner list is over segments of each recording.
         """
-        number_of_files_from_starting_times = len(segment_starting_times)
+        number_of_files_from_starting_times = len(aligned_segment_starting_times)
         assert number_of_files_from_starting_times == len(self.readers_list), (
             f"The length of the outer list of 'starting_times' ({number_of_files_from_starting_times}) "
             "does not match the number of files ({len(self.readers_list)})!"
         )
 
-        for file_index, (reader, segment_starting_times) in enumerate(zip(self.readers_list, segment_starting_times)):
+        for file_index, (reader, aligned_segment_starting_times_by_file) in enumerate(
+            zip(self.readers_list, aligned_segment_starting_times)
+        ):
             number_of_segments = reader.header["nb_segment"][0]
             assert number_of_segments == len(
-                segment_starting_times
+                aligned_segment_starting_times_by_file
             ), f"The length of starting times index {file_index} does not match the number of segments of that reader!"
 
-            reader._t_starts = segment_starting_times
+            reader._t_starts = aligned_segment_starting_times_by_file

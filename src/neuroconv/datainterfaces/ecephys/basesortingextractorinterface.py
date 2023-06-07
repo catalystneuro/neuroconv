@@ -166,21 +166,21 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 times=aligned_segment_timestamps[segment_index], segment_index=segment_index
             )
 
-    def align_starting_time(self, starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         if self.sorting_extractor.has_recording():
             if self._number_of_segments == 1:
-                self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
+                self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
             else:
                 self.set_aligned_segment_timestamps(
                     aligned_timestamps=[
-                        segment_timestamps + starting_time for segment_timestamps in self.get_timestamps()
+                        segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
                     ]
                 )
         else:
             for sorting_segment in self.sorting_extractor._sorting_segments:
-                sorting_segment._t_start += starting_time
+                sorting_segment._t_start += aligned_starting_time
 
-    def align_segment_starting_times(self, segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
         """
         Align the starting time for each segment in this interface relative to the common session start time.
 
@@ -188,25 +188,30 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        segment_starting_times : list of floats
+        aligned_segment_starting_times : list of floats
             The starting time for each segment of data in this interface.
         """
-        assert (
-            len(segment_starting_times) == self._number_of_segments
-        ), f"The length of the starting_times ({len(segment_starting_times)}) does not match the number of segments ({self._number_of_segments})!"
+        assert len(aligned_segment_starting_times) == self._number_of_segments, (
+            f"The length of the starting_times ({len(aligned_segment_starting_times)}) does not match the number "
+            f"of segments ({self._number_of_segments})!"
+        )
 
         if self.sorting_extractor.has_recording():
             if self._number_of_segments == 1:
-                self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + segment_starting_times[0])
+                self.set_aligned_starting_time(aligned_starting_time=aligned_segment_starting_times[0])
             else:
                 aligned_segment_timestamps = [
-                    segment_timestamps + segment_starting_time
-                    for segment_timestamps, segment_starting_time in zip(self.get_timestamps(), segment_starting_times)
+                    segment_timestamps + aligned_segment_starting_time
+                    for segment_timestamps, aligned_segment_starting_time in zip(
+                        self.get_timestamps(), aligned_segment_starting_times
+                    )
                 ]
                 self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
         else:
-            for sorting_segment, starting_time in zip(self.sorting_extractor._sorting_segments, segment_starting_times):
-                sorting_segment._t_start = starting_time
+            for sorting_segment, aligned_segment_starting_time in zip(
+                self.sorting_extractor._sorting_segments, aligned_segment_starting_times
+            ):
+                sorting_segment._t_start = aligned_segment_starting_time
 
     def subset_sorting(self):
         max_min_spike_time = max(

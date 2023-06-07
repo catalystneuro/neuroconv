@@ -438,8 +438,8 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
             channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
         )[0]
 
-        self.trial_interface.align_starting_time(starting_time=inferred_aligned_trial_start_time)
-        self.behavior_interface.align_starting_time(starting_time=inferred_aligned_trial_start_time)
+        self.trial_interface.set_aligned_starting_time(aligned_starting_time=inferred_aligned_trial_start_time)
+        self.behavior_interface.set_aligned_starting_time(aligned_starting_time=inferred_aligned_trial_start_time)
 
         assert_array_equal(x=self.trial_interface.get_timestamps(column="start_time"), y=self.aligned_trial_start_times)
         assert_array_equal(
@@ -488,9 +488,11 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
             channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
         )[0]
 
-        converter.data_interface_objects["Trials"].align_starting_time(starting_time=inferred_aligned_trial_start_time)
-        converter.data_interface_objects["Behavior"].align_starting_time(
-            starting_time=inferred_aligned_trial_start_time
+        converter.data_interface_objects["Trials"].set_aligned_starting_time(
+            aligned_starting_time=inferred_aligned_trial_start_time
+        )
+        converter.data_interface_objects["Behavior"].set_aligned_starting_time(
+            aligned_starting_time=inferred_aligned_trial_start_time
         )
 
         nwbfile_path = self.tmpdir / "test_nidq_on_signal_alignment_nwbconverter_direct_modification.nwb"
@@ -511,11 +513,11 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
                     channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
                 )[0]
 
-                self.data_interface_objects["Trials"].align_starting_time(
-                    starting_time=inferred_aligned_trial_start_time
+                self.data_interface_objects["Trials"].set_aligned_starting_time(
+                    aligned_starting_time=inferred_aligned_trial_start_time
                 )
-                self.data_interface_objects["Behavior"].align_starting_time(
-                    starting_time=inferred_aligned_trial_start_time
+                self.data_interface_objects["Behavior"].set_aligned_starting_time(
+                    aligned_starting_time=inferred_aligned_trial_start_time
                 )
 
         source_data = dict(
