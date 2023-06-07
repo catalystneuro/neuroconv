@@ -63,13 +63,15 @@ class TimeIntervalsInterface(BaseDataInterface):
 
         return self.dataframe[column].values
 
-    def align_starting_time(self, starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         timing_columns = [column for column in self.dataframe.columns if column.endswith("_time")]
 
         for column in timing_columns:
-            self.dataframe[column] += starting_time
+            self.dataframe[column] += aligned_starting_time
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False):
+    def set_aligned_timestamps(
+        self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False
+    ):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
@@ -101,7 +103,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         ), "All current timestamps except for the last must be strictly within the unaligned mapping."
         # Assume timing column is ascending otherwise
 
-        self.align_timestamps(
+        self.set_aligned_timestamps(
             aligned_timestamps=np.interp(
                 x=current_timestamps,
                 xp=unaligned_timestamps,

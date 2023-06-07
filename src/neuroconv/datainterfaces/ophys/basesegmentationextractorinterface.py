@@ -73,7 +73,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
         )
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.segmentation_extractor.set_times(times=aligned_timestamps)
 
     def run_conversion(
