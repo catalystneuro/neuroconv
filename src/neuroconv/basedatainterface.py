@@ -1,4 +1,5 @@
 import uuid
+import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional
@@ -41,9 +42,9 @@ class BaseDataInterface(ABC):
 
         return metadata
 
-    def create_nwbfile(self, metadata=None, **kwargs):
+    def create_nwbfile(self, metadata=None, **conversion_options):
         nwbfile = make_nwbfile_from_metadata(metadata)
-        self.add_to_nwbfile(nwbfile, metadata=metadata)
+        self.add_to_nwbfile(nwbfile, metadata=metadata, **conversion_options)
         return nwbfile
 
     @abstractmethod
@@ -74,6 +75,12 @@ class BaseDataInterface(ABC):
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         """
+        if nwbfile_path is None:
+            warnings.warn(
+                "Using DataInterface.run_conversion() without specifying nwbfile_path is deprecated. To create an "
+                "NWBFile object in memory, use DataInterface.create_nwbfile(). To append to an existing NWBFile object,"
+                " use DataInterface.add_to_nwbfile()."
+            )
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
