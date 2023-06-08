@@ -255,7 +255,8 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
             "name": "AcqSystem1 DigitalLynxSX",
             "description": "Cheetah 6.4.1.dev0",
         }
-                
+
+
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = NeuroScopeRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"))

@@ -14,7 +14,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
     def __init__(
-        self, folder_path: FolderPathType, stream_name: Optional[str] = None, verbose: bool = True, es_key: str = "ElectricalSeries"
+        self,
+        folder_path: FolderPathType,
+        stream_name: Optional[str] = None,
+        verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         super().__init__(
             folder_path=folder_path, stream_name=stream_name, verbose=verbose, all_annotations=True, es_key=es_key
