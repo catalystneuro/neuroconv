@@ -20,7 +20,7 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 
-    def __init__(self, verbose: bool=False, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
         self.verbose = verbose
         self.source_data = source_data
 
