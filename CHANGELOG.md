@@ -1,5 +1,9 @@
 # (Upcoming)
 
+### Features
+
+* Added stream control with the `stream_name` argument to the `NeuralynxRecordingExtractor`. [PR #369](https://github.com/catalystneuro/neuroconv/pull/369)
+
 
 
 # v0.3.0 (June 7, 2023)
