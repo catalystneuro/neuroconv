@@ -482,14 +482,16 @@ def add_imaging(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict] = None,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
 ):
     add_devices(nwbfile=nwbfile, metadata=metadata)
-    add_two_photon_series(
+    add_photon_series(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
+        photon_series_type=photon_series_type,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )

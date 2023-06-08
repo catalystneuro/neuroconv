@@ -1,5 +1,5 @@
 """Author: Ben Dichter."""
-from typing import Optional
+from typing import Optional, Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -87,6 +87,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
+        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
@@ -102,4 +103,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
+            photon_series_type=photon_series_type,
         )
