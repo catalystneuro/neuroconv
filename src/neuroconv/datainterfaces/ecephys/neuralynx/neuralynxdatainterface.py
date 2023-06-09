@@ -19,7 +19,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
         return stream_names
-    
+
     def __init__(
         self,
         folder_path: FolderPathType,
