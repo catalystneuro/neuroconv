@@ -13,6 +13,13 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     """Primary data interface for converting Neuralynx data. Uses
     :py:class:`~spikeinterface.extractors.NeuralynxRecordingExtractor`."""
 
+    @classmethod
+    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+        from spikeinterface.extractors import NeuralynxRecordingExtractor
+
+        stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
+        return stream_names
+    
     def __init__(
         self,
         folder_path: FolderPathType,
@@ -29,7 +36,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             Path to OpenEphys directory.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
-            Call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.
+            Call `NeuralynxRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
         """
