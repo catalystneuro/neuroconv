@@ -17,9 +17,22 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         self,
         folder_path: FolderPathType,
         stream_name: Optional[str] = None,
-        verbose: bool = True,
+        verbose: bool = False,
         es_key: str = "ElectricalSeries",
     ):
+        """
+        Initialize reading of OpenEphys binary recording.
+
+        Parameters
+        ----------
+        folder_path: FolderPathType
+            Path to OpenEphys directory.
+        stream_name : str, optional
+            The name of the recording stream to load; only required if there is more than one stream detected.
+            Call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.
+        verbose : bool, default: False
+        es_key : str, default: "ElectricalSeries"
+        """
         super().__init__(
             folder_path=folder_path, stream_name=stream_name, verbose=verbose, all_annotations=True, es_key=es_key
         )
