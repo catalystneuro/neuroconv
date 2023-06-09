@@ -965,6 +965,9 @@ def add_units_table(
     unit_electrode_indices : list of lists or arrays, optional
         For each unit, the indices of electrodes that each waveform_mean/sd correspond to.
     """
+    if not write_in_processing_module and units_table_name != "units":
+        raise ValueError("When writing to the nwbfile.units table, the name of the table must be 'units'!")
+
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
 
@@ -1154,8 +1157,6 @@ def add_sorting(
         "units",
         "processing",
     ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
-    if write_as == "units":
-        assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
     write_in_processing_module = False if write_as == "units" else True
 
     add_units_table(
