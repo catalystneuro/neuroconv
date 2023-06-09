@@ -366,9 +366,9 @@ def add_icephys_recordings(
     # )
 
 
-def add_all_to_nwbfile(
+def add_neo_to_nwb(
     neo_reader,
-    nwbfile: pynwb.NWBFile = None,
+    nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     compression: Optional[str] = "gzip",
     icephys_experiment_type: str = "voltage_clamp",
@@ -399,8 +399,7 @@ def add_all_to_nwbfile(
     skip_electrodes: tuple, optional
         Electrode IDs to skip. Defaults to ().
     """
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
+    assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
 
     add_device_from_metadata(nwbfile=nwbfile, modality="Icephys", metadata=metadata)
 
@@ -528,7 +527,7 @@ def write_neo_to_nwb(
                     nwbfile_kwargs.update(metadata["NWBFile"])
                 nwbfile = pynwb.NWBFile(**nwbfile_kwargs)
 
-            add_all_to_nwbfile(nwbfile=nwbfile, **kwargs)
+            add_neo_to_nwb(nwbfile=nwbfile, **kwargs)
             io.write(nwbfile)
     else:
-        add_all_to_nwbfile(nwbfile=nwbfile, **kwargs)
+        add_neo_to_nwb(nwbfile=nwbfile, **kwargs)

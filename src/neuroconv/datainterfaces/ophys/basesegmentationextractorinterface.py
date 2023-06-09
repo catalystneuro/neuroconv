@@ -1,5 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -76,17 +76,15 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.segmentation_extractor.set_times(times=aligned_timestamps)
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel", "voxel"]]
+        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):
@@ -94,12 +92,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType, optional
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             The NWBFile to add the plane segmentation to.
         metadata : dict, optional
             The metadata for the interface
-        overwrite : bool, default: False
         stub_test : bool, default: False
         stub_frames : int, default: 100
         include_roi_centroids : bool, default: True
@@ -130,7 +126,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         -------
 
         """
-        from ...tools.roiextractors import write_segmentation
+        from ...tools.roiextractors import add_segmentation
 
         if stub_test:
             stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
@@ -138,13 +134,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             segmentation_extractor = self.segmentation_extractor
 
-        write_segmentation(
+        add_segmentation(
             segmentation_extractor=segmentation_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,

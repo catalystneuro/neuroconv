@@ -7,7 +7,12 @@ from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import OptionalFilePathType, get_base_schema, get_schema_from_hdmf_class
+from ...utils import (
+    DeepDict,
+    OptionalFilePathType,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -226,12 +231,10 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return stub_sorting_extractor
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: OptionalFilePathType = None,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
-        overwrite: bool = False,
+        nwbfile: NWBFile,
+        metadata: Optional[DeepDict] = None,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
         write_as: Literal["units", "processing"] = "units",
@@ -243,24 +246,13 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, the context will always write to this location.
-        nwbfile : NWBFile, optional
-            If passed, this function will fill the relevant fields within the NWBFile object.
-            E.g., calling
-                write_recording(recording=my_recording_extractor, nwbfile=my_nwbfile)
-            will result in the appropriate changes to the my_nwbfile object.
-            If neither 'nwbfile_path' nor 'nwbfile' are specified, an NWBFile object will be automatically generated
-            and returned by the function.
-        metadata : dict
+        nwbfile : NWBFile
+            Fill the relevant fields within the NWBFile object.
+        metadata : DeepDict
             Information for constructing the NWB file (optional) and units table descriptions.
             Should be of the format::
 
                 metadata["Ecephys"]["UnitProperties"] = dict(name=my_name, description=my_description)
-        overwrite : bool, optional
-            Whether to overwrite the NWB file if one exists at the nwbfile_path.
-            The default is False (append mode).
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_ecephys_metadata : bool, default: False
@@ -279,7 +271,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             add_devices,
             add_electrode_groups,
             add_electrodes,
-            write_sorting,
+            add_sorting,
         )
 
         if write_ecephys_metadata and "Ecephys" in metadata:
@@ -288,7 +280,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 traces_list=[np.empty(shape=n_channels)],
                 sampling_frequency=self.sorting_extractor.get_sampling_frequency(),
             )
-            add_devices(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_devices(nwbfile=nwbfile, metadata=metadata)
             add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
             add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
         if stub_test:
@@ -296,7 +288,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         else:
             sorting_extractor = self.sorting_extractor
         property_descriptions = dict()
-        for metadata_column in metadata.get("Ecephys", dict()).get("UnitProperties", []):
+        for metadata_column in metadata["Ecephys"].get("UnitProperties", []):
             property_descriptions.update({metadata_column["name"]: metadata_column["description"]})
             for unit_id in sorting_extractor.get_unit_ids():
                 # Special condition for wrapping electrode group pointers to actual object ids rather than string names
@@ -311,13 +303,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                                 )
                             ],
                         )
-        write_sorting(
+        add_sorting(
             sorting_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             property_descriptions=property_descriptions,
             write_as=write_as,
             units_name=units_name,

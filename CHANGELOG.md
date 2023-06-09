@@ -1,5 +1,9 @@
 # (Upcoming)
 
+# Features
+
+* Create separate `.add_to_nwbfile` method for all DataInterfaces. [PR #455](https://github.com/catalystneuro/neuroconv/pull/455)
+
 
 
 # v0.3.0 (June 7, 2023)
