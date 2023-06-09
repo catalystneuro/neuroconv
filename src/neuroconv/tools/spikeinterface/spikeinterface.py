@@ -19,7 +19,12 @@ from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import FilePathType, calculate_regular_series_rate, dict_deep_update
+from ...utils import (
+    DeepDict,
+    FilePathType,
+    calculate_regular_series_rate,
+    dict_deep_update,
+)
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
@@ -48,7 +53,7 @@ def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
     return metadata
 
 
-def add_devices(nwbfile: pynwb.NWBFile, metadata: dict = None):
+def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
     """
     Add device information to nwbfile object.
 
@@ -59,7 +64,7 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: dict = None):
     ----------
     nwbfile: NWBFile
         nwb file to which the recording information is to be added
-    metadata: dict
+    metadata: DeepDict
         metadata info for constructing the nwb file (optional).
         Should be of the format
             metadata['Ecephys']['Device'] = [
@@ -713,6 +718,51 @@ def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metada
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
 
+def add_recording(
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: Optional[dict] = None,
+    starting_time: Optional[float] = None,
+    write_as: Literal["raw", "processed", "lfp"] = "raw",
+    es_key: Optional[str] = None,
+    write_electrical_series: bool = True,
+    write_scaled: bool = False,
+    compression: Optional[str] = "gzip",
+    compression_opts: Optional[int] = None,
+    iterator_type: str = "v2",
+    iterator_opts: Optional[dict] = None,
+):
+    assert get_package_version("pynwb") >= Version(
+        "1.3.3"
+    ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
+
+    if hasattr(recording, "nwb_metadata"):
+        metadata = dict_deep_update(recording.nwb_metadata, metadata)
+    elif metadata is None:
+        metadata = get_nwb_metadata(recording=recording)
+
+    # Convenience function to add device, electrode groups and electrodes info
+    add_electrodes_info(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+    if write_electrical_series:
+        number_of_segments = recording.get_num_segments()
+        for segment_index in range(number_of_segments):
+            add_electrical_series(
+                recording=recording,
+                nwbfile=nwbfile,
+                segment_index=segment_index,
+                starting_time=starting_time,
+                metadata=metadata,
+                write_as=write_as,
+                es_key=es_key,
+                write_scaled=write_scaled,
+                compression=compression,
+                compression_opts=compression_opts,
+                iterator_type=iterator_type,
+                iterator_opts=iterator_opts,
+            )
+
+
 def write_recording(
     recording: BaseRecording,
     nwbfile_path: Optional[FilePathType] = None,
@@ -721,11 +771,11 @@ def write_recording(
     overwrite: bool = False,
     verbose: bool = True,
     starting_time: Optional[float] = None,
-    write_as: Optional[str] = None,
+    write_as: Optional[str] = "raw",
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = None,
+    compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
@@ -828,42 +878,24 @@ def write_recording(
                 Dictionary of keyword arguments to be passed directly to tqdm.
                 See https://github.com/tqdm/tqdm#parameters for options.
     """
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-    assert get_package_version("pynwb") >= Version(
-        "1.3.3"
-    ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
-    write_as = "raw" if write_as is None else write_as
-    compression = "gzip" if compression is None else compression
-
-    if hasattr(recording, "nwb_metadata"):
-        metadata = dict_deep_update(recording.nwb_metadata, metadata)
-    elif metadata is None:
-        metadata = get_nwb_metadata(recording=recording)
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        # Convenience function to add device, electrode groups and electrodes info
-        add_electrodes_info(recording=recording, nwbfile=nwbfile_out, metadata=metadata)
-
-        if write_electrical_series:
-            number_of_segments = recording.get_num_segments()
-            for segment_index in range(number_of_segments):
-                add_electrical_series(
-                    recording=recording,
-                    nwbfile=nwbfile_out,
-                    segment_index=segment_index,
-                    starting_time=starting_time,
-                    metadata=metadata,
-                    write_as=write_as,
-                    es_key=es_key,
-                    write_scaled=write_scaled,
-                    compression=compression,
-                    compression_opts=compression_opts,
-                    iterator_type=iterator_type,
-                    iterator_opts=iterator_opts,
-                )
+        add_recording(
+            recording=recording,
+            nwbfile=nwbfile,
+            starting_time=starting_time,
+            metadata=metadata,
+            write_as=write_as,
+            es_key=es_key,
+            write_electrical_series=write_electrical_series,
+            write_scaled=write_scaled,
+            compression=compression,
+            compression_opts=compression_opts,
+            iterator_type=iterator_type,
+            iterator_opts=iterator_opts,
+        )
     return nwbfile_out
 
 
@@ -933,6 +965,9 @@ def add_units_table(
     unit_electrode_indices : list of lists or arrays, optional
         For each unit, the indices of electrodes that each waveform_mean/sd correspond to.
     """
+    if not write_in_processing_module and units_table_name != "units":
+        raise ValueError("When writing to the nwbfile.units table, the name of the table must be 'units'!")
+
     if not isinstance(nwbfile, pynwb.NWBFile):
         raise TypeError(f"nwbfile type should be an instance of pynwb.NWBFile but got {type(nwbfile)}")
 
@@ -1107,6 +1142,37 @@ def add_units_table(
         units_table.add_column(property, **cols_args)
 
 
+def add_sorting(
+    sorting: BaseSorting,
+    nwbfile: Optional[pynwb.NWBFile] = None,
+    unit_ids: Optional[List[Union[str, int]]] = None,
+    property_descriptions: Optional[dict] = None,
+    skip_properties: Optional[List[str]] = None,
+    skip_features: Optional[List[str]] = None,
+    write_as: Literal["units", "processing"] = "units",
+    units_name: str = "units",
+    units_description: str = "Autogenerated by neuroconv.",
+):
+    assert write_as in [
+        "units",
+        "processing",
+    ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
+    write_in_processing_module = False if write_as == "units" else True
+
+    add_units_table(
+        sorting=sorting,
+        unit_ids=unit_ids,
+        nwbfile=nwbfile,
+        property_descriptions=property_descriptions,
+        skip_properties=skip_properties,
+        skip_features=skip_features,
+        write_in_processing_module=write_in_processing_module,
+        units_table_name=units_name,
+        unit_table_description=units_description,
+        write_waveforms=False,
+    )
+
+
 def write_sorting(
     sorting: BaseSorting,
     nwbfile_path: Optional[FilePathType] = None,
@@ -1121,7 +1187,7 @@ def write_sorting(
     write_as: Literal["units", "processing"] = "units",
     units_name: str = "units",
     units_description: str = "Autogenerated by neuroconv.",
-) -> NWBFile:
+):
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
 
@@ -1164,36 +1230,21 @@ def write_sorting(
         The name of the units table. If write_as=='units', then units_name must also be 'units'.
     units_description : str, default: 'Autogenerated by neuroconv.'
     """
-    assert (
-        nwbfile_path is None or nwbfile is None
-    ), "Either pass a nwbfile_path location, or nwbfile object, but not both!"
-    if nwbfile is not None:
-        assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be a pynwb.NWBFile object!"
-
-    assert write_as in [
-        "units",
-        "processing",
-    ], f"Argument write_as ({write_as}) should be one of 'units' or 'processing'!"
-    if write_as == "units":
-        assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
-    write_in_processing_module = False if write_as == "units" else True
 
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        add_units_table(
+        add_sorting(
             sorting=sorting,
-            unit_ids=unit_ids,
             nwbfile=nwbfile_out,
+            unit_ids=unit_ids,
             property_descriptions=property_descriptions,
             skip_properties=skip_properties,
             skip_features=skip_features,
-            write_in_processing_module=write_in_processing_module,
-            units_table_name=units_name,
-            unit_table_description=units_description,
-            write_waveforms=False,
+            write_as=write_as,
+            units_name=units_name,
+            units_description=units_description,
         )
-    return nwbfile_out
 
 
 def add_waveforms(

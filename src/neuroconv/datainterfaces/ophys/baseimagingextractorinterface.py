@@ -1,5 +1,5 @@
 """Author: Ben Dichter."""
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -83,16 +83,15 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.imaging_extractor.set_times(times=aligned_timestamps)
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: OptionalFilePathType = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
+        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
-        from ...tools.roiextractors import write_imaging
+        from ...tools.roiextractors import add_imaging
 
         if stub_test:
             stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
@@ -100,11 +99,9 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         else:
             imaging_extractor = self.imaging_extractor
 
-        write_imaging(
+        add_imaging(
             imaging=imaging_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
+            photon_series_type=photon_series_type,
         )

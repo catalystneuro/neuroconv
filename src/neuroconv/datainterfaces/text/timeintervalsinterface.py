@@ -114,12 +114,10 @@ class TimeIntervalsInterface(BaseDataInterface):
             column=column,
         )
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         tag: str = "trials",
         column_name_mapping: Dict[str, str] = None,
         column_descriptions: Dict[str, str] = None,
@@ -129,16 +127,10 @@ class TimeIntervalsInterface(BaseDataInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, the context will always write to this location.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        overwrite : bool, default: False
-            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
-            The default is False (append mode).
         tag : str, default: "trials"
         column_name_mapping: dict, optional
             If passed, rename subset of columns from key to value.
@@ -146,24 +138,17 @@ class TimeIntervalsInterface(BaseDataInterface):
             Keys are the names of the columns (after renaming) and values are the descriptions. If not passed,
             the names of the columns are used as descriptions.
 
-        Returns
-        -------
-        NWBFile
-
         """
         metadata = metadata or self.get_metadata()
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            self.time_intervals = convert_df_to_time_intervals(
-                self.dataframe,
-                column_name_mapping=column_name_mapping,
-                column_descriptions=column_descriptions,
-                **metadata["TimeIntervals"][tag],
-            )
-            nwbfile_out.add_time_intervals(self.time_intervals)
+        self.time_intervals = convert_df_to_time_intervals(
+            self.dataframe,
+            column_name_mapping=column_name_mapping,
+            column_descriptions=column_descriptions,
+            **metadata["TimeIntervals"][tag],
+        )
+        nwbfile.add_time_intervals(self.time_intervals)
 
-        return nwbfile_out
+        return nwbfile
 
     @abstractmethod
     def _read_file(self, file_path: FilePathType, **read_kwargs):
