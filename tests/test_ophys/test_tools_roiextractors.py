@@ -14,7 +14,7 @@ from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
 from numpy.typing import ArrayLike
 from parameterized import param, parameterized
-from pynwb import NWBHDF5IO, H5DataIO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.device import Device
 from pynwb.ophys import OnePhotonSeries
 from roiextractors.testing import (
@@ -814,9 +814,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             series_outer_data = fluorescence[nwb_series_name].data
             assert_array_equal(series_outer_data.data.data, traces[roiextractors_name])
 
-            # Check compression options are set
-            assert isinstance(series_outer_data, H5DataIO)
-
             compression_parameters = series_outer_data.get_io_params()
             assert compression_parameters["compression"] == "gzip"
 
@@ -877,9 +874,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         series_outer_data = df_over_f[trace_name].data
         assert_array_equal(series_outer_data.data.data, traces["dff"])
-
-        # Check compression options are set
-        assert isinstance(series_outer_data, H5DataIO)
 
         compression_parameters = series_outer_data.get_io_params()
         assert compression_parameters["compression"] == "gzip"
@@ -1200,8 +1194,7 @@ class TestAddPhotonSeries(TestCase):
         # Check data
         acquisition_modules = self.nwbfile.acquisition
         assert self.two_photon_series_name in acquisition_modules
-        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
-        data_chunk_iterator = data_in_hdfm_data_io.data
+        data_chunk_iterator = acquisition_modules[self.two_photon_series_name].data
         assert isinstance(data_chunk_iterator, ImagingExtractorDataChunkIterator)
 
         two_photon_series_extracted = np.concatenate([data_chunk.data for data_chunk in data_chunk_iterator])
@@ -1316,8 +1309,7 @@ class TestAddPhotonSeries(TestCase):
 
         acquisition_modules = self.nwbfile.acquisition
         assert self.two_photon_series_name in acquisition_modules
-        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
-        data_chunk_iterator = data_in_hdfm_data_io.data
+        data_chunk_iterator = acquisition_modules[self.two_photon_series_name].data
         self.assertEqual(data_chunk_iterator.buffer_shape, buffer_shape)
         self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
 

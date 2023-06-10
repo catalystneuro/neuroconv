@@ -8,7 +8,6 @@ from typing import Optional, Tuple
 import neo.io.baseio
 import numpy as np
 import pynwb
-from hdmf.backends.hdf5 import H5DataIO
 
 from ..nwb_helpers import add_device_from_metadata
 from ...utils import OptionalFilePathType
@@ -313,10 +312,7 @@ def add_icephys_recordings(
                 name=response_name,
                 description=f"Response to: {session_stimulus_type}",
                 electrode=electrode,
-                data=H5DataIO(
-                    data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
-                    compression=compression,
-                ),
+                data=neo_reader.get_analogsignal_chunk(block_index=0, seg_index=si, channel_indexes=ei),
                 starting_time=starting_time,
                 rate=sampling_rate,
                 conversion=response_conversion * response_gain,

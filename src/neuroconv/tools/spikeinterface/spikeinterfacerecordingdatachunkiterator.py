@@ -85,4 +85,4 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         return self.recording.get_dtype()
 
     def _get_maxshape(self):
-        return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
+        return self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels()

@@ -1,7 +1,6 @@
 from typing import Literal, Optional
 from warnings import warn
 
-from hdmf.backends.hdf5 import H5DataIO
 from pynwb import NWBFile
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
@@ -16,7 +15,6 @@ def add_acoustic_waveform_series(
     starting_time: float = 0.0,
     write_as: Literal["stimulus", "acquisition"] = "stimulus",
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
 
@@ -42,8 +40,6 @@ def add_acoustic_waveform_series(
         "stimulus" or as "acquisition".
     iterator_options : dict, optional
         Dictionary of options for the SliceableDataChunkIterator.
-    compression_options : dict, optional
-        Dictionary of options for compressing the data for H5DataIO.
 
     Returns
     -------
@@ -56,7 +52,6 @@ def add_acoustic_waveform_series(
         "acquisition",
     ], "Acoustic series can be written either as 'stimulus' or 'acquisition'."
 
-    compression_options = compression_options or dict(compression="gzip")
     iterator_options = iterator_options or dict()
 
     container = nwbfile.acquisition if write_as == "acquisition" else nwbfile.stimulus
@@ -68,7 +63,7 @@ def add_acoustic_waveform_series(
     acoustic_waveform_series_kwargs = dict(
         rate=float(rate),
         starting_time=starting_time,
-        data=H5DataIO(SliceableDataChunkIterator(data=acoustic_series, **iterator_options), **compression_options),
+        data=SliceableDataChunkIterator(data=acoustic_series, **iterator_options),
     )
 
     # Add metadata

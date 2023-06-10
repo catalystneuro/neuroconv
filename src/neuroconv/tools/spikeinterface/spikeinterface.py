@@ -7,8 +7,6 @@ from typing import List, Literal, Optional, Union
 import numpy as np
 import psutil
 import pynwb
-from hdmf.backends.hdf5.h5_utils import H5DataIO
-from hdmf.common.table import DynamicTable
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from nwbinspector.utils import get_package_version
 from packaging.version import Version
@@ -520,8 +518,6 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -555,10 +551,6 @@ def add_electrical_series(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression : {'gzip', 'lzf'}, optional
-        Type of compression to use. Set to None to disable all compression.
-    compression_opts: int, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -653,9 +645,7 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
-    )
+    eseries_kwargs.update(data=ephys_data_iterator)
 
     # Timestamps vs rate
     timestamps = recording.get_times(segment_index=segment_index)
@@ -667,10 +657,7 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
     else:
         shifted_time_stamps = starting_time + timestamps
-        wrapped_timestamps = H5DataIO(
-            data=shifted_time_stamps, compression=compression, compression_opts=compression_opts
-        )
-        eseries_kwargs.update(timestamps=wrapped_timestamps)
+        eseries_kwargs.update(timestamps=shifted_time_stamps)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -727,8 +714,6 @@ def add_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
@@ -756,8 +741,6 @@ def add_recording(
                 write_as=write_as,
                 es_key=es_key,
                 write_scaled=write_scaled,
-                compression=compression,
-                compression_opts=compression_opts,
                 iterator_type=iterator_type,
                 iterator_opts=iterator_opts,
             )
@@ -775,8 +758,6 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ) -> pynwb.NWBFile:
@@ -847,11 +828,6 @@ def write_recording(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: {None, 'gzip', 'lzp'}
-        Type of compression to use.
-        Set to None to disable all compression.
-    compression_opts: int, optional, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.
@@ -891,8 +867,6 @@ def write_recording(
             es_key=es_key,
             write_electrical_series=write_electrical_series,
             write_scaled=write_scaled,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
         )

@@ -4,7 +4,6 @@ from warnings import warn
 
 import numpy as np
 import psutil
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.image import ImageSeries
@@ -400,14 +399,7 @@ class VideoInterface(BaseDataInterface):
                                 pbar.update(1)
                     iterable = video
 
-                # Wrap data for compression
-                wrapped_io_data = H5DataIO(
-                    iterable,
-                    compression=compression,
-                    compression_opts=compression_options,
-                    chunks=chunks,
-                )
-                image_series_kwargs.update(data=wrapped_io_data)
+                image_series_kwargs.update(data=iterable)
 
                 if timing_type == "starting_time and rate":
                     starting_time = (

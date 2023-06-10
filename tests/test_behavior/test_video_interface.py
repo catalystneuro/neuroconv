@@ -193,7 +193,7 @@ class TestInternalVideoInterface(TestVideoInterface):
             )
         )
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path,
+            nwbfile_path=str(self.nwbfile_path),
             overwrite=True,
             conversion_options=conversion_opts,
             metadata=self.metadata,
@@ -206,7 +206,7 @@ class TestInternalVideoInterface(TestVideoInterface):
     def test_video_chunking(self):
         conversion_options = dict(Video=dict(external_mode=False, stub_test=True, chunk_data=False))
         self.nwb_converter.run_conversion(
-            nwbfile_path=self.nwbfile_path,
+            nwbfile_path=str(self.nwbfile_path),
             overwrite=True,
             conversion_options=conversion_options,
             metadata=self.metadata,

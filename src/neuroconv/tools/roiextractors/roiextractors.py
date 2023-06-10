@@ -5,7 +5,6 @@ from warnings import warn
 
 import numpy as np
 import psutil
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 
 # from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
@@ -371,8 +370,7 @@ def add_photon_series(
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
-    data = H5DataIO(data=frames_to_iterator, compression=True)
-    photon_series_kwargs.update(data=data)
+    photon_series_kwargs.update(data=frames_to_iterator)
 
     # Add dimension
     photon_series_kwargs.update(dimension=imaging.get_image_size())
@@ -384,7 +382,7 @@ def add_photon_series(
         if estimated_rate:
             photon_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
-            photon_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            photon_series_kwargs.update(timestamps=timestamps, rate=None)
     else:
         rate = float(imaging.get_sampling_frequency())
         photon_series_kwargs.update(starting_time=0.0, rate=rate)
@@ -659,10 +657,6 @@ def add_plane_segmentation(
         Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
         If None, the mask information is not written to the NWB file.
         Defaults to 'image'.
-    iterator_options : dict, optional
-        The options to use when iterating over the image masks of the segmentation extractor.
-    compression_options : dict, optional
-        The options to use when compressing the image masks of the segmentation extractor.
 
     Returns
     -------
@@ -673,9 +667,6 @@ def add_plane_segmentation(
         "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel', "
         f"or None (to not write any masks)! Received '{mask_type}'."
     )
-
-    iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -713,7 +704,7 @@ def add_plane_segmentation(
             plane_segmentation.add_column(
                 name="image_mask",
                 description="Image masks for each ROI.",
-                data=H5DataIO(segmentation_extractor.get_roi_image_masks().T, **compression_options),
+                data=segmentation_extractor.get_roi_image_masks().T,
             )
         elif mask_type == "pixel" or mask_type == "voxel":
             pixel_masks = segmentation_extractor.get_roi_pixel_masks()
@@ -749,19 +740,19 @@ def add_plane_segmentation(
             plane_segmentation.add_column(
                 name="ROICentroids",
                 description="The x, y, (z) centroids of each ROI.",
-                data=H5DataIO(roi_locations, **compression_options),
+                data=roi_locations,
             )
 
         if include_roi_acceptance:
             plane_segmentation.add_column(
                 name="Accepted",
                 description="1 if ROI was accepted or 0 if rejected as a cell during segmentation operation.",
-                data=H5DataIO(accepted_ids, **compression_options),
+                data=accepted_ids,
             )
             plane_segmentation.add_column(
                 name="Rejected",
                 description="1 if ROI was rejected or 0 if accepted as a cell during segmentation operation.",
-                data=H5DataIO(rejected_ids, **compression_options),
+                data=rejected_ids,
             )
 
         image_segmentation.add_plane_segmentation(plane_segmentations=[plane_segmentation])
@@ -774,7 +765,6 @@ def add_fluorescence_traces(
     metadata: Optional[dict],
     plane_index: int = 0,
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
 ) -> NWBFile:
     """
     Adds the fluorescence traces specified by the metadata to the nwb file.
@@ -792,7 +782,6 @@ def add_fluorescence_traces(
     plane_index : int, default: 0
         The index of the plane to add the fluorescence traces to.
     iterator_options : dict, optional
-    compression_options : dict, optional
 
     Returns
     -------
@@ -800,7 +789,6 @@ def add_fluorescence_traces(
         The nwbfile passed as an input with the fluorescence traces added.
     """
     iterator_options = iterator_options or dict()
-    compression_options = compression_options or dict(compression="gzip")
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -846,7 +834,7 @@ def add_fluorescence_traces(
         if estimated_rate:
             roi_response_series_kwargs.update(starting_time=timestamps[0], rate=estimated_rate)
         else:
-            roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
+            roi_response_series_kwargs.update(timestamps=timestamps, rate=None)
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
         roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
@@ -889,7 +877,7 @@ def add_fluorescence_traces(
 
         # Build the roi response series
         roi_response_series_kwargs.update(
-            data=H5DataIO(SliceableDataChunkIterator(trace, **iterator_options), **compression_options),
+            data=SliceableDataChunkIterator(trace, **iterator_options),
             rois=roi_table_region,
             **trace_metadata,
         )
@@ -997,7 +985,6 @@ def add_segmentation(
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
-    compression_options: Optional[dict] = None,
 ):
     # Add device:
     add_devices(nwbfile=nwbfile, metadata=metadata)
@@ -1021,7 +1008,6 @@ def add_segmentation(
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
         iterator_options=iterator_options,
-        compression_options=compression_options,
     )
 
     # Add fluorescence traces:
@@ -1030,7 +1016,6 @@ def add_segmentation(
         nwbfile=nwbfile,
         metadata=metadata,
         iterator_options=iterator_options,
-        compression_options=compression_options,
     )
 
     # Adding summary images (mean and correlation)
