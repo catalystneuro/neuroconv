@@ -167,7 +167,9 @@ class TestVideoInterface(unittest.TestCase):
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
         num_frames_chunk = int(1e6 // np.prod(frame_shape))
         num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
-        img_srs = ImageSeries(name="imageseries", data=VideoDataChunkIterator(video_file), unit="na", starting_time=None, rate=1.0)
+        img_srs = ImageSeries(
+            name="imageseries", data=VideoDataChunkIterator(video_file), unit="na", starting_time=None, rate=1.0
+        )
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
@@ -183,7 +185,9 @@ class TestVideoInterface(unittest.TestCase):
         video_file = self.create_video(self.fps, frame_shape, self.number_of_frames)
         num_frames_chunk = int(1e6 // np.prod(frame_shape))
         num_frames_chunk = 1 if num_frames_chunk == 0 else num_frames_chunk
-        img_srs = ImageSeries(name="imageseries", data=VideoDataChunkIterator(video_file), unit="na", starting_time=None, rate=1.0)
+        img_srs = ImageSeries(
+            name="imageseries", data=VideoDataChunkIterator(video_file), unit="na", starting_time=None, rate=1.0
+        )
         self.nwbfile.add_acquisition(img_srs)
         with NWBHDF5IO(path=self.nwbfile_path, mode="w") as io:
             io.write(self.nwbfile)
