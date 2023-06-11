@@ -814,9 +814,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
             series_outer_data = fluorescence[nwb_series_name].data
             assert_array_equal(series_outer_data.data.data, traces[roiextractors_name])
 
-            compression_parameters = series_outer_data.get_io_params()
-            assert compression_parameters["compression"] == "gzip"
-
         # Check that df/F trace data is not being written to the Fluorescence container
         df_over_f = ophys.get(self.df_over_f_name)
         assert_raises(
@@ -874,9 +871,6 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         series_outer_data = df_over_f[trace_name].data
         assert_array_equal(series_outer_data.data.data, traces["dff"])
-
-        compression_parameters = series_outer_data.get_io_params()
-        assert compression_parameters["compression"] == "gzip"
 
     def test_add_fluorescence_one_of_the_traces_is_none(self):
         """Test that roi response series with None values are not added to the

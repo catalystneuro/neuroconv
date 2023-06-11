@@ -1,15 +1,45 @@
 import uuid
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Iterable, Tuple, Literal, Dict
 from typing import Optional
 from warnings import warn
 
+import hdmf
+from hdmf.backends.hdf5.h5tools import H5DataIO
+from hdmf.backends.io import HDMFIO
+from hdmf.data_utils import DataIO
+from hdmf_zarr.nwb import NWBZarrIO
+from hdmf_zarr.utils import ZarrDataIO
+from pynwb import NWBContainer, TimeSeries
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict
+
+
+@dataclass
+class BackendConfig:
+    nwb_io: HDMFIO
+    data_io: DataIO
+    data_io_defaults: Optional[dict]
+
+
+backend_configs = dict(
+    hdf5=BackendConfig(
+        nwb_io=NWBHDF5IO,
+        data_io=H5DataIO,
+        data_io_defaults=dict(compression="gzip", compression_opts=4),
+    ),
+    zarr=BackendConfig(
+        nwb_io=NWBZarrIO,
+        data_io=ZarrDataIO,
+        data_io_defaults=None,
+    ),
+)
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -122,6 +152,7 @@ def make_or_load_nwbfile(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
+    backend: Literal["hdf5", "zarr"] = "hdf5",
 ):
     """
     Context for automatically handling decision of write vs. append for writing an NWBFile.
@@ -135,12 +166,13 @@ def make_or_load_nwbfile(
         An in-memory NWBFile object to write to the location.
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-    overwrite: bool, optional
+    overwrite: bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
-    verbose: bool, optional
+    verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-        The default is True.
+    backend : {"hdf5", "zarr"}, default: "hdf5
+        Backend to use for loading and/or saving the NWB file.
     """
     nwbfile_path_in = Path(nwbfile_path) if nwbfile_path else None
     assert not (nwbfile_path is None and nwbfile is None and metadata is None), (
@@ -161,7 +193,7 @@ def make_or_load_nwbfile(
             load_kwargs.update(mode="r+", load_namespaces=True)
         else:
             load_kwargs.update(mode="w")
-        io = NWBHDF5IO(**load_kwargs)
+        io = backend_configs[backend].nwb_io(**load_kwargs)
     try:
         if load_kwargs.get("mode", "") == "r+":
             nwbfile = io.read()
@@ -184,3 +216,55 @@ def make_or_load_nwbfile(
 
                 if not success and not file_initially_exists:
                     nwbfile_path_in.unlink()
+
+
+def find_configurable_datasets(nwbfile: NWBFile) -> Iterable[Tuple[NWBContainer, str]]:
+    """
+    Gather object references and fields for configurable datasets. By default, gathers all TimeSeries.data,
+    TimeSeries.timestamps, and columns of DynamicTables.
+
+    Parameters
+    ----------
+    nwbfile: NWBFile
+
+    Returns
+    -------
+
+    """
+    for obj in nwbfile.objects.values():
+        if isinstance(obj, TimeSeries):
+            yield obj, "data"
+            if getattr(obj, "timestamps"):
+                yield obj, "timestamps"
+        elif isinstance(obj, hdmf.common.table.DynamicTable):
+            for colname in getattr(obj, "colnames"):
+                yield obj, colname
+
+
+def configure_datasets(
+    nwbfile: NWBFile,
+    backend: Literal["hdf5", "zarr"] = "hdf5",
+    dataset_configurations: Optional[Dict[Tuple[NWBContainer, str], dict]] = None
+):
+    """
+    Apply dataset configurations. Use the default configuration for the backend if not specified. Modifies the
+    NWBfile in place.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+    backend : {"hdf5", "zarr"}
+    dataset_configurations : dict, optional
+        Dict of the form `(nwb_container_object, field): data_io_kwargs`
+        To specify that no DataIO configuration should be applied, use `(nwb_container_object, field): None`
+
+    """
+
+    data_io = backend_configs[backend].data_io
+    for obj, field in find_configurable_datasets(nwbfile):
+        if dataset_configurations and (obj, field) in dataset_configurations:
+            if dataset_configurations[obj, field] is not None:
+                this_config = dataset_configurations[obj, field]
+                setattr(obj, field, data_io(data=getattr(obj, field), **this_config))
+        if not isinstance(obj, DataIO):
+            setattr(obj, field, data_io(data=getattr(obj, field), **backend_configs[backend].data_io_defaults))

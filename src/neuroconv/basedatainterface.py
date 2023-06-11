@@ -2,10 +2,12 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Literal, Iterable, Tuple, Dict
 
-from pynwb import NWBFile
+from pynwb import NWBFile, NWBContainer
 
+from .tools.nwb_helpers import backend_configs, configure_datasets
+from .tools.nwb_helpers import find_configurable_datasets
 from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
@@ -51,12 +53,60 @@ class BaseDataInterface(ABC):
     def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options):
         raise NotImplementedError()
 
+    @staticmethod
+    def configure_datasets(
+        nwbfile: NWBFile,
+        backend: Literal["hdf5", "zarr"] = "hdf5",
+        dataset_configurations: Optional[Dict[Tuple[NWBContainer, str], dict]] = None
+    ):
+        """
+        Apply dataset configurations. Use the default configuration for the backend if not specified. Modifies the
+        NWBfile in place.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+        backend : {"hdf5", "zarr"}
+        dataset_configurations : dict, optional
+            Dict of the form `(nwb_container_object, field): data_io_kwargs`
+            To specify that no DataIO configuration should be applied, use `(nwb_container_object, field): None`
+
+        """
+        configure_datasets(nwbfile=nwbfile, backend=backend, dataset_configurations=dataset_configurations)
+
+    def write(
+        self,
+        nwbfile: NWBFile,
+        backend: Literal["hdf5", "zarr"] = None,
+        dataset_configurations: Optional[Dict[Tuple[NWBContainer, str], dict]] = None,
+    ):
+        """
+        Write the in-memory NWBfile to disk.
+
+        Parameters
+        ----------
+        nwbfile: NWBFile
+        backend : {"hdf5", "zarr"}, default: "hdf5"
+            Backend to use for loading and/or saving the NWB file.
+        dataset_configurations : dict, optional
+            Dict of the form `(nwb_container_object, field): data_io_kwargs`
+            To specify that no DataIO configuration should be applied, use `(nwb_container_object, field): None`
+
+        """
+
+        if dataset_configurations is not None:
+            self.configure_datasets(nwbfile=nwbfile, backend=backend, dataset_configurations=dataset_configurations)
+        with backend_configs[backend].nwb_io as io:
+            io.write(nwbfile)
+
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
         nwbfile: Optional[NWBFile] = None,
         metadata: Optional[dict] = None,
         overwrite: bool = False,
+        backend: Literal["hdf5", "zarr"] = "hdf5",
+        dataset_configurations: Optional[dict] = None,
         **conversion_options,
     ):
         """
@@ -74,6 +124,11 @@ class BaseDataInterface(ABC):
         overwrite : bool, default: False
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
+        dataset_configurations : dict, optional
+            Dict of the form `(nwb_container_object, field): data_io_kwargs`
+            To specify that no DataIO configuration should be applied, use `(nwb_container_object, field): None`
+        backend : {"hdf5", "zarr"}, default: "hdf5"
+            Backend to use for loading and/or saving the NWB file.
         """
         if nwbfile_path is None:
             warnings.warn(
@@ -88,5 +143,7 @@ class BaseDataInterface(ABC):
             metadata=metadata,
             overwrite=overwrite,
             verbose=getattr(self, "verbose", False),
+            backend=backend,
         ) as nwbfile_out:
             self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)
+            self.configure_datasets(nwbfile_out, backend=backend, dataset_configurations=dataset_configurations)
