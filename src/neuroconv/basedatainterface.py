@@ -2,13 +2,17 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Literal, Iterable, Tuple, Dict
+from typing import Dict, Iterable, List, Literal, Optional, Tuple
 
-from pynwb import NWBFile, NWBContainer
+from pynwb import NWBContainer, NWBFile
 
-from .tools.nwb_helpers import backend_configs, configure_datasets
-from .tools.nwb_helpers import find_configurable_datasets
-from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
+from .tools.nwb_helpers import (
+    backend_configs,
+    configure_datasets,
+    find_configurable_datasets,
+    make_nwbfile_from_metadata,
+    make_or_load_nwbfile,
+)
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
@@ -57,7 +61,7 @@ class BaseDataInterface(ABC):
     def configure_datasets(
         nwbfile: NWBFile,
         backend: Literal["hdf5", "zarr"] = "hdf5",
-        dataset_configurations: Optional[Dict[Tuple[NWBContainer, str], dict]] = None
+        dataset_configurations: Optional[Dict[Tuple[NWBContainer, str], dict]] = None,
     ):
         """
         Apply dataset configurations. Use the default configuration for the backend if not specified. Modifies the

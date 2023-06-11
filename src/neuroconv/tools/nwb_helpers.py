@@ -3,8 +3,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Tuple, Literal, Dict
-from typing import Optional
+from typing import Dict, Iterable, Literal, Optional, Tuple
 from warnings import warn
 
 import hdmf
@@ -13,8 +12,7 @@ from hdmf.backends.io import HDMFIO
 from hdmf.data_utils import DataIO
 from hdmf_zarr.nwb import NWBZarrIO
 from hdmf_zarr.utils import ZarrDataIO
-from pynwb import NWBContainer, TimeSeries
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBContainer, NWBFile, TimeSeries
 from pynwb.file import Subject
 
 from ..utils import FilePathType, dict_deep_update
@@ -244,7 +242,7 @@ def find_configurable_datasets(nwbfile: NWBFile) -> Iterable[Tuple[NWBContainer,
 def configure_datasets(
     nwbfile: NWBFile,
     backend: Literal["hdf5", "zarr"] = "hdf5",
-    dataset_configurations: Optional[Dict[Tuple[NWBContainer, str], dict]] = None
+    dataset_configurations: Optional[Dict[Tuple[NWBContainer, str], dict]] = None,
 ):
     """
     Apply dataset configurations. Use the default configuration for the backend if not specified. Modifies the
