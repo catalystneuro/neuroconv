@@ -45,9 +45,9 @@ def get_default_nwbfile_metadata() -> DeepDict:
     return metadata
 
 
-def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
+def make_nwbfile_from_metadata(metadata: dict, metadata_update_kwargs: Optional[dict] = None) -> NWBFile:
     """Make NWBFile from available metadata."""
-    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
+    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata, **(metadata_update_kwargs or {}))
     nwbfile_kwargs = metadata["NWBFile"]
     if "Subject" in metadata:
         # convert ISO 8601 string to datetime
@@ -122,6 +122,7 @@ def make_or_load_nwbfile(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
+    metadata_update_kwargs: Optional[dict] = None,
 ):
     """
     Context for automatically handling decision of write vs. append for writing an NWBFile.
@@ -141,6 +142,8 @@ def make_or_load_nwbfile(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
+    metadata_update_kwargs: dict, optional
+        Keyword arguments for the dict_deep_update() function. Only used if creating a new NWBFile.
     """
     nwbfile_path_in = Path(nwbfile_path) if nwbfile_path else None
     assert not (nwbfile_path is None and nwbfile is None and metadata is None), (
@@ -166,7 +169,10 @@ def make_or_load_nwbfile(
         if load_kwargs.get("mode", "") == "r+":
             nwbfile = io.read()
         elif nwbfile is None:
-            nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+            nwbfile = make_nwbfile_from_metadata(
+                metadata=metadata, 
+                metadata_update_kwargs=metadata_update_kwargs
+            )
         yield nwbfile
     except Exception as e:
         success = False
