@@ -141,7 +141,7 @@ class VideoInterface(BaseDataInterface):
         """
         return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
 
-    def align_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
@@ -157,7 +157,7 @@ class VideoInterface(BaseDataInterface):
         ), "If setting both timestamps and starting times, please set the timestamps first so they can be shifted by the starting times."
         self._timestamps = aligned_timestamps
 
-    def align_starting_time(self, starting_time: float, stub_test: bool = False):
+    def set_aligned_starting_time(self, aligned_starting_time: float, stub_test: bool = False):
         """
         Align all starting times for all videos in this interface relative to the common session start time.
 
@@ -165,7 +165,7 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        starting_time : float
+        aligned_starting_time : float
             The common starting time for all segments of temporal data in this interface.
         stub_test : bool, default: False
             If timestamps have not been set to this interface, it will attempt to retrieve them
@@ -175,19 +175,18 @@ class VideoInterface(BaseDataInterface):
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
         if self._timestamps is not None:
-            self.align_timestamps(
-                aligned_timestamps=[
-                    timestamps + starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
-                ]
-            )
+            aligned_timestamps = [
+                timestamps + aligned_starting_time for timestamps in self.get_timestamps(stub_test=stub_test)
+            ]
+            self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
         elif self._segment_starting_times is not None:
             self._segment_starting_times = [
-                starting_time + starting_time for starting_time in self._segment_starting_times
+                segment_starting_time + aligned_starting_time for segment_starting_time in self._segment_starting_times
             ]
         else:
             raise ValueError("There are no timestamps or starting times set to shift by a common value!")
 
-    def align_segment_starting_times(self, segment_starting_times: List[float], stub_test: bool = False):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
@@ -204,32 +203,30 @@ class VideoInterface(BaseDataInterface):
 
             To limit that scan to a small number of frames, set `stub_test=True`.
         """
-        segment_starting_times_length = len(segment_starting_times)
-        assert segment_starting_times_length == self._number_of_files, (
-            f"The length of the 'segment_starting_times' list ({segment_starting_times_length}) does not match the "
+        aligned_segment_starting_times_length = len(aligned_segment_starting_times)
+        assert aligned_segment_starting_times_length == self._number_of_files, (
+            f"The length of the 'aligned_segment_starting_times' list ({aligned_segment_starting_times_length}) does not match the "
             "number of video files ({self._number_of_files})!"
         )
         if self._timestamps is not None:
-            self.align_timestamps(
+            self.set_aligned_timestamps(
                 aligned_timestamps=[
                     timestamps + segment_starting_time
                     for timestamps, segment_starting_time in zip(
-                        self.get_timestamps(stub_test=stub_test), segment_starting_times
+                        self.get_timestamps(stub_test=stub_test), aligned_segment_starting_times
                     )
                 ]
             )
         else:
-            self._segment_starting_times = segment_starting_times
+            self._segment_starting_times = aligned_segment_starting_times
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         external_mode: bool = True,
         starting_frames: Optional[list] = None,
@@ -246,9 +243,6 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType, optional
-            Path for where to write or load (if overwrite=False) the NWB file.
-            If specified, this context will always write to this location.
         nwbfile : NWBFile, optional
             nwb file to which the recording information is to be added
         metadata : dict, optional
@@ -272,8 +266,6 @@ class VideoInterface(BaseDataInterface):
             The list for the 'Videos' key should correspond one to the video files in the file_paths list.
             If multiple videos need to be in the same :py:class:`~pynwb.image.ImageSeries`, then supply the same value for "name" key.
             Storing multiple videos in the same :py:class:`~pynwb.image.ImageSeries` is only supported if 'external_mode'=True.
-        overwrite : bool, default: False
-            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
         external_mode : bool, default: True
@@ -301,6 +293,8 @@ class VideoInterface(BaseDataInterface):
             Parameter(s) for compression filter. Currently, only supports the compression level (integer from 0 to 9) of
             compression="gzip".
         """
+        metadata = metadata or dict()
+
         file_paths = self.source_data["file_paths"]
 
         videos_metadata = metadata.get("Behavior", dict()).get("Videos", None)
@@ -321,120 +315,115 @@ class VideoInterface(BaseDataInterface):
         # Iterate over unique videos
         stub_frames = 10
         timing_type = self.get_timing_type()
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            if external_mode:
-                image_series_kwargs = videos_metadata[0]
-                if self._number_of_files > 1 and starting_frames is None:
-                    raise TypeError(
-                        "Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
-                    )
-                elif starting_frames is not None and len(starting_frames) != self._number_of_files:
-                    raise ValueError(
-                        f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
-                        f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
-                    )
-                elif starting_frames is not None:
-                    image_series_kwargs.update(starting_frame=starting_frames)
+        if external_mode:
+            image_series_kwargs = videos_metadata[0]
+            if self._number_of_files > 1 and starting_frames is None:
+                raise TypeError(
+                    "Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
+                )
+            elif starting_frames is not None and len(starting_frames) != self._number_of_files:
+                raise ValueError(
+                    f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
+                    f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
+                )
+            elif starting_frames is not None:
+                image_series_kwargs.update(starting_frame=starting_frames)
 
-                image_series_kwargs.update(format="external", external_file=file_paths)
+            image_series_kwargs.update(format="external", external_file=file_paths)
 
-                if timing_type == "starting_time and rate":
-                    starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
-                    with VideoCaptureContext(file_path=str(file_paths[0])) as video:
-                        rate = video.get_video_fps()
-                    image_series_kwargs.update(starting_time=starting_time, rate=rate)
-                elif timing_type == "timestamps":
-                    image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
-                else:
-                    raise ValueError(f"Unrecognized timing_type: {timing_type}")
+            if timing_type == "starting_time and rate":
+                starting_time = self._segment_starting_times[0] if self._segment_starting_times is not None else 0.0
+                with VideoCaptureContext(file_path=str(file_paths[0])) as video:
+                    rate = video.get_video_fps()
+                image_series_kwargs.update(starting_time=starting_time, rate=rate)
+            elif timing_type == "timestamps":
+                image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
             else:
-                for file_index, (image_series_kwargs, file) in enumerate(zip(videos_metadata, file_paths)):
-                    if self._number_of_files > 1:
-                        raise NotImplementedError(
-                            "Multiple file_paths with external_mode=False is not yet supported! "
-                            "Please initialize a separate VideoInterface for each file."
-                        )
+                raise ValueError(f"Unrecognized timing_type: {timing_type}")
+        else:
+            for file_index, (image_series_kwargs, file) in enumerate(zip(videos_metadata, file_paths)):
+                if self._number_of_files > 1:
+                    raise NotImplementedError(
+                        "Multiple file_paths with external_mode=False is not yet supported! "
+                        "Please initialize a separate VideoInterface for each file."
+                    )
 
-                    uncompressed_estimate = Path(file).stat().st_size * 70
-                    available_memory = psutil.virtual_memory().available
-                    if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
-                        warn(
-                            f"Not enough memory (estimated {round(uncompressed_estimate/1e9, 2)} GB) to load video file as "
-                            f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
-                        )
-                        chunk_data = True
+                uncompressed_estimate = Path(file).stat().st_size * 70
+                available_memory = psutil.virtual_memory().available
+                if not chunk_data and not stub_test and uncompressed_estimate >= available_memory:
+                    warn(
+                        f"Not enough memory (estimated {round(uncompressed_estimate/1e9, 2)} GB) to load video file as "
+                        f"array ({round(available_memory/1e9, 2)} GB available)! Forcing chunk_data to True."
+                    )
+                    chunk_data = True
+                with VideoCaptureContext(str(file)) as video_capture_ob:
+                    if stub_test:
+                        video_capture_ob.frame_count = stub_frames
+                    total_frames = video_capture_ob.get_video_frame_count()
+                    frame_shape = video_capture_ob.get_frame_shape()
+
+                maxshape = (total_frames, *frame_shape)
+                tqdm_pos, tqdm_mininterval = (0, 10)
+
+                if chunk_data:
+                    chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
+                    video_capture_ob = VideoCaptureContext(str(file))
+                    if stub_test:
+                        video_capture_ob.frame_count = stub_frames
+                    iterable = DataChunkIterator(
+                        data=tqdm(
+                            iterable=video_capture_ob,
+                            desc=f"Copying video data for {Path(file).name}",
+                            position=tqdm_pos,
+                            total=total_frames,
+                            mininterval=tqdm_mininterval,
+                        ),
+                        iter_axis=0,  # nwb standard is time as zero axis
+                        maxshape=maxshape,
+                    )
+
+                else:
+                    # Load the video
+                    chunks = None
+                    video = np.zeros(shape=maxshape, dtype="uint8")
                     with VideoCaptureContext(str(file)) as video_capture_ob:
                         if stub_test:
                             video_capture_ob.frame_count = stub_frames
-                        total_frames = video_capture_ob.get_video_frame_count()
-                        frame_shape = video_capture_ob.get_frame_shape()
+                        with tqdm(
+                            desc=f"Reading video data for {Path(file).name}",
+                            position=tqdm_pos,
+                            total=total_frames,
+                            mininterval=tqdm_mininterval,
+                        ) as pbar:
+                            for n, frame in enumerate(video_capture_ob):
+                                video[n, :, :, :] = frame
+                                pbar.update(1)
+                    iterable = video
 
-                    maxshape = (total_frames, *frame_shape)
-                    tqdm_pos, tqdm_mininterval = (0, 10)
+                # Wrap data for compression
+                wrapped_io_data = H5DataIO(
+                    iterable,
+                    compression=compression,
+                    compression_opts=compression_options,
+                    chunks=chunks,
+                )
+                image_series_kwargs.update(data=wrapped_io_data)
 
-                    if chunk_data:
-                        chunks = (1, frame_shape[0], frame_shape[1], 3)  # best_gzip_chunk
-                        video_capture_ob = VideoCaptureContext(str(file))
-                        if stub_test:
-                            video_capture_ob.frame_count = stub_frames
-                        iterable = DataChunkIterator(
-                            data=tqdm(
-                                iterable=video_capture_ob,
-                                desc=f"Copying video data for {Path(file).name}",
-                                position=tqdm_pos,
-                                total=total_frames,
-                                mininterval=tqdm_mininterval,
-                            ),
-                            iter_axis=0,  # nwb standard is time as zero axis
-                            maxshape=maxshape,
-                        )
-
-                    else:
-                        # Load the video
-                        chunks = None
-                        video = np.zeros(shape=maxshape, dtype="uint8")
-                        with VideoCaptureContext(str(file)) as video_capture_ob:
-                            if stub_test:
-                                video_capture_ob.frame_count = stub_frames
-                            with tqdm(
-                                desc=f"Reading video data for {Path(file).name}",
-                                position=tqdm_pos,
-                                total=total_frames,
-                                mininterval=tqdm_mininterval,
-                            ) as pbar:
-                                for n, frame in enumerate(video_capture_ob):
-                                    video[n, :, :, :] = frame
-                                    pbar.update(1)
-                        iterable = video
-
-                    # Wrap data for compression
-                    wrapped_io_data = H5DataIO(
-                        iterable,
-                        compression=compression,
-                        compression_opts=compression_options,
-                        chunks=chunks,
+                if timing_type == "starting_time and rate":
+                    starting_time = (
+                        self._segment_starting_times[file_index] if self._segment_starting_times is not None else 0.0
                     )
-                    image_series_kwargs.update(data=wrapped_io_data)
+                    with VideoCaptureContext(file_path=str(file)) as video:
+                        rate = video.get_video_fps()
+                    image_series_kwargs.update(starting_time=starting_time, rate=rate)
+                elif timing_type == "timestamps":
+                    image_series_kwargs.update(timestamps=self._timestamps[file_index])
 
-                    if timing_type == "starting_time and rate":
-                        starting_time = (
-                            self._segment_starting_times[file_index]
-                            if self._segment_starting_times is not None
-                            else 0.0
-                        )
-                        with VideoCaptureContext(file_path=str(file)) as video:
-                            rate = video.get_video_fps()
-                        image_series_kwargs.update(starting_time=starting_time, rate=rate)
-                    elif timing_type == "timestamps":
-                        image_series_kwargs.update(timestamps=self._timestamps[file_index])
+        # Attach image series
+        image_series = ImageSeries(**image_series_kwargs)
+        if module_name is None:
+            nwbfile.add_acquisition(image_series)
+        else:
+            get_module(nwbfile=nwbfile, name=module_name, description=module_description).add(image_series)
 
-            # Attach image series
-            image_series = ImageSeries(**image_series_kwargs)
-            if module_name is None:
-                nwbfile_out.add_acquisition(image_series)
-            else:
-                get_module(nwbfile=nwbfile_out, name=module_name, description=module_description).add(image_series)
-
-        return nwbfile_out
+        return nwbfile

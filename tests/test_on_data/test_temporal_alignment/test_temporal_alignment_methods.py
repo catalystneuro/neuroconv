@@ -98,7 +98,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
             channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
         )
 
-        self.trial_interface.align_timestamps(
+        self.trial_interface.set_aligned_timestamps(
             aligned_timestamps=inferred_aligned_trial_start_timestamps,
             column="start_time",
             interpolate_other_columns=True,
@@ -162,12 +162,12 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
             channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
         )
 
-        converter.data_interface_objects["Trials"].align_timestamps(
+        converter.data_interface_objects["Trials"].set_aligned_timestamps(
             aligned_timestamps=inferred_aligned_trial_start_timestamps, column="start_time"
         )
 
         # True stop times are not tracked, so estimate them from using the known regular trial length
-        converter.data_interface_objects["Trials"].align_timestamps(
+        converter.data_interface_objects["Trials"].set_aligned_timestamps(
             aligned_timestamps=inferred_aligned_trial_start_timestamps + self.regular_trial_length, column="stop_time"
         )
 
@@ -197,12 +197,12 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
                     channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
                 )
 
-                self.data_interface_objects["Trials"].align_timestamps(
+                self.data_interface_objects["Trials"].set_aligned_timestamps(
                     aligned_timestamps=inferred_aligned_trial_start_timestamps, column="start_time"
                 )
 
                 # True stop times are not tracked, so estimate them from using the known regular trial length
-                self.data_interface_objects["Trials"].align_timestamps(
+                self.data_interface_objects["Trials"].set_aligned_timestamps(
                     # for this usage, the regular trial length would be hard-coded
                     aligned_timestamps=inferred_aligned_trial_start_timestamps + 1.0,
                     column="stop_time",
@@ -268,10 +268,12 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         unaligned_trial_start_timestamps = self.trial_interface.get_original_timestamps(column="start_time")
         externally_aligned_timestamps = self.aligned_trial_start_times
 
-        self.trial_interface.align_timestamps(aligned_timestamps=externally_aligned_timestamps, column="start_time")
+        self.trial_interface.set_aligned_timestamps(
+            aligned_timestamps=externally_aligned_timestamps, column="start_time"
+        )
 
         # True stop times are not tracked, so estimate them from using the known regular trial length
-        self.trial_interface.align_timestamps(
+        self.trial_interface.set_aligned_timestamps(
             aligned_timestamps=externally_aligned_timestamps + self.regular_trial_length, column="stop_time"
         )
 
@@ -329,12 +331,12 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         )
         externally_aligned_timestamps = self.aligned_trial_start_times
 
-        converter.data_interface_objects["Trials"].align_timestamps(
+        converter.data_interface_objects["Trials"].set_aligned_timestamps(
             aligned_timestamps=externally_aligned_timestamps, column="start_time"
         )
 
         # True stop times are not tracked, so estimate them from using the known regular trial length
-        converter.data_interface_objects["Trials"].align_timestamps(
+        converter.data_interface_objects["Trials"].set_aligned_timestamps(
             aligned_timestamps=externally_aligned_timestamps + self.regular_trial_length, column="stop_time"
         )
 
@@ -364,12 +366,12 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
                 )
                 externally_aligned_timestamps = mimic_reading_externally_aligned_timestamps()
 
-                self.data_interface_objects["Trials"].align_timestamps(
+                self.data_interface_objects["Trials"].set_aligned_timestamps(
                     aligned_timestamps=externally_aligned_timestamps, column="start_time"
                 )
 
                 # True stop times are not tracked, so estimate them from using the known regular trial length
-                self.data_interface_objects["Trials"].align_timestamps(
+                self.data_interface_objects["Trials"].set_aligned_timestamps(
                     # for this usage, the regular trial length would be hard-coded
                     aligned_timestamps=externally_aligned_timestamps + 1.0,
                     column="stop_time",
@@ -436,8 +438,8 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
             channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
         )[0]
 
-        self.trial_interface.align_starting_time(starting_time=inferred_aligned_trial_start_time)
-        self.behavior_interface.align_starting_time(starting_time=inferred_aligned_trial_start_time)
+        self.trial_interface.set_aligned_starting_time(aligned_starting_time=inferred_aligned_trial_start_time)
+        self.behavior_interface.set_aligned_starting_time(aligned_starting_time=inferred_aligned_trial_start_time)
 
         assert_array_equal(x=self.trial_interface.get_timestamps(column="start_time"), y=self.aligned_trial_start_times)
         assert_array_equal(
@@ -486,9 +488,11 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
             channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
         )[0]
 
-        converter.data_interface_objects["Trials"].align_starting_time(starting_time=inferred_aligned_trial_start_time)
-        converter.data_interface_objects["Behavior"].align_starting_time(
-            starting_time=inferred_aligned_trial_start_time
+        converter.data_interface_objects["Trials"].set_aligned_starting_time(
+            aligned_starting_time=inferred_aligned_trial_start_time
+        )
+        converter.data_interface_objects["Behavior"].set_aligned_starting_time(
+            aligned_starting_time=inferred_aligned_trial_start_time
         )
 
         nwbfile_path = self.tmpdir / "test_nidq_on_signal_alignment_nwbconverter_direct_modification.nwb"
@@ -509,11 +513,11 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
                     channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
                 )[0]
 
-                self.data_interface_objects["Trials"].align_starting_time(
-                    starting_time=inferred_aligned_trial_start_time
+                self.data_interface_objects["Trials"].set_aligned_starting_time(
+                    aligned_starting_time=inferred_aligned_trial_start_time
                 )
-                self.data_interface_objects["Behavior"].align_starting_time(
-                    starting_time=inferred_aligned_trial_start_time
+                self.data_interface_objects["Behavior"].set_aligned_starting_time(
+                    aligned_starting_time=inferred_aligned_trial_start_time
                 )
 
         source_data = dict(

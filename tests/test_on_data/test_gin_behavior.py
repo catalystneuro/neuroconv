@@ -142,7 +142,7 @@ class TestVideoConversions(TestCase):
         cls.video_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
         cls.video_files.sort()
         cls.number_of_video_files = len(cls.video_files)
-        cls.segment_starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
+        cls.aligned_segment_starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
 
     def _get_metadata(self):
         """TODO: temporary helper function to fetch new metadata each time; need to debug in follow-up."""
@@ -153,7 +153,7 @@ class TestVideoConversions(TestCase):
     def test_real_videos(self):
         # TODO - merge this with the data mixin in follow-up
         for file_index, (file_path, segment_starting_time) in enumerate(
-            zip(self.video_files, self.segment_starting_times)
+            zip(self.video_files, self.aligned_segment_starting_times)
         ):
             self.file_index = file_index
 
@@ -163,15 +163,15 @@ class TestVideoConversions(TestCase):
             source_data = dict(Video=dict(file_paths=[file_path]))
             self.converter = VideoTestNWBConverter(source_data)
             self.interface = self.converter.data_interface_objects["Video"]
-            self.interface.align_segment_starting_times(
-                segment_starting_times=[self.segment_starting_times[self.file_index]]
+            self.interface.set_aligned_segment_starting_times(
+                aligned_segment_starting_times=[self.aligned_segment_starting_times[self.file_index]]
             )
 
-            self.check_video_starting_times()
+            self.check_video_set_aligned_starting_times()
             self.check_video_custom_module()
             self.check_video_chunking()
 
-    def check_video_starting_times(self):
+    def check_video_set_aligned_starting_times(self):
         self._get_metadata()
         conversion_options = dict(Video=dict(external_mode=False))
         nwbfile_path = OUTPUT_PATH / "check_video_starting_times.nwb"
@@ -187,9 +187,9 @@ class TestVideoConversions(TestCase):
             self.image_series = nwbfile.acquisition[self.image_series_name]
 
             if self.image_series.starting_time is not None:
-                assert self.segment_starting_times[self.file_index] == self.image_series.starting_time
+                assert self.aligned_segment_starting_times[self.file_index] == self.image_series.starting_time
             else:
-                assert self.segment_starting_times[self.file_index] == self.image_series.timestamps[0]
+                assert self.aligned_segment_starting_times[self.file_index] == self.image_series.timestamps[0]
 
     def check_video_custom_module(self):
         self._get_metadata()

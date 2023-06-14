@@ -45,7 +45,7 @@ def get_default_nwbfile_metadata() -> DeepDict:
     return metadata
 
 
-def make_nwbfile_from_metadata(metadata: dict):
+def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
     metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
     nwbfile_kwargs = metadata["NWBFile"]

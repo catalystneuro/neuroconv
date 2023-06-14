@@ -34,7 +34,6 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = output_folder / "my_spikeglx_session.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    root pynwb.file.NWBFile at ...
 
 
 

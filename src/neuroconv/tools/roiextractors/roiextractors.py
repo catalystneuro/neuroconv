@@ -293,6 +293,7 @@ def add_photon_series(
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
+    two_photon_series_index: Optional[int] = None,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
     use_times=False,  # TODO: to be removed
@@ -331,6 +332,9 @@ def add_photon_series(
             "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
             "Specify as a key in the new 'iterator_options' dictionary instead."
         )
+    if two_photon_series_index:
+        warn("Keyword argument 'two_photon_series_index' is deprecated. Use 'photon_series_index' instead.")
+        photon_series_index = two_photon_series_index
 
     iterator_options = iterator_options or dict()
 
@@ -474,6 +478,25 @@ def _imaging_frames_to_hdmf_iterator(
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
 
+def add_imaging(
+    imaging: ImagingExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict] = None,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+    iterator_type: Optional[str] = "v2",
+    iterator_options: Optional[dict] = None,
+):
+    add_devices(nwbfile=nwbfile, metadata=metadata)
+    add_photon_series(
+        imaging=imaging,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        photon_series_type=photon_series_type,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+    )
+
+
 def write_imaging(
     imaging: ImagingExtractor,
     nwbfile_path: OptionalFilePathType = None,
@@ -481,7 +504,7 @@ def write_imaging(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    iterator_type: Optional[str] = "v2",
+    iterator_type: str = "v2",
     iterator_options: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     buffer_size: Optional[int] = None,  # TODO: to be removed
@@ -546,10 +569,9 @@ def write_imaging(
     with make_or_load_nwbfile(
         nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=verbose
     ) as nwbfile_out:
-        add_devices(nwbfile=nwbfile_out, metadata=metadata)
-        add_photon_series(
+        add_imaging(
             imaging=imaging,
-            nwbfile=nwbfile_out,
+            nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
             iterator_type=iterator_type,
@@ -966,6 +988,56 @@ def add_summary_images(
     return nwbfile
 
 
+def add_segmentation(
+    segmentation_extractor: SegmentationExtractor,
+    nwbfile: NWBFile,
+    metadata: Optional[dict] = None,
+    plane_num: int = 0,
+    include_roi_centroids: bool = True,
+    include_roi_acceptance: bool = True,
+    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
+    iterator_options: Optional[dict] = None,
+    compression_options: Optional[dict] = None,
+):
+    # Add device:
+    add_devices(nwbfile=nwbfile, metadata=metadata)
+
+    # ImageSegmentation:
+    # image_segmentation_name = (
+    #     "ImageSegmentation" if plane_no_loop == 0 else f"ImageSegmentation_Plane{plane_no_loop}"
+    # )
+    # add_image_segmentation(nwbfile=nwbfile_out, metadata=metadata)
+    # image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
+
+    # Add imaging plane
+    add_imaging_plane(nwbfile=nwbfile, metadata=metadata)
+
+    # PlaneSegmentation:
+    add_plane_segmentation(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        include_roi_centroids=include_roi_centroids,
+        include_roi_acceptance=include_roi_acceptance,
+        mask_type=mask_type,
+        iterator_options=iterator_options,
+        compression_options=compression_options,
+    )
+
+    # Add fluorescence traces:
+    add_fluorescence_traces(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        iterator_options=iterator_options,
+        compression_options=compression_options,
+    )
+
+    # Adding summary images (mean and correlation)
+    images_set_name = "SegmentationImages" if plane_num == 0 else f"SegmentationImages_Plane{plane_num}"
+    add_summary_images(nwbfile=nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name)
+
+
 def write_segmentation(
     segmentation_extractor: SegmentationExtractor,
     nwbfile_path: OptionalFilePathType = None,
@@ -973,11 +1045,9 @@ def write_segmentation(
     metadata: Optional[dict] = None,
     overwrite: bool = False,
     verbose: bool = True,
-    buffer_size: int = 10,
-    plane_num: int = 0,
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
-    mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
+    mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
@@ -987,7 +1057,7 @@ def write_segmentation(
     Parameters
     ----------
     segmentation_extractor: SegmentationExtractor
-        The segentation extractor object to be written to nwb
+        The segmentation extractor object to be written to nwb
     nwbfile_path: FilePathType
         Path for where to write or load (if overwrite=False) the NWBFile.
         If specified, the context will always write to this location.
@@ -1070,44 +1140,16 @@ def write_segmentation(
         for plane_no_loop, (segmentation_extractor, metadata) in enumerate(
             zip(segmentation_extractors, metadata_base_list)
         ):
-            # Add device:
-            add_devices(nwbfile=nwbfile_out, metadata=metadata)
-
-            # ImageSegmentation:
-            # image_segmentation_name = (
-            #     "ImageSegmentation" if plane_no_loop == 0 else f"ImageSegmentation_Plane{plane_no_loop}"
-            # )
-            # add_image_segmentation(nwbfile=nwbfile_out, metadata=metadata)
-            # image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
-
-            # Add imaging plane
-            add_imaging_plane(nwbfile=nwbfile_out, metadata=metadata)
-
-            # PlaneSegmentation:
-            add_plane_segmentation(
+            add_segmentation(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile_out,
                 metadata=metadata,
+                plane_num=plane_no_loop,
                 include_roi_centroids=include_roi_centroids,
                 include_roi_acceptance=include_roi_acceptance,
                 mask_type=mask_type,
                 iterator_options=iterator_options,
                 compression_options=compression_options,
-            )
-
-            # Add fluorescence traces:
-            add_fluorescence_traces(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=nwbfile_out,
-                metadata=metadata,
-                iterator_options=iterator_options,
-                compression_options=compression_options,
-            )
-
-            # Adding summary images (mean and correlation)
-            images_set_name = "SegmentationImages" if plane_no_loop == 0 else f"SegmentationImages_Plane{plane_no_loop}"
-            add_summary_images(
-                nwbfile=nwbfile_out, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
             )
 
     return nwbfile_out

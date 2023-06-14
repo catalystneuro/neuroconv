@@ -25,6 +25,8 @@ for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
             modality_requirements = f.readlines()
             extras_require["full"].extend(modality_requirements)
             extras_require[modality].extend(modality_requirements)
+    else:
+        modality_requirements = list()
 
     format_subpaths = [path for path in modality_path.iterdir() if path.is_dir() and path.name != "__pycache__"]
     for format_subpath in format_subpaths:
@@ -45,7 +47,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="neuroconv",
-    version="0.2.5",
+    version="0.3.0",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
