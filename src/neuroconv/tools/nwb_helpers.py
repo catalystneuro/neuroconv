@@ -169,10 +169,7 @@ def make_or_load_nwbfile(
         if load_kwargs.get("mode", "") == "r+":
             nwbfile = io.read()
         elif nwbfile is None:
-            nwbfile = make_nwbfile_from_metadata(
-                metadata=metadata, 
-                metadata_update_kwargs=metadata_update_kwargs
-            )
+            nwbfile = make_nwbfile_from_metadata(metadata=metadata, metadata_update_kwargs=metadata_update_kwargs)
         yield nwbfile
     except Exception as e:
         success = False
