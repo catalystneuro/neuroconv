@@ -47,10 +47,11 @@ def get_default_nwbfile_metadata() -> DeepDict:
 
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
-    keys_to_keep = ["NWBFile", "Subject"]
-    metadata = {key: metadata[key] for key in keys_to_keep if key in metadata}
-    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
     nwbfile_kwargs = metadata["NWBFile"]
+    if "session_description" not in nwbfile_kwargs:
+        nwbfile_kwargs.update(session_description="No description.")
+    if "identifier" not in nwbfile_kwargs:
+        nwbfile_kwargs.update(identifier=uuid.uuid4())
     if "Subject" in metadata:
         # convert ISO 8601 string to datetime
         if "date_of_birth" in metadata["Subject"] and isinstance(metadata["Subject"]["date_of_birth"], str):
