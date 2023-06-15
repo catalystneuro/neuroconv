@@ -157,7 +157,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .dat file.
-        gain : Optional[float], optional
+        gain : float, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
