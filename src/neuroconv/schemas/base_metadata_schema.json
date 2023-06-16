@@ -142,7 +142,7 @@
             "U",
             "O"
           ],
-          "default": "U"
+          "default": ""
         },
         "species": {
           "type": "string",
