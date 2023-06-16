@@ -1,12 +1,17 @@
 from copy import deepcopy
-from typing import Optional
+from pathlib import Path
+from typing import Literal, Optional
 
 import numpy as np
+from ndx_miniscope.utils import (
+    add_miniscope_device,
+    get_recording_start_times,
+    get_timestamps,
+    read_miniscope_config,
+)
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ..miniscope import add_miniscope_device, get_recording_start_times, get_timestamps
-from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....tools.roiextractors.roiextractors import add_photon_series
 from ....utils import DeepDict, FolderPathType
 
@@ -26,6 +31,9 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         super().__init__(folder_path=folder_path)
 
+        miniscope_subfolders = list(Path(folder_path).glob(f"*/Miniscope/"))
+        self._miniscope_config = read_miniscope_config(folder_path=str(miniscope_subfolders[0]))
+
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)
 
     def get_metadata(self) -> DeepDict:
@@ -33,29 +41,30 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         metadata["NWBFile"].update(session_start_time=self._recording_start_times[0])
 
-        miniscope_config = deepcopy(self.imaging_extractor._miniscope_config)
-        miniscope_config.pop("deviceDirectory")
-        miniscope_config.pop("deviceID")
-        device_name = miniscope_config.pop("deviceName")
-
-        metadata["Ophys"]["Device"][0].update(name=device_name, **miniscope_config)
-        metadata["Ophys"]["ImagingPlane"][0].update(
-            device=device_name,
-        )
+        device_metadata = metadata["Ophys"]["Device"][0]
+        miniscope_config = deepcopy(self._miniscope_config)
+        device_name = miniscope_config.pop("name")
+        device_metadata.update(name=device_name, **miniscope_config)
+        # Add link to Device for ImagingPlane
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        imaging_plane_metadata.update(device=device_name)
 
         return metadata
+
+    def get_metadata_schema(self) -> dict:
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema["properties"]["Ophys"]["properties"]["definitions"]["Device"]["additionalProperties"] = True
+        return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
         timestamps = get_timestamps(folder_path=self.source_data["folder_path"])
         return np.array(timestamps)
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[str] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
-        verbose: bool = True,
+        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
@@ -69,18 +78,12 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         imaging_extractor.set_times(times=miniscope_timestamps)
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
+        device_metadata = metadata["Ophys"]["Device"][0]
+        add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
+
+        add_photon_series(
+            imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=verbose,
-        ) as nwbfile_out:
-            add_miniscope_device(nwbfile=nwbfile_out, metadata=metadata)
-
-            add_photon_series(
-                imaging=imaging_extractor,
-                nwbfile=nwbfile_out,
-                metadata=metadata,
-                photon_series_type="OnePhotonSeries",
-            )
+            photon_series_type=photon_series_type,
+        )
