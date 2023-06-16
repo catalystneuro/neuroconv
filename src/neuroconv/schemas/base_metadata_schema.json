@@ -128,7 +128,6 @@
         },
         "description": {
           "type": "string",
-          "default": "no description",
           "description": "Description of subject and where subject came from (e.g., breeder, if animal)."
         },
         "genotype": {
