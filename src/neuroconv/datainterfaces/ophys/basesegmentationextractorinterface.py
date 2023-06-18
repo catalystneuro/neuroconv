@@ -7,11 +7,7 @@ from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import (
-    fill_defaults,
-    get_base_schema,
-    get_schema_from_hdmf_class,
-)
+from ...utils import fill_defaults, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
