@@ -3,7 +3,7 @@
 ### Features
 
 * Create separate `.add_to_nwbfile` method for all DataInterfaces. [PR #455](https://github.com/catalystneuro/neuroconv/pull/455)
-* Remove HDF5-specific dataset configuration from NWB assembly methods (e.g. `.add_*`), and move to 
+* Remove HDF5-specific dataset configuration from NWB assembly methods (e.g. `.add_*`), and move to
   `.configure_datasets()`. [PR #475](https://github.com/catalystneuro/neuroconv/pull/475)
 * Added stream control with the `stream_name` argument to the `NeuralynxRecordingExtractor`. [PR #369](https://github.com/catalystneuro/neuroconv/pull/369)
 
