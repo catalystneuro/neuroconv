@@ -3,7 +3,6 @@ from typing import Literal, Optional
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...utils import FilePathType
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):

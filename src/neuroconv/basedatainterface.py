@@ -2,14 +2,13 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, Iterable, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
 
 from pynwb import NWBContainer, NWBFile
 
 from .tools.nwb_helpers import (
     backend_configs,
     configure_datasets,
-    find_configurable_datasets,
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
