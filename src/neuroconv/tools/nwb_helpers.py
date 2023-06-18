@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Tuple, Literal, Dict
-from typing import Optional
+from typing import Optional, Type
 from warnings import warn
 
 import hdmf
@@ -23,8 +23,8 @@ from ..utils.dict import DeepDict
 
 @dataclass
 class BackendConfig:
-    nwb_io: HDMFIO
-    data_io: DataIO
+    nwb_io: Type[HDMFIO]
+    data_io: Type[DataIO]
     data_io_defaults: Optional[dict]
 
 
