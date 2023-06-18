@@ -235,6 +235,28 @@ class TestNeuralynxRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
                 assert exp_value == extracted_value[0]
 
 
+class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = NeuralynxRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
+        stream_name="Stream (rate,#packet,t0): (32000.0, 31, 1614363777985169)",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        file_metadata = metadata["NWBFile"]
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 2, 26, 15, 46, 52)
+        assert metadata["NWBFile"]["session_id"] == "f58d55bb-22f6-4682-b3a2-aa116fabb78e"
+        assert '"FileType": "NCS"' in file_metadata["notes"]
+        assert '"recording_closed": "2021-10-12 09:07:58"' in file_metadata["notes"]
+        assert '"ADMaxValue": "32767"' in file_metadata["notes"]
+        assert metadata["Ecephys"]["Device"][-1] == {
+            "name": "AcqSystem1 DigitalLynxSX",
+            "description": "Cheetah 6.4.1.dev0",
+        }
+
+
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = NeuroScopeRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "neuroscope" / "test1" / "test1.dat"))
