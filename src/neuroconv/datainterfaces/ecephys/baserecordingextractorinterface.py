@@ -8,7 +8,6 @@ from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
-    FilePathType,
     NWBMetaDataEncoder,
     get_base_schema,
     get_schema_from_hdmf_class,

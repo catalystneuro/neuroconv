@@ -534,8 +534,6 @@ def write_imaging(
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.
         The default is True.
-    num_chunks: int
-        Number of chunks for writing data to file
     iterator_type: {"v2", "v1",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v1' is the original DataChunkIterator of the hdmf data_utils.

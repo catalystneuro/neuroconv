@@ -1,7 +1,6 @@
 import distutils.version
 import uuid
 import warnings
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 

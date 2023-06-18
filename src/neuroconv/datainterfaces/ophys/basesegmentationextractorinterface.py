@@ -1,5 +1,5 @@
 """Authors: Heberto Mayorquin, Cody Baker and Ben Dichter."""
-from typing import Literal, Optional
+from typing import Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -8,7 +8,6 @@ from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhoton
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
-    FilePathType,
     fill_defaults,
     get_base_schema,
     get_schema_from_hdmf_class,

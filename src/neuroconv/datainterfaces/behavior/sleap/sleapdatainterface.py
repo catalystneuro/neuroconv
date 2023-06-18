@@ -7,8 +7,7 @@ from pynwb.file import NWBFile
 from .sleap_utils import extract_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_package
-from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FilePathType, dict_deep_update
+from ....utils import FilePathType
 
 
 class SLEAPInterface(BaseTemporalAlignmentInterface):

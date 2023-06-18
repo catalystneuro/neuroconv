@@ -1,5 +1,5 @@
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....utils import FilePathType, FloatType
+from ....utils import FilePathType
 
 
 class SbxImagingInterface(BaseImagingExtractorInterface):
