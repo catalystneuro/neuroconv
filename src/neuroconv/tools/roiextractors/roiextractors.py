@@ -5,7 +5,6 @@ from warnings import warn
 
 import numpy as np
 import psutil
-
 from hdmf.data_utils import DataChunkIterator
 from pynwb import NWBFile
 from pynwb.base import Images
