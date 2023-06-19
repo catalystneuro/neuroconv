@@ -55,7 +55,14 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
 
         metadata["Behavior"]["Device"] = [self._miniscope_config]
         # Add link to Device for ImageSeries
-        metadata["Behavior"]["ImageSeries"] = [dict(name="BehavCamImageSeries", device=self._miniscope_config["name"])]
+        metadata["Behavior"]["ImageSeries"] = [
+            dict(
+                name="BehavCamImageSeries",
+                device=self._miniscope_config["name"],
+                dimension=[self._miniscope_config["ROI"]["width"], self._miniscope_config["ROI"]["height"]],
+                unit="px",
+            )
+        ]
 
         return metadata
 
@@ -73,7 +80,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         add_miniscope_image_series(
             nwbfile=nwbfile,
             metadata=metadata,
-            external_files=self._behav_avi_file_paths,
+            external_files=[str(file_path) for file_path in self._behav_avi_file_paths],
             starting_frames=starting_frames,
             timestamps=timestamps,
         )
