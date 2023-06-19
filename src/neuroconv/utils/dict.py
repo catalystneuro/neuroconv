@@ -91,7 +91,12 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
         return d
     if isinstance(d, collections.abc.Mapping):
         indxs = np.where(
-            [d.get(compare_key, None) == i[compare_key] for i in ls if isinstance(i, collections.abc.Mapping) if compare_key in i]
+            [
+                d.get(compare_key, None) == i[compare_key]
+                for i in ls
+                if isinstance(i, collections.abc.Mapping)
+                if compare_key in i
+            ]
         )[0]
         if len(indxs) > 0:
             for idx in indxs:
