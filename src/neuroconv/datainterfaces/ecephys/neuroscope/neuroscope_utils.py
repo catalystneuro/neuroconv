@@ -1,4 +1,3 @@
-"""Authors: Cody Baker and Ben Dichter."""
 from datetime import datetime
 from pathlib import Path
 

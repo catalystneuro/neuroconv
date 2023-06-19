@@ -8,7 +8,6 @@ from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
-    OptionalFilePathType,
     dict_deep_update,
     fill_defaults,
     get_base_schema,

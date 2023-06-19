@@ -13,9 +13,9 @@ from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from packaging import version
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 from spikeinterface import WaveformExtractor, extract_waveforms
-from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+from spikeinterface.core.generate import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 
 from neuroconv.tools.nwb_helpers import get_module
@@ -24,9 +24,7 @@ from neuroconv.tools.spikeinterface import (
     add_electrodes,
     add_units_table,
     check_if_recording_traces_fit_into_memory,
-    get_nwb_metadata,
     write_recording,
-    write_sorting,
     write_waveforms,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (

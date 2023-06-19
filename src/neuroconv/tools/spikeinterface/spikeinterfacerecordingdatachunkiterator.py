@@ -1,5 +1,4 @@
-from typing import Iterable, Optional, Tuple, Union
-from warnings import warn
+from typing import Iterable, Optional, Tuple
 
 from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording

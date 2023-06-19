@@ -1,5 +1,4 @@
 from typing import Optional
-from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import ArrayType, FilePathType
