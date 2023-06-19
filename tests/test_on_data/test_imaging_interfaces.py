@@ -4,13 +4,17 @@ from unittest import TestCase, skipIf
 
 import numpy as np
 from dateutil.tz import tzoffset
+from ndx_miniscope import Miniscope
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
+from roiextractors import NwbImagingExtractor
+from roiextractors.testing import check_imaging_equal
 
 from neuroconv.datainterfaces import (
     BrukerTiffImagingInterface,
     Hdf5ImagingInterface,
     MicroManagerTiffImagingInterface,
+    MiniscopeImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
     TiffImagingInterface,
@@ -228,3 +232,50 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
             assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
+class TestMiniscopeImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = MiniscopeImagingInterface
+    interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.device_name = "Miniscope"
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.photon_series_name = "OnePhotonSeries"
+
+        cls.device_metadata = dict(
+            compression="FFV1",
+            deviceType="Miniscope_V3",
+            frameRate="15FPS",
+            framesPerFile=1000,
+            gain="High",
+            led0=47,
+        )
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(
+            metadata["NWBFile"]["session_start_time"],
+            datetime(2021, 10, 7, 15, 3, 28, 635),
+        )
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            # Check device metadata
+            self.assertIn(self.device_name, nwbfile.devices)
+            device = nwbfile.devices[self.device_name]
+            self.assertIsInstance(device, Miniscope)
+            self.assertEqual(device.fields, self.device_metadata)
+            self.assertEqual(device, nwbfile.imaging_planes[self.imaging_plane_name].device)
+
+            # Check OnePhotonSeries
+            self.assertIn(self.photon_series_name, nwbfile.acquisition)
+            self.assertEqual(nwbfile.acquisition[self.photon_series_name].unit, "px")
+
+        imaging = self.interface.imaging_extractor
+        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path, optical_series_name="OnePhotonSeries")
+
+        check_imaging_equal(imaging, nwb_imaging)

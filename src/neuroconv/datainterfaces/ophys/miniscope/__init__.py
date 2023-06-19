@@ -1,1 +1,0 @@
-from .miniscopeimagingdatainterface import MiniscopeImagingInterface
