@@ -4,7 +4,7 @@ from typing import Literal, Optional
 import numpy as np
 from pynwb import NWBFile
 from pynwb.device import Device
-from pynwb.ophys import ImagingPlane, TwoPhotonSeries
+from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
@@ -26,22 +26,30 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.imaging_extractor = self.get_extractor()(**source_data)
         self.verbose = verbose
 
-    def get_metadata_schema(self) -> dict:
+    def get_metadata_schema(
+        self, photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries"
+    ) -> dict:
         metadata_schema = super().get_metadata_schema()
 
         metadata_schema["required"] = ["Ophys"]
 
         # Initiate Ophys metadata
         metadata_schema["properties"]["Ophys"] = get_base_schema(tag="Ophys")
-        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", "TwoPhotonSeries"]
+        metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImagingPlane", "OnePhotonSeries"]
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/Device"}),
             ImagingPlane=dict(
                 type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/ImagingPlane"}
             ),
-            TwoPhotonSeries=dict(
-                type="array", minItems=1, items={"$ref": "#/properties/Ophys/properties/definitions/TwoPhotonSeries"}
-            ),
+        )
+        metadata_schema["properties"]["Ophys"]["properties"].update(
+            {
+                photon_series_type: dict(
+                    type="array",
+                    minItems=1,
+                    items={"$ref": f"#/properties/Ophys/properties/definitions/{photon_series_type}"},
+                ),
+            }
         )
 
         # Schema definition for arrays
@@ -51,7 +59,15 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"]["definitions"] = dict(
             Device=get_schema_from_hdmf_class(Device),
             ImagingPlane=imaging_plane_schema,
-            TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
+        )
+        photon_series = dict(
+            OnePhotonSeries=OnePhotonSeries,
+            TwoPhotonSeries=TwoPhotonSeries,
+        )[photon_series_type]
+        metadata_schema["properties"]["Ophys"]["properties"]["definitions"].update(
+            {
+                photon_series_type: get_schema_from_hdmf_class(photon_series),
+            }
         )
 
         fill_defaults(metadata_schema, self.get_metadata())
