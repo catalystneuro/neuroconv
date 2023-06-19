@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 from typing import List, Literal, Optional
-from warnings import warn
 
 import numpy as np
 import scipy

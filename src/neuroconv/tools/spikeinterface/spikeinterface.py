@@ -8,7 +8,6 @@ import numpy as np
 import psutil
 import pynwb
 from hdmf.backends.hdf5.h5_utils import H5DataIO
-from hdmf.common.table import DynamicTable
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from nwbinspector.utils import get_package_version
 from packaging.version import Version

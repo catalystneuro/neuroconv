@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator

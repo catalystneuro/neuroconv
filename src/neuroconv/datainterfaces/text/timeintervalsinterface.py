@@ -6,7 +6,6 @@ import numpy as np
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
-from ...tools.nwb_helpers import make_or_load_nwbfile
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import load_dict_from_file
 from ...utils.types import FilePathType

@@ -2,7 +2,7 @@
 import abc
 import os
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List
 
 from fparse import parse
 from pydantic import DirectoryPath, FilePath
