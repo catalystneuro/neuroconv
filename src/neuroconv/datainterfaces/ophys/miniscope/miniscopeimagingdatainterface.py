@@ -12,8 +12,11 @@ from ndx_miniscope.utils import (
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....tools.roiextractors.roiextractors import add_photon_series
-from ....utils import DeepDict, FolderPathType
+from ....tools.roiextractors.roiextractors import (
+    add_photon_series,
+    get_nwb_imaging_metadata,
+)
+from ....utils import DeepDict, FolderPathType, dict_deep_update
 
 
 class MiniscopeImagingInterface(BaseImagingExtractorInterface):
@@ -38,6 +41,9 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+        default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type="OnePhotonSeries")
+        metadata = dict_deep_update(metadata, default_metadata)
+        metadata["Ophys"].pop("TwoPhotonSeries", None)
 
         metadata["NWBFile"].update(session_start_time=self._recording_start_times[0])
 
@@ -47,12 +53,17 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         device_metadata.update(name=device_name, **miniscope_config)
         # Add link to Device for ImagingPlane
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
-        imaging_plane_metadata.update(device=device_name)
+        imaging_plane_metadata.update(
+            device=device_name,
+            imaging_rate=self.imaging_extractor.get_sampling_frequency(),
+        )
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+        one_photon_series_metadata.update(unit="px")
 
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
+        metadata_schema = super().get_metadata_schema(photon_series_type="OnePhotonSeries")
         metadata_schema["properties"]["Ophys"]["properties"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
