@@ -47,7 +47,7 @@ def get_default_nwbfile_metadata() -> DeepDict:
 
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
-    nwbfile_kwargs = metadata["NWBFile"]
+    nwbfile_kwargs = metadata.get("NWBFile") or dict()
     if "session_description" not in nwbfile_kwargs:
         nwbfile_kwargs.update(session_description="No description.")
     if "identifier" not in nwbfile_kwargs:
