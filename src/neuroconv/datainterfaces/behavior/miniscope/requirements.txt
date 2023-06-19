@@ -1,2 +1,2 @@
-ndx-miniscope>=0.5.0
+ndx-miniscope @ git+https://github.com/catalystneuro/ndx-miniscope.git@ad735adaecb4ab83712d32af4566466abe709abd#egg=ndx-miniscope
 natsort>=8.3.1
