@@ -41,16 +41,39 @@ def safe_nested_find(root, keys: list):
         return root
 
 
-def get_shank_channels(xml_file_path: str) -> list:
+def get_neural_channels(xml_file_path: str) -> list:
     """
-    Retrieve the list of structured shank-only channels.
+    Extracts the channels corresponding to neural data from an XML file.
 
-    These are channels involved into spike detection.
-    These are a subset of channels obtained in`get_channel_goups`.
+    Parameters
+    ----------
+    xml_file_path : str
+        Path to the XML file containing the necessary data.
 
     Returns
     -------
+    list
         List reflecting the group structure of the channels.
+
+    Notes
+    -----
+    This function attempts to extract the channels that correspond to neural data,
+    specifically those that come from the probe. It uses the `spikeDetection` structure
+    in the XML file to identify the channels involved in spike detection. Channels that are
+    not involved in spike detection, such as auxiliary channels from the intan system, are excluded.
+
+    The function returns a list representing the group structure of the channels.
+
+    Example:
+    [[1, 2, 3], [4, 5, 6], [7, 8, 9]
+
+    Where [1, 2, 3] are the channels in the first group, [4, 5, 6] are the channels in the second group, etc.
+
+    Warning:
+    This function assumes that all the channels that correspond to neural data are involved in spike detection.
+    More concretely, it assumes that the channels appear on the `spikeDetection` field of the XML file.
+    If this is not the case, the function will return an incorrect list of neural channels channels.
+    Please report this as an issue if this is the case.
     """
     root = get_xml(xml_file_path)
     channel_groups = safe_find(safe_nested_find(root, ["spikeDetection", "channelGroups"]), "group", findall=True)
