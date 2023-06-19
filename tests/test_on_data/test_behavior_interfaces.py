@@ -2,7 +2,6 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
-import natsort
 import numpy as np
 from natsort import natsorted
 from ndx_miniscope import Miniscope
