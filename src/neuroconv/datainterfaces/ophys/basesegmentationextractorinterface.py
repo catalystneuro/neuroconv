@@ -86,7 +86,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         include_roi_acceptance: bool = True,
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         iterator_options: Optional[dict] = None,
-        compression_options: Optional[dict] = None,
     ):
         """
 
@@ -119,8 +118,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Defaults to 'image'.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
-        compression_options : dict, optional
-            The options to use when compressing the image masks of the segmentation extractor.
 
         Returns
         -------
@@ -142,5 +139,4 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
             iterator_options=iterator_options,
-            compression_options=compression_options,
         )

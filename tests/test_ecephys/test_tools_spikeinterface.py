@@ -9,13 +9,12 @@ from unittest.mock import Mock
 import numpy as np
 import psutil
 import pynwb.ecephys
-from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from packaging import version
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 from spikeinterface import WaveformExtractor, extract_waveforms
-from spikeinterface.core.testing_tools import generate_recording, generate_sorting
+from spikeinterface.core.generate import generate_recording, generate_sorting
 from spikeinterface.extractors import NumpyRecording
 
 from neuroconv.tools.nwb_helpers import get_module
@@ -24,9 +23,7 @@ from neuroconv.tools.spikeinterface import (
     add_electrodes,
     add_units_table,
     check_if_recording_traces_fit_into_memory,
-    get_nwb_metadata,
     write_recording,
-    write_sorting,
     write_waveforms,
 )
 from neuroconv.tools.spikeinterface.spikeinterfacerecordingdatachunkiterator import (
@@ -60,20 +57,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         assert "ElectricalSeriesRaw" in acquisition_module
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
-        assert isinstance(electrical_series.data, H5DataIO)
-
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == "gzip"
-
-        extracted_data = electrical_series.data[:]
+        extracted_data = [x for x in electrical_series.data]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_lfp(self):
-        write_as = "lfp"
-        add_electrical_series(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
-        )
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, write_as="lfp")
 
         processing_module = self.nwbfile.processing
         assert "ecephys" in processing_module
@@ -86,15 +75,12 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         assert "ElectricalSeriesLFP" in lfp_container.electrical_series
 
         electrical_series = lfp_container.electrical_series["ElectricalSeriesLFP"]
-        extracted_data = electrical_series.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series.data])
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_processing(self):
-        write_as = "processed"
-        add_electrical_series(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
-        )
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, write_as="processed")
 
         processing_module = self.nwbfile.processing
         assert "ecephys" in processing_module
@@ -107,7 +93,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         assert "ElectricalSeriesProcessed" in filtered_ephys_container.electrical_series
 
         electrical_series = filtered_ephys_container.electrical_series["ElectricalSeriesProcessed"]
-        extracted_data = electrical_series.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series.data])
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
@@ -123,7 +109,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesRaw",
-            iterator_type=None,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
@@ -133,7 +118,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesLFP",
-            iterator_type=None,
         )
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
         self.assertIn("ElectricalSeriesLFP", self.nwbfile.acquisition)
@@ -153,7 +137,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesRaw1",
-            iterator_type=None,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
@@ -164,7 +147,6 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesRaw2",
-            iterator_type=None,
         )
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
         self.assertIn("ElectricalSeriesRaw2", self.nwbfile.acquisition)
@@ -178,38 +160,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
         with self.assertRaisesRegex(AssertionError, reg_expression):
-            add_electrical_series(
-                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
-            )
-
-    def test_write_with_higher_gzip_level(self):
-        compression = "gzip"
-        compression_opts = 8
-        add_electrical_series(
-            recording=self.test_recording_extractor,
-            nwbfile=self.nwbfile,
-            iterator_type=None,
-            compression=compression,
-            compression_opts=compression_opts,
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert compression_parameters["compression_opts"] == compression_opts
-
-    def test_write_with_lzf_compression(self):
-        compression = "lzf"
-        add_electrical_series(
-            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
-        )
-
-        acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == compression
-        assert "compression_opts" not in compression_parameters
+            add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, write_as=write_as)
 
 
 class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
@@ -303,7 +254,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         assert offset_scalar == offsets[0] * 1e-6
 
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
-        extracted_data = electrical_series.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series.data])
         data_in_volts = extracted_data * conversion_factor_scalar + offset_scalar
         traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
@@ -328,7 +279,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         assert offset_scalar == offsets[0] * 1e-6
 
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
-        extracted_data = electrical_series.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series.data])
         data_in_volts = extracted_data * conversion_factor_scalar + offset_scalar
         traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
@@ -357,7 +308,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         np.testing.assert_array_almost_equal(channel_conversion_vector, gains)
 
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
-        extracted_data = electrical_series.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series.data])
         data_in_volts = extracted_data * channel_conversion_vector * conversion_factor_scalar + offset_scalar
         traces_data_in_volts = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=True) * 1e-6
         np.testing.assert_array_almost_equal(data_in_volts, traces_data_in_volts)
@@ -380,7 +331,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         assert offset_scalar == 0
 
         # Test equality of data in Volts. Data in spikeextractors is in microvolts when scaled
-        extracted_data = electrical_series.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series.data])
         data_in_volts = extracted_data * conversion_factor_scalar + offset_scalar
         traces_data = self.test_recording_extractor.get_traces(segment_index=0, return_scaled=False)
         gains = self.test_recording_extractor.get_channel_gains()
@@ -432,9 +383,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = acquisition_module["ElectricalSeriesRaw"].data
 
         assert isinstance(electrical_series_data_iterator, SpikeInterfaceRecordingDataChunkIterator)
 
@@ -450,18 +399,16 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert electrical_series_data_iterator.chunk_shape == iterator_opts["chunk_shape"]
 
-    def test_hdfm_iterator(self):
+    def test_hdmf_iterator(self):
         add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type="v1")
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
-        h5dataiowrapped_electrical_series = electrical_series.data
-        electrical_series_data_iterator = h5dataiowrapped_electrical_series.data
+        electrical_series_data_iterator = electrical_series.data
 
         assert isinstance(electrical_series_data_iterator, DataChunkIterator)
 
@@ -540,23 +487,18 @@ class TestWriteRecording(unittest.TestCase):
 
     def test_default_values_single_segment(self):
         """This test that the names are written appropriately for the single segment case (numbers not added)"""
-        write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
         assert "ElectricalSeriesRaw" in acquisition_module
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
 
-        assert isinstance(electrical_series.data, H5DataIO)
-
-        compression_parameters = electrical_series.data.get_io_params()
-        assert compression_parameters["compression"] == "gzip"
-
-        extracted_data = electrical_series.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series.data])
         expected_data = self.single_segment_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_multiple_segments(self):
-        write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
+        write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
         assert len(acquisition_module) == 2
@@ -565,12 +507,12 @@ class TestWriteRecording(unittest.TestCase):
         assert "ElectricalSeriesRaw1" in acquisition_module
 
         electrical_series0 = acquisition_module["ElectricalSeriesRaw0"]
-        extracted_data = electrical_series0.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series0.data])
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
         electrical_series1 = acquisition_module["ElectricalSeriesRaw1"]
-        extracted_data = electrical_series1.data[:]
+        extracted_data = np.vstack([x.data for x in electrical_series1.data])
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 

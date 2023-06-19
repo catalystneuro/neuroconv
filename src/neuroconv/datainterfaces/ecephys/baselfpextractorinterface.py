@@ -3,7 +3,6 @@ from typing import Literal, Optional
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ...utils import FilePathType
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
@@ -39,8 +38,6 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_opts=iterator_opts,
         )

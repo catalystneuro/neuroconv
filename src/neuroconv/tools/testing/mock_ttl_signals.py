@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import DTypeLike
 from nwbinspector.tools import make_minimal_nwbfile
 from nwbinspector.utils import is_module_installed
-from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
+from pynwb import NWBHDF5IO, TimeSeries
 
 from ...utils import ArrayType, FolderPathType
 
@@ -165,7 +165,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
             name="DefaultTTLSignal",
             unit=unit,
             rate=25000.0,
-            data=H5DataIO(data=default_ttl_signal, chunks=default_ttl_signal.shape, **compression_options),
+            data=default_ttl_signal,
         )
     )
 
@@ -264,7 +264,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
                 name=time_series_name,
                 unit=unit,
                 rate=rate,
-                data=H5DataIO(data=time_series_data, chunks=time_series_data.shape, **compression_options),
+                data=time_series_data,
             )
         )
 
