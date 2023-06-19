@@ -1,0 +1,2 @@
+ndx-miniscope>=0.5.0
+natsort>=8.3.1
