@@ -101,7 +101,7 @@ class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittes
             self.assertCountEqual(first=pose_estimation_series_in_nwb, second=expected_pose_estimation_series)
 
 
-class TestMiniscopeImagingInterface(DataInterfaceTestMixin, unittest.TestCase):
+class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
     data_interface_cls = MiniscopeBehaviorInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
