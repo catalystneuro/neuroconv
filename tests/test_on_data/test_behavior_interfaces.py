@@ -116,7 +116,7 @@ class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
             compression="MJPG",
             deviceType="WebCam-1920x1080",
             framesPerFile=1000,
-            ROI=[720, 1280],
+            ROI={"height": 720, "leftEdge": 0, "topEdge": 0, "width": 1280},
         )
         cls.starting_frames = np.array([0, 5, 10])  # there are 5 frames in each of the three avi files
         cls.external_files = [str(file) for file in list(natsorted(folder_path.glob("*/BehavCam*/0.avi")))]
@@ -146,7 +146,8 @@ class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
             self.assertEqual(device.compression, self.device_metadata["compression"])
             self.assertEqual(device.deviceType, self.device_metadata["deviceType"])
             self.assertEqual(device.framesPerFile, self.device_metadata["framesPerFile"])
-            assert_array_equal(device.ROI[:], self.device_metadata["ROI"])
+            roi = [self.device_metadata["ROI"]["height"], self.device_metadata["ROI"]["width"]]
+            assert_array_equal(device.ROI[:], roi)
 
             # Check ImageSeries
             self.assertIn(self.image_series_name, nwbfile.acquisition)
