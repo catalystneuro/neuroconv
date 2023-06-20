@@ -1,5 +1,4 @@
-from typing import List, Optional
-from warnings import warn
+from typing import Optional
 
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType

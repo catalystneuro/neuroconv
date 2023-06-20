@@ -1,5 +1,4 @@
 from pathlib import Path
-from warnings import warn
 
 from pynwb.ecephys import ElectricalSeries
 

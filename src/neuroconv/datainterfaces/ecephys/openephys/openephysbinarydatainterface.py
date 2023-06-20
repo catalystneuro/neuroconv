@@ -3,7 +3,6 @@ from io import StringIO
 from typing import List, Optional
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....utils import FolderPathType, get_schema_from_method_signature
 
 
@@ -66,7 +65,6 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
         """
-        from spikeinterface.extractors import OpenEphysBinaryRecordingExtractor
 
         try:
             _open_with_pyopenephys(folder_path=folder_path)
