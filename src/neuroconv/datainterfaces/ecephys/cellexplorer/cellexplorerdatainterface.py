@@ -21,17 +21,17 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     * Gains for both raw data (held in a file named session.dat) and lfp (located in session.lfp)
     * Dtype for both raw data and lfp.
 
-    Here's a link to the documentation detailing the file's structure:
+    Link to the documentation detailing the file's structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
     This metadata is sufficient to build a memmap, which in turn should make straigthfoward to build a recording
     extractor.  If we encounter more conversion projects involving CellExplorer data, we should do this.
-    This interface then will seve as a steping stone to this long-term and more robust solution.
+    This interface then will serve as a steping stone to this long-term and more robust solution.
 
     In the meantime, the interface is intended for use in adding electrode metadata during a conversion,
     specifically when using `write_electrical_series=False` as a conversion option.
 
-    In its current form, the `chanMap.ma`t file is employed to extract the electrode coordinates within the probe.
+    In its current form, the `chanMap.mat` file is employed to extract the electrode coordinates within the probe.
     To my understanding, this file is generated for using kilosort, and it is not granted that it will
     be universally available for all future conversion projects. Ideally, the format should also contain
     files for channel info and channel coordinates, although these are absent in the current conversion:
@@ -122,7 +122,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         hdf5storage = get_package(package_name="hdf5storage")
 
-        # Temporary hack untill spkeinterface next release
+        # Temporary hack until spkeinterface next release
         file_path = Path(file_path)
         new_cell_explorer_format = "spikes.cellinfo.mat" in file_path.name
         sampling_frequency = None
