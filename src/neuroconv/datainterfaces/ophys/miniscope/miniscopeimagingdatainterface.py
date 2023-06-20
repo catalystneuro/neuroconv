@@ -26,18 +26,14 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         folder_path : FolderPathType
             path to the folder containing the Miniscope files.
         """
-        self._ndx_miniscope = get_package(
-            package_name="ndx_miniscope", installation_instructions="pip install ndx-miniscope"
-        )
+        from ndx_miniscope.utils import get_recording_start_times, read_miniscope_config
 
         super().__init__(folder_path=folder_path)
 
         miniscope_subfolders = list(Path(folder_path).glob(f"*/Miniscope/"))
-        self._miniscope_config = self._ndx_miniscope.utils.read_miniscope_config(
-            folder_path=str(miniscope_subfolders[0])
-        )
+        self._miniscope_config = read_miniscope_config(folder_path=str(miniscope_subfolders[0]))
 
-        self._recording_start_times = self._ndx_miniscope.utils.get_recording_start_times(folder_path=folder_path)
+        self._recording_start_times = get_recording_start_times(folder_path=folder_path)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -68,7 +64,9 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         return metadata_schema
 
     def get_original_timestamps(self) -> np.ndarray:
-        timestamps = self._ndx_miniscope.utils.get_timestamps(folder_path=self.source_data["folder_path"])
+        from ndx_miniscope.utils import get_timestamps
+
+        timestamps = get_timestamps(folder_path=self.source_data["folder_path"])
         return np.array(timestamps)
 
     def add_to_nwbfile(
@@ -79,6 +77,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
+        from ndx_miniscope.utils import add_miniscope_device
+
         miniscope_timestamps = self.get_original_timestamps()
         imaging_extractor = self.imaging_extractor
 
@@ -90,7 +90,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         imaging_extractor.set_times(times=miniscope_timestamps)
 
         device_metadata = metadata["Ophys"]["Device"][0]
-        self._ndx_miniscope.utils.add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
+        add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
 
         add_photon_series(
             imaging=imaging_extractor,
