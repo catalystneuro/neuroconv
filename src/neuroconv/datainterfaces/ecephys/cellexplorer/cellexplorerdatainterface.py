@@ -1,9 +1,7 @@
 from pathlib import Path
-from warnings import warn
 
 import numpy as np
 import scipy
-from spikeinterface.core.numpyextractors import NumpyRecording
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -70,6 +68,8 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         # dtype = extracellular_data["precision"]  # TODO: This information will be used when writing the series
 
         channel_ids = None
+        from spikeinterface.core.numpyextractors import NumpyRecording
+
         dummy_recording = NumpyRecording(
             traces_list=traces_list,
             sampling_frequency=sampling_frequency,
