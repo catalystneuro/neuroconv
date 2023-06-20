@@ -7,12 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import (
-    FilePathType,
-    NWBMetaDataEncoder,
-    get_base_schema,
-    get_schema_from_hdmf_class,
-)
+from ...utils import NWBMetaDataEncoder, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
