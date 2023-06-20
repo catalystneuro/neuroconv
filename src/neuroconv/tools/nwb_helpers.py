@@ -75,7 +75,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
             nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(
                 nwbfile_kwargs["subject"]["date_of_birth"]
             )
-        nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["Subject"])
+        nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
 
     return NWBFile(**nwbfile_kwargs)
 
