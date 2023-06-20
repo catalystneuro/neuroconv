@@ -112,12 +112,13 @@ class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
         cls.image_series_name = "BehavCamImageSeries"
 
         cls.device_metadata = dict(
+            name=cls.device_name,
             compression="MJPG",
             deviceType="WebCam-1920x1080",
             framesPerFile=1000,
             ROI=[720, 1280],
         )
-        cls.starting_frames = np.array([0, 5, 10])
+        cls.starting_frames = np.array([0, 5, 10])  # there are 5 frames in each of the three avi files
         cls.external_files = [str(file) for file in list(natsorted(folder_path.glob("*/BehavCam*/0.avi")))]
         cls.timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
@@ -126,6 +127,13 @@ class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
             metadata["NWBFile"]["session_start_time"],
             datetime(2021, 10, 7, 15, 3, 28, 635),
         )
+        self.assertEqual(metadata["Behavior"]["Device"][0], self.device_metadata)
+
+        image_series_metadata = metadata["Behavior"]["ImageSeries"][0]
+        self.assertEqual(image_series_metadata["name"], self.image_series_name)
+        self.assertEqual(image_series_metadata["device"], self.device_name)
+        self.assertEqual(image_series_metadata["unit"], "px")
+        self.assertEqual(image_series_metadata["dimension"], [1280, 720])  # width x height
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(nwbfile_path, "r") as io:
