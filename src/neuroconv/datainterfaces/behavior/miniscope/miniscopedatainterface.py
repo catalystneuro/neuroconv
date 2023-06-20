@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from pynwb import NWBFile
 
@@ -72,8 +71,21 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[dict] = None,
+        metadata: DeepDict,
     ):
+        """
+        Adds the behavior movies as ImageSeries from provided metadata.
+        The created ImageSeries is linked to a Miniscope device.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The nwbfile to add the image series to.
+        metadata : DeepDict
+            The metadata storing the necessary metadata for creating the image series and linking it to the appropriate device.
+            The metadata for the image series should be stored in metadata["Behavior"]["ImageSeries"].
+            The metadata for the device to be linked should be stored in metadata["Behavior"]["Device"].
+        """
         self._ndx_miniscope.utils.add_miniscope_image_series(
             nwbfile=nwbfile,
             metadata=metadata,
