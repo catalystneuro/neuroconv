@@ -1,12 +1,12 @@
+import json
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from warnings import warn
-import jsonschema
-import json
 
+import jsonschema
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
@@ -72,7 +72,9 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
         nwbfile_kwargs["subject"] = metadata["Subject"]
         # convert ISO 8601 string to datetime
         if "date_of_birth" in nwbfile_kwargs["subject"] and isinstance(nwbfile_kwargs["subject"]["date_of_birth"], str):
-            nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(nwbfile_kwargs["subject"]["date_of_birth"])
+            nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(
+                nwbfile_kwargs["subject"]["date_of_birth"]
+            )
         nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["Subject"])
 
     return NWBFile(**nwbfile_kwargs)
