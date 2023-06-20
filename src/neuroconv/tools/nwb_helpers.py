@@ -4,6 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from warnings import warn
+import jsonschema
+import json
 
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
@@ -47,23 +49,32 @@ def get_default_nwbfile_metadata() -> DeepDict:
 
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
-    nwbfile_kwargs = metadata.get("NWBFile") or dict()
-    if "session_description" not in nwbfile_kwargs:
-        nwbfile_kwargs.update(session_description="No description.")
-    if "identifier" not in nwbfile_kwargs:
-        nwbfile_kwargs.update(identifier=uuid.uuid4())
-    if "Subject" in metadata:
-        # convert ISO 8601 string to datetime
-        if "date_of_birth" in metadata["Subject"] and isinstance(metadata["Subject"]["date_of_birth"], str):
-            metadata["Subject"]["date_of_birth"] = datetime.fromisoformat(metadata["Subject"]["date_of_birth"])
-        nwbfile_kwargs.update(subject=Subject(**metadata["Subject"]))
+
+    # Validate metadata
+    schema_path = Path(__file__).resolve().parent.parent / "schemas/base_metadata_schema.json"
+    with open(schema_path) as schema_file:
+        base_metadata_schema = json.load(schema_file)
+    try:
+        jsonschema.validate(metadata, base_metadata_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        print("Base metadata is not valid.")
+        print(e)
+
+    nwbfile_kwargs = metadata["NWBFile"]
     # convert ISO 8601 string to datetime
-    assert "session_start_time" in nwbfile_kwargs, (
-        "'session_start_time' was not found in metadata['NWBFile']! Please add the correct start time of the "
-        "session in ISO8601 format (%Y-%m-%dT%H:%M:%S) to this key of the metadata."
-    )
-    if isinstance(nwbfile_kwargs.get("session_start_time", None), str):
-        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
+    if isinstance(nwbfile_kwargs.get("session_start_time"), str):
+        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(nwbfile_kwargs["session_start_time"])
+    if "session_description" not in nwbfile_kwargs:
+        nwbfile_kwargs["session_description"] = "No description."
+    if "identifier" not in nwbfile_kwargs:
+        nwbfile_kwargs["identifier"] = uuid.uuid4()
+    if "Subject" in metadata:
+        nwbfile_kwargs["subject"] = metadata["Subject"]
+        # convert ISO 8601 string to datetime
+        if "date_of_birth" in nwbfile_kwargs["subject"] and isinstance(nwbfile_kwargs["subject"]["date_of_birth"], str):
+            nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(nwbfile_kwargs["subject"]["date_of_birth"])
+        nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["Subject"])
+
     return NWBFile(**nwbfile_kwargs)
 
 
