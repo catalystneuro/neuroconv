@@ -41,10 +41,10 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
     def get_timestamps(self) -> np.ndarray:
         return self.event_times
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self.event_times = aligned_timestamps
 
-    def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
         table = DynamicTable(name="BehaviorEvents", description="Times of various classified behaviors.")
         table.add_column(name="event_time", description="Time of each event.")
         for timestamp in self.get_timestamps():  # adding data by column gives error

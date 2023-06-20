@@ -45,7 +45,7 @@ def get_default_nwbfile_metadata() -> DeepDict:
     return metadata
 
 
-def make_nwbfile_from_metadata(metadata: dict):
+def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
     metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
     nwbfile_kwargs = metadata["NWBFile"]
@@ -136,7 +136,7 @@ def make_or_load_nwbfile(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite: bool, optional
-        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.

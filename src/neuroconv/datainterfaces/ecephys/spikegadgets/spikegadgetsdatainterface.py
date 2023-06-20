@@ -1,5 +1,4 @@
 from typing import Optional
-from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import ArrayType, FilePathType
@@ -18,6 +17,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePathType,
+        stream_id: str = "trodes",
         gains: Optional[ArrayType] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
@@ -35,9 +35,8 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             or an array of values for each channel.
         es_key : str, default: "ElectricalSeries"
         """
-        super().__init__(file_path=file_path, stream_id="trodes", verbose=verbose, es_key=es_key)
+        super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key)
 
-        self.source_data = dict(file_path=file_path, verbose=verbose)
         if gains is not None:
             if len(gains) == 1:
                 gains = [gains[0]] * self.recording_extractor.get_num_channels()

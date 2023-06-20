@@ -1,10 +1,12 @@
 import uuid
+import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional
 
 from pynwb import NWBFile
 
+from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
 from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
@@ -19,12 +21,13 @@ class BaseDataInterface(ABC):
         """Infer the JSON schema for the source_data from the method signature (annotation typing)."""
         return get_schema_from_method_signature(cls, exclude=["source_data"])
 
-    def __init__(self, **source_data):
+    def __init__(self, verbose: bool = False, **source_data):
+        self.verbose = verbose
         self.source_data = source_data
 
     def get_conversion_options_schema(self):
         """Infer the JSON schema for the conversion options from the method signature (annotation typing)."""
-        return get_schema_from_method_signature(self.run_conversion, exclude=["nwbfile", "metadata"])
+        return get_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
     def get_metadata_schema(self):
         """Retrieve JSON schema for metadata."""
@@ -39,7 +42,15 @@ class BaseDataInterface(ABC):
 
         return metadata
 
+    def create_nwbfile(self, metadata=None, **conversion_options):
+        nwbfile = make_nwbfile_from_metadata(metadata)
+        self.add_to_nwbfile(nwbfile, metadata=metadata, **conversion_options)
+        return nwbfile
+
     @abstractmethod
+    def add_to_nwbfile(self, nwbfile: NWBFile, **conversion_options):
+        raise NotImplementedError()
+
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
@@ -64,4 +75,18 @@ class BaseDataInterface(ABC):
             Whether to overwrite the NWBFile if one exists at the nwbfile_path.
             The default is False (append mode).
         """
-        raise NotImplementedError("The run_conversion method for this DataInterface has not been defined!")
+        if nwbfile_path is None:
+            warnings.warn(
+                "Using DataInterface.run_conversion() without specifying nwbfile_path is deprecated. To create an "
+                "NWBFile object in memory, use DataInterface.create_nwbfile(). To append to an existing NWBFile object,"
+                " use DataInterface.add_to_nwbfile()."
+            )
+
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            verbose=getattr(self, "verbose", False),
+        ) as nwbfile_out:
+            self.add_to_nwbfile(nwbfile_out, metadata=metadata, **conversion_options)

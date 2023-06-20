@@ -7,12 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import (
-    FilePathType,
-    NWBMetaDataEncoder,
-    get_base_schema,
-    get_schema_from_hdmf_class,
-)
+from ...utils import NWBMetaDataEncoder, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -135,7 +130,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         timestamps: numpy.ndarray or list of numpy.ndarray
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
-        new_recording = self.get_extractor()(**self.source_data)
+        new_recording = self.get_extractor()(
+            **{keyword: value for keyword, value in self.source_data.items() if keyword not in ["verbose", "es_key"]}
+        )
         if self._number_of_segments == 1:
             return new_recording.get_times()
         else:
@@ -161,77 +158,84 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 for segment_index in range(self._number_of_segments)
             ]
 
-    def align_timestamps(self, aligned_timestamps: Union[np.ndarray, List[np.ndarray]]) -> None:
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        assert (
+            self._number_of_segments == 1
+        ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
+
+        self.recording_extractor.set_times(times=aligned_timestamps)
+
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
         """
-        Replace all timestamps for this interface with those aligned to the common session start time.
+        Replace all timestamps for all segments in this interface with those aligned to the common session start time.
 
         Must be in units seconds relative to the common 'session_start_time'.
 
         Parameters
         ----------
-        aligned_timestamps : numpy.ndarray or list of numpy.ndarray
-            The synchronized timestamps for data in this interface.
+        aligned_segment_timestamps : list of numpy.ndarray
+            The synchronized timestamps for segment of data in this interface.
         """
-        if self._number_of_segments == 1:
-            self.recording_extractor.set_times(times=aligned_timestamps)
-        else:
-            assert isinstance(
-                aligned_timestamps, list
-            ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
-            assert (
-                len(aligned_timestamps) == self._number_of_segments
-            ), f"The number of timestamp vectors ({len(aligned_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+        assert isinstance(
+            aligned_segment_timestamps, list
+        ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
+        assert (
+            len(aligned_segment_timestamps) == self._number_of_segments
+        ), f"The number of timestamp vectors ({len(aligned_segment_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
 
-            for segment_index in range(self._number_of_segments):
-                self.recording_extractor.set_times(times=aligned_timestamps[segment_index], segment_index=segment_index)
-
-    def align_starting_time(self, starting_time: float):
-        if self._number_of_segments == 1:
-            self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
-        else:
-            self.align_timestamps(
-                aligned_timestamps=[timestamps + starting_time for timestamps in self.get_timestamps()]
+        for segment_index in range(self._number_of_segments):
+            self.recording_extractor.set_times(
+                times=aligned_segment_timestamps[segment_index], segment_index=segment_index
             )
+
+    def set_aligned_starting_time(self, aligned_starting_time: float):
+        if self._number_of_segments == 1:
+            self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
+        else:
+            self.set_aligned_segment_timestamps(
+                aligned_segment_timestamps=[
+                    segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
+                ]
+            )
+
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+        """
+        Align the starting time for each segment in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_segment_starting_times : list of floats
+            The starting time for each segment of data in this interface.
+        """
+        assert len(aligned_segment_starting_times) == self._number_of_segments, (
+            f"The length of the starting_times ({len(aligned_segment_starting_times)}) does not match the "
+            "number of segments ({self._number_of_segments})!"
+        )
+
+        if self._number_of_segments == 1:
+            self.set_aligned_starting_time(aligned_starting_time=aligned_segment_starting_times[0])
+        else:
+            aligned_segment_timestamps = [
+                segment_timestamps + aligned_segment_starting_time
+                for segment_timestamps, aligned_segment_starting_time in zip(
+                    self.get_timestamps(), aligned_segment_starting_times
+                )
+            ]
+            self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
 
     def align_by_interpolation(
         self,
-        unaligned_timestamps: Union[np.ndarray, List[np.ndarray]],
-        aligned_timestamps: Union[np.ndarray, List[np.ndarray]],
+        unaligned_timestamps: np.ndarray,
+        aligned_timestamps: np.ndarray,
     ):
-        """
-        Interpolate the timestamps of this interface using a mapping from some unaligned time basis to its aligned one.
-
-        Use this method if the unaligned timestamps of the data in this interface are not directly tracked by a primary
-        system, but are known to occur between timestamps that are tracked, then align the timestamps of this interface
-        by interpolating between the two.
-
-        An example could be a metronomic TTL pulse (e.g., every second) from a secondary data stream to the primary
-        timing system; if the time references of this interface are recorded within the relative time of the secondary
-        data stream, then their exact time in the primary system is inferred given the pulse times.
-
-        Must be in units seconds relative to the common 'session_start_time'.
-
-        Parameters
-        ----------
-        unaligned_timestamps : numpy.ndarray or list of numpy.ndarray
-            The timestamps of the unaligned secondary time basis.
-        aligned_timestamps : numpy.ndarray or list of numpy.ndarray
-            The timestamps aligned to the primary time basis.
-        """
         if self._number_of_segments == 1:
-            self.align_timestamps(
+            self.set_aligned_timestamps(
                 aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
             )
         else:
-            current_timestamps = self.get_timestamps()
-            for segment_index in range(self._number_of_segments):
-                self.align_timestamps(
-                    aligned_timestamps=np.interp(
-                        x=current_timestamps[segment_index],
-                        xp=unaligned_timestamps[segment_index],
-                        fp=aligned_timestamps[segment_index],
-                    )
-                )
+            raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
 
     def subset_recording(self, stub_test: bool = False):
         """
@@ -257,12 +261,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return recording_extractor
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
@@ -277,18 +279,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to this location.
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             NWBFile to which the recording information is to be added
         metadata : dict, optional
             metadata info for constructing the NWB file.
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
-        overwrite: bool, default: False
-            Whether to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -328,20 +325,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                     Dictionary of keyword arguments to be passed directly to tqdm.
                     See https://github.com/tqdm/tqdm#parameters for options.
         """
-        from ...tools.spikeinterface import write_recording
+        from ...tools.spikeinterface import add_recording
 
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
 
-        write_recording(
+        add_recording(
             recording=recording,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
