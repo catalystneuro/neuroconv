@@ -13,35 +13,33 @@ from ....utils import FilePathType
 
 class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     """
-    This interface is a temporary hack for adding CellExplorer metadata in a conversion.
+    This interface serves as an temporary solution for integrating CellExplorer metadata during a conversion process.
 
-    The new format of cell explorer contains a .session.mat file with the metadata:
+    CellExplorer's new format (https://cellexplorer.org/) contains a `session.mat` file, which has the following field:
 
-    https://cellexplorer.org/
-
-    The new format contains a session.mat file with the following fields:
     * Sampling frequency
-    * Gains for both raw data and lfp. The former is a file named session.dat and the latter session.lfp
+    * Gains for both raw data (held in a file named session.dat) and lfp (located in session.lfp)
     * Dtype for both raw data and lfp.
 
-    Link to the documentation of the file:
+    Here's a link to the documentation detailing the file's structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
-    This is enough to create a memmap from which we can extract the data and create a recording extractor.
-    This should be done if we get more conversions projects with CellExplorer data and this interface is the
-    first step in that direction.
+    This metadata is sufficient to build a memmap, which in turn should make straigthfoward to build a recording
+    extractor.  If we encounter more conversion projects involving CellExplorer data, we should do this.
+    This interface then will seve as a steping stone to this long-term and more robust solution.
 
-    Meanwhile, this is meant to be used to add the electrode metadata in a conversion. That is,
-    this should only be used with ` write_electrical_series=False` as a conversion option.
+    In the meantime, the interface is intended for use in adding electrode metadata during a conversion,
+    specifically when using `write_electrical_series=False` as a conversion option.
 
-    In the current instantiation, the file `chanMap.mat` is used to extrat the coordinates of the electrodes
-    in the probe. As far as I understand this file is created to use kilosort so it is not clear if it will be
-    availalbe for all conversion projects. In fact, there should be a channel info and channel coords files as well
-    in the format but they are not present in the current conversion:
+    In its current form, the `chanMap.ma`t file is employed to extract the electrode coordinates within the probe.
+    To my understanding, this file is generated for using kilosort, and it is not granted that it will
+    be universally available for all future conversion projects. Ideally, the format should also contain
+    files for channel info and channel coordinates, although these are absent in the current conversion:
 
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
 
-    As we get more examples in the future we can refine this further. This is a first iteration.
+    As we accumulate more examples moving forward, we will be able to figure out what's better. This is a first
+    iteration.
     """
 
     def __init__(self, folder_path, verbose=True):
