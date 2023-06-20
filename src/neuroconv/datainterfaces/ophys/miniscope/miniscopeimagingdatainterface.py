@@ -6,11 +6,6 @@ import numpy as np
 from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
-from ....tools import get_package
-from ....tools.roiextractors.roiextractors import (
-    add_photon_series,
-    get_nwb_imaging_metadata,
-)
 from ....utils import DeepDict, FolderPathType, dict_deep_update
 
 
@@ -36,6 +31,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)
 
     def get_metadata(self) -> DeepDict:
+        from ....tools.roiextractors import get_nwb_imaging_metadata
+
         metadata = super().get_metadata()
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type="OnePhotonSeries")
         metadata = dict_deep_update(metadata, default_metadata)
@@ -78,6 +75,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         stub_frames: int = 100,
     ):
         from ndx_miniscope.utils import add_miniscope_device
+
+        from ....tools.roiextractors import add_photon_series
 
         miniscope_timestamps = self.get_original_timestamps()
         imaging_extractor = self.imaging_extractor
