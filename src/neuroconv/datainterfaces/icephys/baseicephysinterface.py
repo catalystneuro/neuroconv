@@ -1,8 +1,7 @@
-from typing import Optional, Tuple
-from warnings import warn
+from typing import Tuple
 
 import numpy as np
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers import make_nwbfile_from_metadata
