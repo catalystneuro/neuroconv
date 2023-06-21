@@ -40,7 +40,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         except NotImplementedError:
             matlab_file = h5py.File(name=file_path, mode="r")
             if "spikes" not in matlab_file.keys():
-                raise ValueError(f"Matlab file  {file_path} does not contain `spikes` field")
+                raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
             spikes_mat = matlab_file["spikes"]
             assert isinstance(spikes_mat, h5py.Group), f"field `spikes` must be a Group, not {type(spikes_mat)}!"
 
