@@ -8,7 +8,7 @@ from pynwb import NWBFile
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
-from ....utils import FilePathType
+from ....utils import FilePathType, FolderPathType
 
 
 class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
@@ -42,7 +42,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
-    def __init__(self, folder_path, verbose=True, es_key: str = "ElectricalSeries"):
+    def __init__(self, folder_path: FolderPathType, verbose=True, es_key: str = "ElectricalSeries"):
         self.folder_path = Path(folder_path)
 
         # No super here, we need to do everything by hand
@@ -137,7 +137,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     sampling_frequency_key = "srLfp"
     binary_file_extension = "lfp"
 
-    def __init__(self, folder_path, verbose=True, es_key: str = "ElectricalSeriesLFP"):
+    def __init__(self, folder_path: FolderPathType, verbose=True, es_key: str = "ElectricalSeriesLFP"):
         super().__init__(folder_path, verbose, es_key)
 
     def add_to_nwbfile(
