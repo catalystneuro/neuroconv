@@ -2,6 +2,7 @@ from datetime import datetime
 
 from hdmf.testing import TestCase
 from pynwb import ProcessingModule
+from jsonschema.exceptions import ValidationError
 
 from neuroconv.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 
@@ -26,11 +27,5 @@ class TestNWBHelpers(TestCase):
         self.assertWarns(UserWarning, get_module, **dict(nwbfile=nwbfile, name=name_1, description=description_2))
 
     def test_make_nwbfile_from_metadata(self):
-        with self.assertRaisesWith(
-            exc_type=AssertionError,
-            exc_msg=(
-                "'session_start_time' was not found in metadata['NWBFile']! Please add the correct start time of the "
-                "session in ISO8601 format (%Y-%m-%dT%H:%M:%S) to this key of the metadata."
-            ),
-        ):
+        with self.assertRaises(ValidationError):
             make_nwbfile_from_metadata(metadata=dict())

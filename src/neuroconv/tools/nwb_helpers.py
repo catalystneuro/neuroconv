@@ -59,7 +59,8 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
         # jsonschema.validate(metadata, base_metadata_schema)
         validate_metadata(metadata=metadata, schema=base_metadata_schema)
     except jsonschema.exceptions.ValidationError as e:
-        raise Exception(f"Base metadata is not valid:\n{e}")
+        print(f"Base metadata is not valid.\n")
+        raise e
 
     nwbfile_kwargs = metadata["NWBFile"]
     # convert ISO 8601 string to datetime
