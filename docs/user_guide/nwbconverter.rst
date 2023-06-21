@@ -4,10 +4,10 @@ NWBConverter
 In neurophysiology, it is common to use multiple different acquisition or
 preprocessing systems with different proprietary formats in the same session.
 For instance, in a given extracellular electrophysiology experiment, you might
-have raw and processed data. The NWBConverter class streamlines this
-conversion process. This single NWBConversion object is responsible for
+have raw and processed data. The :py:class:`.NWBConverter` class streamlines this
+conversion process. This single :py:class:`.NWBConverter` object is responsible for
 combining those multiple read/write operations. An example of how to define
-a ``NWBConverter`` would be
+a :py:class:`.NWBConverter` would be
 
 .. code-block:: python
 
