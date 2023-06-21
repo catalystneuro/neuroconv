@@ -57,26 +57,36 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         from pymatreader import read_mat
 
         session_data = read_mat(session_data_file_path)["session"]
+        import h5py
+
+        file = h5py.File(session_data_file_path, "r")
 
         extracellular_data = session_data["extracellular"]
 
         num_channels = extracellular_data["nChannels"]
         sampling_frequency = extracellular_data["sr"]
         gain = extracellular_data["leastSignificantBit"]  # 0.195
-        traces_list = [np.empty(shape=(1, num_channels))]
+        gains_to_uv = np.ones(num_channels) * gain
+        dtype = extracellular_data["precision"]
         # sampilng_frequency_lfp = extracellular_data["srLfp"]  # TODO: Add another LFP interface when writing series
-        # dtype = extracellular_data["precision"]  # TODO: This information will be used when writing the series
 
-        channel_ids = None
-        from spikeinterface.core.numpyextractors import NumpyRecording
-
-        dummy_recording = NumpyRecording(
-            traces_list=traces_list,
-            sampling_frequency=sampling_frequency,
-            channel_ids=channel_ids,
+        from spikeinterface.core.binaryrecordingextractor import (
+            BinaryRecordingExtractor,
         )
-        self.recording_extractor = dummy_recording
-        self.recording_extractor.set_channel_gains(channel_ids=channel_ids, gains=np.ones(num_channels) * gain)
+
+        binary_file_path = self.folder_path / f"{self.session}.dat"
+        assert binary_file_path.is_file(), f"File {binary_file_path} does not exist"
+
+        self.recording_extractor = BinaryRecordingExtractor(
+            file_paths=[binary_file_path],
+            sampling_frequency=sampling_frequency,
+            num_chan=num_channels,
+            dtype=dtype,
+            t_starts=None,
+            file_offset=0,
+            gain_to_uV=gains_to_uv,
+            offset_to_uV=None,
+        )
 
         self.chan_map_file_path = self.folder_path / f"chanMap.mat"
         if self.chan_map_file_path.is_file():
@@ -122,15 +132,28 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         hdf5storage = get_package(package_name="hdf5storage")
 
-        # Temporary hack until spkeinterface next release
         file_path = Path(file_path)
-        new_cell_explorer_format = "spikes.cellinfo.mat" in file_path.name
-        sampling_frequency = None
-        if new_cell_explorer_format:
-            from pymatreader import read_mat
 
-            spikes_data = read_mat(file_path)["spikes"]
-            sampling_frequency = spikes_data.get("sr", None)
+        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release.
+        is_new_cell_explorer_format = "spikes.cellinfo.mat" in file_path.name
+        sampling_frequency = None
+        if is_new_cell_explorer_format:
+            import h5py
+
+            try:
+                matlab_file = scipy.io.loadmat(file_name=str(file_path), simplify_cells=True)
+                spikes_mat = matlab_file["spikes"]
+                assert isinstance(spikes_mat, dict), f"field `spikes` must be a dict, not {type(spikes_mat)}!"
+
+            except NotImplementedError:
+                matlab_file = h5py.File(name=file_path, mode="r")
+                spikes_mat = matlab_file["spikes"]
+                assert isinstance(spikes_mat, h5py.Group), f"field `spikes` must be a Group, not {type(spikes_mat)}!"
+
+            sampling_frequency = spikes_mat.get("sr", None)
+            sampling_frequency = (
+                sampling_frequency[()] if isinstance(sampling_frequency, h5py.Dataset) else sampling_frequency
+            )
 
         super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
