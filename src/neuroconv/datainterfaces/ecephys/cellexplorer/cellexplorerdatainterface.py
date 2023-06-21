@@ -28,26 +28,26 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         file_path = Path(file_path)
 
         # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release.
-        is_new_cell_explorer_format = "spikes.cellinfo.mat" in file_path.name
-        sampling_frequency = None
+        import h5py
 
-        if is_new_cell_explorer_format:
-            import h5py
+        try:
+            matlab_file = scipy.io.loadmat(file_name=str(file_path), simplify_cells=True)
+            if "spikes" not in matlab_file.keys():
+                raise ValueError(f"Matlab file  {file_path} does not contain `spikes` field")
+            spikes_mat = matlab_file["spikes"]
+            assert isinstance(spikes_mat, dict), f"field `spikes` must be a dict, not {type(spikes_mat)}!"
 
-            try:
-                matlab_file = scipy.io.loadmat(file_name=str(file_path), simplify_cells=True)
-                spikes_mat = matlab_file["spikes"]
-                assert isinstance(spikes_mat, dict), f"field `spikes` must be a dict, not {type(spikes_mat)}!"
+        except NotImplementedError:
+            matlab_file = h5py.File(name=file_path, mode="r")
+            if "spikes" not in matlab_file.keys():
+                raise ValueError(f"Matlab file  {file_path} does not contain `spikes` field")
+            spikes_mat = matlab_file["spikes"]
+            assert isinstance(spikes_mat, h5py.Group), f"field `spikes` must be a Group, not {type(spikes_mat)}!"
 
-            except NotImplementedError:
-                matlab_file = h5py.File(name=file_path, mode="r")
-                spikes_mat = matlab_file["spikes"]
-                assert isinstance(spikes_mat, h5py.Group), f"field `spikes` must be a Group, not {type(spikes_mat)}!"
-
-            sampling_frequency = spikes_mat.get("sr", None)
-            sampling_frequency = (
-                sampling_frequency[()] if isinstance(sampling_frequency, h5py.Dataset) else sampling_frequency
-            )
+        sampling_frequency = spikes_mat.get("sr", None)
+        sampling_frequency = (
+            sampling_frequency[()] if isinstance(sampling_frequency, h5py.Dataset) else sampling_frequency
+        )
 
         super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
