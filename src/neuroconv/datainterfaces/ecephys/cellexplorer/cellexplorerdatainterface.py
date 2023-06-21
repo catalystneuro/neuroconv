@@ -122,17 +122,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         hdf5storage = get_package(package_name="hdf5storage")
 
-        # Temporary hack until spkeinterface next release
-        file_path = Path(file_path)
-        new_cell_explorer_format = "spikes.cellinfo.mat" in file_path.name
-        sampling_frequency = None
-        if new_cell_explorer_format:
-            from pymatreader import read_mat
-
-            spikes_data = read_mat(file_path)["spikes"]
-            sampling_frequency = spikes_data.get("sr", None)
-
-        super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(spikes_matfile_path=file_path, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 
@@ -233,5 +223,4 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
         metadata.update(Ecephys=dict(UnitProperties=unit_properties))
-
         return metadata
