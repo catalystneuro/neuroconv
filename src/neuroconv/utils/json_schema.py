@@ -1,13 +1,13 @@
 import collections.abc
 import inspect
 import json
-from jsonschema import validate
 from datetime import datetime
-from typing import Callable, Literal, Dict
+from typing import Callable, Dict, Literal
 
 import hdmf.data_utils
 import numpy as np
 import pynwb
+from jsonschema import validate
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
