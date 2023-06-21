@@ -24,19 +24,23 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Link to the documentation detailing the file's structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
-    If the binary file is available (session.dat), the interface will use the `BinaryRecordingExtractor` to load the
-    data. Otherwise, it will use the `NumpyRecording` extractor, which is a dummy extractor that only contains
-    metadata. This can be used to add the electrode using `write_electrical_series=False` as a conversion option.
+    If the binary file is available (session.dat or session.lfp), the interface will use the
+    `BinaryRecordingExtractor` from spikeinterface to load the data. Otherwise, it will use the
+    `NumpyRecording` extractor, which is a dummy extractor that only contains metadata.  This can be used to add
+    the electrode using `write_electrical_series=False` as a conversion option.
 
-    In its current form, the `chanMap.mat` file is employed to extract the electrode coordinates within the probe.
-    To my understanding, this file is generated for using kilosort, and it is not granted that it will
-    be universally available for all future conversion projects. Ideally, the format should also contain
-    files for channel info and channel coordinates, although these are absent in the current conversion:
+    In cell explorer usually the data about the electrodes and the recording device comes three files:
+    * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
+    * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
+    * `basename.ccf.channelinfo.mat`: Allen Institute’s Common Coordinate Framework (CCF)
 
+    Detailed information can be found in the following link
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
 
-    As we accumulate more examples moving forward, we will be able to figure out what's better. This is a first
-    iteration.
+    Plus, the file `chanMap.mat` used by Kilosort is usually available on CellExplorer datasets.
+    The `chanMap.mat` can then be used to extract the electrode coordinates within the probe.
+    To my understanding, this file is generated for using kilosort, and therefore it is not available for all datasets.
+
     """
 
     sampling_frequency_key = "sr"
