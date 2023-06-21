@@ -11,6 +11,36 @@ from ....tools import get_package
 from ....utils import FilePathType, FolderPathType
 
 
+def add_chan_map_properties_to_recorder(recording_extractor, session_path):
+    chan_map_file_path = session_path / f"chanMap.mat"
+    if chan_map_file_path.is_file():
+        from pymatreader import read_mat
+
+        channel_map_data = read_mat(chan_map_file_path)
+        channel_groups = channel_map_data["connected"]
+        channel_group_names = [f"Group{group_index + 1}" for group_index in channel_groups]
+
+        channel_indices = channel_map_data["chanMap0ind"]
+        channel_ids = [str(channel_indices[i]) for i in channel_indices]
+
+        channel_name = [
+            f"ch{channel_index}grp{channel_group}"
+            for channel_index, channel_group in zip(channel_indices, channel_groups)
+        ]
+        base_ids = recording_extractor.get_channel_ids()
+        recording_extractor = recording_extractor.channel_slice(channel_ids=base_ids, renamed_channel_ids=channel_ids)
+        x_coords = channel_map_data["xcoords"]
+        y_coords = channel_map_data["ycoords"]
+        locations = np.array((x_coords, y_coords)).T.astype("float32")
+        recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
+
+        recording_extractor.set_property(key="channel_name", values=channel_name)
+        recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
+        recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
+
+    return recording_extractor
+
+
 class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     """
     This interface serves as an temporary solution for integrating CellExplorer metadata during a conversion process.
@@ -56,16 +86,14 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.source_data = dict(folder_path=folder_path)
 
         self.session = self.folder_path.name
-
         session_data_file_path = self.folder_path / f"{self.session}.session.mat"
         assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
 
+        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
         from pymatreader import read_mat
 
-        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
         session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
         extracellular_data = session_data["extracellular"]
-
         num_channels = int(extracellular_data["nChannels"])
         gain = float(extracellular_data["leastSignificantBit"])  # 0.195
         gains_to_uv = np.ones(num_channels) * gain
@@ -102,31 +130,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor = dummy_recording
             self.recording_extractor.set_channel_gains(channel_ids=channel_ids, gains=np.ones(num_channels) * gain)
 
-        self.chan_map_file_path = self.folder_path / f"chanMap.mat"
-        if self.chan_map_file_path.is_file():
-            channel_map_data = read_mat(self.chan_map_file_path)
-            channel_groups = channel_map_data["connected"]
-            channel_group_names = [f"Group{group_index + 1}" for group_index in channel_groups]
-
-            channel_indices = channel_map_data["chanMap0ind"]
-            channel_ids = [str(channel_indices[i]) for i in channel_indices]
-            channel_name = [
-                f"ch{channel_index}grp{channel_group}"
-                for channel_index, channel_group in zip(channel_indices, channel_groups)
-            ]
-            base_ids = self.recording_extractor.get_channel_ids()
-            self.recording_extractor = self.recording_extractor.channel_slice(
-                channel_ids=base_ids, renamed_channel_ids=channel_ids
-            )
-            x_coords = channel_map_data["xcoords"]
-            y_coords = channel_map_data["ycoords"]
-            locations = np.array((x_coords, y_coords)).T.astype("float32")
-            self.recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
-
-            self.recording_extractor.set_property(key="channel_name", values=channel_name)
-            self.recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
-            self.recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
-
+        self.recording_extractor = add_chan_map_properties_to_recorder(
+            recording_extractor=self.recording_extractor, session_path=self.folder_path
+        )
         self._number_of_segments = self.recording_extractor.get_num_segments()
 
 
@@ -268,6 +274,30 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     key="cell_type",
                     values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
                 )
+
+        # Register a dummy recorder to write the recording device metadata if desired
+        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
+        from pymatreader import read_mat
+
+        session_data_file_path = session_path / f"{session_id}.session.mat"
+        assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
+        session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
+        extracellular_data = session_data["extracellular"]
+        num_channels = int(extracellular_data["nChannels"])
+        num_samples = int(extracellular_data["nSamples"])
+        samppling_frequency = int(extracellular_data["sr"])
+        traces_list = [np.empty(shape=(1, num_channels))]
+        from spikeinterface.core.numpyextractors import NumpyRecording
+
+        dummy_recording_extractor = NumpyRecording(
+            traces_list=traces_list,
+            sampling_frequency=sampling_frequency,
+        )
+        dummy_recording_extractor = add_chan_map_properties_to_recorder(
+            recording_extractor=dummy_recording_extractor, session_path=session_path
+        )
+        dummy_recording_extractor._recording_segments[0].time_vector = np.arange(num_samples) / samppling_frequency
+        self.sorting_extractor.register_recording(recording=dummy_recording_extractor)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
