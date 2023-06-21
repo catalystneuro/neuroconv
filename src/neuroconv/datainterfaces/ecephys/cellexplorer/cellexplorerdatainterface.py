@@ -264,6 +264,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 self.sorting_extractor.set_property(
                     ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0]]
                 )
+
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
         celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
@@ -280,24 +281,24 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         from pymatreader import read_mat
 
         session_data_file_path = session_path / f"{session_id}.session.mat"
-        assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
-        session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
-        extracellular_data = session_data["extracellular"]
-        num_channels = int(extracellular_data["nChannels"])
-        num_samples = int(extracellular_data["nSamples"])
-        samppling_frequency = int(extracellular_data["sr"])
-        traces_list = [np.empty(shape=(1, num_channels))]
-        from spikeinterface.core.numpyextractors import NumpyRecording
+        if session_data_file_path.is_file():
+            session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
+            extracellular_data = session_data["extracellular"]
+            num_channels = int(extracellular_data["nChannels"])
+            num_samples = int(extracellular_data["nSamples"])
+            samppling_frequency = int(extracellular_data["sr"])
+            traces_list = [np.empty(shape=(1, num_channels))]
+            from spikeinterface.core.numpyextractors import NumpyRecording
 
-        dummy_recording_extractor = NumpyRecording(
-            traces_list=traces_list,
-            sampling_frequency=sampling_frequency,
-        )
-        dummy_recording_extractor = add_chan_map_properties_to_recorder(
-            recording_extractor=dummy_recording_extractor, session_path=session_path
-        )
-        dummy_recording_extractor._recording_segments[0].time_vector = np.arange(num_samples) / samppling_frequency
-        self.sorting_extractor.register_recording(recording=dummy_recording_extractor)
+            dummy_recording_extractor = NumpyRecording(
+                traces_list=traces_list,
+                sampling_frequency=sampling_frequency,
+            )
+            dummy_recording_extractor = add_chan_map_properties_to_recorder(
+                recording_extractor=dummy_recording_extractor, session_path=session_path
+            )
+            dummy_recording_extractor._recording_segments[0].time_vector = np.arange(num_samples) / samppling_frequency
+            self.sorting_extractor.register_recording(recording=dummy_recording_extractor)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
