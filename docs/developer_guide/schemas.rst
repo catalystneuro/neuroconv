@@ -12,7 +12,7 @@ with interfacing software, the expected form of the input is defined using the J
 ``DataInterface`` classes define the method
 :py:func:`~neuroconv.datainterfaces.basedatainterface.BaseDataInterface.get_source_schema()`, which returns
 the source schema as a JSON schema dictionary. By default, these dictionaries are automatically derived from the call signatures
-and type hints of a function, and express similar information, but can also be used to define and validate inputs that are 
+and type hints of a function, and express similar information, but can also be used to define and validate inputs that are
 nested dictionaries of arbitrary depth. For example, :py:func:`SpikeGLXRecordingInterface.__init__()` has the call signature
 
 .. code-block:: python
@@ -356,7 +356,7 @@ initialized before calling this method.
       "version": "0.1.0"
     }
 
-Like with the source schemas, :py:class:`.NWBConverter` merges together metadata schemas are combined across 
+Like with the source schemas, :py:class:`.NWBConverter` merges together metadata schemas are combined across
 each of its ``DataInterface`` s automatically and the result can be obtained by calling the ``.get_metadata_schema()`` method
 of an instance of the custom :py:class:`.NWBConverter`. However, with metadata, the underlying schemas are
 merged directly with each other instead of being joined together. For more information on how these nested
