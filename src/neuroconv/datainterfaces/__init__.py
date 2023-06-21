@@ -17,7 +17,11 @@ from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
 )
-from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
+from .ecephys.cellexplorer.cellexplorerdatainterface import (
+    CellExplorerLFPInterface,
+    CellExplorerRecordingInterface,
+    CellExplorerSortingInterface,
+)
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
@@ -97,6 +101,8 @@ interface_list = [
     IntanRecordingInterface,
     CEDRecordingInterface,
     CellExplorerSortingInterface,
+    CellExplorerRecordingInterface,
+    CellExplorerLFPInterface,
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
     OpenEphysRecordingInterface,

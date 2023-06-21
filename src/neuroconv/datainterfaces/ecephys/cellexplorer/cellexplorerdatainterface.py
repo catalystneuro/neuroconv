@@ -1,7 +1,9 @@
 from pathlib import Path
+from typing import Literal, Optional
 
 import numpy as np
 import scipy
+from pynwb import NWBFile
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
@@ -37,12 +39,14 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     iteration.
     """
 
-    def __init__(self, folder_path, verbose=True):
+    sampling_frequency_key = "sr"
+
+    def __init__(self, folder_path, verbose=True, es_key: str = "ElectricalSeries"):
         self.folder_path = Path(folder_path)
 
         # No super here, we need to do everything by hand
         self.verbose = verbose
-        self.es_key = "raw"
+        self.es_key = es_key
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path)
 
@@ -58,11 +62,10 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         extracellular_data = session_data["extracellular"]
 
         num_channels = int(extracellular_data["nChannels"])
-        sampling_frequency = extracellular_data["sr"]
         gain = float(extracellular_data["leastSignificantBit"])  # 0.195
         gains_to_uv = np.ones(num_channels) * gain
         dtype = np.dtype(extracellular_data["precision"])
-        # sampilng_frequency_lfp = extracellular_data["srLfp"]  # TODO: Add another LFP interface when writing series
+        sampling_frequency = float(extracellular_data[self.sampling_frequency_key])
 
         binary_file_path = self.folder_path / f"{self.session}.dat"
         if binary_file_path.is_file():
@@ -120,6 +123,46 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
 
         self._number_of_segments = self.recording_extractor.get_num_segments()
+
+
+class CellExplorerLFPInterface(CellExplorerRecordingInterface):
+    keywords = BaseRecordingExtractorInterface.keywords + [
+        "extracellular electrophysiology",
+        "LFP",
+        "local field potential",
+        "LF",
+    ]
+
+    sampling_frequency_key = "srLfp"
+
+    def __init__(self, folder_path, verbose=True, es_key: str = "ElectricalSeriesLFP"):
+        super().__init__(folder_path, verbose, es_key)
+
+    def add_to_nwbfile(
+        self,
+        nwbfile: NWBFile,
+        metadata: dict | None = None,
+        stub_test: bool = False,
+        starting_time: float | None = None,
+        write_as: Literal["raw", "lfp", "processed"] = "lfp",
+        write_electrical_series: bool = True,
+        compression: str | None = None,
+        compression_opts: int | None = None,
+        iterator_type: str = "v2",
+        iterator_opts: dict | None = None,
+    ):
+        return super().add_to_nwbfile(
+            nwbfile,
+            metadata,
+            stub_test,
+            starting_time,
+            write_as,
+            write_electrical_series,
+            compression,
+            compression_opts,
+            iterator_type,
+            iterator_opts,
+        )
 
 
 class CellExplorerSortingInterface(BaseSortingExtractorInterface):
