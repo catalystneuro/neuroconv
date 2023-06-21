@@ -12,6 +12,7 @@ from pynwb.file import Subject
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict
+from ..utils.json_schema import validate_metadata
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -55,7 +56,8 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     with open(schema_path) as schema_file:
         base_metadata_schema = json.load(schema_file)
     try:
-        jsonschema.validate(metadata, base_metadata_schema)
+        # jsonschema.validate(metadata, base_metadata_schema)
+        validate_metadata(metadata=metadata, schema=base_metadata_schema)
     except jsonschema.exceptions.ValidationError as e:
         raise Exception(f"Base metadata is not valid:\n{e}")
 
