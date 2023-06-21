@@ -56,16 +56,14 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
         from pymatreader import read_mat
 
-        session_data = read_mat(session_data_file_path)["session"]
-        import h5py
-
-        file = h5py.File(session_data_file_path, "r")
+        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
+        session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
 
         extracellular_data = session_data["extracellular"]
 
-        num_channels = extracellular_data["nChannels"]
+        num_channels = int(extracellular_data["nChannels"])
         sampling_frequency = extracellular_data["sr"]
-        gain = extracellular_data["leastSignificantBit"]  # 0.195
+        gain = float(extracellular_data["leastSignificantBit"])  # 0.195
         gains_to_uv = np.ones(num_channels) * gain
         dtype = extracellular_data["precision"]
         # sampilng_frequency_lfp = extracellular_data["srLfp"]  # TODO: Add another LFP interface when writing series
