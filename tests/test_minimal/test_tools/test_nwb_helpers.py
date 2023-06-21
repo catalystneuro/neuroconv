@@ -26,6 +26,12 @@ class TestNWBHelpers(TestCase):
         assert mod_2.description == description_2
         self.assertWarns(UserWarning, get_module, **dict(nwbfile=nwbfile, name=name_1, description=description_2))
 
-    def test_make_nwbfile_from_metadata(self):
+    def test_make_nwbfile_from_metadata_empty(self):
         with self.assertRaises(ValidationError):
             make_nwbfile_from_metadata(metadata=dict())
+
+    def test_make_nwbfile_from_metadata_session_start_time(self):
+        with self.assertRaises(ValidationError):
+            make_nwbfile_from_metadata(
+                metadata=dict(NWBFile=dict(session_description="Mouse exploring an open field"))
+            )
