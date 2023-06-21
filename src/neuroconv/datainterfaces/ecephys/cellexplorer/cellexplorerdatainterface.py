@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -42,6 +40,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     """
 
     sampling_frequency_key = "sr"
+    binary_file_extension = "dat"
 
     def __init__(self, folder_path, verbose=True, es_key: str = "ElectricalSeries"):
         self.folder_path = Path(folder_path)
@@ -69,7 +68,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         dtype = np.dtype(extracellular_data["precision"])
         sampling_frequency = float(extracellular_data[self.sampling_frequency_key])
 
-        binary_file_path = self.folder_path / f"{self.session}.dat"
+        binary_file_path = self.folder_path / f"{self.session}.{self.binary_file_extension}"
         if binary_file_path.is_file():
             from spikeinterface.core.binaryrecordingextractor import (
                 BinaryRecordingExtractor,
@@ -136,6 +135,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     ]
 
     sampling_frequency_key = "srLfp"
+    binary_file_extension = "lfp"
 
     def __init__(self, folder_path, verbose=True, es_key: str = "ElectricalSeriesLFP"):
         super().__init__(folder_path, verbose, es_key)
@@ -143,15 +143,15 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: dict | None = None,
+        metadata: Optional[dict] = None,
         stub_test: bool = False,
-        starting_time: float | None = None,
+        starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "lfp",
         write_electrical_series: bool = True,
-        compression: str | None = None,
-        compression_opts: int | None = None,
+        compression: Optional[str] = None,
+        compression_opts: Optional[int] = None,
         iterator_type: str = "v2",
-        iterator_opts: dict | None = None,
+        iterator_opts: Optional[dict] = None,
     ):
         return super().add_to_nwbfile(
             nwbfile,
