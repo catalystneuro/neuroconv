@@ -129,7 +129,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         if new_cell_explorer_format:
             from pymatreader import read_mat
 
-            sampling_frequency = read_mat(file_path)["spikes"]["sr"]
+            spikes_data = read_mat(file_path)["spikes"]
+            sampling_frequency = spikes_data.get("sr", None)
 
         super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
