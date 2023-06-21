@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from hdmf.testing import TestCase
-from pynwb import ProcessingModule
 from jsonschema.exceptions import ValidationError
+from pynwb import ProcessingModule
 
 from neuroconv.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
 
