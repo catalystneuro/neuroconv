@@ -42,7 +42,7 @@ keys of``data_interface_classes``.
 
     example_nwb_converter = ExampleNWBConverter(source_data)
 
-This creates an ``NWBConverter`` object that can aggregate and distribute across
+This creates an :py:class:`.NWBConverter` object that can aggregate and distribute across
 the data interfaces. To fetch metadata across all of the interfaces and merge
 them together, call::
 
