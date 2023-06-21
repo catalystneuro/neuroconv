@@ -33,7 +33,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         try:
             matlab_file = scipy.io.loadmat(file_name=str(file_path), simplify_cells=True)
             if "spikes" not in matlab_file.keys():
-                raise ValueError(f"Matlab file  {file_path} does not contain `spikes` field")
+                raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
             spikes_mat = matlab_file["spikes"]
             assert isinstance(spikes_mat, dict), f"field `spikes` must be a dict, not {type(spikes_mat)}!"
 
