@@ -22,12 +22,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Link to the documentation detailing the file's structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
-    This metadata is sufficient to build a memmap, which in turn should make straigthfoward to build a recording
-    extractor.  If we encounter more conversion projects involving CellExplorer data, we should do this.
-    This interface then will serve as a steping stone to this long-term and more robust solution.
-
-    In the meantime, the interface is intended for use in adding electrode metadata during a conversion,
-    specifically when using `write_electrical_series=False` as a conversion option.
+    If the binary file is available (session.dat), the interface will use the `BinaryRecordingExtractor` to load the
+    data. Otherwise, it will use the `NumpyRecording` extractor, which is a dummy extractor that only contains
+    metadata. This can be used to add the electrode using `write_electrical_series=False` as a conversion option.
 
     In its current form, the `chanMap.mat` file is employed to extract the electrode coordinates within the probe.
     To my understanding, this file is generated for using kilosort, and it is not granted that it will
@@ -58,33 +55,44 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
         ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
         session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
-
         extracellular_data = session_data["extracellular"]
 
         num_channels = int(extracellular_data["nChannels"])
         sampling_frequency = extracellular_data["sr"]
         gain = float(extracellular_data["leastSignificantBit"])  # 0.195
         gains_to_uv = np.ones(num_channels) * gain
-        dtype = extracellular_data["precision"]
+        dtype = np.dtype(extracellular_data["precision"])
         # sampilng_frequency_lfp = extracellular_data["srLfp"]  # TODO: Add another LFP interface when writing series
 
-        from spikeinterface.core.binaryrecordingextractor import (
-            BinaryRecordingExtractor,
-        )
-
         binary_file_path = self.folder_path / f"{self.session}.dat"
-        assert binary_file_path.is_file(), f"File {binary_file_path} does not exist"
+        if binary_file_path.is_file():
+            from spikeinterface.core.binaryrecordingextractor import (
+                BinaryRecordingExtractor,
+            )
 
-        self.recording_extractor = BinaryRecordingExtractor(
-            file_paths=[binary_file_path],
-            sampling_frequency=sampling_frequency,
-            num_chan=num_channels,
-            dtype=dtype,
-            t_starts=None,
-            file_offset=0,
-            gain_to_uV=gains_to_uv,
-            offset_to_uV=None,
-        )
+            self.recording_extractor = BinaryRecordingExtractor(
+                file_paths=[binary_file_path],
+                sampling_frequency=sampling_frequency,
+                num_chan=num_channels,
+                dtype=dtype,
+                t_starts=None,
+                file_offset=0,
+                gain_to_uV=gains_to_uv,
+                offset_to_uV=None,
+            )
+        else:
+            from spikeinterface.core.numpyextractors import NumpyRecording
+
+            channel_ids = None
+            traces_list = [np.empty(shape=(1, num_channels))]
+            dummy_recording = NumpyRecording(
+                traces_list=traces_list,
+                sampling_frequency=sampling_frequency,
+                channel_ids=channel_ids,
+            )
+
+            self.recording_extractor = dummy_recording
+            self.recording_extractor.set_channel_gains(channel_ids=channel_ids, gains=np.ones(num_channels) * gain)
 
         self.chan_map_file_path = self.folder_path / f"chanMap.mat"
         if self.chan_map_file_path.is_file():
