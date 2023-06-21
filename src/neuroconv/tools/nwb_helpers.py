@@ -68,7 +68,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     if "session_description" not in nwbfile_kwargs:
         nwbfile_kwargs["session_description"] = "No description."
     if "identifier" not in nwbfile_kwargs:
-        nwbfile_kwargs["identifier"] = uuid.uuid4()
+        nwbfile_kwargs["identifier"] = str(uuid.uuid4())
     if "Subject" in metadata:
         nwbfile_kwargs["subject"] = metadata["Subject"]
         # convert ISO 8601 string to datetime
