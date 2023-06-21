@@ -32,6 +32,4 @@ class TestNWBHelpers(TestCase):
 
     def test_make_nwbfile_from_metadata_session_start_time(self):
         with self.assertRaises(ValidationError):
-            make_nwbfile_from_metadata(
-                metadata=dict(NWBFile=dict(session_description="Mouse exploring an open field"))
-            )
+            make_nwbfile_from_metadata(metadata=dict(NWBFile=dict(session_description="Mouse exploring an open field")))
