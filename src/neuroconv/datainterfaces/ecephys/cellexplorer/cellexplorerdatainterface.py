@@ -67,7 +67,10 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Detailed information can be found in the following link
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
 
-    Plus, the file `chanMap.mat` used by Kilosort is usually available on CellExplorer datasets.
+    Note also that `chanCoords` information can be found in the `session.mat` file embedded in the
+    `extracellular` field.
+
+    In addition, the file `chanMap.mat` used by Kilosort is usually available on CellExplorer datasets.
     The `chanMap.mat` can then be used to extract the electrode coordinates within the probe.
     To my understanding, this file is generated for using kilosort, and therefore it is not available for all datasets.
 
