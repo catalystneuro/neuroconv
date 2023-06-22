@@ -1,14 +1,13 @@
 import platform
 from datetime import datetime
+from pathlib import Path
 from unittest import TestCase, skipIf
 
 import numpy as np
 from dateutil.tz import tzoffset
-from ndx_miniscope import Miniscope
+from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-from roiextractors import NwbImagingExtractor
-from roiextractors.testing import check_imaging_equal
 
 from neuroconv.datainterfaces import (
     BrukerTiffImagingInterface,
@@ -235,7 +234,7 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
-class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin, TestCase):
+class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin, hdmf_TestCase):
     data_interface_cls = MiniscopeImagingInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
@@ -270,3 +269,13 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin, TestCase):
         one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
         self.assertEqual(one_photon_series_metadata["name"], self.photon_series_name)
         self.assertEqual(one_photon_series_metadata["unit"], "px")
+
+    def run_custom_checks(self):
+        self.check_incorrect_folder_structure_raises()
+
+    def check_incorrect_folder_structure_raises(self):
+        folder_path = Path(self.interface_kwargs["folder_path"]) / "15_03_28/BehavCam_2/"
+        with self.assertRaisesWith(
+            exc_type=AssertionError, exc_msg="The main folder should contain at least one subfolder named 'Miniscope'."
+        ):
+            self.data_interface_cls(folder_path=folder_path)

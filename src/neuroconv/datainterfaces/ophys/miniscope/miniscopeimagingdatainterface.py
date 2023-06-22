@@ -14,20 +14,22 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
     def __init__(self, folder_path: FolderPathType):
         """
-        Initialize reading Miniscope format.
+        Initialize reading the Miniscope imaging data.
 
         Parameters
         ----------
         folder_path : FolderPathType
-            path to the folder containing the Miniscope files.
+            The path that points to the main Miniscope folder.
+            The miscroscope movie files are expected to be in sub folders within the main folder.
         """
         from ndx_miniscope.utils import get_recording_start_times, read_miniscope_config
 
+        miniscope_folder_paths = list(Path(folder_path).rglob("Miniscope"))
+        assert miniscope_folder_paths, "The main folder should contain at least one subfolder named 'Miniscope'."
+
         super().__init__(folder_path=folder_path)
 
-        miniscope_subfolders = list(Path(folder_path).glob(f"*/Miniscope/"))
-        self._miniscope_config = read_miniscope_config(folder_path=str(miniscope_subfolders[0]))
-
+        self._miniscope_config = read_miniscope_config(folder_path=str(miniscope_folder_paths[0]))
         self._recording_start_times = get_recording_start_times(folder_path=folder_path)
 
     def get_metadata(self) -> DeepDict:
