@@ -1,7 +1,5 @@
 import json
 
-from pynwb.ecephys import ElectricalSeries
-
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.json_schema import NWBMetaDataEncoder, get_schema_from_hdmf_class
 from ....utils.types import FilePathType

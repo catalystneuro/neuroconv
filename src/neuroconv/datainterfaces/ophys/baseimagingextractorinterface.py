@@ -1,5 +1,5 @@
 """Author: Ben Dichter."""
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 from pynwb import NWBFile
@@ -8,7 +8,6 @@ from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
-    OptionalFilePathType,
     dict_deep_update,
     fill_defaults,
     get_base_schema,
@@ -74,31 +73,24 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
+        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
     def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
-        )
+        return self.imaging_extractor.frame_to_time(frames=np.arange(stop=self.imaging_extractor.get_num_frames()))
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
-        )
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        self.imaging_extractor.set_times(times=aligned_timestamps)
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: OptionalFilePathType = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
+        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
-        from ...tools.roiextractors import write_imaging
+        from ...tools.roiextractors import add_imaging
 
         if stub_test:
             stub_frames = min([stub_frames, self.imaging_extractor.get_num_frames()])
@@ -106,11 +98,9 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         else:
             imaging_extractor = self.imaging_extractor
 
-        write_imaging(
+        add_imaging(
             imaging=imaging_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
+            photon_series_type=photon_series_type,
         )

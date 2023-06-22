@@ -29,7 +29,7 @@ NeuroConv is a Python package for converting neurophysiology data in a variety o
 
 Features:
 
-* Reads data from 38 popular neurophysiology data formats and writes to NWB using best practices.
+* Reads data from 40 popular neurophysiology data formats and writes to NWB using best practices.
 * Extracts relevant metadata from each format.
 * Handles large data volume by reading datasets piece-wise.
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
@@ -60,4 +60,4 @@ pip install git+https://github.com/catalystneuro/neuroconv.git@master
 See our [ReadTheDocs page](https://neuroconv.readthedocs.io/en/main/) for full documentation, including a gallery of all supported formats.
 
 ## License
-NeuroConv is distributed under the BSD3 License. See [LICENSE](https://github.com/catalystneuro/neuroconv/blob/main/LICENSE) for more information.
+NeuroConv is distributed under the BSD3 License. See [LICENSE](https://github.com/catalystneuro/neuroconv/blob/main/license.txt) for more information.

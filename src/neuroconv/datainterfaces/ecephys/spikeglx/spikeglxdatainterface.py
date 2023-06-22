@@ -3,13 +3,15 @@ import warnings
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from .spikeglx_utils import (
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
     get_session_start_time,
 )
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....utils import FilePathType, dict_deep_update, get_schema_from_method_signature
+from ....utils import FilePathType, get_schema_from_method_signature
 
 
 def add_recording_extractor_properties(recording_extractor) -> None:
@@ -92,7 +94,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         metadata = super().get_metadata()
         session_start_time = get_session_start_time(self.meta)
         if session_start_time:
-            metadata = dict_deep_update(metadata, dict(NWBFile=dict(session_start_time=session_start_time)))
+            metadata["NWBFile"]["session_start_time"] = session_start_time
 
         # Device metadata
         device = get_device_metadata(self.meta)
@@ -118,6 +120,18 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         ]
 
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        new_recording = self.get_extractor()(
+            folder_path=self.source_data["folder_path"], stream_id=self.source_data["stream_id"]
+        )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
 
 
 # include for backwards compatibility

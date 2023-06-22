@@ -7,12 +7,7 @@ from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import (
-    FilePathType,
-    fill_defaults,
-    get_base_schema,
-    get_schema_from_hdmf_class,
-)
+from ...utils import fill_defaults, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseSegmentationExtractorInterface(BaseExtractorInterface):
@@ -65,32 +60,26 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
+        reinitialized_extractor = self.get_extractor()(**self.source_data)
+        return reinitialized_extractor.frame_to_time(frames=np.arange(stop=reinitialized_extractor.get_num_frames()))
 
     def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
+        return self.segmentation_extractor.frame_to_time(
+            frames=np.arange(stop=self.segmentation_extractor.get_num_frames())
         )
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
-        )
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        self.segmentation_extractor.set_times(times=aligned_timestamps)
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         stub_frames: int = 100,
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
-        mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel", "voxel"]]
+        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):
@@ -98,12 +87,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType, optional
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             The NWBFile to add the plane segmentation to.
         metadata : dict, optional
             The metadata for the interface
-        overwrite : bool, default: False
         stub_test : bool, default: False
         stub_frames : int, default: 100
         include_roi_centroids : bool, default: True
@@ -134,7 +121,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         -------
 
         """
-        from ...tools.roiextractors import write_segmentation
+        from ...tools.roiextractors import add_segmentation
 
         if stub_test:
             stub_frames = min([stub_frames, self.segmentation_extractor.get_num_frames()])
@@ -142,13 +129,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         else:
             segmentation_extractor = self.segmentation_extractor
 
-        write_segmentation(
+        add_segmentation(
             segmentation_extractor=segmentation_extractor,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,

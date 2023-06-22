@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+import json
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import numpy as np
 from pynwb import NWBFile
@@ -6,7 +7,7 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
+from ...utils import NWBMetaDataEncoder, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -19,12 +20,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         Parameters
         ----------
-        verbose : bool, default True
+        verbose : bool, default: True
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
-            key of this ElectricalSeries in the metadata dictionary
+            The key of this ElectricalSeries in the metadata dictionary.
         source_data : dict
-            key-value pairs of extractor-specific arguments.
+            The key-value pairs of extractor-specific arguments.
 
         """
         super().__init__(**source_data)
@@ -32,6 +33,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
+        self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
         """Compile metadata schema for the RecordingExtractor."""
@@ -93,14 +95,147 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
-        return self.get_extractor()(**self.source_data).get_times()
+    def get_electrode_table_json(self) -> List[Dict[str, Any]]:
+        """
+        A convenience function for collecting and organizing the property values of the underlying recording extractor.
 
-    def get_timestamps(self) -> np.ndarray:
-        return self.recording_extractor.get_times()
+        Uses the structure of the Handsontable (list of dict entries) component of the NWB GUIDE.
+        """
+        property_names = set(self.recording_extractor.get_property_keys()) - {
+            "contact_vector",  # TODO: add consideration for contact vector (probeinterface) info
+            "location",  # testing
+        }
+        electrode_ids = self.recording_extractor.get_channel_ids()
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray) -> None:
+        table = list()
+        for electrode_id in electrode_ids:
+            electrode_column = dict()
+            for property_name in property_names:
+                recording_property_value = self.recording_extractor.get_property(key=property_name, ids=[electrode_id])[
+                    0  # First axis is always electodes in SI
+                ]  # Since only fetching one electrode at a time, use trivial zero-index
+                electrode_column.update({property_name: recording_property_value})
+            table.append(electrode_column)
+        table_as_json = json.loads(json.dumps(table, cls=NWBMetaDataEncoder))
+        return table_as_json
+
+    def get_original_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+        """
+        Retrieve the original unaltered timestamps for the data in this interface.
+
+        This function should retrieve the data on-demand by re-initializing the IO.
+
+        Returns
+        -------
+        timestamps: numpy.ndarray or list of numpy.ndarray
+            The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
+        """
+        new_recording = self.get_extractor()(
+            **{keyword: value for keyword, value in self.source_data.items() if keyword not in ["verbose", "es_key"]}
+        )
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
+
+    def get_timestamps(self) -> Union[np.ndarray, List[np.ndarray]]:
+        """
+        Retrieve the timestamps for the data in this interface.
+
+        Returns
+        -------
+        timestamps: numpy.ndarray or list of numpy.ndarray
+            The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
+        """
+        if self._number_of_segments == 1:
+            return self.recording_extractor.get_times()
+        else:
+            return [
+                self.recording_extractor.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
+
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        assert (
+            self._number_of_segments == 1
+        ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
+
         self.recording_extractor.set_times(times=aligned_timestamps)
+
+    def set_aligned_segment_timestamps(self, aligned_segment_timestamps: List[np.ndarray]):
+        """
+        Replace all timestamps for all segments in this interface with those aligned to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_segment_timestamps : list of numpy.ndarray
+            The synchronized timestamps for segment of data in this interface.
+        """
+        assert isinstance(
+            aligned_segment_timestamps, list
+        ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
+        assert (
+            len(aligned_segment_timestamps) == self._number_of_segments
+        ), f"The number of timestamp vectors ({len(aligned_segment_timestamps)}) does not match the number of segments ({self._number_of_segments})!"
+
+        for segment_index in range(self._number_of_segments):
+            self.recording_extractor.set_times(
+                times=aligned_segment_timestamps[segment_index], segment_index=segment_index
+            )
+
+    def set_aligned_starting_time(self, aligned_starting_time: float):
+        if self._number_of_segments == 1:
+            self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
+        else:
+            self.set_aligned_segment_timestamps(
+                aligned_segment_timestamps=[
+                    segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
+                ]
+            )
+
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
+        """
+        Align the starting time for each segment in this interface relative to the common session start time.
+
+        Must be in units seconds relative to the common 'session_start_time'.
+
+        Parameters
+        ----------
+        aligned_segment_starting_times : list of floats
+            The starting time for each segment of data in this interface.
+        """
+        assert len(aligned_segment_starting_times) == self._number_of_segments, (
+            f"The length of the starting_times ({len(aligned_segment_starting_times)}) does not match the "
+            "number of segments ({self._number_of_segments})!"
+        )
+
+        if self._number_of_segments == 1:
+            self.set_aligned_starting_time(aligned_starting_time=aligned_segment_starting_times[0])
+        else:
+            aligned_segment_timestamps = [
+                segment_timestamps + aligned_segment_starting_time
+                for segment_timestamps, aligned_segment_starting_time in zip(
+                    self.get_timestamps(), aligned_segment_starting_times
+                )
+            ]
+            self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
+
+    def align_by_interpolation(
+        self,
+        unaligned_timestamps: np.ndarray,
+        aligned_timestamps: np.ndarray,
+    ):
+        if self._number_of_segments == 1:
+            self.set_aligned_timestamps(
+                aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
+            )
+        else:
+            raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
 
     def subset_recording(self, stub_test: bool = False):
         """
@@ -110,22 +245,26 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         stub_test : bool, default: False
         """
-        kwargs = dict()
-        if stub_test:
-            num_frames = 100
-            end_frame = min([num_frames, self.recording_extractor.get_num_frames()])
-            kwargs.update(end_frame=end_frame)
-        if self.subset_channels is not None:
-            kwargs.update(channel_ids=self.subset_channels)
-        recording_extractor = self.recording_extractor.frame_slice(start_frame=0, end_frame=end_frame)
+        from spikeinterface.core.segmentutils import ConcatenateSegmentRecording
+
+        max_frames = 100
+
+        recording_extractor = self.recording_extractor
+        number_of_segments = recording_extractor.get_num_segments()
+        recording_segments = [recording_extractor.select_segments([index]) for index in range(number_of_segments)]
+        end_frame_list = [min(max_frames, segment.get_num_frames()) for segment in recording_segments]
+        recording_segments_stubbed = [
+            segment.frame_slice(start_frame=0, end_frame=end_frame)
+            for segment, end_frame in zip(recording_segments, end_frame_list)
+        ]
+        recording_extractor = ConcatenateSegmentRecording(recording_segments_stubbed)
+
         return recording_extractor
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         stub_test: bool = False,
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
@@ -140,18 +279,13 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to this location.
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             NWBFile to which the recording information is to be added
         metadata : dict, optional
             metadata info for constructing the NWB file.
             Should be of the format::
 
                 metadata['Ecephys']['ElectricalSeries'] = dict(name=my_name, description=my_description)
-        overwrite: bool, default: False
-            Whether to overwrite the NWB file if one exists at the nwbfile_path.
         The default is False (append mode).
         starting_time : float, optional
             Sets the starting time of the ElectricalSeries to a manually set value.
@@ -176,24 +310,32 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 buffer_gb : float, default: 1.0
                     In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
                     buffer shape.
+                buffer_shape : tuple, optional
+                    Manual specification of buffer shape to return on each iteration.
+                    Must be a multiple of chunk_shape along each axis.
+                    Cannot be set if `buffer_gb` is specified.
                 chunk_mb : float. default: 1.0
                     Should be below 1 MB. Automatically calculates suitable chunk shape.
-            If manual specification of buffer_shape and chunk_shape are desired, these may be specified as well.
+                chunk_shape : tuple, optional
+                    Manual specification of the internal chunk shape for the HDF5 dataset.
+                    Cannot be set if `chunk_mb` is also specified.
+                display_progress : bool, default: False
+                    Display a progress bar with iteration rate and estimated completion time.
+                progress_bar_options : dict, optional
+                    Dictionary of keyword arguments to be passed directly to tqdm.
+                    See https://github.com/tqdm/tqdm#parameters for options.
         """
-        from ...tools.spikeinterface import write_recording
+        from ...tools.spikeinterface import add_recording
 
         if stub_test or self.subset_channels is not None:
             recording = self.subset_recording(stub_test=stub_test)
         else:
             recording = self.recording_extractor
 
-        write_recording(
+        add_recording(
             recording=recording,
-            nwbfile_path=nwbfile_path,
             nwbfile=nwbfile,
             metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
             starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,

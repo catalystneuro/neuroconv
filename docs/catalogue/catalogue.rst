@@ -12,6 +12,19 @@ customization features beyond what is demonstrated in the conversion gallery.
     Many of these projects have pinned a specific minor version of NeuroConv, or its predecessor, nwb-conversion-tools
     (NCT). We have organized each pipeline according to the version used in descending order (newest version first).
 
+NeuroConv v0.3
+--------------
+
+`froemke-lab-to-nwb <https://github.com/catalystneuro/froemke-lab-to-nwb>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`Dr. Robert Froemke's Lab <https://med.nyu.edu/research/froemke-lab/>`_ at NYU converted electrophysiology,
+photometry, and behavior to create dandisets:
+
+* `000114 <https://dandiarchive.org/dandiset/000114>`_ associated with the Carcea et al. Nature 2021 paper,
+  `"Oxytocin neurons enable social transmission of maternal behaviour" <https://www.nature.com/articles/s41586-021-03814-7>`_
+* `000249 <https://dandiarchive.org/dandiset/000249>`_ associated with the Schiavo et al. Nature 2020 paper,
+  `"Innate and plastic mechanisms for maternal behaviour in auditory cortex" <https://www.nature.com/articles/s41586-020-2807-6>`_.
+
 NeuroConv v0.2
 --------------
 
@@ -21,7 +34,7 @@ NeuroConv v0.2
 `Dr. Misha Ahrens' lab <https://ahrenslab.org>`_ at Janelia converted the imaging data corresponding to the
 publication `Mu Y, Bennett DV, Rubinov M, Narayan S, Yang CT, Tanimoto M, Mensh BD, Looger LL, Ahrens MB.
 Glia Accumulate Evidence that Actions Are Futile and Suppress Unsuccessful Behavior. Cell. 2019
-<https://www.cell.com/cell/fulltext/S0092-8674(19)30621-X?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS009286741930621X%3Fshowall%3Dtrue>`_
+<https://doi.org/10.1016/j.cell.2019.05.050>`_
 and shared the data on the DANDI archive. In this experiment, paralyzed zebra-fish were placed in a virtual reality
 environment which systematically responded to their attempts to swim by either mimicking movement effects within the
 environment or not (test of futility). While the subject attempts to engage in swimming behaviors, a light-sheet

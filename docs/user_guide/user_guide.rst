@@ -22,3 +22,4 @@ and synchronize data across multiple sources.
   temporal_alignment
   schemas
   csvs
+  expand_path

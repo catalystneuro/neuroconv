@@ -15,6 +15,7 @@ from .utils import (
     load_dict_from_file,
     unroot_schema,
 )
+from .utils.dict import DeepDict
 from .utils.json_schema import NWBMetaDataEncoder
 
 
@@ -78,7 +79,7 @@ class NWBConverter:
         fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
-    def get_metadata(self):
+    def get_metadata(self) -> DeepDict:
         """Auto-fill as much of the metadata as possible. Must comply with metadata schema."""
         metadata = get_default_nwbfile_metadata()
         for interface in self.data_interface_objects.values():
@@ -98,7 +99,7 @@ class NWBConverter:
 
     def validate_conversion_options(self, conversion_options: Dict[str, dict]):
         """Validate conversion_options against Converter conversion_options_schema."""
-        validate(instance=conversion_options, schema=self.get_conversion_options_schema())
+        validate(instance=conversion_options or {}, schema=self.get_conversion_options_schema())
         if self.verbose:
             print("conversion_options is valid!")
 
@@ -106,6 +107,13 @@ class NWBConverter:
         validate(instance=source_data, schema=self.get_source_schema())
         if verbose:
             print("Source data is valid!")
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata, conversion_options: Optional[dict] = None):
+        conversion_options = conversion_options or dict()
+        for interface_name, data_interface in self.data_interface_objects.items():
+            data_interface.add_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
+            )
 
     def run_conversion(
         self,
@@ -139,10 +147,8 @@ class NWBConverter:
         """
         if metadata is None:
             metadata = self.get_metadata()
-        self.validate_metadata(metadata=metadata)
 
-        if conversion_options is None:
-            conversion_options = dict()
+        self.validate_metadata(metadata=metadata)
 
         self.validate_conversion_options(conversion_options=conversion_options)
 
@@ -153,12 +159,7 @@ class NWBConverter:
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-            for interface_name, data_interface in self.data_interface_objects.items():
-                data_interface.run_conversion(
-                    nwbfile=nwbfile_out, metadata=metadata, **conversion_options.get(interface_name, dict())
-                )
-
-        return nwbfile_out
+            self.add_to_nwbfile(nwbfile_out, metadata, conversion_options)
 
 
 class ConverterPipe(NWBConverter):
