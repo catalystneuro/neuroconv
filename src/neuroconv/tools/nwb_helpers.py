@@ -11,7 +11,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from ..utils import FilePathType, dict_deep_update
-from ..utils.dict import DeepDict
+from ..utils.dict import DeepDict, load_dict_from_file
 from ..utils.json_schema import validate_metadata
 
 
@@ -53,9 +53,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
 
     # Validate metadata
     schema_path = Path(__file__).resolve().parent.parent / "schemas/base_metadata_schema.json"
-    with open(schema_path) as schema_file:
-        base_metadata_schema = json.load(schema_file)
-
+    base_metadata_schema = load_dict_from_file(file_path=schema_path)
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
     nwbfile_kwargs = metadata["NWBFile"]
