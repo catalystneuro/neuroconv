@@ -122,7 +122,7 @@ class NWBConverter:
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         conversion_options: Optional[dict] = None,
-    ) -> NWBFile:
+    ):
         """
         Run the NWB conversion over all the instantiated data interfaces.
         Parameters
@@ -140,10 +140,6 @@ class NWBConverter:
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
-        Returns
-        -------
-        nwbfile: NWBFile
-            The in-memory NWBFile object after all conversion operations are complete.
         """
         if metadata is None:
             metadata = self.get_metadata()
@@ -151,6 +147,8 @@ class NWBConverter:
         self.validate_metadata(metadata=metadata)
 
         self.validate_conversion_options(conversion_options=conversion_options)
+        
+        self.temporally_align_data_interfaces()
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
@@ -160,6 +158,9 @@ class NWBConverter:
             verbose=self.verbose,
         ) as nwbfile_out:
             self.add_to_nwbfile(nwbfile_out, metadata, conversion_options)
+
+    def temporally_align_data_interfaces(self):
+        pass
 
 
 class ConverterPipe(NWBConverter):
