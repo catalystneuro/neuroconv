@@ -1,4 +1,5 @@
 from datetime import datetime
+
 import pytz
 from hdmf.testing import TestCase
 from jsonschema.exceptions import ValidationError
@@ -34,25 +35,19 @@ class TestNWBHelpers(TestCase):
     def test_make_nwbfile_from_metadata_session_start_time(self):
         """Test that a missing session_start_time raises a ValidationError."""
         with self.assertRaises(ValidationError):
-            make_nwbfile_from_metadata(
-                metadata=dict(NWBFile=dict(session_description="Mouse exploring an open field"))
-            )
-    
+            make_nwbfile_from_metadata(metadata=dict(NWBFile=dict(session_description="Mouse exploring an open field")))
+
     def test_metadata_integrity(self):
         """Test that the original metadata is not modified."""
-        session_start_time = datetime(2023, 6, 22, 9, 0, 0, tzinfo=pytz.timezone('America/New_York'))
+        session_start_time = datetime(2023, 6, 22, 9, 0, 0, tzinfo=pytz.timezone("America/New_York"))
         session_description = "Original description"
         identifier = "original_identifier"
         metadata = dict(
             NWBFile=dict(
-                session_start_time=session_start_time,
-                session_description=session_description,
-                identifier=identifier
+                session_start_time=session_start_time, session_description=session_description, identifier=identifier
             )
         )
-        nwbfile = make_nwbfile_from_metadata(
-            metadata=metadata
-        )
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         assert metadata["NWBFile"]["session_description"] == session_description
         assert metadata["NWBFile"]["identifier"] == identifier
         assert metadata["NWBFile"]["session_start_time"] == session_start_time
