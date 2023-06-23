@@ -187,9 +187,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
                 NIDQ=MockSpikeGLXNIDQInterface, Trials=CsvTimeIntervalsInterface, Behavior=MockBehaviorEventInterface
             )
 
-            def __init__(self, source_data: Dict[str, dict], verbose: bool = True):
-                super().__init__(source_data=source_data, verbose=verbose)
-
+            def temporally_align_data_interfaces():
                 unaligned_trial_start_times = self.data_interface_objects["Trials"].get_original_timestamps(
                     column="start_time"
                 )
