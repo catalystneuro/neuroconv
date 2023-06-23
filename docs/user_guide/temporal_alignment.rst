@@ -102,8 +102,35 @@ the mouse performed a certain interation with a mechanical device (stored in a `
     
     converter = ConverterPipe(...)
     converter.run_conversion()
-    
-    
+
+
+
+Temporal Alignment within NWBConverter
+--------------------------------------
+
+To align data types within an :py:class:`.NWBConverter`, override the method
+:py:class:`.NWBConverter.temporally_align_data_interfaces`.
+
+Let's consider a system that has an audio stream which sends a TTL pulse to a SpikeGLX system as it starts recording.
+
+.. code-block:: python
+    from neuroconv import NWBConverter,
+    from neuroconv.datainterfaces import (
+        SpikeGLXRecordingInterface,
+        AudioDataInterface,
+        SpikeGLXNIDQRecordingInterface,
+    )
+    class ExampleNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            SpikeGLXRecording=SpikeGLXRecordingInterface,
+            SpikeGLXNIDQ=SpikeGLXNIDQRecordingInterface,
+            Audio=AudioDataInterface,
+        )
+        def temporally_align_data_interfaces():
+            ttl_times = self.data_interface_objects["SpikeGLXNIDQ"].get_event_times_from_ttl("channel-name")
+            self.data_interface_objects["Audio"].set_aligned_starting_time(ttl_times[0])
+
+
 
 Example Usage
 -------------
