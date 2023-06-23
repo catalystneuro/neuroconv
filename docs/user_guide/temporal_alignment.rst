@@ -13,6 +13,8 @@ There are several ways to synchronize acquisition systems post-hoc. This section
 Note that NeuroConv does not resample the data, as this requires a resampling method that can change the values of
 the underlying data. Rather, we aim to provide the timing of the samples in a common clock.
 
+
+
 Aligning Start Times
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -91,6 +93,19 @@ The following code demonstrates this usage in a conversion involving three inter
     converter.run_conversion()
 
 
+This method can also be used to align downstream annotations or derivations of data streams. For example, suppose you
+have annotated a video with labels for behavior. Those annotations would contains times with respect to the camera, but
+you would want to convert them to the timeframe of the primary system. To achieve this, you could use
+
+.. code-block:: python
+
+    behavior_annotations_interface.align_by_interpolation(
+        unaligned_timestamps=camera_ttl_sent_times,
+        aligned_timestamps=acquisition_system_ttl_received_times,
+    )
+
+
+
 Tracking Timing Information: NIDQ
 ---------------------------------
 
@@ -118,12 +133,11 @@ the mouse performed a certain interation with a mechanical device (stored in a `
     converter.run_conversion()
 
 
+
 Temporal Alignment within NWBConverter
 --------------------------------------
 
-To align data types within an :py:class:`.NWBConverter`, override the method :py:class:`.NWBConverter.temporally_align_data_interfaces`.
-
-For example, let's consider a system that has an audio stream which sends a TTL pulse to a SpikeGLX system as it starts recording. This requires extracting the synchronization TTL pulse times from the NIDQ interface, confirming that only one pulse was detected, and appluing that as the start time of the audio stream.
+To align data types within an :py:class:`.NWBConverter`, override the method :py:meth:`.NWBConverter.temporally_align_data_interfaces`. For example, let's consider a system that has an audio stream which sends a TTL pulse to a SpikeGLX system as it starts recording. This requires extracting the synchronization TTL pulse times from the NIDQ interface, confirming that only one pulse was detected, and applying that as the start time of the audio stream.
 
 .. code-block:: python
 
