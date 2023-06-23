@@ -67,7 +67,7 @@ To use this type of synchronization, all the user must provide is the mapping de
 Extracting synchronization signal
 ---------------------------------
 
-Synchronization is often received achieved through sending synchronization singals from one acquisition system to
+Synchronization is often received achieved through sending synchronization signals from one acquisition system to
 another. NeuroConv has some convenience methods for extracting times from TTL pulse signals. See the functions
 :py:func:`~.tools.signal_processing.get_rising_frames_from_ttl` and
 :py:func:`~.tools.signal_processing.get_falling_frames_from_ttl`. See also the convenience method
