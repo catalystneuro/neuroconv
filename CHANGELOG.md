@@ -8,6 +8,12 @@
 
 
 
+### Improvements
+
+* Avoid redundant timestamp creation in `add_eletrical_series`` for recording objects without time vector [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
+
+
+
 # v0.3.0 (June 7, 2023)
 
 ### Back-compatibility break
