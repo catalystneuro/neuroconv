@@ -117,7 +117,7 @@ As an example demonstration of how to use this interface, let us assume the foll
 
 Primary system: NeuroPixels ecephys probe (SpikeGLX)
 Secondary systems: SLEAP pose estimation (in `.slp` file format) of a mouse subject and event trigger times from when
-the mouse performed a certain interation with a mechanical device (stored in a `.mat` file)
+the mouse performed a certain interaction with a mechanical device (stored in a `.mat` file)
 
 .. code-block:: python
 
