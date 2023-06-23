@@ -5,8 +5,8 @@ import numpy as np
 
 from .neuroscope_utils import (
     get_channel_groups,
+    get_neural_channels,
     get_session_start_time,
-    get_shank_channels,
     get_xml_file_path,
 )
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
@@ -16,18 +16,54 @@ from ....tools import get_package
 from ....utils import FilePathType, FolderPathType
 
 
-def subset_shank_channels(recording_extractor, xml_file_path: str):
-    """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
-    shank_channels = get_shank_channels(xml_file_path=xml_file_path)
+def filter_non_neural_channels(recording_extractor, xml_file_path: str):
+    """
+    Subsets the recording extractor to only use channels corresponding to neural data.
 
-    if shank_channels is not None:
-        channel_ids = [channel_id for group in shank_channels for channel_id in group]
-        new_ids = recording_extractor.get_channel_ids()[channel_ids]
-        sub_recording = recording_extractor.channel_slice(new_ids)
+    Parameters
+    ----------
+    recording_extractor : BaseExtractor from spikeinterface
+        The original recording extractor object.
+    xml_file_path : str
+        Path to the XML file containing the Neuroscope metadata.
+
+    Returns
+    -------
+    BaseExtractor from spikeinterface
+        The subset recording extractor object.
+
+    Notes
+    -----
+    This function subsets the given recording extractor to include only channels that
+    correspond to neural data, filtering out auxiliary channels.
+
+    To identify the neural channels, it relies on the `get_neural_channels` function
+    in the `neuroscope_utils.py` module. Please refer to that function for more details and warnings.
+
+    If no neural channels are found o during the process, the original
+    recording extractor is returned unchanged. If all the channels in the original recording extractor are
+    neural channels, then the original recording extractor is returned unchanged as well.
+    """
+
+    neural_channels_as_groups = get_neural_channels(xml_file_path=xml_file_path)
+
+    if neural_channels_as_groups is None:
+        return recording_extractor
     else:
-        sub_recording = recording_extractor
+        # Flat neural channels as groups which is a list of lists and converter to str which is the representation
+        # In spikeinterface of the channel ids
+        neural_channel_ids = [str(channel_id) for group in neural_channels_as_groups for channel_id in group]
+        channel_ids_in_recorder = recording_extractor.get_channel_ids()
 
-    return sub_recording
+        # Get only the channel_ids_in_recorder that are in the neural_channel_ids
+        neural_channel_ids = [channel_id for channel_id in channel_ids_in_recorder if channel_id in neural_channel_ids]
+
+        # If all the channel_ids_in_recorder are in the neural_channel_ids, return the original recording_extractor
+        if len(neural_channel_ids) == len(channel_ids_in_recorder):
+            return recording_extractor
+
+        sub_recording = recording_extractor.channel_slice(channel_ids=neural_channel_ids)
+        return sub_recording
 
 
 def add_recording_extractor_properties(recording_extractor, gain: Optional[float] = None):
@@ -112,7 +148,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
 
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, gain=gain)
 
-        self.recording_extractor = subset_shank_channels(
+        self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 
@@ -157,7 +193,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .dat file.
-        gain : Optional[float], optiona
+        gain : float, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
@@ -176,7 +212,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
 
         add_recording_extractor_properties(recording_extractor=self.recording_extractor, gain=gain)
 
-        self.recording_extractor = subset_shank_channels(
+        self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 

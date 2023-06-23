@@ -1,5 +1,11 @@
 # (Upcoming)
 
+### Features
+
+* Create separate `.add_to_nwbfile` method for all DataInterfaces. [PR #455](https://github.com/catalystneuro/neuroconv/pull/455)
+
+* Added stream control with the `stream_name` argument to the `NeuralynxRecordingExtractor`. [PR #369](https://github.com/catalystneuro/neuroconv/pull/369)
+
 
 
 # v0.3.0 (June 7, 2023)
@@ -57,6 +63,7 @@
   Added `photon_series_type` to `get_nwb_imaging_metadata()` to fill metadata for `OnePhotonSeries` or `TwoPhotonSeries`. [PR #462](https://github.com/catalystneuro/neuroconv/pull/462)
 * Split `align_timestamps` and `align_starting_times` into `align_segment_timestamps` and `align_segment_starting_times` for API consistency for multi-segment `RecordingInterface`s. [PR #463](https://github.com/catalystneuro/neuroconv/pull/463)
 * Rename `align_timestamps` and `align_segmentt_timestamps` into `set_aligned_timestamps` and `set_aligned_segment_timestamps` to more clearly indicate their usage and behavior. [PR #470](https://github.com/catalystneuro/neuroconv/pull/470)
+* `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
@@ -88,6 +95,7 @@
 * Add `Spike2RecordingInterface` to conversion gallery. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)
 * Remove authors from module docstrings [PR #354](https://github.com/catalystneuro/neuroconv/pull/354)
 * Add examples for `LocalPathExpander` usage [PR #456](https://github.com/catalystneuro/neuroconv/pull/456)
+* Add better docstrings to the aux functions of the Neuroscope interface [PR #485](https://github.com/catalystneuro/neuroconv/pull/485)
 
 ### Pending deprecation
 * Change name from `CedRecordingInterface` to `Spike2RecordingInterface`. [PR #338](https://github.com/catalystneuro/neuroconv/pull/338)
