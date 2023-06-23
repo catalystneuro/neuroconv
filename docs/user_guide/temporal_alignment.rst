@@ -95,7 +95,7 @@ Temporal Alignment within NWBConverter
 To align data types within an :py:class:`.NWBConverter`, override the method
 :py:meth:`.NWBConverter.temporally_align_data_interfaces`. For example, let's consider a system that has an audio
 stream which sends a TTL pulse to a SpikeGLX system as it starts recording. This requires extracting the
-synchronization TTL pulse times from the NIDQ interface, confirming that only one pulse was detected, and appluing
+synchronization TTL pulse times from the NIDQ interface, confirming that only one pulse was detected, and applying
 that as the start time of the audio stream.
 
 .. code-block:: python
