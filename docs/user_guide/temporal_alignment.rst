@@ -29,12 +29,12 @@ The following code demonstrates this usage in a conversion involving two interfa
 
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import InterfaceB, InterfaceB
-    
+
     # interface_b starts acquiring data exactly 3.2 seconds after interface_a
     interface_b = InterfaceB()
-    
+
     interface_b.set_aligned_starting_time(starting_time=3.2)
-    
+
     converter = ConverterPipe(...)
     converter.run_conversion()
 
@@ -53,12 +53,12 @@ The following code demonstrates this usage in a conversion involving two interfa
 
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import InterfaceB, InterfaceB
-    
+
     # interface_b starts acquiring data exactly 3.2 seconds after interface_a
     interface_b = InterfaceB()
-    
+
     interface_b.set_aligned_starting_time(starting_time=3.2)
-    
+
     converter = ConverterPipe(...)
     converter.run_conversion()
 
@@ -123,12 +123,12 @@ the mouse performed a certain interation with a mechanical device (stored in a `
 
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import InterfaceB, InterfaceB
-    
+
     # interface_b starts acquiring data exactly 3.2 seconds after interface_a
     interface_b = InterfaceB()
-    
+
     interface_b.set_aligned_starting_time(starting_time=3.2)
-    
+
     converter = ConverterPipe(...)
     converter.run_conversion()
 
