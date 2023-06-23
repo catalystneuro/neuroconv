@@ -64,6 +64,18 @@ To use this type of synchronization, all the user must provide is the mapping de
     )
     # All time reference in the secondary_interface have now been mapped from the secondary to the primary system
 
+This method can also be used to align downstream annotations or derivations of data streams. For example, suppose you
+have annotated a video with labels for behavior. Those annotations would contains times with respect to the camera, but
+you would want to convert them to the timeframe of the primary system. To achieve this, you could use
+
+.. code-block:: python
+
+    behavior_annotations_interface.align_by_interpolation(
+        unaligned_timestamps=camera_ttl_sent_times,
+        aligned_timestamps=acquisition_system_ttl_received_times,
+    )
+
+
 Extracting synchronization signal
 ---------------------------------
 
