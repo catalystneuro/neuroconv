@@ -103,8 +103,8 @@ that as the start time of the audio stream.
         )
 
         def temporally_align_data_interfaces():
-            spikeglx_nidq_recording_interface = self.data_interface_objects["SpikeGLXNIDQ"]
+            nidq_interface = self.data_interface_objects["SpikeGLXNIDQ"]
             audio_interface = self.data_interface_objects["Audio"]
-            ttl_times = spikeglx_nidq_recording_interface.get_event_times_from_ttl("channel-name")
+            ttl_times = nidq_interface.get_event_times_from_ttl("channel-name")
             assert len(ttl_times) == 1, "more than one ttl pulse detected"
             audio_interface.set_aligned_starting_time(ttl_times[0])
