@@ -160,6 +160,7 @@ class NWBConverter:
             self.add_to_nwbfile(nwbfile_out, metadata, conversion_options)
 
     def temporally_align_data_interfaces(self):
+        """Override this method to implement custom alignment"""
         pass
 
 
