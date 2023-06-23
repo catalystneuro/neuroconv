@@ -147,7 +147,7 @@ class NWBConverter:
         self.validate_metadata(metadata=metadata)
 
         self.validate_conversion_options(conversion_options=conversion_options)
-        
+
         self.temporally_align_data_interfaces()
 
         with make_or_load_nwbfile(
