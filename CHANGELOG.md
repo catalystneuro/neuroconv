@@ -64,6 +64,7 @@
 * Split `align_timestamps` and `align_starting_times` into `align_segment_timestamps` and `align_segment_starting_times` for API consistency for multi-segment `RecordingInterface`s. [PR #463](https://github.com/catalystneuro/neuroconv/pull/463)
 * Rename `align_timestamps` and `align_segmentt_timestamps` into `set_aligned_timestamps` and `set_aligned_segment_timestamps` to more clearly indicate their usage and behavior. [PR #470](https://github.com/catalystneuro/neuroconv/pull/470)
 * `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+* Avoid redundant timestamp creation in `add_eletrical_series`` for recording objects without time vector [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
