@@ -79,7 +79,8 @@ To use this type of synchronization, all the user must provide is the mapping de
 Temporal Alignment within NWBConverter
 --------------------------------------
 
-To align data types within an NWBConverter, override the method ``temporally_align_data_interfaces``.
+To align data types within an :py:class:`.NWBConverter`, override the method
+:py:class:`.NWBConverter.temporally_align_data_interfaces`.
 
 Let's consider a system that has an audio stream which sends a TTL pulse to a SpikeGLX system as it starts recording.
 

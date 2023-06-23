@@ -9,7 +9,7 @@ classes for many common data formats available in our :ref:`Conversion Gallery <
 
 NWB files often combine data from multiple sources- neurophysiology raw and processed data,
 behavior video and extracted position, stimuli, etc. A full conversion can require handling all
-of these different data types at the same time. The ``NWBConverter`` class allows you to combine
+of these different data types at the same time. The :py:class:`.NWBConverter` class allows you to combine
 multiple ``DataInterface`` objects into a single conversion, and provides methods to aggregate
 and synchronize data across multiple sources.
 
