@@ -664,8 +664,7 @@ def add_electrical_series(
         recording_t_start = timestamps[0]
     else:
         rate = recording.get_sampling_frequency()
-        recording_t_start = recording._recording_segments[segment_index].t_start
-        recording_t_start = 0 if recording_t_start is None else recording_t_start
+        recording_t_start = recording._recording_segments[segment_index].t_start or 0
 
     starting_time = starting_time if starting_time is not None else 0
     if rate:
