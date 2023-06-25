@@ -90,7 +90,7 @@ def add_channel_metadata_to_recorder_from_session_file(
             corresponding_channel_ids = [str(id) for id in channels]
             values = [brain_region_name] * len(channel_ids)
             recording_extractor.set_property(
-                key="location",
+                key="brain_area",
                 ids=corresponding_channel_ids,
                 values=values,
             )
