@@ -189,7 +189,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Note that, while all the new
     data produced by CellExplorer should have this file it is not clear if the channel metadata is always available.
 
-    Besides, the current implementation also supports extracing channel metadata fromthe `chanMap.mat` file used by
+    Besides, the current implementation also supports extracting channel metadata from the `chanMap.mat` file used by
     Kilosort. The logic of the extraction is described on the function:
 
     `add_channel_metadata_to_recorder_from_channel_map_file`.
