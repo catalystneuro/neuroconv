@@ -165,7 +165,7 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
 
 class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Addds raw and lfp data from binary files with the new CellExplorer format:
+    Adds raw and lfp data from binary files with the new CellExplorer format:
 
     https://cellexplorer.org/
 
