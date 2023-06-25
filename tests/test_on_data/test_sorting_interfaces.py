@@ -44,6 +44,24 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin, TestC
         dict(
             file_path=str(DATA_PATH / "cellexplorer" / "dataset_3" / "20170519_864um_900um_merge.spikes.cellinfo.mat")
         ),
+        dict(
+            file_path=str(
+                DATA_PATH
+                / "cellexplorer"
+                / "dataset_4"
+                / "Peter_MS22_180629_110319_concat_stubbed"
+                / "Peter_MS22_180629_110319_concat_stubbed.spikes.cellinfo.mat"
+            )
+        ),
+        dict(
+            file_path=str(
+                DATA_PATH
+                / "cellexplorer"
+                / "dataset_4"
+                / "Peter_MS22_180629_110319_concat_stubbed_hdf5"
+                / "Peter_MS22_180629_110319_concat_stubbed_hdf5.spikes.cellinfo.mat"
+            )
+        ),
     ]
     save_directory = OUTPUT_PATH
 
