@@ -275,9 +275,6 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, session_path=self.folder_path
         )
 
-    def get_metadata(self) -> dict:
-        return super().get_metadata()
-
     def get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_frames()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
