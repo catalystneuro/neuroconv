@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 import scipy
@@ -9,6 +9,85 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ..basesortingextractorinterface import BaseSortingExtractorInterface
 from ....tools import get_package
 from ....utils import FilePathType, FolderPathType
+
+
+def add_ecephys_metadata_to_recorder_from_session(recording_extractor, session_path):
+    session_path = session_path / f"{session_path.stem}.session.mat"
+    if not session_path.is_file():
+        return recording_extractor
+
+    from pymatreader import read_mat
+
+    ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
+    session_data = read_mat(session_path, ignore_fields=ignore_fields)["session"]
+    channel_ids = recording_extractor.get_channel_ids()
+
+    if "extracellular" in session_data:
+        extracellular_data = session_data["extracellular"]
+
+        if "chanCoords" in extracellular_data:
+            channel_coordinates = extracellular_data["chanCoords"]
+            x_coords = channel_coordinates["x"]
+            y_coords = channel_coordinates["y"]
+            locations = np.array((x_coords, y_coords)).T.astype("float32")
+            recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
+
+        if "electrodeGroups" in extracellular_data:
+            electrode_groups_data = extracellular_data["electrodeGroups"]
+            channels = electrode_groups_data["channels"]
+
+            # Channels is a list of arrays where each array corresponds to a group. We flatten it to a single array
+            num_electrode_groups = len(channels)
+            group_labels = [[f"Group {index + 1}"] * len(channels[index]) for index in range(num_electrode_groups)]
+            channels = np.concatenate(channels).astype("int")
+            values = np.concatenate(group_labels)
+            corresponding_channels_ids = [str(channel) for channel in channels]
+            recording_extractor.set_property(key="group", ids=corresponding_channels_ids, values=values)
+
+    if "brainRegions" in session_data:
+        brain_region_data = session_data["brainRegions"]
+        for brain_region_id, brain_region_dict in brain_region_data.items():
+            brain_region_name = brain_region_dict["brainRegion"]
+            channels = brain_region_dict["channels"].astype("int")
+            corresponding_channel_ids = [str(id) for id in channels]
+            values = [brain_region_name] * len(channel_ids)
+            recording_extractor.set_property(
+                key="brain_region",
+                ids=corresponding_channel_ids,
+                values=values,
+            )
+
+    return recording_extractor
+
+
+def add_ecephys_metadata_to_recorder_from_channel_map(recording_extractor, session_path):
+    chan_map_file_path = session_path / f"chanMap.mat"
+    if chan_map_file_path.is_file():
+        from pymatreader import read_mat
+
+        channel_map_data = read_mat(chan_map_file_path)
+        channel_groups = channel_map_data["connected"]
+        channel_group_names = [f"Group{group_index + 1}" for group_index in channel_groups]
+
+        channel_indices = channel_map_data["chanMap0ind"]
+        channel_ids = [str(channel_indices[i]) for i in channel_indices]
+
+        channel_name = [
+            f"ch{channel_index}grp{channel_group}"
+            for channel_index, channel_group in zip(channel_indices, channel_groups)
+        ]
+        base_ids = recording_extractor.get_channel_ids()
+        recording_extractor = recording_extractor.channel_slice(channel_ids=base_ids, renamed_channel_ids=channel_ids)
+        x_coords = channel_map_data["xcoords"]
+        y_coords = channel_map_data["ycoords"]
+        locations = np.array((x_coords, y_coords)).T.astype("float32")
+        recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
+
+        recording_extractor.set_property(key="channel_name", values=channel_name)
+        recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
+        recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
+
+    return recording_extractor
 
 
 class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
@@ -37,7 +116,13 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Detailed information can be found in the following link
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
 
-    Plus, the file `chanMap.mat` used by Kilosort is usually available on CellExplorer datasets.
+    Note also that `chanCoords` information can be found in the `session.mat` file embedded in the
+    `extracellular` field.
+
+    Also, bear in mind that the `session.mat` file might contain information about the area where the extracellular
+    recording took place. This information is located in the `brainRegions` field.
+
+    In addition, the file `chanMap.mat` used by Kilosort is usually available on CellExplorer datasets.
     The `chanMap.mat` can then be used to extract the electrode coordinates within the probe.
     To my understanding, this file is generated for using kilosort, and therefore it is not available for all datasets.
 
@@ -46,7 +131,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
-    def __init__(self, folder_path: FolderPathType, verbose=True, es_key: str = "ElectricalSeries"):
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
         self.folder_path = Path(folder_path)
 
         # No super here, we need to do everything by hand
@@ -54,24 +139,25 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.es_key = es_key
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path)
+        self._number_of_segments = 1  # CellExplorer is mono segment
 
         self.session = self.folder_path.name
-
         session_data_file_path = self.folder_path / f"{self.session}.session.mat"
         assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
 
+        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
         from pymatreader import read_mat
 
-        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
         session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
         extracellular_data = session_data["extracellular"]
-
         num_channels = int(extracellular_data["nChannels"])
         gain = float(extracellular_data["leastSignificantBit"])  # 0.195
         gains_to_uv = np.ones(num_channels) * gain
         dtype = np.dtype(extracellular_data["precision"])
         sampling_frequency = float(extracellular_data[self.sampling_frequency_key])
 
+        # Channels in CellExplorer are 1-indexed
+        channel_ids = [str(1 + i) for i in range(num_channels)]
         binary_file_path = self.folder_path / f"{self.session}.{self.binary_file_extension}"
         if binary_file_path.is_file():
             from spikeinterface.core.binaryrecordingextractor import (
@@ -87,11 +173,11 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
                 file_offset=0,
                 gain_to_uV=gains_to_uv,
                 offset_to_uV=None,
+                channel_ids=channel_ids,
             )
         else:
             from spikeinterface.core.numpyextractors import NumpyRecording
 
-            channel_ids = None
             traces_list = [np.empty(shape=(1, num_channels))]
             dummy_recording = NumpyRecording(
                 traces_list=traces_list,
@@ -102,32 +188,18 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor = dummy_recording
             self.recording_extractor.set_channel_gains(channel_ids=channel_ids, gains=np.ones(num_channels) * gain)
 
-        self.chan_map_file_path = self.folder_path / f"chanMap.mat"
-        if self.chan_map_file_path.is_file():
-            channel_map_data = read_mat(self.chan_map_file_path)
-            channel_groups = channel_map_data["connected"]
-            channel_group_names = [f"Group{group_index + 1}" for group_index in channel_groups]
+        self.recording_extractor = add_ecephys_metadata_to_recorder_from_session(
+            recording_extractor=self.recording_extractor, session_path=self.folder_path
+        )
+        self.recording_extractor = add_ecephys_metadata_to_recorder_from_channel_map(
+            recording_extractor=self.recording_extractor, session_path=self.folder_path
+        )
 
-            channel_indices = channel_map_data["chanMap0ind"]
-            channel_ids = [str(channel_indices[i]) for i in channel_indices]
-            channel_name = [
-                f"ch{channel_index}grp{channel_group}"
-                for channel_index, channel_group in zip(channel_indices, channel_groups)
-            ]
-            base_ids = self.recording_extractor.get_channel_ids()
-            self.recording_extractor = self.recording_extractor.channel_slice(
-                channel_ids=base_ids, renamed_channel_ids=channel_ids
-            )
-            x_coords = channel_map_data["xcoords"]
-            y_coords = channel_map_data["ycoords"]
-            locations = np.array((x_coords, y_coords)).T.astype("float32")
-            self.recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
-
-            self.recording_extractor.set_property(key="channel_name", values=channel_name)
-            self.recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
-            self.recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
-
-        self._number_of_segments = self.recording_extractor.get_num_segments()
+    def get_original_timestamps(self):
+        num_frames = self.recording_extractor.get_num_frames()
+        sampling_frequency = self.recording_extractor.get_sampling_frequency()
+        timestamps = np.arange(num_frames) / sampling_frequency
+        return timestamps
 
 
 class CellExplorerLFPInterface(CellExplorerRecordingInterface):
