@@ -10,3 +10,4 @@ Tools
     tools.neo
     tools.testing
     tools.path_expansion
+    tools.signal_processing
