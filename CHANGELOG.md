@@ -12,7 +12,9 @@
 
 ### Improvements
 
-* Avoid redundant timestamp creation in `add_eletrical_series`` for recording objects without time vector [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
+* Avoid redundant timestamp creation in `add_eletrical_series` for recording objects without time vector. [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
+
+* Avoid modifying the passed `metadata` structure via `deep_dict_update` in `make_nwbfile_from_metadata`.  [PR #476](https://github.com/catalystneuro/neuroconv/pull/476)
 
 
 
