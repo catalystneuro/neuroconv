@@ -8,9 +8,9 @@
 
 * Added a common `.temporally_align_data_interfaces` method to the `NWBConverter` class to use as a specification of the protocol for temporally aligning the data interfaces of the converter. [PR #362](https://github.com/catalystneuro/neuroconv/pull/362)
 
-* Added `CellExplorerRecordingInterface` for adding data in the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
-* `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
-* `CellExplorerRecordingInterface` now supports adding channel metadata with `write_ecephys_metadata=True` [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
+* Added `CellExplorerRecordingInterface` for adding data raw and lfp data from the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+* `CellExplorerSortingInterface` now supports extracting sampling frequency from the new data format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+* `CellExplorerSortinggInterface` now supports adding channel metadata to the nwbfile with `write_ecephys_metadata=True` as a conversion option [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
 
 ### Improvements
 
@@ -19,6 +19,7 @@
 
 ### Testing
 * Added gin test for `CellExplorerRecordingInterface` [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+* Added gin test for `CellExplorerSortinggInterface`  [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
 
 # v0.3.0 (June 7, 2023)
 
