@@ -226,7 +226,38 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return stub_sorting_extractor
 
-    def add_recording_to_nwb(self, nwbfile: NWBFile, metadata: Optional[DeepDict] = None):
+    def add_channel_metadata_to_nwb(self, nwbfile: NWBFile, metadata: Optional[DeepDict] = None):
+        """
+        Add channel metadata to an NWBFile object using information extracted from a SortingExtractor and
+        optional metadata.
+
+        This function attempts to add devices, electrode groups, and electrodes to the NWBFile. If a recording is
+        associated with the SortingExtractor, it is used for metadata addition. Otherwise, it attempts to create a dummy
+        NumpyRecording based on the provided metadata. If neither is available, the function warns the user and skips the
+        metadata addition.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWBFile object to which the metadata is added.
+        metadata : Optional[DeepDict]
+            Optional metadata to use for the addition of electrode-related data. If it's provided, it should contain an
+            "Ecephys" field with a nested "Electrodes" field.
+
+        Returns
+        -------
+        None
+
+        Raises
+        ------
+        Warning
+            If there's no recording in the sorting extractor and no electrodes metadata in the provided metadata, a warning
+            is raised and the function returns None.
+
+        Notes
+        -----
+        This function adds metadata to the `nwbfile` in-place, meaning the `nwbfile` object is modified directly.
+        """
         from ...tools.spikeinterface import (
             add_devices,
             add_electrode_groups,
@@ -242,7 +273,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 from spikeinterface import NumpyRecording
 
                 recording = NumpyRecording(
-                    traces_list=[np.empty(shape=n_channels)],
+                    traces_list=[np.empty(shape=(1, n_channels))],
                     sampling_frequency=self.sorting_extractor.get_sampling_frequency(),
                 )
             else:
@@ -295,7 +326,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         from ...tools.spikeinterface import add_sorting
 
         if write_ecephys_metadata:
-            self.add_recording_to_nwb(nwbfile=nwbfile, metadata=metadata)
+            self.add_channel_metadata_to_nwb(nwbfile=nwbfile, metadata=metadata)
 
         if stub_test:
             sorting_extractor = self.subset_sorting()
