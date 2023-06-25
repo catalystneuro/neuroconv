@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 import scipy
@@ -11,14 +11,137 @@ from ....tools import get_package
 from ....utils import FilePathType, FolderPathType
 
 
-def add_chan_map_properties_to_recorder(recording_extractor, session_path):
+def add_channel_metadata_to_recorder_from_session_file(
+    recording_extractor,
+    session_path: FolderPathType,
+):
+    """
+    Extracts channel metadata from the CellExplorer's `session.mat` file and adds it to the given recording extractor.
+
+    The metadata includes electrode groups, channel locations, and brain regions. The function will  skip addition
+    if the `session.mat` file is not found in the given session path. This is done to support calling the
+    when using files produced by the old cellexplorer format (Buzcode) which does not have a `session.mat` file.
+
+    Parameters
+    ----------
+    recording_extractor : BaseRecording from spikeinterface
+        The recording extractor to which the metadata will be added.
+    session_path : str or Path
+        The path to the directory containing the CellExplorer session.
+
+    Returns
+    -------
+    RecordingExtractor
+        The same recording extractor passed in the `recording_extractor` argument, but with added metadata as
+        channel properties.
+
+    Notes
+    -----
+    1. The channel locations are retrieved from the `chanCoords` field in the `extracellular` section of the
+    `session.mat` file. They are set in the recording extractor using the `set_channel_locations` method.
+
+    2. The electrode group information is extracted from the `electrodeGroups` field in the `extracellular` section of the
+    `session.mat` file. The groups are set in the recording extractor using the `set_property` method with the `group`
+    key.
+
+    3. The brain region data is fetched from the `brainRegions` section of the `session.mat` file. The brain regions are
+    set in the recording extractor using the `set_property` method with the `brain_region` key.
+
+    """
+
+    session_path = Path(session_path)
+    session_path = session_path / f"{session_path.stem}.session.mat"
+    if not session_path.is_file():
+        return recording_extractor
+
+    from pymatreader import read_mat
+
+    ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
+    session_data = read_mat(session_path, ignore_fields=ignore_fields)["session"]
+    channel_ids = recording_extractor.get_channel_ids()
+
+    if "extracellular" in session_data:
+        extracellular_data = session_data["extracellular"]
+
+        if "chanCoords" in extracellular_data:
+            channel_coordinates = extracellular_data["chanCoords"]
+            x_coords = channel_coordinates["x"]
+            y_coords = channel_coordinates["y"]
+            locations = np.array((x_coords, y_coords)).T.astype("float32")
+            recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
+
+        if "electrodeGroups" in extracellular_data:
+            electrode_groups_data = extracellular_data["electrodeGroups"]
+            channels = electrode_groups_data["channels"]
+
+            # Channels is a list of arrays where each array corresponds to a group. We flatten it to a single array
+            num_electrode_groups = len(channels)
+            group_labels = [[f"Group {index + 1}"] * len(channels[index]) for index in range(num_electrode_groups)]
+            channels = np.concatenate(channels).astype("int")
+            values = np.concatenate(group_labels)
+            corresponding_channels_ids = [str(channel) for channel in channels]
+            recording_extractor.set_property(key="group", ids=corresponding_channels_ids, values=values)
+
+    if "brainRegions" in session_data:
+        brain_region_data = session_data["brainRegions"]
+        for brain_region_id, brain_region_dict in brain_region_data.items():
+            brain_region_name = brain_region_dict["brainRegion"]
+            channels = brain_region_dict["channels"].astype("int")
+            corresponding_channel_ids = [str(id) for id in channels]
+            values = [brain_region_name] * len(channel_ids)
+            recording_extractor.set_property(
+                key="brain_region",
+                ids=corresponding_channel_ids,
+                values=values,
+            )
+
+    return recording_extractor
+
+
+def add_channel_metadata_to_recorder_from_channel_map_file(
+    recording_extractor,
+    session_path: FolderPathType,
+):
+    """
+    Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds it to the given recording extractor.
+
+    The metadata includes channel groups, channel locations, and channel names. The function will skip addition of
+    properties if the `chanMap.mat` file is not found in the given session path.
+
+    Parameters
+    ----------
+    recording_extractor : BaseRecording from spikeinterface
+        The recording extractor to which the metadata will be added.
+    session_path : Path or str
+        The path to the directory containing the session.
+
+    Returns
+    -------
+    RecordingExtractor
+        The same recording extractor passed in the `recording_extractor` argument, but with added metadata.
+
+    Notes
+    -----
+    1. The channel locations are retrieved from the `xcoords` and `ycoords` fields in the `chanMap.mat` file. They are
+    set in the recording extractor using the `set_channel_locations` method.
+
+    2. The channel groups are extracted from the `connected` field in the `chanMap.mat` file. The groups are set in the
+    recording extractor using the `set_property` method with the `group` key.
+
+    3. The channel names are composed of the channel index and group, and are set in the recording extractor using the
+    `set_property` method with the `channel_name` key.
+
+    4. Channel group names are created based on the group index and are set in the recording extractor using the
+    `set_property` method with the `group_name` key.
+    """
+
+    session_path = Path(session_path)
     chan_map_file_path = session_path / f"chanMap.mat"
     if chan_map_file_path.is_file():
         from pymatreader import read_mat
 
         channel_map_data = read_mat(chan_map_file_path)
         channel_groups = channel_map_data["connected"]
-        channel_group_names = [f"Group{group_index + 1}" for group_index in channel_groups]
 
         channel_indices = channel_map_data["chanMap0ind"]
         channel_ids = [str(channel_indices[i]) for i in channel_indices]
@@ -36,7 +159,6 @@ def add_chan_map_properties_to_recorder(recording_extractor, session_path):
 
         recording_extractor.set_property(key="channel_name", values=channel_name)
         recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
-        recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
 
     return recording_extractor
 
@@ -59,7 +181,22 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     `NumpyRecording` extractor, which is a dummy extractor that only contains metadata.  This can be used to add
     the electrode using `write_electrical_series=False` as a conversion option.
 
-    In cell explorer usually the data about the electrodes and the recording device comes three files:
+    The metadata for this electrode is also extracted from the `session.mat` file. The logic of the extraction is
+    described on the function:
+
+    `add_channel_metadata_to_recorder_from_session_file`.
+
+    Note that, while all the new
+    data produced by CellExplorer should have this file it is not clear if the channel metadata is always available.
+
+    Besides, the current implementation also supports extracing channel metadata fromthe `chanMap.mat` file used by
+    Kilosort. The logic of the extraction is described on the function:
+
+    `add_channel_metadata_to_recorder_from_channel_map_file`.
+
+    Bear in mind that this file is not always available for all datasets.
+
+    From the documentation we also know that channel data can also be found in the following files:
     * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
     * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
     * `basename.ccf.channelinfo.mat`: Allen Institute’s Common Coordinate Framework (CCF)
@@ -67,16 +204,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Detailed information can be found in the following link
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
 
-    Note also that `chanCoords` information can be found in the `session.mat` file embedded in the
-    `extracellular` field.
-
-    Also, bear in mind that the `session.mat` file might contain information about the area where the extracellular
-    recording took place. This information is located in the `brainRegions` field.
-
-    In addition, the file `chanMap.mat` used by Kilosort is usually available on CellExplorer datasets.
-    The `chanMap.mat` can then be used to extract the electrode coordinates within the probe.
-    To my understanding, this file is generated for using kilosort, and therefore it is not available for all datasets.
-
+    Future versions of this interface will support the extraction of this metadata from these files.
     """
 
     sampling_frequency_key = "sr"
@@ -90,6 +218,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.es_key = es_key
         self.subset_channels = None
         self.source_data = dict(folder_path=folder_path)
+        self._number_of_segments = 1  # CellExplorer is mono segment
 
         self.session = self.folder_path.name
         session_data_file_path = self.folder_path / f"{self.session}.session.mat"
@@ -106,6 +235,8 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         dtype = np.dtype(extracellular_data["precision"])
         sampling_frequency = float(extracellular_data[self.sampling_frequency_key])
 
+        # Channels in CellExplorer are 1-indexed
+        channel_ids = [str(1 + i) for i in range(num_channels)]
         binary_file_path = self.folder_path / f"{self.session}.{self.binary_file_extension}"
         if binary_file_path.is_file():
             from spikeinterface.core.binaryrecordingextractor import (
@@ -121,11 +252,11 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
                 file_offset=0,
                 gain_to_uV=gains_to_uv,
                 offset_to_uV=None,
+                channel_ids=channel_ids,
             )
         else:
             from spikeinterface.core.numpyextractors import NumpyRecording
 
-            channel_ids = None
             traces_list = [np.empty(shape=(1, num_channels))]
             dummy_recording = NumpyRecording(
                 traces_list=traces_list,
@@ -136,10 +267,19 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor = dummy_recording
             self.recording_extractor.set_channel_gains(channel_ids=channel_ids, gains=np.ones(num_channels) * gain)
 
-        self.recording_extractor = add_chan_map_properties_to_recorder(
+        self.recording_extractor = add_channel_metadata_to_recorder_from_session_file(
             recording_extractor=self.recording_extractor, session_path=self.folder_path
         )
-        self._number_of_segments = self.recording_extractor.get_num_segments()
+
+        self.recording_extractor = add_channel_metadata_to_recorder_from_channel_map_file(
+            recording_extractor=self.recording_extractor, session_path=self.folder_path
+        )
+
+    def get_original_timestamps(self):
+        num_frames = self.recording_extractor.get_num_frames()
+        sampling_frequency = self.recording_extractor.get_sampling_frequency()
+        timestamps = np.arange(num_frames) / sampling_frequency
+        return timestamps
 
 
 class CellExplorerLFPInterface(CellExplorerRecordingInterface):

@@ -13,6 +13,7 @@ from neuroconv.datainterfaces import (
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
     CEDRecordingInterface,
+    CellExplorerRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
     MaxOneRecordingInterface,
@@ -81,6 +82,17 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
 class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CEDRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx"))
+    save_directory = OUTPUT_PATH
+
+
+class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = CellExplorerRecordingInterface
+    interface_kwargs = [
+        dict(folder_path=str(DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed")),
+        dict(
+            folder_path=str(DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed_hdf5")
+        ),
+    ]
     save_directory = OUTPUT_PATH
 
 

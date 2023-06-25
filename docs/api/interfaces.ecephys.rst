@@ -64,6 +64,7 @@ Spikegadgets Recording
 SpikeGLX Recording
 ------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxdatainterface
+.. automodule:: neuroconv.datainterfaces.ecephys.spikeglx.spikeglxnidqinterface
 
 
 Tucker-Davis Technologies (TDT) Recording
