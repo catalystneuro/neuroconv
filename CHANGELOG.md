@@ -10,6 +10,7 @@
 
 * Added `CellExplorerRecordingInterface` for adding data in the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
 * `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+* `CellExplorerRecordingInterface` now supports adding channel metadata with `write_ecephys_metadata=True` [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
 
 ### Improvements
 
