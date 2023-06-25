@@ -8,8 +8,8 @@
 
 * Added a common `.temporally_align_data_interfaces` method to the `NWBConverter` class to use as a specification of the protocol for temporally aligning the data interfaces of the converter. [PR #362](https://github.com/catalystneuro/neuroconv/pull/362)
 
-* Added `CellExplorerRecordingInterface` for adding data in the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
-* `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+* Added `CellExplorerRecordingInterface` for adding data raw and lfp data from the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+* `CellExplorerSortingInterface` now supports the extacting sampling frequency from the new data format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
 
 ### Improvements
 

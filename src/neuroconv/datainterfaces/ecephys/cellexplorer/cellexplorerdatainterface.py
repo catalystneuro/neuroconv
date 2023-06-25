@@ -165,9 +165,11 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
 
 class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     """
-    This interface serves as an temporary solution for integrating CellExplorer metadata during a conversion process.
+    Addds raw and lfp data from binary files with the new CellExplorer format:
 
-    CellExplorer's new format (https://cellexplorer.org/) contains a `session.mat` file, which has the following field:
+    https://cellexplorer.org/
+
+    CellExplorer's new format contains a `session.mat` file, which has the following fields:
 
     * Sampling frequency
     * Gains for both raw data (held in a file named session.dat) and lfp (located in session.lfp)
@@ -178,16 +180,16 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
     If the binary file is available (session.dat or session.lfp), the interface will use the
     `BinaryRecordingExtractor` from spikeinterface to load the data. Otherwise, it will use the
-    `NumpyRecording` extractor, which is a dummy extractor that only contains metadata.  This can be used to add
-    the electrode using `write_electrical_series=False` as a conversion option.
+    `NumpyRecording` extractor to create a dummy extractor that only contains channel metadata.
+    This can be used to add the metadata to nwb using `write_electrical_series=False` as a conversion option.
 
     The metadata for this electrode is also extracted from the `session.mat` file. The logic of the extraction is
     described on the function:
 
     `add_channel_metadata_to_recorder_from_session_file`.
 
-    Note that, while all the new
-    data produced by CellExplorer should have this file it is not clear if the channel metadata is always available.
+    Note that, while all the new data produced by CellExplorer should have a `session.mat` file,  it is not clear
+    if all the channel metadata is always available.
 
     Besides, the current implementation also supports extracting channel metadata from the `chanMap.mat` file used by
     Kilosort. The logic of the extraction is described on the function:
