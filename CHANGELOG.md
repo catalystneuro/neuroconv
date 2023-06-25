@@ -6,6 +6,14 @@
 
 * Added stream control with the `stream_name` argument to the `NeuralynxRecordingExtractor`. [PR #369](https://github.com/catalystneuro/neuroconv/pull/369)
 
+* Added a common `.temporally_align_data_interfaces` method to the `NWBConverter` class to use as a specification of the protocol for temporally aligning the data interfaces of the converter. [PR #362](https://github.com/catalystneuro/neuroconv/pull/362)
+
+
+
+### Improvements
+
+* Avoid redundant timestamp creation in `add_eletrical_series`` for recording objects without time vector [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
+
 
 
 # v0.3.0 (June 7, 2023)
