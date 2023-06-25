@@ -423,27 +423,44 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 )
 
         # Register a dummy recorder to write the recording device metadata if desired
-        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
-        from pymatreader import read_mat
 
         session_data_file_path = session_path / f"{session_id}.session.mat"
         if session_data_file_path.is_file():
+            from pymatreader import read_mat
+
+            ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
             session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
             extracellular_data = session_data["extracellular"]
             num_channels = int(extracellular_data["nChannels"])
             num_samples = int(extracellular_data["nSamples"])
-            samppling_frequency = int(extracellular_data["sr"])
-            traces_list = [np.empty(shape=(1, num_channels))]
+            sampling_frequency = int(extracellular_data["sr"])
+
+            # Create a dummy recording extractor
             from spikeinterface.core.numpyextractors import NumpyRecording
 
+            traces_list = [np.empty(shape=(1, num_channels))]
+            channel_ids = [str(1 + i) for i in range(num_channels)]
             dummy_recording_extractor = NumpyRecording(
                 traces_list=traces_list,
                 sampling_frequency=sampling_frequency,
+                channel_ids=channel_ids,
             )
-            dummy_recording_extractor = add_chan_map_properties_to_recorder(
-                recording_extractor=dummy_recording_extractor, session_path=session_path
+
+            # Add the channel metadata
+            dummy_recording_extractor = add_channel_metadata_to_recorder_from_session_file(
+                recording_extractor=dummy_recording_extractor,
+                session_path=session_path,
             )
-            dummy_recording_extractor._recording_segments[0].time_vector = np.arange(num_samples) / samppling_frequency
+
+            dummy_recording_extractor = add_channel_metadata_to_recorder_from_channel_map_file(
+                recording_extractor=dummy_recording_extractor,
+                session_path=session_path,
+            )
+
+            # Need a time vector for the recording extractor
+            last_spikes_frame = self.sorting_extractor.get_all_spike_trains()[0][0][-1]
+            time_vector = np.arange(last_spikes_frame + 1) / sampling_frequency
+            dummy_recording_extractor._recording_segments[0].time_vector = time_vector
             self.sorting_extractor.register_recording(recording=dummy_recording_extractor)
 
     def get_metadata(self) -> dict:
