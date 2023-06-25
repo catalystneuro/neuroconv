@@ -8,13 +8,16 @@
 
 * Added a common `.temporally_align_data_interfaces` method to the `NWBConverter` class to use as a specification of the protocol for temporally aligning the data interfaces of the converter. [PR #362](https://github.com/catalystneuro/neuroconv/pull/362)
 
-
+* Added `CellExplorerRecordingInterface` for adding data in the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+* `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
 
 ### Improvements
 
 * Avoid redundant timestamp creation in `add_eletrical_series`` for recording objects without time vector [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
 
 
+### Testing
+* Added gin test for `CellExplorerRecordingInterface` [#488](https://github.com/catalystneuro/neuroconv/pull/488)
 
 # v0.3.0 (June 7, 2023)
 
@@ -71,8 +74,7 @@
   Added `photon_series_type` to `get_nwb_imaging_metadata()` to fill metadata for `OnePhotonSeries` or `TwoPhotonSeries`. [PR #462](https://github.com/catalystneuro/neuroconv/pull/462)
 * Split `align_timestamps` and `align_starting_times` into `align_segment_timestamps` and `align_segment_starting_times` for API consistency for multi-segment `RecordingInterface`s. [PR #463](https://github.com/catalystneuro/neuroconv/pull/463)
 * Rename `align_timestamps` and `align_segmentt_timestamps` into `set_aligned_timestamps` and `set_aligned_segment_timestamps` to more clearly indicate their usage and behavior. [PR #470](https://github.com/catalystneuro/neuroconv/pull/470)
-* Added `CellExplorerRecordingInterface` for adding data in the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
-* `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
