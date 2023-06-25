@@ -90,7 +90,7 @@ def add_channel_metadata_to_recorder_from_session_file(
             corresponding_channel_ids = [str(id) for id in channels]
             values = [brain_region_name] * len(channel_ids)
             recording_extractor.set_property(
-                key="brain_region",
+                key="location",
                 ids=corresponding_channel_ids,
                 values=values,
             )
@@ -274,6 +274,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = add_channel_metadata_to_recorder_from_channel_map_file(
             recording_extractor=self.recording_extractor, session_path=self.folder_path
         )
+
+    def get_metadata(self) -> dict:
+        return super().get_metadata()
 
     def get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_frames()
