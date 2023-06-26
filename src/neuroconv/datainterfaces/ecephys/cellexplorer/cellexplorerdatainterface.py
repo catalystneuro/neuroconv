@@ -156,21 +156,14 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
         channel_map_data = read_mat(chan_map_file_path)
         channel_groups = channel_map_data["connected"]
 
-        channel_indices = channel_map_data["chanMap0ind"]
-        channel_ids = [str(channel_indices[i]) for i in channel_indices]
+        channel_ids = channel_map_data["chanMap"]
+        channel_ids = [str(channel_id) for channel_id in channel_ids]
 
-        channel_name = [
-            f"ch{channel_index}grp{channel_group}"
-            for channel_index, channel_group in zip(channel_indices, channel_groups)
-        ]
-        base_ids = recording_extractor.get_channel_ids()
-        recording_extractor = recording_extractor.channel_slice(channel_ids=base_ids, renamed_channel_ids=channel_ids)
         x_coords = channel_map_data["xcoords"]
         y_coords = channel_map_data["ycoords"]
         locations = np.array((x_coords, y_coords)).T.astype("float32")
         recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
 
-        recording_extractor.set_property(key="channel_name", values=channel_name)
         recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
 
     return recording_extractor
