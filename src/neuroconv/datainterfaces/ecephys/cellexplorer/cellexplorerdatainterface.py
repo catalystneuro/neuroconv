@@ -182,31 +182,48 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
     https://cellexplorer.org/
 
-    CellExplorer's new format contains a `basename.session.mat` file,
-    (where basename is isually a session identifier) containing the
-    following fields:
+    Parameters
+    ----------
+    folder_path : Path or str
+        The folder where the session data is located. It should contain a
+        `{folder.name}.session.mat` file and the binary files `{folder.name}.dat`
+        or `{folder.name}.lfp` for the LFP interface.
+    verbose : bool, default: True
+            Whether to output verbose text.
+    es_key : str, default: "ElectricalSeries" and "ElectricalSeriesLFP" for the LFP interface
+
+    Notes
+    -----
+    CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata about the session. basename is the name of the session
+    folder / directory and works as a session identifier.
+
+    Link to the documentation detailing the file's structure:
+    https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
+
+    Specifically, we can use the following fields from `basename.session.mat`
+    to create a recording extractor using `BinaryRecordingExtractor` from
+    spikeinterface:
 
     * Sampling frequency
     * Gains
     * Dtype
 
-    Link to the documentation detailing the file's structure:
-    https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
+    Where the binary file is named `basename.dat` for the raw data and
+    `basename.lfp` for lfp data.
 
-    If the binary file is available (basename.dat or basename.lfp),
-    the interface will use the `BinaryRecordingExtractor` object from spikeinterface
-    to load the data.
-
-    The metadata for this electrode is also extracted from the `basename.session.mat`
+    The metadata for the channels is extracted from the `basename.session.mat`
     file. The logic of the extraction is described on the function:
 
     `add_channel_metadata_to_recorder_from_session_file`.
 
-    Note that, while all the new data produced by CellExplorer should have a `session.mat` file,  it is not clear
-    if all the channel metadata is always available.
+    Note that, while all the new data produced by CellExplorer should have a
+    `session.mat` file,  it is not clear if all the channel metadata is always
+    available.
 
-    Besides, the current implementation also supports extracting channel metadata from the `chanMap.mat` file used by
-    Kilosort. The logic of the extraction is described on the function:
+    Besides, the current implementation also supports extracting channel metadata
+    from the `chanMap.mat` file used by Kilosort. The logic of the extraction is
+    described on the function:
 
     `add_channel_metadata_to_recorder_from_channel_map_file`.
 
@@ -220,7 +237,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Detailed information can be found in the following link
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
 
-    Future versions of this interface will support the extraction of this metadata from these files.
+    Future versions of this interface will support the extraction of this metadata from these files as well
     """
 
     sampling_frequency_key = "sr"
