@@ -1,1 +1,1 @@
-roiextractors @ git+https://github.com/catalystneuro/roiextractors.git@51ccccbb53fbab7e389188b60693b0e5633746bf#egg=roiextractors
+roiextractors>=0.5.3
