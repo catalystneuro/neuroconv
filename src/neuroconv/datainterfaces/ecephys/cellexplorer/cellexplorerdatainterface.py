@@ -465,14 +465,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             )
 
             # Add the channel metadata
-            dummy_recording_extractor = add_channel_metadata_to_recorder_from_session_file(
-                recording_extractor=dummy_recording_extractor,
-                session_path=session_path,
-            )
-
-            dummy_recording_extractor = add_channel_metadata_to_recorder_from_channel_map_file(
-                recording_extractor=dummy_recording_extractor,
-                session_path=session_path,
+            dummy_recording_extractor = add_channel_metadata_to_recoder(
+                recording_extractor=dummy_recording_extractor, folder_path=session_path
             )
 
             # Need a time vector for the recording extractor
