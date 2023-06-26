@@ -36,6 +36,8 @@ class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin, TestCase
 
 
 class TestCellExplorerSortingInterfaceBuzCode(SortingExtractorInterfaceTestMixin, TestCase):
+    """This corresponds to the Buzsaki old CellExplorerFormat or Buzcode format."""
+
     data_interface_cls = CellExplorerSortingInterface
     interface_kwargs = [
         dict(
@@ -52,6 +54,8 @@ class TestCellExplorerSortingInterfaceBuzCode(SortingExtractorInterfaceTestMixin
 
 
 class TestCellEploreSortingInterface(SortingExtractorInterfaceTestMixin, TestCase):
+    """This corresponds to the Buzsaki new CellExplorerFormat where a session.mat file with rich metadata is provided."""
+
     data_interface_cls = CellExplorerSortingInterface
     interface_kwargs = [
         dict(
@@ -106,7 +110,7 @@ class TestCellEploreSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
                     write_ecephys_metadata=True,
                 )
 
-                # Test in nwb recording
+                # Test that the registered recording has the ``
                 recording_extractor = self.interface.sorting_extractor._recording
                 for key, expected_value in expected_channel_properties_recorder.items():
                     extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
@@ -115,7 +119,7 @@ class TestCellEploreSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
                     else:
                         assert expected_value == extracted_value
 
-                # Open nwbfile from nwbile_path
+                # Test that the electrode table has the expected values
                 with NWBHDF5IO(self.nwbfile_path, "r") as io:
                     nwbfile = io.read()
                     electrode_table = nwbfile.electrodes.to_dataframe()
