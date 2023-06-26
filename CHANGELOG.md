@@ -1,5 +1,9 @@
 # (Upcoming)
 
+### Fixes
+
+* Set gzip compression by default on spikeinterface based interfaces `run_conversion`. [PR #499](https://github.com/catalystneuro/neuroconv/pull/#499)
+
 ### Features
 
 * Create separate `.add_to_nwbfile` method for all DataInterfaces. [PR #455](https://github.com/catalystneuro/neuroconv/pull/455)
@@ -11,8 +15,10 @@
 * Added `CellExplorerRecordingInterface` for adding data raw and lfp data from the CellExplorer format. CellExplorer's new format contains a `basename.session.mat` file containing
     rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
     groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+
 * `CellExplorerSortingInterface` now supports exrtacting sampling frequency from the new data format. CellExplorer's new format contains a `basename.session.mat` file containing
     rich metadata including the sorting sampling frequency [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+
 * Added `MiniscopeBehaviorInterface` for Miniscope behavioral data. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the behavioral camera metadata,
   and an `ImageSeries` in external mode that is linked to the device. [PR #482](https://github.com/catalystneuro/neuroconv/pull/482)
   * `CellExplorerSortingInterface` now supports adding channel metadata to the nwbfile with `write_ecephys_metadata=True` as a conversion option [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
@@ -23,14 +29,16 @@
 
 * Avoid modifying the passed `metadata` structure via `deep_dict_update` in `make_nwbfile_from_metadata`.  [PR #476](https://github.com/catalystneuro/neuroconv/pull/476)
 
-
 ### Testing
+
 * Added gin test for `CellExplorerRecordingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
     rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
     groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488).
   * Added gin test for `CellExplorerSortingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
   rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
   groups, location and brain area [PR #494](https://github.com/catalystneuro/neuroconv/pull/494).
+
+
 
 
 # v0.3.0 (June 7, 2023)
