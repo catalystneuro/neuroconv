@@ -4,8 +4,10 @@ from sys import platform
 from unittest import skip, skipIf
 
 import jsonschema
+import numpy as np
 from hdmf.testing import TestCase
 from packaging import version
+from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
@@ -13,6 +15,7 @@ from neuroconv.datainterfaces import (
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
     CEDRecordingInterface,
+    CellExplorerRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
     MaxOneRecordingInterface,
@@ -82,6 +85,64 @@ class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = CEDRecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx"))
     save_directory = OUTPUT_PATH
+
+
+class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = CellExplorerRecordingInterface
+    interface_kwargs = [
+        dict(folder_path=str(DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed")),
+        dict(
+            folder_path=str(DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed_hdf5")
+        ),
+    ]
+    save_directory = OUTPUT_PATH
+
+    def test_add_channel_metadata_to_nwb(self):
+        channel_id = "1"
+        expected_channel_properties_recorder = {
+            "location": np.array([791.5, -160.0]),
+            "brain_area": "CA1 - Field CA1",
+            "group": "Group 5",
+        }
+        expected_channel_properties_electrodes = {
+            "rel_x": 791.5,
+            "rel_y": -160.0,
+            "location": "CA1 - Field CA1",
+            "group_name": "Group 5",
+        }
+
+        interface_kwargs = self.interface_kwargs
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}_channel.nwb")
+
+                metadata = self.interface.get_metadata()
+                metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+                self.interface.run_conversion(
+                    nwbfile_path=self.nwbfile_path,
+                    overwrite=True,
+                    metadata=metadata,
+                )
+
+                # Test addition to recording extractor
+                recording_extractor = self.interface.recording_extractor
+                for key, expected_value in expected_channel_properties_recorder.items():
+                    extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
+                    if key == "location":
+                        assert np.allclose(expected_value, extracted_value)
+                    else:
+                        assert expected_value == extracted_value
+
+                # Test addition to electrodes table
+                with NWBHDF5IO(self.nwbfile_path, "r") as io:
+                    nwbfile = io.read()
+                    electrode_table = nwbfile.electrodes.to_dataframe()
+                    electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
+                    for key, value in expected_channel_properties_electrodes.items():
+                        assert electrode_table_row[key] == value
 
 
 @skipIf(platform == "darwin", reason="Not supported for OSX.")

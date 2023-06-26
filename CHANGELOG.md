@@ -1,5 +1,9 @@
 # (Upcoming)
 
+### Fixes
+
+* Set gzip compression by default on spikeinterface based interfaces `run_conversion`. [PR #499](https://github.com/catalystneuro/neuroconv/pull/#499)
+
 ### Features
 
 * Create separate `.add_to_nwbfile` method for all DataInterfaces. [PR #455](https://github.com/catalystneuro/neuroconv/pull/455)
@@ -8,6 +12,11 @@
 
 * Added a common `.temporally_align_data_interfaces` method to the `NWBConverter` class to use as a specification of the protocol for temporally aligning the data interfaces of the converter. [PR #362](https://github.com/catalystneuro/neuroconv/pull/362)
 
+* Added `CellExplorerRecordingInterface` for adding data raw and lfp data from the CellExplorer format. CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
+    groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+* `CellExplorerSortingInterface` now supports exrtacting sampling frequency from the new data format. CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata including the sorting sampling frequency [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
 * Added `MiniscopeBehaviorInterface` for Miniscope behavioral data. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the behavioral camera metadata,
   and an `ImageSeries` in external mode that is linked to the device. [PR #482](https://github.com/catalystneuro/neuroconv/pull/482)
 
@@ -16,7 +25,14 @@
 * Avoid redundant timestamp creation in `add_eletrical_series` for recording objects without time vector. [PR #495](https://github.com/catalystneuro/neuroconv/pull/495)
 
 * Avoid modifying the passed `metadata` structure via `deep_dict_update` in `make_nwbfile_from_metadata`.  [PR #476](https://github.com/catalystneuro/neuroconv/pull/476)
-* Set gzip compression by default on spikeinterface based interfaces `run_conversion`. [PR #499](https://github.com/catalystneuro/neuroconv/pull/#499)
+
+### Testing
+
+* Added gin test for `CellExplorerRecordingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
+    groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488).
+
+
 
 # v0.3.0 (June 7, 2023)
 
@@ -73,7 +89,7 @@
   Added `photon_series_type` to `get_nwb_imaging_metadata()` to fill metadata for `OnePhotonSeries` or `TwoPhotonSeries`. [PR #462](https://github.com/catalystneuro/neuroconv/pull/462)
 * Split `align_timestamps` and `align_starting_times` into `align_segment_timestamps` and `align_segment_starting_times` for API consistency for multi-segment `RecordingInterface`s. [PR #463](https://github.com/catalystneuro/neuroconv/pull/463)
 * Rename `align_timestamps` and `align_segmentt_timestamps` into `set_aligned_timestamps` and `set_aligned_segment_timestamps` to more clearly indicate their usage and behavior. [PR #470](https://github.com/catalystneuro/neuroconv/pull/470)
-* `CellExplorerRecordingInterface` now supports the extacting sampling frequency from new format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+
 
 ### Testing
 * The tests for `automatic_dandi_upload` now follow up-to-date DANDI validation rules for file name conventions. [PR #310](https://github.com/catalystneuro/neuroconv/pull/310)
