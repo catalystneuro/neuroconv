@@ -4,6 +4,7 @@ from sys import platform
 from unittest import skip, skipIf
 
 import jsonschema
+import numpy as np
 from hdmf.testing import TestCase
 from packaging import version
 
@@ -94,6 +95,28 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin, T
         ),
     ]
     save_directory = OUTPUT_PATH
+
+    def check_read(self, nwbfile_path):
+        super().check_read(nwbfile_path)
+
+        channel_id = "1"
+        expected_channel_properties = {
+            "location": np.array([791.5, -160.0]),
+            "brain_area": "CA1 - Field CA1",
+            "group": "group5",
+        }
+
+        # Test in memory
+        recording_extractor = self.interface.recording_extractor
+        for key, exp_value in expected_channel_properties.items():
+            extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
+            assert exp_value == extracted_value[0]
+
+        # Test in nwb recording
+        recording_extractor = self.nwb_recording
+        for key, exp_value in expected_channel_properties.items():
+            extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
+            assert exp_value == extracted_value[0]
 
 
 @skipIf(platform == "darwin", reason="Not supported for OSX.")

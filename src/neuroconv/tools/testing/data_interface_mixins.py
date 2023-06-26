@@ -276,7 +276,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
         if recording.get_num_segments() == 1:
             # Spikeinterface behavior is to load the electrode table channel_name property as a channel_id
-            nwb_recording = NwbRecordingExtractor(file_path=nwbfile_path, electrical_series_name=electrical_series_name)
+            self.nwb_recording = NwbRecordingExtractor(
+                file_path=nwbfile_path, electrical_series_name=electrical_series_name
+            )
             if "channel_name" in recording.get_property_keys():
                 renamed_channel_ids = recording.get_property("channel_name")
             else:
@@ -288,10 +290,10 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # Edge case that only occurs in testing, but should eventually be fixed nonetheless
             # The NwbRecordingExtractor on spikeinterface experiences an issue when duplicated channel_ids
             # are specified, which occurs during check_recordings_equal when there is only one channel
-            if nwb_recording.get_channel_ids()[0] != nwb_recording.get_channel_ids()[-1]:
-                check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=False)
-                if recording.has_scaled_traces() and nwb_recording.has_scaled_traces():
-                    check_recordings_equal(RX1=recording, RX2=nwb_recording, return_scaled=True)
+            if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
+                check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
+                if recording.has_scaled_traces() and self.nwb_recording.has_scaled_traces():
+                    check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
 
     def check_interface_set_aligned_timestamps(self):
         self.setUpFreshInterface()
