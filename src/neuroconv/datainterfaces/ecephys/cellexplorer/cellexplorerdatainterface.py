@@ -378,8 +378,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 
-        session_path = Path(file_path).parent
-        session_id = session_path.stem
+        self.session_path = Path(file_path).parent
+        self.session_id = self.session_path.stem
 
         assert (
             spikes_matfile_path.is_file()
@@ -423,7 +423,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 )
 
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
-        celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
+        celltype_file_path = self.session_path / f"{self.session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
             celltype_info = scipy.io.loadmat(celltype_file_path).get("CellClass", np.empty(0))
             if "label" in celltype_info.dtype.names:
@@ -433,9 +433,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
                 )
 
-        # Register a dummy recorder to write the recording device metadata if desired
-
-        session_data_file_path = session_path / f"{session_id}.session.mat"
+    def generate_recording_with_channel_metadata(self):
+        session_data_file_path = self.session_path / f"{self.session_id}.session.mat"
         if session_data_file_path.is_file():
             from pymatreader import read_mat
 
@@ -459,14 +458,15 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
             # Add the channel metadata
             dummy_recording_extractor = add_channel_metadata_to_recoder(
-                recording_extractor=dummy_recording_extractor, folder_path=session_path
+                recording_extractor=dummy_recording_extractor, folder_path=self.session_path
             )
 
             # Need a time vector for the recording extractor
-            last_spikes_frame = self.sorting_extractor.get_all_spike_trains()[0][0][-1]
-            time_vector = np.arange(last_spikes_frame + 1) / sampling_frequency
-            dummy_recording_extractor._recording_segments[0].time_vector = time_vector
-            self.sorting_extractor.register_recording(recording=dummy_recording_extractor)
+            # last_spikes_frame = self.sorting_extractor.get_all_spike_trains()[0][0][-1]
+            # time_vector = np.arange(last_spikes_frame + 1) / sampling_frequency
+            # dummy_recording_extractor._recording_segments[0].time_vector = time_vector
+
+        return dummy_recording_extractor
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
