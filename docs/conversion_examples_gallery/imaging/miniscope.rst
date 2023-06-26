@@ -22,7 +22,7 @@ into a single conversion.
     >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"
     >>> converter = MiniscopeConverterPipe(folder_path=folder_path)
     >>>
-    >>> metadata = interface.get_metadata()
+    >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> tzinfo = tz.gettz("US/Pacific")
@@ -30,4 +30,4 @@ into a single conversion.
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
