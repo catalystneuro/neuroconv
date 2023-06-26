@@ -11,9 +11,21 @@ from ....tools import get_package
 from ....utils import FilePathType, FolderPathType
 
 
+def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPathType):
+    recording_extractor = add_channel_metadata_to_recorder_from_session_file(
+        recording_extractor=recording_extractor, folder_path=folder_path
+    )
+
+    recording_extractor = add_channel_metadata_to_recorder_from_channel_map_file(
+        recording_extractor=recording_extractor, folder_path=folder_path
+    )
+
+    return recording_extractor
+
+
 def add_channel_metadata_to_recorder_from_session_file(
     recording_extractor,
-    session_path: FolderPathType,
+    folder_path: FolderPathType,
 ):
     """
     Extracts channel metadata from the CellExplorer's `session.mat` file and adds it to the given recording extractor.
@@ -26,7 +38,7 @@ def add_channel_metadata_to_recorder_from_session_file(
     ----------
     recording_extractor : BaseRecording from spikeinterface
         The recording extractor to which the metadata will be added.
-    session_path : str or Path
+    folder_path : str or Path
         The path to the directory containing the CellExplorer session.
 
     Returns
@@ -49,8 +61,9 @@ def add_channel_metadata_to_recorder_from_session_file(
 
     """
 
-    session_path = Path(session_path)
-    session_path = session_path / f"{session_path.stem}.session.mat"
+    session_path = Path(folder_path)
+    session_id = session_path.stem
+    session_path = session_path / f"{session_id}.session.mat"
     if not session_path.is_file():
         return recording_extractor
 
@@ -100,7 +113,7 @@ def add_channel_metadata_to_recorder_from_session_file(
 
 def add_channel_metadata_to_recorder_from_channel_map_file(
     recording_extractor,
-    session_path: FolderPathType,
+    folder_path: FolderPathType,
 ):
     """
     Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds it to the given recording extractor.
@@ -112,7 +125,7 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
     ----------
     recording_extractor : BaseRecording from spikeinterface
         The recording extractor to which the metadata will be added.
-    session_path : Path or str
+    folder_path : Path or str
         The path to the directory containing the session.
 
     Returns
@@ -135,7 +148,7 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
     `set_property` method with the `group_name` key.
     """
 
-    session_path = Path(session_path)
+    session_path = Path(folder_path)
     chan_map_file_path = session_path / f"chanMap.mat"
     if chan_map_file_path.is_file():
         from pymatreader import read_mat
@@ -165,34 +178,52 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
 
 class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     """
-    Addds raw and lfp data from binary files with the new CellExplorer format:
+    Adds raw and lfp data from binary files with the new CellExplorer format:
 
     https://cellexplorer.org/
 
-    CellExplorer's new format contains a `session.mat` file, which has the following fields:
+    Parameters
+    ----------
+    folder_path : Path or str
+        The folder where the session data is located. It should contain a
+        `{folder.name}.session.mat` file and the binary files `{folder.name}.dat`
+        or `{folder.name}.lfp` for the LFP interface.
+    verbose : bool, default: True
+            Whether to output verbose text.
+    es_key : str, default: "ElectricalSeries" and "ElectricalSeriesLFP" for the LFP interface
 
-    * Sampling frequency
-    * Gains for both raw data (held in a file named session.dat) and lfp (located in session.lfp)
-    * Dtype for both raw data and lfp.
+    Notes
+    -----
+    CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata about the session. basename is the name of the session
+    folder / directory and works as a session identifier.
 
     Link to the documentation detailing the file's structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
-    If the binary file is available (session.dat or session.lfp), the interface will use the
-    `BinaryRecordingExtractor` from spikeinterface to load the data. Otherwise, it will use the
-    `NumpyRecording` extractor to create a dummy extractor that only contains channel metadata.
-    This can be used to add the metadata to nwb using `write_electrical_series=False` as a conversion option.
+    Specifically, we can use the following fields from `basename.session.mat`
+    to create a recording extractor using `BinaryRecordingExtractor` from
+    spikeinterface:
 
-    The metadata for this electrode is also extracted from the `session.mat` file. The logic of the extraction is
-    described on the function:
+    * Sampling frequency
+    * Gains
+    * Dtype
+
+    Where the binary file is named `basename.dat` for the raw data and
+    `basename.lfp` for lfp data.
+
+    The metadata for the channels is extracted from the `basename.session.mat`
+    file. The logic of the extraction is described on the function:
 
     `add_channel_metadata_to_recorder_from_session_file`.
 
-    Note that, while all the new data produced by CellExplorer should have a `session.mat` file,  it is not clear
-    if all the channel metadata is always available.
+    Note that, while all the new data produced by CellExplorer should have a
+    `session.mat` file,  it is not clear if all the channel metadata is always
+    available.
 
-    Besides, the current implementation also supports extracting channel metadata from the `chanMap.mat` file used by
-    Kilosort. The logic of the extraction is described on the function:
+    Besides, the current implementation also supports extracting channel metadata
+    from the `chanMap.mat` file used by Kilosort. The logic of the extraction is
+    described on the function:
 
     `add_channel_metadata_to_recorder_from_channel_map_file`.
 
@@ -201,19 +232,19 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     From the documentation we also know that channel data can also be found in the following files:
     * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
     * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
-    * `basename.ccf.channelinfo.mat`: Allen Institute’s Common Coordinate Framework (CCF)
+    * `basename.ccf.channelinfo.mat`: Allen Institute's Common Coordinate Framework (CCF)
 
     Detailed information can be found in the following link
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
 
-    Future versions of this interface will support the extraction of this metadata from these files.
+    Future versions of this interface will support the extraction of this metadata from these files as well
     """
 
     sampling_frequency_key = "sr"
     binary_file_extension = "dat"
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeries"):
-        self.folder_path = Path(folder_path)
+        self.session_path = Path(folder_path)
 
         # No super here, we need to do everything by hand
         self.verbose = verbose
@@ -222,8 +253,8 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self.source_data = dict(folder_path=folder_path)
         self._number_of_segments = 1  # CellExplorer is mono segment
 
-        self.session = self.folder_path.name
-        session_data_file_path = self.folder_path / f"{self.session}.session.mat"
+        self.session_id = self.session_path.stem
+        session_data_file_path = self.session_path / f"{self.session_id}.session.mat"
         assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
 
         ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
@@ -232,49 +263,34 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
         extracellular_data = session_data["extracellular"]
         num_channels = int(extracellular_data["nChannels"])
-        gain = float(extracellular_data["leastSignificantBit"])  # 0.195
+        gain = float(extracellular_data["leastSignificantBit"])  # Usually a value of 0.195 when intan is used
         gains_to_uv = np.ones(num_channels) * gain
         dtype = np.dtype(extracellular_data["precision"])
         sampling_frequency = float(extracellular_data[self.sampling_frequency_key])
 
         # Channels in CellExplorer are 1-indexed
         channel_ids = [str(1 + i) for i in range(num_channels)]
-        binary_file_path = self.folder_path / f"{self.session}.{self.binary_file_extension}"
-        if binary_file_path.is_file():
-            from spikeinterface.core.binaryrecordingextractor import (
-                BinaryRecordingExtractor,
-            )
+        binary_file_path = self.session_path / f"{self.session_id}.{self.binary_file_extension}"
+        assert binary_file_path.is_file(), f"Binary file {binary_file_path.name} does not exist in `folder_path`"
 
-            self.recording_extractor = BinaryRecordingExtractor(
-                file_paths=[binary_file_path],
-                sampling_frequency=sampling_frequency,
-                num_chan=num_channels,
-                dtype=dtype,
-                t_starts=None,
-                file_offset=0,
-                gain_to_uV=gains_to_uv,
-                offset_to_uV=None,
-                channel_ids=channel_ids,
-            )
-        else:
-            from spikeinterface.core.numpyextractors import NumpyRecording
-
-            traces_list = [np.empty(shape=(1, num_channels))]
-            dummy_recording = NumpyRecording(
-                traces_list=traces_list,
-                sampling_frequency=sampling_frequency,
-                channel_ids=channel_ids,
-            )
-
-            self.recording_extractor = dummy_recording
-            self.recording_extractor.set_channel_gains(channel_ids=channel_ids, gains=np.ones(num_channels) * gain)
-
-        self.recording_extractor = add_channel_metadata_to_recorder_from_session_file(
-            recording_extractor=self.recording_extractor, session_path=self.folder_path
+        from spikeinterface.core.binaryrecordingextractor import (
+            BinaryRecordingExtractor,
         )
 
-        self.recording_extractor = add_channel_metadata_to_recorder_from_channel_map_file(
-            recording_extractor=self.recording_extractor, session_path=self.folder_path
+        self.recording_extractor = BinaryRecordingExtractor(
+            file_paths=[binary_file_path],
+            sampling_frequency=sampling_frequency,
+            num_chan=num_channels,
+            dtype=dtype,
+            t_starts=None,
+            file_offset=0,
+            gain_to_uV=gains_to_uv,
+            offset_to_uV=None,
+            channel_ids=channel_ids,
+        )
+
+        self.recording_extractor = add_channel_metadata_to_recoder(
+            recording_extractor=self.recording_extractor, folder_path=folder_path
         )
 
     def get_original_timestamps(self):
@@ -311,7 +327,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         iterator_type: str = "v2",
         iterator_opts: Optional[dict] = None,
     ):
-        return super().add_to_nwbfile(
+        super().add_to_nwbfile(
             nwbfile,
             metadata,
             stub_test,

@@ -2,11 +2,12 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
-from typing import Callable, Literal
+from typing import Callable, Dict, Literal
 
 import hdmf.data_utils
 import numpy as np
 import pynwb
+from jsonschema import validate
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
 
@@ -306,3 +307,14 @@ def get_metadata_schema_for_icephys():
     )
 
     return schema
+
+
+def validate_metadata(metadata: Dict[str, dict], schema: Dict[str, dict], verbose: bool = False):
+    """Validate metadata against a schema."""
+    encoder = NWBMetaDataEncoder()
+    # The encoder produces a serialiazed object so we de serialized it for comparison
+    serialized_metadata = encoder.encode(metadata)
+    decoded_metadata = json.loads(serialized_metadata)
+    validate(instance=decoded_metadata, schema=schema)
+    if verbose:
+        print("Metadata is valid!")
