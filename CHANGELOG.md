@@ -15,8 +15,10 @@
 * Added `CellExplorerRecordingInterface` for adding data raw and lfp data from the CellExplorer format. CellExplorer's new format contains a `basename.session.mat` file containing
     rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
     groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488)
+
 * `CellExplorerSortingInterface` now supports exrtacting sampling frequency from the new data format. CellExplorer's new format contains a `basename.session.mat` file containing
     rich metadata including the sorting sampling frequency [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+
 * Added `MiniscopeBehaviorInterface` for Miniscope behavioral data. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the behavioral camera metadata,
   and an `ImageSeries` in external mode that is linked to the device. [PR #482](https://github.com/catalystneuro/neuroconv/pull/482)
 
