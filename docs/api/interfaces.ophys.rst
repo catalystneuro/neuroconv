@@ -17,6 +17,10 @@ MicroManager Tiff Imaging
 -------------------------
 .. automodule:: neuroconv.datainterfaces.ophys.micromanagertiff.micromanagertiffdatainterface
 
+Miniscope Imaging
+-------------------------
+.. automodule:: neuroconv.datainterfaces.ophys.miniscope.miniscopeconverter
+
 Sbx Imaging
 -----------
 .. automodule:: neuroconv.datainterfaces.ophys.sbx.sbxdatainterface
