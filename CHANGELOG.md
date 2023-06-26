@@ -9,7 +9,9 @@
 * Added a common `.temporally_align_data_interfaces` method to the `NWBConverter` class to use as a specification of the protocol for temporally aligning the data interfaces of the converter. [PR #362](https://github.com/catalystneuro/neuroconv/pull/362)
 
 * Added `CellExplorerRecordingInterface` for adding data raw and lfp data from the CellExplorer format. [#488](https://github.com/catalystneuro/neuroconv/pull/488)
-* `CellExplorerSortingInterface` now supports the extacting sampling frequency from the new data format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+* `CellExplorerSortingInterface` now supports exrtacting sampling frequency from the new data format [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
+* Added `MiniscopeBehaviorInterface` for Miniscope behavioral data. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the behavioral camera metadata,
+  and an `ImageSeries` in external mode that is linked to the device. [PR #482](https://github.com/catalystneuro/neuroconv/pull/482)
 
 ### Improvements
 
