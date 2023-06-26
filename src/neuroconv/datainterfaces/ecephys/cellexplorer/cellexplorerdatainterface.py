@@ -169,22 +169,23 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
     https://cellexplorer.org/
 
-    CellExplorer's new format contains a `session.mat` file, which has the following fields:
+    CellExplorer's new format contains a `basename.session.mat` file,
+    (where basename is isually a session identifier) containing the
+    following fields:
 
     * Sampling frequency
-    * Gains for both raw data (held in a file named session.dat) and lfp (located in session.lfp)
-    * Dtype for both raw data and lfp.
+    * Gains
+    * Dtype
 
     Link to the documentation detailing the file's structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
-    If the binary file is available (session.dat or session.lfp), the interface will use the
-    `BinaryRecordingExtractor` from spikeinterface to load the data. Otherwise, it will use the
-    `NumpyRecording` extractor to create a dummy extractor that only contains channel metadata.
-    This can be used to add the metadata to nwb using `write_electrical_series=False` as a conversion option.
+    If the binary file is available (basename.dat or basename.lfp),
+    the interface will use the `BinaryRecordingExtractor` object from spikeinterface
+    to load the data.
 
-    The metadata for this electrode is also extracted from the `session.mat` file. The logic of the extraction is
-    described on the function:
+    The metadata for this electrode is also extracted from the `basename.session.mat`
+    file. The logic of the extraction is described on the function:
 
     `add_channel_metadata_to_recorder_from_session_file`.
 
@@ -201,7 +202,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     From the documentation we also know that channel data can also be found in the following files:
     * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
     * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
-    * `basename.ccf.channelinfo.mat`: Allen Institute’s Common Coordinate Framework (CCF)
+    * `basename.ccf.channelinfo.mat`: Allen Institute's Common Coordinate Framework (CCF)
 
     Detailed information can be found in the following link
     https://cellexplorer.org/datastructure/data-structure-and-format/#channels
@@ -240,34 +241,22 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         # Channels in CellExplorer are 1-indexed
         channel_ids = [str(1 + i) for i in range(num_channels)]
         binary_file_path = self.folder_path / f"{self.session}.{self.binary_file_extension}"
-        if binary_file_path.is_file():
-            from spikeinterface.core.binaryrecordingextractor import (
-                BinaryRecordingExtractor,
-            )
+        assert binary_file_path.is_file(), f"Binary file {binary_file_path.name} does not exist in `folder_path`"
+        from spikeinterface.core.binaryrecordingextractor import (
+            BinaryRecordingExtractor,
+        )
 
-            self.recording_extractor = BinaryRecordingExtractor(
-                file_paths=[binary_file_path],
-                sampling_frequency=sampling_frequency,
-                num_chan=num_channels,
-                dtype=dtype,
-                t_starts=None,
-                file_offset=0,
-                gain_to_uV=gains_to_uv,
-                offset_to_uV=None,
-                channel_ids=channel_ids,
-            )
-        else:
-            from spikeinterface.core.numpyextractors import NumpyRecording
-
-            traces_list = [np.empty(shape=(1, num_channels))]
-            dummy_recording = NumpyRecording(
-                traces_list=traces_list,
-                sampling_frequency=sampling_frequency,
-                channel_ids=channel_ids,
-            )
-
-            self.recording_extractor = dummy_recording
-            self.recording_extractor.set_channel_gains(channel_ids=channel_ids, gains=np.ones(num_channels) * gain)
+        self.recording_extractor = BinaryRecordingExtractor(
+            file_paths=[binary_file_path],
+            sampling_frequency=sampling_frequency,
+            num_chan=num_channels,
+            dtype=dtype,
+            t_starts=None,
+            file_offset=0,
+            gain_to_uV=gains_to_uv,
+            offset_to_uV=None,
+            channel_ids=channel_ids,
+        )
 
         self.recording_extractor = add_channel_metadata_to_recorder_from_session_file(
             recording_extractor=self.recording_extractor, session_path=self.folder_path
