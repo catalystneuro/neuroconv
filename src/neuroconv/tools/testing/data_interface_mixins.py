@@ -112,7 +112,7 @@ class DataInterfaceTestMixin:
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
-                self.nwbfile_path = str(self.save_directory / f"{self.__name__}_{num}.nwb")
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
                 self.run_conversion(nwbfile_path=self.nwbfile_path)
                 self.check_read_nwb(nwbfile_path=self.nwbfile_path)
 
