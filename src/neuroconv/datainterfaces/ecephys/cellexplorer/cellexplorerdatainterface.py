@@ -352,27 +352,15 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         file_path = Path(file_path)
 
-        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release.
-        import h5py
+        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release
+        from pymatreader import read_mat
 
-        try:
-            matlab_file = scipy.io.loadmat(file_name=str(file_path), simplify_cells=True)
-            if "spikes" not in matlab_file.keys():
-                raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
-            spikes_mat = matlab_file["spikes"]
-            assert isinstance(spikes_mat, dict), f"field `spikes` must be a dict, not {type(spikes_mat)}!"
+        matlab_file = read_mat(file_path)
 
-        except NotImplementedError:
-            matlab_file = h5py.File(name=file_path, mode="r")
-            if "spikes" not in matlab_file.keys():
-                raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
-            spikes_mat = matlab_file["spikes"]
-            assert isinstance(spikes_mat, h5py.Group), f"field `spikes` must be a Group, not {type(spikes_mat)}!"
-
+        if "spikes" not in matlab_file.keys():
+            raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
+        spikes_mat = matlab_file["spikes"]
         sampling_frequency = spikes_mat.get("sr", None)
-        sampling_frequency = (
-            sampling_frequency[()] if isinstance(sampling_frequency, h5py.Dataset) else sampling_frequency
-        )
 
         super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
