@@ -127,7 +127,7 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin, T
                     metadata=metadata,
                 )
 
-                # Test addition to recording extrator
+                # Test addition to recording extractor
                 recording_extractor = self.interface.recording_extractor
                 for key, expected_value in expected_channel_properties_recorder.items():
                     extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
