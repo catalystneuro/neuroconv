@@ -99,7 +99,7 @@ class TestCellEploreSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
                 self.case = num
                 self.test_kwargs = kwargs
                 self.interface = self.data_interface_cls(**self.test_kwargs)
-                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}.nwb")
+                self.nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_{num}_channel.nwb")
 
                 metadata = self.interface.get_metadata()
                 metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
