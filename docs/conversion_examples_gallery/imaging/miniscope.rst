@@ -20,7 +20,7 @@ into a single conversion.
     >>>
     >>> # The 'folder_path' is the path to the main Miniscope folder containing both the recording and behavioral data streams in separate subfolders.
     >>> folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
-    >>> converter = MiniscopeConverter(folder_path=folder_path)
+    >>> converter = MiniscopeConverter(folder_path=folder_path, verbose=False)
     >>>
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
@@ -31,4 +31,3 @@ into a single conversion.
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    NWB file saved at ...
