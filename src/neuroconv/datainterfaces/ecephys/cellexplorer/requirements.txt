@@ -1,1 +1,2 @@
 hdf5storage>=0.1.18
+pymatreader>=0.0.30
