@@ -12,6 +12,54 @@ from ....utils import FilePathType, FolderPathType
 
 
 def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPathType):
+    """
+    Main function to add channel metadata to a recording extractor from a CellExplorer session.
+    The metadata is added as channel properties to the recording extractor.
+
+    Parameters
+    ----------
+    recording_extractor : BaseRecording from spikeinterface
+        The recording extractor to which the metadata will be added.
+    folder_path : str or Path
+        The path to the directory containing the CellExplorer session.
+
+    Returns
+    -------
+    RecordingExtractor
+        The same recording extractor passed in the `recording_extractor` argument, but with added metadata as
+        channel properties.
+
+    Notes
+    -----
+    The metadata for the channels is extracted from the `basename.session.mat`
+    file. The logic of the extraction is described on the function:
+
+    `add_channel_metadata_to_recorder_from_session_file`.
+
+    Note that, while all the new data produced by CellExplorer should have a
+    `session.mat` file,  it is not clear if all the channel metadata is always
+    available.
+
+    Besides, the current implementation also supports extracting channel metadata
+    from the `chanMap.mat` file used by Kilosort. The logic of the extraction is
+    described on the function:
+
+    `add_channel_metadata_to_recorder_from_channel_map_file`.
+
+    Bear in mind that this file is not always available for all datasets.
+
+    From the documentation we also know that channel data can also be found in the following files:
+    * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
+    * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
+    * `basename.ccf.channelinfo.mat`: Allen Institute's Common Coordinate Framework (CCF)
+
+    Detailed information can be found in the following link
+    https://cellexplorer.org/datastructure/data-structure-and-format/#channels
+
+    Future versions of this function will support the extraction of this metadata from these files as well
+
+    """
+
     recording_extractor = add_channel_metadata_to_recorder_from_session_file(
         recording_extractor=recording_extractor, folder_path=folder_path
     )
@@ -28,7 +76,8 @@ def add_channel_metadata_to_recorder_from_session_file(
     folder_path: FolderPathType,
 ):
     """
-    Extracts channel metadata from the CellExplorer's `session.mat` file and adds it to the given recording extractor.
+    Extracts channel metadata from the CellExplorer's `session.mat` file and adds
+    it to the given recording extractor as properties.
 
     The metadata includes electrode groups, channel locations, and brain regions. The function will  skip addition
     if the `session.mat` file is not found in the given session path. This is done to support calling the
@@ -116,7 +165,8 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
     folder_path: FolderPathType,
 ):
     """
-    Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds it to the given recording extractor.
+    Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds
+    the properties to the given recording extractor as channel properties.
 
     The metadata includes channel groups, channel locations, and channel names. The function will skip addition of
     properties if the `chanMap.mat` file is not found in the given session path.
@@ -191,7 +241,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     rich metadata about the session. basename is the name of the session
     folder / directory and works as a session identifier.
 
-    Link to the documentation detailing the file's structure:
+    Link to the documentation detailing the `basename.session.mat` structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
     Specifically, we can use the following fields from `basename.session.mat`
@@ -205,32 +255,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Where the binary file is named `basename.dat` for the raw data and
     `basename.lfp` for lfp data.
 
-    The metadata for the channels is extracted from the `basename.session.mat`
-    file. The logic of the extraction is described on the function:
-
-    `add_channel_metadata_to_recorder_from_session_file`.
-
-    Note that, while all the new data produced by CellExplorer should have a
-    `session.mat` file,  it is not clear if all the channel metadata is always
-    available.
-
-    Besides, the current implementation also supports extracting channel metadata
-    from the `chanMap.mat` file used by Kilosort. The logic of the extraction is
-    described on the function:
-
-    `add_channel_metadata_to_recorder_from_channel_map_file`.
-
-    Bear in mind that this file is not always available for all datasets.
-
-    From the documentation we also know that channel data can also be found in the following files:
-    * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
-    * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
-    * `basename.ccf.channelinfo.mat`: Allen Institute's Common Coordinate Framework (CCF)
-
-    Detailed information can be found in the following link
-    https://cellexplorer.org/datastructure/data-structure-and-format/#channels
-
-    Future versions of this interface will support the extraction of this metadata from these files as well
+    The extraction of channel metadata is described in the function: `add_channel_metadata_to_recoder`
     """
 
     sampling_frequency_key = "sr"
@@ -250,9 +275,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         session_data_file_path = self.session_path / f"{self.session_id}.session.mat"
         assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
 
-        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
         from pymatreader import read_mat
 
+        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
         session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
         extracellular_data = session_data["extracellular"]
         num_channels = int(extracellular_data["nChannels"])
@@ -448,11 +473,6 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             dummy_recording_extractor = add_channel_metadata_to_recoder(
                 recording_extractor=dummy_recording_extractor, folder_path=self.session_path
             )
-
-            # Need a time vector for the recording extractor
-            # last_spikes_frame = self.sorting_extractor.get_all_spike_trains()[0][0][-1]
-            # time_vector = np.arange(last_spikes_frame + 1) / sampling_frequency
-            # dummy_recording_extractor._recording_segments[0].time_vector = time_vector
 
         return dummy_recording_extractor
 
