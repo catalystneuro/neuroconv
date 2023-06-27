@@ -111,7 +111,7 @@ class TestCellEploreSortingInterface(SortingExtractorInterfaceTestMixin, TestCas
                 )
 
                 # Test that the registered recording has the ``
-                recording_extractor = self.interface.sorting_extractor._recording
+                recording_extractor = self.interface.generate_recording_with_channel_metadata()
                 for key, expected_value in expected_channel_properties_recorder.items():
                     extracted_value = recording_extractor.get_channel_property(channel_id=channel_id, key=key)
                     if key == "location":

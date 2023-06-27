@@ -264,8 +264,8 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             add_electrodes,
         )
 
-        if self.sorting_extractor.has_recording():
-            recording = self.sorting_extractor._recording
+        if hasattr(self, "generate_recording_with_channel_metadata"):
+            recording = self.generate_recording_with_channel_metadata()
         else:
             electrodes_metadata = metadata.get("Ecephys", dict()).get("Electrodes", list())
             if electrodes_metadata:
