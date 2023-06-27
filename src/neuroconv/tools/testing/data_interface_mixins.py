@@ -8,6 +8,7 @@ from typing import List, Optional, Type, Union
 import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
 from jsonschema.validators import Draft7Validator, validate
+from ndx_miniscope import Miniscope
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
@@ -678,3 +679,29 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
                 self.check_set_aligned_segment_starting_times()
 
                 self.check_nwbfile_temporal_alignment()
+
+
+class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            assert self.device_name in nwbfile.devices
+            device = nwbfile.devices[self.device_name]
+            assert isinstance(device, Miniscope)
+            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_name]
+            assert imaging_plane.device.name == self.device_name
+
+            # Check OnePhotonSeries
+            assert self.photon_series_name in nwbfile.acquisition
+            one_photon_series = nwbfile.acquisition[self.photon_series_name]
+            assert one_photon_series.unit == "px"
+            assert one_photon_series.data.shape == (15, 752, 480)
+            assert one_photon_series.data.dtype == np.uint8
+            assert one_photon_series.rate is None
+            assert one_photon_series.starting_frame is None
+            assert one_photon_series.timestamps.shape == (15,)
+
+            imaging_extractor = self.interface.imaging_extractor
+            times_from_extractor = imaging_extractor._times
+            assert_array_equal(one_photon_series.timestamps, times_from_extractor)
