@@ -77,6 +77,7 @@ from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
+from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
@@ -139,6 +140,7 @@ interface_list = [
     ScanImageImagingInterface,
     BrukerTiffImagingInterface,
     MicroManagerTiffImagingInterface,
+    MiniscopeImagingInterface,
     # Behavior
     VideoInterface,
     AudioInterface,

@@ -1,9 +1,11 @@
 import platform
 from datetime import datetime
+from pathlib import Path
 from unittest import TestCase, skipIf
 
 import numpy as np
 from dateutil.tz import tzoffset
+from hdmf.testing import TestCase as hdmf_TestCase
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
@@ -11,12 +13,14 @@ from neuroconv.datainterfaces import (
     BrukerTiffImagingInterface,
     Hdf5ImagingInterface,
     MicroManagerTiffImagingInterface,
+    MiniscopeImagingInterface,
     SbxImagingInterface,
     ScanImageImagingInterface,
     TiffImagingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     ImagingExtractorInterfaceTestMixin,
+    MiniscopeImagingInterfaceMixin,
 )
 
 try:
@@ -228,3 +232,50 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
             assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
 
         super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
+class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin, hdmf_TestCase):
+    data_interface_cls = MiniscopeImagingInterface
+    interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.device_name = "Miniscope"
+        cls.imaging_plane_name = "ImagingPlane"
+        cls.photon_series_name = "OnePhotonSeries"
+
+        cls.device_metadata = dict(
+            name=cls.device_name,
+            compression="FFV1",
+            deviceType="Miniscope_V3",
+            frameRate="15FPS",
+            framesPerFile=1000,
+            gain="High",
+            led0=47,
+        )
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(
+            metadata["NWBFile"]["session_start_time"],
+            datetime(2021, 10, 7, 15, 3, 28, 635),
+        )
+        self.assertEqual(metadata["Ophys"]["Device"][0], self.device_metadata)
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        self.assertEqual(imaging_plane_metadata["name"], self.imaging_plane_name)
+        self.assertEqual(imaging_plane_metadata["device"], self.device_name)
+        self.assertEqual(imaging_plane_metadata["imaging_rate"], 15.0)
+
+        one_photon_series_metadata = metadata["Ophys"]["OnePhotonSeries"][0]
+        self.assertEqual(one_photon_series_metadata["name"], self.photon_series_name)
+        self.assertEqual(one_photon_series_metadata["unit"], "px")
+
+    def run_custom_checks(self):
+        self.check_incorrect_folder_structure_raises()
+
+    def check_incorrect_folder_structure_raises(self):
+        folder_path = Path(self.interface_kwargs["folder_path"]) / "15_03_28/BehavCam_2/"
+        with self.assertRaisesWith(
+            exc_type=AssertionError, exc_msg="The main folder should contain at least one subfolder named 'Miniscope'."
+        ):
+            self.data_interface_cls(folder_path=folder_path)
