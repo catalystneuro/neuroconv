@@ -19,7 +19,7 @@ into a single conversion.
     >>> from neuroconv.converters import MiniscopeConverter
     >>>
     >>> # The 'folder_path' is the path to the main Miniscope folder containing both the recording and behavioral data streams in separate subfolders.
-    >>> folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"
+    >>> folder_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
     >>> converter = MiniscopeConverter(folder_path=folder_path)
     >>>
     >>> metadata = converter.get_metadata()
