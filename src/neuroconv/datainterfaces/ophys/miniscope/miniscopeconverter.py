@@ -1,16 +1,23 @@
 from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
-from ....nwbconverter import ConverterPipe
+from ....nwbconverter import NWBConverter
 from ....utils import FolderPathType
 
 
-class MiniscopeConverterPipe(ConverterPipe):
+class MiniscopeConverter(NWBConverter):
     """Primary conversion class for handling Miniscope data streams."""
 
-    def __init__(
-        self,
-        folder_path: FolderPathType,
-        verbose: bool = True,
-    ):
+    data_interface_classes = dict(
+        Miniscope=MiniscopeImagingInterface,
+        BehavCam=MiniscopeBehaviorInterface,
+    )
+
+    @classmethod
+    def get_source_schema(cls):
+        source_schema = super().get_source_schema()
+        source_schema.update(additionalProperties=True)
+        return source_schema
+
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         """
         Initializes the data interfaces for the Miniscope recording and behavioral data stream.
 
@@ -40,9 +47,8 @@ class MiniscopeConverterPipe(ConverterPipe):
         verbose : bool, default: True
             Controls verbosity.
         """
-
-        data_interfaces = dict(
-            Miniscope=MiniscopeImagingInterface(folder_path=folder_path),
-            BehavCam=MiniscopeBehaviorInterface(folder_path=folder_path),
+        source_data = dict(
+            Miniscope=dict(folder_path=folder_path),
+            BehavCam=dict(folder_path=folder_path),
         )
-        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+        super().__init__(source_data=source_data, verbose=verbose)
