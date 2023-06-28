@@ -200,21 +200,29 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
 
     session_path = Path(folder_path)
     chan_map_file_path = session_path / f"chanMap.mat"
-    if chan_map_file_path.is_file():
-        from pymatreader import read_mat
+    if not chan_map_file_path.is_file():
+        return recording_extractor
 
-        channel_map_data = read_mat(chan_map_file_path)
-        channel_groups = channel_map_data["connected"]
+    recorder_properties = recording_extractor.get_property_keys()
 
-        channel_ids = channel_map_data["chanMap"]
-        channel_ids = [str(channel_id) for channel_id in channel_ids]
+    from pymatreader import read_mat
 
+    channel_map_data = read_mat(chan_map_file_path)
+
+    channel_ids = channel_map_data["chanMap"]
+    channel_ids = [str(channel_id) for channel_id in channel_ids]
+
+    add_group_to_recorder = "group" not in recorder_properties and "kcoords" in channel_map_data
+    if add_group_to_recorder:
+        channel_groups = channel_map_data["kcoords"]
+        recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
+
+    add_coordinates_to_recorder = "location" not in recorder_properties and "xcoords" in channel_map_data
+    if add_coordinates_to_recorder:
         x_coords = channel_map_data["xcoords"]
         y_coords = channel_map_data["ycoords"]
         locations = np.array((x_coords, y_coords)).T.astype("float32")
         recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
-
-        recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
 
     return recording_extractor
 
