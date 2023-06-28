@@ -266,24 +266,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
         if hasattr(self, "generate_recording_with_channel_metadata"):
             recording = self.generate_recording_with_channel_metadata()
-        else:
-            electrodes_metadata = metadata.get("Ecephys", dict()).get("Electrodes", list())
-            if electrodes_metadata:
-                n_channels = max([len(x["data"]) for x in metadata["Ecephys"]["Electrodes"]])
-                from spikeinterface import NumpyRecording
-
-                recording = NumpyRecording(
-                    traces_list=[np.empty(shape=(1, n_channels))],
-                    sampling_frequency=self.sorting_extractor.get_sampling_frequency(),
-                )
-            else:
-                import warnings
-
-                warnings.warn(
-                    "No recording found in sorting extractor or electrodes_metadata in the metadata metadata"
-                    "Skipping addition of recording metadata to the NWBFile."
-                )
-                return None
 
         add_devices(nwbfile=nwbfile, metadata=metadata)
         add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
