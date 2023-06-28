@@ -267,9 +267,9 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         if hasattr(self, "generate_recording_with_channel_metadata"):
             recording = self.generate_recording_with_channel_metadata()
 
-        add_devices(nwbfile=nwbfile, metadata=metadata)
-        add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
-        add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_devices(nwbfile=nwbfile, metadata=metadata)
+            add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     def add_to_nwbfile(
         self,
