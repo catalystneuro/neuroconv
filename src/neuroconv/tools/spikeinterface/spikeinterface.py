@@ -18,12 +18,7 @@ from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
-from ...utils import (
-    DeepDict,
-    FilePathType,
-    calculate_regular_series_rate,
-    dict_deep_update,
-)
+from ...utils import DeepDict, FilePathType, dict_deep_update, is_series_regular
 
 
 def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
@@ -660,14 +655,14 @@ def add_electrical_series(
     if recording.has_time_vector(segment_index=segment_index):
         # First we check if the recording has a a time vector to avoid creating artificial timestamps
         timestamps = recording.get_times(segment_index=segment_index)
-        rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
+        series_is_regular = is_series_regular(series=timestamps)
         recording_t_start = timestamps[0]
     else:
-        rate = recording.get_sampling_frequency()
+        series_is_regular = True
         recording_t_start = recording._recording_segments[segment_index].t_start or 0
 
     starting_time = starting_time if starting_time is not None else 0
-    if rate:
+    if series_is_regular:
         starting_time = float(starting_time + recording_t_start)
         # Note that we call the sampling frequency again because the estimated rate might be different from the
         # sampling frequency of the recording extractor by some epsilon.

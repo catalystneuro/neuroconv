@@ -1,4 +1,4 @@
-from .checks import calculate_regular_series_rate
+from .checks import calculate_regular_series_rate, is_series_regular
 from .dict import (
     DeepDict,
     append_replace_dict_in_list,
