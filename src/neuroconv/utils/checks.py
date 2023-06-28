@@ -1,4 +1,5 @@
-from typing import Optional, Real, Sequence
+from numbers import Real
+from typing import Optional, Sequence
 
 import numpy as np
 
