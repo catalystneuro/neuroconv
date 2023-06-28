@@ -33,6 +33,7 @@
 
 * Avoid modifying the passed `metadata` structure via `deep_dict_update` in `make_nwbfile_from_metadata`.  [PR #476](https://github.com/catalystneuro/neuroconv/pull/476)
 
+* Added a test for series regularity (constant sampling rate) that is cheaper than calculating the `np.diff` over the whole data. [PR #501](https://github.com/catalystneuro/neuroconv/pull/501)
 ### Testing
 
 * Added gin test for `CellExplorerRecordingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
