@@ -12,6 +12,54 @@ from ....utils import FilePathType, FolderPathType
 
 
 def add_channel_metadata_to_recoder(recording_extractor, folder_path: FolderPathType):
+    """
+    Main function to add channel metadata to a recording extractor from a CellExplorer session.
+    The metadata is added as channel properties to the recording extractor.
+
+    Parameters
+    ----------
+    recording_extractor : BaseRecording from spikeinterface
+        The recording extractor to which the metadata will be added.
+    folder_path : str or Path
+        The path to the directory containing the CellExplorer session.
+
+    Returns
+    -------
+    RecordingExtractor
+        The same recording extractor passed in the `recording_extractor` argument, but with added metadata as
+        channel properties.
+
+    Notes
+    -----
+    The metadata for the channels is extracted from the `basename.session.mat`
+    file. The logic of the extraction is described on the function:
+
+    `add_channel_metadata_to_recorder_from_session_file`.
+
+    Note that, while all the new data produced by CellExplorer should have a
+    `session.mat` file,  it is not clear if all the channel metadata is always
+    available.
+
+    Besides, the current implementation also supports extracting channel metadata
+    from the `chanMap.mat` file used by Kilosort. The logic of the extraction is
+    described on the function:
+
+    `add_channel_metadata_to_recorder_from_channel_map_file`.
+
+    Bear in mind that this file is not always available for all datasets.
+
+    From the documentation we also know that channel data can also be found in the following files:
+    * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
+    * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
+    * `basename.ccf.channelinfo.mat`: Allen Institute's Common Coordinate Framework (CCF)
+
+    Detailed information can be found in the following link
+    https://cellexplorer.org/datastructure/data-structure-and-format/#channels
+
+    Future versions of this function will support the extraction of this metadata from these files as well
+
+    """
+
     recording_extractor = add_channel_metadata_to_recorder_from_session_file(
         recording_extractor=recording_extractor, folder_path=folder_path
     )
@@ -28,7 +76,8 @@ def add_channel_metadata_to_recorder_from_session_file(
     folder_path: FolderPathType,
 ):
     """
-    Extracts channel metadata from the CellExplorer's `session.mat` file and adds it to the given recording extractor.
+    Extracts channel metadata from the CellExplorer's `session.mat` file and adds
+    it to the given recording extractor as properties.
 
     The metadata includes electrode groups, channel locations, and brain regions. The function will  skip addition
     if the `session.mat` file is not found in the given session path. This is done to support calling the
@@ -92,21 +141,36 @@ def add_channel_metadata_to_recorder_from_session_file(
             group_labels = [[f"Group {index + 1}"] * len(channels[index]) for index in range(num_electrode_groups)]
             channels = np.concatenate(channels).astype("int")
             values = np.concatenate(group_labels)
-            corresponding_channels_ids = [str(channel) for channel in channels]
-            recording_extractor.set_property(key="group", ids=corresponding_channels_ids, values=values)
+            corresponding_channel_ids = [str(channel) for channel in channels]
+            recording_extractor.set_property(key="group", ids=corresponding_channel_ids, values=values)
 
     if "brainRegions" in session_data:
         brain_region_data = session_data["brainRegions"]
+        # The data in the `brainRegions` field is a struct where the keys are the brain region ids and the values
+        # are dictionaries with the brain region data.
+        # Each of those inner diciontaries has a key called "channels" whose values is an array of channel ids
+
+        channel_id_to_brain_region = dict()
         for brain_region_id, brain_region_dict in brain_region_data.items():
-            brain_region_name = brain_region_dict["brainRegion"]
+            # Also, each inner dictionary can have a key called "brainRegion" which is the name of the brain region.
+            brain_region_name = brain_region_dict.get("brainRegion", brain_region_id)
             channels = brain_region_dict["channels"].astype("int")
-            corresponding_channel_ids = [str(id) for id in channels]
-            values = [brain_region_name] * len(channel_ids)
-            recording_extractor.set_property(
-                key="brain_area",
-                ids=corresponding_channel_ids,
-                values=values,
-            )
+            channels = [str(channel) for channel in channels]
+            for channel_id in channels:
+                # This is a fine grained brain region data.
+                # Channels are assigned to more than one brain region (e.g. CA1sp and CA1so)
+                if channel_id not in channel_id_to_brain_region:
+                    channel_id_to_brain_region[channel_id] = brain_region_name
+                else:
+                    channel_id_to_brain_region[channel_id] += " - " + brain_region_name
+
+        ids = list(channel_id_to_brain_region.keys())
+        values = list(channel_id_to_brain_region.values())
+        recording_extractor.set_property(
+            key="brain_area",
+            ids=ids,
+            values=values,
+        )
 
     return recording_extractor
 
@@ -116,7 +180,8 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
     folder_path: FolderPathType,
 ):
     """
-    Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds it to the given recording extractor.
+    Extracts channel metadata from the `chanMap.mat` file used by Kilosort and adds
+    the properties to the given recording extractor as channel properties.
 
     The metadata includes channel groups, channel locations, and channel names. The function will skip addition of
     properties if the `chanMap.mat` file is not found in the given session path.
@@ -150,28 +215,29 @@ def add_channel_metadata_to_recorder_from_channel_map_file(
 
     session_path = Path(folder_path)
     chan_map_file_path = session_path / f"chanMap.mat"
-    if chan_map_file_path.is_file():
-        from pymatreader import read_mat
+    if not chan_map_file_path.is_file():
+        return recording_extractor
 
-        channel_map_data = read_mat(chan_map_file_path)
-        channel_groups = channel_map_data["connected"]
+    recorder_properties = recording_extractor.get_property_keys()
 
-        channel_indices = channel_map_data["chanMap0ind"]
-        channel_ids = [str(channel_indices[i]) for i in channel_indices]
+    from pymatreader import read_mat
 
-        channel_name = [
-            f"ch{channel_index}grp{channel_group}"
-            for channel_index, channel_group in zip(channel_indices, channel_groups)
-        ]
-        base_ids = recording_extractor.get_channel_ids()
-        recording_extractor = recording_extractor.channel_slice(channel_ids=base_ids, renamed_channel_ids=channel_ids)
+    channel_map_data = read_mat(chan_map_file_path)
+
+    channel_ids = channel_map_data["chanMap"]
+    channel_ids = [str(channel_id) for channel_id in channel_ids]
+
+    add_group_to_recorder = "group" not in recorder_properties and "kcoords" in channel_map_data
+    if add_group_to_recorder:
+        channel_groups = channel_map_data["kcoords"]
+        recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
+
+    add_coordinates_to_recorder = "location" not in recorder_properties and "xcoords" in channel_map_data
+    if add_coordinates_to_recorder:
         x_coords = channel_map_data["xcoords"]
         y_coords = channel_map_data["ycoords"]
         locations = np.array((x_coords, y_coords)).T.astype("float32")
         recording_extractor.set_channel_locations(channel_ids=channel_ids, locations=locations)
-
-        recording_extractor.set_property(key="channel_name", values=channel_name)
-        recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
 
     return recording_extractor
 
@@ -198,7 +264,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     rich metadata about the session. basename is the name of the session
     folder / directory and works as a session identifier.
 
-    Link to the documentation detailing the file's structure:
+    Link to the documentation detailing the `basename.session.mat` structure:
     https://cellexplorer.org/datastructure/data-structure-and-format/#session-metadata
 
     Specifically, we can use the following fields from `basename.session.mat`
@@ -212,32 +278,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     Where the binary file is named `basename.dat` for the raw data and
     `basename.lfp` for lfp data.
 
-    The metadata for the channels is extracted from the `basename.session.mat`
-    file. The logic of the extraction is described on the function:
-
-    `add_channel_metadata_to_recorder_from_session_file`.
-
-    Note that, while all the new data produced by CellExplorer should have a
-    `session.mat` file,  it is not clear if all the channel metadata is always
-    available.
-
-    Besides, the current implementation also supports extracting channel metadata
-    from the `chanMap.mat` file used by Kilosort. The logic of the extraction is
-    described on the function:
-
-    `add_channel_metadata_to_recorder_from_channel_map_file`.
-
-    Bear in mind that this file is not always available for all datasets.
-
-    From the documentation we also know that channel data can also be found in the following files:
-    * `basename.ChannelName.channelinfo.mat`: general data container for channel-wise dat
-    * `basename.chanCoords.channelinfo.mat`: contains the coordinates of the electrodes in the probe
-    * `basename.ccf.channelinfo.mat`: Allen Institute's Common Coordinate Framework (CCF)
-
-    Detailed information can be found in the following link
-    https://cellexplorer.org/datastructure/data-structure-and-format/#channels
-
-    Future versions of this interface will support the extraction of this metadata from these files as well
+    The extraction of channel metadata is described in the function: `add_channel_metadata_to_recoder`
     """
 
     sampling_frequency_key = "sr"
@@ -311,7 +352,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     sampling_frequency_key = "srLfp"
     binary_file_extension = "lfp"
 
-    def __init__(self, folder_path: FolderPathType, verbose=True, es_key: str = "ElectricalSeriesLFP"):
+    def __init__(self, folder_path: FolderPathType, verbose: bool = True, es_key: str = "ElectricalSeriesLFP"):
         super().__init__(folder_path, verbose, es_key)
 
     def add_to_nwbfile(
@@ -359,34 +400,22 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
 
         file_path = Path(file_path)
 
-        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release.
-        import h5py
+        # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release
+        from pymatreader import read_mat
 
-        try:
-            matlab_file = scipy.io.loadmat(file_name=str(file_path), simplify_cells=True)
-            if "spikes" not in matlab_file.keys():
-                raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
-            spikes_mat = matlab_file["spikes"]
-            assert isinstance(spikes_mat, dict), f"field `spikes` must be a dict, not {type(spikes_mat)}!"
+        matlab_file = read_mat(file_path)
 
-        except NotImplementedError:
-            matlab_file = h5py.File(name=file_path, mode="r")
-            if "spikes" not in matlab_file.keys():
-                raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
-            spikes_mat = matlab_file["spikes"]
-            assert isinstance(spikes_mat, h5py.Group), f"field `spikes` must be a Group, not {type(spikes_mat)}!"
-
+        if "spikes" not in matlab_file.keys():
+            raise KeyError(f"CellExplorer file '{file_path}' does not contain 'spikes' field.")
+        spikes_mat = matlab_file["spikes"]
         sampling_frequency = spikes_mat.get("sr", None)
-        sampling_frequency = (
-            sampling_frequency[()] if isinstance(sampling_frequency, h5py.Dataset) else sampling_frequency
-        )
 
         super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 
-        session_path = Path(file_path).parent
-        session_id = session_path.stem
+        self.session_path = Path(file_path).parent
+        self.session_id = self.session_path.stem
 
         assert (
             spikes_matfile_path.is_file()
@@ -428,8 +457,9 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                 self.sorting_extractor.set_property(
                     ids=unit_ids, key="location", values=[str(x[0]) for x in cell_info["region"][0][0]]
                 )
+
         celltype_mapping = {"pE": "excitatory", "pI": "inhibitory", "[]": "unclassified"}
-        celltype_file_path = session_path / f"{session_id}.CellClass.cellinfo.mat"
+        celltype_file_path = self.session_path / f"{self.session_id}.CellClass.cellinfo.mat"
         if celltype_file_path.is_file():
             celltype_info = scipy.io.loadmat(celltype_file_path).get("CellClass", np.empty(0))
             if "label" in celltype_info.dtype.names:
@@ -438,6 +468,36 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     key="cell_type",
                     values=[str(celltype_mapping[str(x[0])]) for x in celltype_info["label"][0][0][0]],
                 )
+
+    def generate_recording_with_channel_metadata(self):
+        session_data_file_path = self.session_path / f"{self.session_id}.session.mat"
+        if session_data_file_path.is_file():
+            from pymatreader import read_mat
+
+            ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
+            session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
+            extracellular_data = session_data["extracellular"]
+            num_channels = int(extracellular_data["nChannels"])
+            num_samples = int(extracellular_data["nSamples"])
+            sampling_frequency = int(extracellular_data["sr"])
+
+            # Create a dummy recording extractor
+            from spikeinterface.core.numpyextractors import NumpyRecording
+
+            traces_list = [np.empty(shape=(1, num_channels))]
+            channel_ids = [str(1 + i) for i in range(num_channels)]
+            dummy_recording_extractor = NumpyRecording(
+                traces_list=traces_list,
+                sampling_frequency=sampling_frequency,
+                channel_ids=channel_ids,
+            )
+
+            # Add the channel metadata
+            dummy_recording_extractor = add_channel_metadata_to_recoder(
+                recording_extractor=dummy_recording_extractor, folder_path=self.session_path
+            )
+
+        return dummy_recording_extractor
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()

@@ -21,6 +21,7 @@
 
 * Added `MiniscopeBehaviorInterface` for Miniscope behavioral data. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the behavioral camera metadata,
   and an `ImageSeries` in external mode that is linked to the device. [PR #482](https://github.com/catalystneuro/neuroconv/pull/482)
+  * `CellExplorerSortingInterface` now supports adding channel metadata to the nwbfile with `write_ecephys_metadata=True` as a conversion option [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
 
 * Added `MiniscopeImagingInterface` for Miniscope imaging data stream. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the microscope device metadata,
   and the imaging data as `OnePhotonSeries`. [PR #468](https://github.com/catalystneuro/neuroconv/pull/468)
@@ -37,6 +38,10 @@
 * Added gin test for `CellExplorerRecordingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
     rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
     groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488).
+  * Added gin test for `CellExplorerSortingInterface`. CellExplorer's new format contains a `basename.session.mat` file containing
+  rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
+  groups, location and brain area [PR #494](https://github.com/catalystneuro/neuroconv/pull/494).
+
 
 
 
