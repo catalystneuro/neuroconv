@@ -141,21 +141,36 @@ def add_channel_metadata_to_recorder_from_session_file(
             group_labels = [[f"Group {index + 1}"] * len(channels[index]) for index in range(num_electrode_groups)]
             channels = np.concatenate(channels).astype("int")
             values = np.concatenate(group_labels)
-            corresponding_channels_ids = [str(channel) for channel in channels]
-            recording_extractor.set_property(key="group", ids=corresponding_channels_ids, values=values)
+            corresponding_channel_ids = [str(channel) for channel in channels]
+            recording_extractor.set_property(key="group", ids=corresponding_channel_ids, values=values)
 
     if "brainRegions" in session_data:
         brain_region_data = session_data["brainRegions"]
+        # The data in the `brainRegions` field is a struct where the keys are the brain region ids and the values
+        # are dictionaries with the brain region data.
+        # Each of those inner diciontaries has a key called "channels" whose values is an array of channel ids
+
+        channel_id_to_brain_region = dict()
         for brain_region_id, brain_region_dict in brain_region_data.items():
-            brain_region_name = brain_region_dict["brainRegion"]
+            # Also, each inner dictionary can have a key called "brainRegion" which is the name of the brain region.
+            brain_region_name = brain_region_dict.get("brainRegion", brain_region_id)
             channels = brain_region_dict["channels"].astype("int")
-            corresponding_channel_ids = [str(id) for id in channels]
-            values = [brain_region_name] * len(channel_ids)
-            recording_extractor.set_property(
-                key="brain_area",
-                ids=corresponding_channel_ids,
-                values=values,
-            )
+            channels = [str(channel) for channel in channels]
+            for channel_id in channels:
+                # This is a fine grained brain region data.
+                # Channels are assigned to more than one brain region (e.g. CA1sp and CA1so)
+                if channel_id not in channel_id_to_brain_region:
+                    channel_id_to_brain_region[channel_id] = brain_region_name
+                else:
+                    channel_id_to_brain_region[channel_id] += " - " + brain_region_name
+
+        ids = list(channel_id_to_brain_region.keys())
+        values = list(channel_id_to_brain_region.values())
+        recording_extractor.set_property(
+            key="brain_area",
+            ids=ids,
+            values=values,
+        )
 
     return recording_extractor
 
