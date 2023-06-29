@@ -21,14 +21,12 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ secrets.MY_GITHUB_USERNAME }}
           password: ${{ secrets.MY_GITHUB_TOKEN }}
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
           push: true  # Push is a shorthand for --output=type=registry
-          tags: |
-            ghcr.io/CatalystNeuro/NeuroConv:latest
-            ghcr.io/CatalystNeuro/NeuroConv:0.3.1  # TODO, figure out how to auto-set this
+          tags: ghcr.io/catalystneuro/neuroconv:dev
           context: docker
           file: dockerfiles/neuroconv_developer_build_dockerfile
