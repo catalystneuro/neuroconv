@@ -1,7 +1,9 @@
 # Behavior
+from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
-from .behavior.video.videodatainterface import MovieInterface, VideoInterface
+from .behavior.video.videodatainterface import VideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
@@ -16,7 +18,11 @@ from .ecephys.blackrock.blackrockdatainterface import (
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
 )
-from .ecephys.cellexplorer.cellexplorerdatainterface import CellExplorerSortingInterface
+from .ecephys.cellexplorer.cellexplorerdatainterface import (
+    CellExplorerLFPInterface,
+    CellExplorerRecordingInterface,
+    CellExplorerSortingInterface,
+)
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
@@ -34,12 +40,12 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
 )
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
-    OpenEphysSortingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
 from .ecephys.openephys.openephyslegacydatainterface import (
     OpenEphysLegacyRecordingInterface,
 )
+from .ecephys.openephys.openephyssortingdatainterface import OpenEphysSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
 from .ecephys.plexon.plexondatainterface import (
     PlexonRecordingInterface,
@@ -63,10 +69,15 @@ from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .icephys.abf.abfdatainterface import AbfInterface
 
 # Ophys
+from .ophys.brukertiff.brukertiffdatainterface import BrukerTiffImagingInterface
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.micromanagertiff.micromanagertiffdatainterface import (
+    MicroManagerTiffImagingInterface,
+)
+from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterface import ScanImageImagingInterface
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
@@ -92,6 +103,8 @@ interface_list = [
     IntanRecordingInterface,
     CEDRecordingInterface,
     CellExplorerSortingInterface,
+    CellExplorerRecordingInterface,
+    CellExplorerLFPInterface,
     BlackrockRecordingInterface,
     BlackrockSortingInterface,
     OpenEphysRecordingInterface,
@@ -125,11 +138,15 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
+    BrukerTiffImagingInterface,
+    MicroManagerTiffImagingInterface,
+    MiniscopeImagingInterface,
     # Behavior
-    MovieInterface,  # TO-DO: deprecate on April 2023
     VideoInterface,
+    AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
+    MiniscopeBehaviorInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,

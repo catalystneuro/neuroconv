@@ -19,7 +19,7 @@ class TestOpenEphysRecordingInterfaceRedirects(TestCase):
     def test_propagate_stream_name(self):
         folder_path = ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"
         exc_msg = "The selected stream 'AUX' is not in the available streams '['Signals CH']'!"
-        with self.assertRaisesWith(AssertionError, exc_msg=exc_msg):
+        with self.assertRaisesWith(ValueError, exc_msg=exc_msg):
             OpenEphysRecordingInterface(folder_path=folder_path, stream_name="AUX")
 
     def test_binary_format(self):

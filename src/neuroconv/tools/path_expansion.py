@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-from parse import parse
+from fparse import parse
 from pydantic import DirectoryPath, FilePath
 
 from ..utils import DeepDict
@@ -14,7 +14,8 @@ class AbstractPathExpander(abc.ABC):
     def extract_metadata(self, base_directory: DirectoryPath, format_: str):
         format_ = format_.replace("\\", os.sep)  # Actual character is a single back-slash; first is an escape for that
         format_ = format_.replace("/", os.sep)  # our f-string uses '/' to communicate os-independent separators
-        for filepath in self.list_directory(base_directory):
+
+        for filepath in self.list_directory(base_directory=Path(base_directory)):
             result = parse(format_, filepath)
             if result:
                 yield filepath, result.named
@@ -62,17 +63,22 @@ class AbstractPathExpander(abc.ABC):
         ...     )
         ... )
         """
+
+        session_keys = {"session_start_time", "session_id", "subject_id"}
+
         out = DeepDict()
         for interface, source_data in source_data_spec.items():
             for path_type in ("file_path", "folder_path"):
                 if path_type in source_data:
                     for path, metadata in self.extract_metadata(source_data["base_directory"], source_data[path_type]):
-                        key = tuple(sorted(metadata.items()))
+                        key = tuple((k, v) for k, v in sorted(metadata.items()) if k in session_keys)
                         out[key]["source_data"][interface][path_type] = os.path.join(
                             source_data["base_directory"], path
                         )  # return the absolute path
                         if "session_id" in metadata:
                             out[key]["metadata"]["NWBFile"]["session_id"] = metadata["session_id"]
+                        if "session_start_time" in metadata:
+                            out[key]["metadata"]["NWBFile"]["session_start_time"] = metadata["session_start_time"]
                         if "subject_id" in metadata:
                             out[key]["metadata"]["Subject"]["subject_id"] = metadata["subject_id"]
         return list(dict(out).values())
@@ -80,5 +86,6 @@ class AbstractPathExpander(abc.ABC):
 
 class LocalPathExpander(AbstractPathExpander):
     def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:
+        base_directory = Path(base_directory)
         assert base_directory.is_dir(), f"The specified 'base_directory' ({base_directory}) is not a directory!"
-        return (str(path.relative_to(base_directory)) for path in Path(base_directory).rglob("*"))
+        return (str(path.relative_to(base_directory)) for path in base_directory.rglob("*"))

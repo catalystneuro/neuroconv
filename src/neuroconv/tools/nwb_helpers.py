@@ -1,3 +1,4 @@
+import json
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
@@ -5,11 +6,13 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
+import jsonschema
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
 from ..utils import FilePathType, dict_deep_update
-from ..utils.dict import DeepDict
+from ..utils.dict import DeepDict, load_dict_from_file
+from ..utils.json_schema import validate_metadata
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -45,22 +48,31 @@ def get_default_nwbfile_metadata() -> DeepDict:
     return metadata
 
 
-def make_nwbfile_from_metadata(metadata: dict):
+def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
-    metadata = dict_deep_update(get_default_nwbfile_metadata(), metadata)
+
+    # Validate metadata
+    schema_path = Path(__file__).resolve().parent.parent / "schemas/base_metadata_schema.json"
+    base_metadata_schema = load_dict_from_file(file_path=schema_path)
+    validate_metadata(metadata=metadata, schema=base_metadata_schema)
+
     nwbfile_kwargs = metadata["NWBFile"]
-    if "Subject" in metadata:
-        # convert ISO 8601 string to datetime
-        if "date_of_birth" in metadata["Subject"] and isinstance(metadata["Subject"]["date_of_birth"], str):
-            metadata["Subject"]["date_of_birth"] = datetime.fromisoformat(metadata["Subject"]["date_of_birth"])
-        nwbfile_kwargs.update(subject=Subject(**metadata["Subject"]))
     # convert ISO 8601 string to datetime
-    assert "session_start_time" in nwbfile_kwargs, (
-        "'session_start_time' was not found in metadata['NWBFile']! Please add the correct start time of the "
-        "session in ISO8601 format (%Y-%m-%dT%H:%M:%S) to this key of the metadata."
-    )
-    if isinstance(nwbfile_kwargs.get("session_start_time", None), str):
-        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
+    if isinstance(nwbfile_kwargs.get("session_start_time"), str):
+        nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(nwbfile_kwargs["session_start_time"])
+    if "session_description" not in nwbfile_kwargs:
+        nwbfile_kwargs["session_description"] = "No description."
+    if "identifier" not in nwbfile_kwargs:
+        nwbfile_kwargs["identifier"] = str(uuid.uuid4())
+    if "Subject" in metadata:
+        nwbfile_kwargs["subject"] = metadata["Subject"]
+        # convert ISO 8601 string to datetime
+        if "date_of_birth" in nwbfile_kwargs["subject"] and isinstance(nwbfile_kwargs["subject"]["date_of_birth"], str):
+            nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(
+                nwbfile_kwargs["subject"]["date_of_birth"]
+            )
+        nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
+
     return NWBFile(**nwbfile_kwargs)
 
 
@@ -136,7 +148,7 @@ def make_or_load_nwbfile(
     metadata: dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite: bool, optional
-        Whether or not to overwrite the NWBFile if one exists at the nwbfile_path.
+        Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         The default is False (append mode).
     verbose: bool, optional
         If 'nwbfile_path' is specified, informs user after a successful write operation.

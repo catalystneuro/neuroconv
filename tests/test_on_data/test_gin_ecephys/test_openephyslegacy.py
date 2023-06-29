@@ -16,12 +16,12 @@ class TestOpenEphysLegacyConversions(TestCase):
 
     def test_openephyslegacy_streams(self):
         stream_names = self.interface.get_stream_names(folder_path=self.folder_path)
-        self.assertEqual(stream_names, ["Signals CH"])
-        self.assertEqual(self.interface.source_data["stream_name"], "Signals CH")
+        self.assertCountEqual(first=stream_names, second=["Signals CH"])
+        assert self.interface.source_data["stream_name"] is None
 
     def test_openephyslegacy_raises(self):
         with self.assertRaisesWith(
-            AssertionError,
+            ValueError,
             "The selected stream 'AUX' is not in the available streams '['Signals CH']'!",
         ):
             OpenEphysLegacyRecordingInterface(folder_path=self.folder_path, stream_name="AUX")

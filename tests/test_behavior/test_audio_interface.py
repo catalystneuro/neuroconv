@@ -15,6 +15,7 @@ from scipy.io.wavfile import read, write
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
+from neuroconv.tools.testing.data_interface_mixins import AudioInterfaceTestMixin
 from neuroconv.utils import FilePathType
 
 
@@ -37,14 +38,14 @@ def create_audio_files(
     return audio_file_names
 
 
-class TestAudioInterface(TestCase):
+class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
         cls.num_frames = 10000
         cls.num_audio_files = 3
         cls.sampling_rate = 500
-        cls.starting_times = [0.0, 20.0, 40.0]
+        cls.aligned_segment_starting_times = [0.0, 20.0, 40.0]
 
         cls.test_dir = Path(mkdtemp())
         cls.file_paths = create_audio_files(
@@ -53,10 +54,12 @@ class TestAudioInterface(TestCase):
             sampling_rate=cls.sampling_rate,
             num_frames=cls.num_frames,
         )
+        cls.data_interface_cls = AudioInterface
+        cls.interface_kwargs = dict(file_paths=[cls.file_paths[0]])
 
     def setUp(self):
         self.nwbfile_path = str(self.test_dir / "audio_test.nwb")
-        self.nwb_converter = self.create_audio_converter()
+        self.create_audio_converter()
         self.metadata = self.nwb_converter.get_metadata()
         self.metadata["NWBFile"].update(session_start_time=self.session_start_time)
 
@@ -72,7 +75,11 @@ class TestAudioInterface(TestCase):
             data_interface_classes = dict(Audio=AudioInterface)
 
         source_data = dict(Audio=dict(file_paths=self.file_paths))
-        return AudioTestNWBConverter(source_data)
+        self.nwb_converter = AudioTestNWBConverter(source_data)
+        self.interface = self.nwb_converter.data_interface_objects["Audio"]
+        self.interface.set_aligned_segment_starting_times(
+            aligned_segment_starting_times=self.aligned_segment_starting_times
+        )
 
     def test_unsupported_format(self):
         exc_msg = "The currently supported file format for audio is WAV file. Some of the provided files does not match this format: ['.test']."
@@ -87,23 +94,22 @@ class TestAudioInterface(TestCase):
         self.assertEqual(len(audio_metadata), self.num_audio_files)
 
     def test_incorrect_write_as(self):
-        expected_error_message = """'test' is not one of ['stimulus', 'acquisition']
+        expected_error_message = """'bad_option' is not one of ['stimulus', 'acquisition']
 
 Failed validating 'enum' in schema['properties']['Audio']['properties']['write_as']:
     {'default': 'stimulus', 'enum': ['stimulus', 'acquisition']}
 
 On instance['Audio']['write_as']:
-    'test'"""
+    'bad_option'"""
         with self.assertRaisesWith(exc_type=jsonschema.exceptions.ValidationError, exc_msg=expected_error_message):
-            conversion_opts = dict(Audio=dict(write_as="test", starting_times=self.starting_times))
             self.nwb_converter.run_conversion(
                 nwbfile_path=self.nwbfile_path,
                 metadata=self.metadata,
-                conversion_options=conversion_opts,
+                conversion_options=dict(Audio=dict(write_as="bad_option")),
             )
 
     def test_write_as_acquisition(self):
-        conversion_opts = dict(Audio=dict(write_as="acquisition", starting_times=self.starting_times))
+        conversion_opts = dict(Audio=dict(write_as="acquisition"))
         nwbfile_path = str(self.test_dir / "audio_write_as_acquisition.nwb")
         self.nwb_converter.run_conversion(
             nwbfile_path=nwbfile_path,
@@ -122,29 +128,22 @@ On instance['Audio']['write_as']:
     def test_incomplete_metadata(self):
         metadata = deepcopy(self.metadata)
         metadata["Behavior"].update(Audio=[dict(name="Audio", description="Acoustic waveform series.")])
-        expected_error_message = "Incomplete metadata, the number of metadata for Audio is (1) is not equal to the number of expected metadata (3)."
+        expected_error_message = (
+            "The Audio metadata is incomplete (1 entry)! Expected 3 (one for each entry of 'file_paths')."
+        )
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
-            self.nwb_converter.run_conversion(
-                nwbfile_path=self.nwbfile_path,
-                metadata=metadata,
-            )
+            self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata)
 
     def test_metadata_update(self):
         metadata = deepcopy(self.metadata)
         metadata["Behavior"]["Audio"][0].update(description="New description for Acoustic waveform series.")
         nwbfile_path = str(self.test_dir / "audio_with_updated_metadata.nwb")
-        conversion_opts = dict(Audio=dict(starting_times=self.starting_times))
-        self.nwb_converter.run_conversion(
-            nwbfile_path=nwbfile_path, metadata=metadata, conversion_options=conversion_opts
-        )
+        self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             container = nwbfile.stimulus
             audio_name = metadata["Behavior"]["Audio"][0]["name"]
-            self.assertEqual(
-                "New description for Acoustic waveform series.",
-                container[audio_name].description,
-            )
+            self.assertEqual("New description for Acoustic waveform series.", container[audio_name].description)
 
     def test_not_all_metadata_are_unique(self):
         metadata = deepcopy(self.metadata)
@@ -157,50 +156,50 @@ On instance['Audio']['write_as']:
         )
         expected_error_message = "Some of the names for Audio metadata are not unique."
         with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
-            self.nwb_converter.run_conversion(
-                nwbfile_path=self.nwbfile_path,
-                metadata=metadata,
-            )
+            self.interface.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata)
 
-    def test_starting_times_are_floats(self):
-        conversion_opts = dict(Audio=dict(starting_times=[0, 1, 2]))
-        expected_error_message = "Argument 'starting_times' must be a list of floats."
-        with self.assertRaisesWith(exc_type=AssertionError, exc_msg=expected_error_message):
-            self.nwb_converter.run_conversion(
-                nwbfile_path=self.nwbfile_path,
-                metadata=self.metadata,
-                conversion_options=conversion_opts,
-            )
+    def test_segment_starting_times_are_floats(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError, exc_msg="Argument 'aligned_segment_starting_times' must be a list of floats."
+        ):
+            self.interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[0, 1, 2])
 
-    def test_starting_times_does_not_match_metadata(self):
-        conversion_opts = dict(Audio=dict(starting_times=[0.0, 1.0, 2.0, 3.0]))
-        with self.assertRaises(expected_exception=AssertionError):
-            self.nwb_converter.run_conversion(
-                nwbfile_path=self.nwbfile_path,
-                metadata=self.metadata,
-                conversion_options=conversion_opts,
-            )
+    def test_segment_starting_times_length_mismatch(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="The number of entries in 'aligned_segment_starting_times' (4) must be equal to the number of audio file paths (3).",
+        ):
+            self.interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[0.0, 1.0, 2.0, 4.0])
 
-    def test_default_starting_times(self):
-        audio_interface = AudioInterface(file_paths=[self.file_paths[0]])
-        metadata = audio_interface.get_metadata()
-        metadata["NWBFile"].update(session_start_time=self.session_start_time)
-        with self.assertWarnsWith(warn_type=UserWarning, exc_msg="starting_times not provided, setting to 0.0"):
-            audio_interface.run_conversion(
-                nwbfile_path=self.nwbfile_path,
-                metadata=metadata,
-            )
+    def test_set_aligned_segment_starting_times(self):
+        fresh_interface = AudioInterface(file_paths=self.file_paths[:2])
+
+        aligned_segment_starting_times = [0.0, 1.0]
+        fresh_interface.set_aligned_segment_starting_times(
+            aligned_segment_starting_times=aligned_segment_starting_times
+        )
+
+        assert_array_equal(x=self.interface._segment_starting_times, y=self.aligned_segment_starting_times)
+
+    def test_set_aligned_starting_time(self):
+        fresh_interface = AudioInterface(file_paths=self.file_paths[:2])
+
+        aligned_starting_time = 1.23
+        relative_starting_times = [0.0, 1.0]
+        fresh_interface.set_aligned_segment_starting_times(aligned_segment_starting_times=relative_starting_times)
+        fresh_interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+
+        expecting_starting_times = [
+            relative_starting_time + aligned_starting_time for relative_starting_time in relative_starting_times
+        ]
+        assert_array_equal(x=fresh_interface._segment_starting_times, y=expecting_starting_times)
 
     def test_run_conversion(self):
-        conversion_opts = dict(Audio=dict(starting_times=self.starting_times))
-        nwbfile_path = str(self.test_dir / "audio_test_data.nwb")
-        self.nwb_converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            metadata=self.metadata,
-            conversion_options=conversion_opts,
-        )
         file_paths = self.nwb_converter.data_interface_objects["Audio"].source_data["file_paths"]
         audio_test_data = [read(filename=file_path, mmap=True)[1] for file_path in file_paths]
+
+        nwbfile_path = str(self.test_dir / "audio_test_data.nwb")
+        self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=self.metadata)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -211,14 +210,7 @@ On instance['Audio']['write_as']:
                 audio_interface_name = audio_metadata["name"]
                 assert audio_interface_name in container
                 self.assertEqual(
-                    self.starting_times[audio_ind],
-                    container[audio_interface_name].starting_time,
+                    self.aligned_segment_starting_times[audio_ind], container[audio_interface_name].starting_time
                 )
-                self.assertEqual(
-                    self.sampling_rate,
-                    container[audio_interface_name].rate,
-                )
-                assert_array_equal(
-                    audio_test_data[audio_ind],
-                    container[audio_interface_name].data,
-                )
+                self.assertEqual(self.sampling_rate, container[audio_interface_name].rate)
+                assert_array_equal(audio_test_data[audio_ind], container[audio_interface_name].data)
