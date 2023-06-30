@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Literal, Optional, Union
+from warnings import warn
 
 import numpy as np
 import scipy
@@ -399,6 +400,8 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         hdf5storage = get_package(package_name="hdf5storage")
 
         file_path = Path(file_path)
+        self.session_path = Path(file_path).parent
+        self.session_id = self.session_path.stem
 
         # Temporary hack to get sampling frequency from the spikes cellinfo file until next SI release
         from pymatreader import read_mat
@@ -410,12 +413,19 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         spikes_mat = matlab_file["spikes"]
         sampling_frequency = spikes_mat.get("sr", None)
 
+        # If sampling rate is not available in the spikes cellinfo file, try to get it from the session file
+        session_path = self.session_path / f"{self.session_id}.session.mat"
+        if sampling_frequency is None and session_path.is_file():
+            matlab_file = read_mat(session_path)
+            session_data = matlab_file["session"]
+            if "extracellular" in session_data.keys():
+                sampling_frequency = session_data["extracellular"].get("sr", None)
+                warn(
+                    f"Sampling frequency was not found in the spikes cellinfo file. Took it from session file {sampling_frequency}."
+                )
         super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
-
-        self.session_path = Path(file_path).parent
-        self.session_id = self.session_path.stem
 
         assert (
             spikes_matfile_path.is_file()
