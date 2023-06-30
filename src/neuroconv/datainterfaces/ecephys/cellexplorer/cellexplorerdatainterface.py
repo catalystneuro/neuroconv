@@ -420,9 +420,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             session_data = matlab_file["session"]
             if "extracellular" in session_data.keys():
                 sampling_frequency = session_data["extracellular"].get("sr", None)
-                warn(
-                    f"Sampling frequency was not found in the spikes cellinfo file. Took it from session file {sampling_frequency}."
-                )
+
         super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
