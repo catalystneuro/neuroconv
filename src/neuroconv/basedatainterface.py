@@ -88,8 +88,9 @@ class BaseDataInterface(ABC):
 
         base_metadata = self.get_metadata()
         if metadata is None:
-            metadata = {}
-        metadata = dict_deep_update(base_metadata, metadata)
+            metadata = base_metadata
+        else:
+            metadata = dict_deep_update(base_metadata, metadata)
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
