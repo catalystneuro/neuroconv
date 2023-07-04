@@ -86,11 +86,8 @@ class BaseDataInterface(ABC):
                 " use DataInterface.add_to_nwbfile()."
             )
 
-        base_metadata = self.get_metadata()
         if metadata is None:
-            metadata = base_metadata
-        else:
-            metadata = dict_deep_update(base_metadata, metadata)
+            metadata = self.get_metadata()
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
