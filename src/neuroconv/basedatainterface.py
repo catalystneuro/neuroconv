@@ -7,7 +7,11 @@ from typing import List, Optional
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
-from .utils import get_schema_from_method_signature, load_dict_from_file
+from .utils import (
+    dict_deep_update,
+    get_schema_from_method_signature,
+    load_dict_from_file,
+)
 from .utils.dict import DeepDict
 
 
@@ -81,6 +85,9 @@ class BaseDataInterface(ABC):
                 "NWBFile object in memory, use DataInterface.create_nwbfile(). To append to an existing NWBFile object,"
                 " use DataInterface.add_to_nwbfile()."
             )
+
+        if metadata is None:
+            metadata = self.get_metadata()
 
         with make_or_load_nwbfile(
             nwbfile_path=nwbfile_path,
