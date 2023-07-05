@@ -1,6 +1,6 @@
 from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
 from ....nwbconverter import NWBConverter
-from ....utils import FolderPathType
+from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class MiniscopeConverter(NWBConverter):
@@ -13,9 +13,7 @@ class MiniscopeConverter(NWBConverter):
 
     @classmethod
     def get_source_schema(cls):
-        source_schema = super().get_source_schema()
-        source_schema.update(additionalProperties=True)
-        return source_schema
+        return get_schema_from_method_signature(cls)
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         """
