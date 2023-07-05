@@ -164,6 +164,43 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
         super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
+class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+        plane_separation_type="contiguous",
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.photon_series_name = "TwoPhotonSeries"
+        cls.num_frames = 5
+        cls.image_shape = (512, 512, 2)
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.optical_channel_metadata = dict(
+            name="Ch2",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2022, 11, 3, 11, 20, 34))
+        # self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        # TODO: also add maybe NwbVolumetricImagingExtractor to support checking volumetric TwoPhotonSeries
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            photon_series = nwbfile.acquisition[self.photon_series_name]
+            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
+            assert_array_equal(photon_series.dimension[:], self.image_shape)
+            self.assertEqual(photon_series.rate, 20.629515014336377)
+
+
 class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = MicroManagerTiffImagingInterface
     interface_kwargs = dict(
