@@ -21,6 +21,8 @@ class TestMiniscopeConverter(TestCase):
         cls.converter = MiniscopeConverter(folder_path=cls.folder_path)
         cls.test_dir = Path(tempfile.mkdtemp())
 
+        cls.stub_frames = 2
+
         cls.device_name = "Miniscope"
         cls.device_metadata = dict(
             name=cls.device_name,
@@ -73,6 +75,20 @@ class TestMiniscopeConverter(TestCase):
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
 
+    def test_run_conversion_add_conversion_options(self):
+        nwbfile_path = str(self.test_dir / "test_miniscope_converter_conversion_options.nwb")
+        conversion_options = dict(Miniscope=dict(stub_test=True, stub_frames=self.stub_frames))
+        self.converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            conversion_options=conversion_options,
+        )
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        self.assertEqual(num_frames, self.stub_frames)
+
     def test_run_conversion_updated_metadata(self):
         metadata = self.converter.get_metadata()
         # Update device names and their links
@@ -109,6 +125,27 @@ class TestMiniscopeConverter(TestCase):
 
         self.assertNWBFileStructure(nwbfile_path)
 
+    def test_converter_conversion_options(self):
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(TestMiniscopeConverter=MiniscopeConverter)
+
+        nwbfile_path = str(self.test_dir / "test_miniscope_converter_in_nwbconverter_conversion_options.nwb")
+        converter = TestConverter(
+            source_data=dict(
+                TestMiniscopeConverter=dict(folder_path=self.folder_path),
+            )
+        )
+        conversion_options = dict(
+            TestMiniscopeConverter=dict(Miniscope=dict(stub_test=True, stub_frames=self.stub_frames))
+        )
+        converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        self.assertEqual(num_frames, self.stub_frames)
+
     def test_converter_in_converter_pipe(self):
         converter_pipe = ConverterPipe(data_interfaces=[self.converter])
 
@@ -116,6 +153,18 @@ class TestMiniscopeConverter(TestCase):
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
+
+    def test_converter_in_converter_pipe_conversion_options(self):
+        converter_pipe = ConverterPipe(data_interfaces=[self.converter])
+
+        nwbfile_path = self.test_dir / "test_miniscope_converter_in_converter_pipe_conversion_options.nwb"
+        conversion_options = dict(MiniscopeConverter=dict(Miniscope=dict(stub_test=True, stub_frames=self.stub_frames)))
+        converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+        num_frames = nwbfile.acquisition[self.photon_series_name].data.shape[0]
+        self.assertEqual(num_frames, self.stub_frames)
 
     def assertNWBFileStructure(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path) as io:
