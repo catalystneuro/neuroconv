@@ -45,8 +45,8 @@ class MiniscopeConverter(NWBConverter):
         verbose : bool, default: True
             Controls verbosity.
         """
-        source_data = dict(
-            Miniscope=dict(folder_path=folder_path),
-            BehavCam=dict(folder_path=folder_path),
+        self.verbose = verbose
+        self.data_interface_objects = dict(
+            Miniscope=MiniscopeImagingInterface(folder_path=folder_path),
+            BehavCam=MiniscopeBehaviorInterface(folder_path=folder_path),
         )
-        super().__init__(source_data=source_data, verbose=verbose)
