@@ -22,6 +22,7 @@ class TestMiniscopeConverter(TestCase):
         cls.test_dir = Path(tempfile.mkdtemp())
 
         cls.stub_frames = 2
+        cls.conversion_options = dict(stub_test=True, stub_frames=cls.stub_frames)
 
         cls.device_name = "Miniscope"
         cls.device_metadata = dict(
@@ -77,10 +78,9 @@ class TestMiniscopeConverter(TestCase):
 
     def test_run_conversion_add_conversion_options(self):
         nwbfile_path = str(self.test_dir / "test_miniscope_converter_conversion_options.nwb")
-        conversion_options = dict(Miniscope=dict(stub_test=True, stub_frames=self.stub_frames))
         self.converter.run_conversion(
             nwbfile_path=nwbfile_path,
-            conversion_options=conversion_options,
+            conversion_options=self.conversion_options,
         )
 
         with NWBHDF5IO(path=nwbfile_path) as io:
@@ -135,9 +135,7 @@ class TestMiniscopeConverter(TestCase):
                 TestMiniscopeConverter=dict(folder_path=self.folder_path),
             )
         )
-        conversion_options = dict(
-            TestMiniscopeConverter=dict(Miniscope=dict(stub_test=True, stub_frames=self.stub_frames))
-        )
+        conversion_options = dict(TestMiniscopeConverter=self.conversion_options)
         converter.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         with NWBHDF5IO(path=nwbfile_path) as io:
@@ -158,7 +156,7 @@ class TestMiniscopeConverter(TestCase):
         converter_pipe = ConverterPipe(data_interfaces=[self.converter])
 
         nwbfile_path = self.test_dir / "test_miniscope_converter_in_converter_pipe_conversion_options.nwb"
-        conversion_options = dict(MiniscopeConverter=dict(Miniscope=dict(stub_test=True, stub_frames=self.stub_frames)))
+        conversion_options = dict(MiniscopeConverter=self.conversion_options)
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         with NWBHDF5IO(path=nwbfile_path) as io:
