@@ -16,7 +16,7 @@ class MiniscopeConverter(NWBConverter):
 
     @classmethod
     def get_conversion_options_schema(cls):
-        return MiniscopeImagingInterface.get_conversion_options_schema()
+        return MiniscopeImagingInterface.get_conversion_options_schema(MiniscopeImagingInterface)
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         """
@@ -58,14 +58,12 @@ class MiniscopeConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata,
-        photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
         self.data_interface_objects["Miniscope"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
-            photon_series_type=photon_series_type,
             stub_test=stub_test,
             stub_frames=stub_frames,
         )
