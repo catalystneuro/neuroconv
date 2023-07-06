@@ -25,6 +25,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         folder_path: FolderPathType,
+        stream_name: Optional[str] = None,
         plane_separation_type: Optional[Literal["contiguous", "disjoint"]] = None,
         verbose: bool = True,
     ):
@@ -35,13 +36,15 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         ----------
         folder_path : FolderPathType
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
+        stream_name : str, optional
+            The name of the recording stream (e.g. 'Ch2').
         plane_separation_type: {'contiguous', 'disjoint'}
             Defines how to write volumetric imaging data. The default behavior is to assume the planes are contiguous,
             and the imaging plane is a volume. Use 'disjoint' for writing them as a separate plane.
         verbose : bool, default: True
         """
         self.plane_separation_type = plane_separation_type
-        super().__init__(folder_path=folder_path, verbose=verbose)
+        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose)
         self._image_size = self.imaging_extractor.get_image_size()
         # we can also check if the difference in the changing z positions are equal to
         # the number of microns per pixel (5) then we know its volumetric
