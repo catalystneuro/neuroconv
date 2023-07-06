@@ -16,9 +16,7 @@ class MiniscopeConverter(NWBConverter):
 
     @classmethod
     def get_conversion_options_schema(cls):
-        return get_schema_from_method_signature(
-            MiniscopeImagingInterface.add_to_nwbfile, exclude=["nwbfile", "metadata"]
-        )
+        return MiniscopeImagingInterface.get_conversion_options_schema()
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         """
