@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pynwb import NWBFile
 
@@ -13,10 +13,6 @@ class MiniscopeConverter(NWBConverter):
     @classmethod
     def get_source_schema(cls):
         return get_schema_from_method_signature(cls)
-
-    @classmethod
-    def get_conversion_options_schema(cls):
-        return MiniscopeImagingInterface.get_conversion_options_schema(MiniscopeImagingInterface)
 
     def __init__(self, folder_path: FolderPathType, verbose: bool = True):
         """
@@ -50,24 +46,27 @@ class MiniscopeConverter(NWBConverter):
         """
         self.verbose = verbose
         self.data_interface_objects = dict(
-            Miniscope=MiniscopeImagingInterface(folder_path=folder_path),
-            BehavCam=MiniscopeBehaviorInterface(folder_path=folder_path),
+            MiniscopeImaging=MiniscopeImagingInterface(folder_path=folder_path),
+            MiniscopeBehavCam=MiniscopeBehaviorInterface(folder_path=folder_path),
         )
+
+    def get_conversion_options_schema(self) -> dict:
+        return self.data_interface_objects["MiniscopeImaging"].get_conversion_options_schema()
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata,
-        stub_test: bool = False,
-        stub_frames: int = 100,
+        conversion_options: Optional[dict] = None,
+        **kwargs,
     ):
-        self.data_interface_objects["Miniscope"].add_to_nwbfile(
+        conversion_options = conversion_options or kwargs or dict()
+        self.data_interface_objects["MiniscopeImaging"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
-            stub_test=stub_test,
-            stub_frames=stub_frames,
+            **conversion_options,
         )
-        self.data_interface_objects["BehavCam"].add_to_nwbfile(
+        self.data_interface_objects["MiniscopeBehavCam"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
         )
