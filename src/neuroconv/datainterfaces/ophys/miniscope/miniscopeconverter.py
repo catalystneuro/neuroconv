@@ -58,9 +58,8 @@ class MiniscopeConverter(NWBConverter):
         nwbfile: NWBFile,
         metadata,
         conversion_options: Optional[dict] = None,
-        **kwargs,
     ):
-        conversion_options = conversion_options or kwargs or dict()
+        conversion_options = conversion_options or dict()
         self.data_interface_objects["MiniscopeImaging"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,

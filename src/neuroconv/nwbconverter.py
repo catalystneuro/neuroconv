@@ -112,7 +112,9 @@ class NWBConverter:
         conversion_options = conversion_options or dict()
         for interface_name, data_interface in self.data_interface_objects.items():
             data_interface.add_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
+                nwbfile=nwbfile,
+                metadata=metadata,
+                conversion_options=conversion_options.get(interface_name, dict()),
             )
 
     def run_conversion(
