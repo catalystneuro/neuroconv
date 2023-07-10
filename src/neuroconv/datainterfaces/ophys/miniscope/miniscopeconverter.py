@@ -57,13 +57,14 @@ class MiniscopeConverter(NWBConverter):
         self,
         nwbfile: NWBFile,
         metadata,
-        conversion_options: Optional[dict] = None,
+        stub_test: bool = False,
+        stub_frames: int = 100,
     ):
-        conversion_options = conversion_options or dict()
         self.data_interface_objects["MiniscopeImaging"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
-            **conversion_options,
+            stub_test=stub_test,
+            stub_frames=stub_frames,
         )
         self.data_interface_objects["MiniscopeBehavCam"].add_to_nwbfile(
             nwbfile=nwbfile,
