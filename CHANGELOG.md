@@ -16,9 +16,8 @@
     rich metadata about the session which can be used to extract the recording information such as sampling frequency and type and channel metadata such as
     groups, location and brain area [#488](https://github.com/catalystneuro/neuroconv/pull/488)
 
-* `CellExplorerSortingInterface` now supports exrtacting sampling frequency from the new data format. CellExplorer's new format contains a `basename.session.mat` file containing
-    rich metadata including the sorting sampling frequency [PR #491](https://github.com/catalystneuro/neuroconv/pull/491)
-
+* `CellExplorerSortingInterface` now supports extracting sampling frequency from the new data format. CellExplorer's new format contains a `basename.session.mat` file containing
+    rich metadata including the sorting sampling frequency [PR #491](https://github.com/catalystneuro/neuroconv/pull/491) and [PR #502](https://github.com/catalystneuro/neuroconv/pull/502)
 * Added `MiniscopeBehaviorInterface` for Miniscope behavioral data. The interface uses `ndx-miniscope` extension to add a `Miniscope` device with the behavioral camera metadata,
   and an `ImageSeries` in external mode that is linked to the device. [PR #482](https://github.com/catalystneuro/neuroconv/pull/482)
   * `CellExplorerSortingInterface` now supports adding channel metadata to the nwbfile with `write_ecephys_metadata=True` as a conversion option [PR #494](https://github.com/catalystneuro/neuroconv/pull/494)
