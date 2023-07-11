@@ -1,9 +1,10 @@
-from typing import Literal, Optional
+from typing import Optional
 
 from pynwb import NWBFile
 
 from ... import MiniscopeBehaviorInterface, MiniscopeImagingInterface
 from ....nwbconverter import NWBConverter
+from ....tools.nwb_helpers import make_or_load_nwbfile
 from ....utils import FolderPathType, get_schema_from_method_signature
 
 
@@ -70,3 +71,28 @@ class MiniscopeConverter(NWBConverter):
             nwbfile=nwbfile,
             metadata=metadata,
         )
+
+    def run_conversion(
+        self,
+        nwbfile_path: Optional[str] = None,
+        nwbfile: Optional[NWBFile] = None,
+        metadata: Optional[dict] = None,
+        overwrite: bool = False,
+        stub_test: bool = False,
+        stub_frames: int = 100,
+    ) -> None:
+        if metadata is None:
+            metadata = self.get_metadata()
+
+        self.validate_metadata(metadata=metadata)
+
+        self.temporally_align_data_interfaces()
+
+        with make_or_load_nwbfile(
+            nwbfile_path=nwbfile_path,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            overwrite=overwrite,
+            verbose=self.verbose,
+        ) as nwbfile_out:
+            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_frames=stub_frames)

@@ -80,7 +80,7 @@ class TestMiniscopeConverter(TestCase):
         nwbfile_path = str(self.test_dir / "test_miniscope_converter_conversion_options.nwb")
         self.converter.run_conversion(
             nwbfile_path=nwbfile_path,
-            conversion_options=self.conversion_options,
+            **self.conversion_options,
         )
 
         with NWBHDF5IO(path=nwbfile_path) as io:
