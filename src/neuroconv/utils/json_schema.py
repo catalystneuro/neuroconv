@@ -97,10 +97,10 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
             elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                 args = param.annotation.__args__
                 valid_args = [x.__name__ in annotation_json_type_map for x in args]
-                if any(valid_args):
-                    param_types = [annotation_json_type_map[x.__name__] for x in np.array(args)[valid_args]]
-                else:
+                if not any(valid_args):
                     raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
+                arg_types = [x for x in np.array(args)[valid_args]]
+                param_types = [annotation_json_type_map[x.__name__] for x in arg_types]
                 num_params = len(set(param_types))
                 conflict_message = (
                     "Conflicting json parameter types were detected from the annotation! "
@@ -112,7 +112,13 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 # Special condition for Optional[...]
                 if num_params == 2 and not args[1] is type(None):  # noqa: E721
                     raise ValueError(conflict_message)
+
+                # Guaranteed to only have a single index by this point
                 args_spec[param_name]["type"] = param_types[0]
+                if arg_types[0] == FilePathType:
+                    input_schema["properties"].update({param_name: dict(format="file")})
+                elif arg_types[0] == FolderPathType:
+                    input_schema["properties"].update({param_name: dict(format="directory")})
             else:
                 arg = param.annotation
                 if arg.__name__ in annotation_json_type_map:
