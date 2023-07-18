@@ -1,2 +1,3 @@
-spikeinterface==0.98.1
+spikeinterface>=0.98.1
+neo>=0.12.0
 packaging<22.0
