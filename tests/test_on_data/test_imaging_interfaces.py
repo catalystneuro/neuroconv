@@ -110,7 +110,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
             location="unknown",
             device=cls.device_metadata["name"],
             optical_channel=[cls.optical_channel_metadata],
-            imaging_rate=30.345939461428763,
+            imaging_rate=29.873732099062256,
             grid_spacing=[1.1078125e-06, 1.1078125e-06],
         )
 

@@ -44,20 +44,13 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: True
         """
         self.plane_separation_type = plane_separation_type
-        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose)
+        super().__init__(
+            folder_path=folder_path,
+            stream_name=stream_name,
+            verbose=verbose,
+            plane_separation_type=plane_separation_type,
+        )
         self._image_size = self.imaging_extractor.get_image_size()
-        # we can also check if the difference in the changing z positions are equal to
-        # the number of microns per pixel (5) then we know its volumetric
-        # that is probably better once the multicolor example gets in the picture
-        if len(self._image_size) == 3 and plane_separation_type not in ["disjoint", "contiguous"]:
-            raise AssertionError(
-                "For volumetric imaging data the plane separation method must be one of 'disjoint' or 'contiguous'."
-            )
-        if plane_separation_type is not None and len(self._image_size) == 2:
-            warn("The plane separation method is ignored for non-volumetric data.")
-        # for disjoint planes the frame rate should be divided by the number of planes
-        if plane_separation_type is "disjoint" and len(self._image_size) == 3:
-            self.imaging_extractor._sampling_frequency /= self._image_size[-1]
 
     def update_metadata_for_disjoint_planes(self, metadata: DeepDict) -> DeepDict:
         num_z_planes = self._image_size[-1]
@@ -110,8 +103,14 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
             imaging_rate=self.imaging_extractor.get_sampling_frequency(),
         )
         two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+        two_photon_series_description = "Imaging data acquired from the Bruker Two-Photon Microscope."
+        if len(self._image_size) == 3:
+            two_photon_series_description = (
+                "The volumetric imaging data acquired from the Bruker Two-Photon Microscope."
+            )
+
         two_photon_series_metadata.update(
-            description="Imaging data acquired from the Bruker Two-Photon Microscope.",
+            description=two_photon_series_description,
             unit="px",
             format="tiff",
             scan_line_rate=1 / float(xml_metadata["scanLinePeriod"]),
@@ -138,10 +137,6 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
         if self.plane_separation_type == "disjoint" and len(self._image_size) == 3:
             return self.update_metadata_for_disjoint_planes(metadata=metadata)
-        if self.plane_separation_type == "contiguous" and len(self._image_size) == 3:
-            two_photon_series_metadata.update(
-                description="The volumetric imaging data acquired from the Bruker Two-Photon Microscope."
-            )
 
         return metadata
 
