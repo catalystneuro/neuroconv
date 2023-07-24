@@ -61,7 +61,7 @@ class FicTracDataInterface(BaseDataInterface):
         Parameters
         ----------
         file_path : FilePathType
-            Path to the .slp file (the output of sleap)
+            Path to the .dat file (the output of fictrac)
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
@@ -69,6 +69,22 @@ class FicTracDataInterface(BaseDataInterface):
         self.verbose = verbose
         self._timestamps = None
         super().__init__(file_path=file_path)
+
+    def get_metadata(self):
+        metadata = super().get_metadata()
+        from datetime import datetime
+
+        config_file = self.file_path.parent / "fictrac_config.txt"
+        if config_file.exists():
+            self._config_file = parse_fictrac_config(config_file)
+            date = self._config_file["build_date"]
+            date_object = datetime.strptime(date_string, "%b %d %Y")
+
+            metadata["NWBFile"].update(
+                session_start_time=date_object,
+            )
+
+        return metadata
 
     def add_to_nwbfile(
         self,
