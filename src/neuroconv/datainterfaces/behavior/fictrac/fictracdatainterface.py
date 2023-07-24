@@ -39,6 +39,7 @@ class FicTracDataInterface(BaseDataInterface):
         "rotation_z_lab",
         "x_pos_radians_lab",
         "y_pos_radians_lab",
+        "animal_heading",
         "movement_direction",
         "movement_speed",
         "forward_motion_lab",
@@ -168,7 +169,7 @@ class FicTracDataInterface(BaseDataInterface):
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
 
-        # Add rotation from camera
+        # Add absolute rotation from camera
         rotation_cam_columns = [
             "rotation_x_cam",
             "rotation_y_cam",
@@ -202,7 +203,7 @@ class FicTracDataInterface(BaseDataInterface):
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
 
-        # Add rotation from the lab
+        # Add absolute rotation from the lab
         rotation_lab_columns = [
             "rotation_x_lab",
             "rotation_y_lab",
@@ -236,6 +237,77 @@ class FicTracDataInterface(BaseDataInterface):
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
 
+        # Add animal heading in radians
+        animal_heading = fictrac_data_df["animal_heading"].values
+        reference_frame = "lab"
+        description = (
+            "Animal heading in radians from the lab frame. "
+            "This is calculated by integrating the yaw (z-axis) rotations across time."
+        )
+
+        spatial_seriess_kwargs = dict(
+            name="animal_heading",
+            data=animal_heading,
+            reference_frame=reference_frame,
+            unit="radians",
+            description=description,
+        )
+
+        if write_timestamps:
+            spatial_seriess_kwargs["timestamps"] = timestamps
+        else:
+            spatial_seriess_kwargs["rate"] = rate
+
+        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
+        compass_direction_container.add_spatial_series(spatial_series)
+
+        # Add movement direction
+        movement_direction = fictrac_data_df["movement_direction"].values
+        reference_frame = "lab"
+        description = (
+            "Instantaneous running direction (radians) of the animal in laboratory coordinates"
+            "This is the direction the animal is moving in the lab frame. "
+            "add to animal heading to get direction in the world."
+            "This values is infered by the rotation of the ball (roll and pitch)"
+        )
+
+        spatial_seriess_kwargs = dict(
+            name="movement_direction",
+            reference_frame=reference_frame,
+            data=movement_direction,
+            unit="radians",
+            description=description,
+        )
+
+        if write_timestamps:
+            spatial_seriess_kwargs["timestamps"] = timestamps
+        else:
+            spatial_seriess_kwargs["rate"] = rate
+
+        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
+        compass_direction_container.add_spatial_series(spatial_series)
+
+        # Add movement speed
+        movement_speed = fictrac_data_df["movement_speed"].values
+        reference_frame = "lab"
+        description = "Instantaneous running speed (radians/frame) of the animal."
+
+        spatial_seriess_kwargs = dict(
+            name="movement_speed",
+            data=movement_speed,
+            reference_frame=reference_frame,
+            unit="radians",
+            description=description,
+        )
+
+        if write_timestamps:
+            spatial_seriess_kwargs["timestamps"] = timestamps
+        else:
+            spatial_seriess_kwargs["rate"] = rate
+
+        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
+        compass_direction_container.add_spatial_series(spatial_series)
+
         # Add position in radians from the lab
         position_lab_columns = [
             "x_pos_radians_lab",
@@ -243,10 +315,8 @@ class FicTracDataInterface(BaseDataInterface):
         ]
 
         description = (
-            "Position in radians from the lab frame. \n"
-            "From the point of view of the lab:"
-            "x: represents position of the axis in front of the subject (roll) "
-            "y: represents position of the axis to the right of the subject (pitch)"
+            "x and y positions in the lab frame in radians. These values are infered by integrating "
+            "the rotation of the across time. "
         )
 
         df_lab_position = fictrac_data_df[position_lab_columns]
@@ -268,55 +338,16 @@ class FicTracDataInterface(BaseDataInterface):
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
 
-        # Add movement direction
-        movement_direction = fictrac_data_df["movement_direction"].values
-        reference_frame = "lab"
-        description = "Direction of movement in radians from the lab frame"
-
-        spatial_seriess_kwargs = dict(
-            name="movement_direction",
-            reference_frame=reference_frame,
-            data=movement_direction,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add movement speed
-        movement_speed = fictrac_data_df["movement_speed"].values
-        reference_frame = "lab"
-        description = "Speed of movement in radians from the lab frame"
-
-        spatial_seriess_kwargs = dict(
-            name="movement_speed",
-            data=movement_speed,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
         # Add integrated motion
         integrated_motin_columns = [
             "forward_motion_lab",
             "side_motion_lab",
         ]
 
-        description = "Integrated motion in radians from the lab frame"
+        description = (
+            "Integrated x/y position (radians) of the sphere in laboratory coordinates neglecting"
+            " heading. Equivalent to the output from two optical mice"
+        )
 
         df_integrated_motion = fictrac_data_df[integrated_motin_columns]
         data = df_integrated_motion.to_numpy()
