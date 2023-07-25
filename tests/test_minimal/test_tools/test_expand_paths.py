@@ -104,7 +104,7 @@ def test_expand_paths(tmpdir):
     assert len(string_directory_out) == len(expected)
 
 
-def test_expand_paths_with_extras(tmpdir='tmp'):
+def test_expand_paths_with_extras(tmpdir="tmp"):
     expander = LocalPathExpander()
 
     # set up directory for parsing
@@ -112,12 +112,23 @@ def test_expand_paths_with_extras(tmpdir='tmp'):
     for area_and_modality in ("V1_eeg", "S1_2p"):
         for subject_id in ("001", "002"):
             for session_id, session_start_time in (("101", datetime(2021, 1, 1)), ("102", datetime(2021, 1, 2))):
-                Path.mkdir(base_directory / f"{area_and_modality}" / f"sub-{subject_id}" / f"session_{session_id}", parents=True)
+                Path.mkdir(
+                    base_directory / f"{area_and_modality}" / f"sub-{subject_id}" / f"session_{session_id}",
+                    parents=True,
+                )
                 (
-                    base_directory / f"{area_and_modality}" / f"sub-{subject_id}" / f"session_{session_id}" / f"{session_start_time:%Y-%m-%d}abc"
+                    base_directory
+                    / f"{area_and_modality}"
+                    / f"sub-{subject_id}"
+                    / f"session_{session_id}"
+                    / f"{session_start_time:%Y-%m-%d}abc"
                 ).touch()
                 (
-                    base_directory / f"{area_and_modality}" / f"sub-{subject_id}" / f"session_{session_id}" / f"{session_start_time:%Y-%m-%d}xyz"
+                    base_directory
+                    / f"{area_and_modality}"
+                    / f"sub-{subject_id}"
+                    / f"session_{session_id}"
+                    / f"{session_start_time:%Y-%m-%d}xyz"
                 ).touch()
 
     # run path parsing
@@ -225,7 +236,6 @@ def test_expand_paths_with_extras(tmpdir='tmp'):
         },
     ]
 
-
     # test results
     for x in out:
         assert x in expected
@@ -247,6 +257,7 @@ def test_expand_paths_with_extras(tmpdir='tmp'):
     for x in string_directory_out:
         assert x in expected
     assert len(string_directory_out) == len(expected)
+
 
 def test_expand_paths_ibl(tmpdir):
     expander = LocalPathExpander()
