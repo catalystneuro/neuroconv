@@ -1,16 +1,13 @@
+"""Primary data interface for converting the NIDQ streams from SpikeGLX format."""
 from pathlib import Path
-from typing import List
-
-import numpy as np
 
 from .spikeglx_utils import get_device_metadata, get_session_start_time
-from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
-from ....tools.signal_processing import get_rising_frames_from_ttl
+from ..baseauxiliaryextractorinterface import BaseAuxiliaryExtractorInterface
 from ....utils import FilePathType, get_schema_from_method_signature
 
 
-class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
-    """Primary data interface class for converting the high-pass (ap) SpikeGLX format."""
+class SpikeGLXNIDQInterface(BaseAuxiliaryExtractorInterface):
+    """Primary data interface for converting the NIDQ streams from SpikeGLX format."""
 
     ExtractorName = "SpikeGLXRecordingExtractor"
 
@@ -43,7 +40,6 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
             If True, then the probe is not loaded.
         es_key : str, default: "ElectricalSeriesNIDQ"
         """
-
         folder_path = Path(file_path).parent
         super().__init__(
             folder_path=folder_path,
@@ -82,31 +78,3 @@ class SpikeGLXNIDQInterface(BaseRecordingExtractorInterface):
             "description"
         ] = "Raw acquisition traces from the NIDQ (.nidq.bin) channels."
         return metadata
-
-    def get_channel_names(self) -> List[str]:
-        """Return a list of channel names as set in the recording extractor."""
-        return list(self.recording_extractor.get_channel_ids())
-
-    def get_event_times_from_ttl(self, channel_name: str) -> np.ndarray:
-        """
-        Return the start of event times from the rising part of TTL pulses on one of the NIDQ channels.
-
-        Parameters
-        ----------
-        channel_name : str
-            Name of the channel in the .nidq.bin file.
-
-        Returns
-        -------
-        rising_times : numpy.ndarray
-            The times of the rising TTL pulses.
-        """
-        # TODO: consider RAM cost of these operations and implement safer buffering version
-        rising_frames = get_rising_frames_from_ttl(
-            trace=self.recording_extractor.get_traces(channel_ids=[channel_name])
-        )
-
-        nidq_timestamps = self.recording_extractor.get_times()
-        rising_times = nidq_timestamps[rising_frames]
-
-        return rising_times
