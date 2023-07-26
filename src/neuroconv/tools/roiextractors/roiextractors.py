@@ -816,12 +816,10 @@ def add_fluorescence_traces(
     # Get traces from the segmentation extractor
     traces_to_add = segmentation_extractor.get_traces_dict()
 
-    # Filter empty data
-    traces_to_add = {trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None}
-    # Filter all zero data
-    # traces_to_add = {
-    #     trace_name: trace for trace_name, trace in traces_to_add.items() if any(x != 0 for x in np.ravel(trace))
-    # }
+    # Filter empty and all zero data
+    traces_to_add = {
+        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and np.any(trace != 0)
+    }
 
     # Early return if there is nothing to add
     if not traces_to_add:
