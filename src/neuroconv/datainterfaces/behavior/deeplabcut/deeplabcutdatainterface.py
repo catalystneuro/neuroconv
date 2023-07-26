@@ -32,7 +32,7 @@ def write_subject_to_nwb(
     config_file : str or path
         Path to a project config.yaml file
     timestamps : list, np.ndarray or None, default: None
-        Alternative timestamps vector. If None, then use the infered timestamps from DLC2NWB
+        Alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
     Returns
     -------
     nwbfile : pynwb.NWBFile
@@ -75,7 +75,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         subject_name : str, default: "ind1"
             the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
         timestamps : list, np.ndarray or None, default: None
-            Alternative timestamps vector. If None, then use the infered timestamps from DLC2NWB
+            alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
         verbose: bool, default: True
             controls verbosity.
         """
