@@ -1,6 +1,6 @@
 from datetime import time
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 import numpy as np
 from pynwb.file import NWBFile
@@ -15,7 +15,7 @@ def write_subject_to_nwb(
     h5file: FilePathType,
     individual_name: str,
     config_file: FilePathType,
-    timestamps: Optional[Union[List,np.ndarray]] = None
+    timestamps: Optional[Union[List, np.ndarray]] = None,
 ):
     """
     Given, subject name, write h5file to an existing nwbfile.
@@ -60,8 +60,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         file_path: FilePathType,
         config_file_path: FilePathType,
         subject_name: str = "ind1",
-        timestamps: Optional[Union[List,np.ndarray]] = None,
-        verbose: bool = True
+        timestamps: Optional[Union[List, np.ndarray]] = None,
+        verbose: bool = True,
     ):
         """
         Interface for writing DLC's h5 files to nwb using dlc2nwb.
@@ -136,5 +136,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             h5file=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
             config_file=str(self.source_data["config_file_path"]),
-            timestamps=self.timestamps
+            timestamps=self.timestamps,
         )
