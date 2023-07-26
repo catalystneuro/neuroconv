@@ -284,7 +284,7 @@ class FicTracDataInterface(BaseDataInterface):
             "Instantaneous running direction (radians) of the animal in laboratory coordinates"
             "This is the direction the animal is moving in the lab frame. "
             "add to animal heading to get direction in the world."
-            "This values is infered by the rotation of the ball (roll and pitch)"
+            "This values is inferred by the rotation of the ball (roll and pitch)"
         )
 
         spatial_seriess_kwargs = dict(
@@ -331,7 +331,7 @@ class FicTracDataInterface(BaseDataInterface):
         ]
 
         description = (
-            "x and y positions in the lab frame in radians. These values are infered by integrating "
+            "x and y positions in the lab frame in radians. These values are inferred by integrating "
             "the rotation of the across time. "
         )
 
