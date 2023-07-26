@@ -115,7 +115,7 @@ class FicTracDataInterface(BaseDataInterface):
 
         # All the units in FicTrac are in radians, the radius of the ball required to transform to
         # Distances is not specified in the format
-        compass_direction_container = CompassDirection(name="FictracData")
+        compass_direction_container = CompassDirection(name="FicTrac")
 
         # Add rotation delta from camera
         rotation_delta_cam_columns = [
