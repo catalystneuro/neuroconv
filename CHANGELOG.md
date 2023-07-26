@@ -1,5 +1,8 @@
 # (Upcoming)
 
+## Features
+Added FicTrac data interface  [PR #499](https://github.com/catalystneuro/neuroconv/pull/#499)
+
 # v0.4.0
 
 ### Back-compatibility break
