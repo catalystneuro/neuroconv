@@ -104,7 +104,7 @@ def test_expand_paths(tmpdir):
     assert len(string_directory_out) == len(expected)
 
 
-def test_expand_paths_with_extras(tmpdir="tmp"):
+def test_expand_paths_with_extras(tmpdir):
     expander = LocalPathExpander()
 
     # set up directory for parsing

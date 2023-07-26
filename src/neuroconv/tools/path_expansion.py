@@ -64,8 +64,6 @@ class AbstractPathExpander(abc.ABC):
         ... )
         """
 
-        # session_keys = {"session_start_time", "session_id", "subject_id"}
-
         non_standard_super = "extras"
         standard_metadata = {"session_id": "NWBFile", "session_start_time": "NWBFile", "subject_id": "Subject"}
 
