@@ -136,7 +136,7 @@ class FicTracDataInterface(BaseDataInterface):
         data = df_cam_delta_rotation.to_numpy()
         reference_frame = "camera"
         spatial_seriess_kwargs = dict(
-            name="cam_delta_rotation",
+            name="SpatialSeriesRotationDeltaCameraFrame",
             data=data,
             reference_frame=reference_frame,
             unit="radians",
@@ -170,7 +170,7 @@ class FicTracDataInterface(BaseDataInterface):
         data = df_lab_delta_rotation.to_numpy()
         reference_frame = "lab"
         spatial_seriess_kwargs = dict(
-            name="lab_delta_rotation",
+            name="SpatialSeriesRotationDeltaLabFrame",
             data=data,
             reference_frame=reference_frame,
             unit="radians",
@@ -204,7 +204,7 @@ class FicTracDataInterface(BaseDataInterface):
         data = df_cam_rotation.to_numpy()
         reference_frame = "camera"
         spatial_seriess_kwargs = dict(
-            name="cam_rotation",
+            name="SpatialSeriesRotationCameraFrame",
             data=data,
             reference_frame=reference_frame,
             unit="radians",
@@ -238,7 +238,7 @@ class FicTracDataInterface(BaseDataInterface):
         data = df_lab_rotation.to_numpy()
         reference_frame = "lab"
         spatial_seriess_kwargs = dict(
-            name="lab_rotation",
+            name="SpatialSeriesRotationLabFrame",
             data=data,
             reference_frame=reference_frame,
             unit="radians",
@@ -262,7 +262,7 @@ class FicTracDataInterface(BaseDataInterface):
         )
 
         spatial_seriess_kwargs = dict(
-            name="animal_heading",
+            name="SpatialSeriesAnimalHeading",
             data=animal_heading,
             reference_frame=reference_frame,
             unit="radians",
@@ -288,7 +288,7 @@ class FicTracDataInterface(BaseDataInterface):
         )
 
         spatial_seriess_kwargs = dict(
-            name="movement_direction",
+            name="SpatialSeriesMovementDirection",
             reference_frame=reference_frame,
             data=movement_direction,
             unit="radians",
@@ -309,7 +309,7 @@ class FicTracDataInterface(BaseDataInterface):
         description = "Instantaneous running speed (radians/frame) of the animal."
 
         spatial_seriess_kwargs = dict(
-            name="movement_speed",
+            name="SpatialSeriesMovementSpeed",
             data=movement_speed,
             reference_frame=reference_frame,
             unit="radians",
@@ -339,7 +339,7 @@ class FicTracDataInterface(BaseDataInterface):
         data = df_lab_position.to_numpy()
         reference_frame = "lab"
         spatial_seriess_kwargs = dict(
-            name="lab_position",
+            name="SpatialSeriesPosition",
             data=data,
             reference_frame=reference_frame,
             unit="radians",
@@ -370,7 +370,7 @@ class FicTracDataInterface(BaseDataInterface):
         reference_frame = "lab"
 
         spatial_seriess_kwargs = dict(
-            name="integrated_motion",
+            name="SpatialSeriesIntegratedMotion",
             data=data,
             unit="radians",
             reference_frame=reference_frame,
@@ -391,7 +391,7 @@ class FicTracDataInterface(BaseDataInterface):
         description = "Error in rotation delta in radians from the lab frame"
 
         spatial_seriess_kwargs = dict(
-            name="rotation_delta_error",
+            name="SpatialSeriesRotationDeltaError",
             data=rotation_delta_error,
             reference_frame=reference_frame,
             unit="radians",
