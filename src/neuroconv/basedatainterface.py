@@ -79,7 +79,8 @@ class BaseDataInterface(ABC):
             warnings.warn(
                 "Using DataInterface.run_conversion() without specifying nwbfile_path is deprecated. To create an "
                 "NWBFile object in memory, use DataInterface.create_nwbfile(). To append to an existing NWBFile object,"
-                " use DataInterface.add_to_nwbfile()."
+                " use DataInterface.add_to_nwbfile().",
+                stacklevel=2,
             )
 
         with make_or_load_nwbfile(
