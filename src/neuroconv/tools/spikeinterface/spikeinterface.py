@@ -4,6 +4,7 @@ from collections import defaultdict
 from numbers import Real
 from typing import List, Literal, Optional, Union
 
+import ndx_probeinterface
 import numpy as np
 import psutil
 import pynwb
@@ -18,6 +19,7 @@ from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
+from ..probeinterface import add_probe
 from ...utils import (
     DeepDict,
     FilePathType,
@@ -44,7 +46,7 @@ def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
         Ecephys=dict(
             Device=[dict(name="Device", description="Ecephys probe. Automatically generated.")],
             ElectrodeGroup=[
-                dict(name=str(group_name), description="no description", location="unknown", device="Device")
+                dict(name=str(group_name), description="no description", location="unknown")
                 for group_name in np.unique(recording.get_channel_groups())
             ],
         ),
@@ -52,7 +54,7 @@ def get_nwb_metadata(recording: BaseRecording, metadata: dict = None):
     return metadata
 
 
-def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
+def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None, recording: Optional[BaseRecording] = None):
     """
     Add device information to nwbfile object.
 
@@ -74,6 +76,10 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
                 ...
             ]
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
+    recording : BaseRecording
+        The recording extractor from which to extract the device.
+        If provided and the recording has a probe, the ndx-probeinterface extension is used to add the
+        probe information to the NWB file. If not provided, a default device is created.
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
@@ -84,11 +90,14 @@ def add_devices(nwbfile: pynwb.NWBFile, metadata: Optional[DeepDict] = None):
         metadata = dict()
     if "Ecephys" not in metadata:
         metadata["Ecephys"] = dict()
-    if "Device" not in metadata["Ecephys"]:
-        metadata["Ecephys"]["Device"] = [defaults]
-    for dev in metadata["Ecephys"]["Device"]:
-        if dev.get("name", defaults["name"]) not in nwbfile.devices:
-            nwbfile.create_device(**dict(defaults, **dev))
+    if recording is not None and recording.has_probe():
+        add_probes_from_recording(recording, nwbfile, metadata)
+    else:
+        if "Device" not in metadata["Ecephys"]:
+            metadata["Ecephys"]["Device"] = [defaults]
+        for dev in metadata["Ecephys"]["Device"]:
+            if dev.get("name", defaults["name"]) not in nwbfile.devices:
+                nwbfile.create_device(**dict(defaults, **dev))
 
 
 def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: dict = None):
@@ -122,7 +131,7 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
     assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
     if len(nwbfile.devices) == 0:
         warnings.warn("When adding ElectrodeGroup, no Devices were found on nwbfile. Creating a Device now...")
-        add_devices(nwbfile=nwbfile, metadata=metadata)
+        add_devices(nwbfile=nwbfile, metadata=metadata, recording=recording)
     if metadata is None:
         metadata = dict()
     if "Ecephys" not in metadata:
@@ -133,14 +142,26 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
     else:
         group_names = np.unique(recording.get_channel_groups()).astype("str", copy=False)
 
+    # Simple logic to automatically assign ElectrodeGroups to existing devices:
+    # If there is only one probe, use its name for all groups.
+    # If there are as many groups as probes, use one probe for each group.
+    # If there are no Probe devices, use default Device
+    probe_devices = [device for device in nwbfile.devices.values() if isinstance(device, ndx_probeinterface.Probe)]
+    if len(probe_devices) == 1:
+        device_names = [probe_devices[0].name] * len(group_names)
+    elif len(group_names) == len(probe_devices):
+        device_names = [device.name for device in probe_devices]
+    else:
+        device_names = [i.name for i in nwbfile.devices.values()] * len(group_names)
+
     defaults = [
         dict(
             name=group_name,
             description="no description",
             location="unknown",
-            device=[i.name for i in nwbfile.devices.values()][0],
+            device=device_names[i],
         )
-        for group_name in group_names
+        for i, group_name in enumerate(group_names)
     ]
 
     if "ElectrodeGroup" not in metadata["Ecephys"]:
@@ -154,7 +175,7 @@ def add_electrode_groups(recording: BaseRecording, nwbfile: pynwb.NWBFile, metad
             device_name = grp.get("device", defaults[0]["device"])
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
-                add_devices(nwbfile=nwbfile, metadata=new_device_metadata)
+                add_devices(nwbfile=nwbfile, metadata=new_device_metadata, recording=recording)
                 warnings.warn(
                     f"Device '{device_name}' not detected in "
                     "attempted link to electrode group! Automatically generating."
@@ -341,6 +362,8 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     # Find default values for custom (not schema defined) properties / columns already in the electrode table
     type_to_default_value = {list: [], np.ndarray: np.array(np.nan), str: "", Real: np.nan}
     for property in electrode_table_previous_properties - schema_properties:
+        if property == "contact_table":
+            continue
         # Find a matching data type and get the default value
         sample_data = nwbfile.electrodes[property].data[0]
         matching_type = next(type for type in type_to_default_value if isinstance(sample_data, type))
@@ -414,6 +437,52 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
         extended_data[indexes_for_default_values] = default_value
         cols_args["data"] = extended_data
         nwbfile.add_electrode_column(property, **cols_args)
+
+    # add contact information
+    electrodes_have_rel_positions = "rel_x" in nwbfile.electrodes.colnames and "rel_y" in nwbfile.electrodes.colnames
+    if (
+        all(isinstance(g.device, ndx_probeinterface.Probe) for g in group_list)
+        and electrodes_have_rel_positions
+        and "contact_table" not in nwbfile.electrodes.colnames
+    ):
+        contact_table_kwargs = dict(
+            name="contact_table",
+            description="link to the ContactTable",
+        )
+        contact_index_kwargs = dict(
+            name="contact_index",
+            description="index of the electrode in the contact_table",
+        )
+        contact_table_data = []
+        contact_index_data = []
+
+        for electrode_index in nwbfile.electrodes.id[:]:
+            group = nwbfile.electrodes["group"][electrode_index]
+            contact_table = group.device.contact_table
+            contact_table_data.append(contact_table)
+            contact_positions = contact_table["contact_position"][:]
+
+            rel_location = [nwbfile.electrodes["rel_x"][electrode_index], nwbfile.electrodes["rel_y"][electrode_index]]
+            if "rel_z" in nwbfile.electrodes.colnames:
+                rel_location.append(nwbfile.electrodes["rel_z"][electrode_index])
+            for i, contact_position in enumerate(contact_positions):
+                if np.array_equal(contact_position, np.array(rel_location)):
+                    contact_index_data.append(i)
+                    break
+        contact_table_kwargs["data"] = contact_table_data
+        contact_index_kwargs["data"] = contact_index_data
+
+        nwbfile.add_electrode_column(**contact_table_kwargs)
+        nwbfile.add_electrode_column(**contact_index_kwargs)
+
+
+def add_probes_from_recording(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: DeepDict = None):
+    probes = recording.get_probes()
+    probe_annotations = recording.get_annotation("probes_info")
+
+    for probe_index, probe in enumerate(probes):
+        probe.annotations = probe_annotations[probe_index]
+        add_probe(probe, nwbfile, metadata)
 
 
 def check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_index: int = 0) -> None:
@@ -720,7 +789,7 @@ def add_electrodes_info(recording: BaseRecording, nwbfile: pynwb.NWBFile, metada
         If no group information is passed via metadata, automatic linking to existing electrode groups,
         possibly including the default, will occur.
     """
-    add_devices(nwbfile=nwbfile, metadata=metadata)
+    add_devices(nwbfile=nwbfile, metadata=metadata, recording=recording)
     add_electrode_groups(recording=recording, nwbfile=nwbfile, metadata=metadata)
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
