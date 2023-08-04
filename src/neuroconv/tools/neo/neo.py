@@ -1,9 +1,9 @@
 import distutils.version
 import uuid
 import warnings
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Tuple
-from copy import deepcopy
 
 import neo.io.baseio
 import numpy as np
@@ -191,7 +191,7 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
     for elec in metadata["Icephys"]["Electrodes"]:
         if elec.get("name", defaults[0]["name"]) not in nwbfile.icephys_electrodes:
             device_name = elec.pop("device_name", None) or elec.pop("device", defaults[0]["device_name"])
-            #elec.pop("device_name", 0)
+            # elec.pop("device_name", 0)
             if device_name not in nwbfile.devices:
                 new_device_metadata = dict(Ecephys=dict(Device=[dict(name=device_name)]))
                 add_device_from_metadata(nwbfile, modality="Icephys", metadata=new_device_metadata)
