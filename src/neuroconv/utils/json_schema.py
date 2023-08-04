@@ -284,7 +284,7 @@ def get_metadata_schema_for_icephys():
 
     schema["properties"]["definitions"] = dict(
         Device=get_schema_from_hdmf_class(Device),
-        Electrode=get_schema_from_hdmf_class(IntracellularElectrode),
+        Electrodes=get_schema_from_hdmf_class(IntracellularElectrode),
         Sessions=dict(
             name={"type": "string", "description": "Session name."},
             relative_session_start_time={
