@@ -475,7 +475,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin, TestC
         spikeglx_electrode_table_schema = {
             "type": "array",
             "minItems": 0,
-            "items": {"$ref": "#definitions/SpikeGLXElectrodeColumnEntry"},
+            "items": {"$ref": "#/definitions/SpikeGLXElectrodeColumnEntry"},
             "definitions": {
                 "SpikeGLXElectrodeColumnEntry": {
                     "type": "object",
