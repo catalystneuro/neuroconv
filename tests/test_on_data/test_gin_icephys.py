@@ -114,7 +114,7 @@ class TestIcephysNwbConversions(unittest.TestCase):
         metadata = converter.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
 
-        metadata['Icephys']['Electrodes'][0].update(cell_id="ID001")
+        metadata["Icephys"]["Electrodes"][0].update(cell_id="ID001")
 
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
