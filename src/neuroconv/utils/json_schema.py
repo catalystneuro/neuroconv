@@ -267,7 +267,7 @@ def get_schema_from_hdmf_class(hdmf_class):
 
 def get_metadata_schema_for_icephys():
     schema = get_base_schema(tag="Icephys")
-    schema["required"] = ["Device", "Electrode"]
+    schema["required"] = ["Device", "Electrodes"]
     schema["properties"] = dict(
         Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
         Electrodes=dict(
