@@ -205,7 +205,6 @@ def add_icephys_electrode(neo_reader, nwbfile, metadata: dict = None):
                 description=elec.get("description", defaults[0]["description"]),
                 device=nwbfile.devices[device_name],
             )
-            print(electrode_kwargs)
             nwbfile.create_icephys_electrode(**electrode_kwargs)
 
 
