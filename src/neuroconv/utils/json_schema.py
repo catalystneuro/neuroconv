@@ -270,7 +270,7 @@ def get_metadata_schema_for_icephys():
     schema["required"] = ["Device", "Electrode"]
     schema["properties"] = dict(
         Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Icephys/properties/definitions/Device"}),
-        Electrode=dict(
+        Electrodes=dict(
             type="array",
             minItems=1,
             items={"$ref": "#/properties/Icephys/properties/definitions/Electrode"},
@@ -284,7 +284,7 @@ def get_metadata_schema_for_icephys():
 
     schema["properties"]["definitions"] = dict(
         Device=get_schema_from_hdmf_class(Device),
-        Electrodes=get_schema_from_hdmf_class(IntracellularElectrode),
+        Electrode=get_schema_from_hdmf_class(IntracellularElectrode),
         Sessions=dict(
             name={"type": "string", "description": "Session name."},
             relative_session_start_time={
