@@ -113,6 +113,9 @@ class TestIcephysNwbConversions(unittest.TestCase):
                 )
         metadata = converter.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S"))
+
+        metadata["Icephys"]["Electrodes"][0].update(cell_id="ID001")
+
         converter.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
@@ -122,6 +125,8 @@ class TestIcephysNwbConversions(unittest.TestCase):
 
             self.check_set_aligned_starting_time()
             self.check_set_aligned_segment_starting_times()
+
+            assert nwbfile.ic_electrodes["electrode-0"].cell_id == "ID001"
 
 
 if __name__ == "__main__":
