@@ -1,5 +1,7 @@
 # (Upcoming)
 
+# v0.4.1
+
 ### Fixes
 
 * Propagated additional arguments, such as `cell_id`, from the `metadata["Icephys"]["Electrodes"]` dictionary used in `tools.neo.add_icephys_electrode`. [PR #538](https://github.com/catalystneuro/neuroconv/pull/538)
