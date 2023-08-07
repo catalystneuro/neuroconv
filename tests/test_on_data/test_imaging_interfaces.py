@@ -10,7 +10,8 @@ from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
-    BrukerTiffImagingInterface,
+    BrukerTiffMultiPlaneImagingInterface,
+    BrukerTiffSinglePlaneImagingInterface,
     Hdf5ImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
@@ -86,7 +87,7 @@ class TestSbxImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
 
 
 class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
-    data_interface_cls = BrukerTiffImagingInterface
+    data_interface_cls = BrukerTiffSinglePlaneImagingInterface
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
@@ -165,12 +166,11 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
 
 
 class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin, TestCase):
-    data_interface_cls = BrukerTiffImagingInterface
+    data_interface_cls = BrukerTiffMultiPlaneImagingInterface
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
         ),
-        plane_separation_type="contiguous",
     )
     save_directory = OUTPUT_PATH
 
@@ -180,25 +180,149 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
         cls.num_frames = 5
         cls.image_shape = (512, 512, 2)
         cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001"]))
         cls.optical_channel_metadata = dict(
             name="Ch2",
             emission_lambda=np.NAN,
             description="An optical channel of the microscope.",
         )
 
+    def run_custom_checks(self):
+        # check stream names
+        streams = self.data_interface_cls.get_streams(
+            folder_path=self.interface_kwargs["folder_path"], plane_separation_type="contiguous"
+        )
+        self.assertEqual(streams, self.available_streams)
+
     def check_extracted_metadata(self, metadata: dict):
         self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2022, 11, 3, 11, 20, 34))
         # self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
-        # TODO: also add maybe NwbVolumetricImagingExtractor to support checking volumetric TwoPhotonSeries
-
         with NWBHDF5IO(path=nwbfile_path) as io:
             nwbfile = io.read()
             photon_series = nwbfile.acquisition[self.photon_series_name]
             self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
             assert_array_equal(photon_series.dimension[:], self.image_shape)
             self.assertEqual(photon_series.rate, 20.629515014336377)
+
+
+class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
+        ),
+        stream_name="Ch2_000002",
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.photon_series_name = "TwoPhotonSeriesCh2000002"
+        cls.num_frames = 5
+        cls.image_shape = (512, 512)
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.available_streams = dict(channel_streams=["Ch2"], plane_streams=dict(Ch2=["Ch2_000001", "Ch2_000002"]))
+        cls.optical_channel_metadata = dict(
+            name="Ch2",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+
+    def run_custom_checks(self):
+        # check stream names
+        streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
+        self.assertEqual(streams, self.available_streams)
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2022, 11, 3, 11, 20, 34))
+        # self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_nwbfile_temporal_alignment(self):
+        nwbfile_path = str(
+            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+        )
+
+        interface = self.data_interface_cls(**self.test_kwargs)
+
+        aligned_starting_time = 1.23
+        interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+
+        metadata = interface.get_metadata()
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            photon_series = nwbfile.acquisition[self.photon_series_name]
+            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
+            assert_array_equal(photon_series.dimension[:], self.image_shape)
+            self.assertEqual(photon_series.rate, 10.314757507168189)
+
+
+class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
+        ),
+        stream_name="Ch2",
+    )
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.photon_series_name = "TwoPhotonSeriesCh2"
+        cls.num_frames = 10
+        cls.image_shape = (512, 512)
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
+        cls.optical_channel_metadata = dict(
+            name="Ch2",
+            emission_lambda=np.NAN,
+            description="An optical channel of the microscope.",
+        )
+
+    def run_custom_checks(self):
+        # check stream names
+        streams = self.data_interface_cls.get_streams(folder_path=self.interface_kwargs["folder_path"])
+        self.assertEqual(streams, self.available_streams)
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 7, 6, 15, 13, 58))
+        # self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+            photon_series = nwbfile.acquisition[self.photon_series_name]
+            self.assertEqual(photon_series.data.shape, (self.num_frames, *self.image_shape))
+            assert_array_equal(photon_series.dimension[:], self.image_shape)
+            self.assertEqual(photon_series.rate, 29.873615189896864)
+
+    def check_nwbfile_temporal_alignment(self):
+        nwbfile_path = str(
+            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+        )
+
+        interface = self.data_interface_cls(**self.test_kwargs)
+
+        aligned_starting_time = 1.23
+        interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+
+        metadata = interface.get_metadata()
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
 
 
 class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
