@@ -47,7 +47,7 @@ if not gin_config_file_local.exists():
 
 setup(
     name="neuroconv",
-    version="0.3.0",
+    version="0.4.2",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -67,4 +67,5 @@ setup(
             "neuroconv = neuroconv.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
         ],
     },
+    license="BSD-3-Clause",
 )
