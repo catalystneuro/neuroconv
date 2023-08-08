@@ -123,7 +123,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
             imaging_plane=cls.imaging_plane_metadata["name"],
             format="tiff",
             scan_line_rate=15840.580398865815,
-            field_of_view=[0.0005672, 0.0005672, 5e-06],
+            field_of_view=[0.0005672, 0.0005672],
         )
 
         cls.ophys_metadata = dict(
