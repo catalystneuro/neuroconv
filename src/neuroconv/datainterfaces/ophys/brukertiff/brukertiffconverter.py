@@ -33,8 +33,8 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         folder_path : PathType
             The path to the folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env).
         plane_separation_type: {'contiguous', 'disjoint'}
-            Defines how to load volumetric imaging data. The default behavior is to assume the planes are contiguous,
-            and the imaging plane is a volume. Use 'disjoint' to load one plane.
+            Defines how to write volumetric imaging data. Use 'contiguous' to create the volumetric two photon series,
+            and 'disjoint' to create separate imaging plane and two photon series for each plane.
         verbose : bool, default: True
             Controls verbosity.
         """
