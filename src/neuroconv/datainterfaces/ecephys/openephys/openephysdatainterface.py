@@ -39,10 +39,14 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
 
         folder_path = Path(folder_path)
         if any(folder_path.rglob("*.continuous")):
-            return OpenEphysLegacyRecordingInterface(folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key)
+            return OpenEphysLegacyRecordingInterface(
+                folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key
+            )
 
         elif any(folder_path.rglob("*.dat")):
-            return OpenEphysBinaryRecordingInterface(folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key)
+            return OpenEphysBinaryRecordingInterface(
+                folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key
+            )
 
         else:
             raise AssertionError("The Open Ephys data must be in 'legacy' (.continuous) or in 'binary' (.dat) format.")
