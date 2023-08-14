@@ -43,6 +43,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
         hdf5_plugin_path: Optional[FolderPathType] = None,
         download_plugin: bool = True,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ) -> None:
         """
         Load and prepare data for MaxOne.
@@ -60,6 +61,8 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
             This is left as True for seamless passive usage and should not impact performance.
         verbose : boolean, default: True
             Allows verbosity.
+        es_key : str, default: "ElectricalSeries"
+            The key of this ElectricalSeries in the metadata dictionary.
         """
         if system() != "Linux":
             raise NotImplementedError(
@@ -75,7 +78,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
         if download_plugin:
             self.auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path)
 
-        super().__init__(file_path=file_path, verbose=verbose)
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
