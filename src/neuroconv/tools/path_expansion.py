@@ -64,23 +64,25 @@ class AbstractPathExpander(abc.ABC):
         ... )
         """
 
-        session_keys = {"session_start_time", "session_id", "subject_id"}
+        non_standard_super = "extras"
+        standard_metadata = {"session_id": "NWBFile", "session_start_time": "NWBFile", "subject_id": "Subject"}
 
         out = DeepDict()
         for interface, source_data in source_data_spec.items():
             for path_type in ("file_path", "folder_path"):
-                if path_type in source_data:
-                    for path, metadata in self.extract_metadata(source_data["base_directory"], source_data[path_type]):
-                        key = tuple((k, v) for k, v in sorted(metadata.items()) if k in session_keys)
-                        out[key]["source_data"][interface][path_type] = os.path.join(
-                            source_data["base_directory"], path
-                        )  # return the absolute path
-                        if "session_id" in metadata:
-                            out[key]["metadata"]["NWBFile"]["session_id"] = metadata["session_id"]
-                        if "session_start_time" in metadata:
-                            out[key]["metadata"]["NWBFile"]["session_start_time"] = metadata["session_start_time"]
-                        if "subject_id" in metadata:
-                            out[key]["metadata"]["Subject"]["subject_id"] = metadata["subject_id"]
+                if path_type not in source_data:
+                    continue
+
+                for path, metadata in self.extract_metadata(source_data["base_directory"], source_data[path_type]):
+                    key = tuple((k, v) for k, v in sorted(metadata.items()))
+                    out[key]["source_data"][interface][path_type] = os.path.join(
+                        source_data["base_directory"], path
+                    )  # return the absolute path
+
+                    for meta_key, meta_val in metadata.items():
+                        super_key = standard_metadata.get(meta_key, non_standard_super)
+                        out[key]["metadata"][super_key][meta_key] = meta_val
+
         return list(dict(out).values())
 
 
