@@ -279,12 +279,39 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
         cls.photon_series_name = "TwoPhotonSeriesCh2"
         cls.num_frames = 10
         cls.image_shape = (512, 512)
-        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.6.64.400")
+        cls.device_metadata = dict(name="BrukerFluorescenceMicroscope", description="Version 5.8.64.200")
         cls.available_streams = dict(channel_streams=["Ch1", "Ch2"], plane_streams=dict())
         cls.optical_channel_metadata = dict(
             name="Ch2",
             emission_lambda=np.NAN,
             description="An optical channel of the microscope.",
+        )
+        cls.imaging_plane_metadata = dict(
+            name="ImagingPlaneCh2",
+            description="The plane imaged at 5e-06 meters depth.",
+            excitation_lambda=np.NAN,
+            indicator="unknown",
+            location="unknown",
+            device=cls.device_metadata["name"],
+            optical_channel=[cls.optical_channel_metadata],
+            imaging_rate=29.873615189896864,
+            grid_spacing=[1.1078125e-06, 1.1078125e-06],
+        )
+
+        cls.two_photon_series_metadata = dict(
+            name=cls.photon_series_name,
+            description="Imaging data acquired from the Bruker Two-Photon Microscope.",
+            unit="n.a.",
+            dimension=[512, 512],
+            imaging_plane=cls.imaging_plane_metadata["name"],
+            scan_line_rate=15835.56350852745,
+            field_of_view=[0.0005672, 0.0005672],
+        )
+
+        cls.ophys_metadata = dict(
+            Device=[cls.device_metadata],
+            ImagingPlane=[cls.imaging_plane_metadata],
+            TwoPhotonSeries=[cls.two_photon_series_metadata],
         )
 
     def run_custom_checks(self):
@@ -294,7 +321,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
 
     def check_extracted_metadata(self, metadata: dict):
         self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2023, 7, 6, 15, 13, 58))
-        # self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
+        self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         with NWBHDF5IO(path=nwbfile_path) as io:
