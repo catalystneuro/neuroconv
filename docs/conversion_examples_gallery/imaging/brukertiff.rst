@@ -30,7 +30,6 @@ Convert Bruker TIFF imaging data to NWB using
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    NWB file saved at ...
 
 
 **Convert Bruker multiple imaging planes**
@@ -58,4 +57,3 @@ Use "contiguous" to create the volumetric two photon series, and "disjoint" to c
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-    NWB file saved at ...
