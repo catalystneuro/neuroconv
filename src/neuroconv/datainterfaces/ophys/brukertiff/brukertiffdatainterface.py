@@ -87,8 +87,6 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         two_photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
         two_photon_series_metadata.update(
             description="The volumetric imaging data acquired from the Bruker Two-Photon Microscope.",
-            unit="px",
-            format="tiff",
             scan_line_rate=1 / float(xml_metadata["scanLinePeriod"]),
         )
 
