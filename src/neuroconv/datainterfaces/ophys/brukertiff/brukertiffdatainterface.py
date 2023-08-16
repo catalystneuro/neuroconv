@@ -1,9 +1,6 @@
-from copy import deepcopy
 from typing import Literal, Optional
-from warnings import warn
 
 from dateutil.parser import parse
-from pynwb import NWBFile
 
 from ..baseimagingextractorinterface import BaseImagingExtractorInterface
 from ....utils import FolderPathType
@@ -185,8 +182,6 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
 
         two_photon_series_metadata.update(
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
-            unit="px",
-            format="tiff",
             scan_line_rate=1 / float(xml_metadata["scanLinePeriod"]),
         )
 

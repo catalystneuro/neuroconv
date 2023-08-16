@@ -118,10 +118,9 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
         cls.two_photon_series_metadata = dict(
             name="TwoPhotonSeries",
             description="Imaging data acquired from the Bruker Two-Photon Microscope.",
-            unit="px",
+            unit="n.a.",
             dimension=[512, 512],
             imaging_plane=cls.imaging_plane_metadata["name"],
-            format="tiff",
             scan_line_rate=15840.580398865815,
             field_of_view=[0.0005672, 0.0005672],
         )
@@ -158,7 +157,6 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCas
             two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
             self.assertEqual(two_photon_series.description, self.two_photon_series_metadata["description"])
             self.assertEqual(two_photon_series.unit, self.two_photon_series_metadata["unit"])
-            self.assertEqual(two_photon_series.format, self.two_photon_series_metadata["format"])
             self.assertEqual(two_photon_series.scan_line_rate, self.two_photon_series_metadata["scan_line_rate"])
             assert_array_equal(two_photon_series.field_of_view[:], self.two_photon_series_metadata["field_of_view"])
 
