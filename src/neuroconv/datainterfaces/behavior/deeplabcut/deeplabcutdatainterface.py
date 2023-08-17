@@ -55,12 +55,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
     keywords = BaseTemporalAlignmentInterface.keywords + ["DLC"]
 
+    _timestamps = None
+
     def __init__(
         self,
         file_path: FilePathType,
         config_file_path: FilePathType,
         subject_name: str = "ind1",
-        timestamps: Optional[Union[List, np.ndarray]] = None,
         verbose: bool = True,
     ):
         """
@@ -74,8 +75,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             path to .yml config file
         subject_name : str, default: "ind1"
             the name of the subject for which the :py:class:`~pynwb.file.NWBFile` is to be created.
-        timestamps : list, np.ndarray or None, default: None
-            alternative timestamps vector. If None, then use the inferred timestamps from DLC2NWB
         verbose: bool, default: True
             controls verbosity.
         """
@@ -87,7 +86,6 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         self._config_file = dlc2nwb.utils.read_config(config_file_path)
         self.subject_name = subject_name
-        self.timestamps = timestamps
         self.verbose = verbose
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
@@ -110,10 +108,17 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
         )
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError(
-            "The protocol for synchronizing the timestamps of this interface has not been specified!"
-        )
+    def set_aligned_timestamps(self, aligned_timestamps: Union[List, np.ndarray]):
+        """
+        Set aligned timestamps vector for DLC data with user defined timestamps
+
+        Parameters
+        ----------
+        timestamps : list, np.ndarray
+            alternative timestamps vector.
+        """
+
+        self._timestamps = np.array(aligned_timestamps)
 
     def add_to_nwbfile(
         self,
@@ -136,5 +141,5 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             h5file=str(self.source_data["file_path"]),
             individual_name=self.subject_name,
             config_file=str(self.source_data["config_file_path"]),
-            timestamps=self.timestamps,
+            timestamps=self._timestamps,
         )
