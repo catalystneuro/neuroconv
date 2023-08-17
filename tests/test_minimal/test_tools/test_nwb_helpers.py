@@ -51,3 +51,11 @@ class TestNWBHelpers(TestCase):
         assert metadata["NWBFile"]["session_description"] == session_description
         assert metadata["NWBFile"]["identifier"] == identifier
         assert metadata["NWBFile"]["session_start_time"] == session_start_time
+
+    def test_make_nwbfile_from_metadata_called_twice(self):
+        metadata = dict(
+            NWBFile=dict(session_start_time=datetime.now().astimezone()),
+            Subject=dict(subject_id="test", sex="M", species="Mus musculus"),
+        )
+        make_nwbfile_from_metadata(metadata=metadata)
+        make_nwbfile_from_metadata(metadata=metadata)
