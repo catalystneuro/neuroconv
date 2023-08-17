@@ -134,6 +134,13 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         verbose : bool, default: True
             Controls verbosity.
         """
+        from roiextractors.extractors.tiffimagingextractors.brukertiffimagingextractor import (
+            _determine_imaging_is_volumetric,
+        )
+
+        if _determine_imaging_is_volumetric(folder_path=folder_path):
+            raise ValueError("For volumetric imaging data use BrukerTiffMultiPlaneConverter.")
+
         self.verbose = verbose
         self.data_interface_objects = dict()
 
