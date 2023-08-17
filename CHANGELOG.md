@@ -1,5 +1,9 @@
 # (Upcoming)
 
+### Fixes
+
+* Exposed `es_key` argument to users where it was previously omitted on `MaxOneRecordingInterface`, `OpenEphysLegacyRecordingInterface`, and `OpenEphysRecordingInterface`. [PR #542](https://github.com/catalystneuro/neuroconv/pull/542)
+
 # v0.4.1
 
 ### Fixes
