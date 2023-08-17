@@ -1,12 +1,12 @@
 import json
 import uuid
-import h5py
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from warnings import warn
 
+import h5py
 import jsonschema
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
