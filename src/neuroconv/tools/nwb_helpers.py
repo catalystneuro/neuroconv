@@ -1,5 +1,6 @@
 import json
 import uuid
+import h5py
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -172,7 +173,10 @@ def make_or_load_nwbfile(
         if file_initially_exists and not overwrite:
             load_kwargs.update(mode="r+", load_namespaces=True)
         else:
-            load_kwargs.update(mode="w")
+            # Directly use pagination for optimized cloud streaming
+            # TODO: replace when exposed via HDMF/PyNWB
+            file = h5py.File(name=nwbfile_path_in, mode="w", fs_strategy="page", fs_page_size=10_485_760)
+            load_kwargs.update(file=file, mode="w")  # Need to specify mode, otherwise defaults to "r"
         io = NWBHDF5IO(**load_kwargs)
     try:
         if load_kwargs.get("mode", "") == "r+":
