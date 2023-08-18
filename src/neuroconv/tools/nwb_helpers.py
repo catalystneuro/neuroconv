@@ -231,6 +231,7 @@ def get_io_datasets(nwbfile) -> Iterable[Dataset]:
 class Dataset(BaseModel):
     object_id: str
     object_name: str
+    parent: str
     field: str
     maxshape: Tuple[int, ...]
     dtype: str
@@ -238,7 +239,8 @@ class Dataset(BaseModel):
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
         string = (
-            f"{self.object_name}\n"
+            f"{self.object_name} of {self.parent}\n"
+            + f"{'-' * (len(self.object_name) + 4 + len(self.parent))}\n"
             + f"{'-' * len(self.object_name)}\n"
             + f"  {self.field}\n"
             + f"    maxshape: {self.maxshape}\n"
@@ -252,9 +254,10 @@ def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], fie
         return Dataset(
             object_id=neurodata_object.object_id,
             object_name=neurodata_object.name,
+            parent=neurodata_object.get_ancestor().name,
             field=field_name,
             maxshape=get_data_shape(data=field_value),
-            dtype=str(getattr(field_value, "dtype")),  # think on cases that don't have a dtype attr
+            dtype=str(getattr(field_value, "dtype", "unknown")),  # think on cases that don't have a dtype attr
         )
 
 def get_io_datasets(nwbfile) -> Iterable[Dataset]:
@@ -264,5 +267,5 @@ def get_io_datasets(nwbfile) -> Iterable[Dataset]:
                 if field_name in neurodata_object.fields:
                     yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
         elif isinstance(neurodata_object, DynamicTable):
-            for field_name in getattr(neurodata_object, "colnames"):
-                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
+            for column_name in getattr(neurodata_object, "colnames"):
+                yield _get_dataset_metadata(neurodata_object=neurodata_object[column_name], field_name="data")

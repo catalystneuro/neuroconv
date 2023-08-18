@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 import numpy as np
 from pynwb import NWBFile, NWBHDF5IO
+from pynwb.base import DynamicTable
 from hdmf_zarr import NWBZarrIO
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
@@ -63,4 +64,31 @@ def test_simple_time_series(memmap_file):
     assert result.field == "data"
     assert result.maxshape == MEMMAP_SHAPE
     assert result.dtype == MEMMAP_DTYPE  # TODO: add tests for if source specification was np.dtype et al.
+
+def test_simple_dynamic_table(memmap_file):
+    nwbfile = mock_NWBFile()
+    column_length = MEMMAP_SHAPE[1]
+    dynamic_table = DynamicTable(
+        name="DynamicTable",
+        description="",
+        id=list(range(column_length)),  # Need to include ID since the data of the column is not wrapped in an IO
+    )
+    dynamic_table.add_column(
+        name="TestColumn",
+        description="",
+        data=np.memmap(filename=memmap_file, mode="r", shape=MEMMAP_SHAPE, dtype=MEMMAP_DTYPE)[0,:],
+    )
+    nwbfile.add_acquisition(dynamic_table)
+
+    results = list(get_io_datasets(nwbfile=nwbfile))
+    
+    assert len(results) == 1
+    
+    result = results[0]
+    assert isinstance(result, Dataset)
+    assert result.object_name == "TestColumn"
+    assert result.field == "data"
+    assert result.maxshape == (column_length,)
+    assert result.dtype == MEMMAP_DTYPE
+
     
