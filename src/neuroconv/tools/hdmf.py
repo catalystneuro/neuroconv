@@ -3,12 +3,10 @@ from typing import Tuple
 from typing import Dict
 
 import numpy as np
-#from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
-from hdmf.data_utils import GenericDataChunkIterator
+from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
 
 
-#class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
-class _GenericDataChunkIterator(GenericDataChunkIterator):
+class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> Tuple[int]:
         num_axes = len(self.maxshape)
         chunk_bytes = np.prod(self.chunk_shape) * self.dtype.itemsize
@@ -76,7 +74,7 @@ class _GenericDataChunkIterator(GenericDataChunkIterator):
             return tuple(unpadded_buffer_shape)
 
 
-class SliceableDataChunkIterator(_GenericDataChunkIterator):
+class SliceableDataChunkIterator(GenericDataChunkIterator):
     """
     Generic data chunk iterator that works for any memory mapped array, such as a np.memmap or an h5py.Dataset
     """
