@@ -1,6 +1,5 @@
 """Collection of modifications of HDMF functions that are to be tested/used on this repo until propagation upstream."""
-from typing import Tuple
-from typing import Dict
+from typing import Dict, Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
@@ -78,10 +77,10 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
     """
     Generic data chunk iterator that works for any memory mapped array, such as a np.memmap or an h5py.Dataset
     """
-    
+
     def __init__(self, data, **base_kwargs):
         self.data = data
-        
+
         self._base_kwargs = base_kwargs
         super().__init__(**base_kwargs)
 
@@ -103,7 +102,7 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
         instance_constructor = self._from_dict
         initialization_args = (self._to_dict(),)
         return (instance_constructor, initialization_args)
-    
+
     def _to_dict(self) -> Dict:
         dictionary = dict()
         if isinstance(self.data, np.memmap):
@@ -122,7 +121,7 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
         return dictionary
 
     @staticmethod
-    def _from_dict(dictionary: dict) -> GenericDataChunkIterator: # TODO: need to investigate the need of base path
+    def _from_dict(dictionary: dict) -> GenericDataChunkIterator:  # TODO: need to investigate the need of base path
         source_type = dictionary["source_type"]
 
         if source_type == "memmap":
