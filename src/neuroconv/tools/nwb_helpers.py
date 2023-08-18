@@ -3,12 +3,16 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Union, Optional, Iterable, Tuple
 from warnings import warn
 
 import jsonschema
-from pynwb import NWBHDF5IO, NWBFile
+from hdmf.utils import get_data_shape
+from hdmf.data_utils import DataIO
+from pynwb import NWBHDF5IO, NWBFile, TimeSeries
+from pynwb.base import DynamicTable
 from pynwb.file import Subject
+from pydantic import BaseModel
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict, load_dict_from_file
@@ -196,3 +200,69 @@ def make_or_load_nwbfile(
 
                 if not success and not file_initially_exists:
                     nwbfile_path_in.unlink()
+
+class Dataset(BaseModel):
+    object_id: str
+    object_name: str
+    field: str
+    maxshape: Tuple[int]
+    dtype: str
+
+def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> Iterable[Dataset]:
+    field_value = getattr(neurodata_object, field_name)
+    if field_value is not None and not isinstance(field_value, DataIO):
+        yield Dataset(
+            object_id=neurodata_object.id,
+            object_name=neurodata_object.name,
+            field=field_name,
+            maxshape=get_data_shape(data=field_value),
+            dtype=getattr(field_value, "dtype"),  # think on cases that don't have a dtype attr
+        )
+
+def get_io_datasets(nwbfile) -> Iterable[Dataset]:
+    for neurodata_object in nwbfile.objects():
+        if isinstance(neurodata_object, TimeSeries):
+            for field_name in ("data", "timestamps"):
+                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
+        elif isinstance(neurodata_object, DynamicTable):
+            for field_name in getattr(neurodata_object, "colnames"):
+                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
+
+class Dataset(BaseModel):
+    object_id: str
+    object_name: str
+    field: str
+    maxshape: Tuple[int, ...]
+    dtype: str
+    
+    def __str__(self) -> str:
+        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
+        string = (
+            f"{self.object_name}\n"
+            + f"{'-' * len(self.object_name)}\n"
+            + f"  {self.field}\n"
+            + f"    maxshape: {self.maxshape}\n"
+            + f"    dtype: {self.dtype}"
+        )
+        return string
+
+def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> Dataset:
+    field_value = getattr(neurodata_object, field_name)
+    if field_value is not None and not isinstance(field_value, DataIO):
+        return Dataset(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            field=field_name,
+            maxshape=get_data_shape(data=field_value),
+            dtype=str(getattr(field_value, "dtype")),  # think on cases that don't have a dtype attr
+        )
+
+def get_io_datasets(nwbfile) -> Iterable[Dataset]:
+    for _, neurodata_object in nwbfile.objects.items():
+        if isinstance(neurodata_object, TimeSeries):
+            for field_name in ("data", "timestamps"):
+                if field_name in neurodata_object.fields:
+                    yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
+        elif isinstance(neurodata_object, DynamicTable):
+            for field_name in getattr(neurodata_object, "colnames"):
+                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
