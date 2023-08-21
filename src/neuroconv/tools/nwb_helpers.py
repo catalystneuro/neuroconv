@@ -3,16 +3,16 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Union, Optional, Iterable, Tuple
+from typing import Iterable, Optional, Tuple, Union
 from warnings import warn
 
 import jsonschema
-from hdmf.utils import get_data_shape
 from hdmf.data_utils import DataIO
+from hdmf.utils import get_data_shape
+from pydantic import BaseModel
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 from pynwb.file import Subject
-from pydantic import BaseModel
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict, load_dict_from_file
@@ -201,12 +201,14 @@ def make_or_load_nwbfile(
                 if not success and not file_initially_exists:
                     nwbfile_path_in.unlink()
 
+
 class Dataset(BaseModel):
     object_id: str
     object_name: str
     field: str
     maxshape: Tuple[int]
     dtype: str
+
 
 def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> Iterable[Dataset]:
     field_value = getattr(neurodata_object, field_name)
@@ -219,6 +221,7 @@ def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], fie
             dtype=getattr(field_value, "dtype"),  # think on cases that don't have a dtype attr
         )
 
+
 def get_io_datasets(nwbfile) -> Iterable[Dataset]:
     for neurodata_object in nwbfile.objects():
         if isinstance(neurodata_object, TimeSeries):
@@ -228,6 +231,7 @@ def get_io_datasets(nwbfile) -> Iterable[Dataset]:
             for field_name in getattr(neurodata_object, "colnames"):
                 yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
 
+
 class Dataset(BaseModel):
     object_id: str
     object_name: str
@@ -235,7 +239,7 @@ class Dataset(BaseModel):
     field: str
     maxshape: Tuple[int, ...]
     dtype: str
-    
+
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
         string = (
@@ -248,6 +252,7 @@ class Dataset(BaseModel):
         )
         return string
 
+
 def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> Dataset:
     field_value = getattr(neurodata_object, field_name)
     if field_value is not None and not isinstance(field_value, DataIO):
@@ -259,6 +264,7 @@ def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], fie
             maxshape=get_data_shape(data=field_value),
             dtype=str(getattr(field_value, "dtype", "unknown")),  # think on cases that don't have a dtype attr
         )
+
 
 def get_io_datasets(nwbfile) -> Iterable[Dataset]:
     for _, neurodata_object in nwbfile.objects.items():
