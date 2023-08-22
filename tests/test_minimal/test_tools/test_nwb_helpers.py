@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime
 
 import pytz
@@ -51,3 +52,13 @@ class TestNWBHelpers(TestCase):
         assert metadata["NWBFile"]["session_description"] == session_description
         assert metadata["NWBFile"]["identifier"] == identifier
         assert metadata["NWBFile"]["session_start_time"] == session_start_time
+
+    def test_make_nwbfile_from_metadata_no_in_place_modification(self):
+        """A past version of the `make_nwbfile_from_metadata` function would unintentionally modify the `metadata` dictionary in-place."""
+        metadata = dict(
+            NWBFile=dict(session_start_time=datetime.now().astimezone()),
+            Subject=dict(subject_id="test", sex="M", species="Mus musculus"),
+        )
+        expected_metadata = deepcopy(metadata)
+        make_nwbfile_from_metadata(metadata=metadata)
+        assert metadata == expected_metadata
