@@ -1,6 +1,7 @@
 import json
 import uuid
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -56,7 +57,7 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
-    nwbfile_kwargs = metadata["NWBFile"]
+    nwbfile_kwargs = deepcopy(metadata["NWBFile"])
     # convert ISO 8601 string to datetime
     if isinstance(nwbfile_kwargs.get("session_start_time"), str):
         nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(nwbfile_kwargs["session_start_time"])
