@@ -130,5 +130,7 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
         else:
             raise ValueError(f"Source type ({source_type}) is not yet supported!")
 
-        iterator = SliceableDataChunkIterator(data=data, display_progress=dictionary["display_progress"], **dictionary["base_kwargs"])
+        iterator = SliceableDataChunkIterator(
+            data=data, display_progress=dictionary["display_progress"], **dictionary["base_kwargs"]
+        )
         return iterator
