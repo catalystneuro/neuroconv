@@ -78,11 +78,11 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
     Generic data chunk iterator that works for any memory mapped array, such as a np.memmap or an h5py.Dataset
     """
 
-    def __init__(self, data, **base_kwargs):
+    def __init__(self, data, display_progress: bool = False, **base_kwargs):
         self.data = data
 
         self._base_kwargs = base_kwargs
-        super().__init__(**base_kwargs)
+        super().__init__(display_progress=display_progress, **base_kwargs)
 
     def _get_dtype(self) -> np.dtype:
         return self.data.dtype
@@ -107,6 +107,7 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
         dictionary = dict()
         if isinstance(self.data, np.memmap):
             dictionary["source_type"] = "memmap"
+            dictionary["display_progress"] = self.display_progress
             dictionary["base_kwargs"] = self._base_kwargs
             dictionary["load_kwargs"] = dict(
                 filename=str(self.data.filename),  # TODO: check if can be relative
@@ -129,5 +130,5 @@ class SliceableDataChunkIterator(GenericDataChunkIterator):
         else:
             raise ValueError(f"Source type ({source_type}) is not yet supported!")
 
-        iterator = SliceableDataChunkIterator(data=data, **dictionary["base_kwargs"])
+        iterator = SliceableDataChunkIterator(data=data, display_progress=dictionary["display_progress"], **dictionary["base_kwargs"])
         return iterator
