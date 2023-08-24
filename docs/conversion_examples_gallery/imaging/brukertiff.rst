@@ -7,7 +7,7 @@ Install NeuroConv with the additional dependencies necessary for reading Bruker 
 
     pip install neuroconv[brukertiff]
 
-**Convert Bruker single imaging plane**
+**Convert single imaging plane**
 
 Convert Bruker TIFF imaging data to NWB using
 :py:class:`~neuroconv.converters.BrukerTiffSinglePlaneConverter`.
@@ -32,11 +32,11 @@ Convert Bruker TIFF imaging data to NWB using
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 
-**Convert Bruker multiple imaging planes**
+**Convert multiple imaging planes**
 
 Convert volumetric Bruker TIFF imaging data to NWB using
 :py:class:`~neuroconv.converters.BrukerTiffMultiPlaneConverter`.
-The `plane_separation_type` defined how to handle the imaging planes.
+The `plane_separation_type` parameter defines how to load the imaging planes.
 Use "contiguous" to create the volumetric two photon series, and "disjoint" to create separate imaging plane and two photon series for each plane.
 
 .. code-block:: python
