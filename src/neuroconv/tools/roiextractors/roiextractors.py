@@ -360,7 +360,8 @@ def add_photon_series(
         return nwbfile
 
     # Add the image plane to nwb
-    nwbfile = add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy)
+    # TODO: change imaging_plane_index to photon_series_key
+    nwbfile = add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_index=photon_series_index)
     imaging_plane_name = photon_series_kwargs["imaging_plane"]
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
     photon_series_kwargs.update(imaging_plane=imaging_plane)
@@ -483,6 +484,7 @@ def add_imaging(
     nwbfile: NWBFile,
     metadata: Optional[dict] = None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
+    photon_series_index: int = 0,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
 ):
@@ -492,6 +494,7 @@ def add_imaging(
         nwbfile=nwbfile,
         metadata=metadata,
         photon_series_type=photon_series_type,
+        photon_series_index=photon_series_index,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
     )
