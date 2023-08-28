@@ -1,15 +1,20 @@
+"""Collection of helper functions related to NWB."""
 import json
 import uuid
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union, Literal
 from warnings import warn
 
+import zarr
+import h5py
 import jsonschema
+import numpy as np
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
+from hdmf_zarr import NWBZarrIO
 from pydantic import BaseModel
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
@@ -204,49 +209,20 @@ def make_or_load_nwbfile(
 
 
 class Dataset(BaseModel):
-    object_id: str
-    object_name: str
-    field: str
-    maxshape: Tuple[int]
-    dtype: str
+    """A data model for summarizing information about an object that will become a HDF5 or Zarr Dataset in the file."""
 
-
-def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> Iterable[Dataset]:
-    field_value = getattr(neurodata_object, field_name)
-    if field_value is not None and not isinstance(field_value, DataIO):
-        yield Dataset(
-            object_id=neurodata_object.id,
-            object_name=neurodata_object.name,
-            field=field_name,
-            maxshape=get_data_shape(data=field_value),
-            dtype=getattr(field_value, "dtype"),  # think on cases that don't have a dtype attr
-        )
-
-
-def get_io_datasets(nwbfile) -> Iterable[Dataset]:
-    for neurodata_object in nwbfile.objects():
-        if isinstance(neurodata_object, TimeSeries):
-            for field_name in ("data", "timestamps"):
-                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
-        elif isinstance(neurodata_object, DynamicTable):
-            for field_name in getattr(neurodata_object, "colnames"):
-                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
-
-
-class Dataset(BaseModel):
     object_id: str
     object_name: str
     parent: str
-    field: str
+    field: Literal["data", "timestamps"]
     maxshape: Tuple[int, ...]
-    dtype: str
+    dtype: str  # Think about how to constrain/specify this more
 
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
         string = (
             f"{self.object_name} of {self.parent}\n"
             + f"{'-' * (len(self.object_name) + 4 + len(self.parent))}\n"
-            + f"{'-' * len(self.object_name)}\n"
             + f"  {self.field}\n"
             + f"    maxshape: {self.maxshape}\n"
             + f"    dtype: {self.dtype}"
@@ -255,6 +231,7 @@ class Dataset(BaseModel):
 
 
 def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> Dataset:
+    """Fill in the Dataset model with as many values as can be automatically detected or inferred."""
     field_value = getattr(neurodata_object, field_name)
     if field_value is not None and not isinstance(field_value, DataIO):
         return Dataset(
@@ -263,16 +240,74 @@ def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], fie
             parent=neurodata_object.get_ancestor().name,
             field=field_name,
             maxshape=get_data_shape(data=field_value),
-            dtype=str(getattr(field_value, "dtype", "unknown")),  # think on cases that don't have a dtype attr
+            # think on cases that don't have a dtype attr
+            dtype=str(getattr(field_value, "dtype", "unknown")),
         )
 
 
-def get_io_datasets(nwbfile) -> Iterable[Dataset]:
+def _value_already_written_to_file(
+    value: Union[h5py.Dataset, zarr.Array],
+    backend_type: Literal["hdf5", "zarr"],
+    existing_file: Union[h5py.File, zarr.Group, None],
+) -> bool:
+    """
+    Determine if the neurodata object is already written to the file on disk.
+
+    This object should then be skipped by the `get_io_datasets` function when working in append mode.
+    """
+    return (
+        isinstance(value, h5py.Dataset)  # If the source data is an HDF5 Dataset
+        and backend_type == "hdf5"  # If working in append mode
+        and value.file == existing_file  # If the source HDF5 Dataset is the appending NWBFile
+    ) or (
+        isinstance(value, zarr.Array)  # If the source data is an Zarr Array
+        and backend_type == "zarr"  # If working in append mode
+        and value.store == existing_file  # If the source Zarr 'file' is the appending NWBFile
+    )
+
+
+def get_io_datasets(nwbfile: NWBFile) -> Iterable[Dataset]:
+    """
+    Method for automatically detecting all objects in the file that could be wrapped in a DataIO.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        An in-memory NWBFile object, either generated from the base class or read from an existing file of any backend.
+
+    Yields
+    ------
+    Dataset
+        A summary of each detected object that can be wrapped in a DataIO.
+    """
+    backend_type = None  # Used for filtering out datasets that have already been written to disk when appending
+    existing_file = None
+    if isinstance(nwbfile.read_io, NWBHDF5IO):
+        backend_type = "hdf5"
+        existing_file = nwbfile.read_io._file
+    elif isinstance(nwbfile.read_io, NWBZarrIO):
+        backend_type = "zarr"
+        existing_file = nwbfile.read_io.file.store
+
     for _, neurodata_object in nwbfile.objects.items():
+        # TODO: edge case of ImageSeries with external file mode?
         if isinstance(neurodata_object, TimeSeries):
             for field_name in ("data", "timestamps"):
-                if field_name in neurodata_object.fields:
-                    yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
+                if field_name not in neurodata_object.fields:  # timestamps is optional
+                    continue
+                if _value_already_written_to_file(
+                    value=getattr(neurodata_object, field_name),
+                    backend_type=backend_type,
+                    existing_file=existing_file,
+                ):
+                    continue  # skip
+
+                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
         elif isinstance(neurodata_object, DynamicTable):
             for column_name in getattr(neurodata_object, "colnames"):
+                if _value_already_written_to_file(
+                    value=getattr(neurodata_object, column_name), backend_type=backend_type, existing_file=existing_file
+                ):
+                    continue  # skip
+
                 yield _get_dataset_metadata(neurodata_object=neurodata_object[column_name], field_name="data")
