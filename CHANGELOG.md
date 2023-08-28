@@ -15,7 +15,11 @@
   whether to load the imaging planes as a volume (`"contiguous"`) or separately (`"disjoint"`).
   The available data streams for the defined  `plane_separation_type`  can be checked by `BrukerTiffMultiPlaneImagingInterface.get_streams(folder_path, plane_separation_type)` method. [PR #507](https://github.com/catalystneuro/neuroconv/pull/507)
 
-* Add tool function `nwb_helpers.get_io_dataset` and corresponding private methods and dataclass for detecting datasets from an in-memory `NWBFile` that can be wrapped in an H5DataIO before being written to a new or existing file. [PR #549](https://github.com/catalystneuro/neuroconv/pull/549)
+* Add tool function `nwb_helpers.get_io_datasets` and corresponding private methods and Pydantic model for detecting datasets from an in-memory `NWBFile` that can be wrapped in an H5DataIO before being written to a new or existing file. [PR #549](https://github.com/catalystneuro/neuroconv/pull/549)
+
+* Add tool function `nwb_helpers.get_default_dataset_configurations(nwbfile: NWBFile) -> Dict[Dataset, DatasetConfiguration]` and Pydantic models `BackendConfiguration` for representing top-level backend configuration and `nwb_helpers.DatasetConfiguration` for representing configurable properties of the datasets (chunking & compression options) depending on each backend before writing to disk.
+
+* Add tool function `nwb_helpers.configure_datasets(nwbfile: NWBFile, dataset_configurations: Dict[Dataset, DatasetConfiguration])` for configuring backend and dataset options for an `NWBFile` before writing to disk. 
 
 
 

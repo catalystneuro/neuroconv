@@ -5,13 +5,14 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union, Literal
+from typing import Iterable, Optional, Tuple, Union, Literal, Dict, Type
 from warnings import warn
 
 import zarr
 import h5py
 import jsonschema
 import numpy as np
+import hdf5plugin
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
@@ -19,6 +20,7 @@ from pydantic import BaseModel
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 from pynwb.file import Subject
+from nwbinspector.utils import is_module_installed
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict, load_dict_from_file
@@ -311,3 +313,79 @@ def get_io_datasets(nwbfile: NWBFile) -> Iterable[Dataset]:
                     continue  # skip
 
                 yield _get_dataset_metadata(neurodata_object=neurodata_object[column_name], field_name="data")
+
+
+class DatasetConfiguration(BaseModel):
+    """A data model for configruing options about an object that will become a HDF5 or Zarr Dataset in the file."""
+
+    object_id: str
+    object_name: str
+    parent: str
+    field: Literal["data", "timestamps"]
+    chunk_shape: Tuple[int, ...]
+    buffer_shape: Tuple[int, ...]
+    maxshape: Tuple[int, ...]
+    compression_type: str
+    compression_options: None  # TODO: think about how to annotate generally
+    dtype: str  # Think about how to constrain/specify this more
+
+    def __str__(self) -> str:
+        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
+        string = (
+            f"{self.object_name} of {self.parent}\n"
+            + f"{'-' * (len(self.object_name) + 4 + len(self.parent))}\n"
+            + f"  {self.field}\n"
+            + f"    maxshape: {self.maxshape}\n"
+            + f"    dtype: {self.dtype}"
+        )
+        return string
+
+
+_available_hdf5_filters = set(h5py.filters.decode) - set(("shuffle", "fletcher32", "scaleoffset"))
+if is_module_installed(module_name="hdf5plugin"):
+    _available_hdf5_filters = _available_hdf5_filters | set(
+        (filter_.filter_name for filter_ in hdf5plugin.get_filters())
+    )
+AVAILABLE_HDF5_COMPRESSION_METHODS = Literal[tuple(_available_hdf5_filters)]
+
+
+class HDF5DatasetConfiguration(BaseModel):
+    """A data model for configruing options about an object that will become a HDF5 Dataset in the file."""
+
+    object_id: str
+    object_name: str
+    parent: str
+    field: Literal["data", "timestamps"]
+    chunk_shape: Tuple[int, ...]
+    buffer_shape: Tuple[int, ...]
+    maxshape: Tuple[int, ...]
+    compression_type: AVAILABLE_HDF5_COMPRESSION_METHODS
+    compression_options: None  # TODO
+    dtype: str  # Think about how to constrain/specify this more
+
+
+class ZarrDatasetConfiguration(BaseModel):
+    """A data model for configruing options about an object that will become a Zarr Dataset in the file."""
+
+    object_id: str
+    object_name: str
+    parent: str
+    field: Literal["data", "timestamps"]
+    chunk_shape: Tuple[int, ...]
+    buffer_shape: Tuple[int, ...]
+    maxshape: Tuple[int, ...]
+    compression_type: None  # TODO
+    compression_options: None  # TODO
+    dtype: str  # Think about how to constrain/specify this more
+
+
+class BackendConfiguration(BaseModel):
+    """A model for matching collections of DatasetConfigurations specific to a backend with its name and DataIO."""
+
+    backend_type: Literal["hdf5", "zarr"]
+    data_io: Type[DataIO]
+    dataset_configurations: Iterable[DatasetConfiguration]
+
+
+def get_default_dataset_configurations(nwbfile: NWBFile) -> Dict[Dataset, DatasetConfiguration]:
+    pass  # TODO
