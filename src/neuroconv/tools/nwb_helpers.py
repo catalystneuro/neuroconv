@@ -5,13 +5,13 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union, Literal
+from typing import Iterable, Literal, Optional, Tuple, Union
 from warnings import warn
 
-import zarr
 import h5py
 import jsonschema
 import numpy as np
+import zarr
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
