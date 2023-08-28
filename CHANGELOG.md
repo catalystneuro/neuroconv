@@ -19,7 +19,7 @@
 
 * Add tool function `nwb_helpers.get_default_dataset_configurations(nwbfile: NWBFile) -> Dict[Dataset, DatasetConfiguration]` and Pydantic models `BackendConfiguration` for representing top-level backend configuration and `nwb_helpers.DatasetConfiguration` for representing configurable properties of the datasets (chunking & compression options) depending on each backend before writing to disk.
 
-* Add tool function `nwb_helpers.configure_datasets(nwbfile: NWBFile, dataset_configurations: Dict[Dataset, DatasetConfiguration])` for configuring backend and dataset options for an `NWBFile` before writing to disk. 
+* Add tool function `nwb_helpers.configure_datasets(nwbfile: NWBFile, dataset_configurations: Dict[Dataset, DatasetConfiguration])` for configuring backend and dataset options for an `NWBFile` before writing to disk.
 
 
 

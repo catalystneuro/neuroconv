@@ -5,22 +5,22 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union, Literal, Dict, Type
+from typing import Dict, Iterable, Literal, Optional, Tuple, Type, Union
 from warnings import warn
 
-import zarr
 import h5py
+import hdf5plugin
 import jsonschema
 import numpy as np
-import hdf5plugin
+import zarr
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
+from nwbinspector.utils import is_module_installed
 from pydantic import BaseModel
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 from pynwb.file import Subject
-from nwbinspector.utils import is_module_installed
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict, load_dict_from_file
