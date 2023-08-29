@@ -1,5 +1,5 @@
-from io import StringIO
 from pathlib import Path
+from io import StringIO
 from unittest.mock import patch
 
 import numpy as np
