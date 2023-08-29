@@ -8,11 +8,11 @@ from pathlib import Path
 from typing import Iterable, Optional, Tuple, Union, Literal, Dict, Type, Any
 from warnings import warn
 
-import zarr
 import h5py
+import hdf5plugin
 import jsonschema
 import numpy as np
-import hdf5plugin
+import zarr
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
