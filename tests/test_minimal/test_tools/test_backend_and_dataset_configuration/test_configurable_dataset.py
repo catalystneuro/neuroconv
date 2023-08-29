@@ -2,13 +2,12 @@
 from io import StringIO
 from unittest.mock import patch
 
+from neuroconv.tools.nwb_helpers import ConfigurableDataset
 
-from neuroconv.tools.nwb_helpers import Dataset
 
-
-def test_dataset_print():
+def test_configurable_dataset_print():
     """Test the printout display of a Dataset modellooks nice."""
-    test_dataset = Dataset(
+    test_dataset = ConfigurableDataset(
         object_id="abc123",
         object_name="TestObject",
         parent="TestParent",
@@ -29,9 +28,9 @@ def test_dataset_print():
     assert out.getvalue() == expected_print
 
 
-def test_dataset_repr():
+def test_configurable_dataset_repr():
     """Test the programmatic repr of a Dataset model is more dataclass-like."""
-    test_dataset = Dataset(
+    test_dataset = ConfigurableDataset(
         object_id="abc123",
         object_name="TestObject",
         parent="TestParent",
@@ -40,7 +39,7 @@ def test_dataset_repr():
         dtype="int16",
     )
 
-    # Important to keep the `repr` unmodified for appearence inside lists of Datasets
+    # Important to keep the `repr` unmodified for appearance inside lists of Datasets
     expected_repr = (
         "Dataset(object_id='abc123', object_name='TestObject', parent='TestParent', "
         "field='data', maxshape=(2, 4), dtype='int16')"
