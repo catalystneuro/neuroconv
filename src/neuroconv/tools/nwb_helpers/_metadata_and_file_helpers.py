@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-from pynwb import NWBFile, Subject, NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile, Subject
 
 from ..utils import FilePathType
 from ..utils.dict import DeepDict, load_dict_from_file
