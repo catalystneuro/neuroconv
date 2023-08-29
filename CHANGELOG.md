@@ -17,7 +17,7 @@
 
 * Reorganized `nwb_helpers` submodule of the `tools`. [PR #549](https://github.com/catalystneuro/neuroconv/pull/549)
 
-* Add tool function `nwb_helpers.get_configurable_dataset` and corresponding private methods and dataclass for detecting datasets from an in-memory `NWBFile` that can be wrapped in an H5DataIO before being written to a new or existing file. [PR #549](https://github.com/catalystneuro/neuroconv/pull/549)
+* Add tool function `nwb_helpers.get_configurable_datasets` and corresponding private methods and dataclass for detecting datasets from an in-memory `NWBFile` that can be wrapped in an H5DataIO before being written to a new or existing file. [PR #549](https://github.com/catalystneuro/neuroconv/pull/549)
 
 
 
