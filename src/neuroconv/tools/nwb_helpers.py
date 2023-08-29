@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, Union, Literal, Dict, Type
+from typing import Iterable, Optional, Tuple, Union, Literal, Dict, Type, Any
 from warnings import warn
 
 import zarr
@@ -16,11 +16,12 @@ import hdf5plugin
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 from pynwb.file import Subject
 from nwbinspector.utils import is_module_installed
+from numcodecs.registry import codec_registry
 
 from ..utils import FilePathType, dict_deep_update
 from ..utils.dict import DeepDict, load_dict_from_file
@@ -325,8 +326,8 @@ class DatasetConfiguration(BaseModel):
     chunk_shape: Tuple[int, ...]
     buffer_shape: Tuple[int, ...]
     maxshape: Tuple[int, ...]
-    compression_type: str
-    compression_options: None  # TODO: think about how to annotate generally
+    compression_method: str
+    compression_options: Dict[str, Any]
     dtype: str  # Think about how to constrain/specify this more
 
     def __str__(self) -> str:
@@ -359,9 +360,15 @@ class HDF5DatasetConfiguration(BaseModel):
     chunk_shape: Tuple[int, ...]
     buffer_shape: Tuple[int, ...]
     maxshape: Tuple[int, ...]
-    compression_type: AVAILABLE_HDF5_COMPRESSION_METHODS
-    compression_options: None  # TODO
+    compression_method: AVAILABLE_HDF5_COMPRESSION_METHODS = "gzip"
+    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now
+    # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings but no annotation typing
+    compression_options: Dict[str, Any]
     dtype: str  # Think about how to constrain/specify this more
+
+
+_available_zarr_filters = set(codec_registry.keys()) - set(("json2", "pickle"))
+AVAILABLE_ZARR_COMPRESSION_METHODS = Literal[tuple(_available_zarr_filters)]
 
 
 class ZarrDatasetConfiguration(BaseModel):
@@ -374,9 +381,22 @@ class ZarrDatasetConfiguration(BaseModel):
     chunk_shape: Tuple[int, ...]
     buffer_shape: Tuple[int, ...]
     maxshape: Tuple[int, ...]
-    compression_type: None  # TODO
-    compression_options: None  # TODO
+    filter_methods: Tuple[AVAILABLE_ZARR_COMPRESSION_METHODS, ...]
+    filter_options: Tuple[Dict[str, Any]]
+    compression_method: AVAILABLE_ZARR_COMPRESSION_METHODS
+    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now
+    # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings but no annotation typing
+    compression_option: Dict[str, Any]
     dtype: str  # Think about how to constrain/specify this more
+
+    @root_validator()
+    def verify_filter_methods_and_options_match(cls, values):
+        password = values.get("password")
+        confirm_password = values.get("confirm_password")
+
+        if password != confirm_password:
+            raise ValueError("The two passwords did not match.")
+        return values
 
 
 class BackendConfiguration(BaseModel):
