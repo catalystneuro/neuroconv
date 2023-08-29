@@ -41,7 +41,7 @@ def test_configurable_dataset_repr():
 
     # Important to keep the `repr` unmodified for appearance inside lists of Datasets
     expected_repr = (
-        "Dataset(object_id='abc123', object_name='TestObject', parent='TestParent', "
+        "ConfigurableDataset(object_id='abc123', object_name='TestObject', parent='TestParent', "
         "field='data', maxshape=(2, 4), dtype='int16')"
     )
     assert repr(test_dataset) == expected_repr

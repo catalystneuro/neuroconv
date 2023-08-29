@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Optional
 from warnings import warn
 
-from pynwb import NWBHDF5IO, NWBFile, Subject
+from pydantic import FilePath
+from pynwb import NWBHDF5IO, NWBFile
+from pynwb.file import Subject
 
-from ..utils import FilePathType
-from ..utils.dict import DeepDict, load_dict_from_file
-from ..utils.json_schema import validate_metadata
+from ...utils.dict import DeepDict, load_dict_from_file
+from ...utils.json_schema import validate_metadata
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -127,7 +128,7 @@ def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metada
 
 @contextmanager
 def make_or_load_nwbfile(
-    nwbfile_path: Optional[FilePathType] = None,
+    nwbfile_path: Optional[FilePath] = None,
     nwbfile: Optional[NWBFile] = None,
     metadata: Optional[dict] = None,
     overwrite: bool = False,
