@@ -113,10 +113,15 @@ class ZarrDatasetConfiguration(BaseModel):
     dtype: str  # Think about how to constrain/specify this more
 
     @root_validator()
-    def verify_filter_methods_and_options_match(cls, values):
-        password = values.get("password")
-        confirm_password = values.get("confirm_password")
+    def verify_filter_methods_and_options_match(cls, values: Dict[str, Any]):
+        filter_methods = values.get("filter_methods")
+        filter_options = values.get("filter_options")
 
-        if password != confirm_password:
-            raise ValueError("The two passwords did not match.")
+        len_filter_methods = len(filter_methods)
+        len_filter_options = len(filter_options)
+        if len_filter_methods != len_filter_options:
+            raise ValueError(
+                "Length mismatch between `filter_methods` ({len_filter_methods} methods specified) and "
+                "`filter_options` ({len_filter_options} options found)! These two must match one-to-one."
+            )
         return values
