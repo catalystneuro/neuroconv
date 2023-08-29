@@ -15,6 +15,8 @@
   whether to load the imaging planes as a volume (`"contiguous"`) or separately (`"disjoint"`).
   The available data streams for the defined  `plane_separation_type`  can be checked by `BrukerTiffMultiPlaneImagingInterface.get_streams(folder_path, plane_separation_type)` method. [PR #507](https://github.com/catalystneuro/neuroconv/pull/507)
 
+* Reorganized `nwb_helpers` submodule of the `tools`. [PR #549](https://github.com/catalystneuro/neuroconv/pull/549)
+
 * Add tool function `nwb_helpers.get_io_dataset` and corresponding private methods and dataclass for detecting datasets from an in-memory `NWBFile` that can be wrapped in an H5DataIO before being written to a new or existing file. [PR #549](https://github.com/catalystneuro/neuroconv/pull/549)
 
 
