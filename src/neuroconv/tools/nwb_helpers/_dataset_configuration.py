@@ -99,7 +99,7 @@ def get_configurable_datasets(nwbfile: NWBFile) -> Iterable[ConfigurableDataset]
                 yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
         elif isinstance(neurodata_object, DynamicTable):
             for column_name in getattr(neurodata_object, "colnames"):
-                column_value = getattr(neurodata_object, column_name)
+                column_value = getattr(neurodata_object, column_name).data
                 if _value_already_written_to_file(
                     value=column_value, backend_type=backend_type, existing_file=existing_file
                 ):

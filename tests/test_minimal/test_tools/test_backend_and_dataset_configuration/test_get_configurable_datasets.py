@@ -3,12 +3,14 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from hdmf.common import VectorData
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import ConfigurableDataset, get_configurable_datasets
 
 
@@ -54,7 +56,7 @@ def test_simple_time_series():
     array = generate_2d_array()
 
     nwbfile = mock_NWBFile()
-    time_series = mock_TimeSeries(name="TimeSeries", data=array)
+    time_series = mock_TimeSeries(name="TimeSeries", data=SliceableDataChunkIterator(data=array))
     nwbfile.add_acquisition(time_series)
 
     results = list(get_configurable_datasets(nwbfile=nwbfile))
@@ -74,12 +76,14 @@ def test_simple_dynamic_table():
 
     nwbfile = mock_NWBFile()
     column_length = array.shape[1]
+    column = VectorData(name="TestColumn", description="", data=SliceableDataChunkIterator(data=array.squeeze()))
     dynamic_table = DynamicTable(
         name="DynamicTable",
         description="",
         id=list(range(column_length)),  # Need to include ID since the data of the column is not wrapped in an IO
+        columns=[column],
     )
-    dynamic_table.add_column(name="TestColumn", description="", data=array.squeeze())
+    # dynamic_table.add_column(name="TestColumn", description="", data=SliceableDataChunkIterator(data=array.squeeze()))
     nwbfile.add_acquisition(dynamic_table)
 
     results = list(get_configurable_datasets(nwbfile=nwbfile))
@@ -100,7 +104,7 @@ def test_simple_on_appended_hdf5_file(hdf5_nwbfile_path):
     with NWBHDF5IO(path=hdf5_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
         array = generate_2d_array()
-        new_time_series = mock_TimeSeries(name="NewTimeSeries", data=array)
+        new_time_series = mock_TimeSeries(name="NewTimeSeries", data=SliceableDataChunkIterator(data=array))
         nwbfile.add_acquisition(new_time_series)
 
         results = list(get_configurable_datasets(nwbfile=nwbfile))
@@ -121,7 +125,7 @@ def test_simple_on_appended_zarr_file(zarr_nwbfile_path):
     with NWBZarrIO(path=zarr_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
         array = generate_2d_array()
-        new_time_series = mock_TimeSeries(name="NewTimeSeries", data=array)
+        new_time_series = mock_TimeSeries(name="NewTimeSeries", data=SliceableDataChunkIterator(data=array))
         nwbfile.add_acquisition(new_time_series)
 
         results = list(get_configurable_datasets(nwbfile=nwbfile))
