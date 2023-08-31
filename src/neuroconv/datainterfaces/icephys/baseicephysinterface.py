@@ -59,7 +59,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
         metadata = super().get_metadata()
         metadata["Icephys"] = dict(
             Device=[dict(name="DeviceIcephys", description="no description")],
-            Electrode=[
+            Electrodes=[
                 dict(name=f"electrode-{i}", description="no description", device="DeviceIcephys")
                 for i in range(get_number_of_electrodes(self.readers_list[0]))
             ],

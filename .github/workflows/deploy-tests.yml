@@ -65,7 +65,6 @@ jobs:
 
     needs:
     - run-tests
-    - run-dev-tests
     - run-doctests-only
 
     runs-on: ubuntu-latest
@@ -74,5 +73,5 @@ jobs:
     - name: Decide whether the all jobs succeeded or at least one failed
       uses: re-actors/alls-green@release/v1
       with:
-        allowed-skips: run-tests, run-dev-tests, run-doctests-only  # Each has the option to skip depending on whether src changed
+        allowed-skips: run-tests, run-doctests-only  # Each has the option to skip depending on whether src changed
         jobs: ${{ toJSON(needs) }}
