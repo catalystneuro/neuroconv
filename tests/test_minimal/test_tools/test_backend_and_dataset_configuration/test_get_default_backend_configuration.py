@@ -9,7 +9,10 @@ from pynwb.base import DynamicTable
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.tools.nwb_helpers import ConfigurableDataset, get_default_backend_configuration
+from neuroconv.tools.nwb_helpers import (
+    ConfigurableDataset,
+    get_default_backend_configuration,
+)
 
 
 def generate_1d_array() -> NWBFile:

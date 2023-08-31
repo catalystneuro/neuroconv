@@ -1,15 +1,15 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 from typing import Any, Dict, Literal, Tuple, Type, Union
 
-import psutil
 import h5py
 import hdf5plugin
+import psutil
 import zarr
-from pynwb import NWBHDF5IO
-from hdmf_zarr import NWBZarrIO
 from hdmf.data_utils import DataIO
+from hdmf_zarr import NWBZarrIO
 from nwbinspector.utils import is_module_installed
-from pydantic import BaseModel, root_validator, Field
+from pydantic import BaseModel, Field, root_validator
+from pynwb import NWBHDF5IO
 
 
 class ConfigurableDataset(BaseModel):

@@ -11,11 +11,11 @@ from pynwb.base import DynamicTable
 
 from ._dataset_and_backend_models import (
     BackendConfiguration,
-    HDF5BackendConfiguration,
-    ZarrBackendConfiguration,
     ConfigurableDataset,
     DatasetConfiguration,
+    HDF5BackendConfiguration,
     HDF5DatasetConfiguration,
+    ZarrBackendConfiguration,
     ZarrDatasetConfiguration,
 )
 
