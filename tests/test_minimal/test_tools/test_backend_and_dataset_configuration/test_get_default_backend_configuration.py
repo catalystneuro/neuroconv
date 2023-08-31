@@ -9,8 +9,13 @@ from pynwb.base import DynamicTable
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
     ConfigurableDataset,
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
+    HDF5DatasetConfiguration,
+    ZarrDatasetConfiguration,
     get_default_backend_configuration,
 )
 
@@ -53,23 +58,79 @@ def zarr_nwbfile_path(tmpdir_factory):
     return str(nwbfile_path)
 
 
-def test_simple_time_series():
+def test_simple_time_series_hdf5_backend():
     array = generate_2d_array()
 
     nwbfile = mock_NWBFile()
-    time_series = mock_TimeSeries(name="TimeSeries", data=array)
+    time_series = mock_TimeSeries(
+        name="TimeSeries", data=SliceableDataChunkIterator(data=array, chunk_shape=(1, 2), buffer_shape=(1, 3))
+    )
     nwbfile.add_acquisition(time_series)
 
-    results = list(get_default_backend_configuration(nwbfile=nwbfile))
+    default_backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend_type="hdf5")
 
-    assert len(results) == 1
+    assert isinstance(default_backend_configuration, HDF5BackendConfiguration)
+    assert len(default_backend_configuration.dataset_configurations) == 1
 
-    result = results[0]
-    assert isinstance(result, ConfigurableDataset)
-    assert result.object_name == "TimeSeries"
-    assert result.field == "data"
-    assert result.maxshape == array.shape
-    assert result.dtype == array.dtype
+    default_configurable_dataset, default_dataset_configuration = next(
+        iter(default_backend_configuration.dataset_configurations.items())
+    )
+    assert isinstance(default_configurable_dataset, ConfigurableDataset)
+    assert default_configurable_dataset.object_name == "TimeSeries"
+    assert default_configurable_dataset.parent == "root"
+    assert default_configurable_dataset.field == "data"
+    assert default_configurable_dataset.maxshape == (2, 3)
+    assert default_configurable_dataset.dtype == "int32"
+
+    assert isinstance(default_dataset_configuration, HDF5DatasetConfiguration)
+    assert default_dataset_configuration.object_name == "TimeSeries"
+    assert default_dataset_configuration.parent == "root"
+    assert default_dataset_configuration.field == "data"
+    assert default_dataset_configuration.chunk_shape == (1, 2)
+    assert default_dataset_configuration.buffer_shape == (1, 3)
+    assert default_dataset_configuration.maxshape == (2, 3)
+    assert default_dataset_configuration.dtype == "int32"
+    assert default_dataset_configuration.compression_method == "gzip"
+    assert default_dataset_configuration.compression_options is None
+
+
+def test_simple_time_series_zarr_backend():
+    array = generate_2d_array()
+
+    nwbfile = mock_NWBFile()
+    time_series = mock_TimeSeries(
+        name="TimeSeries", data=SliceableDataChunkIterator(data=array, chunk_shape=(1, 2), buffer_shape=(1, 3))
+    )
+    nwbfile.add_acquisition(time_series)
+
+    default_backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend_type="zarr")
+
+    assert isinstance(default_backend_configuration, ZarrBackendConfiguration)
+    assert default_backend_configuration.number_of_jobs == -2
+    assert len(default_backend_configuration.dataset_configurations) == 1
+
+    default_configurable_dataset, default_dataset_configuration = next(
+        iter(default_backend_configuration.dataset_configurations.items())
+    )
+    assert isinstance(default_configurable_dataset, ConfigurableDataset)
+    assert default_configurable_dataset.object_name == "TimeSeries"
+    assert default_configurable_dataset.parent == "root"
+    assert default_configurable_dataset.field == "data"
+    assert default_configurable_dataset.maxshape == (2, 3)
+    assert default_configurable_dataset.dtype == "int32"
+
+    assert isinstance(default_dataset_configuration, ZarrDatasetConfiguration)
+    assert default_dataset_configuration.object_name == "TimeSeries"
+    assert default_dataset_configuration.parent == "root"
+    assert default_dataset_configuration.field == "data"
+    assert default_dataset_configuration.chunk_shape == (1, 2)
+    assert default_dataset_configuration.buffer_shape == (1, 3)
+    assert default_dataset_configuration.maxshape == (2, 3)
+    assert default_dataset_configuration.dtype == "int32"
+    assert default_dataset_configuration.compression_method == "gzip"
+    assert default_dataset_configuration.compression_options is None
+    assert default_dataset_configuration.filter_methods is None
+    assert default_dataset_configuration.filter_options is None
 
 
 def test_simple_dynamic_table():

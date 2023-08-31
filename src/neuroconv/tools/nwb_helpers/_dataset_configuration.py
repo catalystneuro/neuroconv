@@ -10,7 +10,6 @@ from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
 from ._dataset_and_backend_models import (
-    BackendConfiguration,
     ConfigurableDataset,
     DatasetConfiguration,
     HDF5BackendConfiguration,
@@ -134,10 +133,13 @@ def _get_default_configuration(
         buffer_shape=iterator.buffer_shape,
         # Let the compression and/or filters default to the back-end specific values
     )
+
     return dataset_configuration
 
 
-def get_default_backend_configuration(nwbfile: NWBFile, backend_type: Literal["hdf5", "zarr"]) -> BackendConfiguration:
+def get_default_backend_configuration(
+    nwbfile: NWBFile, backend_type: Literal["hdf5", "zarr"]
+) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
     """Fill a default backend configuration to serve as a starting point for further customization."""
     backend_type_to_backend_configuration_classes = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
 
@@ -154,7 +156,6 @@ def get_default_backend_configuration(nwbfile: NWBFile, backend_type: Literal["h
         )
 
     DatasetConfigurationClass = backend_type_to_backend_configuration_classes[backend_type]
-    backend_configuration = DatasetConfigurationClass(
-        backend_type=backend_type, dataset_configurations=dataset_configurations
-    )
+    backend_configuration = DatasetConfigurationClass(dataset_configurations=dataset_configurations)
+
     return backend_configuration

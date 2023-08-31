@@ -5,11 +5,10 @@ import h5py
 import hdf5plugin
 import psutil
 import zarr
-from hdmf.data_utils import DataIO
-from hdmf_zarr import NWBZarrIO
+from hdmf.backends.hdf5 import H5DataIO
+from hdmf_zarr import ZarrDataIO
 from nwbinspector.utils import is_module_installed
 from pydantic import BaseModel, Field, root_validator
-from pynwb import NWBHDF5IO
 
 
 class ConfigurableDataset(BaseModel):
@@ -21,6 +20,13 @@ class ConfigurableDataset(BaseModel):
     field: Literal["data", "timestamps"]
     maxshape: Tuple[int, ...]
     dtype: str  # Think about how to constrain/specify this more
+
+    class Config:  # noqa: D106
+        allow_mutation = False  # To enforce hashability
+
+    def __hash__(self):
+        """To allow instances of this class to be used as keys in dictionaries."""
+        return hash((type(self),) + tuple(self.__dict__.values()))
 
     def __str__(self) -> str:
         """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
@@ -41,42 +47,6 @@ class DatasetConfiguration(ConfigurableDataset):
     buffer_shape: Tuple[int, ...]
     compression_method: Union[str, None]  # Backend configurations should specify Literals; None means no compression
     compression_options: Union[Dict[str, Any], None] = None
-
-
-class BackendConfiguration(BaseModel):
-    """A model for matching collections of DatasetConfigurations specific to a backend with its name and DataIO."""
-
-    backend_type: Literal["hdf5", "zarr"]
-    data_io: Type[DataIO]  # Auto-set by __init__
-    dataset_configurations: Dict[ConfigurableDataset, DatasetConfiguration]
-
-    def __init__(
-        self,
-        backend_type: Literal["hdf5", "zarr"],
-        dataset_configurations: Dict[ConfigurableDataset, DatasetConfiguration],
-    ):
-        backend_to_data_io = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
-        data_io = backend_to_data_io[backend_type]
-        super().__init__(
-            backend_to_data_io=backend_to_data_io, data_io=data_io, dataset_configurations=dataset_configurations
-        )
-
-
-class HDF5BackendConfiguration(BackendConfiguration):
-    """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
-
-    pass  # No extra arguments exposed to HDF5 backend
-
-
-class ZarrBackendConfiguration(BackendConfiguration):
-    """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
-
-    number_of_jobs: int = Field(
-        description="Number of jobs to use in parallel during write.",
-        ge=psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
-        le=psutil.cpu_count(),
-        default=-2,  # -2 translates to 'all CPU except for one'
-    )
 
 
 _available_hdf5_filters = set(h5py.filters.decode) - set(("shuffle", "fletcher32", "scaleoffset"))
@@ -138,9 +108,14 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
     compression_options: Union[Dict[str, Any], None] = None
 
     @root_validator()
-    def verify_filter_methods_and_options_match(cls, values: Dict[str, Any]):
-        filter_methods = values.get("filter_methods")
-        filter_options = values.get("filter_options")
+    def validate_filter_methods_and_options_match(cls, values: Dict[str, Any]):
+        filter_methods = values["filter_methods"]
+        filter_options = values["filter_options"]
+
+        if filter_methods is None and filter_options is not None:
+            raise ValueError(f"`filter_methods` is `None` but `filter_options` is not ({filter_options})!")
+        elif filter_methods is None and filter_options is None:
+            return values
 
         len_filter_methods = len(filter_methods)
         len_filter_options = len(filter_options)
@@ -149,4 +124,27 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
                 f"Length mismatch between `filter_methods` ({len_filter_methods} methods specified) and "
                 f"`filter_options` ({len_filter_options} options found)! These two must match one-to-one."
             )
+
         return values
+
+
+class HDF5BackendConfiguration(BaseModel):
+    """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
+
+    backend_type: Literal["hdf5"] = "hdf5"
+    data_io: Type[H5DataIO] = H5DataIO
+    dataset_configurations: Dict[ConfigurableDataset, HDF5DatasetConfiguration]
+
+
+class ZarrBackendConfiguration(BaseModel):
+    """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
+
+    backend_type: Literal["zarr"] = "zarr"
+    data_io: Type[ZarrDataIO] = ZarrDataIO
+    dataset_configurations: Dict[ConfigurableDataset, ZarrDatasetConfiguration]
+    number_of_jobs: int = Field(
+        description="Number of jobs to use in parallel during write.",
+        ge=-psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
+        le=psutil.cpu_count(),
+        default=-2,  # -2 translates to 'all CPU except for one'
+    )
