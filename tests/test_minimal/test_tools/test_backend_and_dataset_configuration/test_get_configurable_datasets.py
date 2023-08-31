@@ -1,3 +1,4 @@
+"""Unit tests for `get_configurable_datasets`."""
 from pathlib import Path
 
 import numpy as np

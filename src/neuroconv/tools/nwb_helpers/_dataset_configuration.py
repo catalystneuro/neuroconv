@@ -3,13 +3,16 @@ from typing import Dict, Iterable, Literal, Union
 
 import h5py
 import zarr
-from hdmf.data_utils import DataIO
+from hdmf.data_utils import DataIO, GenericDataChunkIterator
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
 from ._dataset_and_backend_models import (
+    BackendConfiguration,
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
     ConfigurableDataset,
     DatasetConfiguration,
     HDF5DatasetConfiguration,
@@ -64,7 +67,7 @@ def get_configurable_datasets(nwbfile: NWBFile) -> Iterable[ConfigurableDataset]
 
     Yields
     ------
-    Dataset
+    ConfigurableDataset
         A summary of each detected object that can be wrapped in a DataIO.
     """
     backend_type = None  # Used for filtering out datasets that have already been written to disk when appending
@@ -82,23 +85,76 @@ def get_configurable_datasets(nwbfile: NWBFile) -> Iterable[ConfigurableDataset]
             for field_name in ("data", "timestamps"):
                 if field_name not in neurodata_object.fields:  # timestamps is optional
                     continue
+
+                field_value = getattr(neurodata_object, field_name)
                 if _value_already_written_to_file(
-                    value=getattr(neurodata_object, field_name),
-                    backend_type=backend_type,
-                    existing_file=existing_file,
+                    value=field_value, backend_type=backend_type, existing_file=existing_file
                 ):
+                    continue  # skip
+                # Currently requiring a ConfigurableDataset to apply only to data wrapped in a GenericDataChunkIterator
+                # TODO: in follow-up, can maybe be wrapped automatically?
+                if not isinstance(field_value, GenericDataChunkIterator):
                     continue  # skip
 
                 yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
         elif isinstance(neurodata_object, DynamicTable):
             for column_name in getattr(neurodata_object, "colnames"):
+                column_value = getattr(neurodata_object, column_name)
                 if _value_already_written_to_file(
-                    value=getattr(neurodata_object, column_name), backend_type=backend_type, existing_file=existing_file
+                    value=column_value, backend_type=backend_type, existing_file=existing_file
                 ):
+                    continue  # skip
+                # Currently requiring a ConfigurableDataset to apply only to data wrapped in a GenericDataChunkIterator
+                # TODO: in follow-up, can maybe be wrapped automatically?
+                if not isinstance(column_value, GenericDataChunkIterator):
                     continue  # skip
 
                 yield _get_dataset_metadata(neurodata_object=neurodata_object[column_name], field_name="data")
 
 
-def get_default_dataset_configurations(nwbfile: NWBFile) -> Dict[ConfigurableDataset, DatasetConfiguration]:
-    pass  # TODO
+def _get_default_configuration(
+    nwbfile: NWBFile, backend_type: Literal["hdf5", "zarr"], configurable_dataset: ConfigurableDataset
+) -> DatasetConfiguration:
+    backend_to_dataset_configuration_class = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
+    DatasetConfigurationClass = backend_to_dataset_configuration_class[backend_type]
+
+    neurodata_object = nwbfile.objects[configurable_dataset.object_id]
+    field_value = getattr(neurodata_object, configurable_dataset.field)
+    iterator = field_value  # Currently restricting to values that are already wrapped in GenericDataChunkIterators
+    # TODO: in follow-up, can maybe be wrapped automatically?
+
+    dataset_configuration = DatasetConfigurationClass(
+        object_id=configurable_dataset.object_id,
+        object_name=configurable_dataset.object_name,
+        parent=configurable_dataset.parent,
+        field=configurable_dataset.field,
+        maxshape=configurable_dataset.maxshape,
+        dtype=configurable_dataset.dtype,
+        chunk_shape=iterator.chunk_shape,
+        buffer_shape=iterator.buffer_shape,
+        # Let the compression and/or filters default to the back-end specific values
+    )
+    return dataset_configuration
+
+
+def get_default_backend_configuration(nwbfile: NWBFile, backend_type: Literal["hdf5", "zarr"]) -> BackendConfiguration:
+    """Fill a default backend configuration to serve as a starting point for further customization."""
+    backend_type_to_backend_configuration_classes = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
+
+    configurable_datasets = get_configurable_datasets(nwbfile=nwbfile)
+
+    dataset_configurations = dict()
+    for configurable_dataset in configurable_datasets:
+        dataset_configurations.update(
+            {
+                configurable_dataset: _get_default_configuration(
+                    nwbfile=nwbfile, backend_type=backend_type, configurable_dataset=configurable_dataset
+                )
+            }
+        )
+
+    DatasetConfigurationClass = backend_type_to_backend_configuration_classes[backend_type]
+    backend_configuration = DatasetConfigurationClass(
+        backend_type=backend_type, dataset_configurations=dataset_configurations
+    )
+    return backend_configuration

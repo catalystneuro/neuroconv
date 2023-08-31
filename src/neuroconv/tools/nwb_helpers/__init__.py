@@ -5,7 +5,7 @@ from ._dataset_and_backend_models import (
 )
 from ._dataset_configuration import (
     get_configurable_datasets,
-    get_default_dataset_configurations,
+    get_default_backend_configuration,
 )
 from ._metadata_and_file_helpers import (
     add_device_from_metadata,
