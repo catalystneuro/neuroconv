@@ -10,9 +10,9 @@ from ._dataset_and_backend_models import (
     ZarrDatasetConfiguration,
 )
 from ._dataset_configuration import (
+    configure_backend,
     get_default_backend_configuration,
     get_default_dataset_configurations,
-    configure_backend,
 )
 from ._metadata_and_file_helpers import (
     add_device_from_metadata,
