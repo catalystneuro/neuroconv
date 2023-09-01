@@ -13,8 +13,8 @@ from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
     ConfigurableDataset,
     HDF5BackendConfiguration,
-    ZarrBackendConfiguration,
     HDF5DatasetConfiguration,
+    ZarrBackendConfiguration,
     ZarrDatasetConfiguration,
     get_default_backend_configuration,
 )
