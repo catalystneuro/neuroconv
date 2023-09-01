@@ -10,7 +10,7 @@ from typing_extensions import Annotated
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> Tuple[int]:
-        self.estimate_default_buffer_shape(
+        return self.estimate_default_buffer_shape(
             buffer_gb=buffer_gb, chunk_shape=self.chunk_shape, maxshape=self.maxshape, dtype=self.dtype
         )
 

@@ -1,27 +1,42 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Any, Dict, Iterable, Literal, Tuple, Type, Union
+from typing import Any, Dict, Literal, Tuple, Type, Union
 
 import h5py
 import hdf5plugin
 import psutil
 import zarr
+from hdmf.container import DataIO
 from hdmf.backends.hdf5 import H5DataIO
 from hdmf_zarr import ZarrDataIO
 from nwbinspector.utils import is_module_installed
 from pydantic import BaseModel, Field, root_validator
 
 
+class DatasetInfo(BaseModel):
+    object_id: str
+    location: str
+    maxshape: Tuple[int, ...]
+    dtype: str  # Think about how to constrain/specify this more
+
+    class Config:  # noqa: D106
+        allow_mutation = False
+
+    def __hash__(self):
+        """To allow instances of this class to be used as keys in dictionaries."""
+        return hash((type(self),) + tuple(self.__dict__.values()))
+
+    def __eq__(self, other):
+        if other.__class__ is self.__class__:
+            return self.__dict__ == other.__dict__
+        return NotImplemented
+
+
 class DatasetConfiguration(BaseModel):
     """A data model for configruing options about an object that will become a HDF5 or Zarr Dataset in the file."""
 
-    object_id: str
-    object_name: str
-    parent: str
-    field: Literal["data", "timestamps"]
+    dataset_info: DatasetInfo
     chunk_shape: Tuple[int, ...]
     buffer_shape: Tuple[int, ...]
-    maxshape: Tuple[int, ...]
-    dtype: str  # Think about how to constrain/specify this more
     compression_method: Union[str, None]  # Backend configurations should specify Literals; None means no compression
     compression_options: Union[Dict[str, Any], None] = None
 
@@ -35,6 +50,11 @@ class DatasetConfiguration(BaseModel):
             + f"    dtype: {self.dtype}"
         )
         return string
+
+    def __eq__(self, other):
+        if other.__class__ is self.__class__:
+            return self.__dict__ == other.__dict__
+        return NotImplemented
 
 
 _available_hdf5_filters = set(h5py.filters.decode) - set(("shuffle", "fletcher32", "scaleoffset"))
@@ -116,23 +136,35 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
     # think about extra validation that msgpack2 compression only ideal for datasets of vlen strings
 
 
-class HDF5BackendConfiguration(BaseModel):
+class BackendConfiguration(BaseModel):
+    """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
+
+    backend_type: Literal["hdf5", "zarr"]
+    data_io: Type[DataIO]
+    dataset_configurations: Dict[str, DatasetConfiguration]  # str is location field of DatasetConfiguration
+
+
+class HDF5BackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
 
     backend_type: Literal["hdf5"] = "hdf5"
     data_io: Type[H5DataIO] = H5DataIO
-    dataset_configurations: Iterable[HDF5DatasetConfiguration]
+    dataset_configurations: Dict[str, HDF5DatasetConfiguration]  # str is location field of DatasetConfiguration
 
 
-class ZarrBackendConfiguration(BaseModel):
+class ZarrBackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
 
     backend_type: Literal["zarr"] = "zarr"
     data_io: Type[ZarrDataIO] = ZarrDataIO
-    dataset_configurations: Iterable[ZarrDatasetConfiguration]
+    dataset_configurations: Dict[str, ZarrDatasetConfiguration]  # str is location field of DatasetConfiguration
     number_of_jobs: int = Field(
         description="Number of jobs to use in parallel during write.",
         ge=-psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
         le=psutil.cpu_count(),
         default=-2,  # -2 translates to 'all CPU except for one'
     )
+
+
+BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
+BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
