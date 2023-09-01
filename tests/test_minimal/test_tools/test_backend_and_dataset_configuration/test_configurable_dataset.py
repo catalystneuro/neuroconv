@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 from neuroconv.tools.nwb_helpers import ConfigurableDataset
 
-
 # def test_configurable_dataset_print():
 #     """Test the printout display of a Dataset modellooks nice."""
 #     test_dataset = ConfigurableDataset(

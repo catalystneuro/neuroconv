@@ -5,8 +5,8 @@ Mostly testing that the right objects are skipped from identification as candida
 """
 from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 from hdmf.common import VectorData
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
