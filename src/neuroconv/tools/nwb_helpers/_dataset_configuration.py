@@ -211,3 +211,20 @@ def get_default_backend_configuration(
 
     backend_configuration = BackendConfigurationClass(dataset_configurations=dataset_configurations)
     return backend_configuration
+
+
+def configure_backend(
+    nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+) -> None:
+    """Configure all datasets specified in the `backend_configuration` with their appropriate DataIO and options."""
+    nwbfile_objects = nwbfile.objects.items()
+
+    data_io_class = backend_configuration.data_io_class
+    for dataset_configuration in backend_configuration.datset_configurations:
+        object_id = dataset_configuration.dataset_info.object_id
+        dataset_name = dataset_configuration.dataset_info.location.strip("/")[-1]
+        data_io_kwargs = dataset_configuration.get_data_io_kwargs()
+
+        # TODO: update buffer shape in iterator, if present
+
+        nwbfile_objects[object_id].set_data_io(dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs)

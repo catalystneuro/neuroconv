@@ -39,6 +39,9 @@ for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
                 extras_require[modality].extend(format_requirements)
                 extras_require[format_subpath.name].extend(format_requirements)
 
+extras_require.update(compressors=["hdf5plugin"])
+extras_require["full"].extend(["hdf5plugin"])
+
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
 gin_config_file_base = Path("./base_gin_test_config.json")
 gin_config_file_local = Path("./tests/test_on_data/gin_test_config.json")

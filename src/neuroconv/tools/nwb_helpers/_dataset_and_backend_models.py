@@ -2,7 +2,6 @@
 from typing import Any, Dict, Literal, Tuple, Type, Union
 
 import h5py
-import hdf5plugin
 import psutil
 import zarr
 from hdmf.backends.hdf5 import H5DataIO
@@ -46,22 +45,55 @@ class DatasetConfiguration(BaseModel):
         )
         return string
 
+    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
+        raise NotImplementedError
 
-_available_hdf5_filters = set(h5py.filters.decode) - set(("shuffle", "fletcher32", "scaleoffset"))
-if is_module_installed(module_name="hdf5plugin"):
-    _available_hdf5_filters = _available_hdf5_filters | set(
-        (filter_.filter_name for filter_ in hdf5plugin.get_filters())
+
+_base_hdf5_filters = set(h5py.filters.decode) - set(
+    (
+        "shuffle",  # controlled via H5DataIO
+        "fletcher32",  # controlled via H5DataIO
+        "scaleoffset",  # enforced indrectly by HDMF/PyNWB data types
     )
+)
+_available_hdf5_filters = set(_base_hdf5_filters)
+if is_module_installed(module_name="hdf5plugin"):
+    import hdf5plugin
+
+    _available_hdf5_filters = _available_hdf5_filters | set(
+        (str(hdf5plugin_filter).rstrip("'>").split(".")[-1] for hdf5plugin_filter in hdf5plugin.get_filters())
+    )  # Manual string parsing because of slight mismatches between .filter_name and actual import class
 AVAILABLE_HDF5_COMPRESSION_METHODS = Literal[tuple(_available_hdf5_filters)]
 
 
 class HDF5DatasetConfiguration(DatasetConfiguration):
     """A data model for configruing options about an object that will become a HDF5 Dataset in the file."""
 
-    compression_method: Union[AVAILABLE_HDF5_COMPRESSION_METHODS, None] = "gzip"
+    compression_method: Union[AVAILABLE_HDF5_COMPRESSION_METHODS, bool] = "gzip"
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now
     # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings but no annotation typing
     compression_options: Union[Dict[str, Any], None] = None
+
+    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
+        # H5DataIO expects compression/compression_opts in very particular way
+        # Easiest way to ensure that is to instantiate hdf5plugin and pass dynamic kwargs
+        if is_module_installed(module_name="hdf5plugin"):
+            import hdf5plugin
+
+            if self.compression_method in _base_hdf5_filters:
+                compression_bundle = dict(
+                    compression=self.compression_method, compression_opts=self.compression_options
+                )
+            else:
+                compression_options = self.compression_options or dict()
+                compression_bundle = dict(
+                    **getattr(hdf5plugin, self.compression_method)(**compression_options),
+                    allow_plugin_filters=True,
+                )
+        else:
+            compression_bundle = dict(compression=self.compression_method, compression_opts=self.compression_options)
+
+        return dict(chunks=self.chunk_shape, **compression_bundle)
 
 
 _available_zarr_filters = (
@@ -98,7 +130,7 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
 
     filter_methods: Union[Tuple[AVAILABLE_ZARR_COMPRESSION_METHODS, ...], None] = None
     filter_options: Union[Tuple[Dict[str, Any]], None] = None
-    compression_method: Union[AVAILABLE_ZARR_COMPRESSION_METHODS, None] = "gzip"  # TODO: would like this to be 'auto'
+    compression_method: Union[AVAILABLE_ZARR_COMPRESSION_METHODS, bool] = "gzip"  # TODO: would like this to be 'auto'
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now
     # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings but no annotation typing
     compression_options: Union[Dict[str, Any], None] = None
@@ -125,12 +157,27 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
 
     # think about extra validation that msgpack2 compression only ideal for datasets of vlen strings
 
+    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
+        filters = None
+        if self.filter_methods is not None:
+            filters = [
+                zarr.codec_registry[filter_method](**filter_options)
+                for filter_method, filter_options in zip(self.filter_methods, self.filter_options)
+            ]
+
+        if isinstance(self.compression_method, bool):
+            compressor = self.compression_method
+        else:
+            compressor = zarr.codec_registry[self.compression_method](**self.compression_options)
+
+        return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+
 
 class BackendConfiguration(BaseModel):
     """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
 
     backend: Literal["hdf5", "zarr"]
-    data_io: Type[DataIO]
+    data_io_class: Type[DataIO]
     dataset_configurations: Dict[str, DatasetConfiguration]  # str is location field of DatasetConfiguration
 
     def __str__(self) -> str:
@@ -159,7 +206,7 @@ class HDF5BackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
 
     backend: Literal["hdf5"] = "hdf5"
-    data_io: Type[H5DataIO] = H5DataIO
+    data_io_class: Type[H5DataIO] = H5DataIO
     dataset_configurations: Dict[str, HDF5DatasetConfiguration]  # str is location field of DatasetConfiguration
 
 
@@ -167,7 +214,7 @@ class ZarrBackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
 
     backend: Literal["zarr"] = "zarr"
-    data_io: Type[ZarrDataIO] = ZarrDataIO
+    data_io_class: Type[ZarrDataIO] = ZarrDataIO
     dataset_configurations: Dict[str, ZarrDatasetConfiguration]  # str is location field of DatasetConfiguration
     number_of_jobs: int = Field(
         description="Number of jobs to use in parallel during write.",
