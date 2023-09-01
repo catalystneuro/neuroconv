@@ -1,14 +1,16 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Dict, Iterable, Literal, Union
+from typing import Iterable, Literal, Union
 
 import h5py
 import zarr
-from hdmf.data_utils import DataIO, GenericDataChunkIterator
+import numpy as np
+from hdmf.data_utils import DataIO, GenericDataChunkIterator, DataChunkIterator
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
+from ..hdmf import SliceableDataChunkIterator
 from ._dataset_and_backend_models import (
     ConfigurableDataset,
     DatasetConfiguration,
@@ -19,23 +21,8 @@ from ._dataset_and_backend_models import (
 )
 
 
-def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> ConfigurableDataset:
-    """Fill in the Dataset model with as many values as can be automatically detected or inferred."""
-    field_value = getattr(neurodata_object, field_name)
-    if field_value is not None and not isinstance(field_value, DataIO):
-        return ConfigurableDataset(
-            object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
-            parent=neurodata_object.get_ancestor().name,
-            field=field_name,
-            maxshape=get_data_shape(data=field_value),
-            # think on cases that don't have a dtype attr
-            dtype=str(getattr(field_value, "dtype", "unknown")),
-        )
-
-
-def _value_already_written_to_file(
-    value: Union[h5py.Dataset, zarr.Array],
+def _is_value_already_written_to_file(
+    candidate_dataset: Union[h5py.Dataset, zarr.Array],
     backend_type: Literal["hdf5", "zarr"],
     existing_file: Union[h5py.File, zarr.Group, None],
 ) -> bool:
@@ -45,17 +32,60 @@ def _value_already_written_to_file(
     This object should then be skipped by the `get_io_datasets` function when working in append mode.
     """
     return (
-        isinstance(value, h5py.Dataset)  # If the source data is an HDF5 Dataset
+        isinstance(candidate_dataset, h5py.Dataset)  # If the source data is an HDF5 Dataset
         and backend_type == "hdf5"  # If working in append mode
-        and value.file == existing_file  # If the source HDF5 Dataset is the appending NWBFile
+        and candidate_dataset.file == existing_file  # If the source HDF5 Dataset is the appending NWBFile
     ) or (
-        isinstance(value, zarr.Array)  # If the source data is an Zarr Array
+        isinstance(candidate_dataset, zarr.Array)  # If the source data is an Zarr Array
         and backend_type == "zarr"  # If working in append mode
-        and value.store == existing_file  # If the source Zarr 'file' is the appending NWBFile
+        and candidate_dataset.store == existing_file  # If the source Zarr 'file' is the appending NWBFile
     )
 
 
-def get_configurable_datasets(nwbfile: NWBFile) -> Iterable[ConfigurableDataset]:
+def _get_dataset_metadata(neurodata_object: Union[TimeSeries, DynamicTable], field_name: str) -> DatasetConfiguration:
+    """Fill in the Dataset model with as many values as can be automatically detected or inferred."""
+    candidate_dataset = getattr(neurodata_object, field_name)
+    # For now, skip over datasets already wrapped in DataIO
+    # Could maybe eventually support modifying chunks in place
+    # But setting buffer shape only possible if iterator was wrapped first
+    if not isinstance(candidate_dataset, DataIO):
+        # DataChunkIterator has best generic dtype inference, though logic is hard to peel out of it
+        # And it can fail in rare cases but not essential to our default configuration
+        try:
+            dtype = str(DataChunkIterator(candidate_dataset).dtype)  # string cast to be JSON friendly
+        except Exception as exception:
+            if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
+                raise exception
+            else:
+                dtype = "unknown"
+
+        maxshape = get_data_shape(data=candidate_dataset)
+
+        if isinstance(candidate_dataset, GenericDataChunkIterator):
+            chunk_shape = candidate_dataset.chunk_shape
+            buffer_shape = candidate_dataset.buffer_shape
+        elif dtype != "unknown":
+            # TODO: eventually replace this with staticmethods on hdmf.data_utils.GenericDataChunkIterator
+            chunk_shape = SliceableDataChunkIterator.estimate_chunk_shape(chunk_mb=10.0, maxshape=maxshape, dtype=dtype)
+            buffer_shape = SliceableDataChunkIterator.estimate_buffer_shape(
+                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=maxshape, dtype=dtype
+            )
+        else:
+            pass  # TODO: think on this; perhaps zarr's standalone estimator?
+
+        return DatasetConfiguration(
+            object_id=neurodata_object.object_id,
+            object_name=neurodata_object.name,
+            parent=neurodata_object.get_ancestor().name,  # or should this be full location relative to root?
+            field=field_name,
+            chunk_shape=chunk_shape,
+            buffer_shape=buffer_shape,
+            maxshape=maxshape,
+            dtype=dtype,
+        )
+
+
+def get_configurable_datasets(nwbfile: NWBFile) -> Iterable[DatasetConfiguration]:
     """
     Method for automatically detecting all objects in the file that could be wrapped in a DataIO.
 
@@ -81,34 +111,34 @@ def get_configurable_datasets(nwbfile: NWBFile) -> Iterable[ConfigurableDataset]
     for _, neurodata_object in nwbfile.objects.items():
         # TODO: edge case of ImageSeries with external file mode?
         if isinstance(neurodata_object, TimeSeries):
+            time_series = neurodata_object  # for readability
+
             for field_name in ("data", "timestamps"):
-                if field_name not in neurodata_object.fields:  # timestamps is optional
+                if field_name not in time_series.fields:  # timestamps is optional
                     continue
 
-                field_value = getattr(neurodata_object, field_name)
-                if _value_already_written_to_file(
-                    value=field_value, backend_type=backend_type, existing_file=existing_file
+                candidate_dataset = getattr(time_series, field_name)
+                if _is_value_already_written_to_file(
+                    candidate_dataset=candidate_dataset, backend_type=backend_type, existing_file=existing_file
                 ):
                     continue  # skip
-                # Currently requiring a ConfigurableDataset to apply only to data wrapped in a GenericDataChunkIterator
-                # TODO: in follow-up, can maybe be wrapped automatically?
-                if not isinstance(field_value, GenericDataChunkIterator):
+
+                # Edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
+                if isinstance(candidate_dataset, np.ndarray) and not candidate_dataset:
                     continue  # skip
 
-                yield _get_dataset_metadata(neurodata_object=neurodata_object, field_name=field_name)
+                yield _get_dataset_metadata(neurodata_object=time_series, field_name=field_name)
         elif isinstance(neurodata_object, DynamicTable):
-            for column_name in getattr(neurodata_object, "colnames"):
-                column_value = getattr(neurodata_object, column_name).data
-                if _value_already_written_to_file(
-                    value=column_value, backend_type=backend_type, existing_file=existing_file
+            dynamic_table = neurodata_object  # for readability
+
+            for column_name in dynamic_table.colnames:
+                candidate_dataset = dynamic_table[column_name].data  # VectorData object
+                if _is_value_already_written_to_file(
+                    candidate_dataset=candidate_dataset, backend_type=backend_type, existing_file=existing_file
                 ):
                     continue  # skip
-                # Currently requiring a ConfigurableDataset to apply only to data wrapped in a GenericDataChunkIterator
-                # TODO: in follow-up, can maybe be wrapped automatically?
-                if not isinstance(column_value, GenericDataChunkIterator):
-                    continue  # skip
 
-                yield _get_dataset_metadata(neurodata_object=neurodata_object[column_name], field_name="data")
+                yield _get_dataset_metadata(neurodata_object=dynamic_table[column_name], field_name="data")
 
 
 def _get_default_configuration(
