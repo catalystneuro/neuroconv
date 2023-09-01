@@ -1,12 +1,12 @@
 """Unit tests for `get_default_dataset_configurations` operating on already written files open in append mode."""
 from pathlib import Path
 
-import pytest
 import numpy as np
-from hdmf.data_utils import DataChunkIterator
+import pytest
 from hdmf.common import VectorData
+from hdmf.data_utils import DataChunkIterator
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable
 from pynwb.image import ImageSeries
 from pynwb.testing.mock.base import mock_TimeSeries

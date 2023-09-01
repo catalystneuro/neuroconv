@@ -5,8 +5,8 @@ import h5py
 import hdf5plugin
 import psutil
 import zarr
-from hdmf.container import DataIO
 from hdmf.backends.hdf5 import H5DataIO
+from hdmf.container import DataIO
 from hdmf_zarr import ZarrDataIO
 from nwbinspector.utils import is_module_installed
 from pydantic import BaseModel, Field, root_validator
