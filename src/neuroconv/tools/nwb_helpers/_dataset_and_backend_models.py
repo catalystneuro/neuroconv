@@ -25,11 +25,6 @@ class DatasetInfo(BaseModel):
         """To allow instances of this class to be used as keys in dictionaries."""
         return hash((type(self),) + tuple(self.__dict__.values()))
 
-    def __eq__(self, other):
-        if other.__class__ is self.__class__:
-            return self.__dict__ == other.__dict__
-        return NotImplemented
-
 
 class DatasetConfiguration(BaseModel):
     """A data model for configruing options about an object that will become a HDF5 or Zarr Dataset in the file."""
@@ -50,11 +45,6 @@ class DatasetConfiguration(BaseModel):
             + f"    dtype: {self.dtype}"
         )
         return string
-
-    def __eq__(self, other):
-        if other.__class__ is self.__class__:
-            return self.__dict__ == other.__dict__
-        return NotImplemented
 
 
 _available_hdf5_filters = set(h5py.filters.decode) - set(("shuffle", "fletcher32", "scaleoffset"))
