@@ -9,7 +9,7 @@ import pytest
 import numpy as np
 from hdmf.common import VectorData
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile

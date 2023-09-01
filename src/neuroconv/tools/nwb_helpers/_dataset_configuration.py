@@ -12,14 +12,14 @@ from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
 from ._dataset_and_backend_models import (
-    DatasetInfo,
+    BACKEND_TO_CONFIGURATION,
+    BACKEND_TO_DATASET_CONFIGURATION,
     DatasetConfiguration,
+    DatasetInfo,
     HDF5BackendConfiguration,
     HDF5DatasetConfiguration,
     ZarrBackendConfiguration,
     ZarrDatasetConfiguration,
-    BACKEND_TO_DATASET_CONFIGURATION,
-    BACKEND_TO_CONFIGURATION,
 )
 from ..hdmf import SliceableDataChunkIterator
 
