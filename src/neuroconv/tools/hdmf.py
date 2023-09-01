@@ -2,11 +2,10 @@
 import math
 from typing import Tuple
 
-from pydantic import Field
-from typing_extensions import Annotated
-
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
+from pydantic import Field
+from typing_extensions import Annotated
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):

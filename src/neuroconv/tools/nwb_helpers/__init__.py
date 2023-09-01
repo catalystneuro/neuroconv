@@ -1,6 +1,4 @@
 from ._dataset_and_backend_models import (
-    HDF5BackendConfiguration,
-    ZarrBackendConfiguration,
     DatasetConfiguration,
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,

@@ -1,5 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Any, Dict, Literal, Tuple, Type, Union, Iterable
+from typing import Any, Dict, Iterable, Literal, Tuple, Type, Union
 
 import h5py
 import hdf5plugin

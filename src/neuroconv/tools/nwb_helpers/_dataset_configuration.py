@@ -2,15 +2,14 @@
 from typing import Iterable, Literal, Union
 
 import h5py
-import zarr
 import numpy as np
-from hdmf.data_utils import DataIO, GenericDataChunkIterator, DataChunkIterator
+import zarr
+from hdmf.data_utils import DataChunkIterator, DataIO, GenericDataChunkIterator
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
-from ..hdmf import SliceableDataChunkIterator
 from ._dataset_and_backend_models import (
     ConfigurableDataset,
     DatasetConfiguration,
@@ -19,6 +18,7 @@ from ._dataset_and_backend_models import (
     ZarrBackendConfiguration,
     ZarrDatasetConfiguration,
 )
+from ..hdmf import SliceableDataChunkIterator
 
 
 def _is_value_already_written_to_file(
