@@ -1,18 +1,19 @@
-"""Unit tests for `get_default_dataset_configurations` operating on already written files open in append mode."""
+"""
+Unit tests for `get_default_dataset_configurations` operating on already written files open in append mode.
+
+Mostly testing that the right objects are skipped from identification as candidates for configuration.
+"""
 from pathlib import Path
 
 import pytest
 import numpy as np
-from hdmf.data_utils import DataChunkIterator
 from hdmf.common import VectorData
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.base import DynamicTable
-from pynwb.image import ImageSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
     HDF5DatasetConfiguration,
     ZarrDatasetConfiguration,
@@ -30,7 +31,7 @@ def generate_nwbfile_with_existing_time_series() -> NWBFile:
 
 @pytest.fixture(scope="session")
 def hdf5_nwbfile_path(tmpdir_factory):
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_hdf5_nwbfile_with_configurable_datasets.nwb.h5")
+    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_dataset_configurations_hdf5_nwbfile_.nwb.h5")
     if not Path(nwbfile_path).exists():
         nwbfile = generate_nwbfile_with_existing_time_series()
         with NWBHDF5IO(path=str(nwbfile_path), mode="w") as io:
@@ -40,7 +41,7 @@ def hdf5_nwbfile_path(tmpdir_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmpdir_factory):
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_zarr_nwbfile_with_configurable_datasets.nwb.zarr")
+    nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_dataset_configurations_zarr_nwbfile.nwb.zarr")
     if not Path(nwbfile_path).exists():
         nwbfile = generate_nwbfile_with_existing_time_series()
         with NWBZarrIO(path=str(nwbfile_path), mode="w") as io:

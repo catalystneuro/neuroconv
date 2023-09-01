@@ -139,15 +139,36 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
 class BackendConfiguration(BaseModel):
     """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
 
-    backend_type: Literal["hdf5", "zarr"]
+    backend: Literal["hdf5", "zarr"]
     data_io: Type[DataIO]
     dataset_configurations: Dict[str, DatasetConfiguration]  # str is location field of DatasetConfiguration
+
+    def __str__(self) -> str:
+        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
+        string = (
+            f"Configurable datasets identified using the {self.backend} backend\n"
+            f"{'-' * (43 + len(self.backend) + 8)}\n"
+        )
+
+        for dataset_configuration in self.dataset_configurations.values():
+            dataset_info = dataset_configuration.dataset_info
+            string += (
+                f"{dataset_info.location}\n"
+                f"    maxshape : {dataset_info.maxshape}\n"
+                f"    dtype : {dataset_info.dtype}\n\n"
+                f"    chunk shape : {dataset_configuration.chunk_shape}\n"
+                f"    buffer shape : {dataset_configuration.buffer_shape}\n"
+                f"    compression method : {dataset_configuration.compression_method}\n"
+                f"    compression options : {dataset_configuration.compression_options}\n\n\n"
+            )
+
+        return string
 
 
 class HDF5BackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
 
-    backend_type: Literal["hdf5"] = "hdf5"
+    backend: Literal["hdf5"] = "hdf5"
     data_io: Type[H5DataIO] = H5DataIO
     dataset_configurations: Dict[str, HDF5DatasetConfiguration]  # str is location field of DatasetConfiguration
 
@@ -155,7 +176,7 @@ class HDF5BackendConfiguration(BackendConfiguration):
 class ZarrBackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
 
-    backend_type: Literal["zarr"] = "zarr"
+    backend: Literal["zarr"] = "zarr"
     data_io: Type[ZarrDataIO] = ZarrDataIO
     dataset_configurations: Dict[str, ZarrDatasetConfiguration]  # str is location field of DatasetConfiguration
     number_of_jobs: int = Field(
@@ -164,6 +185,29 @@ class ZarrBackendConfiguration(BackendConfiguration):
         le=psutil.cpu_count(),
         default=-2,  # -2 translates to 'all CPU except for one'
     )
+
+    def __str__(self) -> str:
+        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
+        string = (
+            f"Configurable datasets identified using the {self.backend} backend\n"
+            f"{'-' * (43 + len(self.backend) + 8)}\n"
+        )
+
+        for dataset_configuration in self.dataset_configurations.values():
+            dataset_info = dataset_configuration.dataset_info
+            string += (
+                f"{dataset_info.location}\n"
+                f"    maxshape : {dataset_info.maxshape}\n"
+                f"    dtype : {dataset_info.dtype}\n\n"
+                f"    chunk shape : {dataset_configuration.chunk_shape}\n"
+                f"    buffer shape : {dataset_configuration.buffer_shape}\n"
+                f"    compression method : {dataset_configuration.compression_method}\n"
+                f"    compression options : {dataset_configuration.compression_options}\n"
+                f"    filter methods : {dataset_configuration.filter_methods}\n"
+                f"    filter options : {dataset_configuration.filter_options}\n\n\n"
+            )
+
+        return string
 
 
 BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)

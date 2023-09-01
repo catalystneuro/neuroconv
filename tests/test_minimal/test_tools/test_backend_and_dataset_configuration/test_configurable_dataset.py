@@ -2,7 +2,7 @@
 from io import StringIO
 from unittest.mock import patch
 
-# from neuroconv.tools.nwb_helpers import ConfigurableDataset
+from neuroconv.tools.nwb_helpers import ConfigurableDataset
 
 
 # def test_configurable_dataset_print():
