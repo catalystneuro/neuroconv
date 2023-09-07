@@ -77,7 +77,7 @@ class FicTracDataInterface(BaseDataInterface):
         config_file = self.file_path.parent / "fictrac_config.txt"
         if config_file.exists():
             self._config_file = parse_fictrac_config(config_file)
-            date = self._config_file["build_date"]
+            date_string = self._config_file["build_date"]
             date_object = datetime.strptime(date_string, "%b %d %Y")
 
             metadata["NWBFile"].update(
@@ -105,7 +105,8 @@ class FicTracDataInterface(BaseDataInterface):
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.data_columns)
 
         # Get the timestamps
-        timestamps = fictrac_data_df["timestamp"].values
+        timestamps_milliseconds = fictrac_data_df["timestamp"].values
+        timestamps = timestamps_milliseconds / 1000.0
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
         write_timestamps = True
         if rate:
