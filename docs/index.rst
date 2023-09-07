@@ -19,6 +19,10 @@ Features:
 * Minimizes the size of the NWB files by automatically applying chunking and lossless compression.
 * Supports ensembles of multiple data streams, and supports common methods for temporal alignment of streams.
 
+.. seealso::
+
+  Watch a video introduction to NeuroConv `here <https://youtu.be/QofVU-59Dd4>`_
+
 .. toctree::
   :maxdepth: 2
   :caption: Contents
