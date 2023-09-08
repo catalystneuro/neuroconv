@@ -361,10 +361,7 @@ class FicTracDataInterface(BaseDataInterface):
             "side_motion_lab",
         ]
 
-        description = (
-            "Integrated x/y position (radians) of the sphere in laboratory coordinates neglecting"
-            " heading. Equivalent to the output from two optical mice"
-        )
+        description = "Integrated x/y position (radians) of the sphere in laboratory coordinates neglecting heading."
 
         df_integrated_motion = fictrac_data_df[integrated_motin_columns]
         data = df_integrated_motion.to_numpy()
