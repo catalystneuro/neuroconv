@@ -6,6 +6,8 @@
 
 * Added deepcopy for metadata in `make_nwbfile_from_metadata`. [PR #545](https://github.com/catalystneuro/neuroconv/pull/545)
 
+* Alter `add_electrodes` behavior when extra property descriptions are present in metadata so that no error is thrown. [PR #558](https://github.com/catalystneuro/neuroconv/pull/558)
+
 ### Features
 
 * Added converters for Bruker TIF format to support multiple streams of imaging data.
