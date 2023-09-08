@@ -11,6 +11,7 @@ from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
+    FicTracDataInterface,
     MiniscopeBehaviorInterface,
     SLEAPInterface,
     VideoInterface,
@@ -26,6 +27,15 @@ try:
     from .setup_paths import BEHAVIOR_DATA_PATH, OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
+
+
+class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
+    data_interface_cls = FicTracDataInterface
+    interface_kwargs = [
+        dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat")),
+    ]
+
+    save_directory = OUTPUT_PATH
 
 
 class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):
