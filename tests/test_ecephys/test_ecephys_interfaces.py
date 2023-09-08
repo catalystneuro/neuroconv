@@ -126,13 +126,14 @@ class TestSortingInterface(unittest.TestCase):
         subset_end_frame = int(np.max(self.sorting_start_frames) * 1.1 - 1)
         sorting_interface = self.test_sorting_interface.data_interface_objects["TestSortingInterface"]
         sorting_interface.sorting_extractor = sorting_interface.sorting_extractor.frame_slice(
-            start_frame=0, end_frame=subset_end_frame)
+            start_frame=0, end_frame=subset_end_frame
+        )
         recording_interface = MockRecordingInterface(
-            durations=[subset_end_frame / self.sampling_frequency], 
+            durations=[subset_end_frame / self.sampling_frequency],
             sampling_frequency=self.sampling_frequency,
         )
         sorting_interface.register_recording(recording_interface)
-        
+
         minimal_nwbfile = self.test_dir / "stub_temp_recording.nwb"
         conversion_options = dict(TestSortingInterface=dict(stub_test=True))
         metadata = self.test_sorting_interface.get_metadata()
