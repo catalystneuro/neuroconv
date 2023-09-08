@@ -836,6 +836,41 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(list(self.nwbfile.electrodes.id.data), expected_ids)
         self.assertListEqual(list(self.nwbfile.electrodes["channel_name"].data), expected_names)
         self.assertListEqual(list(self.nwbfile.electrodes["property"].data), expected_property_values)
+    
+    def test_property_metadata_mismatch(self):
+        """
+        Adding recordings that do not contain all properties described in 
+        metadata should not error.
+        """
+        self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
+        self.recording_1.set_property(key="property_1", values=[f"value_{n+1}" for n in range(self.num_channels)])
+        self.recording_2.set_property(key="property_2", values=[f"value_{n+1}" for n in range(self.num_channels)])
+        
+        metadata = dict(
+            Ecephys=dict(
+                Electrodes=[
+                    dict(name="common_property", description="no description."),
+                    dict(name="property_1", description="no description."),
+                    dict(name="property_2", description="no description."),
+                ]
+            )
+        )
+        
+        add_electrodes(recording=self.recording_1, nwbfile=self.nwbfile, metadata=metadata)
+        add_electrodes(recording=self.recording_2, nwbfile=self.nwbfile, metadata=metadata)
+
+        actual_common_property_values = list(self.nwbfile.electrodes["common_property"].data)
+        expected_common_property_values = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
+        self.assertListEqual(actual_common_property_values, expected_common_property_values)
+        
+        actual_property_1_values = list(self.nwbfile.electrodes["property_1"].data)
+        expected_property_1_values = ["value_1", "value_2", "value_3", "value_4", "", ""]
+        self.assertListEqual(actual_property_1_values, expected_property_1_values)
+        
+        actual_property_2_values = list(self.nwbfile.electrodes["property_2"].data)
+        expected_property_2_values = ["", "", "value_1", "value_2", "value_3", "value_4"]
+        self.assertListEqual(actual_property_2_values, expected_property_2_values)
 
 
 class TestAddUnitsTable(TestCase):

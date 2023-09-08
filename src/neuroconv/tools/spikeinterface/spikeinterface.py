@@ -253,10 +253,6 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
         description = property_descriptions.get(property, "no description")
         data_to_add[property].update(description=description, data=data, index=index)
 
-    extra_descriptions = [property for property in property_descriptions.keys() if property not in data_to_add]
-    if extra_descriptions:
-        raise ValueError(f"{extra_descriptions} are not available in the recording extractor, set them first")
-
     # Channel name logic
     channel_ids = recording.get_channel_ids()
     if "channel_name" in data_to_add:
