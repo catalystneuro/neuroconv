@@ -63,6 +63,7 @@ class TestImportStructure(TestCase):
             "processes",
             "deploy_process",
             "LocalPathExpander",
+            "get_module",
         ]
         self.assertCountEqual(first=current_structure, second=expected_structure)
 
