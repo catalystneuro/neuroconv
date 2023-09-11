@@ -17,9 +17,10 @@
   whether to load the imaging planes as a volume (`"contiguous"`) or separately (`"disjoint"`).
   The available data streams for the defined  `plane_separation_type`  can be checked by `BrukerTiffMultiPlaneImagingInterface.get_streams(folder_path, plane_separation_type)` method.
 
-* Added FicTrac data interface  [PR #517](https://github.com/catalystneuro/neuroconv/pull/#517)
+* Added FicTrac data interface. [PR #517](https://github.com/catalystneuro/neuroconv/pull/#517)
 
-
+### Documentation and tutorial enhancements
+* Added FicTrac to the conversion gallery and docs API. [PR #560](https://github.com/catalystneuro/neuroconv/pull/#560)
 
 # v0.4.1
 
