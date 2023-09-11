@@ -6,7 +6,7 @@
 
 * Added deepcopy for metadata in `make_nwbfile_from_metadata`. [PR #545](https://github.com/catalystneuro/neuroconv/pull/545)
 
-* Alter `add_electrodes` behavior,  no error is thrown if a property is present in the metadata but not in the recoders. This allows to add recording objects that have different properties [PR #558](https://github.com/catalystneuro/neuroconv/pull/558)
+* Alter `add_electrodes` behavior,  no error is thrown if a property is present in the metadata but not in the recording extractors. This allows the combination of recording objects that have different properties. [PR #558](https://github.com/catalystneuro/neuroconv/pull/558)
 
 ### Features
 
