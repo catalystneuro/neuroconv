@@ -91,6 +91,7 @@ Behavior
 
     Audio <behavior/audio>
     DeepLabCut <behavior/deeplabcut>
+    FicTrac <behavior/fictrac>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
 
