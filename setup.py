@@ -45,6 +45,12 @@ gin_config_file_local = Path("./tests/test_on_data/gin_test_config.json")
 if not gin_config_file_local.exists():
     copy(src=gin_config_file_base, dst=gin_config_file_local)
 
+# Bug related to sonpy on M1 Mac being installed but not running properly
+if sys.platform == "darwin" and processor() == "arm":
+    extras_require.pop("sonpy")
+    extras_require["ecephys"].remove(next(requirement for requirement in extras_require["sonpy"] if "sonpy" in requirement))
+    extras_require["full"].remove(next(requirement for requirement in extras_require["sonpy"] if "sonpy" in requirement))
+
 setup(
     name="neuroconv",
     version="0.4.3",
