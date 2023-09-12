@@ -1,5 +1,9 @@
 # (Upcoming)
 
+### Fixes
+
+* The `sonpy` package for the Spike2 interface no longer attempts installation on M1 Macs. [PR #563](https://github.com/catalystneuro/neuroconv/pull/563)
+
 
 
 # v0.4.2
