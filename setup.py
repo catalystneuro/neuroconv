@@ -54,9 +54,7 @@ if sys.platform == "darwin" and platform.processor() == "arm":
     extras_require["ecephys"].remove(
         next(requirement for requirement in extras_require["ecephys"] if "sonpy" in requirement)
     )
-    extras_require["full"].remove(
-        next(requirement for requirement in extras_require["full"] if "sonpy" in requirement)
-    )
+    extras_require["full"].remove(next(requirement for requirement in extras_require["full"] if "sonpy" in requirement))
 
 setup(
     name="neuroconv",
