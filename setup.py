@@ -50,11 +50,12 @@ if not gin_config_file_local.exists():
 # Bug related to sonpy on M1 Mac being installed but not running properly
 if sys.platform == "darwin" and platform.processor() == "arm":
     extras_require.pop("spike2")
+
     extras_require["ecephys"].remove(
-        next(requirement for requirement in extras_require["sonpy"] if "sonpy" in requirement)
+        next(requirement for requirement in extras_require["ecephys"] if "sonpy" in requirement)
     )
     extras_require["full"].remove(
-        next(requirement for requirement in extras_require["sonpy"] if "sonpy" in requirement)
+        next(requirement for requirement in extras_require["full"] if "sonpy" in requirement)
     )
 
 setup(
