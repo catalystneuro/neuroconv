@@ -35,11 +35,20 @@ def get_package(
         use the 'excluded_platforms_and_python_versions' keyword argument instead.
         Allows all Python versions by default.
     excluded_platforms_and_python_versions : dict, optional
-        mapping string platform names to a list of string versions. In case some combinations of platforms or Python
-        versions are not allowed for the given package, specify this dictionary to raise a more specific error to
-        that issue. For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an
-        informative error when running on MacOS with Python version 3.7. Allows all platforms and Python versions by
-        default.
+        Mapping of string platform names to a list of string versions.
+        Valid platform strings are: ["linux", "win32", "darwin"] or any other variant used by sys.platform
+
+        In case some combinations of platforms or Python versions are not allowed for the given package,
+        specify this dictionary to raise a more specific error to that issue.
+
+        For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an
+        informative error when running on MacOS with Python version 3.7.
+
+        This also applies to specific architectures of platforms, such as
+        `excluded_platforms_and_python_versions = dict(darwin=dict(arm=["3.7"]))` to exclude a specific Python
+        version for M1 Macs.
+
+        Allows all platforms and Python versions by default.
 
     Raises
     ------
