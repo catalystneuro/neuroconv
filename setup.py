@@ -1,3 +1,5 @@
+import sys
+import platform
 from collections import defaultdict
 from pathlib import Path
 from shutil import copy
@@ -46,7 +48,7 @@ if not gin_config_file_local.exists():
     copy(src=gin_config_file_base, dst=gin_config_file_local)
 
 # Bug related to sonpy on M1 Mac being installed but not running properly
-if sys.platform == "darwin" and processor() == "arm":
+if sys.platform == "darwin" and platform.processor() == "arm":
     extras_require.pop("sonpy")
     extras_require["ecephys"].remove(
         next(requirement for requirement in extras_require["sonpy"] if "sonpy" in requirement)
