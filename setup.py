@@ -1,5 +1,5 @@
-import sys
 import platform
+import sys
 from collections import defaultdict
 from pathlib import Path
 from shutil import copy
