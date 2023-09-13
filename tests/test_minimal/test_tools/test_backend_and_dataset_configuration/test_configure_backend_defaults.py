@@ -22,7 +22,7 @@ def test_unwrapped_time_series_hdf5(tmpdir):
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults.nwb.h5"
+    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults_unwrapped_data.nwb.h5"
     with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
@@ -45,11 +45,11 @@ def test_unwrapped_time_series_zarr(tmpdir):
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = tmpdir / "test_configure_backend_zarr_defaults.nwb.zarr"
+    nwbfile_path = tmpdir / "test_configure_backend_zarr_defaults_unwrapped_data.nwb.zarr"
     with NWBZarrIO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+    with NWBZarrIO(path=nwbfile_path, mode="r") as io:
         written_nwbfile = io.read()
         written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
@@ -68,7 +68,7 @@ def test_generic_iterator_wrapped_time_series_hdf5(tmpdir):
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults.nwb.h5"
+    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults_generic_wrapped_data.nwb.h5"
     with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
@@ -98,34 +98,11 @@ def test_generic_iterator_wrapped_simple_time_series_zarr(tmpdir):
     # double .data to get past the DataIO to the iterator
     assert nwbfile.acquisition["TestTimeSeries"].data.data.buffer_shape == smaller_buffer_shape
 
-    nwbfile_path = tmpdir / "test_configure_backend_iterator_buffer.nwb.h5"
-    with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
+    nwbfile_path = tmpdir / "test_configure_backend_iterator_buffer_generic_wrapped_data.nwb.zarr"
+    with NWBZarrIO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestTimeSeries"].data
-
-        assert written_data.chunks == dataset_configuration.chunk_shape
-        assert written_data.compression == "gzip"
-
-
-def test_classic_iterator_wrapped_simple_time_series_zarr(tmpdir):
-    array = np.zeros(shape=(30_000 * 5, 384), dtype="int16")
-
-    nwbfile = mock_NWBFile()
-    time_series = mock_TimeSeries(name="TestTimeSeries", data=array)
-    nwbfile.add_acquisition(time_series)
-
-    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend="hdf5")
-    dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
-    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
-
-    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults.nwb.h5"
-    with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
-        io.write(nwbfile)
-
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+    with NWBZarrIO(path=nwbfile_path, mode="r") as io:
         written_nwbfile = io.read()
         written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
@@ -144,11 +121,34 @@ def test_classic_iterator_wrapped_time_series_hdf5(tmpdir):
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults.nwb.h5"
+    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults_classic_wrapped_data.nwb.h5"
     with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        written_nwbfile = io.read()
+        written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+
+        assert written_data.chunks == dataset_configuration.chunk_shape
+        assert written_data.compression == "gzip"
+
+
+def test_classic_iterator_wrapped_simple_time_series_zarr(tmpdir):
+    array = np.zeros(shape=(30_000 * 5, 384), dtype="int16")
+
+    nwbfile = mock_NWBFile()
+    time_series = mock_TimeSeries(name="TestTimeSeries", data=DataChunkIterator(data=array))
+    nwbfile.add_acquisition(time_series)
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend="hdf5")
+    dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    nwbfile_path = tmpdir / "test_configure_backend_hdf5_defaults_classic_wrapped_data.nwb.zarr"
+    with NWBZarrIO(path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    with NWBZarrIO(path=nwbfile_path, mode="r") as io:
         written_nwbfile = io.read()
         written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 

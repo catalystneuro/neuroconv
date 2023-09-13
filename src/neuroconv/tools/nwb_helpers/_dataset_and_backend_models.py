@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, root_validator
 class DatasetInfo(BaseModel):
     object_id: str
     location: str
-    maxshape: Tuple[int, ...]
+    full_shape: Tuple[int, ...]
     dtype: str  # Think about how to constrain/specify this more
 
     class Config:  # noqa: D106
@@ -40,13 +40,15 @@ class DatasetConfiguration(BaseModel):
             f"{self.object_name} of {self.parent}\n"
             + f"{'-' * (len(self.object_name) + 4 + len(self.parent))}\n"
             + f"  {self.field}\n"
-            + f"    maxshape: {self.maxshape}\n"
+            + f"    maxshape: {self.full_shape}\n"
             + f"    dtype: {self.dtype}"
         )
         return string
 
     def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
         raise NotImplementedError
+
+    # TODO: add validation that all _shape values are consistent in length
 
 
 _base_hdf5_filters = set(h5py.filters.decode) - set(
@@ -191,7 +193,7 @@ class BackendConfiguration(BaseModel):
             dataset_info = dataset_configuration.dataset_info
             string += (
                 f"{dataset_info.location}\n"
-                f"    maxshape : {dataset_info.maxshape}\n"
+                f"    full shape : {dataset_info.full_shape}\n"
                 f"    dtype : {dataset_info.dtype}\n\n"
                 f"    chunk shape : {dataset_configuration.chunk_shape}\n"
                 f"    buffer shape : {dataset_configuration.buffer_shape}\n"
@@ -234,7 +236,7 @@ class ZarrBackendConfiguration(BackendConfiguration):
             dataset_info = dataset_configuration.dataset_info
             string += (
                 f"{dataset_info.location}\n"
-                f"    maxshape : {dataset_info.maxshape}\n"
+                f"    full shape : {dataset_info.full_shape}\n"
                 f"    dtype : {dataset_info.dtype}\n\n"
                 f"    chunk shape : {dataset_configuration.chunk_shape}\n"
                 f"    buffer shape : {dataset_configuration.buffer_shape}\n"

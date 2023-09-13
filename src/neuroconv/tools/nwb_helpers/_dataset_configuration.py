@@ -88,7 +88,7 @@ def _get_dataset_metadata(
             else:
                 dtype = "unknown"
 
-        maxshape = get_data_shape(data=candidate_dataset)
+        full_shape = get_data_shape(data=candidate_dataset)
 
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
@@ -96,10 +96,10 @@ def _get_dataset_metadata(
         elif dtype != "unknown":
             # TODO: eventually replace this with staticmethods on hdmf.data_utils.GenericDataChunkIterator
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
-                chunk_mb=10.0, maxshape=maxshape, dtype=np.dtype(dtype)
+                chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
             )
             buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=maxshape, dtype=np.dtype(dtype)
+                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
             )
         else:
             pass  # TODO: think on this; perhaps zarr's standalone estimator?
@@ -109,7 +109,7 @@ def _get_dataset_metadata(
             object_name=neurodata_object.name,
             location=_parse_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object),
             field=field_name,
-            maxshape=maxshape,
+            full_shape=full_shape,
             dtype=dtype,
         )
         dataset_configuration = DatasetConfigurationClass(
