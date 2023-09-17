@@ -1,15 +1,11 @@
-"""Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Any, Dict, Literal, Tuple, Type, Union
+"""Base Pydantic models for the HDF5DatasetConfiguration."""
+from typing import Any, Dict, Literal, Union
 
 import h5py
-import psutil
-import zarr
-from hdmf.backends.hdf5 import H5DataIO
-from hdmf.container import DataIO
-from hdmf_zarr import ZarrDataIO
 from nwbinspector.utils import is_module_installed
-from pydantic import BaseModel, Field, root_validator
+from pydantic import Field
 
+from ._base_dataset_models import DatasetConfiguration
 
 _base_hdf5_filters = set(h5py.filters.decode) - set(
     (
@@ -25,38 +21,55 @@ if is_module_installed(module_name="hdf5plugin"):
     _available_hdf5_filters = _available_hdf5_filters | set(
         (str(hdf5plugin_filter).rstrip("'>").split(".")[-1] for hdf5plugin_filter in hdf5plugin.get_filters())
     )  # Manual string parsing because of slight mismatches between .filter_name and actual import class
-AVAILABLE_HDF5_COMPRESSION_METHODS = Literal[tuple(_available_hdf5_filters)]
-
-
-class HDF5Compression(BaseModel):
-    method: str
-    options: dict
+AVAILABLE_HDF5_COMPRESSION_METHODS = tuple(_available_hdf5_filters)
 
 
 class HDF5DatasetConfiguration(DatasetConfiguration):
-    """A data model for configruing options about an object that will become a HDF5 Dataset in the file."""
+    """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
-    compression_method: Union[AVAILABLE_HDF5_COMPRESSION_METHODS, bool] = "gzip"
-    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now
-    # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings but no annotation typing
-    compression_options: Union[Dict[str, Any], None] = None
+    # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
+    class Config:
+        arbitrary_types_allowed = True
+        validate_assignment = True
+
+    compression_method: Union[
+        Literal[AVAILABLE_HDF5_COMPRESSION_METHODS], h5py._hl.filters.FilterRefBase, None
+    ] = Field(
+        default="gzip",
+        description=(
+            "The specified compression method to apply to this dataset. "
+            "Can be either a string that matches an available method on your system, "
+            "or an instantiated h5py/hdf5plugin object."
+            "Set to `None` to disable compression."
+        ),
+    )
+    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
+    # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings - no annotation typing.
+    compression_options: Union[Dict[str, Any], None] = Field(
+        default=None, description="The optional parameters to use for the specified compression method."
+    )
 
     def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
-        # H5DataIO expects compression/compression_opts in very particular way
-        # Easiest way to ensure that is to instantiate hdf5plugin and pass dynamic kwargs
         if is_module_installed(module_name="hdf5plugin"):
             import hdf5plugin
 
             if self.compression_method in _base_hdf5_filters:
-                compression_bundle = dict(
-                    compression=self.compression_method, compression_opts=self.compression_options
-                )
-            else:
+                # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
+                compression_opts = None
+                if self.compression_options is not None:
+                    compression_opts = list(self.compression_options.values())[0]
+                compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
+            elif isinstance(self.compression_method, str):
                 compression_options = self.compression_options or dict()
+                # The easiest way to ensure the form is correct is to instantiate the hdf5plugin and pass dynamic kwargs
                 compression_bundle = dict(
                     **getattr(hdf5plugin, self.compression_method)(**compression_options),
                     allow_plugin_filters=True,
                 )
+            elif isinstance(self.compression_method, h5py._hl.filters.FilterRefBase):
+                compression_bundle = dict(**self.compression_method, allow_plugin_filters=True)
+            elif self.compression_method is None:
+                compression_bundle = dict(compression=False)
         else:
             compression_bundle = dict(compression=self.compression_method, compression_opts=self.compression_options)
 

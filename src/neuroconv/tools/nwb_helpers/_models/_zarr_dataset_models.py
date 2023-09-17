@@ -1,15 +1,11 @@
-"""Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Any, Dict, Literal, Tuple, Type, Union
+"""Base Pydantic models for the ZarrDatasetConfiguration."""
+from typing import Any, Dict, Literal, Union, List
 
-import h5py
-import psutil
+import numcodecs
 import zarr
-from hdmf.backends.hdf5 import H5DataIO
-from hdmf.container import DataIO
-from hdmf_zarr import ZarrDataIO
-from nwbinspector.utils import is_module_installed
-from pydantic import BaseModel, Field, root_validator
+from pydantic import Field, root_validator
 
+from ._base_dataset_models import DatasetConfiguration
 
 _available_zarr_filters = (
     set(zarr.codec_registry.keys())
@@ -22,6 +18,7 @@ _available_zarr_filters = (
             "vlen-utf8",  # enforced by HDMF
             "vlen-array",  # enforced by HDMF
             "vlen-bytes",  # enforced by HDMF
+            "msgpack2",  # think more on if we want to include this for variable length string datasets
             "adler32",  # checksum
             "crc32",  # checksum
             "fixedscaleoffset",  # enforced indrectly by HDMF/PyNWB data types
@@ -29,35 +26,69 @@ _available_zarr_filters = (
             "n5_wrapper",  # different data format
         )
     )
-    - set(  # Forbidding lossy codecs for now, but they could be allowed in the future with warnings
-        ("astype", "bitround", "quantize")
+    - set(  # Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
+        ("astype", "bitround", "quantize")  # (Users can always initialize and pass explicitly via code)
     )
 )
 # TODO: would like to eventually (as separate feature) add an 'auto' method to Zarr
 # to harness the wider range of potential methods that are ideal for certain dtypes or structures
 # E.g., 'packbits' for boolean (logical) VectorData columns
 # | set(("auto",))
-AVAILABLE_ZARR_COMPRESSION_METHODS = Literal[tuple(_available_zarr_filters)]
+AVAILABLE_ZARR_COMPRESSION_METHODS = tuple(_available_zarr_filters)
 
 
 class ZarrDatasetConfiguration(DatasetConfiguration):
-    """A data model for configruing options about an object that will become a Zarr Dataset in the file."""
+    """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
-    filter_methods: Union[Tuple[AVAILABLE_ZARR_COMPRESSION_METHODS, ...], None] = None
-    filter_options: Union[Tuple[Dict[str, Any]], None] = None
-    compression_method: Union[AVAILABLE_ZARR_COMPRESSION_METHODS, bool] = "gzip"  # TODO: would like this to be 'auto'
-    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now
-    # Looks like they'll have to be hand-typed however... Can try parsing the google docstrings but no annotation typing
-    compression_options: Union[Dict[str, Any], None] = None
+    # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
+    class Config:
+        arbitrary_types_allowed = True
+        validate_assignment = True
 
-    @root_validator()
-    def validate_filter_methods_and_options_match(cls, values: Dict[str, Any]):
+    compression_method: Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec, None] = Field(
+        default="gzip",  # TODO: would like this to be 'auto'
+        description=(
+            "The specified compression method to apply to this dataset. "
+            "Can be either a string that matches an available method on your system, "
+            "or an instantiated numcodec.Codec object."
+            "Set to `None` to disable compression."
+        ),
+    )
+    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
+    # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
+    compression_options: Union[Dict[str, Any], None] = Field(
+        default=None, description="The optional parameters to use for the specified compression method."
+    )
+    filter_methods: Union[List[Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec]], None] = Field(
+        default=None,
+        description=(
+            "The ordered collection of filtering methods to apply to this dataset prior to compression. "
+            "Each element can be either a string that matches an available method on your system, "
+            "or an instantiated numcodec.Codec object."
+            "Set to `None` to disable filtering."
+        ),
+    )
+    filter_options: Union[List[Dict[str, Any]], None] = Field(
+        default=None, description="The optional parameters to use for each specified filter method."
+    )
+
+    def __str__(self) -> str:
+        string = super().__str__()
+        if self.filter_methods is not None:
+            string += f"\n  filter_methods: {self.filter_methods}"
+        if self.filter_options is not None:
+            string += f"\n  filter_options: {self.filter_options}"
+
+        return string
+
+    @root_validator
+    def validate_filter_methods_and_options_length_match(cls, values: Dict[str, Any]):
         filter_methods = values["filter_methods"]
         filter_options = values["filter_options"]
 
         if filter_methods is None and filter_options is not None:
-            raise ValueError(f"`filter_methods` is `None` but `filter_options` is not ({filter_options})!")
-        elif filter_methods is None and filter_options is None:
+            raise ValueError(f"`filter_methods` is `None` but `filter_options` is not (received {filter_options})!")
+        elif filter_options is None:
             return values
 
         len_filter_methods = len(filter_methods)
@@ -70,22 +101,22 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
 
         return values
 
-    # think about extra validation that msgpack2 compression only ideal for datasets of vlen strings
-
     def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
         filters = None
-        if self.filter_methods is not None:
-            filters = [
-                zarr.codec_registry[filter_method](**filter_options)
-                for filter_method, filter_options in zip(self.filter_methods, self.filter_options)
-            ]
+        if self.filter_methods:
+            filters = list()
+            all_filter_options = self.filter_options or [dict() for _ in self.filter_methods]
+            for filter_method, filter_options in zip(self.filter_methods, all_filter_options):
+                if isinstance(filter_method, str):
+                    filters.append(zarr.codec_registry[filter_method](**filter_options))
+                elif isinstance(filter_method, numcodecs.abc.Codec):
+                    filters.append(filter_method)
 
-        if isinstance(self.compression_method, bool):
-            compressor = self.compression_method
-        else:
+        if isinstance(self.compression_method, str):
             compressor = zarr.codec_registry[self.compression_method](**self.compression_options)
+        if isinstance(self.compression_method, numcodecs.abc.Codec):
+            compressor = self.compression_method
+        elif self.compression_method is None:
+            compressor = False
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
-
-
-BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
