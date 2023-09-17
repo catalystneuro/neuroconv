@@ -10,3 +10,4 @@ from ._models._hdf5_models import HDF5BackendConfiguration, HDF5DatasetConfigura
 from ._models._zarr_models import ZarrBackendConfiguration, ZarrDatasetConfiguration, AVAILABLE_ZARR_COMPRESSION_METHODS
 
 BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
+BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
