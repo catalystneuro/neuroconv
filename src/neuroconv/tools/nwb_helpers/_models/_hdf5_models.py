@@ -1,11 +1,12 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
-from typing import Any, Dict, Literal, Union
+from typing import Any, Dict, Literal, Union, Type
 
 import h5py
+from pynwb import H5DataIO
 from nwbinspector.utils import is_module_installed
 from pydantic import Field
 
-from ._base_dataset_models import DatasetConfiguration
+from ._base_models import DatasetConfiguration, BackendConfiguration
 
 _base_hdf5_filters = set(h5py.filters.decode) - set(
     (
@@ -74,3 +75,18 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
             compression_bundle = dict(compression=self.compression_method, compression_opts=self.compression_options)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
+
+
+class HDF5BackendConfiguration(BackendConfiguration):
+    """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
+
+    backend: Literal["hdf5"] = Field(
+        default="hdf5", description="The name of the backend used to configure the NWBFile."
+    )
+    data_io_class: Type[H5DataIO] = Field(default=H5DataIO, description="The DataIO class that is specific to HDF5.")
+    dataset_configurations: Dict[str, HDF5DatasetConfiguration] = Field(
+        description=(
+            "A mapping from object locations to their HDF5DatasetConfiguration specification that contains all "
+            "information for writing the datasets to disk using the HDF5 backend."
+        )
+    )

@@ -1,11 +1,13 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
-from typing import Any, Dict, Literal, Union, List
+from typing import Any, Dict, Literal, Union, List, Type
 
 import numcodecs
 import zarr
+import psutil
+from hdmf_zarr import ZarrDataIO
 from pydantic import Field, root_validator
 
-from ._base_dataset_models import DatasetConfiguration
+from ._base_models import DatasetConfiguration, BackendConfiguration
 
 _available_zarr_filters = (
     set(zarr.codec_registry.keys())
@@ -120,3 +122,26 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
             compressor = False
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+
+
+class ZarrBackendConfiguration(BackendConfiguration):
+    """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
+
+    backend: Literal["zarr"] = Field(
+        default="zarr", description="The name of the backend used to configure the NWBFile."
+    )
+    data_io_class: Type[ZarrDataIO] = Field(
+        default=ZarrDataIO, description="The DataIO class that is specific to Zarr."
+    )
+    dataset_configurations: Dict[str, ZarrDatasetConfiguration] = Field(
+        description=(
+            "A mapping from object locations to their ZarrDatasetConfiguration specification that contains all "
+            "information for writing the datasets to disk using the Zarr backend."
+        )
+    )
+    number_of_jobs: int = Field(
+        description="Number of jobs to use in parallel during write.",
+        ge=-psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
+        le=psutil.cpu_count(),
+        default=-2,  # -2 translates to 'all CPU except for one'
+    )
