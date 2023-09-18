@@ -4,7 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-from neuroconv.tools.nwb_helpers import HDF5DatasetConfiguration, AVAILABLE_HDF5_COMPRESSION_METHODS
+from neuroconv.tools.nwb_helpers import (
+    AVAILABLE_HDF5_COMPRESSION_METHODS,
+    HDF5DatasetConfiguration,
+)
 from neuroconv.tools.testing import mock_DatasetInfo, mock_HDF5DatasetConfiguration
 
 

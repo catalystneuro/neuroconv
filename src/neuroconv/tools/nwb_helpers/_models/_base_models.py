@@ -1,5 +1,5 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
-from typing import Any, Dict, Tuple, Union, Literal, Type
+from typing import Any, Dict, Literal, Tuple, Type, Union
 
 import h5py
 import numcodecs
