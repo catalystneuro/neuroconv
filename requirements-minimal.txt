@@ -3,6 +3,7 @@ jsonschema>=3.2.0
 PyYAML>=5.4
 scipy>=1.4.1
 h5py>=2.10.0
+hdmf_zarr>=3.0.0
 hdmf>=3.4.7
 pynwb>=2.3.2;python_version>='3.8'
 psutil>=5.8.0
