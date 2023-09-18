@@ -32,6 +32,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         folder_path: FolderPathType,
         stream_name: Optional[str] = None,
         verbose: bool = True,
+        es_key: str = "ElectricalSeries",
     ):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
@@ -44,6 +45,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         stream_name : str, optional
             The name of the recording stream.
         verbose : bool, default: True
+        es_key : str, default: "ElectricalSeries"
         """
         available_streams = self.get_stream_names(folder_path=folder_path)
         if len(available_streams) > 1 and stream_name is None:
@@ -56,7 +58,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
                 f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
             )
 
-        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose)
+        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key)
 
     def get_metadata(self):
         metadata = super().get_metadata()

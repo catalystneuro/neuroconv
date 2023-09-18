@@ -1,6 +1,7 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
@@ -69,7 +70,10 @@ from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
 from .icephys.abf.abfdatainterface import AbfInterface
 
 # Ophys
-from .ophys.brukertiff.brukertiffdatainterface import BrukerTiffImagingInterface
+from .ophys.brukertiff.brukertiffdatainterface import (
+    BrukerTiffMultiPlaneImagingInterface,
+    BrukerTiffSinglePlaneImagingInterface,
+)
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
@@ -138,7 +142,8 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     ScanImageImagingInterface,
-    BrukerTiffImagingInterface,
+    BrukerTiffMultiPlaneImagingInterface,
+    BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
     # Behavior
@@ -147,6 +152,7 @@ interface_list = [
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
+    FicTracDataInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -178,6 +184,7 @@ interfaces_by_category = dict(
         Video=VideoInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
+        FicTrac=FicTracDataInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
