@@ -1,5 +1,11 @@
 # (Upcoming)
 
+### Features
+
+* Added Pydantic data models of `DatasetInfo` (immutable summary of core dataset values such as maximum shape and dtype) and `DatasetConfiguration` for both HDF5 and Zarr datasets (the optional layer that specifies chunk/buffering/compression). [PR #567](https://github.com/catalystneuro/neuroconv/pull/567)
+
+
+
 # v0.4.3
 
 ### Fixes
