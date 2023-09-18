@@ -195,3 +195,18 @@ def get_default_dataset_configurations(
                 yield _get_dataset_metadata(
                     neurodata_object=dynamic_table[column_name], field_name="data", backend=backend
                 )
+
+
+def get_default_backend_configuration(
+    nwbfile: NWBFile, backend: Literal["hdf5", "zarr"]
+) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+    """Fill a default backend configuration to serve as a starting point for further customization."""
+    BackendConfigurationClass = BACKEND_TO_CONFIGURATION[backend]
+    default_dataset_configurations = get_default_dataset_configurations(nwbfile=nwbfile, backend=backend)
+    dataset_configurations = {
+        default_dataset_configuration.dataset_info.location: default_dataset_configuration
+        for default_dataset_configuration in default_dataset_configurations
+    }
+
+    backend_configuration = BackendConfigurationClass(dataset_configurations=dataset_configurations)
+    return backend_configuration
