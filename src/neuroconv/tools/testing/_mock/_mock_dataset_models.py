@@ -1,15 +1,15 @@
-from typing import Any, Tuple, Dict, Union, Literal, Iterable
+from typing import Any, Dict, Iterable, Literal, Tuple, Union
 
 import h5py
 import numcodecs
 import numpy as np
 
 from ...nwb_helpers import (
+    AVAILABLE_HDF5_COMPRESSION_METHODS,
+    AVAILABLE_ZARR_COMPRESSION_METHODS,
     DatasetInfo,
     HDF5DatasetConfiguration,
     ZarrDatasetConfiguration,
-    AVAILABLE_HDF5_COMPRESSION_METHODS,
-    AVAILABLE_ZARR_COMPRESSION_METHODS,
 )
 
 

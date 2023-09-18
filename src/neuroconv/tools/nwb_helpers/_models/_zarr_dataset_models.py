@@ -1,5 +1,5 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
-from typing import Any, Dict, Literal, Union, List
+from typing import Any, Dict, List, Literal, Union
 
 import numcodecs
 import zarr
