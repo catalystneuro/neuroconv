@@ -1,5 +1,15 @@
 # (Upcoming)
 
+### Features
+
+* Added tool function `nwb_helpers.get_default_dataset_configurations(nwbfile: NWBFile) -> Dict[Dataset, DatasetConfiguration]` and Pydantic models `BackendConfiguration` for representing top-level backend configuration and `nwb_helpers.DatasetConfiguration` for representing configurable properties of the datasets (chunking & compression options) depending on each backend before writing to disk.
+
+* Add tool function `nwb_helpers.configure_datasets(nwbfile: NWBFile, dataset_configurations: Dict[Dataset, DatasetConfiguration])` for configuring backend and dataset options for an `NWBFile` before writing to disk.
+
+
+
+# v0.4.3
+
 ### Fixes
 
 * The `sonpy` package for the Spike2 interface no longer attempts installation on M1 Macs. [PR #563](https://github.com/catalystneuro/neuroconv/pull/563)
