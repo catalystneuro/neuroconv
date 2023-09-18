@@ -2,7 +2,6 @@
 from io import StringIO
 from unittest.mock import patch
 
-
 from neuroconv.tools.testing import mock_HDF5BackendConfiguration
 
 
