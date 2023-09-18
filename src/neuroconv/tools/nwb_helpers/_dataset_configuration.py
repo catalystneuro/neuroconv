@@ -212,6 +212,7 @@ def get_default_backend_configuration(
 
     return backend_configuration
 
+
 def configure_backend(
     nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
 ) -> None:
