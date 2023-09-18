@@ -222,7 +222,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 if any(x)
             ]
         )
-        end_frame = 1.1 * max_min_spike_time
+        end_frame = int(1.1 * max_min_spike_time)
         if self.sorting_extractor.has_recording():
             end_frame = min(end_frame, self.sorting_extractor._recording.get_total_samples())
         stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
