@@ -1,3 +1,5 @@
+import platform
+import sys
 from collections import defaultdict
 from pathlib import Path
 from shutil import copy
@@ -45,9 +47,18 @@ gin_config_file_local = Path("./tests/test_on_data/gin_test_config.json")
 if not gin_config_file_local.exists():
     copy(src=gin_config_file_base, dst=gin_config_file_local)
 
+# Bug related to sonpy on M1 Mac being installed but not running properly
+if sys.platform == "darwin" and platform.processor() == "arm":
+    extras_require.pop("spike2")
+
+    extras_require["ecephys"].remove(
+        next(requirement for requirement in extras_require["ecephys"] if "sonpy" in requirement)
+    )
+    extras_require["full"].remove(next(requirement for requirement in extras_require["full"] if "sonpy" in requirement))
+
 setup(
     name="neuroconv",
-    version="0.4.2",
+    version="0.4.4",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
