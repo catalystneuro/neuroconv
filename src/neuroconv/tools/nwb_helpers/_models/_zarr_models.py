@@ -1,13 +1,13 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
-from typing import Any, Dict, Literal, Union, List, Type
+from typing import Any, Dict, List, Literal, Type, Union
 
 import numcodecs
-import zarr
 import psutil
+import zarr
 from hdmf_zarr import ZarrDataIO
 from pydantic import Field, root_validator
 
-from ._base_models import DatasetConfiguration, BackendConfiguration
+from ._base_models import BackendConfiguration, DatasetConfiguration
 
 _available_zarr_filters = (
     set(zarr.codec_registry.keys())
