@@ -1,12 +1,12 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
-from typing import Any, Dict, Literal, Union, Type
+from typing import Any, Dict, Literal, Type, Union
 
 import h5py
-from pynwb import H5DataIO
 from nwbinspector.utils import is_module_installed
 from pydantic import Field
+from pynwb import H5DataIO
 
-from ._base_models import DatasetConfiguration, BackendConfiguration
+from ._base_models import BackendConfiguration, DatasetConfiguration
 
 _base_hdf5_filters = set(h5py.filters.decode) - set(
     (

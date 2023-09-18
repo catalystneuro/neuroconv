@@ -4,7 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-from neuroconv.tools.nwb_helpers import ZarrDatasetConfiguration, AVAILABLE_ZARR_COMPRESSION_METHODS
+from neuroconv.tools.nwb_helpers import (
+    AVAILABLE_ZARR_COMPRESSION_METHODS,
+    ZarrDatasetConfiguration,
+)
 from neuroconv.tools.testing import mock_DatasetInfo, mock_ZarrDatasetConfiguration
 
 

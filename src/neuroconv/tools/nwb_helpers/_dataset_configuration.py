@@ -202,7 +202,6 @@ def get_default_backend_configuration(
 ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
     """Fill a default backend configuration to serve as a starting point for further customization."""
     BackendConfigurationClass = BACKEND_TO_CONFIGURATION[backend]
-
     default_dataset_configurations = get_default_dataset_configurations(nwbfile=nwbfile, backend=backend)
     dataset_configurations = {
         default_dataset_configuration.dataset_info.location: default_dataset_configuration
@@ -210,8 +209,8 @@ def get_default_backend_configuration(
     }
 
     backend_configuration = BackendConfigurationClass(dataset_configurations=dataset_configurations)
-    return backend_configuration
 
+    return backend_configuration
 
 def configure_backend(
     nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
