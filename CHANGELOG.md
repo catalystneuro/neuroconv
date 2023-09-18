@@ -1,5 +1,9 @@
 # (Upcoming)
 
+### Fixes
+
+* Reorganize timeintervals schema to reside in `schemas/` dir to ensure its inclusion in package build. [PR #573](https://github.com/catalystneuro/neuroconv/pull/573)
+
 # v0.4.3
 
 ### Fixes
