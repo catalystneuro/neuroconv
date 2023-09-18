@@ -1,7 +1,7 @@
 import os
 from abc import abstractmethod
-from typing import Dict, Optional
 from pathlib import Path
+from typing import Dict, Optional
 
 import numpy as np
 from pynwb import NWBFile
