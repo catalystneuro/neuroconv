@@ -48,7 +48,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        fpath = Path(__file__).parent / "../../schemas/timeintervals_schema.json"
+        fpath = Path(__file__).parent.parent.parent / "schemas" / "timeintervals_schema.json"
         return load_dict_from_file(fpath)
 
     def get_original_timestamps(self, column: str) -> np.ndarray:
