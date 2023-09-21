@@ -1,8 +1,14 @@
 # (Upcoming)
 
+### Features
+
+* `DeepLabCutInterface` now allows using custom timestamps via `set_aligned_timestamps` method before running conversion. [PR #531](https://github.com/catalystneuro/neuroconv/pull/532)
+
 ### Fixes
 
 * Reorganize timeintervals schema to reside in `schemas/` dir to ensure its inclusion in package build. [PR #573](https://github.com/catalystneuro/neuroconv/pull/573)
+
+
 
 # v0.4.3
 
