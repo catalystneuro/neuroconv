@@ -75,7 +75,9 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
                     session_start_time = datetime.strptime(date_created, expected_date_format)
                     metadata["NWBFile"].update(session_start_time=session_start_time)
                 except ValueError:
-                    warn("The 'session_start_time' could not be extracted from the header."
-                         f"Received '{date_created}' which does not match the expected format ({expected_date_format}).")
+                    warn(
+                        "The 'session_start_time' could not be extracted from the header."
+                        f"Received '{date_created}' which does not match the expected format ({expected_date_format})."
+                    )
 
         return metadata
