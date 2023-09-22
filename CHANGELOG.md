@@ -1,6 +1,8 @@
 # (Upcoming)
 
+### Fixes
 
+* Changed the date parsing in `OpenEphysLegacyRecordingInterface` to `datetime.strptime` with the expected date format explicitly set to `"%d-%b-%Y %H%M%S"`.
 
 # v0.4.4
 
