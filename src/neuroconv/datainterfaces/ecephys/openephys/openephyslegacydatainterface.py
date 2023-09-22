@@ -1,6 +1,6 @@
+from datetime import datetime
 from typing import List, Optional
-
-from dateutil.parser import parse
+from warnings import warn
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils import FolderPathType
@@ -68,7 +68,14 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         if block_annotations:
             segment_annotations = block_annotations[0].get("segments", [])
             if segment_annotations:
+                expected_date_format = "%d-%b-%Y %H%M%S"
                 date_created = segment_annotations[0]["date_created"]
-                session_start_time = parse(date_created)
-                metadata["NWBFile"].update(session_start_time=session_start_time)
+                try:
+                    date_created = date_created.strip("'")
+                    session_start_time = datetime.strptime(date_created, expected_date_format)
+                    metadata["NWBFile"].update(session_start_time=session_start_time)
+                except ValueError:
+                    warn("The 'session_start_time' could not be extracted from the header."
+                         f"Received '{date_created}' which does not match the expected format ({expected_date_format}).")
+
         return metadata
