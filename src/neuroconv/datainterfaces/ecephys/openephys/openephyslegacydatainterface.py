@@ -70,14 +70,15 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             if segment_annotations:
                 expected_date_format = "%d-%b-%Y %H%M%S"
                 date_created = segment_annotations[0]["date_created"]
-                try:
-                    date_created = date_created.strip("'")
-                    session_start_time = datetime.strptime(date_created, expected_date_format)
-                    metadata["NWBFile"].update(session_start_time=session_start_time)
-                except ValueError:
+                date_created = date_created.strip("'")
+                extracted_date, extracted_timestamp = date_created.split(" ")
+                if len(extracted_timestamp) != len("%H%M%S"):
                     warn(
-                        "The 'session_start_time' could not be extracted from the header."
-                        f"Received '{date_created}' which does not match the expected format ({expected_date_format})."
+                        f"The timestamp for starting time from openephys metadata is ambiguous ('{extracted_timestamp}')! Only the date will be auto-populated in metadata. Please update the timestamp manually to record this value with the highest known temporal resolution."
                     )
+                    session_start_time = datetime.strptime(extracted_date, "%d-%b-%Y")
+                else:
+                    session_start_time = datetime.strptime(date_created, expected_date_format)
+                metadata["NWBFile"].update(session_start_time=session_start_time)
 
         return metadata

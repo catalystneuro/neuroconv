@@ -41,6 +41,11 @@ class TestOpenEphysLegacyConversions(TestCase):
         segments = blocks[0].get("segments", [])
         # Override date_created to test date is parsed
         segments[0].update(date_created="29-Apr-2020 16554")
-        metadata = self.interface.get_metadata()
+        with self.assertWarnsWith(
+            UserWarning,
+            exc_msg="The timestamp for starting time from openephys metadata is ambiguous ('16554')! Only the date will be auto-populated in metadata. Please update the timestamp manually to record this value with the highest known temporal resolution.",
+        ):
+            metadata = self.interface.get_metadata()
+
         assert "session_start_time" in metadata["NWBFile"]
-        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2020, 4, 29, 16, 55, 4))
+        self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2020, 4, 29, 0, 0))
