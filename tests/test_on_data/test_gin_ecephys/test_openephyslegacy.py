@@ -44,4 +44,3 @@ class TestOpenEphysLegacyConversions(TestCase):
         metadata = self.interface.get_metadata()
         assert "session_start_time" in metadata["NWBFile"]
         self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2020, 4, 29, 16, 55, 4))
-
