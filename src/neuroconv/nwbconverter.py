@@ -1,19 +1,19 @@
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Literal
+from typing import Dict, List, Literal, Optional, Union
 
 from jsonschema import validate
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
 from .tools.nwb_helpers import (
-    get_default_nwbfile_metadata,
-    make_or_load_nwbfile,
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
-    get_default_backend_configuration,
     configure_backend,
+    get_default_backend_configuration,
+    get_default_nwbfile_metadata,
+    make_or_load_nwbfile,
 )
 from .utils import (
     dict_deep_update,

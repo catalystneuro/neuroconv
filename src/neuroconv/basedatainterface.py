@@ -2,22 +2,19 @@ import uuid
 import warnings
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import List, Optional, Union, Literal
+from typing import List, Literal, Optional, Union
 
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import (
-    make_nwbfile_from_metadata,
-    make_or_load_nwbfile,
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
-    get_default_backend_configuration,
     configure_backend,
+    get_default_backend_configuration,
+    make_nwbfile_from_metadata,
+    make_or_load_nwbfile,
 )
-from .utils import (
-    get_schema_from_method_signature,
-    load_dict_from_file,
-)
+from .utils import get_schema_from_method_signature, load_dict_from_file
 from .utils.dict import DeepDict
 
 
