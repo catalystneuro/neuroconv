@@ -6,7 +6,7 @@ from ._metadata_and_file_helpers import (
     make_nwbfile_from_metadata,
     make_or_load_nwbfile,
 )
-from ._models._base_models import DatasetConfiguration, DatasetInfo
+from ._models._base_models import DatasetInfo
 from ._models._hdf5_models import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,
     HDF5BackendConfiguration,
