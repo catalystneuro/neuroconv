@@ -51,7 +51,7 @@ def get_default_nwbfile_metadata() -> DeepDict:
 def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     """Make NWBFile from available metadata."""
     # Validate metadata
-    schema_path = Path(__file__).resolve().parent.parent / "schemas/base_metadata_schema.json"
+    schema_path = Path(__file__).resolve().parent.parent.parent / "schemas/base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
