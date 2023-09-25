@@ -269,10 +269,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
-        compression: Optional[str] = "gzip",
-        compression_opts: Optional[int] = None,
-        iterator_type: str = "v2",
-        iterator_opts: Optional[dict] = None,
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -295,35 +291,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
             and electrodes are written to NWB.
-        compression : {'gzip', 'lzf', None}
-            Type of compression to use.
-            Set to None to disable all compression.
-        compression_opts : int, default: 4
-            Only applies to compression="gzip". Controls the level of the GZIP.
-        iterator_type : {'v2', 'v1'}
-            The type of DataChunkIterator to use.
-            'v1' is the original DataChunkIterator of the hdmf data_utils.
-            'v2' is the locally developed RecordingExtractorDataChunkIterator, which offers full control over chunking.
-        iterator_opts : dict, optional
-            Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-            Valid options are
-                buffer_gb : float, default: 1.0
-                    In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                    buffer shape.
-                buffer_shape : tuple, optional
-                    Manual specification of buffer shape to return on each iteration.
-                    Must be a multiple of chunk_shape along each axis.
-                    Cannot be set if `buffer_gb` is specified.
-                chunk_mb : float. default: 1.0
-                    Should be below 1 MB. Automatically calculates suitable chunk shape.
-                chunk_shape : tuple, optional
-                    Manual specification of the internal chunk shape for the HDF5 dataset.
-                    Cannot be set if `chunk_mb` is also specified.
-                display_progress : bool, default: False
-                    Display a progress bar with iteration rate and estimated completion time.
-                progress_bar_options : dict, optional
-                    Dictionary of keyword arguments to be passed directly to tqdm.
-                    See https://github.com/tqdm/tqdm#parameters for options.
         """
         from ...tools.spikeinterface import add_recording
 
@@ -340,8 +307,4 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
         )

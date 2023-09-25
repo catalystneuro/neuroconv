@@ -442,70 +442,6 @@ def check_if_recording_traces_fit_into_memory(recording: BaseRecording, segment_
         raise MemoryError(message)
 
 
-def _recording_traces_to_hdmf_iterator(
-    recording: BaseRecording,
-    segment_index: int = None,
-    return_scaled: bool = False,
-    iterator_type: str = "v2",
-    iterator_opts: dict = None,
-) -> AbstractDataChunkIterator:
-    """Function to wrap traces of spikeinterface recording into an AbstractDataChunkIterator.
-
-    Parameters
-    ----------
-    recording : spikeinterface.BaseRecording
-        A recording extractor from spikeinterface
-    segment_index : int, optional
-        The recording segment to add to the NWBFile.
-    return_scaled : bool, defaults to False
-        When True recording extractor objects from spikeinterface return their traces in microvolts.
-    iterator_type: {"v2", "v1",  None}, default: 'v2'
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
-        None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
-        Dictionary of options for the iterator.
-        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
-        for the full list of options.
-
-    Returns
-    -------
-    traces_as_iterator: AbstractDataChunkIterator
-        The traces of the recording extractor wrapped in an iterator object.
-
-    Raises
-    ------
-    ValueError
-        If the iterator_type is not 'v1', 'v2' or None.
-    """
-    supported_iterator_types = ["v1", "v2", None]
-    if iterator_type not in supported_iterator_types:
-        message = f"iterator_type {iterator_type} should be either 'v1', 'v2' (recommended) or None"
-        raise ValueError(message)
-
-    iterator_opts = dict() if iterator_opts is None else iterator_opts
-
-    if iterator_type is None:
-        check_if_recording_traces_fit_into_memory(recording=recording, segment_index=segment_index)
-        traces_as_iterator = recording.get_traces(return_scaled=return_scaled, segment_index=segment_index)
-    elif iterator_type == "v2":
-        traces_as_iterator = SpikeInterfaceRecordingDataChunkIterator(
-            recording=recording,
-            segment_index=segment_index,
-            return_scaled=return_scaled,
-            **iterator_opts,
-        )
-    elif iterator_type == "v1":
-        traces_as_iterator = DataChunkIterator(
-            data=recording.get_traces(return_scaled=return_scaled, segment_index=segment_index), **iterator_opts
-        )
-    else:
-        raise ValueError("iterator_type must be None, 'v1', or 'v2'.")
-
-    return traces_as_iterator
-
-
 def add_electrical_series(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -515,10 +451,6 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
-    iterator_type: str = "v2",
-    iterator_opts: Optional[dict] = None,
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
@@ -550,19 +482,6 @@ def add_electrical_series(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression : {'gzip', 'lzf'}, optional
-        Type of compression to use. Set to None to disable all compression.
-    compression_opts: int, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: {"v2", "v1",  None}, default: 'v2'
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
-        None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
-        Dictionary of options for the iterator.
-        See https://hdmf.readthedocs.io/en/stable/hdmf.data_utils.html#hdmf.data_utils.GenericDataChunkIterator
-        for the full list of options.
 
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
@@ -641,15 +560,14 @@ def add_electrical_series(
     if not write_scaled:
         eseries_kwargs.update(offset=unique_offset * micro_to_volts_conversion_factor)
 
-    # Iterator
-    ephys_data_iterator = _recording_traces_to_hdmf_iterator(
-        recording=recording,
-        segment_index=segment_index,
-        iterator_type=iterator_type,
-        iterator_opts=iterator_opts,
-    )
+    # Always define data as the specialized iterator; configurable values (such as buffer shapes) are to be set using
+    # the dataset or backend configuration tool
     eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+        data=SpikeInterfaceRecordingDataChunkIterator(
+            recording=recording,
+            segment_index=segment_index,
+            return_scaled=write_scaled,
+        )
     )
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
@@ -670,9 +588,7 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
     else:
         shifted_timestamps = starting_time + timestamps
-        wrapped_timestamps = H5DataIO(
-            data=shifted_timestamps, compression=compression, compression_opts=compression_opts
-        )
+        wrapped_timestamps = shifted_timestamps
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile

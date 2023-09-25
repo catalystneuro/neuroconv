@@ -1,13 +1,20 @@
 import json
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Literal
 
 from jsonschema import validate
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
-from .tools.nwb_helpers import get_default_nwbfile_metadata, make_or_load_nwbfile
+from .tools.nwb_helpers import (
+    get_default_nwbfile_metadata,
+    make_or_load_nwbfile,
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
+    get_default_backend_configuration,
+    configure_backend,
+)
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -115,6 +122,36 @@ class NWBConverter:
                 nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
             )
 
+    def get_default_backend_configuration(
+        self,
+        backend: Literal["hdf5", "zarr"] = "hdf5",
+        metadata: Optional[dict] = None,
+        conversion_options: Optional[dict] = None,
+    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+        """
+        Fill and return a default backend configuration to serve as a starting point for further customization.
+
+        Parameters
+        ----------
+        backend : "hdf5" or "zarr", default: "hdf5"
+            The type of backend used to create the file.
+        metadata : dict, optional
+            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+        conversion_options : dict, optional
+            Similar to source_data, a dictionary containing keywords for each interface for which non-default
+            conversion specification is requested.
+        """
+        if metadata is None:
+            metadata = self.get_metadata()
+        self.validate_metadata(metadata=metadata)
+        self.validate_conversion_options(conversion_options=conversion_options)
+
+        self.temporally_align_data_interfaces()  # Might not be entirely relevant for the backend, but keeping it anyway
+
+        with make_or_load_nwbfile(metadata=metadata, verbose=self.verbose) as nwbfile:
+            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+            return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
     def run_conversion(
         self,
         nwbfile_path: Optional[str] = None,
@@ -122,9 +159,11 @@ class NWBConverter:
         metadata: Optional[dict] = None,
         overwrite: bool = False,
         conversion_options: Optional[dict] = None,
+        backend: Union[Literal["hdf5", "zarr"], HDF5BackendConfiguration, ZarrBackendConfiguration] = "hdf5",
     ) -> None:
         """
         Run the NWB conversion over all the instantiated data interfaces.
+
         Parameters
         ----------
         nwbfile_path : FilePathType
@@ -140,12 +179,21 @@ class NWBConverter:
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
+        backend : "hdf5", "zarr", a HDF5BackendConfiguration, or a ZarrBackendConfiguration, default: "hdf5"
+            If "hdf5" or "zarr", this type of backend will be used to create the file,
+            with all datasets using the default values.
+            To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
+            BackendConfiguration object, and pass that instead.
         """
         if metadata is None:
             metadata = self.get_metadata()
-
+        if isinstance(backend, str):
+            backend_configuration = self.get_default_backend_configuration(
+                backend=backend, metadata=metadata, conversion_options=conversion_options
+            )
+        else:
+            backend_configuration = backend
         self.validate_metadata(metadata=metadata)
-
         self.validate_conversion_options(conversion_options=conversion_options)
 
         self.temporally_align_data_interfaces()
@@ -157,7 +205,8 @@ class NWBConverter:
             overwrite=overwrite,
             verbose=self.verbose,
         ) as nwbfile_out:
-            self.add_to_nwbfile(nwbfile_out, metadata, conversion_options)
+            self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, conversion_options=conversion_options)
+            configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
 
     def temporally_align_data_interfaces(self):
         """Override this method to implement custom alignment"""
