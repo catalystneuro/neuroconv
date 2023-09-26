@@ -2,8 +2,8 @@
 
 ### Fixes
 
-* Changed the date parsing in `OpenEphysLegacyRecordingInterface` to `datetime.strptime` with the expected date format explicitly set to `"%d-%b-%Y %H%M%S"`.
-* Added `ignore_timestamps_errors` keyword argument to `OpenEphysRecordingInterface` and `OpenEphysLegacyRecordingInterface` to have the possibility of ignoring discontinuous timestamps errors in neo.[PR #579](https://github.com/catalystneuro/neuroconv/pull/579)
+* Changed the date parsing in `OpenEphysLegacyRecordingInterface` to `datetime.strptime` with the expected date format explicitly set to `"%d-%b-%Y %H%M%S"`. [PR #577](https://github.com/catalystneuro/neuroconv/pull/577)
+* Added `ignore_timestamps_errors` keyword argument to `OpenEphysRecordingInterface` and `OpenEphysLegacyRecordingInterface` to have the possibility of ignoring discontinuous timestamps errors in neo. [PR #579](https://github.com/catalystneuro/neuroconv/pull/579)
 
 # v0.4.4
 
