@@ -18,6 +18,7 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
         stream_name: Optional[str] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
+        ignore_timestamps_errors: bool = False,
     ):
         """
         Abstract class that defines which interface class to use for a given Open Ephys recording.
@@ -34,13 +35,19 @@ class OpenEphysRecordingInterface(BaseRecordingExtractorInterface):
             When channel stream is not available the name of the stream must be specified.
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
+        ignore_timestamps_errors : bool, default: False
+            Ignore the discontinuous timestamps error in neo. Only relevant for the "legacy" format (.continuous) files.
         """
         super().__new__(cls)
 
         folder_path = Path(folder_path)
         if any(folder_path.rglob("*.continuous")):
             return OpenEphysLegacyRecordingInterface(
-                folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key
+                folder_path=folder_path,
+                stream_name=stream_name,
+                verbose=verbose,
+                es_key=es_key,
+                ignore_timestamps_errors=ignore_timestamps_errors,
             )
 
         elif any(folder_path.rglob("*.dat")):

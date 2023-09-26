@@ -11,10 +11,13 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     Uses :py:class:`~spikeinterface.extractors.OpenEphysLegacyRecordingExtractor`."""
 
     @classmethod
-    def get_stream_names(cls, folder_path: FolderPathType) -> List[str]:
+    def get_stream_names(cls, folder_path: FolderPathType, ignore_timestamps_errors: bool = False) -> List[str]:
         from spikeinterface.extractors import OpenEphysLegacyRecordingExtractor
 
-        stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
+        stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(
+            folder_path=folder_path,
+            ignore_timestamps_errors=ignore_timestamps_errors,
+        )
         return stream_names
 
     @classmethod
@@ -33,6 +36,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         stream_name: Optional[str] = None,
         verbose: bool = True,
         es_key: str = "ElectricalSeries",
+        ignore_timestamps_errors: bool = False,
     ):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
@@ -46,8 +50,12 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The name of the recording stream.
         verbose : bool, default: True
         es_key : str, default: "ElectricalSeries"
+        ignore_timestamps_errors : bool, default: False
+            Ignore the discontinuous timestamps error in neo.
         """
-        available_streams = self.get_stream_names(folder_path=folder_path)
+        available_streams = self.get_stream_names(
+            folder_path=folder_path, ignore_timestamps_errors=ignore_timestamps_errors
+        )
         if len(available_streams) > 1 and stream_name is None:
             raise ValueError(
                 "More than one stream is detected! Please specify which stream you wish to load with the `stream_name` argument. "
@@ -58,7 +66,13 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
                 f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
             )
 
-        super().__init__(folder_path=folder_path, stream_name=stream_name, verbose=verbose, es_key=es_key)
+        super().__init__(
+            folder_path=folder_path,
+            stream_name=stream_name,
+            ignore_timestamps_errors=ignore_timestamps_errors,
+            verbose=verbose,
+            es_key=es_key,
+        )
 
     def get_metadata(self):
         metadata = super().get_metadata()
