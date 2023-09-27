@@ -1,2 +1,2 @@
-spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@8ea82ee0a43f04c8a51017651710e19eb9a156db
+spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git@main
 packaging<22.0
