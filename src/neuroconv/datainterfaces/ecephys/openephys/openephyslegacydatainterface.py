@@ -74,6 +74,14 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
 
+        if ignore_timestamps_errors and self.recording_extractor.has_time_vector():
+            for segment_index in range(self.recording_extractor.get_num_segments()):
+                self.recording_extractor._recording_segments[segment_index].time_vector = None
+            warn(
+                "The recording has a time vector but the timestamps might be discontinuous. "
+                "The time vector was reset to None to avoid writing these timestamps with the electrical series."
+            )
+
     def get_metadata(self):
         metadata = super().get_metadata()
 
