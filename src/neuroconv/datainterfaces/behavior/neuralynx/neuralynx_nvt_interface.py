@@ -4,9 +4,9 @@ import numpy as np
 from pynwb import NWBFile
 from pynwb.behavior import SpatialSeries
 
-from .read_nvt import read_nvt, parse_header
+from .read_nvt import parse_header, read_nvt
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....utils import FilePathType, DeepDict
+from ....utils import DeepDict, FilePathType
 
 
 class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
