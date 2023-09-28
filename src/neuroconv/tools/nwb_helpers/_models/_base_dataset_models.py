@@ -1,5 +1,6 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 from typing import Any, Dict, Tuple, Union
+from abc import abstractmethod, ABC
 
 import h5py
 import numcodecs
@@ -43,7 +44,7 @@ class DatasetInfo(BaseModel):
         return string
 
 
-class DatasetConfiguration(BaseModel):
+class DatasetConfiguration(BaseModel, ABC):
     """A data model for configuring options about an object that will become a HDF5 or Zarr Dataset in the file."""
 
     # TODO: When using Pydantic v2, remove
@@ -122,6 +123,7 @@ class DatasetConfiguration(BaseModel):
 
         return values
 
+    @abstractmethod
     def get_data_io_keyword_arguments(self):
         """
         Fetch the properly structured dictionary of input arguments to be passed directly into a H5DataIO or ZarrDataIO.
