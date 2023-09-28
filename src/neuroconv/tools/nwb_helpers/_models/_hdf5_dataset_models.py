@@ -7,14 +7,15 @@ from pydantic import Field
 
 from ._base_dataset_models import DatasetConfiguration
 
-_base_hdf5_filters = set(h5py.filters.decode) - set(
+_base_hdf5_filters = set(h5py.filters.decode)
+_excluded_hdf5_filters = set(
     (
         "shuffle",  # controlled via H5DataIO
         "fletcher32",  # controlled via H5DataIO
         "scaleoffset",  # enforced indrectly by HDMF/PyNWB data types
     )
 )
-_available_hdf5_filters = set(_base_hdf5_filters)
+_available_hdf5_filters = set(_base_hdf5_filters - _excluded_hdf5_filters)
 if is_module_installed(module_name="hdf5plugin"):
     import hdf5plugin
 

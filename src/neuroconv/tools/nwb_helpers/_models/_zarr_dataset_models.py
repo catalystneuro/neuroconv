@@ -7,34 +7,36 @@ from pydantic import Field, root_validator
 
 from ._base_dataset_models import DatasetConfiguration
 
-_available_zarr_filters = (
-    set(zarr.codec_registry.keys())
-    - set(
-        # These filters do nothing for us, or are things that ought to be implemented at lower HDMF levels
-        # or indirectly using HDMF data structures
-        (
-            "json2",  # no data savings
-            "pickle",  # no data savings
-            "vlen-utf8",  # enforced by HDMF
-            "vlen-array",  # enforced by HDMF
-            "vlen-bytes",  # enforced by HDMF
-            "msgpack2",  # think more on if we want to include this for variable length string datasets
-            "adler32",  # checksum
-            "crc32",  # checksum
-            "fixedscaleoffset",  # enforced indrectly by HDMF/PyNWB data types
-            "base64",  # unsure what this would ever be used for
-            "n5_wrapper",  # different data format
-        )
-    )
-    - set(  # Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
-        ("astype", "bitround", "quantize")  # (Users can always initialize and pass explicitly via code)
+_base_zarr_codecs = set(zarr.codec_registry.keys())
+_lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
+
+# These filters do nothing for us, or are things that ought to be implemented at lower HDMF levels
+# or indirectly using HDMF data structures
+_excluded_zarr_codecs = set(
+    (
+        "json2",  # no data savings
+        "pickle",  # no data savings
+        "vlen-utf8",  # enforced by HDMF
+        "vlen-array",  # enforced by HDMF
+        "vlen-bytes",  # enforced by HDMF
+        "msgpack2",  # think more on if we want to include this for variable length string datasets
+        "adler32",  # checksum
+        "crc32",  # checksum
+        "fixedscaleoffset",  # enforced indrectly by HDMF/PyNWB data types
+        "base64",  # unsure what this would ever be used for
+        "n5_wrapper",  # different data format
     )
 )
+
+# Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
+# (Users can always initialize and pass explicitly via code)
+_available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_zarr_codecs)
+
 # TODO: would like to eventually (as separate feature) add an 'auto' method to Zarr
 # to harness the wider range of potential methods that are ideal for certain dtypes or structures
 # E.g., 'packbits' for boolean (logical) VectorData columns
 # | set(("auto",))
-AVAILABLE_ZARR_COMPRESSION_METHODS = tuple(_available_zarr_filters)
+AVAILABLE_ZARR_COMPRESSION_METHODS = tuple(_available_zarr_codecs)
 
 
 class ZarrDatasetConfiguration(DatasetConfiguration):
