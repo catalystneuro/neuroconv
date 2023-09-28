@@ -5,6 +5,7 @@ from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
+from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
@@ -153,6 +154,7 @@ interface_list = [
     SLEAPInterface,
     MiniscopeBehaviorInterface,
     FicTracDataInterface,
+    NeuralynxNvtInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
