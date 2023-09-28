@@ -26,7 +26,14 @@ class DatasetInfo(BaseModel):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
     def __str__(self) -> str:
-        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
+        """
+        Not overriding __repr__ as this is intended to render only when wrapped in print().
+
+        Reason being two-fold; a standard `repr` is intended to be slightly more machine readable / a more basic
+        representation of the true object state. But then also because an iterable of these objects, such as a
+        `List[DataSetInfo]`, would print out the nested representations, which only look good when using the basic
+        `repr` (that is, this fancy string print-out does not look good when nested in another container).
+        """
         string = (
             f"\n{self.location}"
             f"\n{'-' * len(self.location)}"
@@ -66,7 +73,14 @@ class DatasetConfiguration(BaseModel):
     )
 
     def __str__(self) -> str:
-        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
+        """
+        Not overriding __repr__ as this is intended to render only when wrapped in print().
+
+        Reason being two-fold; a standard `repr` is intended to be slightly more machine readable / a more basic
+        representation of the true object state. But then also because an iterable of these objects, such as a
+        `List[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
+        basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
+        """
         string = (
             f"\n{self.dataset_info.location}"
             f"\n{'-' * len(self.dataset_info.location)}"
