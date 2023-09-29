@@ -1,7 +1,8 @@
-from datetime import datetime
-from typing import Dict, Union, List
-import numpy as np
 import os
+from datetime import datetime
+from typing import Dict, List, Union
+
+import numpy as np
 
 
 def parse_header(filename: str) -> Dict[str, Union[str, datetime, float, int, List[int]]]:
@@ -44,10 +45,10 @@ def parse_header(filename: str) -> Dict[str, Union[str, datetime, float, int, Li
         "Resolution": parse_list_of_ints,
         "CameraDelay": int,
         "EnableFieldEstimation": parse_bool,
-        "SamplingFrequency": float
+        "SamplingFrequency": float,
     }
 
-    with open(filename, 'rb') as file:
+    with open(filename, "rb") as file:
         out = dict()
         for line, _ in zip(file.readlines(), range(27)):
             line = line.decode()
@@ -104,7 +105,7 @@ def read_nvt(filename: str) -> Dict[str, np.ndarray]:
         raise FileNotFoundError(f"File {filename} not found.")
 
     # Reading and parsing data
-    with open(filename, 'rb') as file:
+    with open(filename, "rb") as file:
         file.seek(HEADER_SIZE)
         dtype = np.dtype(RECORD_FORMAT)
         records = np.fromfile(file, dtype=dtype)
