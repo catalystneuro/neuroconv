@@ -7,7 +7,7 @@
 * Added tool function `get_default_dataset_configurations` for identifying and collecting all fields of an in-memory `NWBFile` that could become datasets on disk; and return instances of the Pydantic dataset models filled with default values for chunking/buffering/compression. [PR #569](https://github.com/catalystneuro/neuroconv/pull/569)
 * Added tool function `get_default_backend_configuration` for conveniently packaging the results of `get_default_dataset_configurations` into an easy-to-modify mapping from locations of objects within the file to their correseponding dataset configuration options, as well as linking to a specific backend DataIO. [PR #570](https://github.com/catalystneuro/neuroconv/pull/570)
 * Added tool function `configure_datasets` for configuring all datasets of an in-memory `NWBFile` to be backend specific. [PR #571](https://github.com/catalystneuro/neuroconv/pull/571)
-* Integrated backend configuration with the interfaces and converters. [PR #???](https://github.com/catalystneuro/neuroconv/pull/???)
+* Integrated backend configuration with the interfaces, converters, and write tools for ecephys. [PR #578](https://github.com/catalystneuro/neuroconv/pull/578)
 
 
 
