@@ -269,6 +269,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
+        compression: Optional[str] = None,  # TODO: remove on or after March 1, 2024
+        compression_opts: Optional[int] = None,  # TODO: remove on or after March 1, 2024
+        iterator_type: str = None,  # TODO: remove on or after March 1, 2024
+        iterator_opts: Optional[dict] = None,  # TODO: remove on or after March 1, 2024
     ):
         """
         Primary function for converting raw (unprocessed) RecordingExtractor data to the NWB standard.
@@ -307,4 +311,5 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             write_as=write_as,
             write_electrical_series=write_electrical_series,
             es_key=self.es_key,
+            compression=None,  # TODO: remove on or after March 1, 2024
         )

@@ -26,6 +26,10 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "lfp",
         write_electrical_series: bool = True,
+        compression: Optional[str] = None,  # TODO: remove on or after March 1, 2024
+        compression_opts: Optional[int] = None,  # TODO: remove on or after March 1, 2024
+        iterator_type: str = None,  # TODO: remove on or after March 1, 2024
+        iterator_opts: Optional[dict] = None,  # TODO: remove on or after March 1, 2024
     ):
         return super().add_to_nwbfile(
             nwbfile=nwbfile,
@@ -34,4 +38,5 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             starting_time=starting_time,
             write_as=write_as,
             write_electrical_series=write_electrical_series,
+            compression=compression,  # TODO: remove on or after March 1, 2024
         )

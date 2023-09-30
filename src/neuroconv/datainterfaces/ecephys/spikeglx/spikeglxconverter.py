@@ -72,7 +72,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
                 num_channels = interface.recording_extractor.get_num_channels()
-                # To avoid warning/error turing write
+                # To avoid warning/error during write
                 # TODO: When PyNWB supports other more proper AUX electrode types, remove
                 interface.recording_extractor.set_property(key="shank_electrode_number", values=[np.nan] * num_channels)
                 interface.recording_extractor.set_property(key="contact_shapes", values=[np.nan] * num_channels)

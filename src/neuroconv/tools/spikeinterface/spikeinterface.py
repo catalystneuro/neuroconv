@@ -3,6 +3,7 @@ import warnings
 from collections import defaultdict
 from numbers import Real
 from typing import List, Literal, Optional, Union
+from warnings import warn
 
 import numpy as np
 import psutil
@@ -14,10 +15,15 @@ from packaging.version import Version
 from pynwb import NWBFile
 from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 
-from .spikeinterfacerecordingdatachunkiterator import (
-    SpikeInterfaceRecordingDataChunkIterator,
+from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
+from ..nwb_helpers import (
+    get_module,
+    make_or_load_nwbfile,
+    HDF5BackendConfiguration,
+    ZarrBackendConfiguration,
+    get_default_backend_configuration,
+    configure_backend,
 )
-from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
     FilePathType,
@@ -451,6 +457,10 @@ def add_electrical_series(
     write_as: Literal["raw", "processed", "lfp"] = "raw",
     es_key: str = None,
     write_scaled: bool = False,
+    compression: Optional[str] = "gzip",  # TODO: remove on or after March 1, 2024
+    compression_opts: Optional[int] = None,  # TODO: remove on or after March 1, 2024
+    iterator_type: str = None,  # TODO: remove on or after March 1, 2024
+    iterator_opts: Optional[dict] = None,  # TODO: remove on or after March 1, 2024
 ):
     """
     Adds traces from recording object as ElectricalSeries to an NWBFile object.
@@ -486,6 +496,16 @@ def add_electrical_series(
     Missing keys in an element of metadata['Ecephys']['ElectrodeGroup'] will be auto-populated with defaults
     whenever possible.
     """
+    # TODO: remove on or after March 1, 2024
+    deprecated_keyword_arguments = ["compression", "compression_opts", "iterator_type", "iterator_opts"]
+    for deprecated_keyword_argument in deprecated_keyword_arguments:
+        if deprecated_keyword_argument is not None:
+            warn(
+                message="The option {deprecated_keyword_argument} has been deprecated and will be removed on or after March 1, 2024! Please use the new backend configuration workflow instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
+
     assert write_as in [
         "raw",
         "processed",
@@ -562,13 +582,18 @@ def add_electrical_series(
 
     # Always define data as the specialized iterator; configurable values (such as buffer shapes) are to be set using
     # the dataset or backend configuration tool
-    eseries_kwargs.update(
-        data=SpikeInterfaceRecordingDataChunkIterator(
-            recording=recording,
-            segment_index=segment_index,
-            return_scaled=write_scaled,
-        )
+    ephys_data_iterator = SpikeInterfaceRecordingDataChunkIterator(
+        recording=recording,
+        segment_index=segment_index,
+        return_scaled=write_scaled,
     )
+
+    # TODO: remove on or after March 1, 2024
+    if compression is not None:  # Interfafces should be setting this to None
+        data = H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+    else:
+        data = ephys_data_iterator
+    eseries_kwargs.update(data=data)
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
     if recording.has_time_vector(segment_index=segment_index):
@@ -588,7 +613,14 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
     else:
         shifted_timestamps = starting_time + timestamps
-        wrapped_timestamps = shifted_timestamps
+
+        # TODO: remove on or after March 1, 2024
+        if compression is not None:  # Interfaces should be setting this to None
+            wrapped_timestamps = H5DataIO(
+                data=shifted_timestamps, compression=compression, compression_opts=compression_opts
+            )
+        else:
+            wrapped_timestamps = shifted_timestamps
         eseries_kwargs.update(timestamps=wrapped_timestamps)
 
     # Create ElectricalSeries object and add it to nwbfile
@@ -646,10 +678,10 @@ def add_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
-    iterator_type: str = "v2",
-    iterator_opts: Optional[dict] = None,
+    compression: Optional[str] = None,  # TODO: remove on or after March 1, 2024
+    compression_opts: Optional[int] = None,  # TODO: remove on or after March 1, 2024
+    iterator_type: str = "v2",  # TODO: remove on or after March 1, 2024
+    iterator_opts: Optional[dict] = None,  # TODO: remove on or after March 1, 2024
 ):
     assert get_package_version("pynwb") >= Version(
         "1.3.3"
@@ -675,10 +707,6 @@ def add_recording(
                 write_as=write_as,
                 es_key=es_key,
                 write_scaled=write_scaled,
-                compression=compression,
-                compression_opts=compression_opts,
-                iterator_type=iterator_type,
-                iterator_opts=iterator_opts,
             )
 
 
@@ -694,10 +722,11 @@ def write_recording(
     es_key: Optional[str] = None,
     write_electrical_series: bool = True,
     write_scaled: bool = False,
-    compression: Optional[str] = "gzip",
-    compression_opts: Optional[int] = None,
-    iterator_type: str = "v2",
-    iterator_opts: Optional[dict] = None,
+    compression: Optional[str] = None,  # TODO: remove on or after March 1, 2024
+    compression_opts: Optional[int] = None,  # TODO: remove on or after March 1, 2024
+    iterator_type: str = "v2",  # TODO: remove on or after March 1, 2024
+    iterator_opts: Optional[dict] = None,  # TODO: remove on or after March 1, 2024
+    backend: Union[Literal["hdf5", "zarr"], HDF5BackendConfiguration, ZarrBackendConfiguration] = "hdf5",
 ) -> pynwb.NWBFile:
     """
     Primary method for writing a RecordingExtractor object to an NWBFile.
@@ -766,36 +795,11 @@ def write_recording(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: {None, 'gzip', 'lzp'}
-        Type of compression to use.
-        Set to None to disable all compression.
-    compression_opts: int, optional, default: 4
-        Only applies to compression="gzip". Controls the level of the GZIP.
-    iterator_type: {"v2", "v1",  None}
-        The type of DataChunkIterator to use.
-        'v1' is the original DataChunkIterator of the hdmf data_utils.
-        'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
-        None: write the TimeSeries with no memory chunking.
-    iterator_opts: dict, optional
-        Dictionary of options for the RecordingExtractorDataChunkIterator (iterator_type='v2').
-        Valid options are:
-            buffer_gb : float, default: 1.0
-                In units of GB. Recommended to be as much free RAM as available. Automatically calculates suitable
-                buffer shape.
-            buffer_shape : tuple, optional
-                Manual specification of buffer shape to return on each iteration.
-                Must be a multiple of chunk_shape along each axis.
-                Cannot be set if `buffer_gb` is specified.
-            chunk_mb : float. default: 1.0
-                Should be below 1 MB. Automatically calculates suitable chunk shape.
-            chunk_shape : tuple, optional
-                Manual specification of the internal chunk shape for the HDF5 dataset.
-                Cannot be set if `chunk_mb` is also specified.
-            display_progress : bool, default: False
-                Display a progress bar with iteration rate and estimated completion time.
-            progress_bar_options : dict, optional
-                Dictionary of keyword arguments to be passed directly to tqdm.
-                See https://github.com/tqdm/tqdm#parameters for options.
+    backend : "hdf5", "zarr", a HDF5BackendConfiguration, or a ZarrBackendConfiguration, default: "hdf5"
+        If "hdf5" or "zarr", this type of backend will be used to create the file,
+        with all datasets using the default values.
+        To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
+        BackendConfiguration object, and pass that instead.
     """
 
     with make_or_load_nwbfile(
@@ -810,11 +814,13 @@ def write_recording(
             es_key=es_key,
             write_electrical_series=write_electrical_series,
             write_scaled=write_scaled,
-            compression=compression,
-            compression_opts=compression_opts,
-            iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            compression=None,
         )
+        if isinstance(backend, str):
+            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        else:
+            backend_configuration = backend
+        configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
     return nwbfile_out
 
 
