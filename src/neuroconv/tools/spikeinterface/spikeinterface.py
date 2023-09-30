@@ -15,14 +15,16 @@ from packaging.version import Version
 from pynwb import NWBFile
 from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 
-from .spikeinterfacerecordingdatachunkiterator import SpikeInterfaceRecordingDataChunkIterator
+from .spikeinterfacerecordingdatachunkiterator import (
+    SpikeInterfaceRecordingDataChunkIterator,
+)
 from ..nwb_helpers import (
-    get_module,
-    make_or_load_nwbfile,
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
-    get_default_backend_configuration,
     configure_backend,
+    get_default_backend_configuration,
+    get_module,
+    make_or_load_nwbfile,
 )
 from ...utils import (
     DeepDict,
