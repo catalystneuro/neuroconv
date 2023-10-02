@@ -52,7 +52,7 @@ class DatasetConfiguration(BaseModel, ABC):
         arbitrary_types_allowed = True
 
     dataset_info: DatasetInfo = Field(description="The immutable information about this dataset.")
-    chunk_shape: Tuple[int, ...] = Field(
+    chunk_shape: Tuple[int, ...] = Field(  # When using Pydantic v2.0, specify PositiveInt
         description=(
             "The specified shape to use when chunking the dataset. "
             "For optimized streaming speeds, a total size of around 10 MB is recommended."
