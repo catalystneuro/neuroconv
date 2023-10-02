@@ -252,7 +252,7 @@ def test_validator_filter_methods_length_match_options():
 
     expected_error = (
         "Length mismatch between `filter_methods` (2 methods specified) and `filter_options` (1 options found)! "
-        "These two must match one-to-one. (type=value_error)"
+        "`filter_methods` and `filter_options` should be the same length. (type=value_error)"
     )
     assert expected_error in str(error_info.value)
 
