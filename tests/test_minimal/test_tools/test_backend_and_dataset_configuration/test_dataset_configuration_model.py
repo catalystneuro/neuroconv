@@ -15,7 +15,7 @@ def test_get_data_io_keyword_arguments_abstract_error():
             buffer_shape=(1_250_000, 384),
         )
     assert (
-        "Can't instantiate abstract class DatasetConfiguration with abstract methods get_data_io_keyword_arguments"
+        "Can't instantiate abstract class DatasetConfiguration with abstract method get_data_io_keyword_arguments"
         == str(error_info.value)
     )
 
