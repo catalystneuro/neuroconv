@@ -89,7 +89,7 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
         filter_options = values["filter_options"]
 
         if filter_methods is None and filter_options is not None:
-            raise ValueError(f"`filter_methods` is `None` but `filter_options` is not (received {filter_options})!")
+            raise ValueError(f"`filter_methods` is `None` but `filter_options` is not None (received {filter_options=})!")
         elif filter_options is None:
             return values
 
