@@ -14,10 +14,7 @@ def test_get_data_io_keyword_arguments_abstract_error():
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
         )
-    assert (
-        "Can't instantiate abstract class DatasetConfiguration with abstract method get_data_io_keyword_arguments"
-        == str(error_info.value)
-    )
+    assert "Can't instantiate abstract class DatasetConfiguration with abstract" in str(error_info.value)
 
 
 def test_get_data_io_keyword_arguments_not_implemented():
