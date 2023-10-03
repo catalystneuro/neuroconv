@@ -8,7 +8,7 @@ from neuroconv.tools.testing import mock_DatasetInfo
 
 
 def test_get_data_io_keyword_arguments_abstract_error():
-    with pytest.raises(TypeError) as exc:
+    with pytest.raises(TypeError) as error_info:
         dataset_configuration = DatasetConfiguration(
             dataset_info=mock_DatasetInfo(),
             chunk_shape=(78_125, 64),
@@ -16,7 +16,7 @@ def test_get_data_io_keyword_arguments_abstract_error():
         )
     assert (
         "Can't instantiate abstract class DatasetConfiguration with abstract methods get_data_io_keyword_arguments"
-        == str(exc.info)
+        == str(error_info.value)
     )
 
 
