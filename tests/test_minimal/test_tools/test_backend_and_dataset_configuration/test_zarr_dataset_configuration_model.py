@@ -234,9 +234,7 @@ def test_validator_filter_options_has_methods():
             filter_options=[dict(clevel=5)],
         )
 
-    expected_error = (
-        "`filter_methods` is `None` but `filter_options` is not (received [{'clevel': 5}])! (type=value_error)"
-    )
+    expected_error = "`filter_methods` is `None` but `filter_options` is not (received filter_options=[{'clevel': 5}])! (type=value_error)"
     assert expected_error in str(error_info.value)
 
 
