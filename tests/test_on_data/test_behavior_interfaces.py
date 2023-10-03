@@ -52,12 +52,33 @@ class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):
 
 class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
     data_interface_cls = DeepLabCutInterface
-    interface_kwargs = dict(
+    interface_kwargs_item = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "m3v1mp4DLC_resnet50_openfieldAug20shuffle1_30000.h5"),
         config_file_path=str(BEHAVIOR_DATA_PATH / "DLC" / "config.yaml"),
         subject_name="ind1",
     )
+    # intentional duplicate to workaround 2 tests with changes after interface construction
+    interface_kwargs = [
+        interface_kwargs_item,  # this is case=0, no custom timestamp
+        interface_kwargs_item,  # this is case=1, with custom timstamp
+    ]
+
+    # custom timestamps only for case 1
+    _custom_timestamps_case_1 = np.concatenate(
+        (np.linspace(10, 110, 1000), np.linspace(150, 250, 1000), np.linspace(300, 400, 330))
+    )
+
     save_directory = OUTPUT_PATH
+
+    def run_conversion(self, nwbfile_path: str):
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        if self.case == 1:  # set custom timestamps
+            self.interface.set_aligned_timestamps(self._custom_timestamps_case_1)
+            assert len(self.interface._timestamps) == 2330
+
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
 
     def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
@@ -74,6 +95,11 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
             ]
 
             assert all(expected_pose_estimation_series_are_in_nwb_file)
+
+            if self.case == 1:  # custom timestamps
+                for pose_estimation in pose_estimation_series_in_nwb.values():
+                    pose_timestamps = pose_estimation.timestamps
+                    np.testing.assert_array_equal(pose_timestamps, self._custom_timestamps_case_1)
 
 
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
