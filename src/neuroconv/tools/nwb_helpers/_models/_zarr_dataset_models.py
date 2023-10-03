@@ -100,7 +100,8 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
         if len_filter_methods != len_filter_options:
             raise ValueError(
                 f"Length mismatch between `filter_methods` ({len_filter_methods} methods specified) and "
-                f"`filter_options` ({len_filter_options} options found)! These two must match one-to-one."
+                f"`filter_options` ({len_filter_options} options found)! `filter_methods` and `filter_options` should "
+                "be the same length."
             )
 
         return values
