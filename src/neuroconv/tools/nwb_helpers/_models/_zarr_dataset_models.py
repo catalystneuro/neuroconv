@@ -36,7 +36,9 @@ _available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_
 # to harness the wider range of potential methods that are ideal for certain dtypes or structures
 # E.g., 'packbits' for boolean (logical) VectorData columns
 # | set(("auto",))
-AVAILABLE_ZARR_COMPRESSION_METHODS = tuple(_available_zarr_codecs)
+AVAILABLE_ZARR_COMPRESSION_METHODS = {
+    codec_name: zarr.codec_registry[codec_name] for codec_name in _available_zarr_codecs
+}
 
 
 class ZarrDatasetConfiguration(DatasetConfiguration):
@@ -47,7 +49,9 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
         arbitrary_types_allowed = True
         validate_assignment = True
 
-    compression_method: Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec, None] = Field(
+    compression_method: Union[
+        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None
+    ] = Field(
         default="gzip",  # TODO: would like this to be 'auto'
         description=(
             "The specified compression method to apply to this dataset. "
@@ -61,7 +65,9 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
     compression_options: Union[Dict[str, Any], None] = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
-    filter_methods: Union[List[Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec]], None] = Field(
+    filter_methods: Union[
+        List[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec]], None
+    ] = Field(
         default=None,
         description=(
             "The ordered collection of filtering methods to apply to this dataset prior to compression. "

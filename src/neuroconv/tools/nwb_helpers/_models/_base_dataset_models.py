@@ -102,24 +102,44 @@ class DatasetConfiguration(BaseModel, ABC):
         chunk_shape = values["chunk_shape"]
         buffer_shape = values["buffer_shape"]
         full_shape = values["dataset_info"].full_shape
+        location = values["dataset_info"].location  # For more identifiable error messages.
 
         if len(chunk_shape) != len(buffer_shape):
-            raise ValueError(f"{len(chunk_shape)=} does not match {len(buffer_shape)=}!")
+            raise ValueError(
+                f"{len(chunk_shape)=} does not match {len(buffer_shape)=} for dataset at location '{location}'!"
+            )
         if len(buffer_shape) != len(full_shape):
-            raise ValueError(f"{len(buffer_shape)=} does not match {len(full_shape)=}!")
+            raise ValueError(
+                f"{len(buffer_shape)=} does not match {len(full_shape)=} for dataset at location '{location}'!"
+            )
 
         if any(chunk_axis <= 0 for chunk_axis in chunk_shape):
-            raise ValueError(f"Some dimensions of the {chunk_shape=} are less than or equal to zero!")
+            raise ValueError(
+                f"Some dimensions of the {chunk_shape=} are less than or equal to zero for dataset at "
+                f"location '{location}'!"
+            )
         if any(buffer_axis <= 0 for buffer_axis in buffer_shape):
-            raise ValueError(f"Some dimensions of the {buffer_shape=} are less than or equal to zero!")
+            raise ValueError(
+                f"Some dimensions of the {buffer_shape=} are less than or equal to zero for dataset at "
+                f"location '{location}'!"
+            )
 
         if any(chunk_axis > buffer_axis for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
-            raise ValueError(f"Some dimensions of the {chunk_shape=} exceed the {buffer_shape=})!")
+            raise ValueError(
+                f"Some dimensions of the {chunk_shape=} exceed the {buffer_shape=} for dataset at "
+                f"location '{location}'!"
+            )
         if any(buffer_axis > full_axis for buffer_axis, full_axis in zip(buffer_shape, full_shape)):
-            raise ValueError(f"Some dimensions of the {buffer_shape=} exceed the {full_shape=}!")
+            raise ValueError(
+                f"Some dimensions of the {buffer_shape=} exceed the {full_shape=} for dataset at "
+                f"location '{location}'!"
+            )
 
         if any(buffer_axis % chunk_axis != 0 for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
-            raise ValueError(f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=})!")
+            raise ValueError(
+                f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=} for dataset at "
+                f"location '{location}'!"
+            )
 
         return values
 

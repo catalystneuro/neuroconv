@@ -139,7 +139,7 @@ def test_validator_chunk_length_consistency():
             buffer_shape=(1_250_000, 384),
         )
 
-    expected_error = "len(chunk_shape)=3 does not match len(buffer_shape)=2! (type=value_error)"
+    expected_error = "len(chunk_shape)=3 does not match len(buffer_shape)=2 for dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     assert expected_error in str(error_info.value)
 
 
@@ -151,7 +151,7 @@ def test_validator_chunk_and_buffer_length_consistency():
             buffer_shape=(1_250_000, 384, 1),
         )
 
-    expected_error = "len(buffer_shape)=3 does not match len(full_shape)=2! (type=value_error)"
+    expected_error = "len(buffer_shape)=3 does not match len(full_shape)=2 for dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     assert expected_error in str(error_info.value)
 
 
@@ -163,7 +163,7 @@ def test_validator_chunk_shape_nonpositive_elements():
             buffer_shape=(1_250_000, 384),
         )
 
-    expected_error = "Some dimensions of the chunk_shape=(1, -2) are less than or equal to zero! (type=value_error)"
+    expected_error = "Some dimensions of the chunk_shape=(1, -2) are less than or equal to zero for dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     assert expected_error in str(error_info.value)
 
 
@@ -175,9 +175,7 @@ def test_validator_buffer_shape_nonpositive_elements():
             buffer_shape=(78_125, -2),
         )
 
-    expected_error = (
-        "Some dimensions of the buffer_shape=(78125, -2) are less than or equal to zero! (type=value_error)"
-    )
+    expected_error = "Some dimensions of the buffer_shape=(78125, -2) are less than or equal to zero for dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     assert expected_error in str(error_info.value)
 
 
@@ -189,9 +187,7 @@ def test_validator_chunk_shape_exceeds_buffer_shape():
             buffer_shape=(78_125, 384),
         )
 
-    expected_error = (
-        "Some dimensions of the chunk_shape=(78126, 64) exceed the buffer_shape=(78125, 384))! (type=value_error)"
-    )
+    expected_error = "Some dimensions of the chunk_shape=(78126, 64) exceed the buffer_shape=(78125, 384) for dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     assert expected_error in str(error_info.value)
 
 
@@ -203,9 +199,7 @@ def test_validator_buffer_shape_exceeds_full_shape():
             buffer_shape=(1_250_000, 385),
         )
 
-    expected_error = (
-        "Some dimensions of the buffer_shape=(1250000, 385) exceed the full_shape=(1800000, 384)! (type=value_error)"
-    )
+    expected_error = "Some dimensions of the buffer_shape=(1250000, 385) exceed the full_shape=(1800000, 384) for dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     assert expected_error in str(error_info.value)
 
 
@@ -218,7 +212,7 @@ def test_validator_chunk_dimensions_do_not_evenly_divide_buffer():
         )
 
     expected_error = (
-        "Some dimensions of the chunk_shape=(78125, 7) do not evenly divide the buffer_shape=(1250000, 384))! "
+        "Some dimensions of the chunk_shape=(78125, 7) do not evenly divide the buffer_shape=(1250000, 384) for dataset at location 'acquisition/TestElectricalSeries/data'! "
         "(type=value_error)"
     )
     assert expected_error in str(error_info.value)
@@ -277,5 +271,5 @@ def test_mutation_validation():
     with pytest.raises(ValueError) as error_info:
         zarr_dataset_configuration.chunk_shape = (1, -2)
 
-    expected_error = "Some dimensions of the chunk_shape=(1, -2) are less than or equal to zero! (type=value_error)"
+    expected_error = "Some dimensions of the chunk_shape=(1, -2) are less than or equal to zero for dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     assert expected_error in str(error_info.value)
