@@ -65,7 +65,7 @@ def mock_ZarrDatasetConfiguration(
 
 
 def mock_HDF5BackendConfiguration() -> HDF5BackendConfiguration:
-    """Mock instance of a HDF5BackendConfiguration with several NeuroPixel-like datasets."""
+    """Mock instance of a HDF5BackendConfiguration with two NeuroPixel-like datasets."""
     dataset_configurations = {
         "acquisition/TestElectricalSeriesAP/data": HDF5DatasetConfiguration(
             dataset_info=mock_DatasetInfo(location="acquisition/TestElectricalSeriesAP/data"),
