@@ -1,4 +1,4 @@
-from ._dataset_configuration import get_default_backend_configuration
+from ._dataset_configuration import get_default_dataset_configurations
 from ._metadata_and_file_helpers import (
     add_device_from_metadata,
     get_default_nwbfile_metadata,
@@ -17,6 +17,3 @@ from ._models._zarr_models import (
     ZarrBackendConfiguration,
     ZarrDatasetConfiguration,
 )
-
-BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
-BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)

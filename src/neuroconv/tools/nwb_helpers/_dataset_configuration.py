@@ -11,17 +11,13 @@ from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
-from ._dataset_and_backend_models import (
-    BACKEND_TO_CONFIGURATION,
-    BACKEND_TO_DATASET_CONFIGURATION,
-    DatasetConfiguration,
-    DatasetInfo,
-    HDF5BackendConfiguration,
-    HDF5DatasetConfiguration,
-    ZarrBackendConfiguration,
-    ZarrDatasetConfiguration,
-)
+from ._models._base_models import DatasetConfiguration, DatasetInfo
+from ._models._hdf5_models import HDF5BackendConfiguration, HDF5DatasetConfiguration
+from ._models._zarr_models import ZarrBackendConfiguration, ZarrDatasetConfiguration
 from ..hdmf import SliceableDataChunkIterator
+
+BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
+BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
 
 
 def _get_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
@@ -81,14 +77,14 @@ def _get_dataset_metadata(
         # DataChunkIterator has best generic dtype inference, though logic is hard to peel out of it
         # And it can fail in rare cases but not essential to our default configuration
         try:
-            dtype = str(DataChunkIterator(candidate_dataset).dtype)  # string cast to be JSON friendly
+            dtype = DataChunkIterator(candidate_dataset).dtype
         except Exception as exception:
             if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
                 raise exception
             else:
-                dtype = "unknown"
+                dtype = np.dtype("object")
 
-        maxshape = get_data_shape(data=candidate_dataset)
+        full_shape = get_data_shape(data=candidate_dataset)
 
         if isinstance(candidate_dataset, GenericDataChunkIterator):
             chunk_shape = candidate_dataset.chunk_shape
@@ -96,20 +92,22 @@ def _get_dataset_metadata(
         elif dtype != "unknown":
             # TODO: eventually replace this with staticmethods on hdmf.data_utils.GenericDataChunkIterator
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
-                chunk_mb=10.0, maxshape=maxshape, dtype=np.dtype(dtype)
+                chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
             )
             buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=maxshape, dtype=np.dtype(dtype)
+                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
             )
         else:
             pass  # TODO: think on this; perhaps zarr's standalone estimator?
 
+        location = _parse_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
+        dataset_name = location.strip("/")[-1]
         dataset_info = DatasetInfo(
             object_id=neurodata_object.object_id,
             object_name=neurodata_object.name,
-            location=_parse_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object),
-            field=field_name,
-            maxshape=maxshape,
+            location=location,
+            dataset_name=dataset_name,
+            full_shape=full_shape,
             dtype=dtype,
         )
         dataset_configuration = DatasetConfigurationClass(
