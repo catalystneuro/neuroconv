@@ -17,6 +17,7 @@ class DatasetInfo(BaseModel):
 
     object_id: str = Field(description="The UUID of the neurodata object containing the dataset.")
     location: str = Field(description="The relative location of the this dataset within the in-memory NWBFile.")
+    dataset_name: Literal["data", "timestamps"] = Field(description="The reference name of the dataset.")
     full_shape: Tuple[int, ...] = Field(description="The maximum shape of the entire dataset.")
     dtype: np.dtype = Field(  # TODO: When using Pydantic v2, replace np.dtype with InstanceOf[np.dtype]
         description="The data type of elements of this dataset."

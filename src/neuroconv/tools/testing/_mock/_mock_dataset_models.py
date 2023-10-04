@@ -18,6 +18,7 @@ def mock_DatasetInfo() -> DatasetInfo:
     return DatasetInfo(
         object_id="481a0860-3a0c-40ec-b931-df4a3e9b101f",
         location="acquisition/TestElectricalSeries/data",
+        dataset_name="data",
         full_shape=(60 * 30_000, 384),  # ~1 minute of v1 NeuroPixels probe
         dtype=np.dtype("int16"),
     )
