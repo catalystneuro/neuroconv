@@ -1,5 +1,6 @@
 """Unit tests for `get_default_dataset_configurations`."""
 import numpy as np
+import pytest
 from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
 from pynwb.base import DynamicTable
@@ -7,7 +8,6 @@ from pynwb.image import ImageSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-import pytest
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
     HDF5DatasetConfiguration,
