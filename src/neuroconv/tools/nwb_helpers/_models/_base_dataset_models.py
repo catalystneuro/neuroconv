@@ -1,6 +1,7 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
+import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Tuple, Union, Literal
 
 import h5py
 import numcodecs
@@ -39,8 +40,8 @@ class DatasetInfo(BaseModel):
         string = (
             f"\n{self.location}"
             f"\n{'-' * len(self.location)}"
-            f"\n  full_shape: {self.full_shape}"
-            f"\n  dtype: {self.dtype}"
+            f"\n  dtype : {self.dtype}"
+            f"\n  full shape : {self.full_shape}"
         )
         return string
 
@@ -83,18 +84,32 @@ class DatasetConfiguration(BaseModel, ABC):
         `List[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
         """
+        source_size_in_gb = math.prod(self.dataset_info.full_shape) * self.dataset_info.dtype.itemsize / 1e9
+        maximum_ram_usage_per_iteration_in_gb = math.prod(self.buffer_shape) * self.dataset_info.dtype.itemsize / 1e9
+        disk_space_usage_per_chunk_in_mb = math.prod(self.chunk_shape) * self.dataset_info.dtype.itemsize / 1e6
+
         string = (
             f"\n{self.dataset_info.location}"
             f"\n{'-' * len(self.dataset_info.location)}"
-            f"\n  maxshape: {self.dataset_info.full_shape}"
-            f"\n  dtype: {self.dataset_info.dtype}"
+            f"\n  dtype : {self.dataset_info.dtype}"
+            f"\n  full shape of source array : {self.dataset_info.full_shape}"
+            f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
+            # TODO: add nicer auto-selection/rendering of units and amount for source data size
             "\n"
-            f"\n  chunk_shape: {self.chunk_shape}"
-            f"\n  buffer_shape: {self.buffer_shape}"
-            f"\n  compression_method: {self.compression_method}"
+            f"\n  buffer shape : {self.buffer_shape}"
+            f"\n  maximum RAM usage per iteration : {maximum_ram_usage_per_iteration_in_gb:0.2f} GB"
+            "\n"
+            f"\n  chunk shape : {self.chunk_shape}"
+            f"\n  disk space usage per chunk : {disk_space_usage_per_chunk_in_mb:0.2f} MB"
+            "\n"
         )
+        if self.compression_method is not None:
+            string += f"\n  compression method : {self.compression_method}"
         if self.compression_options is not None:
-            string += f"\n  compression_options: {self.compression_options}"
+            string += f"\n  compression options : {self.compression_options}"
+        if self.compression_method is not None or self.compression_options is not None:
+            string += "\n"
+        # TODO: would be cool to include estimate of ratio too (determined via stub file perhaps?)
 
         return string
 

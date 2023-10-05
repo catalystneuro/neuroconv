@@ -83,9 +83,11 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
     def __str__(self) -> str:
         string = super().__str__()
         if self.filter_methods is not None:
-            string += f"\n  filter_methods: {self.filter_methods}"
+            string += f"\n  filter methods : {self.filter_methods}"
         if self.filter_options is not None:
-            string += f"\n  filter_options: {self.filter_options}"
+            string += f"\n  filter options : {self.filter_options}"
+        if self.filter_methods is not None or self.filter_options is not None:
+            string += "\n"
 
         return string
 
