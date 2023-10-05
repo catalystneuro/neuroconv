@@ -16,8 +16,10 @@ def test_dataset_info_print():
 acquisition/TestElectricalSeries/data
 -------------------------------------
   dtype : int16
-  full shape : (1800000, 384)
+  full shape of source array : (1800000, 384)
+  full size of source array : 1.38 GB
 """
+    print(out.getvalue())
     assert out.getvalue() == expected_print
 
 

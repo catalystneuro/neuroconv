@@ -37,11 +37,14 @@ class DatasetInfo(BaseModel):
         `List[DataSetInfo]`, would print out the nested representations, which only look good when using the basic
         `repr` (that is, this fancy string print-out does not look good when nested in another container).
         """
+        source_size_in_gb = math.prod(self.full_shape) * self.dtype.itemsize / 1e9
+
         string = (
             f"\n{self.location}"
             f"\n{'-' * len(self.location)}"
             f"\n  dtype : {self.dtype}"
-            f"\n  full shape : {self.full_shape}"
+            f"\n  full shape of source array : {self.full_shape}"
+            f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
         )
         return string
 
