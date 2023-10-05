@@ -60,7 +60,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
     # intentional duplicate to workaround 2 tests with changes after interface construction
     interface_kwargs = [
         interface_kwargs_item,  # this is case=0, no custom timestamp
-        interface_kwargs_item,  # this is case=1, with custom timstamp
+        interface_kwargs_item,  # this is case=1, with custom timestamp
     ]
 
     # custom timestamps only for case 1
