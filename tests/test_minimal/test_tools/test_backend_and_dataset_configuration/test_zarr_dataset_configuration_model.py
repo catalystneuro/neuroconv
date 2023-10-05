@@ -3,6 +3,7 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
+from numcodecs import GZip
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
@@ -324,3 +325,11 @@ def test_mutation_validation():
         "location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     )
     assert expected_error in str(error_info.value)
+
+
+def test_get_data_io_keyword_arguments():
+    hdf5_dataset_configuration = mock_ZarrDatasetConfiguration()
+
+    assert hdf5_dataset_configuration.get_data_io_keyword_arguments() == dict(
+        chunks=(78125, 64), compressor=GZip(level=1), filters=None
+    )

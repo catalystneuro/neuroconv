@@ -126,7 +126,8 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
                     filters.append(filter_method)
 
         if isinstance(self.compression_method, str):
-            compressor = zarr.codec_registry[self.compression_method](**self.compression_options)
+            compression_options = self.compression_options or dict()
+            compressor = zarr.codec_registry[self.compression_method](**compression_options)
         if isinstance(self.compression_method, numcodecs.abc.Codec):
             compressor = self.compression_method
         elif self.compression_method is None:

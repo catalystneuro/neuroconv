@@ -231,3 +231,11 @@ def test_mutation_validation():
         "location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     )
     assert expected_error in str(error_info.value)
+
+
+def test_get_data_io_keyword_arguments():
+    hdf5_dataset_configuration = mock_HDF5DatasetConfiguration()
+
+    assert hdf5_dataset_configuration.get_data_io_keyword_arguments() == dict(
+        chunks=(78125, 64), compression="gzip", compression_opts=None
+    )
