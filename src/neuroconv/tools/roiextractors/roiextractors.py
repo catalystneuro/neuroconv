@@ -320,6 +320,9 @@ def add_photon_series(
     photon_series_index: int, default: 0
         The metadata for the photon series is a list of the different photon series to add.
         Specify which element of the list with this parameter.
+    nwbfile_module_name: {'acquisition', 'processing'}, optional
+        The module where to add the photon series to, default is nwbfile.acquisition.
+        When 'processing' is selected, the photon series is added to nwbfile.processing['ophys'].
 
     Returns
     -------
