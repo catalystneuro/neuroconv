@@ -61,7 +61,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         param(
             buffer_shape=(5, 10, 10),
             chunk_shape=(2, 2, 2),
-            expected_error_msg="Some dimensions of chunk_shape ((2, 2, 2)) do not evenly divide the buffer shape ((5, 10, 10))!",
+            expected_error_msg="Some dimensions of chunk_shape ((13, 2, 2)) do not evenly divide the buffer shape ((5, 10, 10))!",
             case_name="buffer_shape_not_divisible_by_chunk_shape",
         ),
     ]
