@@ -293,6 +293,7 @@ def add_photon_series(
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
+    nwbfile_module_name: Literal["acquisition", "processing"] = "acquisition",
     two_photon_series_index: Optional[int] = None,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
@@ -351,12 +352,21 @@ def add_photon_series(
             "OnePhotonSeries" not in metadata_copy["Ophys"]
         ), "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified."
 
+    assert nwbfile_module_name in [
+        "acquisition",
+        "processing",
+    ], "'nwbfile_module_name' must be either 'acquisition' or 'processing'."
+
     # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
     photon_series_kwargs = metadata_copy["Ophys"][photon_series_type][photon_series_index]
     photon_series_name = photon_series_kwargs["name"]
 
-    if photon_series_name in nwbfile.acquisition:
-        warn(f"{photon_series_name} already on nwbfile")
+    ophys = get_module(nwbfile, name="ophys")
+    if nwbfile_module_name == "acquisition" and photon_series_name in nwbfile.acquisition:
+        warn(f"{photon_series_name} already added to nwbfile.acquisition.")
+        return nwbfile
+    elif nwbfile_module_name == "processing" and photon_series_name in ophys.data_interfaces:
+        warn(f"{photon_series_name} already added to nwbfile.processing['ophys'].")
         return nwbfile
 
     # Add the image plane to nwb
@@ -397,7 +407,11 @@ def add_photon_series(
     )[
         photon_series_type
     ](**photon_series_kwargs)
-    nwbfile.add_acquisition(photon_series)
+
+    if nwbfile_module_name == "acquisition":
+        nwbfile.add_acquisition(photon_series)
+    elif nwbfile_module_name == "processing":
+        ophys.add(photon_series)
 
     return nwbfile
 
@@ -487,6 +501,7 @@ def add_imaging(
     photon_series_index: int = 0,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
+    nwbfile_module_name: Literal["acqusition", "processing"] = "acquisition",
 ):
     add_devices(nwbfile=nwbfile, metadata=metadata)
     add_photon_series(
@@ -497,6 +512,7 @@ def add_imaging(
         photon_series_index=photon_series_index,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
+        nwbfile_module_name=nwbfile_module_name,
     )
 
 
