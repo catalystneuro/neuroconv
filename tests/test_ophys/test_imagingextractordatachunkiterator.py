@@ -68,7 +68,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
             buffer_shape=(5, 10, 10),
             chunk_shape=(13, 2, 2),
             case_name="chunk_shape_greater_than_buffer_shape",
-            expected_error_msg="Some dimensions of chunk_shape ((13, 2, 2)) exceed the manual buffer shape ((5, 10, 10))!",
+            expected_error_msg="Some dimensions of chunk_shape ((13, 2, 2)) exceed the buffer shape ((5, 10, 10))!",
         ),
     ]
 
