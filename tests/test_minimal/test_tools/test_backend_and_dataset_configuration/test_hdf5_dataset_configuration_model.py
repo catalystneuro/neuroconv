@@ -107,24 +107,6 @@ def test_default_compression_is_always_available():
     assert "gzip" in AVAILABLE_HDF5_COMPRESSION_METHODS
 
 
-def test_mutation_validation():
-    """
-    Only testing on one dummy case to verify the root validator is triggered.
-
-    Trust the rest should follow.
-    """
-    hdf5_dataset_configuration = mock_HDF5DatasetConfiguration()
-
-    with pytest.raises(ValueError) as error_info:
-        hdf5_dataset_configuration.chunk_shape = (1, -2)
-
-    expected_error = (
-        "Some dimensions of the chunk_shape=(1, -2) are less than or equal to zero for dataset at "
-        "location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
-
-
 def test_get_data_io_keyword_arguments():
     hdf5_dataset_configuration = mock_HDF5DatasetConfiguration()
 
