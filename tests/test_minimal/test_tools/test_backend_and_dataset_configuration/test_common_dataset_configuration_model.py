@@ -3,7 +3,10 @@ from typing import Union
 
 import pytest
 
-from neuroconv.tools.nwb_helpers import HDF5DatasetConfiguration, ZarrDatasetConfiguration
+from neuroconv.tools.nwb_helpers import (
+    HDF5DatasetConfiguration,
+    ZarrDatasetConfiguration,
+)
 from neuroconv.tools.testing import mock_DatasetInfo, mock_HDF5DatasetConfiguration
 
 
