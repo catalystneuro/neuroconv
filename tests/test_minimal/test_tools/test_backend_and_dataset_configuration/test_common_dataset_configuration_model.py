@@ -7,7 +7,11 @@ from neuroconv.tools.nwb_helpers import (
     HDF5DatasetConfiguration,
     ZarrDatasetConfiguration,
 )
-from neuroconv.tools.testing import mock_DatasetInfo, mock_HDF5DatasetConfiguration, mock_ZarrDatasetConfiguration
+from neuroconv.tools.testing import (
+    mock_DatasetInfo,
+    mock_HDF5DatasetConfiguration,
+    mock_ZarrDatasetConfiguration,
+)
 
 
 @pytest.mark.parametrize(
