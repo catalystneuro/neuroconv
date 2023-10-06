@@ -17,12 +17,14 @@ class DatasetInfo(BaseModel):
         arbitrary_types_allowed = True
 
     object_id: str = Field(description="The UUID of the neurodata object containing the dataset.")
-    location: str = Field(description="The relative location of the this dataset within the in-memory NWBFile.")
+    location: str = Field(  # TODO: in v2, use init_var=False or assign as a property
+        description="The relative location of the this dataset within the in-memory NWBFile."
+    )
     dataset_name: Literal["data", "timestamps"] = Field(description="The reference name of the dataset.")
-    full_shape: Tuple[int, ...] = Field(description="The maximum shape of the entire dataset.")
     dtype: np.dtype = Field(  # TODO: When using Pydantic v2, replace np.dtype with InstanceOf[np.dtype]
         description="The data type of elements of this dataset."
     )
+    full_shape: Tuple[int, ...] = Field(description="The maximum shape of the entire dataset.")
 
     def __hash__(self):
         """To allow instances of this class to be used as keys in dictionaries."""
@@ -47,6 +49,14 @@ class DatasetInfo(BaseModel):
             f"\n  full size of source array : {source_size_in_gb:0.2f} GB"
         )
         return string
+
+    def __init__(self, **values):
+        location = values["location"]
+
+        # For more efficient / explicit reference downstream, instead of reparsing from location multiple times
+        dataset_name = location.split("/")[-1]
+        values.update(dataset_name=dataset_name)
+        super().__init__(**values)
 
 
 class DatasetConfiguration(BaseModel, ABC):

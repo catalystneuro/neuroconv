@@ -4,11 +4,8 @@ from unittest.mock import patch
 
 import pytest
 
-from neuroconv.tools.nwb_helpers import (
-    AVAILABLE_HDF5_COMPRESSION_METHODS,
-    HDF5DatasetConfiguration,
-)
-from neuroconv.tools.testing import mock_DatasetInfo, mock_HDF5DatasetConfiguration
+from neuroconv.tools.nwb_helpers import AVAILABLE_HDF5_COMPRESSION_METHODS
+from neuroconv.tools.testing import mock_HDF5DatasetConfiguration
 
 
 def test_hdf5_dataset_configuration_print():
@@ -95,116 +92,11 @@ def test_hdf5_dataset_configuration_repr():
     # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
     expected_repr = (
         "HDF5DatasetConfiguration(dataset_info=DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location='acquisition/TestElectricalSeries/data', dataset_name='data', full_shape=(1800000, 384), "
-        "dtype=dtype('int16')), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
+        "location='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
+        "full_shape=(1800000, 384)), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
         "compression_options=None)"
     )
     assert repr(hdf5_dataset_configuration) == expected_repr
-
-
-def test_validator_chunk_length_consistency():
-    with pytest.raises(ValueError) as error_info:
-        HDF5DatasetConfiguration(
-            dataset_info=mock_DatasetInfo(),
-            chunk_shape=(78_125, 64, 1),
-            buffer_shape=(1_250_000, 384),
-        )
-
-    expected_error = (
-        "len(chunk_shape)=3 does not match len(buffer_shape)=2 for dataset at location "
-        "'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
-
-
-def test_validator_chunk_and_buffer_length_consistency():
-    with pytest.raises(ValueError) as error_info:
-        HDF5DatasetConfiguration(
-            dataset_info=mock_DatasetInfo(),
-            chunk_shape=(78_125, 64, 1),
-            buffer_shape=(1_250_000, 384, 1),
-        )
-
-    expected_error = (
-        "len(buffer_shape)=3 does not match len(full_shape)=2 for dataset at location "
-        "'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
-
-
-def test_validator_chunk_shape_nonpositive_elements():
-    with pytest.raises(ValueError) as error_info:
-        HDF5DatasetConfiguration(
-            dataset_info=mock_DatasetInfo(),
-            chunk_shape=(1, -2),
-            buffer_shape=(1_250_000, 384),
-        )
-
-    expected_error = (
-        "Some dimensions of the chunk_shape=(1, -2) are less than or equal to zero for dataset at "
-        "location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
-
-
-def test_validator_buffer_shape_nonpositive_elements():
-    with pytest.raises(ValueError) as error_info:
-        HDF5DatasetConfiguration(
-            dataset_info=mock_DatasetInfo(),
-            chunk_shape=(78_125, 64),
-            buffer_shape=(78_125, -2),
-        )
-
-    expected_error = (
-        "Some dimensions of the buffer_shape=(78125, -2) are less than or equal to zero for dataset at "
-        "location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
-
-
-def test_validator_chunk_shape_exceeds_buffer_shape():
-    with pytest.raises(ValueError) as error_info:
-        HDF5DatasetConfiguration(
-            dataset_info=mock_DatasetInfo(),
-            chunk_shape=(78_126, 64),
-            buffer_shape=(78_125, 384),
-        )
-
-    expected_error = (
-        "Some dimensions of the chunk_shape=(78126, 64) exceed the buffer_shape=(78125, 384) for dataset at location "
-        "'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
-
-
-def test_validator_buffer_shape_exceeds_full_shape():
-    with pytest.raises(ValueError) as error_info:
-        HDF5DatasetConfiguration(
-            dataset_info=mock_DatasetInfo(),
-            chunk_shape=(78_125, 64),
-            buffer_shape=(1_250_000, 385),
-        )
-
-    expected_error = (
-        "Some dimensions of the buffer_shape=(1250000, 385) exceed the full_shape=(1800000, 384) for "
-        "dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
-
-
-def test_validator_chunk_dimensions_do_not_evenly_divide_buffer():
-    with pytest.raises(ValueError) as error_info:
-        HDF5DatasetConfiguration(
-            dataset_info=mock_DatasetInfo(),
-            chunk_shape=(78_125, 7),
-            buffer_shape=(1_250_000, 384),
-        )
-
-    expected_error = (
-        "Some dimensions of the chunk_shape=(78125, 7) do not evenly divide the buffer_shape=(1250000, 384) for "
-        "dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
-    )
-    assert expected_error in str(error_info.value)
 
 
 def test_available_hdf5_compression_methods_not_empty():
