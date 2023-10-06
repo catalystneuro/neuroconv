@@ -1,4 +1,4 @@
-"""Unit tests for the DatasetInfo Pydantic model."""
+"""Unit tests for the ZarrDatasetConfiguration Pydantic model."""
 from io import StringIO
 from unittest.mock import patch
 
