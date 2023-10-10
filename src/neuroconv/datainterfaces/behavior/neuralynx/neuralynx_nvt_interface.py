@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 from pynwb import NWBFile
-from pynwb.behavior import SpatialSeries, Position, CompassDirection
+from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from .nvt_utils import read_header, read_data
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
@@ -110,5 +110,3 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                     name="NvtCompassDirection",
                 )
             )
-
-
