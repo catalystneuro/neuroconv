@@ -8,6 +8,7 @@ from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
+from pynwb.behavior import SpatialSeries
 
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
@@ -15,6 +16,7 @@ from neuroconv.datainterfaces import (
     MiniscopeBehaviorInterface,
     SLEAPInterface,
     VideoInterface,
+    NeuralynxNvtInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
@@ -195,3 +197,17 @@ class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
             self.assertEqual(device, nwbfile.acquisition[self.image_series_name].device)
             assert_array_equal(image_series.timestamps[:], self.timestamps)
             assert_array_equal(image_series.external_file[:], self.external_files)
+
+
+class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+    data_interface_cls = NeuralynxNvtInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "neuralynx" / "test.nvt"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert isinstance(nwbfile.acquisition["NvtPosition"].spatial_series["NvtSpatialSeries"], SpatialSeries)
+            assert isinstance(nwbfile.acquisition["NvtCompassDirection"].spatial_series["NvtAngleSpatialSeries"], SpatialSeries)

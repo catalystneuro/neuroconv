@@ -5,13 +5,13 @@ import numpy as np
 from pynwb import NWBFile
 from pynwb.behavior import SpatialSeries, Position, CompassDirection
 
-from .read_nvt import parse_header, read_nvt
+from .nvt_utils import read_header, read_data
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....utils import DeepDict, FilePathType
+from ....utils import DeepDict, FilePathType, NWBMetaDataEncoder
 
 
 class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
-    """Data interface for Neuralynx NVT files."""
+    """Data interface for Neuralynx NVT files. NVT files store position tracking information"""
 
     def __init__(self, file_path: FilePathType, verbose: bool = True):
         """
@@ -28,11 +28,11 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         self.file_path = file_path
         self.verbose = verbose
         self._timestamps = self.get_original_timestamps()
-        self.header = parse_header(self.file_path)
+        self.header = read_header(self.file_path)
         super().__init__(file_path=file_path)
 
     def get_original_timestamps(self) -> np.ndarray:
-        data = read_nvt(self.file_path)
+        data = read_data(self.file_path)
 
         times = data["TimeStamp"] / 1000000  # Neuralynx stores times in microseconds
         times = times - times[0]
@@ -54,47 +54,46 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        add_position=True,
-        add_angle=True,
+        add_position: bool = True,
+        add_angle: bool = True,
     ):
         """
-        Conversion from NVT to NWB
+        Add NVT data to a given in-memory NWB file
 
         Parameters
         ----------
-        nwbfile: NWBFile
+        nwbfile : NWBFile
             nwb file to which the recording information is to be added
-        metadata: dict, optional
+        metadata : dict, optional
             metadata info for constructing the nwb file.
-        add_position: bool, default=True
-        add_angle: bool, default=True
+        add_position : bool, default=True
+        add_angle : bool, default=True
         """
 
-        data = read_nvt(self.file_path)
-
-        xi = data["Xloc"]
-        x = xi.astype(float)
-        x[xi <= 0] = np.nan
-
-        yi = data["Yloc"]
-        y = yi.astype(float)
-        y[yi <= 0] = np.nan
+        data = read_data(self.file_path)
 
         if add_position:
-            nwbfile.add_acquisition(
-                Position(
-                    SpatialSeries(
-                        name="NvtPositionSpatialSeries",
-                        data=np.c_[x, y],
-                        reference_frame="unknown",
-                        unit="pixels",
-                        conversion=1.0,
-                        timestamps=self.get_timestamps(),
-                        description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header)}"
-                    ),
-                    name="NvtPosition",
-                )
+
+            # convert to float and change <= 0 (null) to NaN
+            xi = data["Xloc"]
+            x = xi.astype(float)
+            x[xi <= 0] = np.nan
+
+            yi = data["Yloc"]
+            y = yi.astype(float)
+            y[yi <= 0] = np.nan
+
+            spatial_series = SpatialSeries(
+                name="NvtSpatialSeries",
+                data=np.c_[x, y],
+                reference_frame="unknown",
+                unit="pixels",
+                conversion=1.0,
+                timestamps=self.get_timestamps(),
+                description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}"
             )
+
+            nwbfile.add_acquisition(Position([spatial_series], name="NvtPosition"))
 
         if add_angle:
             nwbfile.add_acquisition(
@@ -105,8 +104,8 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                         reference_frame="unknown",
                         unit="pixels",
                         conversion=1.0,
-                        timestamps=self.get_timestamps(),
-                        description=f"Angle from the .nvt file with header data: {json.dumps(self.header)}"
+                        timestamps=spatial_series if add_position else self.get_timestamps(),
+                        description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}"
                     ),
                     name="NvtCompassDirection",
                 )
