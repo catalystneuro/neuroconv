@@ -1,2 +1,3 @@
 spikeinterface>=0.98.2
+ndx-probeinterface>=0.1.0
 packaging<22.0
