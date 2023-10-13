@@ -276,6 +276,18 @@ class TestAddImagingPlane(TestCase):
         second_imaging_plane = imaging_planes[second_imaging_plane_name]
         assert second_imaging_plane.name == second_imaging_plane_name
 
+    def test_add_imaging_plane_warns_when_index_is_used(self):
+        """Test adding an imaging plane with the index specified warns with DeprecationWarning."""
+        exc_msg = "Keyword argument 'imaging_plane_index' is deprecated and will be removed on or after Dec 1st, 2023. Use 'imaging_plane_name' to specify which imaging plane to add by its name."
+        with self.assertWarnsWith(warn_type=DeprecationWarning, exc_msg=exc_msg):
+            add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_index=0)
+            # Test expected values
+            imaging_planes = self.nwbfile.imaging_planes
+            assert len(imaging_planes) == 1
+
+            imaging_plane = imaging_planes[self.imaging_plane_name]
+            assert imaging_plane.name == self.imaging_plane_name
+
 
 class TestAddImageSegmentation(unittest.TestCase):
     def setUp(self):

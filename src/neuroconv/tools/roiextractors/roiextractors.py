@@ -240,10 +240,11 @@ def add_imaging_plane(
     NWBFile
         The nwbfile passed as an input with the imaging plane added.
     """
-    if imaging_plane_index:
+    if imaging_plane_index is not None:
         warn(
-            "Keyword argument 'imaging_plane_index' is deprecated and will be removed on or after Dec 1st, 2023."
-            "Use 'imaging_plane_name' to specify which imaging plane to add by its name."
+            message="Keyword argument 'imaging_plane_index' is deprecated and will be removed on or after Dec 1st, 2023. "
+            "Use 'imaging_plane_name' to specify which imaging plane to add by its name.",
+            category=DeprecationWarning,
         )
         imaging_plane_name = metadata["Ophys"]["ImagingPlane"][imaging_plane_index]["name"]
 
