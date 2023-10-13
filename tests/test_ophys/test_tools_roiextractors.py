@@ -164,7 +164,7 @@ class TestAddDevices(unittest.TestCase):
         assert "device_object" in devices
 
 
-class TestAddImagingPlane(unittest.TestCase):
+class TestAddImagingPlane(TestCase):
     def setUp(self):
         self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
@@ -245,6 +245,36 @@ class TestAddImagingPlane(unittest.TestCase):
         second_imaging_plane = imaging_planes[second_imaging_plane_name]
         assert second_imaging_plane.name == second_imaging_plane_name
         assert second_imaging_plane.description == second_imaging_plane_description
+
+    def test_add_imaging_plane_raises_when_name_not_found_in_metadata(self):
+        """Test adding an imaging plane raises an error when the name is not found in the metadata."""
+        imaging_plane_name = "test_imaging_plane"
+        with self.assertRaisesWith(
+            exc_type=ValueError, exc_msg=f"Imaging plane '{imaging_plane_name}' not found in metadata."
+        ):
+            add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=imaging_plane_name)
+
+    def test_add_two_imaging_planes_from_metadata(self):
+        """Test adding two imaging planes when there are multiple imaging plane metadata."""
+
+        second_imaging_plane_name = "second_imaging_plane_name"
+        metadata = deepcopy(self.metadata)
+        imaging_planes_metadata = metadata["Ophys"]["ImagingPlane"]
+        second_imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlane"][0])
+        second_imaging_plane_metadata.update(name="second_imaging_plane_name")
+        imaging_planes_metadata.append(second_imaging_plane_metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name=self.imaging_plane_name)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name="second_imaging_plane_name")
+
+        # Test expected values
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 2
+
+        first_imaging_plane = imaging_planes[self.imaging_plane_name]
+        assert first_imaging_plane.name == self.imaging_plane_name
+
+        second_imaging_plane = imaging_planes[second_imaging_plane_name]
+        assert second_imaging_plane.name == second_imaging_plane_name
 
 
 class TestAddImageSegmentation(unittest.TestCase):
@@ -331,8 +361,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         self.metadata = dict(Ophys=dict())
 
         self.plane_segmentation_metadata = dict(
-            name=self.plane_segmentation_name,
-            description="Segmented ROIs",
+            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
         )
 
         image_segmentation_metadata = dict(
@@ -1426,6 +1455,24 @@ class TestAddPhotonSeries(TestCase):
             # NWB stores images as num_columns x num_rows
             expected_one_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
             assert one_photon_series.shape == expected_one_photon_series_shape
+
+    def test_add_multiple_one_photon_series(self):
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.one_photon_series_metadata,
+            photon_series_type="OnePhotonSeries",
+        )
+        second_photon_series_metadata = deepcopy(self.one_photon_series_metadata)
+        second_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=second_photon_series_metadata,
+            photon_series_type="OnePhotonSeries",
+        )
+
+        self.assertIn("second_photon_series", self.nwbfile.acquisition)
 
 
 class TestAddSummaryImages(unittest.TestCase):
