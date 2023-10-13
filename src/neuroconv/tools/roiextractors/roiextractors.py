@@ -103,6 +103,7 @@ def get_default_segmentation_metadata() -> DeepDict:
             dict(
                 name="PlaneSegmentation",
                 description="Segmented ROIs",
+                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
             )
         ],
     )
