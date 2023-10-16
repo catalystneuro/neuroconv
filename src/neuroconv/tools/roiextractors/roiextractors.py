@@ -268,7 +268,9 @@ def add_imaging_plane(
             None,
         )
         if imaging_plane_metadata is None:
-            raise ValueError(f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata"Ophys"]["ImagingPlane"].")
+            raise ValueError(
+                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
+            )
 
         imaging_plane = _create_imaging_plane_from_metadata(
             nwbfile=nwbfile, imaging_plane_metadata=imaging_plane_metadata
