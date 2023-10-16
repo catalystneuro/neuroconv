@@ -12,6 +12,8 @@ Remove `starting_time` reset to default value (0.0) when adding the rate and upd
 * Pin lower bound HDMF version to `3.10.0`. [PR #586](https://github.com/catalystneuro/neuroconv/pull/586)
 
 
+### Deprecation
+* Removed `use_times` and `buffer_size` from `add_photon_series`. [PR #600](https://github.com/catalystneuro/neuroconv/pull/600)
 
 
 
