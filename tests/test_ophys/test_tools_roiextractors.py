@@ -250,7 +250,8 @@ class TestAddImagingPlane(TestCase):
         """Test adding an imaging plane raises an error when the name is not found in the metadata."""
         imaging_plane_name = "imaging_plane_non_existing_in_the_metadata"
         with self.assertRaisesWith(
-            exc_type=ValueError, exc_msg=f"Imaging plane '{imaging_plane_name}' not found in metadata."
+            exc_type=ValueError,
+            exc_msg=f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane'].",
         ):
             add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=imaging_plane_name)
 
@@ -1468,7 +1469,8 @@ class TestAddPhotonSeries(TestCase):
             expected_one_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
             assert one_photon_series.shape == expected_one_photon_series_shape
 
-    def test_add_multiple_one_photon_series(self):
+    def test_add_multiple_one_photon_series_with_same_imaging_plane(self):
+        """Test adding two OnePhotonSeries that use the same ImagingPlane."""
         add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
