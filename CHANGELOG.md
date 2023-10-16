@@ -7,7 +7,7 @@
 
 ### Features
 
-* Added `nwbfile_module_name` keyword argument to `add_photon_series` that defines whether to add the photon series to acqusition or processing. [PR #587](https://github.com/catalystneuro/neuroconv/pull/587)
+* Added `nwbfile_module_name` keyword argument to `add_photon_series` that defines whether to add the photon series to acquisition or processing. [PR #587](https://github.com/catalystneuro/neuroconv/pull/587)
 
 
 
