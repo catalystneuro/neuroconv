@@ -2,7 +2,11 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from zoneinfo import ZoneInfo
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo
 
 from pynwb.behavior import CompassDirection, SpatialSeries
 from pynwb.file import NWBFile
@@ -102,7 +106,7 @@ class FicTracDataInterface(BaseDataInterface):
 
         import pandas as pd
 
-        # The first row only contains the session start time and unvalid data
+        # The first row only contains the session start time and invalid data
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.data_columns)
 
         # Get the timestamps
