@@ -5,6 +5,10 @@
 * Changed the date parsing in `OpenEphysLegacyRecordingInterface` to `datetime.strptime` with the expected date format explicitly set to `"%d-%b-%Y %H%M%S"`. [PR #577](https://github.com/catalystneuro/neuroconv/pull/577)
 * Pin lower bound HDMF version to `3.10.0`. [PR #586](https://github.com/catalystneuro/neuroconv/pull/586)
 
+### Features
+
+* Added `nwbfile_module_name` keyword argument to `add_photon_series` that defines whether to add the photon series to acqusition or processing. [PR #587](https://github.com/catalystneuro/neuroconv/pull/587)
+
 
 
 # v0.4.4
