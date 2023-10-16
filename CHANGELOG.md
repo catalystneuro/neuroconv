@@ -1,7 +1,7 @@
 # (Upcoming)
 
 ### Features
-Addedd `session_start_time` extraction to `FicTracDataInterface`. [PR #598](https://github.com/catalystneuro/neuroconv/pull/598)
+Added `session_start_time` extraction to `FicTracDataInterface`. [PR #598](https://github.com/catalystneuro/neuroconv/pull/598)
 
 
 ### Fixes
