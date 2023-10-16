@@ -254,7 +254,7 @@ def add_imaging_plane(
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
     add_devices(nwbfile=nwbfile, metadata=metadata_copy)
 
-    default_imaging_plane_name = metadata_copy["Ophys"]["ImagingPlane"][0]["name"]
+    default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlane"][0]["name"]
     imaging_plane_name = imaging_plane_name or default_imaging_plane_name
     existing_imaging_planes = nwbfile.imaging_planes
 
@@ -268,7 +268,7 @@ def add_imaging_plane(
             None,
         )
         if imaging_plane_metadata is None:
-            raise ValueError(f"Imaging plane '{imaging_plane_name}' not found in metadata.")
+            raise ValueError(f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata"Ophys"]["ImagingPlane"].")
 
         imaging_plane = _create_imaging_plane_from_metadata(
             nwbfile=nwbfile, imaging_plane_metadata=imaging_plane_metadata

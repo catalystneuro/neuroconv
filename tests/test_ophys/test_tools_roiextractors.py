@@ -248,7 +248,7 @@ class TestAddImagingPlane(TestCase):
 
     def test_add_imaging_plane_raises_when_name_not_found_in_metadata(self):
         """Test adding an imaging plane raises an error when the name is not found in the metadata."""
-        imaging_plane_name = "test_imaging_plane"
+        imaging_plane_name ="imaging_plane_non_existing_in_the_metadata"
         with self.assertRaisesWith(
             exc_type=ValueError, exc_msg=f"Imaging plane '{imaging_plane_name}' not found in metadata."
         ):
