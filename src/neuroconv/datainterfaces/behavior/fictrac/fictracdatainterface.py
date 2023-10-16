@@ -1,12 +1,7 @@
-import warnings
+import importlib.util
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    from backports.zoneinfo import ZoneInfo
 
 from pynwb.behavior import CompassDirection, SpatialSeries
 from pynwb.file import NWBFile
@@ -82,11 +77,8 @@ class FicTracDataInterface(BaseDataInterface):
     def get_metadata(self):
         metadata = super().get_metadata()
 
-        try:
-            session_start_time = extract_session_start_time(self.file_path)
-            metadata["NWBFile"].update(session_start_time=session_start_time)
-        except:
-            warnings.warn("Unable to extract the session start time from the FicTrac data file. ")
+        session_start_time = extract_session_start_time(self.file_path)
+        metadata["NWBFile"].update(session_start_time=session_start_time)
 
         return metadata
 
@@ -122,13 +114,16 @@ class FicTracDataInterface(BaseDataInterface):
 
         # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
         # The reason, most likely, is that FicTrac is relying on OpenCV to get the timestamps from the video
-        # And we know that OpenCV is not very accurate with the timestamps, specially the last ones.
+        # In my experience, OpenCV is not very accurate with the timestamps at the end of the video.
         rate = calculate_regular_series_rate(series=timestamps_shifted)
         write_timestamps = False if rate else True  # calculate_regular_series_rate returns None if it is not regular
 
         # All the units in FicTrac are in radians, the radius of the ball required to transform to
         # Distances is not specified in the format
-        compass_direction_container = CompassDirection(name="FicTrac")
+        compass_direction_container = CompassDirection(
+            name="FicTrac"
+        )  # TODO: this is just for the heading angle. I will change this to Position in a subsequent PR.
+        # Position and SpatialSeries nested into it
 
         # Add rotation delta from camera
         rotation_delta_cam_columns = [
@@ -432,6 +427,15 @@ class FicTracDataInterface(BaseDataInterface):
         processing_module.add_data_interface(compass_direction_container)
 
 
+def import_zone_info():
+    if importlib.util.find_spec("zoneinfo"):
+        return importlib.import_module("zoneinfo").ZoneInfo
+    elif importlib.util.find_spec("backports.zoneinfo"):
+        return importlib.import_module("backports.zoneinfo").ZoneInfo
+    else:
+        raise ImportError("Neither 'zoneinfo' nor 'backports.zoneinfo' is available.")
+
+
 def extract_session_start_time(file_path: FilePathType) -> datetime:
     """
     Lazily extract the session start datetime from a FicTrac data file.
@@ -440,6 +444,7 @@ def extract_session_start_time(file_path: FilePathType) -> datetime:
 
     The epoch in Linux is 1970-01-01 00:00:00 UTC.
     """
+    ZoneInfo = import_zone_info()
     with open(file_path, "r") as file:
         # Read the first data line
         first_line = file.readline()
@@ -452,6 +457,7 @@ def extract_session_start_time(file_path: FilePathType) -> datetime:
     return utc_datetime
 
 
+# TODO: Parse probably will do this in a simpler way.
 def parse_fictrac_config(filename) -> dict:
     """
     Parse a FicTrac configuration file and return a dictionary of its parameters. See the
