@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 from natsort import natsorted
@@ -36,6 +37,10 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
     ]
 
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_session_start_time = datetime(2023, 7, 24, 9, 30, 55, 440600, tzinfo=ZoneInfo("UTC"))
+        assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
 
 
 class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):

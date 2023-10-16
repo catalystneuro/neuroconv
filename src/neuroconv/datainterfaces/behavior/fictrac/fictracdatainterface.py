@@ -1,7 +1,9 @@
+import warnings
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
-import numpy as np
 from pynwb.behavior import CompassDirection, SpatialSeries
 from pynwb.file import NWBFile
 
@@ -21,6 +23,9 @@ class FicTracDataInterface(BaseDataInterface):
         "spherical treadmill",
         "visual fixation",
     ]
+
+    # The full header can be found in:
+    # https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt
 
     data_columns = [
         "frame_counter",
@@ -56,7 +61,7 @@ class FicTracDataInterface(BaseDataInterface):
         verbose: bool = True,
     ):
         """
-        Interface for writing fictract files to nwb.
+        Interface for writing FicTrac files to nwb.
 
         Parameters
         ----------
@@ -72,17 +77,12 @@ class FicTracDataInterface(BaseDataInterface):
 
     def get_metadata(self):
         metadata = super().get_metadata()
-        from datetime import datetime
 
-        config_file = self.file_path.parent / "fictrac_config.txt"
-        if config_file.exists():
-            self._config_file = parse_fictrac_config(config_file)
-            date_string = self._config_file["build_date"]
-            date_object = datetime.strptime(date_string, "%b %d %Y")
-
-            metadata["NWBFile"].update(
-                session_start_time=date_object,
-            )
+        try:
+            session_start_time = extract_session_start_time(self.file_path)
+            metadata["NWBFile"].update(session_start_time=session_start_time)
+        except:
+            warnings.warn("Unable to extract the session start time from the FicTrac data file. ")
 
         return metadata
 
@@ -102,17 +102,25 @@ class FicTracDataInterface(BaseDataInterface):
 
         import pandas as pd
 
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.data_columns)
+        # The first row only contains the session start time and unvalid data
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.data_columns)
 
         # Get the timestamps
         timestamps_milliseconds = fictrac_data_df["timestamp"].values
         timestamps = timestamps_milliseconds / 1000.0
-        rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
-        write_timestamps = True
-        if rate:
-            write_timestamps = False
 
-        processing_module = get_module(nwbfile=nwbfile, name="Behavior")
+        # Shift to the session start time
+        metadata = metadata or self.get_metadata()
+        interface_session_start_time = extract_session_start_time(self.file_path)
+        conversion_session_start_time = metadata["NWBFile"]["session_start_time"]
+        starting_time = interface_session_start_time.timestamp() - conversion_session_start_time.timestamp()
+        timestamps_shifted = timestamps + starting_time
+
+        # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
+        # The reason, most likely, is that FicTrac is relying on OpenCV to get the timestamps from the video
+        # And we know that OpenCV is not very accurate with the timestamps, specially the last ones.
+        rate = calculate_regular_series_rate(series=timestamps_shifted)
+        write_timestamps = False if rate else True  # calculate_regular_series_rate returns None if it is not regular
 
         # All the units in FicTrac are in radians, the radius of the ball required to transform to
         # Distances is not specified in the format
@@ -148,6 +156,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -182,6 +191,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -216,6 +226,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -250,6 +261,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -274,6 +286,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -300,6 +313,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -321,6 +335,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -351,6 +366,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -379,6 +395,7 @@ class FicTracDataInterface(BaseDataInterface):
             spatial_seriess_kwargs["timestamps"] = timestamps
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
@@ -401,12 +418,34 @@ class FicTracDataInterface(BaseDataInterface):
 
         else:
             spatial_seriess_kwargs["rate"] = rate
+            spatial_seriess_kwargs["starting_time"] = starting_time
 
         spatial_series = SpatialSeries(**spatial_seriess_kwargs)
         compass_direction_container.add_spatial_series(spatial_series)
 
         # Add the compass direction container to the processing module
+        processing_module = get_module(nwbfile=nwbfile, name="Behavior")
         processing_module.add_data_interface(compass_direction_container)
+
+
+def extract_session_start_time(file_path: FilePathType) -> datetime:
+    """
+    Lazily extract the session start datetime from a FicTrac data file.
+
+    In FicTrac the column 22 in the data has the timestamps which are given in milliseconds since the epoch.
+
+    The epoch in Linux is 1970-01-01 00:00:00 UTC.
+    """
+    with open(file_path, "r") as file:
+        # Read the first data line
+        first_line = file.readline()
+
+        # Split by comma and extract the timestamp (the 22nd column)
+        utc_timestamp = float(first_line.split(",")[21]) / 1000.0  # Transform to seconds
+
+    utc_datetime = datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=ZoneInfo("UTC"))
+
+    return utc_datetime
 
 
 def parse_fictrac_config(filename) -> dict:
