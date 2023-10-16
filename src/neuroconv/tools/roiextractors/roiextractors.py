@@ -388,7 +388,7 @@ def add_photon_series(
             photon_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
         rate = float(imaging.get_sampling_frequency())
-        photon_series_kwargs.update(starting_time=0.0, rate=rate)
+        photon_series_kwargs.update(rate=rate)
 
     # Add the photon series to the nwbfile (either as OnePhotonSeries or TwoPhotonSeries)
     photon_series = dict(
@@ -850,7 +850,7 @@ def add_fluorescence_traces(
             roi_response_series_kwargs.update(timestamps=H5DataIO(data=timestamps, compression="gzip"), rate=None)
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
-        roi_response_series_kwargs.update(starting_time=0.0, rate=rate)
+        roi_response_series_kwargs.update(rate=rate)
 
     trace_to_data_interface = defaultdict()
     traces_to_add_to_fluorescence_data_interface = [
