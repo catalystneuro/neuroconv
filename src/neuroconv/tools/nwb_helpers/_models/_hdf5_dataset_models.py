@@ -53,7 +53,7 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
-    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
+    def get_data_io_kwargs(self) -> Dict[str, Any]:
         if is_module_installed(module_name="hdf5plugin"):
             import hdf5plugin
 

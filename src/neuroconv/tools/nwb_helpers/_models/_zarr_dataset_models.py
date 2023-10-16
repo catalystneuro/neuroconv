@@ -114,7 +114,7 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
 
         return values
 
-    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
+    def get_data_io_kwargs(self) -> Dict[str, Any]:
         filters = None
         if self.filter_methods:
             filters = list()

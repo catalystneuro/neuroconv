@@ -204,9 +204,9 @@ def test_default_compression_is_always_available():
     assert "gzip" in AVAILABLE_ZARR_COMPRESSION_METHODS
 
 
-def test_get_data_io_keyword_arguments():
+def test_get_data_io_kwargs():
     zarr_dataset_configuration = mock_ZarrDatasetConfiguration()
 
-    assert zarr_dataset_configuration.get_data_io_keyword_arguments() == dict(
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
         chunks=(78125, 64), compressor=GZip(level=1), filters=None
     )

@@ -6,10 +6,12 @@ from typing import Any, Dict, Literal, Tuple, Union
 import h5py
 import numcodecs
 import numpy as np
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Field, root_validator
 
 
 class DatasetInfo(BaseModel):
+    """A data model to represent immutable aspects of an object that will become a HDF5 or Zarr dataset on write."""
+
     # TODO: When using Pydantic v2, replace with
     # model_config = ConfigDict(allow_mutation=False)
     class Config:  # noqa: D106
@@ -173,7 +175,7 @@ class DatasetConfiguration(BaseModel, ABC):
         return values
 
     @abstractmethod
-    def get_data_io_keyword_arguments(self):
+    def get_data_io_kwargs(self) -> Dict[str, Any]:
         """
         Fetch the properly structured dictionary of input arguments to be passed directly into a H5DataIO or ZarrDataIO.
         """

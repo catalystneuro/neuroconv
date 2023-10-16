@@ -107,9 +107,9 @@ def test_default_compression_is_always_available():
     assert "gzip" in AVAILABLE_HDF5_COMPRESSION_METHODS
 
 
-def test_get_data_io_keyword_arguments():
+def test_get_data_io_kwargs():
     hdf5_dataset_configuration = mock_HDF5DatasetConfiguration()
 
-    assert hdf5_dataset_configuration.get_data_io_keyword_arguments() == dict(
+    assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(
         chunks=(78125, 64), compression="gzip", compression_opts=None
     )
