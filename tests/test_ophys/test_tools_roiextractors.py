@@ -1431,13 +1431,13 @@ class TestAddPhotonSeries(TestCase):
         """Test that adding photon series with invalid module name raises error."""
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg="'nwbfile_module_name' must be either 'acquisition' or 'processing'.",
+            exc_msg="'attach_to_nwbfile_module_name' must be either 'acquisition' or 'processing'.",
         ):
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
-                nwbfile_module_name="test",
+                attach_to_nwbfile_module_name="test",
             )
 
     def test_add_one_photon_series_to_processing(self):
@@ -1451,7 +1451,7 @@ class TestAddPhotonSeries(TestCase):
             metadata=self.one_photon_series_metadata,
             photon_series_type="OnePhotonSeries",
             photon_series_index=0,
-            nwbfile_module_name="processing",
+            attach_to_nwbfile_module_name="processing",
         )
         ophys = self.nwbfile.processing["ophys"]
         self.assertIn("OnePhotonSeriesProcessed", ophys.data_interfaces)
@@ -1459,8 +1459,8 @@ class TestAddPhotonSeries(TestCase):
     def test_photon_series_not_added_to_acquisition_with_same_name(self):
         """Test that photon series with the same name are not added to nwbfile.acquisition."""
 
-        with self.assertWarnsWith(
-            warn_type=UserWarning, exc_msg=f"{self.two_photon_series_name} already added to nwbfile.acquisition."
+        with self.assertRaisesWith(
+            exc_type=ValueError, exc_msg=f"{self.two_photon_series_name} already added to nwbfile.acquisition."
         ):
             add_photon_series(
                 imaging=self.imaging_extractor,
@@ -1477,23 +1477,33 @@ class TestAddPhotonSeries(TestCase):
     def test_photon_series_not_added_to_processing_with_same_name(self):
         """Test that photon series with the same name are not added to nwbfile.processing."""
 
-        with self.assertWarnsWith(
-            warn_type=UserWarning,
+        with self.assertRaisesWith(
+            exc_type=ValueError,
             exc_msg=f"{self.two_photon_series_name} already added to nwbfile.processing['ophys'].",
         ):
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
-                nwbfile_module_name="processing",
+                attach_to_nwbfile_module_name="processing",
             )
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
-                nwbfile_module_name="processing",
+                attach_to_nwbfile_module_name="processing",
             )
         self.assertEqual(len(self.nwbfile.processing["ophys"].data_interfaces), 1)
+
+    def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
+        """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+        )
+        self.assertNotIn("ophys", self.nwbfile.processing)
+        self.assertEqual(len(self.nwbfile.processing), 0)
 
 
 class TestAddSummaryImages(unittest.TestCase):
