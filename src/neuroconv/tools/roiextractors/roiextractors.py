@@ -320,8 +320,6 @@ def add_photon_series(
     two_photon_series_index: Optional[int] = None,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
-    use_times=False,  # TODO: to be removed
-    buffer_size: Optional[int] = None,  # TODO: to be removed
 ) -> NWBFile:
     """
     Auxiliary static method for nwbextractor.
@@ -349,15 +347,11 @@ def add_photon_series(
     NWBFile
         The NWBFile passed as an input with the photon series added.
     """
-    if use_times:
-        warn("Keyword argument 'use_times' is deprecated and will be removed on or after August 1st, 2022.")
-    if buffer_size:
-        warn(
-            "Keyword argument 'buffer_size' is deprecated and will be removed on or after September 1st, 2022."
-            "Specify as a key in the new 'iterator_options' dictionary instead."
-        )
+
     if two_photon_series_index:
-        warn("Keyword argument 'two_photon_series_index' is deprecated. Use 'photon_series_index' instead.")
+        warn(
+            "Keyword argument 'two_photon_series_index' is deprecated and it will be removed on 2024-04-16. Use 'photon_series_index' instead."
+        )
         photon_series_index = two_photon_series_index
 
     iterator_options = iterator_options or dict()
@@ -1028,13 +1022,6 @@ def add_segmentation(
 ):
     # Add device:
     add_devices(nwbfile=nwbfile, metadata=metadata)
-
-    # ImageSegmentation:
-    # image_segmentation_name = (
-    #     "ImageSegmentation" if plane_no_loop == 0 else f"ImageSegmentation_Plane{plane_no_loop}"
-    # )
-    # add_image_segmentation(nwbfile=nwbfile_out, metadata=metadata)
-    # image_segmentation = ophys.data_interfaces.get(image_segmentation_name)
 
     # Add imaging plane
     add_imaging_plane(nwbfile=nwbfile, metadata=metadata)
