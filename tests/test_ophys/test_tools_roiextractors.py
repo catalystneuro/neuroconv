@@ -200,7 +200,7 @@ class TestAddImagingPlane(TestCase):
         self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
 
     def test_add_imaging_plane(self):
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name)
 
         imaging_planes = self.nwbfile.imaging_planes
         assert len(imaging_planes) == 1
@@ -210,10 +210,10 @@ class TestAddImagingPlane(TestCase):
         assert imaging_plane.description == self.imaging_plane_description
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name)
 
         self.imaging_plane_metadata["description"] = "modified description"
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name)
 
         imaging_planes = self.nwbfile.imaging_planes
         assert len(imaging_planes) == 1
@@ -225,14 +225,14 @@ class TestAddImagingPlane(TestCase):
         first_imaging_plane_description = "first_imaging_plane_description"
         self.imaging_plane_metadata["name"] = first_imaging_plane_name
         self.imaging_plane_metadata["description"] = first_imaging_plane_description
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=first_imaging_plane_name)
 
         # Add the second imaging plane
         second_imaging_plane_name = "second_imaging_plane_name"
         second_imaging_plane_description = "second_imaging_plane_description"
         self.imaging_plane_metadata["name"] = second_imaging_plane_name
         self.imaging_plane_metadata["description"] = second_imaging_plane_description
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=second_imaging_plane_name)
 
         # Test expected values
         imaging_planes = self.nwbfile.imaging_planes
