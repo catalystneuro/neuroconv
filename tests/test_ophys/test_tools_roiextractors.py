@@ -1471,22 +1471,30 @@ class TestAddPhotonSeries(TestCase):
 
     def test_add_multiple_one_photon_series_with_same_imaging_plane(self):
         """Test adding two OnePhotonSeries that use the same ImagingPlane."""
+        shared_photon_series_metadata = deepcopy(self.one_photon_series_metadata)
+        shared_imaging_plane_name = "same_imaging_plane_for_two_series"
+
+        shared_photon_series_metadata["Ophys"]["ImagingPlane"][0]["name"] = shared_imaging_plane_name
+        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["imaging_plane"] = shared_imaging_plane_name
+
         add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
-            metadata=self.one_photon_series_metadata,
+            metadata=shared_photon_series_metadata,
             photon_series_type="OnePhotonSeries",
         )
-        second_photon_series_metadata = deepcopy(self.one_photon_series_metadata)
-        second_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
+
+        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
         add_photon_series(
             imaging=self.imaging_extractor,
             nwbfile=self.nwbfile,
-            metadata=second_photon_series_metadata,
+            metadata=shared_photon_series_metadata,
             photon_series_type="OnePhotonSeries",
         )
 
         self.assertIn("second_photon_series", self.nwbfile.acquisition)
+        self.assertEqual(len(self.nwbfile.imaging_planes), 1)
+        self.assertIn(shared_imaging_plane_name, self.nwbfile.imaging_planes)
 
 
 class TestAddSummaryImages(unittest.TestCase):
