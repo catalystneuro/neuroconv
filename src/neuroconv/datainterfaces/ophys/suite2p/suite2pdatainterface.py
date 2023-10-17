@@ -1,6 +1,7 @@
 from typing import Optional
+
 from ..basesegmentationextractorinterface import BaseSegmentationExtractorInterface
-from ....utils import FolderPathType, DeepDict
+from ....utils import DeepDict, FolderPathType
 
 
 class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
