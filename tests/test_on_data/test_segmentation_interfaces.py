@@ -67,5 +67,36 @@ class TestExtractSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
 
 class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = Suite2pSegmentationInterface
-    interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"))
+    interface_kwargs = [
+        dict(
+            folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"),
+            channel_name="chan1",
+            plane_name="plane0",
+        ),
+        dict(
+            folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"),
+            channel_name="chan2",
+            plane_name="plane0",
+        ),
+    ]
     save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        plane_suffices = ["Chan1Plane0", "Chan2Plane0"]
+        cls.imaging_plane_names = ["ImagingPlane" + plane_suffix for plane_suffix in plane_suffices]
+        cls.plane_segmentation_names = ["PlaneSegmentation" + plane_suffix for plane_suffix in plane_suffices]
+        cls.segmentation_images_names = ["SegmentationImages" + plane_suffix for plane_suffix in plane_suffices]
+        cls.chan1_trace_names = [trace + "Chan1Plane0" for trace in ["RoiResponseSeries", "Neuropil", "Deconvolved"]]
+        cls.chan2_trace_names = [trace + "Chan2Plane0" for trace in ["RoiResponseSeries", "Neuropil"]]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """Check extracted metadata is adjusted correctly for each plane and channel combination."""
+        self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["name"], self.imaging_plane_names[self.case])
+        plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        self.assertEqual(plane_segmentation_metadata["name"], self.plane_segmentation_names[self.case])
+        self.assertEqual(metadata["Ophys"]["SegmentationImages"][0]["name"], self.segmentation_images_names[self.case])
+        traces_metadata = metadata["Ophys"]["Fluorescence"]["roi_response_series"]
+        for trace_ind, trace_metadata in enumerate(traces_metadata):
+            trace_names = self.chan1_trace_names if self.case == 0 else self.chan2_trace_names
+            self.assertEqual(trace_metadata["name"], trace_names[trace_ind])
