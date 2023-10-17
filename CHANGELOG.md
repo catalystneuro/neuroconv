@@ -1,4 +1,6 @@
 # (Upcoming)
+### Fixes
+Remove `starting_time` reset to default value (0.0) when adding the rate and updating the `photon_series_kwargs` or `roi_response_series_kwargs`, in `add_photon_series` or `add_fluorescence_traces`. [PR #595](https://github.com/catalystneuro/neuroconv/pull/595)
 
 ### Fixes
 
@@ -6,6 +8,8 @@
 * Pin lower bound HDMF version to `3.10.0`. [PR #586](https://github.com/catalystneuro/neuroconv/pull/586)
 
 
+### Deprecation
+* Removed `use_times` and `buffer_size` from `add_photon_series`. [PR #600](https://github.com/catalystneuro/neuroconv/pull/600)
 
 # v0.4.4
 
