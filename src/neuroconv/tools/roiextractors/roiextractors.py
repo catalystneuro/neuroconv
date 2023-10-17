@@ -498,7 +498,7 @@ def add_imaging(
     photon_series_index: int = 0,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
-    nwbfile_module_name: Literal["acquisition", "processing"] = "acquisition",
+    attach_to_nwbfile_module_name: Literal["acquisition", "processing"] = "acquisition",
 ):
     add_devices(nwbfile=nwbfile, metadata=metadata)
     add_photon_series(
@@ -509,7 +509,7 @@ def add_imaging(
         photon_series_index=photon_series_index,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
-        attach_to_nwbfile_module_name=nwbfile_module_name,
+        attach_to_nwbfile_module_name=attach_to_nwbfile_module_name,
     )
 
 
