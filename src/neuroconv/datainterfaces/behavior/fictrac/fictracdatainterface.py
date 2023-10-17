@@ -1,5 +1,5 @@
 import importlib.util
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -8,7 +8,7 @@ from pynwb.file import NWBFile
 
 # from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface TODO: Add timing methods
 from ....basedatainterface import BaseDataInterface
-from ....tools import get_module, get_package
+from ....tools import get_module
 from ....utils import FilePathType, calculate_regular_series_rate
 
 
@@ -105,18 +105,15 @@ class FicTracDataInterface(BaseDataInterface):
         timestamps_milliseconds = fictrac_data_df["timestamp"].values
         timestamps = timestamps_milliseconds / 1000.0
 
-        # Shift to the session start time
-        metadata = metadata or self.get_metadata()
-        interface_session_start_time = extract_session_start_time(self.file_path)
-        conversion_session_start_time = metadata["NWBFile"]["session_start_time"]
-        starting_time = interface_session_start_time.timestamp() - conversion_session_start_time.timestamp()
-        timestamps_shifted = timestamps + starting_time
-
         # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
         # The reason, most likely, is that FicTrac is relying on OpenCV to get the timestamps from the video
         # In my experience, OpenCV is not very accurate with the timestamps at the end of the video.
-        rate = calculate_regular_series_rate(series=timestamps_shifted)
-        write_timestamps = False if rate else True  # calculate_regular_series_rate returns None if it is not regular
+        rate = calculate_regular_series_rate(series=timestamps)  # Returns None if the series is not regular
+        if rate:
+            write_timestamps = False
+            starting_time = timestamps[0]
+        else:
+            write_timestamps = True
 
         # All the units in FicTrac are in radians, the radius of the ball required to transform to
         # Distances is not specified in the format
@@ -427,15 +424,6 @@ class FicTracDataInterface(BaseDataInterface):
         processing_module.add_data_interface(compass_direction_container)
 
 
-def import_zone_info():
-    if importlib.util.find_spec("zoneinfo"):
-        return importlib.import_module("zoneinfo").ZoneInfo
-    elif importlib.util.find_spec("backports.zoneinfo"):
-        return importlib.import_module("backports.zoneinfo").ZoneInfo
-    else:
-        raise ImportError("Neither 'zoneinfo' nor 'backports.zoneinfo' is available.")
-
-
 def extract_session_start_time(file_path: FilePathType) -> datetime:
     """
     Lazily extract the session start datetime from a FicTrac data file.
@@ -444,7 +432,6 @@ def extract_session_start_time(file_path: FilePathType) -> datetime:
 
     The epoch in Linux is 1970-01-01 00:00:00 UTC.
     """
-    ZoneInfo = import_zone_info()
     with open(file_path, "r") as file:
         # Read the first data line
         first_line = file.readline()
@@ -452,7 +439,7 @@ def extract_session_start_time(file_path: FilePathType) -> datetime:
         # Split by comma and extract the timestamp (the 22nd column)
         utc_timestamp = float(first_line.split(",")[21]) / 1000.0  # Transform to seconds
 
-    utc_datetime = datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=ZoneInfo("UTC"))
+    utc_datetime = datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc)
 
     return utc_datetime
 
