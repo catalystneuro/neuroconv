@@ -102,7 +102,6 @@ interface_list = [
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
-    CEDRecordingInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
     CellExplorerLFPInterface,
