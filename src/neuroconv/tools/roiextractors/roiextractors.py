@@ -103,6 +103,7 @@ def get_default_segmentation_metadata() -> DeepDict:
             dict(
                 name="PlaneSegmentation",
                 description="Segmented ROIs",
+                imaging_plane=metadata["Ophys"]["ImagingPlane"][0]["name"],
             )
         ],
     )
@@ -216,7 +217,12 @@ def _create_imaging_plane_from_metadata(nwbfile: NWBFile, imaging_plane_metadata
     return imaging_plane
 
 
-def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int = 0) -> NWBFile:
+def add_imaging_plane(
+    nwbfile: NWBFile,
+    metadata: dict,
+    imaging_plane_name: Optional[str] = None,
+    imaging_plane_index: Optional[int] = None,
+) -> NWBFile:
     """
     Adds the imaging plane specified by the metadata to the nwb file.
     The imaging plane that is added is the one located in metadata["Ophys"]["ImagingPlane"][imaging_plane_index]
@@ -227,15 +233,20 @@ def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int
         An previously defined -in memory- NWBFile.
     metadata : dict
         The metadata in the nwb conversion tools format.
-    imaging_plane_index : int, default: 0
-        The metadata in the nwb conversion tools format is a list of the different imaging planes to add.
-        Specify which element of the list with this parameter.
-
+    imaging_plane_name: str
+        The name of the imaging plane to be added.
     Returns
     -------
     NWBFile
         The nwbfile passed as an input with the imaging plane added.
     """
+    if imaging_plane_index is not None:
+        warn(
+            message="Keyword argument 'imaging_plane_index' is deprecated and will be removed on or after Dec 1st, 2023. "
+            "Use 'imaging_plane_name' to specify which imaging plane to add by its name.",
+            category=DeprecationWarning,
+        )
+        imaging_plane_name = metadata["Ophys"]["ImagingPlane"][imaging_plane_index]["name"]
 
     # Set the defaults and required infrastructure
     metadata_copy = deepcopy(metadata)
@@ -243,11 +254,24 @@ def add_imaging_plane(nwbfile: NWBFile, metadata: dict, imaging_plane_index: int
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
     add_devices(nwbfile=nwbfile, metadata=metadata_copy)
 
-    imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][imaging_plane_index]
-    imaging_plane_name = imaging_plane_metadata["name"]
+    default_imaging_plane_name = default_metadata["Ophys"]["ImagingPlane"][0]["name"]
+    imaging_plane_name = imaging_plane_name or default_imaging_plane_name
     existing_imaging_planes = nwbfile.imaging_planes
 
     if imaging_plane_name not in existing_imaging_planes:
+        imaging_plane_metadata = next(
+            (
+                imaging_plane_metadata
+                for imaging_plane_metadata in metadata_copy["Ophys"]["ImagingPlane"]
+                if imaging_plane_metadata["name"] == imaging_plane_name
+            ),
+            None,
+        )
+        if imaging_plane_metadata is None:
+            raise ValueError(
+                f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane']."
+            )
+
         imaging_plane = _create_imaging_plane_from_metadata(
             nwbfile=nwbfile, imaging_plane_metadata=imaging_plane_metadata
         )
@@ -346,18 +370,18 @@ def add_photon_series(
         ), "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified."
 
     # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
-    photon_series_kwargs = metadata_copy["Ophys"][photon_series_type][photon_series_index]
-    photon_series_name = photon_series_kwargs["name"]
+    photon_series_metadata = metadata_copy["Ophys"][photon_series_type][photon_series_index]
+    photon_series_name = photon_series_metadata["name"]
 
     if photon_series_name in nwbfile.acquisition:
         warn(f"{photon_series_name} already on nwbfile")
         return nwbfile
 
     # Add the image plane to nwb
-    # TODO: change imaging_plane_index to photon_series_key
-    nwbfile = add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_index=photon_series_index)
-    imaging_plane_name = photon_series_kwargs["imaging_plane"]
+    imaging_plane_name = photon_series_metadata["imaging_plane"]
+    add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     imaging_plane = nwbfile.get_imaging_plane(name=imaging_plane_name)
+    photon_series_kwargs = deepcopy(photon_series_metadata)
     photon_series_kwargs.update(imaging_plane=imaging_plane)
 
     # Add the data
@@ -681,7 +705,8 @@ def add_plane_segmentation(
     plane_segmentation_metadata = image_segmentation_metadata["plane_segmentations"][plane_segmentation_index]
     plane_segmentation_name = plane_segmentation_metadata["name"]
 
-    add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_index=plane_segmentation_index)
+    imaging_plane_name = plane_segmentation_metadata["imaging_plane"]
+    add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
     add_image_segmentation(nwbfile=nwbfile, metadata=metadata_copy)
 
     ophys = get_module(nwbfile, "ophys")
@@ -700,7 +725,8 @@ def add_plane_segmentation(
         imaging_plane_name = imaging_plane_metadata["name"]
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
 
-        plane_segmentation_kwargs = dict(**plane_segmentation_metadata, imaging_plane=imaging_plane)
+        plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
+        plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
         if mask_type is None:
             plane_segmentation = PlaneSegmentation(id=roi_ids, **plane_segmentation_kwargs)
         elif mask_type == "image":
