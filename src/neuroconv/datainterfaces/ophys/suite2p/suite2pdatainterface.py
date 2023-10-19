@@ -58,17 +58,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         imaging_plane_name = imaging_plane_metadata["name"] + plane_name_suffix
         imaging_plane_metadata.update(name=imaging_plane_name)
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
+        plane_segmentation_name = plane_segmentation_metadata["name"] + plane_name_suffix
         plane_segmentation_metadata.update(
-            name=f"PlaneSegmentation{plane_name_suffix}",
+            name=plane_segmentation_name,
             imaging_plane=imaging_plane_name,
         )
 
         fluorescence_metadata = metadata["Ophys"]["Fluorescence"]
         roi_response_series_metadata = fluorescence_metadata["roi_response_series"]
         for trace in roi_response_series_metadata:
-            trace.update(name=f"{trace['name']}{plane_name_suffix}")
-
-        segmentation_images_metadata = metadata["Ophys"]["SegmentationImages"][0]
-        segmentation_images_metadata.update(name=f"SegmentationImages{plane_name_suffix}")
+            trace.update(name=f"{trace['name']}{plane_segmentation_name}")
 
         return metadata
