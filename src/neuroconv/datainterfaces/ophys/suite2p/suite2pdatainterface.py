@@ -60,7 +60,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
         plane_segmentation_metadata.update(
             name=f"PlaneSegmentation{plane_name_suffix}",
-            # imaging_plane=imaging_plane_name,
+            imaging_plane=imaging_plane_name,
         )
 
         fluorescence_metadata = metadata["Ophys"]["Fluorescence"]
