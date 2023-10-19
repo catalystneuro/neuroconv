@@ -5,16 +5,12 @@ Remove `starting_time` reset to default value (0.0) when adding the rate and upd
 ### Features
 
 * Added Pydantic data models of `DatasetInfo` (immutable summary of core dataset values such as maximum shape and dtype) and `DatasetConfiguration` for both HDF5 and Zarr datasets (the optional layer that specifies chunk/buffering/compression). [PR #567](https://github.com/catalystneuro/neuroconv/pull/567)
+* Added `parent_container` keyword argument to `add_photon_series` that defines whether to add the photon series to acquisition or 'ophys' processing module. [PR #587](https://github.com/catalystneuro/neuroconv/pull/587)
 
 ### Fixes
 
 * Changed the date parsing in `OpenEphysLegacyRecordingInterface` to `datetime.strptime` with the expected date format explicitly set to `"%d-%b-%Y %H%M%S"`. [PR #577](https://github.com/catalystneuro/neuroconv/pull/577)
 * Pin lower bound HDMF version to `3.10.0`. [PR #586](https://github.com/catalystneuro/neuroconv/pull/586)
-
-### Features
-
-* Added `nwbfile_module_name` keyword argument to `add_photon_series` that defines whether to add the photon series to acquisition or processing. [PR #587](https://github.com/catalystneuro/neuroconv/pull/587)
-
 
 ### Deprecation
 * Removed `use_times` and `buffer_size` from `add_photon_series`. [PR #600](https://github.com/catalystneuro/neuroconv/pull/600)

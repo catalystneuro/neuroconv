@@ -104,7 +104,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         metadata: Optional[dict] = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
-        attach_to_nwbfile_module_name: Literal["acquisition", "processing"] = "acquisition",
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
@@ -122,5 +122,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             photon_series_type=photon_series_type,
             photon_series_index=photon_series_index,
-            attach_to_nwbfile_module_name=attach_to_nwbfile_module_name,
+            parent_container=parent_container,
         )

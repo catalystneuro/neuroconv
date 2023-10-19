@@ -1431,13 +1431,13 @@ class TestAddPhotonSeries(TestCase):
         """Test that adding photon series with invalid module name raises error."""
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg="'attach_to_nwbfile_module_name' must be either 'acquisition' or 'processing'.",
+            exc_msg="'parent_container' must be either 'acquisition' or 'processing/ophys'.",
         ):
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
-                attach_to_nwbfile_module_name="test",
+                parent_container="test",
             )
 
     def test_add_one_photon_series_to_processing(self):
@@ -1451,7 +1451,7 @@ class TestAddPhotonSeries(TestCase):
             metadata=self.one_photon_series_metadata,
             photon_series_type="OnePhotonSeries",
             photon_series_index=0,
-            attach_to_nwbfile_module_name="processing",
+            parent_container="processing/ophys",
         )
         ophys = self.nwbfile.processing["ophys"]
         self.assertIn("OnePhotonSeriesProcessed", ophys.data_interfaces)
@@ -1485,13 +1485,13 @@ class TestAddPhotonSeries(TestCase):
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
-                attach_to_nwbfile_module_name="processing",
+                parent_container="processing/ophys",
             )
             add_photon_series(
                 imaging=self.imaging_extractor,
                 nwbfile=self.nwbfile,
                 metadata=self.two_photon_series_metadata,
-                attach_to_nwbfile_module_name="processing",
+                parent_container="processing/ophys",
             )
         self.assertEqual(len(self.nwbfile.processing["ophys"].data_interfaces), 1)
 

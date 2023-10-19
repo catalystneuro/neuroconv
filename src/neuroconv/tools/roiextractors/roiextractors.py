@@ -293,7 +293,7 @@ def add_photon_series(
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
-    attach_to_nwbfile_module_name: Literal["acquisition", "processing"] = "acquisition",
+    parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     two_photon_series_index: Optional[int] = None,  # TODO: to be removed
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
@@ -318,9 +318,9 @@ def add_photon_series(
     photon_series_index: int, default: 0
         The metadata for the photon series is a list of the different photon series to add.
         Specify which element of the list with this parameter.
-    attach_to_nwbfile_module_name: {'acquisition', 'processing'}, optional
-        The module where to add the photon series to, default is nwbfile.acquisition.
-        When 'processing' is chosen, the photon series is added to nwbfile.processing['ophys'].
+    parent_container: {'acquisition', 'processing/ophys'}, optional
+        The container where the photon series is added, default is nwbfile.acquisition.
+        When 'processing/ophys' is chosen, the photon series is added to nwbfile.processing['ophys'].
 
     Returns
     -------
@@ -349,18 +349,18 @@ def add_photon_series(
             "OnePhotonSeries" not in metadata_copy["Ophys"]
         ), "Received metadata for 'OnePhotonSeries' but `photon_series_type` was not explicitly specified."
 
-    assert attach_to_nwbfile_module_name in [
+    assert parent_container in [
         "acquisition",
-        "processing",
-    ], "'attach_to_nwbfile_module_name' must be either 'acquisition' or 'processing'."
+        "processing/ophys",
+    ], "'parent_container' must be either 'acquisition' or 'processing/ophys'."
 
     # Tests if TwoPhotonSeries//OnePhotonSeries already exists in acquisition
     photon_series_kwargs = metadata_copy["Ophys"][photon_series_type][photon_series_index]
     photon_series_name = photon_series_kwargs["name"]
 
-    if attach_to_nwbfile_module_name == "acquisition" and photon_series_name in nwbfile.acquisition:
+    if parent_container == "acquisition" and photon_series_name in nwbfile.acquisition:
         raise ValueError(f"{photon_series_name} already added to nwbfile.acquisition.")
-    elif attach_to_nwbfile_module_name == "processing":
+    elif parent_container == "processing/ophys":
         ophys = get_module(nwbfile, name="ophys")
         if photon_series_name in ophys.data_interfaces:
             raise ValueError(f"{photon_series_name} already added to nwbfile.processing['ophys'].")
@@ -404,9 +404,9 @@ def add_photon_series(
         photon_series_type
     ](**photon_series_kwargs)
 
-    if attach_to_nwbfile_module_name == "acquisition":
+    if parent_container == "acquisition":
         nwbfile.add_acquisition(photon_series)
-    elif attach_to_nwbfile_module_name == "processing":
+    elif parent_container == "processing/ophys":
         ophys = get_module(nwbfile, name="ophys")
         ophys.add(photon_series)
 
@@ -498,7 +498,7 @@ def add_imaging(
     photon_series_index: int = 0,
     iterator_type: Optional[str] = "v2",
     iterator_options: Optional[dict] = None,
-    attach_to_nwbfile_module_name: Literal["acquisition", "processing"] = "acquisition",
+    parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
 ):
     add_devices(nwbfile=nwbfile, metadata=metadata)
     add_photon_series(
@@ -509,7 +509,7 @@ def add_imaging(
         photon_series_index=photon_series_index,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
-        attach_to_nwbfile_module_name=attach_to_nwbfile_module_name,
+        parent_container=parent_container,
     )
 
 
