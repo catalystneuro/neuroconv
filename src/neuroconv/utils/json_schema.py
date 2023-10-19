@@ -319,6 +319,7 @@ def validate_metadata(metadata: Dict[str, dict], schema: Dict[str, dict], verbos
     """Validate metadata against a schema."""
     encoder = NWBMetaDataEncoder()
     # The encoder produces a serialized object so we deserialized it for comparison
+
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
     validate(instance=decoded_metadata, schema=schema)
