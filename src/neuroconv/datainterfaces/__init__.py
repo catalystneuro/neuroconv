@@ -52,10 +52,7 @@ from .ecephys.plexon.plexondatainterface import (
     PlexonRecordingInterface,
     PlexonSortingInterface,
 )
-from .ecephys.spike2.spike2datainterface import (
-    CEDRecordingInterface,
-    Spike2RecordingInterface,
-)
+from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import (
     SpikeGadgetsRecordingInterface,
 )
@@ -105,7 +102,6 @@ interface_list = [
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
-    CEDRecordingInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
     CellExplorerLFPInterface,
