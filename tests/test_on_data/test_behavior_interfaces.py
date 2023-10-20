@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +37,10 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
 
     save_directory = OUTPUT_PATH
 
+    def check_extracted_metadata(self, metadata: dict):
+        expected_session_start_time = datetime(2023, 7, 24, 9, 30, 55, 440600, tzinfo=timezone.utc)
+        assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
+
 
 class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):
     data_interface_cls = VideoInterface
@@ -60,7 +64,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
     # intentional duplicate to workaround 2 tests with changes after interface construction
     interface_kwargs = [
         interface_kwargs_item,  # this is case=0, no custom timestamp
-        interface_kwargs_item,  # this is case=1, with custom timstamp
+        interface_kwargs_item,  # this is case=1, with custom timestamp
     ]
 
     # custom timestamps only for case 1

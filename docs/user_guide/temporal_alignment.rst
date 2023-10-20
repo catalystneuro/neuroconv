@@ -114,7 +114,7 @@ that as the start time of the audio stream.
             Audio=AudioDataInterface,
         )
 
-        def temporally_align_data_interfaces():
+        def temporally_align_data_interfaces(self):
             nidq_interface = self.data_interface_objects["SpikeGLXNIDQ"]
             audio_interface = self.data_interface_objects["Audio"]
             ttl_times = nidq_interface.get_event_times_from_ttl("channel-name")
