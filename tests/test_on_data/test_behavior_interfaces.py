@@ -8,6 +8,7 @@ from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
+from pynwb.behavior import Position
 
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
@@ -33,6 +34,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
     data_interface_cls = FicTracDataInterface
     interface_kwargs = [
         dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat")),
+        dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"), radius=1.0),
     ]
 
     save_directory = OUTPUT_PATH
@@ -40,6 +42,31 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
     def check_extracted_metadata(self, metadata: dict):
         expected_session_start_time = datetime(2023, 7, 24, 9, 30, 55, 440600, tzinfo=timezone.utc)
         assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
+
+    def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+
+            fictrac_position_container = nwbfile.processing["Behavior"].data_interfaces["FicTrac"]
+            assert isinstance(fictrac_position_container, Position)
+
+            assert len(fictrac_position_container.spatial_series) == 10
+
+            column_to_nwb_mapping = self.interface.column_to_nwb_mapping
+            for data_dict in column_to_nwb_mapping.values():
+                spatial_series_name = data_dict["spatial_series_name"]
+                assert spatial_series_name in fictrac_position_container.spatial_series
+
+                reference_frame = data_dict["reference_frame"]
+                spatial_series = fictrac_position_container.spatial_series[spatial_series_name]
+                assert reference_frame == spatial_series.reference_frame
+
+                if self.case == 0:
+                    expected_units = "radians"
+                elif self.case == 1:
+                    expected_units = "meters"
+
+                assert spatial_series.unit == expected_units
 
 
 class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from pynwb.behavior import CompassDirection, SpatialSeries
+from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
 # from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface TODO: Add timing methods
@@ -23,10 +23,9 @@ class FicTracDataInterface(BaseDataInterface):
         "visual fixation",
     ]
 
-    # The full header can be found in:
+    # Columns in the .dat binary file with the data. The full description of the header can be found in:
     # https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt
-
-    data_columns = [
+    columns_in_dat_file = [
         "frame_counter",
         "rotation_delta_x_cam",
         "rotation_delta_y_cam",
@@ -57,6 +56,7 @@ class FicTracDataInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: FilePathType,
+        radius: Optional[float] = None,
         verbose: bool = True,
     ):
         """
@@ -64,14 +64,17 @@ class FicTracDataInterface(BaseDataInterface):
 
         Parameters
         ----------
-        file_path : FilePathType
+        file_path : a string or a path
             Path to the .dat file (the output of fictrac)
+        radius : float, optional
+            The radius of the ball in meters. If provided the data will be converted to meters and stored as such.
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
         self.file_path = Path(file_path)
         self.verbose = verbose
         self._timestamps = None
+        self.radius = radius
         super().__init__(file_path=file_path)
 
     def get_metadata(self):
@@ -99,7 +102,7 @@ class FicTracDataInterface(BaseDataInterface):
         import pandas as pd
 
         # The first row only contains the session start time and invalid data
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.data_columns)
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_data_file)
 
         # Get the timestamps
         timestamps_milliseconds = fictrac_data_df["timestamp"].values
@@ -117,311 +120,126 @@ class FicTracDataInterface(BaseDataInterface):
 
         # All the units in FicTrac are in radians, the radius of the ball required to transform to
         # Distances is not specified in the format
-        compass_direction_container = CompassDirection(
-            name="FicTrac"
-        )  # TODO: this is just for the heading angle. I will change this to Position in a subsequent PR.
-        # Position and SpatialSeries nested into it
+        position_container = Position(name="FicTrac")
 
-        # Add rotation delta from camera
-        rotation_delta_cam_columns = [
-            "rotation_delta_x_cam",
-            "rotation_delta_y_cam",
-            "rotation_delta_z_cam",
-        ]
+        for data_dict in self.column_to_nwb_mapping.values():
+            spatial_seriess_kwargs = dict(
+                name=data_dict["spatial_series_name"],
+                description=data_dict["description"],
+                reference_frame=data_dict["reference_frame"],
+            )
 
-        description = (
-            "Change in orientation since last frame in radians from the camera frame. \n"
-            "From the point of view of the camera:"
-            "x: represents rotation of the axis to the right of the sphere (pitch) "
-            "y: represents rotation of the axis under the sphere (yaw)"
-            "z: represents rotation of the axis behind the sphere and into the picture (roll)"
-        )
+            columns = data_dict["columns_in_dat_file"]
+            data = fictrac_data_df[columns].to_numpy()
+            if self.radius is not None:
+                data = data * self.radius
+                units = "meters"
+            else:
+                units = "radians"
 
-        df_cam_delta_rotation = fictrac_data_df[rotation_delta_cam_columns]
-        data = df_cam_delta_rotation.to_numpy()
-        reference_frame = "camera"
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesRotationDeltaCameraFrame",
-            data=data,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
+            spatial_seriess_kwargs.update(data=data, unit=units)
 
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
+            if write_timestamps:
+                spatial_seriess_kwargs["timestamps"] = timestamps
+            else:
+                spatial_seriess_kwargs["rate"] = rate
+                spatial_seriess_kwargs["starting_time"] = starting_time
 
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add rotation delta from lab
-        rotation_delta_lab_columns = [
-            "rotation_delta_x_lab",
-            "rotation_delta_y_lab",
-            "rotation_delta_z_lab",
-        ]
-
-        description = (
-            "Change in orientation since last frame in radians from the lab frame. \n"
-            "From the point of view of the lab:"
-            "x: represents rotation of the axis in front of the subject (roll) "
-            "y: represents rotation of the axis to the right of the subject (pitch)"
-            "z: represents rotation of the axis under the subject (yaw)"
-        )
-
-        df_lab_delta_rotation = fictrac_data_df[rotation_delta_lab_columns]
-        data = df_lab_delta_rotation.to_numpy()
-        reference_frame = "lab"
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesRotationDeltaLabFrame",
-            data=data,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add absolute rotation from camera
-        rotation_cam_columns = [
-            "rotation_x_cam",
-            "rotation_y_cam",
-            "rotation_z_cam",
-        ]
-
-        description = (
-            "Orientation in radians from the camera frame. \n"
-            "From the point of view of the camera:"
-            "x: represents rotation of the axis to the right of the sphere (pitch) "
-            "y: represents rotation of the axis under the sphere (yaw)"
-            "z: represents rotation of the axis behind the sphere and into the picture (roll)"
-        )
-
-        df_cam_rotation = fictrac_data_df[rotation_cam_columns]
-        data = df_cam_rotation.to_numpy()
-        reference_frame = "camera"
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesRotationCameraFrame",
-            data=data,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add absolute rotation from the lab
-        rotation_lab_columns = [
-            "rotation_x_lab",
-            "rotation_y_lab",
-            "rotation_z_lab",
-        ]
-
-        description = (
-            "Orientation in radians from the lab frame. \n"
-            "From the point of view of the lab:"
-            "x: represents rotation of the axis in front of the subject (roll) "
-            "y: represents rotation of the axis to the right of the subject (pitch)"
-            "z: represents rotation of the axis under the subject (yaw)"
-        )
-
-        df_lab_rotation = fictrac_data_df[rotation_lab_columns]
-        data = df_lab_rotation.to_numpy()
-        reference_frame = "lab"
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesRotationLabFrame",
-            data=data,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add animal heading in radians
-        animal_heading = fictrac_data_df["animal_heading"].values
-        reference_frame = "lab"
-        description = (
-            "Animal heading in radians from the lab frame. "
-            "This is calculated by integrating the yaw (z-axis) rotations across time."
-        )
-
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesAnimalHeading",
-            data=animal_heading,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add movement direction
-        movement_direction = fictrac_data_df["movement_direction"].values
-        reference_frame = "lab"
-        description = (
-            "Instantaneous running direction (radians) of the animal in laboratory coordinates"
-            "This is the direction the animal is moving in the lab frame. "
-            "add to animal heading to get direction in the world."
-            "This values is inferred by the rotation of the ball (roll and pitch)"
-        )
-
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesMovementDirection",
-            reference_frame=reference_frame,
-            data=movement_direction,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add movement speed
-        movement_speed = fictrac_data_df["movement_speed"].values
-        reference_frame = "lab"
-        description = "Instantaneous running speed (radians/frame) of the animal."
-
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesMovementSpeed",
-            data=movement_speed,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add position in radians from the lab
-        position_lab_columns = [
-            "x_pos_radians_lab",
-            "y_pos_radians_lab",
-        ]
-
-        description = (
-            "x and y positions in the lab frame in radians. These values are inferred by integrating "
-            "the rotation of the across time. "
-        )
-
-        df_lab_position = fictrac_data_df[position_lab_columns]
-        data = df_lab_position.to_numpy()
-        reference_frame = "lab"
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesPosition",
-            data=data,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add integrated motion
-        integrated_motin_columns = [
-            "forward_motion_lab",
-            "side_motion_lab",
-        ]
-
-        description = "Integrated x/y position (radians) of the sphere in laboratory coordinates neglecting heading."
-
-        df_integrated_motion = fictrac_data_df[integrated_motin_columns]
-        data = df_integrated_motion.to_numpy()
-        reference_frame = "lab"
-
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesIntegratedMotion",
-            data=data,
-            unit="radians",
-            reference_frame=reference_frame,
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
-
-        # Add error in rotation delta
-        rotation_delta_error = fictrac_data_df["rotation_delta_error"].values
-        reference_frame = "lab"
-        description = "Error in rotation delta in radians from the lab frame"
-
-        spatial_seriess_kwargs = dict(
-            name="SpatialSeriesRotationDeltaError",
-            data=rotation_delta_error,
-            reference_frame=reference_frame,
-            unit="radians",
-            description=description,
-        )
-
-        if write_timestamps:
-            spatial_seriess_kwargs["timestamps"] = timestamps
-
-        else:
-            spatial_seriess_kwargs["rate"] = rate
-            spatial_seriess_kwargs["starting_time"] = starting_time
-
-        spatial_series = SpatialSeries(**spatial_seriess_kwargs)
-        compass_direction_container.add_spatial_series(spatial_series)
+            # Create the spatial series and add it to the container
+            spatial_series = SpatialSeries(**spatial_seriess_kwargs)
+            position_container.add_spatial_series(spatial_series)
 
         # Add the compass direction container to the processing module
         processing_module = get_module(nwbfile=nwbfile, name="Behavior")
-        processing_module.add_data_interface(compass_direction_container)
+        processing_module.add_data_interface(position_container)
+
+    column_to_nwb_mapping = spatial_series_descriptions = {
+        "rotation_delta_cam": {
+            "columns_in_dat_file": ["rotation_delta_x_cam", "rotation_delta_y_cam", "rotation_delta_z_cam"],
+            "spatial_series_name": "SpatialSeriesRotationDeltaCameraFrame",
+            "description": (
+                "Change in orientation since last frame from the camera's perspective. "
+                "x: rotation to the sphere's right (pitch), "
+                "y: rotation under the sphere (yaw), "
+                "z: rotation behind the sphere (roll)"
+            ),
+            "reference_frame": "camera",
+        },
+        "rotation_delta_lab": {
+            "columns_in_dat_file": ["rotation_delta_x_lab", "rotation_delta_y_lab", "rotation_delta_z_lab"],
+            "spatial_series_name": "SpatialSeriesRotationDeltaLabFrame",
+            "description": (
+                "Change in orientation since last frame from the lab's perspective. "
+                "x: rotation in front of subject (roll), "
+                "y: rotation to subject's right (pitch), "
+                "z: rotation under the subject (yaw)"
+            ),
+            "reference_frame": "lab",
+        },
+        "rotation_cam": {
+            "columns_in_dat_file": ["rotation_x_cam", "rotation_y_cam", "rotation_z_cam"],
+            "spatial_series_name": "SpatialSeriesRotationCameraFrame",
+            "description": (
+                "Orientation in radians from the camera's perspective. "
+                "x: rotation to the sphere's right (pitch), "
+                "y: rotation under the sphere (yaw), "
+                "z: rotation behind the sphere (roll)"
+            ),
+            "reference_frame": "camera",
+        },
+        "rotation_lab": {
+            "columns_in_dat_file": ["rotation_x_lab", "rotation_y_lab", "rotation_z_lab"],
+            "spatial_series_name": "SpatialSeriesRotationLabFrame",
+            "description": (
+                "Orientation in radians from the lab's perspective. "
+                "x: rotation in front of subject (roll), "
+                "y: rotation to subject's right (pitch), "
+                "z: rotation under the subject (yaw)"
+            ),
+            "reference_frame": "lab",
+        },
+        "animal_heading": {
+            "columns_in_dat_file": ["animal_heading"],
+            "spatial_series_name": "SpatialSeriesAnimalHeading",
+            "description": "Animal's heading direction in radians from the lab's perspective.",
+            "reference_frame": "lab",
+        },
+        "movement_direction": {
+            "columns_in_dat_file": ["movement_direction"],
+            "spatial_series_name": "SpatialSeriesMovementDirection",
+            "description": (
+                "Instantaneous running direction of the animal in the lab coordinates. "
+                "Direction inferred by the ball's rotation (roll and pitch)"
+            ),
+            "reference_frame": "lab",
+        },
+        "movement_speed": {
+            "columns_in_dat_file": ["movement_speed"],
+            "spatial_series_name": "SpatialSeriesMovementSpeed",
+            "description": "Instantaneous running speed of the animal in radians per frame.",
+            "reference_frame": "lab",
+        },
+        "position_lab": {
+            "columns_in_dat_file": ["x_pos_radians_lab", "y_pos_radians_lab"],
+            "spatial_series_name": "SpatialSeriesPosition",
+            "description": (
+                "x and y positions in the lab frame in radians, inferred by integrating " "the rotation over time."
+            ),
+            "reference_frame": "lab",
+        },
+        "integrated_motion": {
+            "columns_in_dat_file": ["forward_motion_lab", "side_motion_lab"],
+            "spatial_series_name": "SpatialSeriesIntegratedMotion",
+            "description": ("Integrated x/y position of the sphere in laboratory coordinates, neglecting heading."),
+            "reference_frame": "lab",
+        },
+        "rotation_delta_error": {
+            "spatial_series_name": "SpatialSeriesRotationDeltaError",
+            "columns_in_dat_file": ["rotation_delta_error"],
+            "description": "Error in rotation delta in radians from the lab's perspective.",
+            "reference_frame": "lab",
+        },
+    }
 
 
 def extract_session_start_time(file_path: FilePathType) -> datetime:
