@@ -97,6 +97,13 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
                 assert spatial_series.unit == expected_units
 
 
+class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin, unittest.TestCase):
+    data_interface_cls = FicTracDataInterface
+    interface_kwargs = [dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"))]
+
+    save_directory = OUTPUT_PATH
+
+
 class TestVideoInterface(VideoInterfaceMixin, unittest.TestCase):
     data_interface_cls = VideoInterface
     interface_kwargs = [
