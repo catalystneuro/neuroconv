@@ -104,6 +104,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         metadata: Optional[dict] = None,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
         stub_test: bool = False,
         stub_frames: int = 100,
     ):
@@ -121,4 +122,5 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             metadata=metadata,
             photon_series_type=photon_series_type,
             photon_series_index=photon_series_index,
+            parent_container=parent_container,
         )

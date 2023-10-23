@@ -1469,6 +1469,84 @@ class TestAddPhotonSeries(TestCase):
             expected_one_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
             assert one_photon_series.shape == expected_one_photon_series_shape
 
+    def test_add_photon_series_invalid_module_name_raises(self):
+        """Test that adding photon series with invalid module name raises error."""
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="'parent_container' must be either 'acquisition' or 'processing/ophys'.",
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                parent_container="test",
+            )
+
+    def test_add_one_photon_series_to_processing(self):
+        """Test adding one photon series to ophys processing module."""
+        metadata = self.one_photon_series_metadata
+        metadata["Ophys"]["OnePhotonSeries"][0].update(name="OnePhotonSeriesProcessed")
+
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.one_photon_series_metadata,
+            photon_series_type="OnePhotonSeries",
+            photon_series_index=0,
+            parent_container="processing/ophys",
+        )
+        ophys = self.nwbfile.processing["ophys"]
+        self.assertIn("OnePhotonSeriesProcessed", ophys.data_interfaces)
+
+    def test_photon_series_not_added_to_acquisition_with_same_name(self):
+        """Test that photon series with the same name are not added to nwbfile.acquisition."""
+
+        with self.assertRaisesWith(
+            exc_type=ValueError, exc_msg=f"{self.two_photon_series_name} already added to nwbfile.acquisition."
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+            )
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+            )
+        self.assertEqual(len(self.nwbfile.acquisition), 1)
+
+    def test_photon_series_not_added_to_processing_with_same_name(self):
+        """Test that photon series with the same name are not added to nwbfile.processing."""
+
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=f"{self.two_photon_series_name} already added to nwbfile.processing['ophys'].",
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                parent_container="processing/ophys",
+            )
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                parent_container="processing/ophys",
+            )
+        self.assertEqual(len(self.nwbfile.processing["ophys"].data_interfaces), 1)
+
+    def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
+        """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+        )
+        self.assertNotIn("ophys", self.nwbfile.processing)
+        self.assertEqual(len(self.nwbfile.processing), 0)
+
     def test_add_multiple_one_photon_series_with_same_imaging_plane(self):
         """Test adding two OnePhotonSeries that use the same ImagingPlane."""
         shared_photon_series_metadata = deepcopy(self.one_photon_series_metadata)
