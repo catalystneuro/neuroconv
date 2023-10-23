@@ -18,9 +18,9 @@ def get_xml_file_path(data_file_path: str) -> str:
 
 def get_xml(xml_file_path: str):
     """Auxiliary function for retrieving root of xml."""
-    lxml = get_package(package_name="lxml")
+    from lxml import etree
 
-    return lxml.etree.parse(xml_file_path).getroot()
+    return etree.parse(xml_file_path).getroot()
 
 
 def safe_find(root, key: str, findall: bool = False):
