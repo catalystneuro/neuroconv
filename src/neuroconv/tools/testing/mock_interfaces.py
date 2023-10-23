@@ -147,9 +147,6 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         return metadata
 
 
-from roiextractors.testing import generate_dummy_imaging_extractor
-
-
 class MockImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
@@ -160,6 +157,8 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         dtype: str = "uint16",
         verbose: bool = True,
     ):
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
         self.imaging_extractor = generate_dummy_imaging_extractor(
             num_frames=num_frames,
             num_rows=num_rows,
