@@ -54,7 +54,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
     column_to_nwb_mapping = spatial_series_descriptions = {
         "rotation_delta_cam": {
-            "columns_in_dat_file": ["rotation_delta_x_cam", "rotation_delta_y_cam", "rotation_delta_z_cam"],
+            "column_in_dat_file": ["rotation_delta_x_cam", "rotation_delta_y_cam", "rotation_delta_z_cam"],
             "spatial_series_name": "SpatialSeriesRotationDeltaCameraFrame",
             "description": (
                 "Change in orientation since last frame from the camera's perspective. "
@@ -65,7 +65,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             "reference_frame": "camera",
         },
         "rotation_delta_lab": {
-            "columns_in_dat_file": ["rotation_delta_x_lab", "rotation_delta_y_lab", "rotation_delta_z_lab"],
+            "column_in_dat_file": ["rotation_delta_x_lab", "rotation_delta_y_lab", "rotation_delta_z_lab"],
             "spatial_series_name": "SpatialSeriesRotationDeltaLabFrame",
             "description": (
                 "Change in orientation since last frame from the lab's perspective. "
@@ -76,7 +76,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             "reference_frame": "lab",
         },
         "rotation_cam": {
-            "columns_in_dat_file": ["rotation_x_cam", "rotation_y_cam", "rotation_z_cam"],
+            "column_in_dat_file": ["rotation_x_cam", "rotation_y_cam", "rotation_z_cam"],
             "spatial_series_name": "SpatialSeriesRotationCameraFrame",
             "description": (
                 "Orientation in radians from the camera's perspective. "
@@ -87,7 +87,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             "reference_frame": "camera",
         },
         "rotation_lab": {
-            "columns_in_dat_file": ["rotation_x_lab", "rotation_y_lab", "rotation_z_lab"],
+            "column_in_dat_file": ["rotation_x_lab", "rotation_y_lab", "rotation_z_lab"],
             "spatial_series_name": "SpatialSeriesRotationLabFrame",
             "description": (
                 "Orientation in radians from the lab's perspective. "
@@ -98,13 +98,13 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             "reference_frame": "lab",
         },
         "animal_heading": {
-            "columns_in_dat_file": ["animal_heading"],
+            "column_in_dat_file": ["animal_heading"],
             "spatial_series_name": "SpatialSeriesAnimalHeading",
             "description": "Animal's heading direction in radians from the lab's perspective.",
             "reference_frame": "lab",
         },
         "movement_direction": {
-            "columns_in_dat_file": ["movement_direction"],
+            "column_in_dat_file": ["movement_direction"],
             "spatial_series_name": "SpatialSeriesMovementDirection",
             "description": (
                 "Instantaneous running direction of the animal in the lab coordinates. "
@@ -113,13 +113,13 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             "reference_frame": "lab",
         },
         "movement_speed": {
-            "columns_in_dat_file": ["movement_speed"],
+            "column_in_dat_file": ["movement_speed"],
             "spatial_series_name": "SpatialSeriesMovementSpeed",
             "description": "Instantaneous running speed of the animal in radians per frame.",
             "reference_frame": "lab",
         },
         "position_lab": {
-            "columns_in_dat_file": ["x_pos_radians_lab", "y_pos_radians_lab"],
+            "column_in_dat_file": ["x_pos_radians_lab", "y_pos_radians_lab"],
             "spatial_series_name": "SpatialSeriesPosition",
             "description": (
                 "x and y positions in the lab frame in radians, inferred by integrating " "the rotation over time."
@@ -127,14 +127,14 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             "reference_frame": "lab",
         },
         "integrated_motion": {
-            "columns_in_dat_file": ["forward_motion_lab", "side_motion_lab"],
+            "column_in_dat_file": ["forward_motion_lab", "side_motion_lab"],
             "spatial_series_name": "SpatialSeriesIntegratedMotion",
             "description": ("Integrated x/y position of the sphere in laboratory coordinates, neglecting heading."),
             "reference_frame": "lab",
         },
         "rotation_delta_error": {
             "spatial_series_name": "SpatialSeriesRotationDeltaError",
-            "columns_in_dat_file": ["rotation_delta_error"],
+            "column_in_dat_file": ["rotation_delta_error"],
             "description": "Error in rotation delta in radians from the lab's perspective.",
             "reference_frame": "lab",
         },
@@ -217,8 +217,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
                 reference_frame=data_dict["reference_frame"],
             )
 
-            columns_in_dat_file = data_dict["columns_in_dat_file"]
-            data = fictrac_data_df[columns_in_dat_file].to_numpy()
+            column_in_dat_file = data_dict["column_in_dat_file"]
+            data = fictrac_data_df[column_in_dat_file].to_numpy()
             if self.radius is not None:
                 data = data * self.radius
                 units = "meters"
@@ -244,11 +244,11 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     def get_original_timestamps(self):
         import pandas as pd
 
-        fictrac_data_df = pd.read_csv(
-            self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_dat_file, usecols=["timestamp"]
-        )
+        timestamp_index = self.columns_in_dat_file.index("timestamp")
 
-        return fictrac_data_df["timestamp"].values / 1000.0
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, usecols=[timestamp_index])
+
+        return fictrac_data_df[timestamp_index].values / 1000.0
 
     def get_timestamps(self):
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
