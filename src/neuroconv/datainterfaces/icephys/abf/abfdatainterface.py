@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 from typing import List
 from warnings import warn
+from pathlib import Path
 
 from ..baseicephysinterface import BaseIcephysInterface
 
@@ -102,10 +103,9 @@ class AbfInterface(BaseIcephysInterface):
         iii = 0
         for ir, reader in enumerate(self.readers_list):
             # Get extra info from metafile, if present
-            abf_file_name = reader.filename.split("/")[-1]
-            item = [s for s in icephys_sessions if s.get("abf_file_name", "") == abf_file_name]
+            abf_file_name = Path(reader.filename).name
+            item = [s for s in icephys_sessions if Path(s.get("abf_file_name", "")).name == abf_file_name]
             extra_info = item[0] if len(item) > 0 else dict()
-
             abfDateTime = get_start_datetime(neo_reader=reader)
 
             # Calculate session start time relative to first abf file (first session), in seconds
