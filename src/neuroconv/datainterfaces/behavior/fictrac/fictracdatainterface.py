@@ -123,7 +123,7 @@ class FicTracDataInterface(BaseDataInterface):
         position_container = Position(name="FicTrac")
 
         for data_dict in self.column_to_nwb_mapping.values():
-            spatial_seriess_kwargs = dict(
+            spatial_series_kwargs = dict(
                 name=data_dict["spatial_series_name"],
                 description=data_dict["description"],
                 reference_frame=data_dict["reference_frame"],
@@ -137,16 +137,16 @@ class FicTracDataInterface(BaseDataInterface):
             else:
                 units = "radians"
 
-            spatial_seriess_kwargs.update(data=data, unit=units)
+            spatial_series_kwargs.update(data=data, unit=units)
 
             if write_timestamps:
-                spatial_seriess_kwargs["timestamps"] = timestamps
+                spatial_series_kwargs["timestamps"] = timestamps
             else:
-                spatial_seriess_kwargs["rate"] = rate
-                spatial_seriess_kwargs["starting_time"] = starting_time
+                spatial_series_kwargs["rate"] = rate
+                spatial_series_kwargs["starting_time"] = starting_time
 
             # Create the spatial series and add it to the container
-            spatial_series = SpatialSeries(**spatial_seriess_kwargs)
+            spatial_series = SpatialSeries(**spatial_series_kwargs)
             position_container.add_spatial_series(spatial_series)
 
         # Add the compass direction container to the processing module
