@@ -3,8 +3,6 @@ from pathlib import Path
 
 from dateutil import parser
 
-from ....tools import get_package
-
 
 def get_xml_file_path(data_file_path: str) -> str:
     """
@@ -18,7 +16,7 @@ def get_xml_file_path(data_file_path: str) -> str:
 
 def get_xml(xml_file_path: str):
     """Auxiliary function for retrieving root of xml."""
-    from xml import etree
+    from lxml import etree
 
     return etree.parse(xml_file_path).getroot()
 
