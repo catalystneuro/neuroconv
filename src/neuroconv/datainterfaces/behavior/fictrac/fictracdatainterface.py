@@ -6,13 +6,12 @@ from typing import Optional
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
-# from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface TODO: Add timing methods
-from ....basedatainterface import BaseDataInterface
+from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....utils import FilePathType, calculate_regular_series_rate
 
 
-class FicTracDataInterface(BaseDataInterface):
+class FicTracDataInterface(BaseTemporalAlignmentInterface):
     """Data interface for FicTrac datasets."""
 
     keywords = [
@@ -77,6 +76,9 @@ class FicTracDataInterface(BaseDataInterface):
         self.radius = radius
         super().__init__(file_path=file_path)
 
+        self._timestamps = None
+        self._starting_time = None
+
     def get_metadata(self):
         metadata = super().get_metadata()
 
@@ -105,8 +107,9 @@ class FicTracDataInterface(BaseDataInterface):
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
-        timestamps_milliseconds = fictrac_data_df["timestamp"].values
-        timestamps = timestamps_milliseconds / 1000.0
+        timestamps = self.get_timestamps()
+
+        starting_time = timestamps[0]
 
         # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
         # The reason, most likely, is that FicTrac is relying on OpenCV to get the timestamps from the video
@@ -114,12 +117,9 @@ class FicTracDataInterface(BaseDataInterface):
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if the series is not regular
         if rate:
             write_timestamps = False
-            starting_time = timestamps[0]
         else:
             write_timestamps = True
 
-        # All the units in FicTrac are in radians, the radius of the ball required to transform to
-        # Distances is not specified in the format
         position_container = Position(name="FicTrac")
 
         for data_dict in self.column_to_nwb_mapping.values():
@@ -152,6 +152,30 @@ class FicTracDataInterface(BaseDataInterface):
         # Add the compass direction container to the processing module
         processing_module = get_module(nwbfile=nwbfile, name="Behavior")
         processing_module.add_data_interface(position_container)
+
+    def get_original_timestamps(self):
+        import pandas as pd
+
+        fictrac_data_df = pd.read_csv(
+            self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_dat_file, usecols=["timestamp"]
+        )
+
+        return fictrac_data_df["timestamp"].values / 1000.0
+
+    def get_timestamps(self):
+        timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
+        if self._starting_time is not None:
+            # Shift the timestamps to the starting time such that timestamps[0] == self._starting_time
+            # timestamps = timestamps - timestamps[0] + self._starting_time
+            timestamps = timestamps + self._starting_time
+
+        return timestamps
+
+    def set_aligned_timestamps(self, aligned_timestamps):
+        self._timestamps = aligned_timestamps
+
+    def set_aligned_starting_time(self, aligned_starting_time):
+        self._starting_time = aligned_starting_time
 
     column_to_nwb_mapping = spatial_series_descriptions = {
         "rotation_delta_cam": {
