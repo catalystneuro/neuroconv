@@ -52,6 +52,94 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         "alt_timestamp",
     ]
 
+    column_to_nwb_mapping = spatial_series_descriptions = {
+        "rotation_delta_cam": {
+            "columns_in_dat_file": ["rotation_delta_x_cam", "rotation_delta_y_cam", "rotation_delta_z_cam"],
+            "spatial_series_name": "SpatialSeriesRotationDeltaCameraFrame",
+            "description": (
+                "Change in orientation since last frame from the camera's perspective. "
+                "x: rotation to the sphere's right (pitch), "
+                "y: rotation under the sphere (yaw), "
+                "z: rotation behind the sphere (roll)"
+            ),
+            "reference_frame": "camera",
+        },
+        "rotation_delta_lab": {
+            "columns_in_dat_file": ["rotation_delta_x_lab", "rotation_delta_y_lab", "rotation_delta_z_lab"],
+            "spatial_series_name": "SpatialSeriesRotationDeltaLabFrame",
+            "description": (
+                "Change in orientation since last frame from the lab's perspective. "
+                "x: rotation in front of subject (roll), "
+                "y: rotation to subject's right (pitch), "
+                "z: rotation under the subject (yaw)"
+            ),
+            "reference_frame": "lab",
+        },
+        "rotation_cam": {
+            "columns_in_dat_file": ["rotation_x_cam", "rotation_y_cam", "rotation_z_cam"],
+            "spatial_series_name": "SpatialSeriesRotationCameraFrame",
+            "description": (
+                "Orientation in radians from the camera's perspective. "
+                "x: rotation to the sphere's right (pitch), "
+                "y: rotation under the sphere (yaw), "
+                "z: rotation behind the sphere (roll)"
+            ),
+            "reference_frame": "camera",
+        },
+        "rotation_lab": {
+            "columns_in_dat_file": ["rotation_x_lab", "rotation_y_lab", "rotation_z_lab"],
+            "spatial_series_name": "SpatialSeriesRotationLabFrame",
+            "description": (
+                "Orientation in radians from the lab's perspective. "
+                "x: rotation in front of subject (roll), "
+                "y: rotation to subject's right (pitch), "
+                "z: rotation under the subject (yaw)"
+            ),
+            "reference_frame": "lab",
+        },
+        "animal_heading": {
+            "columns_in_dat_file": ["animal_heading"],
+            "spatial_series_name": "SpatialSeriesAnimalHeading",
+            "description": "Animal's heading direction in radians from the lab's perspective.",
+            "reference_frame": "lab",
+        },
+        "movement_direction": {
+            "columns_in_dat_file": ["movement_direction"],
+            "spatial_series_name": "SpatialSeriesMovementDirection",
+            "description": (
+                "Instantaneous running direction of the animal in the lab coordinates. "
+                "Direction inferred by the ball's rotation (roll and pitch)"
+            ),
+            "reference_frame": "lab",
+        },
+        "movement_speed": {
+            "columns_in_dat_file": ["movement_speed"],
+            "spatial_series_name": "SpatialSeriesMovementSpeed",
+            "description": "Instantaneous running speed of the animal in radians per frame.",
+            "reference_frame": "lab",
+        },
+        "position_lab": {
+            "columns_in_dat_file": ["x_pos_radians_lab", "y_pos_radians_lab"],
+            "spatial_series_name": "SpatialSeriesPosition",
+            "description": (
+                "x and y positions in the lab frame in radians, inferred by integrating " "the rotation over time."
+            ),
+            "reference_frame": "lab",
+        },
+        "integrated_motion": {
+            "columns_in_dat_file": ["forward_motion_lab", "side_motion_lab"],
+            "spatial_series_name": "SpatialSeriesIntegratedMotion",
+            "description": ("Integrated x/y position of the sphere in laboratory coordinates, neglecting heading."),
+            "reference_frame": "lab",
+        },
+        "rotation_delta_error": {
+            "spatial_series_name": "SpatialSeriesRotationDeltaError",
+            "columns_in_dat_file": ["rotation_delta_error"],
+            "description": "Error in rotation delta in radians from the lab's perspective.",
+            "reference_frame": "lab",
+        },
+    }
+
     def __init__(
         self,
         file_path: FilePathType,
@@ -176,94 +264,6 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
     def set_aligned_starting_time(self, aligned_starting_time):
         self._starting_time = aligned_starting_time
-
-    column_to_nwb_mapping = spatial_series_descriptions = {
-        "rotation_delta_cam": {
-            "columns_in_dat_file": ["rotation_delta_x_cam", "rotation_delta_y_cam", "rotation_delta_z_cam"],
-            "spatial_series_name": "SpatialSeriesRotationDeltaCameraFrame",
-            "description": (
-                "Change in orientation since last frame from the camera's perspective. "
-                "x: rotation to the sphere's right (pitch), "
-                "y: rotation under the sphere (yaw), "
-                "z: rotation behind the sphere (roll)"
-            ),
-            "reference_frame": "camera",
-        },
-        "rotation_delta_lab": {
-            "columns_in_dat_file": ["rotation_delta_x_lab", "rotation_delta_y_lab", "rotation_delta_z_lab"],
-            "spatial_series_name": "SpatialSeriesRotationDeltaLabFrame",
-            "description": (
-                "Change in orientation since last frame from the lab's perspective. "
-                "x: rotation in front of subject (roll), "
-                "y: rotation to subject's right (pitch), "
-                "z: rotation under the subject (yaw)"
-            ),
-            "reference_frame": "lab",
-        },
-        "rotation_cam": {
-            "columns_in_dat_file": ["rotation_x_cam", "rotation_y_cam", "rotation_z_cam"],
-            "spatial_series_name": "SpatialSeriesRotationCameraFrame",
-            "description": (
-                "Orientation in radians from the camera's perspective. "
-                "x: rotation to the sphere's right (pitch), "
-                "y: rotation under the sphere (yaw), "
-                "z: rotation behind the sphere (roll)"
-            ),
-            "reference_frame": "camera",
-        },
-        "rotation_lab": {
-            "columns_in_dat_file": ["rotation_x_lab", "rotation_y_lab", "rotation_z_lab"],
-            "spatial_series_name": "SpatialSeriesRotationLabFrame",
-            "description": (
-                "Orientation in radians from the lab's perspective. "
-                "x: rotation in front of subject (roll), "
-                "y: rotation to subject's right (pitch), "
-                "z: rotation under the subject (yaw)"
-            ),
-            "reference_frame": "lab",
-        },
-        "animal_heading": {
-            "columns_in_dat_file": ["animal_heading"],
-            "spatial_series_name": "SpatialSeriesAnimalHeading",
-            "description": "Animal's heading direction in radians from the lab's perspective.",
-            "reference_frame": "lab",
-        },
-        "movement_direction": {
-            "columns_in_dat_file": ["movement_direction"],
-            "spatial_series_name": "SpatialSeriesMovementDirection",
-            "description": (
-                "Instantaneous running direction of the animal in the lab coordinates. "
-                "Direction inferred by the ball's rotation (roll and pitch)"
-            ),
-            "reference_frame": "lab",
-        },
-        "movement_speed": {
-            "columns_in_dat_file": ["movement_speed"],
-            "spatial_series_name": "SpatialSeriesMovementSpeed",
-            "description": "Instantaneous running speed of the animal in radians per frame.",
-            "reference_frame": "lab",
-        },
-        "position_lab": {
-            "columns_in_dat_file": ["x_pos_radians_lab", "y_pos_radians_lab"],
-            "spatial_series_name": "SpatialSeriesPosition",
-            "description": (
-                "x and y positions in the lab frame in radians, inferred by integrating " "the rotation over time."
-            ),
-            "reference_frame": "lab",
-        },
-        "integrated_motion": {
-            "columns_in_dat_file": ["forward_motion_lab", "side_motion_lab"],
-            "spatial_series_name": "SpatialSeriesIntegratedMotion",
-            "description": ("Integrated x/y position of the sphere in laboratory coordinates, neglecting heading."),
-            "reference_frame": "lab",
-        },
-        "rotation_delta_error": {
-            "spatial_series_name": "SpatialSeriesRotationDeltaError",
-            "columns_in_dat_file": ["rotation_delta_error"],
-            "description": "Error in rotation delta in radians from the lab's perspective.",
-            "reference_frame": "lab",
-        },
-    }
 
 
 def extract_session_start_time(file_path: FilePathType) -> datetime:
