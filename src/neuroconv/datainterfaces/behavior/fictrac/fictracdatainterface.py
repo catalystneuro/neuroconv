@@ -102,7 +102,7 @@ class FicTracDataInterface(BaseDataInterface):
         import pandas as pd
 
         # The first row only contains the session start time and invalid data
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_data_file)
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
         timestamps_milliseconds = fictrac_data_df["timestamp"].values
