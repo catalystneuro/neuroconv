@@ -129,8 +129,8 @@ class FicTracDataInterface(BaseDataInterface):
                 reference_frame=data_dict["reference_frame"],
             )
 
-            columns = data_dict["columns_in_dat_file"]
-            data = fictrac_data_df[columns].to_numpy()
+            columns_in_dat_file = data_dict["columns_in_dat_file"]
+            data = fictrac_data_df[columns_in_dat_file].to_numpy()
             if self.radius is not None:
                 data = data * self.radius
                 units = "meters"
