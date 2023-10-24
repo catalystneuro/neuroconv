@@ -136,6 +136,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.subset_channels = None
         self.verbose = verbose
         self.es_key = es_key
+        self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
