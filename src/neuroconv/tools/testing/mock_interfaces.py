@@ -11,6 +11,9 @@ from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
+from ...datainterfaces.ophys.baseimagingextractorinterface import (
+    BaseImagingExtractorInterface,
+)
 from ...utils import ArrayType, get_schema_from_method_signature
 
 
@@ -141,5 +144,34 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+
+class MockImagingInterface(BaseImagingExtractorInterface):
+    def __init__(
+        self,
+        num_frames: int = 30,
+        num_rows: int = 10,
+        num_columns: int = 10,
+        sampling_frequency: float = 30,
+        dtype: str = "uint16",
+        verbose: bool = True,
+    ):
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        self.imaging_extractor = generate_dummy_imaging_extractor(
+            num_frames=num_frames,
+            num_rows=num_rows,
+            num_columns=num_columns,
+            sampling_frequency=sampling_frequency,
+            dtype=dtype,
+        )
+
+        self.verbose = verbose
+
+    def get_metadata(self) -> dict:
+        session_start_time = datetime.now().astimezone()
+        metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
