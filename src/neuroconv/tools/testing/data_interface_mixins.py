@@ -705,3 +705,34 @@ class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMi
             imaging_extractor = self.interface.imaging_extractor
             times_from_extractor = imaging_extractor._times
             assert_array_equal(one_photon_series.timestamps, times_from_extractor)
+
+
+class MicroManagerTiffImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+    def check_read_nwb(self, nwbfile_path: str):
+        imaging = self.interface.imaging_extractor
+        nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path, optical_series_name=self.photon_series_name)
+
+        exclude_channel_comparison = False
+        if imaging.get_channel_names() is None:
+            exclude_channel_comparison = True
+
+        check_imaging_equal(imaging, nwb_imaging, exclude_channel_comparison)
+
+    def check_nwbfile_temporal_alignment(self):
+        nwbfile_path = str(
+            self.save_directory / f"{self.data_interface_cls.__name__}_{self.case}_test_starting_time_alignment.nwb"
+        )
+
+        interface = self.data_interface_cls(**self.test_kwargs)
+
+        aligned_starting_time = 1.23
+        interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+
+        metadata = interface.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+
+        with NWBHDF5IO(path=nwbfile_path) as io:
+            nwbfile = io.read()
+
+            assert nwbfile.acquisition["OnePhotonSeries"].starting_time == aligned_starting_time
