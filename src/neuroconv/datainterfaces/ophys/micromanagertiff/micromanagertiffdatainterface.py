@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 from dateutil.parser import parse
 from pynwb import NWBFile

@@ -21,8 +21,8 @@ from neuroconv.datainterfaces import (
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     ImagingExtractorInterfaceTestMixin,
-    MiniscopeImagingInterfaceMixin,
     MicroManagerTiffImagingInterfaceMixin,
+    MiniscopeImagingInterfaceMixin,
 )
 
 try:
