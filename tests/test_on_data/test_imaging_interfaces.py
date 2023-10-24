@@ -22,6 +22,7 @@ from neuroconv.datainterfaces import (
 from neuroconv.tools.testing.data_interface_mixins import (
     ImagingExtractorInterfaceTestMixin,
     MiniscopeImagingInterfaceMixin,
+    MicroManagerTiffImagingInterfaceMixin,
 )
 
 try:
@@ -408,7 +409,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
             assert nwbfile.acquisition[self.photon_series_name].starting_time == aligned_starting_time
 
 
-class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, TestCase):
+class TestMicroManagerTiffImagingInterface(MicroManagerTiffImagingInterfaceMixin, TestCase):
     data_interface_cls = MicroManagerTiffImagingInterface
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
@@ -418,6 +419,7 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
     @classmethod
     def setUpClass(cls) -> None:
         cls.device_metadata = dict(name="Microscope")
+        cls.photon_series_name = "OnePhotonSeries"
         cls.optical_channel_metadata = dict(
             name="OpticalChannelDefault",
             emission_lambda=np.NAN,
@@ -433,19 +435,18 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
             optical_channel=[cls.optical_channel_metadata],
             imaging_rate=20.0,
         )
-        cls.two_photon_series_metadata = dict(
-            name="TwoPhotonSeries",
-            description="Imaging data from two-photon excitation microscopy.",
-            unit="px",
+        cls.one_photon_series_metadata = dict(
+            name=cls.photon_series_name,
+            description="Imaging data from one-photon excitation microscopy.",
+            unit="n.a.",
             dimension=[1024, 1024],
-            format="tiff",
             imaging_plane=cls.imaging_plane_metadata["name"],
         )
 
         cls.ophys_metadata = dict(
             Device=[cls.device_metadata],
             ImagingPlane=[cls.imaging_plane_metadata],
-            TwoPhotonSeries=[cls.two_photon_series_metadata],
+            OnePhotonSeries=[cls.one_photon_series_metadata],
         )
 
     def check_extracted_metadata(self, metadata: dict):
@@ -454,28 +455,6 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin, T
             datetime(2022, 4, 7, 15, 6, 56, 842000, tzinfo=tzoffset(None, -18000)),
         )
         self.assertDictEqual(metadata["Ophys"], self.ophys_metadata)
-
-    def check_read_nwb(self, nwbfile_path: str):
-        """Check the ophys metadata made it to the NWB file"""
-
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-
-            self.assertIn(self.imaging_plane_metadata["name"], nwbfile.imaging_planes)
-            imaging_plane = nwbfile.imaging_planes[self.imaging_plane_metadata["name"]]
-            optical_channel = imaging_plane.optical_channel[0]
-            self.assertEqual(optical_channel.name, self.optical_channel_metadata["name"])
-            self.assertEqual(optical_channel.description, self.optical_channel_metadata["description"])
-            self.assertEqual(imaging_plane.description, self.imaging_plane_metadata["description"])
-            self.assertEqual(imaging_plane.imaging_rate, self.imaging_plane_metadata["imaging_rate"])
-            self.assertIn(self.two_photon_series_metadata["name"], nwbfile.acquisition)
-            two_photon_series = nwbfile.acquisition[self.two_photon_series_metadata["name"]]
-            self.assertEqual(two_photon_series.description, self.two_photon_series_metadata["description"])
-            self.assertEqual(two_photon_series.unit, self.two_photon_series_metadata["unit"])
-            self.assertEqual(two_photon_series.format, self.two_photon_series_metadata["format"])
-            assert_array_equal(two_photon_series.dimension[:], self.two_photon_series_metadata["dimension"])
-
-        super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin, hdmf_TestCase):
