@@ -17,7 +17,6 @@ from neuroconv.datainterfaces import (
     AxonaRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
-    CEDRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
     MaxOneRecordingInterface,
@@ -139,15 +138,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         ),
     ]
 
-    this_python_version = version.parse(python_version())
-    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
-        parameterized_recording_list.append(
-            param(
-                data_interface=CEDRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-                case_name="smrx",
-            )
-        )
     if system() == "Linux":
         parameterized_recording_list.append(
             param(
@@ -187,16 +177,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
         ]
     )
-
-    this_python_version = version.parse(python_version())
-    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
-        parameterized_recording_list.append(
-            param(
-                data_interface=CEDRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-                case_name="smrx",
-            )
-        )
 
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(

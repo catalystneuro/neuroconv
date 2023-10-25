@@ -164,7 +164,7 @@ class TestAddDevices(unittest.TestCase):
         assert "device_object" in devices
 
 
-class TestAddImagingPlane(unittest.TestCase):
+class TestAddImagingPlane(TestCase):
     def setUp(self):
         self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
@@ -200,7 +200,7 @@ class TestAddImagingPlane(unittest.TestCase):
         self.metadata["Ophys"].update(ImagingPlane=[self.imaging_plane_metadata])
 
     def test_add_imaging_plane(self):
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name)
 
         imaging_planes = self.nwbfile.imaging_planes
         assert len(imaging_planes) == 1
@@ -210,10 +210,10 @@ class TestAddImagingPlane(unittest.TestCase):
         assert imaging_plane.description == self.imaging_plane_description
 
     def test_not_overwriting_imaging_plane_if_same_name(self):
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name)
 
         self.imaging_plane_metadata["description"] = "modified description"
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=self.imaging_plane_name)
 
         imaging_planes = self.nwbfile.imaging_planes
         assert len(imaging_planes) == 1
@@ -225,14 +225,14 @@ class TestAddImagingPlane(unittest.TestCase):
         first_imaging_plane_description = "first_imaging_plane_description"
         self.imaging_plane_metadata["name"] = first_imaging_plane_name
         self.imaging_plane_metadata["description"] = first_imaging_plane_description
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=first_imaging_plane_name)
 
         # Add the second imaging plane
         second_imaging_plane_name = "second_imaging_plane_name"
         second_imaging_plane_description = "second_imaging_plane_description"
         self.imaging_plane_metadata["name"] = second_imaging_plane_name
         self.imaging_plane_metadata["description"] = second_imaging_plane_description
-        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=second_imaging_plane_name)
 
         # Test expected values
         imaging_planes = self.nwbfile.imaging_planes
@@ -245,6 +245,49 @@ class TestAddImagingPlane(unittest.TestCase):
         second_imaging_plane = imaging_planes[second_imaging_plane_name]
         assert second_imaging_plane.name == second_imaging_plane_name
         assert second_imaging_plane.description == second_imaging_plane_description
+
+    def test_add_imaging_plane_raises_when_name_not_found_in_metadata(self):
+        """Test adding an imaging plane raises an error when the name is not found in the metadata."""
+        imaging_plane_name = "imaging_plane_non_existing_in_the_metadata"
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=f"Metadata for Imaging Plane '{imaging_plane_name}' not found in metadata['Ophys']['ImagingPlane'].",
+        ):
+            add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_name=imaging_plane_name)
+
+    def test_add_two_imaging_planes_from_metadata(self):
+        """Test adding two imaging planes when there are multiple imaging plane metadata."""
+
+        second_imaging_plane_name = "second_imaging_plane_name"
+        metadata = deepcopy(self.metadata)
+        imaging_planes_metadata = metadata["Ophys"]["ImagingPlane"]
+        second_imaging_plane_metadata = deepcopy(metadata["Ophys"]["ImagingPlane"][0])
+        second_imaging_plane_metadata.update(name="second_imaging_plane_name")
+        imaging_planes_metadata.append(second_imaging_plane_metadata)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name=self.imaging_plane_name)
+        add_imaging_plane(nwbfile=self.nwbfile, metadata=metadata, imaging_plane_name="second_imaging_plane_name")
+
+        # Test expected values
+        imaging_planes = self.nwbfile.imaging_planes
+        assert len(imaging_planes) == 2
+
+        first_imaging_plane = imaging_planes[self.imaging_plane_name]
+        assert first_imaging_plane.name == self.imaging_plane_name
+
+        second_imaging_plane = imaging_planes[second_imaging_plane_name]
+        assert second_imaging_plane.name == second_imaging_plane_name
+
+    def test_add_imaging_plane_warns_when_index_is_used(self):
+        """Test adding an imaging plane with the index specified warns with DeprecationWarning."""
+        exc_msg = "Keyword argument 'imaging_plane_index' is deprecated and will be removed on or after Dec 1st, 2023. Use 'imaging_plane_name' to specify which imaging plane to add by its name."
+        with self.assertWarnsWith(warn_type=DeprecationWarning, exc_msg=exc_msg):
+            add_imaging_plane(nwbfile=self.nwbfile, metadata=self.metadata, imaging_plane_index=0)
+            # Test expected values
+            imaging_planes = self.nwbfile.imaging_planes
+            assert len(imaging_planes) == 1
+
+            imaging_plane = imaging_planes[self.imaging_plane_name]
+            assert imaging_plane.name == self.imaging_plane_name
 
 
 class TestAddImageSegmentation(unittest.TestCase):
@@ -331,8 +374,7 @@ class TestAddPlaneSegmentation(unittest.TestCase):
         self.metadata = dict(Ophys=dict())
 
         self.plane_segmentation_metadata = dict(
-            name=self.plane_segmentation_name,
-            description="Segmented ROIs",
+            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
         )
 
         image_segmentation_metadata = dict(
@@ -1426,6 +1468,111 @@ class TestAddPhotonSeries(TestCase):
             # NWB stores images as num_columns x num_rows
             expected_one_photon_series_shape = (self.num_frames, self.num_columns, self.num_rows)
             assert one_photon_series.shape == expected_one_photon_series_shape
+
+    def test_add_photon_series_invalid_module_name_raises(self):
+        """Test that adding photon series with invalid module name raises error."""
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="'parent_container' must be either 'acquisition' or 'processing/ophys'.",
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                parent_container="test",
+            )
+
+    def test_add_one_photon_series_to_processing(self):
+        """Test adding one photon series to ophys processing module."""
+        metadata = self.one_photon_series_metadata
+        metadata["Ophys"]["OnePhotonSeries"][0].update(name="OnePhotonSeriesProcessed")
+
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.one_photon_series_metadata,
+            photon_series_type="OnePhotonSeries",
+            photon_series_index=0,
+            parent_container="processing/ophys",
+        )
+        ophys = self.nwbfile.processing["ophys"]
+        self.assertIn("OnePhotonSeriesProcessed", ophys.data_interfaces)
+
+    def test_photon_series_not_added_to_acquisition_with_same_name(self):
+        """Test that photon series with the same name are not added to nwbfile.acquisition."""
+
+        with self.assertRaisesWith(
+            exc_type=ValueError, exc_msg=f"{self.two_photon_series_name} already added to nwbfile.acquisition."
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+            )
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+            )
+        self.assertEqual(len(self.nwbfile.acquisition), 1)
+
+    def test_photon_series_not_added_to_processing_with_same_name(self):
+        """Test that photon series with the same name are not added to nwbfile.processing."""
+
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=f"{self.two_photon_series_name} already added to nwbfile.processing['ophys'].",
+        ):
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                parent_container="processing/ophys",
+            )
+            add_photon_series(
+                imaging=self.imaging_extractor,
+                nwbfile=self.nwbfile,
+                metadata=self.two_photon_series_metadata,
+                parent_container="processing/ophys",
+            )
+        self.assertEqual(len(self.nwbfile.processing["ophys"].data_interfaces), 1)
+
+    def test_ophys_module_not_created_when_photon_series_added_to_acquisition(self):
+        """Test that ophys module is not created when photon series are added to nwbfile.acquisition."""
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+        )
+        self.assertNotIn("ophys", self.nwbfile.processing)
+        self.assertEqual(len(self.nwbfile.processing), 0)
+
+    def test_add_multiple_one_photon_series_with_same_imaging_plane(self):
+        """Test adding two OnePhotonSeries that use the same ImagingPlane."""
+        shared_photon_series_metadata = deepcopy(self.one_photon_series_metadata)
+        shared_imaging_plane_name = "same_imaging_plane_for_two_series"
+
+        shared_photon_series_metadata["Ophys"]["ImagingPlane"][0]["name"] = shared_imaging_plane_name
+        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["imaging_plane"] = shared_imaging_plane_name
+
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=shared_photon_series_metadata,
+            photon_series_type="OnePhotonSeries",
+        )
+
+        shared_photon_series_metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "second_photon_series"
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=shared_photon_series_metadata,
+            photon_series_type="OnePhotonSeries",
+        )
+
+        self.assertIn("second_photon_series", self.nwbfile.acquisition)
+        self.assertEqual(len(self.nwbfile.imaging_planes), 1)
+        self.assertIn(shared_imaging_plane_name, self.nwbfile.imaging_planes)
 
 
 class TestAddSummaryImages(unittest.TestCase):
