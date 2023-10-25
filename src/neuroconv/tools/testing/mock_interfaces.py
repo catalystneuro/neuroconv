@@ -139,6 +139,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             durations=durations,
             seed=seed,
             verbose=verbose,
+            es_key=es_key,
         )
 
     def get_metadata(self) -> dict:
