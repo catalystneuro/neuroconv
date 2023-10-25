@@ -28,7 +28,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
     def __init__(
         self,
         folder_path: FolderPathType,
-        streams: Optional[list[str]] = None,
+        streams: Optional[List[str]] = None,
         verbose: bool = False,
     ):
         """

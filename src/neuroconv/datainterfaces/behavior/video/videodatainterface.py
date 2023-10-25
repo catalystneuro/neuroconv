@@ -20,9 +20,7 @@ from ....utils import get_base_schema, get_schema_from_hdmf_class
 class VideoInterface(BaseDataInterface):
     """Data interface for writing videos as ImageSeries."""
 
-    def __init__(
-        self, file_paths: list[Path | str], verbose: bool = False
-    ):  # TODO - debug why List[FilePathType] fails
+    def __init__(self, file_paths: list, verbose: bool = False):  # TODO - debug why List[FilePathType] fails
         """
         Create the interface for writing videos as ImageSeries.
 
