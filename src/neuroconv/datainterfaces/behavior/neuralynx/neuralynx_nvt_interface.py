@@ -55,7 +55,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         add_position: bool = True,
-        add_angle: bool = True,
+        add_angle: Optional[bool] = None,
     ):
         """
         Add NVT data to a given in-memory NWB file
@@ -67,7 +67,8 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         metadata : dict, optional
             metadata info for constructing the nwb file.
         add_position : bool, default=True
-        add_angle : bool, default=True
+        add_angle : bool, optional
+            If None, write angle as long as it is not all 0s
         """
 
         data = read_data(self.file_path)
@@ -94,14 +95,14 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
 
             nwbfile.add_acquisition(Position([spatial_series], name="NvtPosition"))
 
-        if add_angle:
+        if add_angle or (add_angle is None and not np.all(data["Angle"] == 0)):
             nwbfile.add_acquisition(
                 CompassDirection(
                     SpatialSeries(
                         name="NvtAngleSpatialSeries",
                         data=data["Angle"],
                         reference_frame="unknown",
-                        unit="pixels",
+                        unit="degrees",  # I'm not 100% sure this is correct since the demo data I got was all 0s.
                         conversion=1.0,
                         timestamps=spatial_series if add_position else self.get_timestamps(),
                         description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}",

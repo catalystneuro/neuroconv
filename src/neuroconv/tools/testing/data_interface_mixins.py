@@ -59,6 +59,7 @@ class DataInterfaceTestMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
+    conversion_options: dict = dict()
     maxDiff = None
 
     def test_source_schema_valid(self):
@@ -86,7 +87,7 @@ class DataInterfaceTestMixin:
     def run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options)
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
