@@ -18,11 +18,15 @@ Convert FicTrac pose estimation data to NWB using :py:class:`~neuroconv.datainte
 
     >>> file_path = BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"
 
-    >>> interface = FicTracDataInterface(file_path=file_path, verbose=False)
+    >>> radius = 0.035  # If you have the radius of the ball (in meters), you can pass it to the interface and the data will be saved in meters
+    >>> interface = FicTracDataInterface(file_path=file_path, radius=radius, verbose=False)
 
+    >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+
+    >>> # For data provenance we add the time zone information to the conversion
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
