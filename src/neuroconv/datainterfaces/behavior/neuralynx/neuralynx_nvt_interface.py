@@ -5,7 +5,7 @@ import numpy as np
 from pynwb import NWBFile
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
-from .nvt_utils import read_header, read_data
+from .nvt_utils import read_data, read_header
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....utils import DeepDict, FilePathType, NWBMetaDataEncoder
 
@@ -73,7 +73,6 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         data = read_data(self.file_path)
 
         if add_position:
-
             # convert to float and change <= 0 (null) to NaN
             xi = data["Xloc"]
             x = xi.astype(float)
@@ -90,7 +89,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                 unit="pixels",
                 conversion=1.0,
                 timestamps=self.get_timestamps(),
-                description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}"
+                description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}",
             )
 
             nwbfile.add_acquisition(Position([spatial_series], name="NvtPosition"))
@@ -105,7 +104,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                         unit="pixels",
                         conversion=1.0,
                         timestamps=spatial_series if add_position else self.get_timestamps(),
-                        description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}"
+                        description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}",
                     ),
                     name="NvtCompassDirection",
                 )

@@ -1,2 +1,3 @@
 dlc2nwb>=0.3
-tables  # imported by package but not included in pip setup (is included in setup.cfg)
+tables<3.9.0;python_version<'3.9'  # imported by package but not included in pip setup (is included in setup.cfg)
+tables;python_version>='3.9'

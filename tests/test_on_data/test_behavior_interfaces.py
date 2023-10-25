@@ -14,9 +14,9 @@ from neuroconv.datainterfaces import (
     DeepLabCutInterface,
     FicTracDataInterface,
     MiniscopeBehaviorInterface,
+    NeuralynxNvtInterface,
     SLEAPInterface,
     VideoInterface,
-    NeuralynxNvtInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
@@ -62,7 +62,7 @@ class TestDeepLabCutInterface(DeepLabCutInterfaceMixin, unittest.TestCase):
     # intentional duplicate to workaround 2 tests with changes after interface construction
     interface_kwargs = [
         interface_kwargs_item,  # this is case=0, no custom timestamp
-        interface_kwargs_item,  # this is case=1, with custom timstamp
+        interface_kwargs_item,  # this is case=1, with custom timestamp
     ]
 
     # custom timestamps only for case 1
@@ -208,4 +208,6 @@ class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, 
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
             assert isinstance(nwbfile.acquisition["NvtPosition"].spatial_series["NvtSpatialSeries"], SpatialSeries)
-            assert isinstance(nwbfile.acquisition["NvtCompassDirection"].spatial_series["NvtAngleSpatialSeries"], SpatialSeries)
+            assert isinstance(
+                nwbfile.acquisition["NvtCompassDirection"].spatial_series["NvtAngleSpatialSeries"], SpatialSeries
+            )

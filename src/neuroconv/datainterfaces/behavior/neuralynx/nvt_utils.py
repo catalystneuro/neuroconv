@@ -1,11 +1,9 @@
 import os
 from datetime import datetime
+from shutil import copy
 from typing import Dict, List, Union
 
-from shutil import copy
-
 import numpy as np
-
 
 # Constants for header size and record format
 from neuroconv.utils import FilePathType

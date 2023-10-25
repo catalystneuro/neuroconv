@@ -2,6 +2,7 @@ name: Testing External Links
 on:
   pull_request:
   merge_group:
+  workflow_call:
 
 jobs:
   build-and-test:

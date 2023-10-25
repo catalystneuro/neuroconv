@@ -318,7 +318,7 @@ def get_metadata_schema_for_icephys():
 def validate_metadata(metadata: Dict[str, dict], schema: Dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
     encoder = NWBMetaDataEncoder()
-    # The encoder produces a serialiazed object so we de serialized it for comparison
+    # The encoder produces a serialized object so we deserialized it for comparison
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
     validate(instance=decoded_metadata, schema=schema)
