@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import List, Literal, Optional
 from warnings import warn
@@ -20,7 +22,9 @@ from ....utils import get_base_schema, get_schema_from_hdmf_class
 class VideoInterface(BaseDataInterface):
     """Data interface for writing videos as ImageSeries."""
 
-    def __init__(self, file_paths: list, verbose: bool = False):  # TODO - debug why List[FilePathType] fails
+    def __init__(
+        self, file_paths: list[str | Path], verbose: bool = False
+    ):  # TODO - debug why List[FilePathType] fails
         """
         Create the interface for writing videos as ImageSeries.
 
