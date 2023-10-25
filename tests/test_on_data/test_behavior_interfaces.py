@@ -276,3 +276,8 @@ class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, 
             assert isinstance(
                 nwbfile.acquisition["NvtCompassDirection"].spatial_series["NvtAngleSpatialSeries"], SpatialSeries
             )
+
+    def check_metadata(self):
+        super().check_metadata()
+        metadata = self.interface.get_metadata()
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 5, 15, 10, 35, 29)
