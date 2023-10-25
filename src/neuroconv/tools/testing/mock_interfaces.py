@@ -126,11 +126,11 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        num_channels=4,
-        sampling_frequency=30_000.0,
-        durations=[1.0],
-        seed=0,
-        verbose=True,
+        num_channels: int = 4,
+        sampling_frequency: float = 30_000.0,
+        durations: List[float] = [1.0],
+        seed: int = 0,
+        verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
         super().__init__(
