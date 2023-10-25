@@ -31,4 +31,3 @@ Convert Neuralynx NVT data to NWB using
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-

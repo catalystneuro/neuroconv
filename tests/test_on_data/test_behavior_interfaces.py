@@ -8,7 +8,7 @@ from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-from pynwb.behavior import SpatialSeries, Position
+from pynwb.behavior import Position, SpatialSeries
 
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
