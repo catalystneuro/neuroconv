@@ -38,8 +38,13 @@ class NWBMetaDataEncoder(json.JSONEncoder):
 
 
 def get_base_schema(
-    tag=None, root=False, id_=None, required: Optional[List] = None, properties: Optional[Dict] = None, **kwargs
-) -> dict:
+    tag: Optional[str] = None,
+        root: bool = False,
+        id_: Optional[str] = None,
+        required: Optional[List] = None,
+        properties: Optional[Dict] = None,
+        **kwargs
+    ) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=required or [],
@@ -49,7 +54,7 @@ def get_base_schema(
     )
     if tag is not None:
         base_schema.update(tag=tag)
-    if root is not None:
+    if root:
         base_schema.update({"$schema": "http://json-schema.org/draft-07/schema#"})
     if id_ is not None:
         base_schema.update({"$id": id_})
