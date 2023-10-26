@@ -8,6 +8,7 @@ from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from .nvt_utils import read_data, read_header
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....utils import DeepDict, FilePathType, NWBMetaDataEncoder, get_base_schema
+from ....utils.path import infer_path
 
 
 class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
@@ -29,7 +30,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
         self._timestamps = self.get_original_timestamps()
         self.header = read_header(self.file_path)
-        self.nvt_filename = self.header["OriginalFileName"].split("\\")[-1]
+        self.nvt_filename = infer_path(self.header["OriginalFileName"]).name
 
         super().__init__(file_path=file_path)
 
