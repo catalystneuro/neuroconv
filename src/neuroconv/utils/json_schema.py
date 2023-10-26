@@ -39,12 +39,12 @@ class NWBMetaDataEncoder(json.JSONEncoder):
 
 def get_base_schema(
     tag: Optional[str] = None,
-        root: bool = False,
-        id_: Optional[str] = None,
-        required: Optional[List] = None,
-        properties: Optional[Dict] = None,
-        **kwargs
-    ) -> dict:
+    root: bool = False,
+    id_: Optional[str] = None,
+    required: Optional[List] = None,
+    properties: Optional[Dict] = None,
+    **kwargs
+) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=required or [],
