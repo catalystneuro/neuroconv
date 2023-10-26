@@ -8,12 +8,13 @@ from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-from pynwb.behavior import Position
+from pynwb.behavior import Position, SpatialSeries
 
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
     FicTracDataInterface,
     MiniscopeBehaviorInterface,
+    NeuralynxNvtInterface,
     SLEAPInterface,
     VideoInterface,
 )
@@ -261,3 +262,23 @@ class TestMiniscopeInterface(DataInterfaceTestMixin, unittest.TestCase):
             self.assertEqual(device, nwbfile.acquisition[self.image_series_name].device)
             assert_array_equal(image_series.timestamps[:], self.timestamps)
             assert_array_equal(image_series.external_file[:], self.external_files)
+
+
+class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+    data_interface_cls = NeuralynxNvtInterface
+    interface_kwargs = dict(file_path=str(BEHAVIOR_DATA_PATH / "neuralynx" / "test.nvt"))
+    conversion_options = dict(add_angle=True)
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            assert isinstance(nwbfile.acquisition["NvtPosition"].spatial_series["NvtSpatialSeries"], SpatialSeries)
+            assert isinstance(
+                nwbfile.acquisition["NvtCompassDirection"].spatial_series["NvtAngleSpatialSeries"], SpatialSeries
+            )
+
+    def check_metadata(self):
+        super().check_metadata()
+        metadata = self.interface.get_metadata()
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 5, 15, 10, 35, 29)
