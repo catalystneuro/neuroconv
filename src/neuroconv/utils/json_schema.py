@@ -43,7 +43,7 @@ def get_base_schema(
     id_: Optional[str] = None,
     required: Optional[List] = None,
     properties: Optional[Dict] = None,
-    **kwargs
+    **kwargs,
 ) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
