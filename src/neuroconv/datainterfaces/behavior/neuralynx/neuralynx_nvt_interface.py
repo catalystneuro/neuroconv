@@ -73,7 +73,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
             {
                 self.nvt_filename: dict(
                     type="object",
-                    required=["name", "reference_frame"],
+                    required=["position_name", "position_reference_frame"],
                     properties=dict(
                         position_name=dict(type="string", default="NvtSpatialSeries"),
                         position_reference_frame=dict(type="string", default="unknown"),
