@@ -1,3 +1,4 @@
+import os.path
 from pathlib import Path, PureWindowsPath
 
 from neuroconv.utils.path import infer_path
@@ -14,7 +15,7 @@ def test_unix_path():
     unix_path = "/Users/anon/Desktop/file.txt"
     result = infer_path(unix_path)
     assert isinstance(result, Path)
-    assert result.parts[0] == "/"
+    assert result.parts[0] == os.path.sep
 
 
 def test_mixed_path():
