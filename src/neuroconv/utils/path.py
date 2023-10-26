@@ -20,7 +20,7 @@ def infer_path(path: str) -> Union[PureWindowsPath, Path]:
 
     Examples
     --------
-    >>> infer_path(r'C:\Users\anon\Desktop\file.txt')
+    >>> infer_path(r'C:\\Users\\anon\\Desktop\\file.txt')
     PureWindowsPath('C:/Users/anon/Desktop/file.txt')
 
     >>> infer_path('/Users/anon/Desktop/file.txt')
