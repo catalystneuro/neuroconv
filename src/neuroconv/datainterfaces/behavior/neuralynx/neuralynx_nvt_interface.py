@@ -132,7 +132,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                         name="NvtAngleSpatialSeries",
                         data=data["Angle"],
                         reference_frame="unknown",
-                        unit="degrees",  # I'm not 100% sure this is correct since the demo data I got was all 0s.
+                        unit="degrees",
                         conversion=1.0,
                         timestamps=spatial_series if add_position else self.get_timestamps(),
                         description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=NWBMetaDataEncoder)}",
