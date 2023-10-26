@@ -52,7 +52,12 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
 
         metadata["NWBFile"].update(session_start_time=self.header["TimeCreated"])
-        metadata["Behavior"][self.nvt_filename].update(name="NvtSpatialSeries", reference_frame="unknown")
+        metadata["Behavior"][self.nvt_filename].update(
+            position_name="NvtSpatialSeries",
+            position_reference_frame="unknown",
+            angle_name="NvtAngleSpatialSeries",
+            angle_reference_frame="unknown",
+        )
         return metadata
 
     def get_metadata_schema(self) -> dict:
@@ -70,8 +75,10 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                     type="object",
                     required=["name", "reference_frame"],
                     properties=dict(
-                        name=dict(type="string", default="NvtSpatialSeries"),
-                        reference_frame=dict(type="string", default="unknown"),
+                        position_name=dict(type="string", default="NvtSpatialSeries"),
+                        position_reference_frame=dict(type="string", default="unknown"),
+                        angle_name=dict(type="string", default="NvtAngleSpatialSeries"),
+                        angle_reference_frame=dict(type="string", default="unknown"),
                     ),
                 )
             }
@@ -100,7 +107,9 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
             If None, write angle as long as it is not all 0s
         """
 
-        metadata = (metadata or self.get_metadata()).to_dict()
+        metadata = metadata or self.get_metadata()
+        if isinstance(metadata, DeepDict):
+            metadata = metadata.to_dict()
 
         data = read_data(self.file_path)
 
@@ -115,9 +124,9 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
             y[yi <= 0] = np.nan
 
             spatial_series = SpatialSeries(
-                name=metadata["Behavior"][self.nvt_filename]["name"],
+                name=metadata["Behavior"][self.nvt_filename]["position_name"],
                 data=np.c_[x, y],
-                reference_frame=metadata["Behavior"][self.nvt_filename]["reference_frame"],
+                reference_frame=metadata["Behavior"][self.nvt_filename]["position_reference_frame"],
                 unit="pixels",
                 conversion=1.0,
                 timestamps=self.get_timestamps(),
@@ -130,9 +139,9 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
             nwbfile.add_acquisition(
                 CompassDirection(
                     SpatialSeries(
-                        name="NvtAngleSpatialSeries",
+                        name=metadata["Behavior"][self.nvt_filename]["angle_name"],
                         data=data["Angle"],
-                        reference_frame="unknown",
+                        reference_frame=metadata["Behavior"][self.nvt_filename]["angle_reference_frame"],
                         unit="degrees",
                         conversion=1.0,
                         timestamps=spatial_series if add_position else self.get_timestamps(),
