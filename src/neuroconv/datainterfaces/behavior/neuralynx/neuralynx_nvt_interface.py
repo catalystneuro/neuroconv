@@ -7,7 +7,7 @@ from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from .nvt_utils import read_data, read_header
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....utils import DeepDict, FilePathType, NWBMetaDataEncoder
+from ....utils import DeepDict, FilePathType, NWBMetaDataEncoder, get_base_schema
 
 
 class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
@@ -29,6 +29,8 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
         self._timestamps = self.get_original_timestamps()
         self.header = read_header(self.file_path)
+        self.nvt_filename = self.header["OriginalFileName"].split("\\")[-1]
+
         super().__init__(file_path=file_path)
 
     def get_original_timestamps(self) -> np.ndarray:
@@ -47,8 +49,34 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+
         metadata["NWBFile"].update(session_start_time=self.header["TimeCreated"])
+        metadata["Behavior"][self.nvt_filename].update(name="NvtSpatialSeries", reference_frame="unknown")
         return metadata
+
+    def get_metadata_schema(self) -> dict:
+        metadata_schema = super().get_metadata_schema()
+
+        if "Behavior" not in metadata_schema["properties"]:
+            metadata_schema["properties"]["Behavior"] = get_base_schema(required=[self.nvt_filename])
+            metadata_schema.setdefault("requirements", []).append("Behavior")
+        else:
+            metadata_schema["properties"]["Behavior"].setdefault("requirements", []).append(self.nvt_filename)
+
+        metadata_schema["properties"]["Behavior"]["properties"].update(
+            {
+                self.nvt_filename: dict(
+                    type="object",
+                    required=["name", "reference_frame"],
+                    properties=dict(
+                        name=dict(type="string", default="NvtSpatialSeries"),
+                        reference_frame=dict(type="string", default="unknown"),
+                    )
+                )
+            }
+        )
+
+        return metadata_schema
 
     def add_to_nwbfile(
         self,
@@ -71,6 +99,8 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
             If None, write angle as long as it is not all 0s
         """
 
+        metadata = (metadata or self.get_metadata()).to_dict()
+
         data = read_data(self.file_path)
 
         if add_position:
@@ -84,9 +114,9 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
             y[yi <= 0] = np.nan
 
             spatial_series = SpatialSeries(
-                name="NvtSpatialSeries",
+                name=metadata["Behavior"][self.nvt_filename]["name"],
                 data=np.c_[x, y],
-                reference_frame="unknown",
+                reference_frame=metadata["Behavior"][self.nvt_filename]["reference_frame"],
                 unit="pixels",
                 conversion=1.0,
                 timestamps=self.get_timestamps(),
