@@ -2,7 +2,7 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
-from typing import Callable, Dict, Literal, Optional, List
+from typing import Callable, Dict, List, Literal, Optional
 
 import hdmf.data_utils
 import numpy as np
@@ -37,7 +37,9 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def get_base_schema(tag=None, root=False, id_=None, required: Optional[List] = None, properties: Optional[Dict] = None, **kwargs) -> dict:
+def get_base_schema(
+    tag=None, root=False, id_=None, required: Optional[List] = None, properties: Optional[Dict] = None, **kwargs
+) -> dict:
     """Return the base schema used for all other schemas."""
     base_schema = dict(
         required=required or [],
