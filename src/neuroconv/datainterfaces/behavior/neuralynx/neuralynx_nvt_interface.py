@@ -71,7 +71,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                     properties=dict(
                         name=dict(type="string", default="NvtSpatialSeries"),
                         reference_frame=dict(type="string", default="unknown"),
-                    )
+                    ),
                 )
             }
         )
