@@ -120,7 +120,7 @@ def read_data(filename: str) -> Dict[str, np.ndarray]:
         return {name: records[name].squeeze() for name, *_ in RECORD_FORMAT}
 
 
-def truncate_file(source_filename: FilePathType, dest_filename: str, n_records: int = 10) -> None:
+def truncate_file(source_filename: FilePathType, dest_filename: str, n_records: int = 10) -> None:  # pragma: no cover
     """
     Creates a new .nvt file with the same header and truncated data. Useful for creating
     test files.
