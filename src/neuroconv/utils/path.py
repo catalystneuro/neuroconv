@@ -1,5 +1,5 @@
-from pathlib import PureWindowsPath, Path
 import re
+from pathlib import Path, PureWindowsPath
 from typing import Union
 
 
