@@ -8,11 +8,12 @@ import numpy as np
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from neuroconv.utils import (
+    NWBMetaDataEncoder,
     dict_deep_update,
     fill_defaults,
     get_schema_from_hdmf_class,
     get_schema_from_method_signature,
-    load_dict_from_file, NWBMetaDataEncoder,
+    load_dict_from_file,
 )
 
 
