@@ -170,9 +170,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         self._timestamps = None
         self._starting_time = None
-        if metadata_file_path is not None:
-            self.metadata_file_path = Path(metadata_file_path)
-            self.configuration_metadata = parse_fictrac_config(self.metadata_file_path)
+        self.configuration_metadata = parse_fictrac_config(metadata_file_path) if metadata_file_path else None
 
     def get_metadata(self):
         metadata = super().get_metadata()
@@ -218,16 +216,16 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         position_container = Position(name="FicTrac")
         if self.configuration_metadata is not None:
             comments = f"configuration_metadata = {json.dumps(self.configuration_metadata)}"
-        else:
-            comments = None
 
         for data_dict in self.column_to_nwb_mapping.values():
             spatial_series_kwargs = dict(
                 name=data_dict["spatial_series_name"],
                 description=data_dict["description"],
                 reference_frame=data_dict["reference_frame"],
-                comments=comments,
             )
+
+            if self.configuration_metadata is not None:
+                spatial_series_kwargs["comments"] = comments
 
             column_in_dat_file = data_dict["column_in_dat_file"]
             data = fictrac_data_df[column_in_dat_file].to_numpy()
