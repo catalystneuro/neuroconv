@@ -220,7 +220,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             column_in_dat_file = data_dict["column_in_dat_file"]
             data = fictrac_data_df[column_in_dat_file].to_numpy()
             if self.radius is not None:
-                data = data * self.radius
+                spatial_series_kwargs["conversion"] = self.radius
                 units = "meters"
             else:
                 units = "radians"

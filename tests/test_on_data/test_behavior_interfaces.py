@@ -63,6 +63,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
 
                 expected_units = "radians"
                 assert spatial_series.unit == expected_units
+                assert spatial_series.conversion == 1.0
 
 
 class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCase):
@@ -96,6 +97,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
                 assert reference_frame == spatial_series.reference_frame
                 expected_units = "meters"
                 assert spatial_series.unit == expected_units
+                assert spatial_series.conversion == self.interface.radius
 
 
 class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin, unittest.TestCase):
