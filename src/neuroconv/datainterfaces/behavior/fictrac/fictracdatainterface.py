@@ -154,7 +154,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         file_path : a string or a path
             Path to the .dat file (the output of fictrac)
         radius : float, optional
-            The radius of the ball in meters. If provided the data will be converted to meters and stored as such.
+            The radius of the ball in meters. If provided the radius is stored as a conversion factor
+            and the units are set to meters. If not provided the units are set to radians.
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
@@ -238,7 +239,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             position_container.add_spatial_series(spatial_series)
 
         # Add the compass direction container to the processing module
-        processing_module = get_module(nwbfile=nwbfile, name="Behavior")
+        processing_module = get_module(nwbfile=nwbfile, name="behavior")
         processing_module.add_data_interface(position_container)
 
     def get_original_timestamps(self):
