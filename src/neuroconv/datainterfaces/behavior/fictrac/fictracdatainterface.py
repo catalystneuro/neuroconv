@@ -170,7 +170,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         self._timestamps = None
         self._starting_time = None
-        self.configuration_metadata = parse_fictrac_config(metadata_file_path) if metadata_file_path else None
+        self.configuration_metadata = parse_fictrac_config(file_path=metadata_file_path) if metadata_file_path else None
 
     def get_metadata(self):
         metadata = super().get_metadata()
@@ -204,9 +204,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         starting_time = timestamps[0]
 
-        # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
-        # The reason, most likely, is that FicTrac is relying on OpenCV to get the timestamps from the video
-        # In my experience, OpenCV is not very accurate with the timestamps at the end of the video.
+        # Note: Returns timestamps from the Graber classess in fictrac library. The most common is for them to be
+        # video timestamp extracted with OpenCV with all the caveats that come with it.
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if the series is not regular
         if rate:
             write_timestamps = False
@@ -296,13 +295,13 @@ def extract_session_start_time(file_path: FilePathType) -> datetime:
     return utc_datetime
 
 
-def parse_fictrac_config(filename: str) -> dict:
+def parse_fictrac_config(file_path: str) -> dict:
     """
     Parse a FicTrac configuration file and return a dictionary of its parameters.
 
     Parameters
     ----------
-    filename : str, Path
+    file_path : str, Path
         Path to the configuration file in txt format.
 
     Returns
@@ -325,7 +324,12 @@ def parse_fictrac_config(filename: str) -> dict:
         innner_vectors = x.strip("{}").strip().split("}, {")
         return [parse_vec_int(group) for group in innner_vectors]
 
+    def parse_int_or_string(x):
+        value = int(x) if x.isdigit() else x
+        return value
+
     KEY_PARSERS = {
+        "src_fn": parse_int_or_string,
         "vfov": float,
         "do_display": parse_bool,
         "save_debug": parse_bool,
@@ -355,7 +359,7 @@ def parse_fictrac_config(filename: str) -> dict:
     }
 
     # Open and read the file
-    with open(filename, "r") as f:
+    with open(file_path, "r") as f:
         file_lines = f.readlines()
 
     parsed_config = {}
@@ -369,11 +373,9 @@ def parse_fictrac_config(filename: str) -> dict:
     parsed_config["version"] = version
     parsed_config["build_date"] = build_date
 
-    # Parse the file
-    configuration_txt = file_lines[1:]
-    for line in configuration_txt:
-        if ":" not in line:
-            continue
+    # Parse the configuration lines
+    configuration_lines = (line for line in file_lines[1:] if ":" in line)
+    for line in configuration_lines:
         key, value = line.split(":", 1)
         key = key.strip()
         value = value.strip()
