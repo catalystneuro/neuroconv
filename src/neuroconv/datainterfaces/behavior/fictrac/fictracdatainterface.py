@@ -145,7 +145,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePathType,
         radius: Optional[float] = None,
-        metadata_file_path: FilePathType = None,
+        metadata_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
     ):
         """
