@@ -46,7 +46,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             Manual specification of the internal chunk shape for the HDF5 dataset.
             Cannot be set if `chunk_mb` is also specified.
             The default is None.
-        display_progress : bool, optional
+        display_progress : bool, default=False
             Display a progress bar with iteration rate and estimated completion time.
         progress_bar_options : dict, optional
             Dictionary of keyword arguments to be passed directly to tqdm.
