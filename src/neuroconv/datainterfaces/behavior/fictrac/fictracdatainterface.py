@@ -238,7 +238,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             spatial_series = SpatialSeries(**spatial_series_kwargs)
             position_container.add_spatial_series(spatial_series)
 
-        # Add the compass direction container to the processing module
+        # Add the container to the processing module
         processing_module = get_module(nwbfile=nwbfile, name="behavior")
         processing_module.add_data_interface(position_container)
 
