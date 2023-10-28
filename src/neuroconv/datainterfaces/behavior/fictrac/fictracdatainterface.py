@@ -173,7 +173,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         self.configuration_metadata = None
         if self.configuration_file_path is not None:
-            self.configuration_metadata = parse_fictrac_config(file_path=configuration_file_path)
+            self.configuration_metadata = parse_fictrac_config(file_path=self.configuration_file_path)
 
         self._timestamps = None
         self._starting_time = None
