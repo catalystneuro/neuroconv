@@ -53,6 +53,11 @@ Phy Sorting
 -----------
 .. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
 
+Plexon Recording & Sorting
+--------------------------
+
+.. automodule:: neuroconv.datainterfaces.ecephys.plexon.plexondatainterface
+
 Spike2
 ------
 .. automodule:: neuroconv.datainterfaces.ecephys.spike2.spike2datainterface
