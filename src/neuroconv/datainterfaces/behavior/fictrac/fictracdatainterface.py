@@ -145,7 +145,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePathType,
         radius: Optional[float] = None,
-        metadata_file_path: FilePathType = None,
+        configuration_file_path: FilePathType = None,
         verbose: bool = True,
     ):
         """
@@ -157,7 +157,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             Path to the .dat file (the output of fictrac)
         radius : float, optional
             The radius of the ball in meters. If provided the data will be converted to meters and stored as such.
-        metadata_file_path : a string or a path, optional
+        configuration_file_path : a string or a path, optional
             Path to the .txt file with the configuration metadata. Usually called config.txt
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
@@ -170,7 +170,9 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         self._timestamps = None
         self._starting_time = None
-        self.configuration_metadata = parse_fictrac_config(file_path=metadata_file_path) if metadata_file_path else None
+        self.configuration_metadata = (
+            parse_fictrac_config(file_path=configuration_file_path) if configuration_file_path else None
+        )
 
     def get_metadata(self):
         metadata = super().get_metadata()
