@@ -246,20 +246,34 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
     def get_original_timestamps(self):
         """
-        In FicTrac version 2.1.1  the timestampts that are 0 are changed for system time in milliseconds. The
-        system time is set at the point in which the frame is processed. This means that the timestamps are not
-        monotonically increasing. This function checks if the timestamps are inconsistent.
+        Retrieve and correct the original timestamps from a FicTrac data file.
 
-        This happens for video sources whe OpenCV returns 0 at the beginning:
-        [0, t1, t2, t3, ...]
+        This function performs two key corrections:
+        1. If the first timestamp is replaced with system time (e.g., in the case of the first timestamp being 0),
+        it is reset back to 0. This issue has been identified in FicTrac version 2.1.1 and possibly in earlier versions.
 
-        In that case, FicTrac changes the 0 to system time:
+        2. If timestamps are recorded in Unix epoch time format, indicating an absolute time reference since
+        the Unix epoch (1970-01-01 00:00:00 UTC), the entire series is re-centered by
+        subtracting the first timestamp value.
 
-        [system_time, t1, t2, t3, ...]
+        Notes
+        -----
+        - The case of the first timestamp being replaced with 0 is prominent in data whose source is a video file.
+        In that case, if OpenCV returns the first timestamps as 0, FicTrac replaces it with the system time.
+        This action results in an inconsistent sequence like [system_time, t1, t2, t3, ...].
+        The function adjusts this by changing the first timestamp back to 0.
+        - The function also detects timestamps in Unix epoch format, which might be uncharacteristically large numbers,
+        representing the time elapsed since the Unix epoch. Such timestamps are re-centered to the start of the experiment
+        for consistency.
 
-        And the timestamps are inconsistent
+        Returns
+        -------
+        np.ndarray
+            An array of corrected timestamps, in seconds.
 
-        See:
+        References
+        ----------
+        Issue discussion on FicTrac's timestamp inconsistencies:
         https://github.com/rjdmoore/fictrac/issues/29
 
         """
@@ -267,7 +281,6 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         timestamp_index = self.columns_in_dat_file.index("timestamp")
-
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=0, header=None, usecols=[timestamp_index])
 
         timestamps = fictrac_data_df[timestamp_index].values / 1000.0  # Transform to seconds
