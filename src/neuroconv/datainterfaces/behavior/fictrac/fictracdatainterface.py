@@ -193,7 +193,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         # The first row only contains the session start time and invalid data
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", names=self.columns_in_dat_file)
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
         timestamps = self.get_timestamps()
@@ -278,7 +278,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         timestamp_index = self.columns_in_dat_file.index("timestamp")
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", usecols=[timestamp_index])
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, usecols=[timestamp_index])
 
         timestamps = fictrac_data_df[timestamp_index].values / 1000.0  # Transform to seconds
 
