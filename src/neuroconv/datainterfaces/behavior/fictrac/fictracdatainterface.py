@@ -145,7 +145,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePathType,
         radius: Optional[float] = None,
-        configuration_file_path: FilePathType = None,
+        configuration_file_path: Optional[FilePathType] = None,
         verbose: bool = True,
     ):
         """
@@ -164,15 +164,19 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         """
         self.file_path = Path(file_path)
         self.verbose = verbose
-        self._timestamps = None
         self.radius = radius
         super().__init__(file_path=file_path)
 
+        self.configuration_file_path = configuration_file_path
+        if self.configuration_file_path is None and (self.file_path.parent / "config.txt").is_file():
+            self.configuration_file_path = self.file_path.parent / "config.txt"
+
+        self.configuration_metadata = None
+        if self.configuration_file_path is not None:
+            self.configuration_metadata = parse_fictrac_config(file_path=configuration_file_path)
+
         self._timestamps = None
         self._starting_time = None
-        self.configuration_metadata = (
-            parse_fictrac_config(file_path=configuration_file_path) if configuration_file_path else None
-        )
 
     def get_metadata(self):
         metadata = super().get_metadata()
