@@ -37,6 +37,14 @@ KiloSort Sorting
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.kilosort.kilosortdatainterface
 
+MaxOne Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.maxwell.maxonedatainterface
+
+MEArec Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.mearec.mearecdatainterface
+
 Neuralynx Recording & Sorting
 -----------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
@@ -49,9 +57,6 @@ OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
 
-MaxOne Recording
-----------------
-.. automodule:: neuroconv.datainterfaces.ecephys.maxwell.maxonedatainterface
 
 Phy Sorting
 -----------
