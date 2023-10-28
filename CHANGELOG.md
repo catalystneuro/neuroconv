@@ -23,7 +23,7 @@
 * Pin lower bound HDMF version to `3.10.0`. [PR #586](https://github.com/catalystneuro/neuroconv/pull/586)
 
 ### Deprecation
-* Removed `use_times` and `buffer_size` from `add_photon_series`. [PR #621](https://github.com/catalystneuro/neuroconv/pull/621)
+* Removed `use_times` and `buffer_size` from `add_photon_series`. [PR #600](https://github.com/catalystneuro/neuroconv/pull/600)
 
 
 ### Testing
