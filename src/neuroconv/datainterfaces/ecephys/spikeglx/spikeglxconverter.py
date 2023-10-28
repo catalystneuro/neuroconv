@@ -11,8 +11,9 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 
 class SpikeGLXConverterPipe(ConverterPipe):
     """
-    The simplest, easiest to use class for converting all SpikeGLX data in a folder. Primary conversion class for
-    handling multiple SpikeGLX data streams.
+    The simplest, easiest to use class for converting all SpikeGLX data in a folder.
+
+    Primary conversion class for handling multiple SpikeGLX data streams.
     """
 
     @classmethod
