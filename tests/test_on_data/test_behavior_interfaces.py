@@ -47,7 +47,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
-            fictrac_position_container = nwbfile.processing["Behavior"].data_interfaces["FicTrac"]
+            fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
             assert isinstance(fictrac_position_container, Position)
 
             assert len(fictrac_position_container.spatial_series) == 10
@@ -82,7 +82,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
-            fictrac_position_container = nwbfile.processing["Behavior"].data_interfaces["FicTrac"]
+            fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
             assert isinstance(fictrac_position_container, Position)
 
             assert len(fictrac_position_container.spatial_series) == 10

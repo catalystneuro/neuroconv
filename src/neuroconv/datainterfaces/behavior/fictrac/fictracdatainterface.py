@@ -1,4 +1,5 @@
-import importlib.util
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -172,7 +173,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
 
         session_start_time = extract_session_start_time(self.file_path)
-        metadata["NWBFile"].update(session_start_time=session_start_time)
+        if session_start_time:
+            metadata["NWBFile"].update(session_start_time=session_start_time)
 
         return metadata
 
@@ -193,7 +195,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         # The first row only contains the session start time and invalid data
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_dat_file)
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=0, header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
         timestamps = self.get_timestamps()
@@ -243,19 +245,50 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         processing_module.add_data_interface(position_container)
 
     def get_original_timestamps(self):
+        """
+        In FicTrac version 2.1.1  the timestampts that are 0 are changed for system time in milliseconds. The
+        system time is set at the point in which the frame is processed. This means that the timestamps are not
+        monotonically increasing. This function checks if the timestamps are inconsistent.
+
+        This happens for video sources whe OpenCV returns 0 at the beginning:
+        [0, t1, t2, t3, ...]
+
+        In that case, FicTrac changes the 0 to system time:
+
+        [system_time, t1, t2, t3, ...]
+
+        And the timestamps are inconsistent
+
+        See:
+        https://github.com/rjdmoore/fictrac/issues/29
+
+        """
+
         import pandas as pd
 
         timestamp_index = self.columns_in_dat_file.index("timestamp")
 
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, usecols=[timestamp_index])
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=0, header=None, usecols=[timestamp_index])
 
-        return fictrac_data_df[timestamp_index].values / 1000.0
+        timestamps = fictrac_data_df[timestamp_index].values / 1000.0  # Transform to seconds
+
+        # Correct for the case when 0 timestamp was replaced by system time
+        first_difference = timestamps[1] - timestamps[0]
+        if first_difference < 0:
+            timestamps[0] = 0.0
+
+        first_timestamp = timestamps[0]
+
+        # Heuristic to test if timestamps are in Unix epoch
+        length_in_seconds_of_a_10_year_experiment = 10 * 365 * 24 * 60 * 60
+        if first_timestamp > length_in_seconds_of_a_10_year_experiment:
+            timestamps = timestamps - timestamps[0]
+
+        return timestamps
 
     def get_timestamps(self):
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         if self._starting_time is not None:
-            # Shift the timestamps to the starting time such that timestamps[0] == self._starting_time
-            # timestamps = timestamps - timestamps[0] + self._starting_time
             timestamps = timestamps + self._starting_time
 
         return timestamps
@@ -267,24 +300,54 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self._starting_time = aligned_starting_time
 
 
-def extract_session_start_time(file_path: FilePathType) -> datetime:
+def extract_session_start_time(
+    file_path: FilePathType,
+    configuration_file_path: Optional[FilePathType] = None,
+) -> datetime | None:
     """
-    Lazily extract the session start datetime from a FicTrac data file.
+    Extract the session start time from FicTrac data or configuration file.
 
-    In FicTrac the column 22 in the data has the timestamps which are given in milliseconds since the epoch.
+    Parameters
+    ----------
+    file_path : Path
+        Path to the FicTrac data file.
+    configuration_file_path : Optional[Path]
+        Path to the FicTrac configuration file. If not provided, the function will look for "fictrac_config.txt"
+        in the same directory as the data file.
 
-    The epoch in Linux is 1970-01-01 00:00:00 UTC.
+    Returns
+    -------
+    datetime | None
+        The session start time of in UTC as a datetime object. `None` if the session start time cannot be extracted.
+
+    Notes
+    -----
+    - In FicTrac, column 22 of the data file contains timestamps in milliseconds.
+    - If the timestamp is since the Unix epoch (1970-01-01 00:00:00 UTC), it's transformed to UTC.
+    - If timestamps are since the start of the session, the session start time is extracted from the configuration file.
+    - If neither applies or the relevant files are not found or correctly formatted, returns None.
+
     """
     with open(file_path, "r") as file:
-        # Read the first data line
         first_line = file.readline()
 
-        # Split by comma and extract the timestamp (the 22nd column)
-        utc_timestamp = float(first_line.split(",")[21]) / 1000.0  # Transform to seconds
+    first_timestamp = float(first_line.split(",")[21]) / 1000.0  # Convert to seconds
 
-    utc_datetime = datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc)
+    # Heuristic to test if timestamps are in Unix epoch
+    length_in_seconds_of_a_10_year_experiment = 10 * 365 * 24 * 60 * 60
+    if first_timestamp > length_in_seconds_of_a_10_year_experiment:
+        utc_timestamp = first_timestamp
+        return datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc)
 
-    return utc_datetime
+    if configuration_file_path is None:
+        configuration_file_path = file_path.parent / "fictrac_config.txt"
+    if configuration_file_path.is_file():
+        configuration_file = parse_fictrac_config(configuration_file_path)
+        session_start_time = datetime.strptime(configuration_file.get("build_date", ""), "%b %d %Y")
+        return session_start_time.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+
+    # If neither of the the methods above work, return None
+    return None
 
 
 # TODO: Parse probably will do this in a simpler way.
