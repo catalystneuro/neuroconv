@@ -301,7 +301,7 @@ def extract_session_start_time(file_path: FilePathType) -> datetime:
     return utc_datetime
 
 
-def parse_fictrac_config(file_path: str) -> dict:
+def parse_fictrac_config(file_path: FilePathType) -> dict:
     """
     Parse a FicTrac configuration file and return a dictionary of its parameters.
 
