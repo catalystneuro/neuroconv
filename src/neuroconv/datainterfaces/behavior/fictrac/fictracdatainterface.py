@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
@@ -195,11 +193,10 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         # The first row only contains the session start time and invalid data
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=0, header=None, names=self.columns_in_dat_file)
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", names=self.columns_in_dat_file)
 
         # Get the timestamps
         timestamps = self.get_timestamps()
-
         starting_time = timestamps[0]
 
         # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
@@ -281,18 +278,17 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         import pandas as pd
 
         timestamp_index = self.columns_in_dat_file.index("timestamp")
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=0, header=None, usecols=[timestamp_index])
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", usecols=[timestamp_index])
 
         timestamps = fictrac_data_df[timestamp_index].values / 1000.0  # Transform to seconds
 
-        # Correct for the case when 0 timestamp was replaced by system time
+        # Correct for the case when the first timestamp was replaced by system time
         first_difference = timestamps[1] - timestamps[0]
         if first_difference < 0:
             timestamps[0] = 0.0
 
-        first_timestamp = timestamps[0]
-
         # Heuristic to test if timestamps are in Unix epoch
+        first_timestamp = timestamps[0]
         length_in_seconds_of_a_10_year_experiment = 10 * 365 * 24 * 60 * 60
         if first_timestamp > length_in_seconds_of_a_10_year_experiment:
             timestamps = timestamps - timestamps[0]
@@ -316,7 +312,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 def extract_session_start_time(
     file_path: FilePathType,
     configuration_file_path: Optional[FilePathType] = None,
-) -> datetime | None:
+) -> Union[datetime, None]:
     """
     Extract the session start time from FicTrac data or configuration file.
 
