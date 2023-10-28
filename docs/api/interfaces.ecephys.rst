@@ -49,6 +49,10 @@ OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
 
+MaxOne Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.maxwell.maxonedatainterface
+
 Phy Sorting
 -----------
 .. automodule:: neuroconv.datainterfaces.ecephys.phy.phydatainterface
