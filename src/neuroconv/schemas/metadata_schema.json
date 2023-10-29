@@ -263,6 +263,25 @@
           }
         }
       }
+    },
+    "SegmentationImages": {
+      "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"type": "string", "default": "SegmentationImages"},
+          "description": {"type": "string"},
+          "images": {
+            "type":  "array",
+            "items": {
+              "type": "object",
+              "title": "images",
+              "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"}
+              }
+            }
+          }
+        }
     }
   },
   "definitions": {
