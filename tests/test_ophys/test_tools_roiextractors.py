@@ -37,6 +37,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
 )
 from neuroconv.tools.roiextractors.roiextractors import get_default_segmentation_metadata
+from neuroconv.utils import dict_deep_update
 
 
 class TestAddDevices(unittest.TestCase):
@@ -1205,7 +1206,10 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
     def test_add_fluorescence_traces_with_plane_segmentation_name_specified(self):
         plane_segmentation_name = "plane_segmentation_name"
-        metadata = deepcopy(self.metadata)
+        metadata = get_default_segmentation_metadata()
+        metadata = dict_deep_update(metadata, self.metadata)
+
+        metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
 
         add_fluorescence_traces(
             segmentation_extractor=self.segmentation_extractor,
