@@ -4,9 +4,11 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Union
 
+import numpy as np
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from neuroconv.utils import (
+    NWBMetaDataEncoder,
     dict_deep_update,
     fill_defaults,
     get_schema_from_hdmf_class,
@@ -230,3 +232,9 @@ def test_get_schema_from_TwoPhotonSeries_array_type():
     assert "data" not in two_photon_series_schema["properties"]
     assert "timestamps" not in two_photon_series_schema["properties"]
     assert "external_file" not in two_photon_series_schema["properties"]
+
+
+def test_np_array_encoding():
+    np_array = np.array([1, 2, 3])
+    encoded = json.dumps(np_array, cls=NWBMetaDataEncoder)
+    assert encoded == "[1, 2, 3]"

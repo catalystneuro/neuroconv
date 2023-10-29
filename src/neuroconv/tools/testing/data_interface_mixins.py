@@ -8,13 +8,9 @@ from typing import List, Optional, Type, Union
 import numpy as np
 from hdmf.testing import TestCase as HDMFTestCase
 from jsonschema.validators import Draft7Validator, validate
-from ndx_miniscope import Miniscope
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
-from roiextractors import NwbImagingExtractor, NwbSegmentationExtractor
-from roiextractors.testing import check_imaging_equal, check_segmentations_equal
 from spikeinterface.core.testing import check_recordings_equal, check_sortings_equal
-from spikeinterface.extractors import NwbRecordingExtractor, NwbSortingExtractor
 
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
@@ -59,6 +55,7 @@ class DataInterfaceTestMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     save_directory: Path = Path(tempfile.mkdtemp())
+    conversion_options: dict = dict()
     maxDiff = None
 
     def test_source_schema_valid(self):
@@ -86,7 +83,9 @@ class DataInterfaceTestMixin:
     def run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
+        )
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
@@ -221,6 +220,9 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
     data_interface_cls: BaseImagingExtractorInterface
 
     def check_read_nwb(self, nwbfile_path: str):
+        from roiextractors import NwbImagingExtractor
+        from roiextractors.testing import check_imaging_equal
+
         imaging = self.interface.imaging_extractor
         nwb_imaging = NwbImagingExtractor(file_path=nwbfile_path)
 
@@ -254,6 +256,9 @@ class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAl
     data_interface_cls: BaseSegmentationExtractorInterface
 
     def check_read(self, nwbfile_path: str):
+        from roiextractors import NwbSegmentationExtractor
+        from roiextractors.testing import check_segmentations_equal
+
         nwb_segmentation = NwbSegmentationExtractor(file_path=nwbfile_path)
         segmentation = self.interface.segmentation_extractor
         check_segmentations_equal(segmentation, nwb_segmentation)
@@ -271,6 +276,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     data_interface_cls: Type[BaseRecordingExtractorInterface]
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.extractors import NwbRecordingExtractor
+
         recording = self.interface.recording_extractor
 
         electrical_series_name = self.interface.get_metadata()["Ecephys"][self.interface.es_key]["name"]
@@ -465,6 +472,8 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         self.interface.register_recording(recording_interface=recording_interface)
 
     def check_read_nwb(self, nwbfile_path: str):
+        from spikeinterface.extractors import NwbSortingExtractor
+
         sorting = self.interface.sorting_extractor
         sf = sorting.get_sampling_frequency()
         if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
@@ -683,6 +692,8 @@ class VideoInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
 class MiniscopeImagingInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def check_read_nwb(self, nwbfile_path: str):
+        from ndx_miniscope import Miniscope
+
         with NWBHDF5IO(nwbfile_path, "r") as io:
             nwbfile = io.read()
 

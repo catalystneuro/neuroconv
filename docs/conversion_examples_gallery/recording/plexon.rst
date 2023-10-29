@@ -1,13 +1,13 @@
-Plexon conversion
--------------------------------------
+Plexon Recording Conversion
+---------------------------
 
-Install NeuroConv with the additional dependencies necessary for reading Plexon data.
+Install NeuroConv with the additional dependencies necessary for reading Plexon acquisition data.
 
 .. code-block:: bash
 
     pip install neuroconv[plexon]
 
-Convert edf data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.PlexonRecordingInterface`. Currently, only .plx is supported.
+Convert Plexon recording data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.PlexonRecordingInterface`. Currently, only .plx is supported.
 
 .. code-block:: python
 
