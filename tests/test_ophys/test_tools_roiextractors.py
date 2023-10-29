@@ -36,7 +36,9 @@ from neuroconv.tools.roiextractors import (
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
     ImagingExtractorDataChunkIterator,
 )
-from neuroconv.tools.roiextractors.roiextractors import get_default_segmentation_metadata
+from neuroconv.tools.roiextractors.roiextractors import (
+    get_default_segmentation_metadata,
+)
 from neuroconv.utils import dict_deep_update
 
 
