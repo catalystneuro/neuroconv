@@ -80,6 +80,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
+        plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):
@@ -112,6 +113,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
             If None, the mask information is not written to the NWB file.
             Defaults to 'image'.
+        plane_segmentation_name : str, optional
+            The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
         compression_options : dict, optional
@@ -136,6 +139,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
+            plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             compression_options=compression_options,
         )
