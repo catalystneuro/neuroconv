@@ -21,15 +21,10 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         if isinstance(obj, datetime):
             return obj.isoformat()
 
-        # This should transforms numpy generic integers and floats to python floats
+        # Transform numpy generic integers and floats to python ints floats
         if isinstance(obj, np.generic):
             return obj.item()
 
-        # Numpy-versions of various numeric types
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
 
