@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 from pynwb import NWBFile
+from pynwb.base import Image
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
@@ -31,6 +32,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             ImageSegmentation=get_schema_from_hdmf_class(ImageSegmentation),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
+            SegmentationImages=get_schema_from_hdmf_class(Image),
         )
         metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
 
@@ -48,6 +50,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
             "properties"
         ]["Fluorescence"]
+
+        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"]["properties"].update(
+            dict(images=dict(type="array"))
+        )
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
