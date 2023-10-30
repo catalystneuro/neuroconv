@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest import TestCase
 
 from neuroconv.datainterfaces import (
@@ -87,7 +88,17 @@ class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
         cls.imaging_plane_names = ["ImagingPlane" + plane_suffix for plane_suffix in plane_suffices]
         cls.plane_segmentation_names = ["PlaneSegmentation" + plane_suffix for plane_suffix in plane_suffices]
         cls.fluorescence_names = ["Fluorescence" + plane_suffix for plane_suffix in plane_suffices]
-        cls.segmentation_images_names = ["SegmentationImages" + plane for plane in cls.plane_segmentation_names]
+        cls.segmentation_images_names = ["SegmentationImages" + plane_suffix for plane_suffix in plane_suffices]
+
+    def run_conversion(self, nwbfile_path: str):
+        metadata = self.interface.get_metadata()
+        plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+        conversion_options = dict(plane_segmentation_name=plane_segmentation_name)
+
+        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **conversion_options
+        )
 
     def check_extracted_metadata(self, metadata: dict):
         """Check extracted metadata is adjusted correctly for each plane and channel combination."""
