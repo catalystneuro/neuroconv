@@ -273,6 +273,8 @@ def automatic_dandi_upload(
     version: str = "draft",
     staging: bool = False,
     cleanup: bool = False,
+    number_of_jobs: Optional[int] = None,
+    number_of_threads: Optional[int] = None,
 ):
     """
     Fully automated upload of NWBFiles to a DANDISet.
@@ -304,6 +306,10 @@ def automatic_dandi_upload(
     cleanup : bool, default: False
         Whether to remove the dandiset folder path and nwb_folder_path.
         Defaults to False.
+    number_of_jobs : int, optional
+        The number of jobs to use in the DANDI upload process.
+    number_of_threads : int, optional
+        The number of threads to use in the DANDI upload process.
     """
     dandiset_folder_path = (
         Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
@@ -319,6 +325,7 @@ def automatic_dandi_upload(
     dandi_download(urls=dandiset_url, output_dir=str(dandiset_folder_path), get_metadata=True, get_assets=False)
     assert dandiset_path.exists(), "DANDI download failed!"
 
+    # TODO: need PR on DANDI to expose number of jobs
     dandi_organize(paths=str(nwb_folder_path), dandiset_path=str(dandiset_path))
     organized_nwbfiles = dandiset_path.rglob("*.nwb")
 
@@ -340,7 +347,7 @@ def automatic_dandi_upload(
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
     dandi_instance = "dandi-staging" if staging else "dandi"  # Test
-    dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance)
+    dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance, jobs=number_of_jobs, jobs_per_file=number_of_threads)
 
     # Cleanup should be confirmed manually; Windows especially can complain
     if cleanup:
