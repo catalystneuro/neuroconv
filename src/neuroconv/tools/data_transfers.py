@@ -347,7 +347,12 @@ def automatic_dandi_upload(
     assert len(list(dandiset_path.iterdir())) > 1, "DANDI organize failed!"
 
     dandi_instance = "dandi-staging" if staging else "dandi"  # Test
-    dandi_upload(paths=[str(x) for x in organized_nwbfiles], dandi_instance=dandi_instance, jobs=number_of_jobs, jobs_per_file=number_of_threads)
+    dandi_upload(
+        paths=[str(x) for x in organized_nwbfiles],
+        dandi_instance=dandi_instance,
+        jobs=number_of_jobs,
+        jobs_per_file=number_of_threads,
+    )
 
     # Cleanup should be confirmed manually; Windows especially can complain
     if cleanup:
