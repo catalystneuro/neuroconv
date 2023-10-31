@@ -51,7 +51,7 @@ def read_header(filename: str) -> Dict[str, Union[str, datetime, float, int, Lis
     def parse_bool(x):
         return x.lower() == "true"
 
-    KEY_PARSERS = {
+    key_parsers = {
         "TimeCreated": nlx_date_parser,
         "TimeClosed": nlx_date_parser,
         "RecordSize": int,
@@ -80,7 +80,7 @@ def read_header(filename: str) -> Dict[str, Union[str, datetime, float, int, Lis
                 value = value.strip()
 
                 # Use the key-specific parser if available, otherwise use default parsing
-                parser = KEY_PARSERS.get(key, lambda x: x)
+                parser = key_parsers.get(key, lambda x: x)
                 out[key] = parser(value)
     return out
 
