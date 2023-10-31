@@ -43,3 +43,9 @@ class TestAutomaticDANDIUpload(TestCase):
 
     def test_automatic_dandi_upload(self):
         automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True)
+
+    def test_automatic_dandi_upload_non_parallel(self):
+        automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True, number_of_jobs=1)
+
+    def test_automatic_dandi_upload_non_parallel_non_threaded(self):
+        automatic_dandi_upload(dandiset_id="200560", nwb_folder_path=self.nwb_folder_path, staging=True, number_of_jobs=1, number_of_threads=1)
