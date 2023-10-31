@@ -1,8 +1,8 @@
-import importlib.util
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
+import numpy as np
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
@@ -22,6 +22,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         "visual fixation",
     ]
 
+    timestamps_column = 21
     # Columns in the .dat binary file with the data. The full description of the header can be found in:
     # https://github.com/rjdmoore/fictrac/blob/master/doc/data_header.txt
     columns_in_dat_file = [
@@ -154,7 +155,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         file_path : a string or a path
             Path to the .dat file (the output of fictrac)
         radius : float, optional
-            The radius of the ball in meters. If provided the data will be converted to meters and stored as such.
+            The radius of the ball in meters. If provided the radius is stored as a conversion factor
+            and the units are set to meters. If not provided the units are set to radians.
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
@@ -162,6 +164,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self.verbose = verbose
         self._timestamps = None
         self.radius = radius
+        self.configuration_file_path = None
         super().__init__(file_path=file_path)
 
         self._timestamps = None
@@ -170,8 +173,12 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self):
         metadata = super().get_metadata()
 
-        session_start_time = extract_session_start_time(self.file_path)
-        metadata["NWBFile"].update(session_start_time=session_start_time)
+        session_start_time = extract_session_start_time(
+            file_path=self.file_path,
+            configuration_file_path=self.configuration_file_path,
+        )
+        if session_start_time:
+            metadata["NWBFile"].update(session_start_time=session_start_time)
 
         return metadata
 
@@ -191,12 +198,10 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         import pandas as pd
 
-        # The first row only contains the session start time and invalid data
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, names=self.columns_in_dat_file)
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
         timestamps = self.get_timestamps()
-
         starting_time = timestamps[0]
 
         # Note: The last values of the timestamps look very irregular for the sample file in catalyst neuro gin repo
@@ -220,7 +225,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             column_in_dat_file = data_dict["column_in_dat_file"]
             data = fictrac_data_df[column_in_dat_file].to_numpy()
             if self.radius is not None:
-                data = data * self.radius
+                spatial_series_kwargs["conversion"] = self.radius
                 units = "meters"
             else:
                 units = "radians"
@@ -237,24 +242,72 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             spatial_series = SpatialSeries(**spatial_series_kwargs)
             position_container.add_spatial_series(spatial_series)
 
-        # Add the compass direction container to the processing module
-        processing_module = get_module(nwbfile=nwbfile, name="Behavior")
+        # Add the container to the processing module
+        processing_module = get_module(nwbfile=nwbfile, name="behavior")
         processing_module.add_data_interface(position_container)
 
     def get_original_timestamps(self):
+        """
+        Retrieve and correct timestamps from a FicTrac data file.
+
+        This function addresses two specific issues with timestamps in FicTrac data:
+
+        1. Resetting Initial Timestamp:
+        In some instances, FicTrac replaces the initial timestamp (0) with the system time. This commonly occurs
+        when the data source is a video file, and OpenCV reports the first timestamp as 0. Since OpenCV also
+        uses 0 as a marker for invalid values, FicTrac defaults to system time in that case. This leads to
+        inconsistent timestamps like [system_time, t1, t2, t3, ...]. The function corrects this by resetting the
+        first timestamp back to 0 when a negative difference is detected between the first two timestamps.
+
+        2. Re-centering Unix Epoch Time:
+        If timestamps are in Unix epoch time format (time since 1970-01-01 00:00:00 UTC), this function re-centers
+        the time series by subtracting the first timestamp. This adjustment ensures that timestamps represent the
+        elapsed time since the start of the experiment rather than the Unix epoch. This case appears when one of the
+        sources of data in FicTrac (such as PGR or Basler) lacks a timestamp extraction method. FicTrac
+        then falls back to using the system time, which is in Unix epoch format.
+
+        Returns
+        -------
+        np.ndarray
+            An array of corrected timestamps, in seconds.
+
+        Notes
+        -----
+        - The issue of the initial timestamp replacement appears in FicTrac 2.1.1 and earlier versions.
+        - Re-centering is essential for timestamps in Unix epoch format as timestamps in an NWB file must be relative
+        to the start of the session. The heuristic here is to check if the first timestamp is larger than the length
+        of a 10-year experiment in seconds. If so, it's assumed that the timestamps are in Unix epoch format.
+
+        References
+        ----------
+        Issue discussion on FicTrac's timestamp inconsistencies:
+        https://github.com/rjdmoore/fictrac/issues/29
+        """
+
         import pandas as pd
 
-        timestamp_index = self.columns_in_dat_file.index("timestamp")
+        fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, usecols=[self.timestamps_column])
 
-        fictrac_data_df = pd.read_csv(self.file_path, sep=",", skiprows=1, header=None, usecols=[timestamp_index])
+        timestamps = fictrac_data_df[self.timestamps_column].values / 1000.0  # Transform to seconds
 
-        return fictrac_data_df[timestamp_index].values / 1000.0
+        # Correct for the case when only the first timestamp was replaced by system time
+        first_difference = timestamps[1] - timestamps[0]
+        if first_difference < 0:
+            timestamps[0] = 0.0
+
+        # Heuristic to test if timestamps are in Unix epoch
+        length_in_seconds_of_a_10_year_experiment = 10 * 365 * 24 * 60 * 60
+        all_timestamps_are_in_unix_epoch = np.all(timestamps > length_in_seconds_of_a_10_year_experiment)
+        if all_timestamps_are_in_unix_epoch:
+            timestamps = timestamps - timestamps[0]
+        # TODO: If we agree to ALWAYS constrain timestamps to be relative to the start of the session, we can
+        # Always shift here and remove the heuristic above.
+
+        return timestamps
 
     def get_timestamps(self):
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         if self._starting_time is not None:
-            # Shift the timestamps to the starting time such that timestamps[0] == self._starting_time
-            # timestamps = timestamps - timestamps[0] + self._starting_time
             timestamps = timestamps + self._starting_time
 
         return timestamps
@@ -266,24 +319,60 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self._starting_time = aligned_starting_time
 
 
-def extract_session_start_time(file_path: FilePathType) -> datetime:
+def extract_session_start_time(
+    file_path: FilePathType,
+    configuration_file_path: Optional[FilePathType] = None,
+) -> Union[datetime, None]:
     """
-    Lazily extract the session start datetime from a FicTrac data file.
+    Extract the session start time from a FicTrac data file or its configuration file.
 
-    In FicTrac the column 22 in the data has the timestamps which are given in milliseconds since the epoch.
+    The session start time is determined from the data file if the timestamps are in Unix epoch format. If not, the
+    function defaults to extracting the date from the configuration file and assuming that the start time is midnight.
+    If neither of these methods works, the function returns None.
 
-    The epoch in Linux is 1970-01-01 00:00:00 UTC.
+    The session start time, has two different meanings depending on the source of the FicTrac data:
+    - For video file sources (.avi, .mp4, etc), the session start time corresponds to the time when the
+    FicTrac analysis commenced. That is, the session start time reflects the analysis time rather than
+    the actual start of the experiment.
+    - For camera sources (such as PGR or Basler), the session start time is either the time reported by the camera
+    or the system time if the camera's SDK does not provide timestamps to Fictrac. In both cases, this time is
+    the experiment start time, barring synchronization issues.
+
+    Parameters
+    ----------
+    file_path : FilePathType
+        Path to the FicTrac data file.
+    configuration_file_path : Optional[FilePathType]
+        Path to the FicTrac configuration file. If omitted, the function defaults to searching for
+        "fictrac_config.txt" in the same directory as the data file.
+
+    Returns
+    -------
+    datetime | None
+        The session start time of in UTC as a datetime object. `None` if the session start time cannot be extracted.
+
     """
     with open(file_path, "r") as file:
-        # Read the first data line
         first_line = file.readline()
 
-        # Split by comma and extract the timestamp (the 22nd column)
-        utc_timestamp = float(first_line.split(",")[21]) / 1000.0  # Transform to seconds
+    timestamps_column = FicTracDataInterface.timestamps_column
+    first_timestamp = float(first_line.split(",")[timestamps_column]) / 1000.0  # Convert to seconds
 
-    utc_datetime = datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc)
+    # Heuristic to test if timestamps are in Unix epoch
+    length_in_seconds_of_a_10_year_experiment = 10 * 365 * 24 * 60 * 60
+    if first_timestamp > length_in_seconds_of_a_10_year_experiment:
+        utc_timestamp = first_timestamp
+        return datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc)
 
-    return utc_datetime
+    if configuration_file_path is None:
+        configuration_file_path = file_path.parent / "fictrac_config.txt"
+    if configuration_file_path.is_file():
+        configuration_file = parse_fictrac_config(configuration_file_path)
+        session_start_time = datetime.strptime(configuration_file.get("build_date", ""), "%b %d %Y")
+        # Set the time to midnight UTC from the extracted date
+        return session_start_time.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+
+    return None
 
 
 # TODO: Parse probably will do this in a simpler way.

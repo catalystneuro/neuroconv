@@ -2,7 +2,7 @@ import collections.abc
 import inspect
 import json
 from datetime import datetime
-from typing import Callable, Dict, Literal
+from typing import Callable, Dict, List, Literal, Optional
 
 import hdmf.data_utils
 import numpy as np
@@ -21,15 +21,10 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         if isinstance(obj, datetime):
             return obj.isoformat()
 
-        # This should transforms numpy generic integers and floats to python floats
+        # Transform numpy generic integers and floats to python ints floats
         if isinstance(obj, np.generic):
             return obj.item()
 
-        # Numpy-versions of various numeric types
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            return float(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
 
@@ -37,14 +32,26 @@ class NWBMetaDataEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def get_base_schema(tag=None, root=False, id_=None, **kwargs) -> dict:
+def get_base_schema(
+    tag: Optional[str] = None,
+    root: bool = False,
+    id_: Optional[str] = None,
+    required: Optional[List] = None,
+    properties: Optional[Dict] = None,
+    **kwargs,
+) -> dict:
     """Return the base schema used for all other schemas."""
-    base_schema = dict(required=[], properties={}, type="object", additionalProperties=False)
+    base_schema = dict(
+        required=required or [],
+        properties=properties or {},
+        type="object",
+        additionalProperties=False,
+    )
     if tag is not None:
         base_schema.update(tag=tag)
     if root:
         base_schema.update({"$schema": "http://json-schema.org/draft-07/schema#"})
-    if id_:
+    if id_ is not None:
         base_schema.update({"$id": id_})
     base_schema.update(**kwargs)
     return base_schema
