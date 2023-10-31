@@ -334,7 +334,7 @@ def extract_session_start_time(
     - For video file sources (.avi, .mp4, etc), the session start time corresponds to the time when the
     FicTrac analysis commenced. That is, the session start time reflects the analysis time rather than
     the actual start of the experiment.
-    - For camera sources (such as PGR or Basler), the sesion start time is either the time reported by the camera
+    - For camera sources (such as PGR or Basler), the session start time is either the time reported by the camera
     or the system time if the camera's SDK does not provide timestamps to Fictrac. In both cases, this time is
     the experiment start time, barring synchronization issues.
 
