@@ -78,7 +78,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
-            fictrac_position_container = nwbfile.processing["Behavior"].data_interfaces["FicTrac"]
+            fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
             assert isinstance(fictrac_position_container, Position)
 
             assert len(fictrac_position_container.spatial_series) == 10
@@ -94,6 +94,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
 
                 expected_units = "radians"
                 assert spatial_series.unit == expected_units
+                assert spatial_series.conversion == 1.0
 
                 expected_metadata = f"configuration_metadata = {configuration_metadata}"
                 assert spatial_series.comments == expected_metadata
@@ -115,7 +116,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
-            fictrac_position_container = nwbfile.processing["Behavior"].data_interfaces["FicTrac"]
+            fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
             assert isinstance(fictrac_position_container, Position)
 
             assert len(fictrac_position_container.spatial_series) == 10
@@ -130,6 +131,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
                 assert reference_frame == spatial_series.reference_frame
                 expected_units = "meters"
                 assert spatial_series.unit == expected_units
+                assert spatial_series.conversion == self.interface.radius
 
 
 class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin, unittest.TestCase):
