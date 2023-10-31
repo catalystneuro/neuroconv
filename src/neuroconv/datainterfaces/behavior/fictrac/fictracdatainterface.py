@@ -216,7 +216,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         timestamps = self.get_timestamps()
         starting_time = timestamps[0]
 
-        # Note: Returns timestamps from the Graber classes in fictrac library. The most common is for them to be
+        # Note: Returns the timestamps from the sources in FicTrac (.e.g OpenCV videos, PGR or Basler). The most common  is OpenCV with all the caveats that come with it.
         # video timestamp extracted with OpenCV with all the caveats that come with it.
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if the series is not regular
         if rate:
