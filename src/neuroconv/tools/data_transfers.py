@@ -6,7 +6,7 @@ from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
 from time import sleep, time
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
 from warnings import warn
 
 from dandi.download import download as dandi_download
@@ -326,7 +326,9 @@ def automatic_dandi_upload(
     assert dandiset_path.exists(), "DANDI download failed!"
 
     # TODO: need PR on DANDI to expose number of jobs
-    dandi_organize(paths=str(nwb_folder_path), dandiset_path=str(dandiset_path), devel_debug=True if number_of_jobs == 1 else False)
+    dandi_organize(
+        paths=str(nwb_folder_path), dandiset_path=str(dandiset_path), devel_debug=True if number_of_jobs == 1 else False
+    )
     organized_nwbfiles = dandiset_path.rglob("*.nwb")
 
     # DANDI has yet to implement forcing of session_id inclusion in organize step
