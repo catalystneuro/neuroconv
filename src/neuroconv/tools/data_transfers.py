@@ -311,14 +311,18 @@ def automatic_dandi_upload(
     number_of_threads : int, optional
         The number of threads to use in the DANDI upload process.
     """
-    dandiset_folder_path = (
-        Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
-    )
-    dandiset_path = dandiset_folder_path / dandiset_id
     assert os.getenv("DANDI_API_KEY"), (
         "Unable to find environment variable 'DANDI_API_KEY'. "
         "Please retrieve your token from DANDI and set this environment variable."
     )
+
+    dandiset_folder_path = (
+        Path(mkdtemp(dir=nwb_folder_path.parent)) if dandiset_folder_path is None else dandiset_folder_path
+    )
+    dandiset_path = dandiset_folder_path / dandiset_id
+    # Odd big of logic upstream: https://github.com/dandi/dandi-cli/blob/master/dandi/cli/cmd_upload.py#L92-L96
+    if number_of_threads is not None and number_of_threads > 1 and jobs is None:
+        jobs = -1
 
     url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"
