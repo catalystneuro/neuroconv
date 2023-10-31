@@ -113,6 +113,35 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
         assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
 
     def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
+        configuration_metadata = (
+            '{"version": "v2.1.1", '
+            '"build_date": "Jul 24 2023", '
+            '"c2a_cnrs_xy": [191, 171, 128, 272, 20, 212, 99, 132], '
+            '"c2a_r": [0.722445, -0.131314, -0.460878], '
+            '"c2a_src": "c2a_cnrs_xy", '
+            '"c2a_t": [-0.674396, 0.389373, 2.889648], '
+            '"do_display": true, '
+            '"max_bad_frames": -1, '
+            '"opt_bound": 0.35, '
+            '"opt_do_global": false, '
+            '"opt_max_err": -1.0, '
+            '"opt_max_evals": 50, '
+            '"opt_tol": 0.001, '
+            '"q_factor": 6, '
+            '"roi_c": [-0.22939, 0.099969, 0.968187], '
+            '"roi_circ": [63, 171, 81, 145, 106, 135, 150, 160], '
+            '"roi_ignr": [[96, 156, 113, 147, 106, 128, 82, 130, 81, 150], '
+            "[71, 213, 90, 219, 114, 218, 135, 211, 154, 196, 150, 217, 121, 228, 99, 234, 75, 225]], "
+            '"roi_r": 0.124815, '
+            '"save_debug": false, '
+            '"save_raw": false, '
+            '"src_fn": "sample.mp4", '
+            '"src_fps": -1.0, '
+            '"thr_ratio": 1.25, '
+            '"thr_win_pc": 0.25, '
+            '"vfov": 45.0}'
+        )
+
         with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
             nwbfile = io.read()
 
@@ -132,6 +161,9 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
                 expected_units = "meters"
                 assert spatial_series.unit == expected_units
                 assert spatial_series.conversion == self.interface.radius
+
+                expected_metadata = f"configuration_metadata = {configuration_metadata}"
+                assert spatial_series.comments == expected_metadata
 
 
 class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin, unittest.TestCase):
