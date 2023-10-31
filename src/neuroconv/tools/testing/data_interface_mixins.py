@@ -1,7 +1,7 @@
 import json
 import tempfile
 from abc import abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Type, Union
 
