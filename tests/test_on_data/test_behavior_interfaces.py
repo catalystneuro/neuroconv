@@ -96,7 +96,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
                 assert spatial_series.unit == expected_units
                 assert spatial_series.conversion == 1.0
 
-                expected_metadata = f"configuration_metadata = {configuration_metadata}"
+                expected_metadata = f"{configuration_metadata}"
                 assert spatial_series.comments == expected_metadata
 
                 assert spatial_series.timestamps[0] == 0.0
