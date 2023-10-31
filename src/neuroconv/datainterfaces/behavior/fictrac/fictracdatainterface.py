@@ -225,8 +225,9 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             write_timestamps = True
 
         position_container = Position(name="FicTrac")
+        # TODO: make FicTrac extension of the Position container to attach these specific attributes with documentation
         if self.configuration_metadata is not None:
-            comments = f"configuration_metadata = {json.dumps(self.configuration_metadata)}"
+            comments = json.dumps(self.configuration_metadata)
 
         for data_dict in self.column_to_nwb_mapping.values():
             spatial_series_kwargs = dict(
