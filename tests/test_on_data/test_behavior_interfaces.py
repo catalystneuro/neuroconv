@@ -99,6 +99,8 @@ class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
                 expected_metadata = f"configuration_metadata = {configuration_metadata}"
                 assert spatial_series.comments == expected_metadata
 
+                assert spatial_series.timestamps[0] == 0.0
+
 
 class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCase):
     data_interface_cls = FicTracDataInterface
@@ -165,7 +167,9 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
                 expected_metadata = f"configuration_metadata = {configuration_metadata}"
                 assert spatial_series.comments == expected_metadata
 
+                assert spatial_series.timestamps[0] == 0.0
 
+                
 class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin, unittest.TestCase):
     data_interface_cls = FicTracDataInterface
     interface_kwargs = [dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"))]
