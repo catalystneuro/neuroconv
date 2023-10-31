@@ -164,7 +164,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin, unittest.TestCa
                 assert spatial_series.unit == expected_units
                 assert spatial_series.conversion == self.interface.radius
 
-                expected_metadata = f"configuration_metadata = {configuration_metadata}"
+                expected_metadata = f"{configuration_metadata}"
                 assert spatial_series.comments == expected_metadata
 
                 assert spatial_series.timestamps[0] == 0.0
