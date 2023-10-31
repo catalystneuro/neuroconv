@@ -424,7 +424,7 @@ def parse_fictrac_config(file_path: FilePathType) -> dict:
         value = int(x) if x.isdigit() else x
         return value
 
-    KEY_PARSERS = {
+    key_parsers = {
         "src_fn": parse_int_or_string,
         "vfov": float,
         "do_display": parse_bool,
@@ -476,6 +476,6 @@ def parse_fictrac_config(file_path: FilePathType) -> dict:
         key = key.strip()
         value = value.strip()
 
-        parser = KEY_PARSERS.get(key, lambda x: x)
+        parser = key_parsers.get(key, lambda x: x)
         parsed_config[key] = parser(value)
     return parsed_config
