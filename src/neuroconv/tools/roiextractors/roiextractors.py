@@ -1098,7 +1098,7 @@ def add_segmentation(
     # Add device:
     add_devices(nwbfile=nwbfile, metadata=metadata)
 
-# `add_imaging_plane` is also called from `add_plane_segmentation` so no need to call it explicitly here
+    # `add_imaging_plane` is also called from `add_plane_segmentation` so no need to call it explicitly here
     # Add PlaneSegmentation:
     add_plane_segmentation(
         segmentation_extractor=segmentation_extractor,
