@@ -80,7 +80,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         )
         chunk_frames = min(
             self.recording.get_num_frames(),
-            int(chunk_mb * 1e6 / (self.recording.get_dtype().itemsize() * chunk_channels)),
+            int(chunk_mb * 1e6 / (self.recording.get_dtype().itemsize * chunk_channels)),
         )
 
         return (chunk_frames, chunk_channels)
