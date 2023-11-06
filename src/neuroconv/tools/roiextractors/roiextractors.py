@@ -1114,7 +1114,7 @@ def add_summary_images(
     )
     assert (
         plane_segmentation_name in segmentation_images_metadata
-    ), f"Plane segmentation {plane_segmentation_name} not found in metadata['Ophys']['SegmentationImages']"
+    ), f"Plane segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['SegmentationImages']"
     images_metadata = segmentation_images_metadata[plane_segmentation_name]
 
     for img_name, img in images_to_add.items():
@@ -1169,7 +1169,12 @@ def add_segmentation(
     )
 
     # Adding summary images (mean and correlation)
-    add_summary_images(nwbfile=nwbfile, segmentation_extractor=segmentation_extractor, metadata=metadata)
+    add_summary_images(
+        nwbfile=nwbfile,
+        segmentation_extractor=segmentation_extractor,
+        metadata=metadata,
+        plane_segmentation_name=plane_segmentation_name,
+    )
 
 
 def write_segmentation(
