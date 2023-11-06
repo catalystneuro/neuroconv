@@ -3,7 +3,6 @@ from typing import Optional
 
 import numpy as np
 from pynwb import NWBFile
-from pynwb.base import Image
 from pynwb.device import Device
 from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhotonSeries
 
@@ -32,7 +31,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             ImageSegmentation=get_schema_from_hdmf_class(ImageSegmentation),
             ImagingPlane=get_schema_from_hdmf_class(ImagingPlane),
             TwoPhotonSeries=get_schema_from_hdmf_class(TwoPhotonSeries),
-            SegmentationImages=get_schema_from_hdmf_class(Image),
         )
         metadata_schema["properties"]["Ophys"]["required"] = ["Device", "ImageSegmentation"]
 
@@ -51,8 +49,22 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             "properties"
         ]["Fluorescence"]
 
-        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"]["properties"].update(
-            dict(images=dict(type="array"))
+        images_inner_schema = dict(
+            type="object",
+            properties=dict(name=dict(type="string"), description=dict(type="string")),
+        )
+        summary_images_per_plane_schema = dict(type="object", patternProperties={"^[a-zA-Z0-9]+$": images_inner_schema})
+
+        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"] = dict(
+            type="object",
+            required=["name"],
+            properties=dict(
+                name=dict(type="string", default="SegmentationImages"),
+                description=dict(type="string"),
+                patternProperties={
+                    "^[a-zA-Z0-9]+$": summary_images_per_plane_schema,
+                },
+            ),
         )
 
         fill_defaults(metadata_schema, self.get_metadata())
