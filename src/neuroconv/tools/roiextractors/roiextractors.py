@@ -108,11 +108,20 @@ def get_default_segmentation_metadata() -> DeepDict:
         ],
     )
 
+    default_segmentation_images = dict(
+        name="SegmentationImages",
+        description="The summary images of the segmentation.",
+        PlaneSegmentation=dict(
+            correlation=dict(name="correlation", description="The correlation image."),
+        ),
+    )
+
     metadata["Ophys"].update(
         dict(
             Fluorescence=default_fluorescence,
             DfOverF=default_df_over_f,
             ImageSegmentation=default_image_segmentation,
+            SegmentationImages=default_segmentation_images,
         ),
     )
 
@@ -656,7 +665,8 @@ def add_plane_segmentation(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict],
-    plane_segmentation_index: int = 0,
+    plane_segmentation_name: Optional[str] = None,
+    plane_segmentation_index: Optional[int] = None,  # TODO: to be removed
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Optional[Literal["image", "pixel"]]
@@ -676,8 +686,8 @@ def add_plane_segmentation(
         The NWBFile to add the plane segmentation to.
     metadata : dict, optional
         The metadata for the plane segmentation.
-    plane_segmentation_index : int, optional
-        The index of the plane segmentation to add.
+    plane_segmentation_name : str, optional
+        The name of the plane segmentation to be added.
     include_roi_centroids : bool, default: True
         Whether to include the ROI centroids on the PlaneSegmentation table.
         If there are a very large number of ROIs (such as in whole-brain recordings),
@@ -721,8 +731,26 @@ def add_plane_segmentation(
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     image_segmentation_metadata = metadata_copy["Ophys"]["ImageSegmentation"]
-    plane_segmentation_metadata = image_segmentation_metadata["plane_segmentations"][plane_segmentation_index]
-    plane_segmentation_name = plane_segmentation_metadata["name"]
+    plane_segmentation_name = (
+        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    )
+    if plane_segmentation_index:
+        warn(
+            "Keyword argument 'plane_segmentation_index' is deprecated and it will be removed on 2024-04-16. Use 'plane_segmentation_name' instead."
+        )
+        plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][plane_segmentation_index]["name"]
+    plane_segmentation_metadata = next(
+        (
+            plane_segmentation_metadata
+            for plane_segmentation_metadata in image_segmentation_metadata["plane_segmentations"]
+            if plane_segmentation_metadata["name"] == plane_segmentation_name
+        ),
+        None,
+    )
+    if plane_segmentation_metadata is None:
+        raise ValueError(
+            f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations']."
+        )
 
     imaging_plane_name = plane_segmentation_metadata["imaging_plane"]
     add_imaging_plane(nwbfile=nwbfile, metadata=metadata_copy, imaging_plane_name=imaging_plane_name)
@@ -740,10 +768,7 @@ def add_plane_segmentation(
             accepted_ids = [int(roi_id in segmentation_extractor.get_accepted_list()) for roi_id in roi_ids]
             rejected_ids = [int(roi_id in segmentation_extractor.get_rejected_list()) for roi_id in roi_ids]
 
-        imaging_plane_metadata = metadata_copy["Ophys"]["ImagingPlane"][plane_segmentation_index]
-        imaging_plane_name = imaging_plane_metadata["name"]
         imaging_plane = nwbfile.imaging_planes[imaging_plane_name]
-
         plane_segmentation_kwargs = deepcopy(plane_segmentation_metadata)
         plane_segmentation_kwargs.update(imaging_plane=imaging_plane)
         if mask_type is None:
@@ -812,7 +837,8 @@ def add_fluorescence_traces(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict],
-    plane_index: int = 0,
+    plane_segmentation_name: Optional[str] = None,
+    plane_index: Optional[int] = None,  # TODO: to be removed
     iterator_options: Optional[dict] = None,
     compression_options: Optional[dict] = None,
 ) -> NWBFile:
@@ -829,8 +855,8 @@ def add_fluorescence_traces(
         The nwbfile to add the fluorescence traces to.
     metadata : dict
         The metadata for the fluorescence traces.
-    plane_index : int, default: 0
-        The index of the plane to add the fluorescence traces to.
+    plane_segmentation_name : str, optional
+        The name of the plane segmentation that identifies which plane to add the fluorescence traces to.
     iterator_options : dict, optional
     compression_options : dict, optional
 
@@ -847,6 +873,16 @@ def add_fluorescence_traces(
     default_metadata = get_default_segmentation_metadata()
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
+    if plane_index:
+        warn(
+            "Keyword argument 'plane_index' is deprecated and it will be removed on 2024-04-16. Use 'plane_segmentation_name' instead."
+        )
+        plane_segmentation_name = metadata_copy["Ophys"]["ImageSegmentation"]["plane_segmentations"][plane_index][
+            "name"
+        ]
+    plane_segmentation_name = (
+        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    )
     # df/F metadata
     df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
     df_over_f_name = df_over_f_metadata["name"]
@@ -874,7 +910,7 @@ def add_fluorescence_traces(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata_copy,
-        plane_index=plane_index,
+        plane_segmentation_name=plane_segmentation_name,
     )
 
     roi_response_series_kwargs = dict(rois=roi_table_region, unit="n.a.")
@@ -912,7 +948,6 @@ def add_fluorescence_traces(
         # The name of the roi_response_series is "RoiResponseSeries" for raw and df/F traces,
         # otherwise it is capitalized trace_name.
         trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
-        trace_name = trace_name if plane_index == 0 else trace_name + f"_Plane{plane_index}"
 
         if trace_name in data_interface.roi_response_series:
             continue
@@ -920,8 +955,11 @@ def add_fluorescence_traces(
         data_interface_metadata = df_over_f_metadata if isinstance(data_interface, DfOverF) else fluorescence_metadata
         response_series_metadata = data_interface_metadata["roi_response_series"]
         trace_metadata = next(
-            trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]
+            (trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]),
+            None,
         )
+        if trace_metadata is None:
+            raise ValueError(f"Metadata for '{trace_name}' trace not found in {response_series_metadata}.")
 
         # Pop the rate from the metadata if irregular time series
         if "timestamps" in roi_response_series_kwargs and "rate" in trace_metadata:
@@ -945,25 +983,51 @@ def _create_roi_table_region(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict,
-    plane_index: int,
+    plane_segmentation_name: Optional[str] = None,
+    plane_index: Optional[int] = None,
 ):
-    """Private method to create ROI table region."""
-    add_plane_segmentation(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata)
+    """Private method to create ROI table region.
 
-    # Get plane segmentation from the image segmentation
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The segmentation extractor to get the results from.
+    nwbfile : NWBFile
+        The NWBFile to add the plane segmentation to.
+    metadata : dict, optional
+        The metadata for the plane segmentation.
+    plane_segmentation_name : str, optional
+        The name of the plane segmentation that identifies which plane to add the ROI table region to.
+    """
     image_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]
+
+    if plane_index:
+        warn(
+            "Keyword argument 'plane_index' is deprecated and it will be removed on 2024-04-16. Use 'plane_segmentation_name' instead."
+        )
+        plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][plane_index]["name"]
+
+    add_plane_segmentation(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        plane_segmentation_name=plane_segmentation_name,
+    )
+
     image_segmentation_name = image_segmentation_metadata["name"]
     ophys = get_module(nwbfile, "ophys")
     image_segmentation = ophys.get_data_interface(image_segmentation_name)
 
-    plane_segmentation_name = image_segmentation_metadata["plane_segmentations"][0]["name"]
+    # Get plane segmentation from the image segmentation
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
 
     # Create a reference for ROIs from the plane segmentation
     id_list = list(plane_segmentation.id)
+
+    imaging_plane_name = plane_segmentation.imaging_plane.name
     roi_table_region = plane_segmentation.create_roi_table_region(
         region=[id_list.index(id) for id in segmentation_extractor.get_roi_ids()],
-        description=f"region for Imaging plane{plane_index}",
+        description=f"The ROIs for {imaging_plane_name}.",
     )
 
     return roi_table_region
@@ -989,7 +1053,11 @@ def _get_segmentation_data_interface(nwbfile: NWBFile, data_interface_name: str)
 
 
 def add_summary_images(
-    nwbfile: NWBFile, segmentation_extractor: SegmentationExtractor, images_set_name: str = "summary_images"
+    nwbfile: NWBFile,
+    segmentation_extractor: SegmentationExtractor,
+    metadata: Optional[dict] = None,
+    plane_segmentation_name: Optional[str] = None,
+    images_set_name: Optional[str] = None,  # TODO: to be removed
 ) -> NWBFile:
     """
     Adds summary images (i.e. mean and correlation) to the nwbfile using an image container object pynwb.Image
@@ -1000,14 +1068,34 @@ def add_summary_images(
         An previously defined -in memory- NWBFile.
     segmentation_extractor : SegmentationExtractor
         A segmentation extractor object from roiextractors.
-    images_set_name : str, default: 'summary_images'
-        The name of the image container.
+    metadata: dict, optional
+        The metadata for the summary images is located in metadata["Ophys"]["SegmentationImages"].
+    plane_segmentation_name: str, optional
+        The name of the plane segmentation that identifies which images to add.
 
     Returns
     -------
     NWBFile
         The nwbfile passed as an input with the summary images added.
     """
+    if metadata is None:
+        metadata = dict()
+
+    # Set the defaults and required infrastructure
+    metadata_copy = deepcopy(metadata)
+    default_metadata = get_default_segmentation_metadata()
+    metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
+
+    segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"]
+
+    if images_set_name is not None:
+        warn(
+            "Keyword argument 'images_set_name' is deprecated it will be removed on 2024-04-16."
+            "Specify the name of the Images container in metadata['Ophys']['SegmentationImages'] instead."
+        )
+        segmentation_images_metadata["name"] = images_set_name
+
+    images_container_name = segmentation_images_metadata["name"]
 
     images_dict = segmentation_extractor.get_images_dict()
     images_to_add = {img_name: img for img_name, img in images_dict.items() if img is not None}
@@ -1016,14 +1104,27 @@ def add_summary_images(
 
     ophys = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
 
-    image_collection_does_not_exist = images_set_name not in ophys.data_interfaces
+    image_collection_does_not_exist = images_container_name not in ophys.data_interfaces
     if image_collection_does_not_exist:
-        ophys.add(Images(images_set_name))
-    image_collection = ophys.data_interfaces[images_set_name]
+        ophys.add(Images(name=images_container_name, description=segmentation_images_metadata["description"]))
+    image_collection = ophys.data_interfaces[images_container_name]
+
+    plane_segmentation_name = (
+        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    )
+    assert (
+        plane_segmentation_name in segmentation_images_metadata
+    ), f"Plane segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['SegmentationImages']"
+    images_metadata = segmentation_images_metadata[plane_segmentation_name]
 
     for img_name, img in images_to_add.items():
+        image_kwargs = dict(name=img_name, data=img.T)
+        image_metadata = images_metadata.get(img_name, None)
+        if image_metadata is not None:
+            image_kwargs.update(image_metadata)
+
         # Note that nwb uses the conversion width x height (columns, rows) and roiextractors uses the transpose
-        image_collection.add_image(GrayscaleImage(name=img_name, data=img.T))
+        image_collection.add_image(GrayscaleImage(**image_kwargs))
 
     return nwbfile
 
@@ -1032,7 +1133,8 @@ def add_segmentation(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: Optional[dict] = None,
-    plane_num: int = 0,
+    plane_segmentation_name: Optional[str] = None,
+    plane_num: Optional[int] = None,  # TODO: to be removed
     include_roi_centroids: bool = True,
     include_roi_acceptance: bool = True,
     mask_type: Optional[str] = "image",  # Literal["image", "pixel"]
@@ -1042,14 +1144,13 @@ def add_segmentation(
     # Add device:
     add_devices(nwbfile=nwbfile, metadata=metadata)
 
-    # Add imaging plane
-    add_imaging_plane(nwbfile=nwbfile, metadata=metadata)
-
-    # PlaneSegmentation:
+    # `add_imaging_plane` is also called from `add_plane_segmentation` so no need to call it explicitly here
+    # Add PlaneSegmentation:
     add_plane_segmentation(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
+        plane_segmentation_name=plane_segmentation_name,
         include_roi_centroids=include_roi_centroids,
         include_roi_acceptance=include_roi_acceptance,
         mask_type=mask_type,
@@ -1062,13 +1163,18 @@ def add_segmentation(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
+        plane_segmentation_name=plane_segmentation_name,
         iterator_options=iterator_options,
         compression_options=compression_options,
     )
 
     # Adding summary images (mean and correlation)
-    images_set_name = "SegmentationImages" if plane_num == 0 else f"SegmentationImages_Plane{plane_num}"
-    add_summary_images(nwbfile=nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name)
+    add_summary_images(
+        nwbfile=nwbfile,
+        segmentation_extractor=segmentation_extractor,
+        metadata=metadata,
+        plane_segmentation_name=plane_segmentation_name,
+    )
 
 
 def write_segmentation(

@@ -49,6 +49,24 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             "properties"
         ]["Fluorescence"]
 
+        images_inner_schema = dict(
+            type="object",
+            properties=dict(name=dict(type="string"), description=dict(type="string")),
+        )
+        summary_images_per_plane_schema = dict(type="object", patternProperties={"^[a-zA-Z0-9]+$": images_inner_schema})
+
+        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"] = dict(
+            type="object",
+            required=["name"],
+            properties=dict(
+                name=dict(type="string", default="SegmentationImages"),
+                description=dict(type="string"),
+                patternProperties={
+                    "^[a-zA-Z0-9]+$": summary_images_per_plane_schema,
+                },
+            ),
+        )
+
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
@@ -80,6 +98,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         include_roi_centroids: bool = True,
         include_roi_acceptance: bool = True,
         mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
+        plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
         compression_options: Optional[dict] = None,
     ):
@@ -112,6 +131,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             Specify your choice between these three as mask_type='image', 'pixel', 'voxel', or None.
             If None, the mask information is not written to the NWB file.
             Defaults to 'image'.
+        plane_segmentation_name : str, optional
+            The name of the plane segmentation to be added.
         iterator_options : dict, optional
             The options to use when iterating over the image masks of the segmentation extractor.
         compression_options : dict, optional
@@ -136,6 +157,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             include_roi_centroids=include_roi_centroids,
             include_roi_acceptance=include_roi_acceptance,
             mask_type=mask_type,
+            plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             compression_options=compression_options,
         )
