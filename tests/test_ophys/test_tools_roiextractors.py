@@ -9,6 +9,7 @@ from unittest.mock import Mock
 
 import numpy as np
 import psutil
+import pynwb.testing.mock.file
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
@@ -1758,46 +1759,73 @@ class TestAddPhotonSeries(TestCase):
         self.assertIn(shared_imaging_plane_name, self.nwbfile.imaging_planes)
 
 
-class TestAddSummaryImages(unittest.TestCase):
+class TestAddSummaryImages(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.session_start_time = datetime.now().astimezone()
+
+        cls.metadata = dict(Ophys=dict())
+
+        cls.segmentation_images_name = "segmentation_images"
+        cls.mean_image_name = "mean_image"
+        cls.correlation_image_name = "correlation_image"
+        segmentation_images_metadata = dict(
+            name=cls.segmentation_images_name,
+            description="description",
+            PlaneSegmentation=dict(
+                correlation=dict(name=cls.correlation_image_name, description="test description for correlation image"),
+                mean=dict(name=cls.mean_image_name, description="test description for mean image"),
+            ),
+        )
+
+        cls.metadata["Ophys"].update(SegmentationImages=segmentation_images_metadata)
+
     def setUp(self):
-        self.session_start_time = datetime.now().astimezone()
         self.nwbfile = NWBFile(
             session_description="session_description",
             identifier="file_id",
             session_start_time=self.session_start_time,
         )
 
-    def test_add_sumary_images(self):
+    def test_add_summary_images(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
 
-        images_set_name = "images_set_name"
         add_summary_images(
-            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+            nwbfile=self.nwbfile,
+            segmentation_extractor=segmentation_extractor,
+            metadata=self.metadata,
         )
 
         ophys = self.nwbfile.get_processing_module("ophys")
-        images_collection = ophys.data_interfaces[images_set_name]
+        self.assertIn(self.segmentation_images_name, ophys.data_interfaces)
+        images_collection = ophys.data_interfaces[self.segmentation_images_name]
 
         extracted_images_dict = images_collection.images
+        self.assertEqual(extracted_images_dict[self.mean_image_name].description, "test description for mean image")
+        self.assertEqual(
+            extracted_images_dict[self.correlation_image_name].description, "test description for correlation image"
+        )
 
         extracted_images_dict = {img_name: img.data.T for img_name, img in extracted_images_dict.items()}
         expected_images_dict = segmentation_extractor.get_images_dict()
 
-        assert expected_images_dict.keys() == extracted_images_dict.keys()
-        for image_name in expected_images_dict.keys():
-            np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
+        images_metadata = self.metadata["Ophys"]["SegmentationImages"]["PlaneSegmentation"]
+        for image_name, image_data in expected_images_dict.items():
+            image_name_from_metadata = images_metadata[image_name]["name"]
+            np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
 
     def test_extractor_with_one_summary_image_suppressed(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
         segmentation_extractor._image_correlation = None
 
-        images_set_name = "images_set_name"
         add_summary_images(
-            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+            nwbfile=self.nwbfile,
+            segmentation_extractor=segmentation_extractor,
+            metadata=self.metadata,
         )
 
         ophys = self.nwbfile.get_processing_module("ophys")
-        images_collection = ophys.data_interfaces[images_set_name]
+        images_collection = ophys.data_interfaces[self.segmentation_images_name]
 
         extracted_images_number = len(images_collection.images)
         expected_images_number = len(
@@ -1810,28 +1838,79 @@ class TestAddSummaryImages(unittest.TestCase):
             num_rows=10, num_columns=15, has_summary_images=False
         )
 
-        images_set_name = "images_set_name"
         self.nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
 
         add_summary_images(
-            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
+            nwbfile=self.nwbfile,
+            segmentation_extractor=segmentation_extractor,
+            metadata=self.metadata,
         )
 
         ophys = self.nwbfile.get_processing_module("ophys")
-        assert images_set_name not in ophys.data_interfaces
+        assert self.segmentation_images_name not in ophys.data_interfaces
 
     def test_extractor_with_no_summary_images_and_no_ophys_module(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(
             num_rows=10, num_columns=15, has_summary_images=False
         )
 
-        images_set_name = "images_set_name"
-
-        add_summary_images(
-            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, images_set_name=images_set_name
-        )
+        add_summary_images(nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, metadata=self.metadata)
 
         assert len(self.nwbfile.processing) == 0
+
+    def test_add_summary_images_invalid_plane_segmentation_name(self):
+        with self.assertRaisesWith(
+            exc_type=AssertionError,
+            exc_msg="Plane segmentation 'invalid_plane_segmentation_name' not found in metadata['Ophys']['SegmentationImages']",
+        ):
+            add_summary_images(
+                nwbfile=self.nwbfile,
+                segmentation_extractor=generate_dummy_segmentation_extractor(num_rows=10, num_columns=15),
+                metadata=self.metadata,
+                plane_segmentation_name="invalid_plane_segmentation_name",
+            )
+
+    def test_add_summary_images_from_two_planes(self):
+        segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
+
+        add_summary_images(
+            nwbfile=self.nwbfile,
+            segmentation_extractor=segmentation_extractor_first_plane,
+            metadata=self.metadata,
+            plane_segmentation_name="PlaneSegmentation",
+        )
+
+        metadata = deepcopy(self.metadata)
+        segmentation_images_metadata = metadata["Ophys"]["SegmentationImages"]
+        images_metadata = segmentation_images_metadata["PlaneSegmentation"]
+        images_metadata["mean"].update(name="test_mean_image_name")
+        images_metadata["correlation"].update(name="test_correlation_image_name")
+        plane_segmentation_name = "test_plane_segmentation_name"
+        segmentation_images_metadata.update(
+            {plane_segmentation_name: segmentation_images_metadata["PlaneSegmentation"]}
+        )
+
+        segmentation_extractor_second_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
+
+        add_summary_images(
+            nwbfile=self.nwbfile,
+            segmentation_extractor=segmentation_extractor_second_plane,
+            metadata=metadata,
+            plane_segmentation_name=plane_segmentation_name,
+        )
+
+        ophys = self.nwbfile.get_processing_module("ophys")
+        images_collection = ophys.data_interfaces[self.segmentation_images_name]
+        extracted_images_number = len(images_collection.images)
+        self.assertEqual(extracted_images_number, 4)
+
+        extracted_images_dict = {img_name: img.data.T for img_name, img in images_collection.images.items()}
+        expected_images_second_plane = segmentation_extractor_second_plane.get_images_dict()
+
+        images_metadata = metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]
+        for image_name, image_data in expected_images_second_plane.items():
+            image_name_from_metadata = images_metadata[image_name]["name"]
+            np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
 
 
 if __name__ == "__main__":

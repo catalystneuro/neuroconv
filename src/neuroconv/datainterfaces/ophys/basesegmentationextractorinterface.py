@@ -49,6 +49,24 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             "properties"
         ]["Fluorescence"]
 
+        images_inner_schema = dict(
+            type="object",
+            properties=dict(name=dict(type="string"), description=dict(type="string")),
+        )
+        summary_images_per_plane_schema = dict(type="object", patternProperties={"^[a-zA-Z0-9]+$": images_inner_schema})
+
+        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"] = dict(
+            type="object",
+            required=["name"],
+            properties=dict(
+                name=dict(type="string", default="SegmentationImages"),
+                description=dict(type="string"),
+                patternProperties={
+                    "^[a-zA-Z0-9]+$": summary_images_per_plane_schema,
+                },
+            ),
+        )
+
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
