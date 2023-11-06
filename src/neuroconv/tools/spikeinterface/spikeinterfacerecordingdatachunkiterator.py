@@ -79,7 +79,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             64,  # from https://github.com/flatironinstitute/neurosift/issues/52#issuecomment-1671405249
         )
         chunk_frames = min(
-            self.recording.get_num_frames(),
+            self.recording.get_num_frames(segment_index=self.segment_index),
             int(chunk_mb * 1e6 / (self.recording.get_dtype().itemsize * chunk_channels)),
         )
 
