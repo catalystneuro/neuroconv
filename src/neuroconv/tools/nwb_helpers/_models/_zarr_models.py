@@ -154,7 +154,11 @@ class ZarrBackendConfiguration(BackendConfiguration):
         )
     )
     number_of_jobs: int = Field(
-        description="Number of jobs to use in parallel during write. Negative slicing conforms with the pattern of indexing `list(range(total_number_of_cpu))[number_of_jobs]`; for example, `-1` uses all available CPU, `-2` uses all except one, etc.",
+        description=(
+            "Number of jobs to use in parallel during write. Negative slicing conforms with the pattern of indexing "
+            " `list(range(total_number_of_cpu))[number_of_jobs]`; for example, `-1` uses all available CPU, `-2` "
+            "uses all except one, etc."
+        ),
         ge=-psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
         le=psutil.cpu_count(),
         default=-2,  # -2 translates to 'all CPU except for one'
