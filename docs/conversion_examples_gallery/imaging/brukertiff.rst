@@ -55,5 +55,5 @@ Use "contiguous" to create the volumetric two photon series, and "disjoint" to c
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = f"{output_folder}/test2.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

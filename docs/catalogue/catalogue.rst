@@ -99,7 +99,7 @@ NCT v0.7.0
 `tank-lab-to-nwb <https://github.com/catalystneuro/tank-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In this project, we worked with `Dr. David Tank's lab at Princeton <https://pni.princeton.edu/faculty/david-tank>`_ to
+In this project, we worked with `Dr. David Tank's lab at Princeton <https://pni.princeton.edu/people/david-tank>`_ to
 package data from Neuropixel (SpikeGLX) recordings of subjects navigating a virtual reality. Behavior contains a
 variety of NWB data types including positional and view angle over time, collision detection, and more. This data
 utilizes a custom `extension <https://github.com/catalystneuro/ndx-tank-metadata>`_ for parsing experiment metadata.

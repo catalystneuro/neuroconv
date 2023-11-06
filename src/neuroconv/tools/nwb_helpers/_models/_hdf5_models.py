@@ -8,21 +8,25 @@ from pynwb import H5DataIO
 
 from ._base_models import BackendConfiguration, DatasetConfiguration
 
-_base_hdf5_filters = set(h5py.filters.decode) - set(
+_base_hdf5_filters = set(h5py.filters.decode)
+_excluded_hdf5_filters = set(
     (
         "shuffle",  # controlled via H5DataIO
         "fletcher32",  # controlled via H5DataIO
         "scaleoffset",  # enforced indrectly by HDMF/PyNWB data types
     )
 )
-_available_hdf5_filters = set(_base_hdf5_filters)
+_available_hdf5_filters = set(_base_hdf5_filters - _excluded_hdf5_filters)
+AVAILABLE_HDF5_COMPRESSION_METHODS = {filter_name: filter_name for filter_name in _available_hdf5_filters}
 if is_module_installed(module_name="hdf5plugin"):
     import hdf5plugin
 
-    _available_hdf5_filters = _available_hdf5_filters | set(
-        (str(hdf5plugin_filter).rstrip("'>").split(".")[-1] for hdf5plugin_filter in hdf5plugin.get_filters())
-    )  # Manual string parsing because of slight mismatches between .filter_name and actual import class
-AVAILABLE_HDF5_COMPRESSION_METHODS = tuple(_available_hdf5_filters)
+    AVAILABLE_HDF5_COMPRESSION_METHODS.update(
+        {
+            str(hdf5plugin_filter).rstrip("'>").split(".")[-1]: hdf5plugin_filter
+            for hdf5plugin_filter in hdf5plugin.get_filters()
+        }
+    )
 
 
 class HDF5DatasetConfiguration(DatasetConfiguration):
@@ -34,7 +38,7 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
         validate_assignment = True
 
     compression_method: Union[
-        Literal[AVAILABLE_HDF5_COMPRESSION_METHODS], h5py._hl.filters.FilterRefBase, None
+        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], h5py._hl.filters.FilterRefBase, None
     ] = Field(
         default="gzip",
         description=(
@@ -50,7 +54,7 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
-    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
+    def get_data_io_kwargs(self) -> Dict[str, Any]:
         if is_module_installed(module_name="hdf5plugin"):
             import hdf5plugin
 

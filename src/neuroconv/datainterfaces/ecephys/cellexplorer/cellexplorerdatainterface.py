@@ -1,6 +1,5 @@
 from pathlib import Path
-from typing import List, Literal, Optional, Union
-from warnings import warn
+from typing import Literal, Optional
 
 import numpy as np
 import scipy
@@ -421,7 +420,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
             if "extracellular" in session_data.keys():
                 sampling_frequency = session_data["extracellular"].get("sr", None)
 
-        super().__init__(spikes_matfile_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
+        super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
         self.source_data = dict(file_path=file_path)
         spikes_matfile_path = Path(file_path)
 

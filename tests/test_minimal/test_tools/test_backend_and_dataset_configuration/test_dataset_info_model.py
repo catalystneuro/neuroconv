@@ -15,8 +15,9 @@ def test_dataset_info_print():
     expected_print = """
 acquisition/TestElectricalSeries/data
 -------------------------------------
-  full_shape: (1800000, 384)
-  dtype: int16
+  dtype : int16
+  full shape of source array : (1800000, 384)
+  full size of source array : 1.38 GB
 """
     assert out.getvalue() == expected_print
 
@@ -28,7 +29,8 @@ def test_dataset_info_repr():
     # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
     expected_repr = (
         "DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location='acquisition/TestElectricalSeries/data', full_shape=(1800000, 384), dtype=dtype('int16'))"
+        "location='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
+        "full_shape=(1800000, 384))"
     )
     assert repr(dataset_info) == expected_repr
 

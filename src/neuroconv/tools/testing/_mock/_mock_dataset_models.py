@@ -32,7 +32,7 @@ def mock_DatasetInfo(
 
 def mock_HDF5DatasetConfiguration(
     compression_method: Union[
-        Literal[AVAILABLE_HDF5_COMPRESSION_METHODS], h5py._hl.filters.FilterRefBase, None
+        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], h5py._hl.filters.FilterRefBase, None
     ] = "gzip",
     compression_options: Union[Dict[str, Any], None] = None,
 ) -> HDF5DatasetConfiguration:
@@ -47,9 +47,13 @@ def mock_HDF5DatasetConfiguration(
 
 
 def mock_ZarrDatasetConfiguration(
-    compression_method: Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec, None] = "gzip",
+    compression_method: Union[
+        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None
+    ] = "gzip",
     compression_options: Union[Dict[str, Any]] = None,
-    filter_methods: Iterable[Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec, None]] = None,
+    filter_methods: Iterable[
+        Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None]
+    ] = None,
     filter_options: Union[Iterable[Dict[str, Any]], None] = None,
 ) -> ZarrDatasetConfiguration:
     """Mock instance of a ZarrDatasetConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
