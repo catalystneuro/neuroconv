@@ -9,6 +9,7 @@ from unittest.mock import Mock
 
 import numpy as np
 import psutil
+import pynwb.testing.mock.file
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal, assert_raises
@@ -1583,20 +1584,17 @@ class TestAddSummaryImages(unittest.TestCase):
         cls.metadata = dict(Ophys=dict())
 
         cls.segmentation_images_name = "segmentation_images"
+        cls.mean_image_name = "mean_image"
+        cls.correlation_image_name = "correlation_image"
         segmentation_images_metadata = dict(
             name=cls.segmentation_images_name,
             description="description",
-            images=[
-                dict(
-                    name="correlation",
-                    description="test description for correlation image",
-                ),
-                dict(
-                    name="mean",
-                    description="test description for mean image",
-                ),
-            ],
+            PlaneSegmentation=dict(
+                correlation=dict(name=cls.correlation_image_name, description="test description for correlation image"),
+                mean=dict(name=cls.mean_image_name, description="test description for mean image"),
+            ),
         )
+
         cls.metadata["Ophys"].update(SegmentationImages=segmentation_images_metadata)
 
     def setUp(self):
@@ -1620,15 +1618,18 @@ class TestAddSummaryImages(unittest.TestCase):
         images_collection = ophys.data_interfaces[self.segmentation_images_name]
 
         extracted_images_dict = images_collection.images
-        self.assertEqual(extracted_images_dict["mean"].description, "test description for mean image")
-        self.assertEqual(extracted_images_dict["correlation"].description, "test description for correlation image")
+        self.assertEqual(extracted_images_dict[self.mean_image_name].description, "test description for mean image")
+        self.assertEqual(
+            extracted_images_dict[self.correlation_image_name].description, "test description for correlation image"
+        )
 
         extracted_images_dict = {img_name: img.data.T for img_name, img in extracted_images_dict.items()}
         expected_images_dict = segmentation_extractor.get_images_dict()
 
-        assert expected_images_dict.keys() == extracted_images_dict.keys()
-        for image_name in expected_images_dict.keys():
-            np.testing.assert_almost_equal(expected_images_dict[image_name], extracted_images_dict[image_name])
+        images_metadata = self.metadata["Ophys"]["SegmentationImages"]["PlaneSegmentation"]
+        for image_name, image_data in expected_images_dict.items():
+            image_name_from_metadata = images_metadata[image_name]["name"]
+            np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
 
     def test_extractor_with_one_summary_image_suppressed(self):
         segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)

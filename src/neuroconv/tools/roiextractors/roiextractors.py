@@ -111,9 +111,9 @@ def get_default_segmentation_metadata() -> DeepDict:
     default_segmentation_images = dict(
         name="SegmentationImages",
         description="The summary images of the segmentation.",
-        images=[
-            dict(name="correlation", description="The correlation image."),
-        ],
+        PlaneSegmentation=dict(
+            correlation=dict(name="correlation", description="The correlation image."),
+        ),
     )
 
     metadata["Ophys"].update(
@@ -1001,6 +1001,7 @@ def add_summary_images(
     nwbfile: NWBFile,
     segmentation_extractor: SegmentationExtractor,
     metadata: Optional[dict] = None,
+    plane_segmentation_name: Optional[str] = None,
     images_set_name: Optional[str] = None,  # TODO: to be removed
 ) -> NWBFile:
     """
@@ -1014,6 +1015,8 @@ def add_summary_images(
         A segmentation extractor object from roiextractors.
     metadata: dict, optional
         The metadata for the summary images is located in metadata["Ophys"]["SegmentationImages"].
+    plane_segmentation_name: str, optional
+        The name of the plane segmentation that identifies which images to add.
 
     Returns
     -------
@@ -1029,7 +1032,6 @@ def add_summary_images(
     metadata_copy = dict_deep_update(default_metadata, metadata_copy, append_list=False)
 
     segmentation_images_metadata = metadata_copy["Ophys"]["SegmentationImages"]
-    images_metadata = segmentation_images_metadata["images"]
 
     if images_set_name is not None:
         warn(
@@ -1052,11 +1054,17 @@ def add_summary_images(
         ophys.add(Images(name=images_container_name, description=segmentation_images_metadata["description"]))
     image_collection = ophys.data_interfaces[images_container_name]
 
+    plane_segmentation_name = (
+        plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
+    )
+    assert (
+        plane_segmentation_name in segmentation_images_metadata
+    ), f"Plane segmentation {plane_segmentation_name} not found in metadata['Ophys']['SegmentationImages']"
+    images_metadata = segmentation_images_metadata[plane_segmentation_name]
+
     for img_name, img in images_to_add.items():
         image_kwargs = dict(name=img_name, data=img.T)
-        image_metadata = next(
-            (image_metadata for image_metadata in images_metadata if img_name == image_metadata["name"]), None
-        )
+        image_metadata = images_metadata.get(img_name, None)
         if image_metadata is not None:
             image_kwargs.update(image_metadata)
 
