@@ -1,5 +1,10 @@
 # Upcoming
 
+### Features
+* Added Pydantic data models of `BackendConfiguration` for both HDF5 and Zarr datasets (container/mapper of all the `DatasetConfiguration`s for a particular file). [PR #568](https://github.com/catalystneuro/neuroconv/pull/568)
+
+
+
 # v0.4.5
 
 ### Back-compatibility break
@@ -33,9 +38,9 @@
 ### Deprecation
 * Removed `use_times` and `buffer_size` from `add_photon_series`. [PR #600](https://github.com/catalystneuro/neuroconv/pull/600)
 
-
 ### Testing
 * Adds `MockImagingInterface` as a general testing mechanism for ophys imaging interfaces [PR #604](https://github.com/catalystneuro/neuroconv/pull/604).
+
 
 
 # v0.4.4

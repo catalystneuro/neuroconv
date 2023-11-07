@@ -1,9 +1,7 @@
 """Unit tests for the DatasetConfiguration Pydantic model."""
 import pytest
 
-from neuroconv.tools.nwb_helpers._models._base_dataset_models import (
-    DatasetConfiguration,
-)
+from neuroconv.tools.nwb_helpers._models._base_models import DatasetConfiguration
 from neuroconv.tools.testing import mock_DatasetInfo
 
 
