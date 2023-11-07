@@ -821,17 +821,21 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         fluorescence_metadata = dict(
             Fluorescence=dict(
-                name=self.fluorescence_name,
-                raw=self.raw_roi_response_series_metadata,
-                deconvolved=self.deconvolved_roi_response_series_metadata,
-                neuropil=self.neuropil_roi_response_series_metadata,
+                PlaneSegmentation=dict(
+                    name=self.fluorescence_name,
+                    raw=self.raw_roi_response_series_metadata,
+                    deconvolved=self.deconvolved_roi_response_series_metadata,
+                    neuropil=self.neuropil_roi_response_series_metadata,
+                )
             )
         )
 
         dff_metadata = dict(
             DfOverF=dict(
-                name=self.df_over_f_name,
-                dff=self.dff_roi_response_series_metadata,
+                PlaneSegmentation=dict(
+                    name=self.df_over_f_name,
+                    dff=self.dff_roi_response_series_metadata,
+                )
             )
         )
 
@@ -1269,14 +1273,22 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
         )
 
         cls.metadata["Ophys"]["Fluorescence"].update(
-            name=cls.fluorescence_name,
-            raw=cls.raw_roi_response_series_metadata,
-            deconvolved=cls.deconvolved_roi_response_series_metadata,
-            neuropil=cls.neuropil_roi_response_series_metadata,
+            {
+                cls.plane_segmentation_first_plane_name: dict(
+                    name=cls.fluorescence_name,
+                    raw=cls.raw_roi_response_series_metadata,
+                    deconvolved=cls.deconvolved_roi_response_series_metadata,
+                    neuropil=cls.neuropil_roi_response_series_metadata,
+                )
+            }
         )
         cls.metadata["Ophys"]["DfOverF"].update(
-            name=cls.df_over_f_name,
-            dff=cls.dff_roi_response_series_metadata,
+            {
+                cls.plane_segmentation_first_plane_name: dict(
+                    name=cls.df_over_f_name,
+                    dff=cls.dff_roi_response_series_metadata,
+                )
+            }
         )
 
     def setUp(self):
@@ -1318,10 +1330,21 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
             imaging_plane=second_imaging_plane_name,
         )
 
-        metadata["Ophys"]["Fluorescence"]["raw"].update(name="RoiResponseSeriesSecondPlane")
-        metadata["Ophys"]["Fluorescence"]["deconvolved"].update(name="DeconvolvedSecondPlane")
-        metadata["Ophys"]["Fluorescence"]["neuropil"].update(name="NeuropilSecondPlane")
-        metadata["Ophys"]["DfOverF"]["dff"].update(name="RoiResponseSeriesSecondPlane")
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name] = deepcopy(
+            metadata["Ophys"]["Fluorescence"][self.plane_segmentation_first_plane_name]
+        )
+        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name] = deepcopy(
+            metadata["Ophys"]["DfOverF"][self.plane_segmentation_first_plane_name]
+        )
+
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["raw"].update(
+            name="RoiResponseSeriesSecondPlane"
+        )
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["deconvolved"].update(
+            name="DeconvolvedSecondPlane"
+        )
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["neuropil"].update(name="NeuropilSecondPlane")
+        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name]["dff"].update(name="RoiResponseSeriesSecondPlane")
 
         add_fluorescence_traces(
             segmentation_extractor=self.segmentation_extractor_second_plane,

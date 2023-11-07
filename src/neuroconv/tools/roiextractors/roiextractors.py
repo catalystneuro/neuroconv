@@ -118,8 +118,8 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     metadata["Ophys"].update(
         dict(
-            Fluorescence=default_fluorescence,
-            DfOverF=default_df_over_f,
+            Fluorescence=dict(PlaneSegmentation=default_fluorescence),
+            DfOverF=dict(PlaneSegmentation=default_df_over_f),
             ImageSegmentation=default_image_segmentation,
             SegmentationImages=default_segmentation_images,
         ),
@@ -885,11 +885,11 @@ def add_fluorescence_traces(
         plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     )
     # df/F metadata
-    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
+    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"][plane_segmentation_name]
     df_over_f_name = df_over_f_metadata["name"]
 
     # Fluorescence traces metadata
-    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
+    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"][plane_segmentation_name]
     fluorescence_name = fluorescence_metadata["name"]
 
     # Get traces from the segmentation extractor
