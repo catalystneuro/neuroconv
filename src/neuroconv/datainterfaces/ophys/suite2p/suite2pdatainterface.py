@@ -58,7 +58,8 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         imaging_plane_name = imaging_plane_metadata["name"] + plane_name_suffix
         imaging_plane_metadata.update(name=imaging_plane_name)
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
-        plane_segmentation_name = plane_segmentation_metadata["name"] + plane_name_suffix
+        default_plane_segmentation_name = plane_segmentation_metadata["name"]
+        plane_segmentation_name = default_plane_segmentation_name + plane_name_suffix
         plane_segmentation_metadata.update(
             name=plane_segmentation_name,
             imaging_plane=imaging_plane_name,
@@ -68,8 +69,13 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         fluorescence_name = fluorescence_metadata["name"] + plane_name_suffix
         fluorescence_metadata.update(name=fluorescence_name)
 
-        segmentation_images_metadata = metadata["Ophys"]["SegmentationImages"]
-        segmentation_images_name = segmentation_images_metadata["name"] + plane_name_suffix
-        segmentation_images_metadata.update(name=segmentation_images_name)
+        segmentation_images_metadata = metadata["Ophys"]["SegmentationImages"].pop(default_plane_segmentation_name)
+        metadata["Ophys"]["SegmentationImages"][plane_segmentation_name] = segmentation_images_metadata
+        metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]["correlation"].update(
+            name=f"CorrelationImage{plane_name_suffix}",
+        )
+        metadata["Ophys"]["SegmentationImages"][plane_segmentation_name].update(
+            dict(mean=dict(name=f"MeanImage{plane_name_suffix}"))
+        )
 
         return metadata
