@@ -65,11 +65,15 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             imaging_plane=imaging_plane_name,
         )
 
-        fluorescence_metadata = metadata["Ophys"]["Fluorescence"]
-        trace_names = [property_name for property_name in fluorescence_metadata.keys() if property_name != "name"]
+        fluorescence_metadata_per_plane = metadata["Ophys"]["Fluorescence"].pop(default_plane_segmentation_name)
+        # override the default name of the plane segmentation
+        metadata["Ophys"]["Fluorescence"][plane_segmentation_name] = fluorescence_metadata_per_plane
+        trace_names = [
+            property_name for property_name in fluorescence_metadata_per_plane.keys() if property_name != "name"
+        ]
         for trace_name in trace_names:
-            default_raw_traces_name = fluorescence_metadata[trace_name]["name"]
-            fluorescence_metadata[trace_name].update(name=default_raw_traces_name + plane_name_suffix)
+            default_raw_traces_name = fluorescence_metadata_per_plane[trace_name]["name"]
+            fluorescence_metadata_per_plane[trace_name].update(name=default_raw_traces_name + plane_name_suffix)
 
         segmentation_images_metadata = metadata["Ophys"]["SegmentationImages"].pop(default_plane_segmentation_name)
         metadata["Ophys"]["SegmentationImages"][plane_segmentation_name] = segmentation_images_metadata
