@@ -161,5 +161,5 @@ class ZarrBackendConfiguration(BackendConfiguration):
         ),
         ge=-psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
         le=psutil.cpu_count(),
-        default=psutil.cpu_count() -1 
+        default=psutil.cpu_count() - 1,
     )
