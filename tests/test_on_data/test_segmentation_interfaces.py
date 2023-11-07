@@ -89,6 +89,9 @@ class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
         cls.plane_segmentation_names = ["PlaneSegmentation" + plane_suffix for plane_suffix in plane_suffices]
         cls.mean_image_names = ["MeanImage" + plane_suffix for plane_suffix in plane_suffices]
         cls.correlation_image_names = ["CorrelationImage" + plane_suffix for plane_suffix in plane_suffices]
+        cls.raw_traces_names = ["RoiResponseSeries" + plane_suffix for plane_suffix in plane_suffices]
+        cls.neuropil_traces_names = ["Neuropil" + plane_suffix for plane_suffix in plane_suffices]
+        cls.deconvolved_trace_name = "Deconvolved" + plane_suffices[0]
 
     def run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
@@ -110,3 +113,11 @@ class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
         summary_images_metadata = metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]
         self.assertEqual(summary_images_metadata["correlation"]["name"], self.correlation_image_names[self.case])
         self.assertEqual(summary_images_metadata["mean"]["name"], self.mean_image_names[self.case])
+
+        raw_traces_metadata = metadata["Ophys"]["Fluorescence"]["raw"]
+        self.assertEqual(raw_traces_metadata["name"], self.raw_traces_names[self.case])
+        neuropil_traces_metadata = metadata["Ophys"]["Fluorescence"]["neuropil"]
+        self.assertEqual(neuropil_traces_metadata["name"], self.neuropil_traces_names[self.case])
+        if self.case == 0:
+            deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"]["deconvolved"]
+            self.assertEqual(deconvolved_trace_metadata["name"], self.deconvolved_trace_name)
