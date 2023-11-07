@@ -1166,8 +1166,8 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         segmentation_extractor.set_times(times)
 
         metadata = deepcopy(self.metadata)
-        metadata["Ophys"]["Fluorescence"]["raw"].update(rate=1.23)
-        metadata["Ophys"]["DfOverF"]["dff"].update(rate=1.23)
+        metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
+        metadata["Ophys"]["DfOverF"]["PlaneSegmentation"]["dff"].update(rate=1.23)
 
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
@@ -1194,7 +1194,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         segmentation_extractor.set_times(times)
 
         metadata = deepcopy(self.metadata)
-        metadata["Ophys"]["Fluorescence"]["raw"].update(rate=1.23)
+        metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
 
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
@@ -1215,6 +1215,10 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         metadata = dict_deep_update(metadata, self.metadata)
 
         metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
+        metadata["Ophys"]["Fluorescence"][plane_segmentation_name] = metadata["Ophys"]["Fluorescence"].pop(
+            "PlaneSegmentation"
+        )
+        metadata["Ophys"]["DfOverF"][plane_segmentation_name] = metadata["Ophys"]["DfOverF"].pop("PlaneSegmentation")
 
         add_fluorescence_traces(
             segmentation_extractor=self.segmentation_extractor,
