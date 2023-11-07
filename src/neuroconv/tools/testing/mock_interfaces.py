@@ -11,6 +11,9 @@ from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
+from ...datainterfaces.ophys.baseimagingextractorinterface import (
+    BaseImagingExtractorInterface,
+)
 from ...utils import ArrayType, get_schema_from_method_signature
 
 
@@ -118,27 +121,58 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 class MockRecordingInterface(BaseRecordingExtractorInterface):
     """An interface with a spikeinterface recording object for testing purposes."""
 
+    ExtractorModuleName = "spikeinterface.core.generate"
+    ExtractorName = "generate_recording"
+
     def __init__(
         self,
-        num_channels=4,
-        sampling_frequency=30_000.0,
-        durations=[1.0],
-        seed=0,
-        verbose=True,
+        num_channels: int = 4,
+        sampling_frequency: float = 30_000.0,
+        durations: List[float] = [1.0],
+        seed: int = 0,
+        verbose: bool = True,
         es_key: str = "ElectricalSeries",
     ):
-        from spikeinterface.core.generate import generate_recording
-
-        # TODO: Use the true generator recording once spikeinterface is updated to 0.98
-        self.recording_extractor = generate_recording(
-            num_channels=num_channels, sampling_frequency=sampling_frequency, durations=durations, seed=seed
+        super().__init__(
+            num_channels=num_channels,
+            sampling_frequency=sampling_frequency,
+            durations=durations,
+            seed=seed,
+            verbose=verbose,
+            es_key=es_key,
         )
-        self.subset_channels = None
-        self.verbose = verbose
-        self.es_key = es_key
 
     def get_metadata(self) -> dict:
         metadata = super().get_metadata()
         session_start_time = datetime.now().astimezone()
+        metadata["NWBFile"]["session_start_time"] = session_start_time
+        return metadata
+
+
+class MockImagingInterface(BaseImagingExtractorInterface):
+    def __init__(
+        self,
+        num_frames: int = 30,
+        num_rows: int = 10,
+        num_columns: int = 10,
+        sampling_frequency: float = 30,
+        dtype: str = "uint16",
+        verbose: bool = True,
+    ):
+        from roiextractors.testing import generate_dummy_imaging_extractor
+
+        self.imaging_extractor = generate_dummy_imaging_extractor(
+            num_frames=num_frames,
+            num_rows=num_rows,
+            num_columns=num_columns,
+            sampling_frequency=sampling_frequency,
+            dtype=dtype,
+        )
+
+        self.verbose = verbose
+
+    def get_metadata(self) -> dict:
+        session_start_time = datetime.now().astimezone()
+        metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
