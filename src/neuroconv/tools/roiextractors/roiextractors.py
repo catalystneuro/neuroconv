@@ -83,7 +83,7 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     default_fluorescence = dict(
         name="Fluorescence",
-        roi_response_series=[default_fluorescence_roi_response_series],
+        raw=default_fluorescence_roi_response_series,
     )
 
     default_dff_roi_response_series = dict(
@@ -94,7 +94,7 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     default_df_over_f = dict(
         name="DfOverF",
-        roi_response_series=[default_dff_roi_response_series],
+        dff=default_dff_roi_response_series,
     )
 
     default_image_segmentation = dict(
@@ -650,12 +650,13 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
                 )
             )
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
+        # raw traces have already default name ("RoiResponseSeries")
+        if trace_name in ["raw", "dff"]:
+            continue
         if trace_data is not None and len(trace_data.shape) != 0:
-            metadata["Ophys"]["Fluorescence"]["roi_response_series"].append(
-                dict(
-                    name=trace_name.capitalize(),
-                    description=f"description of {trace_name} traces",
-                )
+            metadata["Ophys"]["Fluorescence"][trace_name] = dict(
+                name=trace_name.capitalize(),
+                description=f"description of {trace_name} traces",
             )
 
     return metadata
