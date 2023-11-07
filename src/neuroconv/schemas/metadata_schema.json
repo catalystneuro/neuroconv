@@ -169,8 +169,14 @@
             "patternProperties": {
               "^[a-zA-Z0-9]+$": {
                 "type": "object",
-                "title": "ROI response series",
-                "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
+                "patternProperties":{
+                  "^[a-zA-Z0-9]+$": {
+                    "type": "object",
+                    "title": "ROI response series",
+                    "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
+                  }
+                }
+              }
             }
           }
         },
@@ -182,8 +188,13 @@
             "patternProperties": {
               "^[a-zA-Z0-9]+$": {
                 "type": "object",
-                "title": "ROI response series",
-                "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
+                "patternProperties":{
+                  "^[a-zA-Z0-9]+$": {
+                    "type": "object",
+                    "title": "ROI response series",
+                    "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
+                  }
+                }
               }
             }
           }
