@@ -155,7 +155,9 @@ class ZarrBackendConfiguration(BackendConfiguration):
     )
     number_of_jobs: int = Field(
         description=(
-            "Number of jobs to use in parallel during write. Negative values, starting from -1, will use all the available CPUs (including logical), -2 is all except one, etc. This is equivalent to the pattern of indexing of "
+            "Number of jobs to use in parallel during write. Negative values, starting from -1, "
+            "will use all the available CPUs (including logical), -2 is all except one, etc. "
+            "This is equivalent to the pattern of indexing of "
             " `list(range(total_number_of_cpu))[number_of_jobs]`; for example, `-1` uses all available CPU, `-2` "
             "uses all except one, etc."
         ),
