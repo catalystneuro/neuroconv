@@ -945,23 +945,16 @@ def add_fluorescence_traces(
     for trace_name, trace in traces_to_add.items():
         # Decide which data interface to use based on the trace name
         data_interface = trace_to_data_interface[trace_name]
-        # Extract the response series metadata
-        # The name of the roi_response_series is "RoiResponseSeries" for raw and df/F traces,
-        # otherwise it is capitalized trace_name.
-        trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
-
-        if trace_name in data_interface.roi_response_series:
-            continue
-
         data_interface_metadata = df_over_f_metadata if isinstance(data_interface, DfOverF) else fluorescence_metadata
-        response_series_metadata = data_interface_metadata["roi_response_series"]
-        trace_metadata = next(
-            (trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]),
-            None,
-        )
+        # Extract the response series metadata
+        # the name of the trace is retrieved from the metadata, no need to override it here
+        # trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
+        trace_metadata = data_interface_metadata.get(trace_name, None)
         if trace_metadata is None:
-            raise ValueError(f"Metadata for '{trace_name}' trace not found in {response_series_metadata}.")
+            raise ValueError(f"Metadata for '{trace_name}' trace not found in {data_interface_metadata}.")
 
+        if trace_metadata["name"] in data_interface.roi_response_series:
+            continue
         # Pop the rate from the metadata if irregular time series
         if "timestamps" in roi_response_series_kwargs and "rate" in trace_metadata:
             trace_metadata.pop("rate")
