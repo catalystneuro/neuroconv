@@ -83,7 +83,9 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     default_fluorescence = dict(
         name="Fluorescence",
-        raw=default_fluorescence_roi_response_series,
+        PlaneSegmentation=dict(
+            raw=default_fluorescence_roi_response_series,
+        ),
     )
 
     default_dff_roi_response_series = dict(
@@ -94,7 +96,9 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     default_df_over_f = dict(
         name="DfOverF",
-        dff=default_dff_roi_response_series,
+        PlaneSegmentation=dict(
+            dff=default_dff_roi_response_series,
+        ),
     )
 
     default_image_segmentation = dict(
@@ -118,8 +122,8 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     metadata["Ophys"].update(
         dict(
-            Fluorescence=dict(PlaneSegmentation=default_fluorescence),
-            DfOverF=dict(PlaneSegmentation=default_df_over_f),
+            Fluorescence=default_fluorescence,
+            DfOverF=default_df_over_f,
             ImageSegmentation=default_image_segmentation,
             SegmentationImages=default_segmentation_images,
         ),
@@ -649,12 +653,14 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
                     description=f"{ch_name} description",
                 )
             )
+
+    plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
         # raw traces have already default name ("RoiResponseSeries")
         if trace_name in ["raw", "dff"]:
             continue
         if trace_data is not None and len(trace_data.shape) != 0:
-            metadata["Ophys"]["Fluorescence"][trace_name] = dict(
+            metadata["Ophys"]["Fluorescence"][plane_segmentation_name][trace_name] = dict(
                 name=trace_name.capitalize(),
                 description=f"description of {trace_name} traces",
             )
@@ -885,11 +891,11 @@ def add_fluorescence_traces(
         plane_segmentation_name or default_metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     )
     # df/F metadata
-    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"][plane_segmentation_name]
+    df_over_f_metadata = metadata_copy["Ophys"]["DfOverF"]
     df_over_f_name = df_over_f_metadata["name"]
 
     # Fluorescence traces metadata
-    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"][plane_segmentation_name]
+    fluorescence_metadata = metadata_copy["Ophys"]["Fluorescence"]
     fluorescence_name = fluorescence_metadata["name"]
 
     # Get traces from the segmentation extractor
@@ -949,7 +955,10 @@ def add_fluorescence_traces(
         # Extract the response series metadata
         # the name of the trace is retrieved from the metadata, no need to override it here
         # trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
-        trace_metadata = data_interface_metadata.get(trace_name, None)
+        assert plane_segmentation_name in data_interface_metadata, (
+            f"Plane segmentation '{plane_segmentation_name}' not found in " f"{data_interface_metadata} metadata."
+        )
+        trace_metadata = data_interface_metadata[plane_segmentation_name][trace_name]
         if trace_metadata is None:
             raise ValueError(f"Metadata for '{trace_name}' trace not found in {data_interface_metadata}.")
 
