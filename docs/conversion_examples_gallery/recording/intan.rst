@@ -19,6 +19,10 @@ Convert Intan data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.int
     >>> file_path = f"{ECEPHY_DATA_PATH}/intan/intan_rhd_test_1.rhd" # This can also be .rhs
     >>> interface = IntanRecordingInterface(file_path=file_path, verbose=False)
     >>>
+    >>> # Set the probe information (incl. electrode locations) if you have it
+    >>> # probe = ... # see https://probeinterface.readthedocs.io/
+    >>> # interface.recording_extractor.set_probe(probe)
+    >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
