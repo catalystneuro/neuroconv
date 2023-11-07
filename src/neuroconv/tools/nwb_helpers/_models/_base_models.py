@@ -190,7 +190,8 @@ class BackendConfiguration(BaseModel):
     data_io_class: Type[DataIO] = Field(description="The DataIO class that is specific to this backend.")
     dataset_configurations: Dict[str, DatasetConfiguration] = Field(
         description=(
-            "A mapping from object locations to their DatasetConfiguration specification that contains all information "
+            "A mapping from object locations (e.g. `
+acquisition/TestElectricalSeriesAP/data`)  to their DatasetConfiguration specification that contains all information "
             "for writing the datasets to disk using the specific backend."
         )
     )
