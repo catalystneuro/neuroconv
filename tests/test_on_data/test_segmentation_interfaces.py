@@ -87,23 +87,26 @@ class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
         plane_suffices = ["Chan1Plane0", "Chan2Plane0"]
         cls.imaging_plane_names = ["ImagingPlane" + plane_suffix for plane_suffix in plane_suffices]
         cls.plane_segmentation_names = ["PlaneSegmentation" + plane_suffix for plane_suffix in plane_suffices]
-        cls.fluorescence_names = ["Fluorescence" + plane_suffix for plane_suffix in plane_suffices]
-        cls.segmentation_images_names = ["SegmentationImages" + plane_suffix for plane_suffix in plane_suffices]
+        cls.mean_image_names = ["MeanImage" + plane_suffix for plane_suffix in plane_suffices]
+        cls.correlation_image_names = ["CorrelationImage" + plane_suffix for plane_suffix in plane_suffices]
 
     def run_conversion(self, nwbfile_path: str):
         metadata = self.interface.get_metadata()
         plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
-        conversion_options = dict(plane_segmentation_name=plane_segmentation_name)
-
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
         self.interface.run_conversion(
-            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **conversion_options
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            plane_segmentation_name=plane_segmentation_name,
         )
 
     def check_extracted_metadata(self, metadata: dict):
         """Check extracted metadata is adjusted correctly for each plane and channel combination."""
         self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["name"], self.imaging_plane_names[self.case])
         plane_segmentation_metadata = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]
-        self.assertEqual(plane_segmentation_metadata["name"], self.plane_segmentation_names[self.case])
-        self.assertEqual(metadata["Ophys"]["Fluorescence"]["name"], self.fluorescence_names[self.case])
-        self.assertEqual(metadata["Ophys"]["SegmentationImages"]["name"], self.segmentation_images_names[self.case])
+        plane_segmentation_name = self.plane_segmentation_names[self.case]
+        self.assertEqual(plane_segmentation_metadata["name"], plane_segmentation_name)
+        summary_images_metadata = metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]
+        self.assertEqual(summary_images_metadata["correlation"]["name"], self.correlation_image_names[self.case])
+        self.assertEqual(summary_images_metadata["mean"]["name"], self.mean_image_names[self.case])
