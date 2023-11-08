@@ -17,3 +17,6 @@ from ._models._zarr_models import (
     ZarrBackendConfiguration,
     ZarrDatasetConfiguration,
 )
+
+DATASET_CONFIGURATIONS = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
+BACKEND_CONFIGURATIONS = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
