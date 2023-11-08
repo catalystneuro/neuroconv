@@ -6,7 +6,12 @@ from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
-from ....utils import FilePathType, get_base_schema, DeepDict, calculate_regular_series_rate
+from ....utils import (
+    DeepDict,
+    FilePathType,
+    calculate_regular_series_rate,
+    get_base_schema,
+)
 
 
 class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
@@ -53,7 +58,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
-        from neuroconv.datainterfaces.behavior.video.video_utils import VideoCaptureContext
+        from neuroconv.datainterfaces.behavior.video.video_utils import (
+            VideoCaptureContext,
+        )
 
         self._vc = VideoCaptureContext
 
