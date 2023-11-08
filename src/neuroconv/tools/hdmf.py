@@ -4,8 +4,6 @@ from typing import Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
-from pydantic import Field
-from typing_extensions import Annotated
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
@@ -16,11 +14,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
     # TODO: move this to the core iterator in HDMF so it can be easily swapped out as well as run on its own
     @staticmethod
-    def estimate_default_chunk_shape(
-        chunk_mb: Annotated[float, Field(gt=0.0)],
-        maxshape: Tuple[int, ...],
-        dtype: np.dtype,
-    ) -> Tuple[int, ...]:
+    def estimate_default_chunk_shape(chunk_mb: float, maxshape: Tuple[int, ...], dtype: np.dtype) -> Tuple[int, ...]:
         """
         Select chunk shape with size in MB less than the threshold of chunk_mb.
 
@@ -46,10 +40,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     # TODO: move this to the core iterator in HDMF so it can be easily swapped out as well as run on its own
     @staticmethod
     def estimate_default_buffer_shape(
-        buffer_gb: Annotated[float, Field(gt=0.0)],
-        chunk_shape: Tuple[int, ...],
-        maxshape: Tuple[int, ...],
-        dtype: np.dtype,
+        buffer_gb: float, chunk_shape: Tuple[int, ...], maxshape: Tuple[int, ...], dtype: np.dtype
     ) -> Tuple[int]:
         num_axes = len(maxshape)
         chunk_bytes = math.prod(chunk_shape) * dtype.itemsize
@@ -117,7 +108,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
 class SliceableDataChunkIterator(GenericDataChunkIterator):
     """
-    Generic data chunk iterator that works for any memory mapped array, such as a np.memmap or an h5py.Dataset
+    Generic data chunk iterator that works for any memory mapped array, such as a np.memmap or h5py.Dataset object.
     """
 
     def __init__(self, data, **kwargs):
