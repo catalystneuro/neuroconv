@@ -16,7 +16,7 @@ from neuroconv.tools.nwb_helpers import DATASET_CONFIGURATIONS, get_default_data
 
 @pytest.mark.parametrize("iterator", [lambda x: x, SliceableDataChunkIterator, DataChunkIterator])
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_configuration_on_unwrapped_time_series_hdf5(iterator: callable, backend: Literal["hdf5", "zarr"]):
+def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5", "zarr"]):
     array = np.array([[1, 2, 3], [4, 5, 6]])
     data = iterator(array)
 
@@ -45,7 +45,7 @@ def test_configuration_on_unwrapped_time_series_hdf5(iterator: callable, backend
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_configuration_on_external_image_series_hdf5(backend: Literal["hdf5", "zarr"]):
+def test_configuration_on_external_image_series(backend: Literal["hdf5", "zarr"]):
     nwbfile = mock_NWBFile()
     image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0)
     nwbfile.add_acquisition(image_series)
