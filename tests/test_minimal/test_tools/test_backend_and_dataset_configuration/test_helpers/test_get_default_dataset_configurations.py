@@ -11,7 +11,10 @@ from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
-from neuroconv.tools.nwb_helpers import DATASET_CONFIGURATIONS, get_default_dataset_configurations
+from neuroconv.tools.nwb_helpers import (
+    DATASET_CONFIGURATIONS,
+    get_default_dataset_configurations,
+)
 
 
 @pytest.mark.parametrize("iterator", [lambda x: x, SliceableDataChunkIterator, DataChunkIterator])
