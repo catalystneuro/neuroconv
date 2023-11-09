@@ -1,5 +1,7 @@
+import re
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 from pynwb import NWBFile
@@ -47,12 +49,12 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
     def __init__(self, file_path: FilePathType, original_video_file_path: FilePathType, verbose: bool = True):
         """
-        Interface for writing Lightning Pose files to nwb.
+        Interface for writing pose estimation data from the Lightning Pose algorithm.
 
         Parameters
         ----------
         file_path : a string or a path
-            Path to the .csv file (the output of lightning pose)
+            Path to the .csv file that contains the predictions from Lightning Pose.
         original_video_file_path : a string or a path
             Path to the original video file (.mp4)
         verbose : bool, default: True
@@ -65,12 +67,21 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         self._vc = VideoCaptureContext
 
         self.file_path = Path(file_path)
+        assert self.file_path.exists(), f"The file '{self.file_path}' does not exist."
+        parent_folder = self.file_path.parent
+
+        labeled_video_file_path = list(parent_folder.rglob(f"{self.file_path.stem}*_labeled.mp4"))
+        self.labeled_video_file_path = labeled_video_file_path[0] if labeled_video_file_path else None
+
         self.original_video_file_path = Path(original_video_file_path)
+        assert (
+            self.original_video_file_path.exists()
+        ), f"The original video file '{self.original_video_file_path}' does not exist."
+
         super().__init__(verbose, file_path=file_path, original_video_file_path=original_video_file_path)
 
-        with self._vc(file_path=str(self.original_video_file_path)) as video:
-            video_shape = video.get_frame_shape()
-            self.dimension = video_shape[0], video_shape[1]
+        # image size of the original video is in height x width
+        self.dimension = self._get_original_video_shape()
 
         pose_estimation_data = self._load_source_data()
         _, self.scorer_name = pose_estimation_data.columns.get_level_values(0).drop_duplicates()
@@ -85,6 +96,11 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         # The order of the header is "scorer", "bodyparts", "coords"
         pose_estimation_data = pd.read_csv(self.file_path, header=[0, 1, 2])
         return pose_estimation_data
+
+    def _get_original_video_shape(self) -> Tuple[int, int]:
+        with self._vc(file_path=str(self.original_video_file_path)) as video:
+            video_shape = video.get_frame_shape()
+        return video_shape[0], video_shape[1]
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
         max_frames = 10 if stub_test else None
@@ -101,15 +117,25 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+
+        # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS
+        pattern = r"(?P<date_time>\d{4}-\d{2}-\d{2}/\d{2}-\d{2}-\d{2})"
+        match = re.search(pattern, str(self.file_path))
+        if match and "session_start_time" not in metadata["NWBFile"]:
+            datetime_str = match.group("date_time")
+            session_start_time = datetime.strptime(datetime_str, "%Y-%m-%d/%H-%M-%S")
+            metadata["NWBFile"].update(session_start_time=session_start_time)
+
         metadata["Behavior"]["PoseEstimation"].update(
             name="PoseEstimation",
             scorer=self.scorer_name,
             source_software="LightningPose",
         )
         for keypoint_name in self.keypoint_names:
+            series_name_suffix = keypoint_name.replace("_", "-").replace(" ", "")
             pose_estimation_series_metadata = {
                 keypoint_name: dict(
-                    name=f"PoseEstimationSeries{keypoint_name}",
+                    name=f"PoseEstimationSeries{series_name_suffix}",
                     description=f"The estimated position (x, y) of {keypoint_name} over time.",
                 )
             }
@@ -121,7 +147,6 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        labeled_video_file_path: Optional[FilePathType] = None,
         reference_frame: Optional[str] = None,
         confidence_definition: Optional[str] = None,
     ) -> None:
@@ -160,12 +185,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
                 name=pose_estimation_metadata[keypoint_name]["name"],
                 description=pose_estimation_metadata[keypoint_name]["description"],
                 data=pose_estimation_series_data[["x", "y"]].values,
+                confidence=pose_estimation_series_data["likelihood"].values,
                 reference_frame=reference_frame or "(0,0) is unknown.",
                 unit="px",
             )
-
-            if "likelihood" in pose_estimation_series_data.columns:
-                pose_estimation_series_kwargs.update(confidence=pose_estimation_series_data["likelihood"].values)
 
             if confidence_definition:
                 pose_estimation_series_kwargs.update(confidence_definition=confidence_definition)
@@ -175,8 +198,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         pose_estimation_kwargs.update(
             pose_estimation_series=pose_estimation_series,
         )
-        if labeled_video_file_path:
-            pose_estimation_kwargs.update(labeled_videos=[str(labeled_video_file_path)])
+
+        if self.labeled_video_file_path:
+            pose_estimation_kwargs.update(labeled_videos=[str(self.labeled_video_file_path)])
 
         # Create the container for pose estimation
         pose_estimation = PoseEstimation(**pose_estimation_kwargs)
