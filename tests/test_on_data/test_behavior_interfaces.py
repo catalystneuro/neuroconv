@@ -24,7 +24,9 @@ from neuroconv.datainterfaces import (
     SLEAPInterface,
     VideoInterface,
 )
-from neuroconv.datainterfaces.behavior.lightningpose.lightningposedatainterface import LightningPoseDataInterface
+from neuroconv.datainterfaces.behavior.lightningpose.lightningposedatainterface import (
+    LightningPoseDataInterface,
+)
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
     DeepLabCutInterfaceMixin,
