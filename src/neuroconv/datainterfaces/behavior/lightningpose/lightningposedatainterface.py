@@ -128,11 +128,12 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         metadata["Behavior"]["PoseEstimation"].update(
             name="PoseEstimation",
+            description="Contains the pose estimation series for each keypoint.",
             scorer=self.scorer_name,
             source_software="LightningPose",
         )
         for keypoint_name in self.keypoint_names:
-            series_name_suffix = keypoint_name.replace("_", "-").replace(" ", "")
+            series_name_suffix = keypoint_name.replace(" ", "")
             pose_estimation_series_metadata = {
                 keypoint_name: dict(
                     name=f"PoseEstimationSeries{series_name_suffix}",
@@ -150,6 +151,20 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         reference_frame: Optional[str] = None,
         confidence_definition: Optional[str] = None,
     ) -> None:
+        """
+        Add the pose estimation data to the nwbfile.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The nwbfile to which the pose estimation data is added.
+        metadata : dict, optional
+            The metadata for the pose estimation data.
+        reference_frame : str, optional
+            The description defining what the (0, 0) coordinate corresponds to.
+        confidence_definition : str, optional
+            The description of how the confidence was computed, e.g., 'Softmax output of the deep neural network'.
+        """
         from ndx_pose import PoseEstimation, PoseEstimationSeries
 
         # The parameters for the pose estimation container
@@ -163,6 +178,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         pose_estimation_kwargs = dict(
             name=pose_estimation_metadata["name"],
+            description=pose_estimation_metadata["description"],
             source_software=pose_estimation_metadata["source_software"],
             scorer=pose_estimation_metadata["scorer"],
             original_videos=[str(self.original_video_file_path)],

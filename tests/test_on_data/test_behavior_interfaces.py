@@ -3,11 +3,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import sleap_io
 from hdmf.testing import TestCase
 from natsort import natsorted
 from ndx_miniscope import Miniscope
 from ndx_miniscope.utils import get_timestamps
+from ndx_pose import PoseEstimation, PoseEstimationSeries
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
 from pynwb import NWBHDF5IO
@@ -22,17 +24,115 @@ from neuroconv.datainterfaces import (
     SLEAPInterface,
     VideoInterface,
 )
+from neuroconv.datainterfaces.behavior.lightningpose.lightningposedatainterface import LightningPoseDataInterface
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
     DeepLabCutInterfaceMixin,
     TemporalAlignmentMixin,
     VideoInterfaceMixin,
 )
+from neuroconv.utils import DeepDict
 
 try:
     from .setup_paths import BEHAVIOR_DATA_PATH, OPHYS_DATA_PATH, OUTPUT_PATH
 except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
+
+
+class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+    data_interface_cls = LightningPoseDataInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
+        original_video_file_path=str(
+            BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.mp4"
+        ),
+    )
+    conversion_options = dict(reference_frame="(0,0) corresponds to the top left corner of the video.")
+    save_directory = OUTPUT_PATH
+
+    @classmethod
+    def setUpClass(cls):
+        cls.pose_estimation_name = "PoseEstimation"
+        cls.original_video_height = 406
+        cls.original_video_width = 396
+        cls.expected_keypoint_names = [
+            "paw1LH_top",
+            "paw2LF_top",
+            "paw3RF_top",
+            "paw4RH_top",
+            "tailBase_top",
+            "tailMid_top",
+            "nose_top",
+            "obs_top",
+            "paw1LH_bot",
+            "paw2LF_bot",
+            "paw3RF_bot",
+            "paw4RH_bot",
+            "tailBase_bot",
+            "tailMid_bot",
+            "nose_bot",
+            "obsHigh_bot",
+            "obsLow_bot",
+        ]
+        cls.expected_metadata = DeepDict(
+            PoseEstimation=dict(
+                name=cls.pose_estimation_name,
+                description="Contains the pose estimation series for each keypoint.",
+                scorer="heatmap_tracker",
+                source_software="LightningPose",
+            )
+        )
+        cls.expected_metadata[cls.pose_estimation_name].update(
+            {
+                keypoint_name: dict(
+                    name=f"PoseEstimationSeries{keypoint_name}",
+                    description=f"The estimated position (x, y) of {keypoint_name} over time.",
+                )
+                for keypoint_name in cls.expected_keypoint_names
+            }
+        )
+
+        cls.test_data = pd.read_csv(cls.interface_kwargs["file_path"], header=[0, 1, 2])["heatmap_tracker"]
+
+    def check_extracted_metadata(self, metadata: dict):
+        self.assertEqual(
+            metadata["NWBFile"]["session_start_time"],
+            datetime(2023, 11, 9, 10, 14, 37, 0),
+        )
+        self.assertIn(self.pose_estimation_name, metadata["Behavior"])
+        self.assertEqual(
+            metadata["Behavior"][self.pose_estimation_name], self.expected_metadata[self.pose_estimation_name]
+        )
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            self.assertIn("behavior", nwbfile.processing)
+            self.assertIn(self.pose_estimation_name, nwbfile.processing["behavior"].data_interfaces)
+            pose_estimation_container = nwbfile.processing["behavior"].data_interfaces[self.pose_estimation_name]
+            self.assertIsInstance(pose_estimation_container, PoseEstimation)
+
+            pose_estimation_metadata = self.expected_metadata[self.pose_estimation_name]
+            self.assertEqual(pose_estimation_container.description, pose_estimation_metadata["description"])
+            self.assertEqual(pose_estimation_container.scorer, pose_estimation_metadata["scorer"])
+            self.assertEqual(pose_estimation_container.source_software, pose_estimation_metadata["source_software"])
+            assert_array_equal(
+                pose_estimation_container.dimensions[:], [[self.original_video_height, self.original_video_width]]
+            )
+
+            self.assertEqual(len(pose_estimation_container.pose_estimation_series), len(self.expected_keypoint_names))
+            for keypoint_name in self.expected_keypoint_names:
+                series_metadata = pose_estimation_metadata[keypoint_name]
+                self.assertIn(series_metadata["name"], pose_estimation_container.pose_estimation_series)
+                pose_estimation_series = pose_estimation_container.pose_estimation_series[series_metadata["name"]]
+                self.assertIsInstance(pose_estimation_series, PoseEstimationSeries)
+                self.assertEqual(pose_estimation_series.unit, "px")
+                self.assertEqual(pose_estimation_series.description, series_metadata["description"])
+                self.assertEqual(pose_estimation_series.reference_frame, self.conversion_options["reference_frame"])
+
+                test_data = self.test_data[keypoint_name]
+                assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
+                assert_array_equal(pose_estimation_series.confidence[:], test_data["likelihood"].values)
 
 
 class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
