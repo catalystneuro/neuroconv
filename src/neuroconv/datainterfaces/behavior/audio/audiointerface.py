@@ -208,7 +208,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
             sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
             if len(acoustic_series.shape) == 1:
-                acoustic_series = acoustic_series[:, np.newaxis]  # add_acoustic_waveform_series() below expects a 2D array
+                acoustic_series = acoustic_series[
+                    :, np.newaxis
+                ]  # add_acoustic_waveform_series() below expects a 2D array
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]
