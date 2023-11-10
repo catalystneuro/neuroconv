@@ -25,23 +25,25 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
         buffer_bytes = chunk_bytes
         axis_sizes_bytes = maxshape * self.dtype.itemsize
+        target_buffer_bytes = buffer_gb * 1e9
         if num_axes > 1:
             smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(self.chunk_shape)
+            # If the smallest full axis does not fit within the buffer size, form a square along the two smallest axes
+            sub_square_buffer_shape = np.array(self.chunk_shape)
+            if min(axis_sizes_bytes) > target_buffer_bytes:
+                k1 = np.floor((target_buffer_bytes / chunk_bytes) ** 0.5)
+                for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
+                    sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
+                return tuple(sub_square_buffer_shape)
         elif num_axes == 1:
             smallest_chunk_axis = 0
             second_smallest_chunk_axis = -1
+            # Handle the case where the single axis is too large to fit in the buffer
+            if axis_sizes_bytes[0] > target_buffer_bytes:
+                k1 = np.floor(target_buffer_bytes / chunk_bytes)
+                return tuple([k1 * self.chunk_shape[0],])
         else:
             raise ValueError(f"num_axes ({num_axes}) is less than one!")
-        target_buffer_bytes = buffer_gb * 1e9
-
-        # If the smallest full axis does not fit within the buffer size, form a square along the two smallest axes
-        sub_square_buffer_shape = np.array(self.chunk_shape)
-        if min(axis_sizes_bytes) > target_buffer_bytes:
-            k1 = np.floor((target_buffer_bytes / chunk_bytes) ** 0.5)
-            for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
-                if axis >= 0:  # second_small_chunk_axis may be -1 if there is only one axis
-                    sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
-            return tuple(sub_square_buffer_shape)
 
         # Original one-shot estimation has good performance for certain shapes
         chunk_to_buffer_ratio = buffer_gb * 1e9 / chunk_bytes
