@@ -2,6 +2,7 @@
 
 ### Features
 * Added Pydantic data models of `BackendConfiguration` for both HDF5 and Zarr datasets (container/mapper of all the `DatasetConfiguration`s for a particular file). [PR #568](https://github.com/catalystneuro/neuroconv/pull/568)
+* Added set_probe() method to BaseRecordingExtractorInterface
 
 
 
