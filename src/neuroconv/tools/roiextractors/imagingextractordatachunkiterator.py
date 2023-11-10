@@ -1,5 +1,6 @@
 """General purpose iterator for all ImagingExtractor data."""
 from typing import Optional, Tuple
+import math
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator
@@ -88,7 +89,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         image_size = self._get_maxshape()[1:]
         min_buffer_shape = tuple([chunk_shape[0]]) + image_size
-        scaling_factor = np.floor((buffer_gb * 1e9 / (np.prod(min_buffer_shape) * self._get_dtype().itemsize)))
+        scaling_factor = math.floor((buffer_gb * 1e9 / (math.prod(min_buffer_shape) * self._get_dtype().itemsize)))
         max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + image_size
         scaled_buffer_shape = tuple(
             [

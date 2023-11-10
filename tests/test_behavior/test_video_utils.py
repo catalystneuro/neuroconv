@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from datetime import datetime
+import math
 
 import numpy as np
 from hdmf.backends.hdf5.h5_utils import H5DataIO
@@ -204,7 +205,7 @@ class TestVideoInterface(unittest.TestCase):
             )
 
     def test_small_buffer_size(self):
-        frame_size_mb = np.prod(self.frame_shape) / 1e6
+        frame_size_mb = math.prod(self.frame_shape) / 1e6
         buffer_size = frame_size_mb / 1e3 / 2
         video_file = self.create_video(self.fps, self.frame_shape, self.number_of_frames)
         with self.assertRaises(AssertionError):

@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Union
+import math
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -84,7 +85,7 @@ def generate_mock_ttl_signal(
 
     if np.issubdtype(dtype, np.unsignedinteger):
         # If data type is an unsigned integer, increment the signed default values by the midpoint of the unsigned range
-        shift = np.floor(np.iinfo(dtype).max / 2).astype(int)
+        shift = math.floor(np.iinfo(dtype).max / 2).astype(int)
         baseline_mean_int16_default += shift
         signal_mean_int16_default += shift
 
@@ -271,7 +272,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
         if regenerate_reference_images:
             fig.add_trace(
                 go.Scatter(y=time_series_data, text=time_series_name),
-                row=np.floor(plot_index / num_cols).astype(int) + 1,
+                row=math.floor(plot_index / num_cols).astype(int) + 1,
                 col=int(plot_index % num_cols) + 1,
             )
             plot_index += 1

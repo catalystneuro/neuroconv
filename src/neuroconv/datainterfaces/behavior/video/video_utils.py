@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+import math
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator
@@ -206,13 +207,13 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
     @staticmethod
     def _scale_shape_to_size(size_mb, shape, size, max_shape):
         """Given the shape and size of array, return shape that will fit size_mb."""
-        k = np.floor((size_mb / size) ** (1 / len(shape)))
+        k = math.floor((size_mb / size) ** (1 / len(shape)))
         return tuple([min(max(int(x), shape[j]), max_shape[j]) for j, x in enumerate(k * np.array(shape))])
 
     def _get_frame_details(self):
         """Get frame shape and size in MB"""
         frame_shape = (1, *self.video_capture_ob.get_frame_shape())
-        min_frame_size_mb = (np.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
+        min_frame_size_mb = (math.prod(frame_shape) * self._get_dtype().itemsize) / 1e6
         return min_frame_size_mb, frame_shape
 
     def _get_data(self, selection: Tuple[slice]) -> np.ndarray:

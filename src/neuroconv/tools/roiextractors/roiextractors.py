@@ -2,6 +2,7 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import Literal, Optional
 from warnings import warn
+import math
 
 import numpy as np
 import psutil
@@ -463,7 +464,7 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
     image_size = imaging.get_image_size()
     num_frames = imaging.get_num_frames()
 
-    traces_size_in_bytes = num_frames * np.prod(image_size) * element_size_in_bytes
+    traces_size_in_bytes = num_frames * math.prod(image_size) * element_size_in_bytes
     available_memory_in_bytes = psutil.virtual_memory().available
 
     if traces_size_in_bytes > available_memory_in_bytes:

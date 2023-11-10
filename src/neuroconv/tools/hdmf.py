@@ -1,5 +1,6 @@
 """Collection of modifications of HDMF functions that are to be tested/used on this repo until propagation upstream."""
 from typing import Tuple
+import math
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
@@ -8,7 +9,7 @@ from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIter
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     def _get_default_buffer_shape(self, buffer_gb: float = 1.0) -> Tuple[int]:
         num_axes = len(self.maxshape)
-        chunk_bytes = np.prod(self.chunk_shape) * self.dtype.itemsize
+        chunk_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert (
             buffer_gb >= chunk_bytes / 1e9
@@ -20,7 +21,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         maxshape = np.array(self.maxshape)
 
         # Early termination condition
-        if np.prod(maxshape) * self.dtype.itemsize / 1e9 < buffer_gb:
+        if math.prod(maxshape) * self.dtype.itemsize / 1e9 < buffer_gb:
             return tuple(self.maxshape)
 
         buffer_bytes = chunk_bytes
@@ -31,7 +32,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
             # If the smallest full axis does not fit within the buffer size, form a square along the two smallest axes
             sub_square_buffer_shape = np.array(self.chunk_shape)
             if min(axis_sizes_bytes) > target_buffer_bytes:
-                k1 = int(np.floor((target_buffer_bytes / chunk_bytes) ** 0.5))
+                k1 = math.floor((target_buffer_bytes / chunk_bytes) ** 0.5)
                 for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
                     sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
                 return tuple(sub_square_buffer_shape)
@@ -39,7 +40,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
             smallest_chunk_axis = 0
             # Handle the case where the single axis is too large to fit in the buffer
             if axis_sizes_bytes[0] > target_buffer_bytes:
-                k1 = int(np.floor(target_buffer_bytes / chunk_bytes))
+                k1 = math.floor(target_buffer_bytes / chunk_bytes)
                 return tuple(
                     [
                         k1 * self.chunk_shape[0],
@@ -50,13 +51,13 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
         # Original one-shot estimation has good performance for certain shapes
         chunk_to_buffer_ratio = buffer_gb * 1e9 / chunk_bytes
-        chunk_scaling_factor = int(np.floor(chunk_to_buffer_ratio ** (1 / num_axes)))
+        chunk_scaling_factor = math.floor(chunk_to_buffer_ratio ** (1 / num_axes))
         unpadded_buffer_shape = [
             np.clip(a=int(x), a_min=self.chunk_shape[j], a_max=self.maxshape[j])
             for j, x in enumerate(chunk_scaling_factor * np.array(self.chunk_shape))
         ]
 
-        unpadded_buffer_bytes = np.prod(unpadded_buffer_shape) * self.dtype.itemsize
+        unpadded_buffer_bytes = math.prod(unpadded_buffer_shape) * self.dtype.itemsize
 
         # Method that starts by filling the smallest axis completely or calculates best partial fill
         padded_buffer_shape = np.array(self.chunk_shape)
@@ -74,10 +75,10 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                 buffer_bytes *= chunks_on_axis
                 padded_buffer_shape[axis] = self.maxshape[axis]
             else:  # Found an axis that is too large to use with the rest of the buffer; calculate how much can be used
-                k3 = int(np.floor(target_buffer_bytes / buffer_bytes))
+                k3 = int(math.floor(target_buffer_bytes / buffer_bytes))
                 padded_buffer_shape[axis] *= k3
                 break
-        padded_buffer_bytes = np.prod(padded_buffer_shape) * self.dtype.itemsize
+        padded_buffer_bytes = math.prod(padded_buffer_shape) * self.dtype.itemsize
 
         if padded_buffer_bytes >= unpadded_buffer_bytes:
             return tuple(padded_buffer_shape)

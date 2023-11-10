@@ -5,6 +5,7 @@
 
 ### Fixes
 * Fixed GenericDataChunkIterator (in hdmf.py) in the case where the number of dimensions is 1 and the size in bytes is greater than the threshold of 1 GB. [PR #638](https://github.com/catalystneuro/neuroconv/pull/638)
+* changed np.floor/np.prod to math.floor/math.prod in various files
 
 # v0.4.5
 
