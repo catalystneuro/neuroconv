@@ -75,7 +75,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                 buffer_bytes *= chunks_on_axis
                 padded_buffer_shape[axis] = self.maxshape[axis]
             else:  # Found an axis that is too large to use with the rest of the buffer; calculate how much can be used
-                k3 = int(math.floor(target_buffer_bytes / buffer_bytes))
+                k3 = math.floor(target_buffer_bytes / buffer_bytes)
                 padded_buffer_shape[axis] *= k3
                 break
         padded_buffer_bytes = math.prod(padded_buffer_shape) * self.dtype.itemsize
