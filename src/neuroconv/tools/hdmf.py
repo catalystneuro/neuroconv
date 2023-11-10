@@ -39,7 +39,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
         if min(axis_sizes_bytes) > target_buffer_bytes:
             k1 = np.floor((target_buffer_bytes / chunk_bytes) ** 0.5)
             for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
-                if axis >= 0: # second_small_chunk_axis may be -1 if there is only one axis
+                if axis >= 0:  # second_small_chunk_axis may be -1 if there is only one axis
                     sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
             return tuple(sub_square_buffer_shape)
 
