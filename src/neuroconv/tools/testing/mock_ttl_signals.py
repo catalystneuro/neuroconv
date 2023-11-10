@@ -272,7 +272,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
         if regenerate_reference_images:
             fig.add_trace(
                 go.Scatter(y=time_series_data, text=time_series_name),
-                row=math.floor(plot_index / num_cols).astype(int) + 1,
+                row=math.floor(plot_index / num_cols) + 1,
                 col=int(plot_index % num_cols) + 1,
             )
             plot_index += 1
