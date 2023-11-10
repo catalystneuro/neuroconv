@@ -202,11 +202,13 @@ On instance['Audio']['write_as']:
         self.nwb_converter.run_conversion(
             nwbfile_path=nwbfile_path,
             metadata=self.metadata,
-            conversion_options=dict(Audio=dict(
-                iterator_options=dict(
-                    buffer_gb=1e7 / 1e9,
+            conversion_options=dict(
+                Audio=dict(
+                    iterator_options=dict(
+                        buffer_gb=1e7 / 1e9,
+                    )
                 )
-            )), # use a low buffer_gb so we can test the full GenericDataChunkIterator
+            ),  # use a low buffer_gb so we can test the full GenericDataChunkIterator
         )
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
