@@ -1,5 +1,5 @@
-from typing import Optional, Tuple
 import math
+from typing import Optional, Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator

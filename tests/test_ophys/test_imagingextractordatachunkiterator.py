@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal

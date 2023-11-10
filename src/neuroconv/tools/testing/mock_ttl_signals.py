@@ -1,6 +1,6 @@
+import math
 from pathlib import Path
 from typing import Optional, Union
-import math
 
 import numpy as np
 from numpy.typing import DTypeLike

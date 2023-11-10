@@ -1,8 +1,8 @@
+import math
 import os
 import tempfile
 import unittest
 from datetime import datetime
-import math
 
 import numpy as np
 from hdmf.backends.hdf5.h5_utils import H5DataIO

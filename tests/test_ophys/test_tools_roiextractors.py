@@ -1,10 +1,10 @@
+import math
 import unittest
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
 from types import MethodType
-import math
 from typing import List, Literal, Optional, Tuple
 from unittest.mock import Mock
 

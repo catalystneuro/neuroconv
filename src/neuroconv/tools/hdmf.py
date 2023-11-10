@@ -1,6 +1,6 @@
 """Collection of modifications of HDMF functions that are to be tested/used on this repo until propagation upstream."""
-from typing import Tuple
 import math
+from typing import Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator

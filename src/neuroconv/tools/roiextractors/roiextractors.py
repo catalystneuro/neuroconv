@@ -1,8 +1,8 @@
+import math
 from collections import defaultdict
 from copy import deepcopy
 from typing import Literal, Optional
 from warnings import warn
-import math
 
 import numpy as np
 import psutil
