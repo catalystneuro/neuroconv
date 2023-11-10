@@ -41,7 +41,11 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
             # Handle the case where the single axis is too large to fit in the buffer
             if axis_sizes_bytes[0] > target_buffer_bytes:
                 k1 = np.floor(target_buffer_bytes / chunk_bytes)
-                return tuple([k1 * self.chunk_shape[0],])
+                return tuple(
+                    [
+                        k1 * self.chunk_shape[0],
+                    ]
+                )
         else:
             raise ValueError(f"num_axes ({num_axes}) is less than one!")
 
