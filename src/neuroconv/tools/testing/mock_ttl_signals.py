@@ -85,7 +85,7 @@ def generate_mock_ttl_signal(
 
     if np.issubdtype(dtype, np.unsignedinteger):
         # If data type is an unsigned integer, increment the signed default values by the midpoint of the unsigned range
-        shift = math.floor(np.iinfo(dtype).max / 2).astype(int)
+        shift = math.floor(np.iinfo(dtype).max / 2)
         baseline_mean_int16_default += shift
         signal_mean_int16_default += shift
 
