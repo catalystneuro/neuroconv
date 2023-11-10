@@ -1,3 +1,4 @@
+import math
 import unittest
 from copy import deepcopy
 from datetime import datetime
@@ -1469,7 +1470,7 @@ class TestAddPhotonSeries(TestCase):
         available_memory_in_bytes = psutil.virtual_memory().available
 
         excess = 1.5  # Of what is available in memory
-        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * np.prod(image_size))
+        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * math.prod(image_size))
 
         # Mock recording extractor with as much frames as necessary to overflow memory
         mock_imaging = Mock()
