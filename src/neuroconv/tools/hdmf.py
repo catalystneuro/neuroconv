@@ -37,7 +37,6 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                 return tuple(sub_square_buffer_shape)
         elif num_axes == 1:
             smallest_chunk_axis = 0
-            second_smallest_chunk_axis = -1
             # Handle the case where the single axis is too large to fit in the buffer
             if axis_sizes_bytes[0] > target_buffer_bytes:
                 k1 = np.floor(target_buffer_bytes / chunk_bytes)
