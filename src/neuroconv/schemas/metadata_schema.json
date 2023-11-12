@@ -165,16 +165,16 @@
           "type": "object",
           "required": ["name"],
           "properties": {
-            "name": {"type": "string", "default": "DfOverF"},
-            "patternProperties": {
-              "^[a-zA-Z0-9]+$": {
-                "type": "object",
-                "patternProperties":{
-                  "^[a-zA-Z0-9]+$": {
-                    "type": "object",
-                    "title": "ROI response series",
-                    "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
-                  }
+            "name": {"type": "string", "default": "DfOverF"}
+          },
+          "patternProperties": {
+            "^[a-zA-Z0-9]+$": {
+              "type": "object",
+              "patternProperties":{
+                "^[a-zA-Z0-9]+$": {
+                  "type": "object",
+                  "title": "ROI response series",
+                  "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
                 }
               }
             }
@@ -184,16 +184,16 @@
           "type": "object",
           "required": ["name"],
           "properties": {
-            "name": {"type": "string", "default": "Fluorescence"},
-            "patternProperties": {
-              "^[a-zA-Z0-9]+$": {
-                "type": "object",
-                "patternProperties":{
-                  "^[a-zA-Z0-9]+$": {
-                    "type": "object",
-                    "title": "ROI response series",
-                    "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
-                  }
+            "name": {"type": "string", "default": "Fluorescence"}
+          },
+          "patternProperties": {
+            "^[a-zA-Z0-9]+$": {
+              "type": "object",
+              "patternProperties":{
+                "^[a-zA-Z0-9]+$": {
+                  "type": "object",
+                  "title": "ROI response series",
+                  "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
                 }
               }
             }
@@ -281,17 +281,17 @@
           "required": ["name"],
           "properties": {
             "name": {"type": "string", "default": "SegmentationImages"},
-            "description": {"type": "string"},
-            "patternProperties": {
-              "^[a-zA-Z0-9]+$": {
-                "type": "object",
-                "patternProperties": {
-                  "^[a-zA-Z0-9]+$": {
-                    "type": "object",
-                    "properties": {
-                      "name": {"type": "string"},
-                      "description": {"type": "string"}
-                    }
+            "description": {"type": "string"}
+          },
+          "patternProperties": {
+            "^[a-zA-Z0-9]+$": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z0-9]+$": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"}
                   }
                 }
               }

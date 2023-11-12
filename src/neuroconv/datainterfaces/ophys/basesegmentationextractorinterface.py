@@ -49,7 +49,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         roi_response_series_per_plane_schema = dict(
             type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema}
         )
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"].update(
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(
             patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
         )
 
