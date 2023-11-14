@@ -19,7 +19,9 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.datainterfaces.ecephys.intan.intandatainterface import IntanRecordingInterface
+from neuroconv.datainterfaces.ecephys.intan.intandatainterface import (
+    IntanRecordingInterface,
+)
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -28,8 +30,8 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
-
 interfaces_for_testing_probe = [IntanRecordingInterface]
+
 
 class DataInterfaceTestMixin:
     """
@@ -114,7 +116,7 @@ class DataInterfaceTestMixin:
                 self.interface = self.data_interface_cls(**self.test_kwargs)
                 do_set_probe = self.data_interface_cls in interfaces_for_testing_probe
                 if do_set_probe:
-                    print('---------------------------------------------------------------------------------- IIII')
+                    print("---------------------------------------------------------------------------------- IIII")
                     self.interface.set_probe(
                         _create_mock_probe_for_recording(self.interface.recording_extractor), group_mode="by_shank"
                     )
