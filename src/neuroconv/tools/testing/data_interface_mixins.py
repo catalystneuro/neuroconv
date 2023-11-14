@@ -19,7 +19,9 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.datainterfaces.ecephys.intan.intandatainterface import IntanRecordingInterface
+from neuroconv.datainterfaces.ecephys.intan.intandatainterface import (
+    IntanRecordingInterface,
+)
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -28,8 +30,8 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
-
 interfaces_for_testing_probe = [IntanRecordingInterface]
+
 
 class DataInterfaceTestMixin:
     """
