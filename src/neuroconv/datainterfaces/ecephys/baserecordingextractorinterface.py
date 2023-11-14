@@ -245,7 +245,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             group_mode=group_mode,
         )
         # Spike interface sets the "group" property
-        # Buy neuroconv expects "group_name" to be set
+        # But neuroconv allows "group_name" property to override spike interface "group" value
         self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
 
     def align_by_interpolation(
