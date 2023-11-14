@@ -114,7 +114,6 @@ class DataInterfaceTestMixin:
                 self.interface = self.data_interface_cls(**self.test_kwargs)
                 do_set_probe = self.data_interface_cls in interfaces_for_testing_probe
                 if do_set_probe:
-                    print('---------------------------------------------------------------------------------- IIII')
                     self.interface.set_probe(
                         _create_mock_probe_for_recording(self.interface.recording_extractor), group_mode="by_shank"
                     )
