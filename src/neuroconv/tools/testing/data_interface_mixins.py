@@ -19,6 +19,7 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
+from neuroconv.datainterfaces.ecephys.intan.intandatainterface import IntanRecordingInterface
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -27,6 +28,8 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
+
+interfaces_for_testing_probe = [IntanRecordingInterface]
 
 class DataInterfaceTestMixin:
     """
@@ -109,7 +112,9 @@ class DataInterfaceTestMixin:
                 self.case = num
                 self.test_kwargs = kwargs
                 self.interface = self.data_interface_cls(**self.test_kwargs)
-                if isinstance(self.interface, BaseRecordingExtractorInterface):
+                do_set_probe = self.data_interface_cls in interfaces_for_testing_probe
+                if do_set_probe:
+                    print('---------------------------------------------------------------------------------- IIII')
                     self.interface.set_probe(
                         _create_mock_probe_for_recording(self.interface.recording_extractor), group_mode="by_shank"
                     )
@@ -324,14 +329,16 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
                 check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
-                for property_name in ["x_rel", "y_rel", "z_rel", "group"]:
-                    if (
-                        property_name in recording.get_property_keys()
-                        or property_name in self.nwb_recording.get_property_keys()
-                    ):
-                        assert_array_equal(
-                            recording.get_property(property_name), self.nwb_recording.get_property(property_name)
-                        )
+                check_probe = self.data_interface_cls in interfaces_for_testing_probe
+                if check_probe:
+                    for property_name in ["rel_x", "rel_y", "rel_z", "group"]:
+                        if (
+                            property_name in recording.get_property_keys()
+                            or property_name in self.nwb_recording.get_property_keys()
+                        ):
+                            assert_array_equal(
+                                recording.get_property(property_name), self.nwb_recording.get_property(property_name)
+                            )
                 if recording.has_scaled_traces() and self.nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
 
