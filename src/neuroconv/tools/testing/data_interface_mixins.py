@@ -109,6 +109,8 @@ class DataInterfaceTestMixin:
                 self.case = num
                 self.test_kwargs = kwargs
                 self.interface = self.data_interface_cls(**self.test_kwargs)
+                if isinstance(self.interface, BaseRecordingExtractorInterface):
+                    self.interface.set_probe(_create_mock_probe_for_recording(self.interface.recording_extractor), group_mode="by_shank")
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
@@ -119,6 +121,23 @@ class DataInterfaceTestMixin:
                 # Any extra custom checks to run
                 self.run_custom_checks()
 
+def _create_mock_probe_for_recording(recording):
+    import spikeinterface as si
+    import probeinterface as pi
+    R: si.BaseRecording = recording
+    n = R.get_num_channels()
+    positions = np.zeros((n, 2))
+    for i in range(n):
+        x = i // 4
+        y = i % 4
+        positions[i] = x, y
+    positions *= 20
+    probe = pi.Probe(ndim=2, si_units='um')
+    probe.set_contacts(positions=positions, shapes='circle', shape_params={'radius': 5})
+    probe.set_device_channel_indices(np.arange(n))
+    # set shank ids as 0, 1, 2, 0, 1, 2, ...
+    probe.set_shank_ids(np.arange(n) % 3)
+    return probe
 
 class TemporalAlignmentMixin:
     """
@@ -300,6 +319,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
                 check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
+                for property_name in ['x_rel', 'y_rel', 'z_rel', 'group']:
+                    if property_name in recording.get_property_keys() or property_name in self.nwb_recording.get_property_keys():
+                        assert_array_equal(recording.get_property(property_name), self.nwb_recording.get_property(property_name))
                 if recording.has_scaled_traces() and self.nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
 
