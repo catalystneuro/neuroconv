@@ -1,3 +1,4 @@
+import math
 import unittest
 from copy import deepcopy
 from datetime import datetime
@@ -821,19 +822,21 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         fluorescence_metadata = dict(
             Fluorescence=dict(
-                name=self.fluorescence_name,
-                roi_response_series=[
-                    self.raw_roi_response_series_metadata,
-                    self.deconvolved_roi_response_series_metadata,
-                    self.neuropil_roi_response_series_metadata,
-                ],
+                PlaneSegmentation=dict(
+                    name=self.fluorescence_name,
+                    raw=self.raw_roi_response_series_metadata,
+                    deconvolved=self.deconvolved_roi_response_series_metadata,
+                    neuropil=self.neuropil_roi_response_series_metadata,
+                )
             )
         )
 
         dff_metadata = dict(
             DfOverF=dict(
-                name=self.df_over_f_name,
-                roi_response_series=[self.dff_roi_response_series_metadata],
+                PlaneSegmentation=dict(
+                    name=self.df_over_f_name,
+                    dff=self.dff_roi_response_series_metadata,
+                )
             )
         )
 
@@ -1164,8 +1167,8 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         segmentation_extractor.set_times(times)
 
         metadata = deepcopy(self.metadata)
-        metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=1.23)
-        metadata["Ophys"]["DfOverF"]["roi_response_series"][0].update(rate=1.23)
+        metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
+        metadata["Ophys"]["DfOverF"]["PlaneSegmentation"]["dff"].update(rate=1.23)
 
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
@@ -1192,7 +1195,7 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         segmentation_extractor.set_times(times)
 
         metadata = deepcopy(self.metadata)
-        metadata["Ophys"]["Fluorescence"]["roi_response_series"][0].update(rate=1.23)
+        metadata["Ophys"]["Fluorescence"]["PlaneSegmentation"]["raw"].update(rate=1.23)
 
         add_fluorescence_traces(
             segmentation_extractor=segmentation_extractor,
@@ -1213,6 +1216,10 @@ class TestAddFluorescenceTraces(unittest.TestCase):
         metadata = dict_deep_update(metadata, self.metadata)
 
         metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
+        metadata["Ophys"]["Fluorescence"][plane_segmentation_name] = metadata["Ophys"]["Fluorescence"].pop(
+            "PlaneSegmentation"
+        )
+        metadata["Ophys"]["DfOverF"][plane_segmentation_name] = metadata["Ophys"]["DfOverF"].pop("PlaneSegmentation")
 
         add_fluorescence_traces(
             segmentation_extractor=self.segmentation_extractor,
@@ -1246,8 +1253,8 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
             name=cls.plane_segmentation_first_plane_name
         )
 
-        cls.fluorescence_name = "FluorescenceFirstPlane"
-        cls.df_over_f_name = "DfOverFFirstPlane"
+        cls.fluorescence_name = "Fluorescence"
+        cls.df_over_f_name = "DfOverF"
 
         cls.raw_roi_response_series_metadata = dict(
             name="RoiResponseSeries",
@@ -1271,15 +1278,22 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
         )
 
         cls.metadata["Ophys"]["Fluorescence"].update(
-            name=cls.fluorescence_name,
-            roi_response_series=[
-                cls.raw_roi_response_series_metadata,
-                cls.deconvolved_roi_response_series_metadata,
-                cls.neuropil_roi_response_series_metadata,
-            ],
+            {
+                cls.plane_segmentation_first_plane_name: dict(
+                    name=cls.fluorescence_name,
+                    raw=cls.raw_roi_response_series_metadata,
+                    deconvolved=cls.deconvolved_roi_response_series_metadata,
+                    neuropil=cls.neuropil_roi_response_series_metadata,
+                )
+            }
         )
         cls.metadata["Ophys"]["DfOverF"].update(
-            name=cls.df_over_f_name, roi_response_series=[cls.dff_roi_response_series_metadata]
+            {
+                cls.plane_segmentation_first_plane_name: dict(
+                    name=cls.df_over_f_name,
+                    dff=cls.dff_roi_response_series_metadata,
+                )
+            }
         )
 
     def setUp(self):
@@ -1321,10 +1335,21 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
             imaging_plane=second_imaging_plane_name,
         )
 
-        fluorescence_second_plane_name = "FluorescenceSecondPlane"
-        metadata["Ophys"]["Fluorescence"].update(name=fluorescence_second_plane_name)
-        df_over_f_second_plane_name = "DfOverFSecondPlane"
-        metadata["Ophys"]["DfOverF"].update(name=df_over_f_second_plane_name)
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name] = deepcopy(
+            metadata["Ophys"]["Fluorescence"][self.plane_segmentation_first_plane_name]
+        )
+        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name] = deepcopy(
+            metadata["Ophys"]["DfOverF"][self.plane_segmentation_first_plane_name]
+        )
+
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["raw"].update(
+            name="RoiResponseSeriesSecondPlane"
+        )
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["deconvolved"].update(
+            name="DeconvolvedSecondPlane"
+        )
+        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["neuropil"].update(name="NeuropilSecondPlane")
+        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name]["dff"].update(name="RoiResponseSeriesSecondPlane")
 
         add_fluorescence_traces(
             segmentation_extractor=self.segmentation_extractor_second_plane,
@@ -1343,16 +1368,20 @@ class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
         self.assertEqual(second_plane_segmentation.name, second_plane_segmentation_name)
         self.assertEqual(second_plane_segmentation.description, "second plane segmentation description")
 
-        fluorescence_first_plane = ophys.get(self.fluorescence_name)
-        self.assertEqual(fluorescence_first_plane.name, self.fluorescence_name)
-        self.assertEqual(len(fluorescence_first_plane.roi_response_series), 3)
+        fluorescence = ophys.get(self.fluorescence_name)
+        self.assertEqual(fluorescence.name, self.fluorescence_name)
+        self.assertEqual(len(fluorescence.roi_response_series), 6)
 
-        fluorescence_second_plane = ophys.get(fluorescence_second_plane_name)
-        self.assertEqual(fluorescence_second_plane.name, fluorescence_second_plane_name)
-        self.assertEqual(len(fluorescence_second_plane.roi_response_series), 3)
+        df_over_f = ophys.get(self.df_over_f_name)
+        self.assertEqual(df_over_f.name, self.df_over_f_name)
+        self.assertEqual(len(df_over_f.roi_response_series), 2)
 
         self.assertEqual(
-            fluorescence_second_plane.roi_response_series["RoiResponseSeries"].data.maxshape,
+            fluorescence.roi_response_series["RoiResponseSeriesSecondPlane"].data.maxshape,
+            (self.num_frames, self.num_rois_second_plane),
+        )
+        self.assertEqual(
+            df_over_f.roi_response_series["RoiResponseSeriesSecondPlane"].data.maxshape,
             (self.num_frames, self.num_rois_second_plane),
         )
 
@@ -1469,7 +1498,7 @@ class TestAddPhotonSeries(TestCase):
         available_memory_in_bytes = psutil.virtual_memory().available
 
         excess = 1.5  # Of what is available in memory
-        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * np.prod(image_size))
+        num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * math.prod(image_size))
 
         # Mock recording extractor with as much frames as necessary to overflow memory
         mock_imaging = Mock()

@@ -38,13 +38,23 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
         metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
 
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"][
-            "items"
-        ]["required"] = list()
-        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
-        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"]["roi_response_series"].pop(
-            "maxItems"
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(required=["name"])
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].pop("additionalProperties")
+        roi_response_series_schema = metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"][
+            "properties"
+        ].pop("roi_response_series")
+
+        roi_response_series_schema.pop("maxItems")
+        roi_response_series_schema["items"].update(required=list())
+        roi_response_series_per_plane_schema = dict(
+            type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema}
         )
+        metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"]["properties"].update(
+            patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
+        )
+
+        metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
+
         metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
             "properties"
         ]["Fluorescence"]

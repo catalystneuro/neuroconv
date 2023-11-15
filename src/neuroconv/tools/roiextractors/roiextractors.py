@@ -1,3 +1,4 @@
+import math
 from collections import defaultdict
 from copy import deepcopy
 from typing import Literal, Optional
@@ -83,7 +84,9 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     default_fluorescence = dict(
         name="Fluorescence",
-        roi_response_series=[default_fluorescence_roi_response_series],
+        PlaneSegmentation=dict(
+            raw=default_fluorescence_roi_response_series,
+        ),
     )
 
     default_dff_roi_response_series = dict(
@@ -94,7 +97,9 @@ def get_default_segmentation_metadata() -> DeepDict:
 
     default_df_over_f = dict(
         name="DfOverF",
-        roi_response_series=[default_dff_roi_response_series],
+        PlaneSegmentation=dict(
+            dff=default_dff_roi_response_series,
+        ),
     )
 
     default_image_segmentation = dict(
@@ -463,7 +468,7 @@ def check_if_imaging_fits_into_memory(imaging: ImagingExtractor) -> None:
     image_size = imaging.get_image_size()
     num_frames = imaging.get_num_frames()
 
-    traces_size_in_bytes = num_frames * np.prod(image_size) * element_size_in_bytes
+    traces_size_in_bytes = num_frames * math.prod(image_size) * element_size_in_bytes
     available_memory_in_bytes = psutil.virtual_memory().available
 
     if traces_size_in_bytes > available_memory_in_bytes:
@@ -649,13 +654,16 @@ def get_nwb_segmentation_metadata(sgmextractor: SegmentationExtractor) -> dict:
                     description=f"{ch_name} description",
                 )
             )
+
+    plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
     for trace_name, trace_data in sgmextractor.get_traces_dict().items():
+        # raw traces have already default name ("RoiResponseSeries")
+        if trace_name in ["raw", "dff"]:
+            continue
         if trace_data is not None and len(trace_data.shape) != 0:
-            metadata["Ophys"]["Fluorescence"]["roi_response_series"].append(
-                dict(
-                    name=trace_name.capitalize(),
-                    description=f"description of {trace_name} traces",
-                )
+            metadata["Ophys"]["Fluorescence"][plane_segmentation_name][trace_name] = dict(
+                name=trace_name.capitalize(),
+                description=f"description of {trace_name} traces",
             )
 
     return metadata
@@ -944,23 +952,19 @@ def add_fluorescence_traces(
     for trace_name, trace in traces_to_add.items():
         # Decide which data interface to use based on the trace name
         data_interface = trace_to_data_interface[trace_name]
-        # Extract the response series metadata
-        # The name of the roi_response_series is "RoiResponseSeries" for raw and df/F traces,
-        # otherwise it is capitalized trace_name.
-        trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
-
-        if trace_name in data_interface.roi_response_series:
-            continue
-
         data_interface_metadata = df_over_f_metadata if isinstance(data_interface, DfOverF) else fluorescence_metadata
-        response_series_metadata = data_interface_metadata["roi_response_series"]
-        trace_metadata = next(
-            (trace_metadata for trace_metadata in response_series_metadata if trace_name == trace_metadata["name"]),
-            None,
+        # Extract the response series metadata
+        # the name of the trace is retrieved from the metadata, no need to override it here
+        # trace_name = "RoiResponseSeries" if trace_name in ["raw", "dff"] else trace_name.capitalize()
+        assert plane_segmentation_name in data_interface_metadata, (
+            f"Plane segmentation '{plane_segmentation_name}' not found in " f"{data_interface_metadata} metadata."
         )
+        trace_metadata = data_interface_metadata[plane_segmentation_name][trace_name]
         if trace_metadata is None:
-            raise ValueError(f"Metadata for '{trace_name}' trace not found in {response_series_metadata}.")
+            raise ValueError(f"Metadata for '{trace_name}' trace not found in {data_interface_metadata}.")
 
+        if trace_metadata["name"] in data_interface.roi_response_series:
+            continue
         # Pop the rate from the metadata if irregular time series
         if "timestamps" in roi_response_series_kwargs and "rate" in trace_metadata:
             trace_metadata.pop("rate")
