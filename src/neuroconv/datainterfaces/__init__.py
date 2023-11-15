@@ -2,6 +2,9 @@
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
+from .behavior.lightningpose.lightningposedatainterface import (
+    LightningPoseDataInterface,
+)
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
@@ -151,6 +154,7 @@ interface_list = [
     MiniscopeBehaviorInterface,
     FicTracDataInterface,
     NeuralynxNvtInterface,
+    LightningPoseDataInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -183,6 +187,7 @@ interfaces_by_category = dict(
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
+        LightningPose=LightningPoseDataInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

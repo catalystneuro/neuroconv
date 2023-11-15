@@ -19,13 +19,11 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     DeepLabCutInterface,
     FicTracDataInterface,
+    LightningPoseDataInterface,
     MiniscopeBehaviorInterface,
     NeuralynxNvtInterface,
     SLEAPInterface,
     VideoInterface,
-)
-from neuroconv.datainterfaces.behavior.lightningpose.lightningposedatainterface import (
-    LightningPoseDataInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
