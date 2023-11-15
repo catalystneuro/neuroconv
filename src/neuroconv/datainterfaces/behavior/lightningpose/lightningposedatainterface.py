@@ -124,7 +124,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         # Update the session start time if folder structure is saved in the format: YYYY-MM-DD/HH-MM-SS
         pattern = r"(?P<date_time>\d{4}-\d{2}-\d{2}/\d{2}-\d{2}-\d{2})"
-        match = re.search(pattern, str(self.file_path))
+        # Convert the file path parts to a string with forward slashes
+        file_path = "/".join(self.file_path.parts)
+        match = re.search(pattern, file_path)
         if match and "session_start_time" not in metadata["NWBFile"]:
             datetime_str = match.group("date_time")
             session_start_time = datetime.strptime(datetime_str, "%Y-%m-%d/%H-%M-%S")
