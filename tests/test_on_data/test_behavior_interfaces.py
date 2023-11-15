@@ -137,6 +137,26 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
                 assert_array_equal(pose_estimation_series.confidence[:], test_data["likelihood"].values)
 
 
+class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin, unittest.TestCase):
+    data_interface_cls = LightningPoseDataInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
+        original_video_file_path=str(
+            BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.mp4"
+        ),
+    )
+    conversion_options = dict(stub_test=True)
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
+            nwbfile = io.read()
+            pose_estimation_container = nwbfile.processing["behavior"].data_interfaces["PoseEstimation"]
+            for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
+                self.assertEqual(pose_estimation_series.data.shape[0], 10)
+                self.assertEqual(pose_estimation_series.confidence.shape[0], 10)
+
+
 class TestFicTracDataInterface(DataInterfaceTestMixin, unittest.TestCase):
     data_interface_cls = FicTracDataInterface
     interface_kwargs = [

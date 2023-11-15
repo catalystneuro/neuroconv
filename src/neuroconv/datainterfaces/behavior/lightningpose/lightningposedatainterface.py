@@ -108,8 +108,12 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             timestamps = video.get_video_timestamps(max_frames=max_frames)
         return timestamps
 
-    def get_timestamps(self) -> np.ndarray:
-        timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
+    def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        max_frames = 10 if stub_test else None
+        if self._timestamps is None:
+            return self.get_original_timestamps(stub_test=stub_test)
+
+        timestamps = self._timestamps if not stub_test else self._timestamps[:max_frames]
         return timestamps
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
@@ -150,6 +154,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         metadata: Optional[dict] = None,
         reference_frame: Optional[str] = None,
         confidence_definition: Optional[str] = None,
+        stub_test: Optional[bool] = False,
     ) -> None:
         """
         Add the pose estimation data to the nwbfile.
@@ -185,7 +190,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             dimensions=[self.dimension],
         )
 
-        timestamps = self.get_timestamps()
+        timestamps = self.get_timestamps(stub_test=stub_test)
         rate = calculate_regular_series_rate(series=timestamps)
         pose_estimation_series_kwargs = dict()
         if rate:
@@ -193,9 +198,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         else:
             pose_estimation_series_kwargs.update(timestamps=timestamps)
 
+        pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
         pose_estimation_series = []
         for keypoint_name in self.keypoint_names:
-            pose_estimation_series_data = self.pose_estimation_data[keypoint_name]
+            pose_estimation_series_data = pose_estimation_data[keypoint_name]
 
             pose_estimation_series_kwargs.update(
                 name=pose_estimation_metadata[keypoint_name]["name"],
