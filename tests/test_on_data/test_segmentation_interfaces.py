@@ -121,3 +121,14 @@ class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
         if self.case == 0:
             deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["deconvolved"]
             self.assertEqual(deconvolved_trace_metadata["name"], self.deconvolved_trace_name)
+
+
+class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = Suite2pSegmentationInterface
+    interface_kwargs = dict(
+        folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"),
+        channel_name="chan1",
+        plane_name="plane0",
+    )
+    save_directory = OUTPUT_PATH
+    conversion_options = dict(stub_test=True, plane_segmentation_name="PlaneSegmentationChan1Plane0")
