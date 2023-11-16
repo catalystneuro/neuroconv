@@ -48,6 +48,7 @@ This example shows how to convert multiple planes from the same dataset.
     >>> from datetime import datetime
     >>> from dateutil import tz
     >>> from pathlib import Path
+    >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import Suite2pSegmentationInterface
     >>>
     >>> folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
