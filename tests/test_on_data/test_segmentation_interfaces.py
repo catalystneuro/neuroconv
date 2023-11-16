@@ -114,10 +114,10 @@ class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
         self.assertEqual(summary_images_metadata["correlation"]["name"], self.correlation_image_names[self.case])
         self.assertEqual(summary_images_metadata["mean"]["name"], self.mean_image_names[self.case])
 
-        raw_traces_metadata = metadata["Ophys"]["Fluorescence"]["raw"]
+        raw_traces_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["raw"]
         self.assertEqual(raw_traces_metadata["name"], self.raw_traces_names[self.case])
-        neuropil_traces_metadata = metadata["Ophys"]["Fluorescence"]["neuropil"]
+        neuropil_traces_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["neuropil"]
         self.assertEqual(neuropil_traces_metadata["name"], self.neuropil_traces_names[self.case])
         if self.case == 0:
-            deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"]["deconvolved"]
+            deconvolved_trace_metadata = metadata["Ophys"]["Fluorescence"][plane_segmentation_name]["deconvolved"]
             self.assertEqual(deconvolved_trace_metadata["name"], self.deconvolved_trace_name)
