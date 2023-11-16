@@ -51,8 +51,8 @@ This example shows how to convert multiple planes from the same dataset.
     >>> from neuroconv.datainterfaces import Suite2pSegmentationInterface
     >>>
     >>> folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
-    >>> interface_first_plane = Suite2pSegmentationInterface(folder_path=data_path, plane_name="plane0", verbose=False)
-    >>> interface_second_plane = Suite2pSegmentationInterface(folder_path=data_path, plane_name="plane1", verbose=False)
+    >>> interface_first_plane = Suite2pSegmentationInterface(folder_path=folder_path, plane_name="plane0", verbose=False)
+    >>> interface_second_plane = Suite2pSegmentationInterface(folder_path=folder_path, plane_name="plane1", verbose=False)
     >>>
     >>> converter = ConverterPipe(data_interfaces=[interface_first_plane, interface_second_plane], verbose=False)
     >>> metadata = converter.get_metadata()
