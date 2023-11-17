@@ -87,7 +87,7 @@ from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
 # Text
-from .text.csv.csvtimeintertervalsinterface import CsvTimeIntervalsInterface
+from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 interface_list = [
