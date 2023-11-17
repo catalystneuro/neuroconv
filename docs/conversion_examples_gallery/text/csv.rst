@@ -8,7 +8,7 @@ Install NeuroConv. No extra dependencies are necessary for reading CSV.
     pip install neuroconv
 
 Convert CSV data to NWB using
-:py:class:`~neuroconv.datainterfaces.text.csv.csvdatainterface.CsvTimeIntervalsInterface`.
+:py:class:`~neuroconv.datainterfaces.text.csv.csvtimeintervalsinterface.CsvTimeIntervalsInterface`.
 
 .. code-block:: python
 

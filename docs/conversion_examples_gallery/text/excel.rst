@@ -8,7 +8,7 @@ Install NeuroConv with the additional dependencies necessary for reading Excel d
     pip install neuroconv[excel]
 
 Convert Excel data to NWB using
-:py:class:`~neuroconv.datainterfaces.text.excel.exceldatainterface.ExcelTimeIntervalsInterface`.
+:py:class:`~neuroconv.datainterfaces.text.excel.exceltimeintervalsinterface.ExcelTimeIntervalsInterface`.
 
 .. code-block:: python
 
