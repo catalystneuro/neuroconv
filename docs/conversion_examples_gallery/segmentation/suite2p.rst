@@ -36,7 +36,7 @@ When multiple planes and/or channels are present, the name should be unique for 
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{output_folder}/file2.nwb"
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, plane_segmentation_name="PlaneSegmentationChan1Plane0")
 
 **Multi-plane example**
@@ -67,5 +67,5 @@ This example shows how to convert multiple planes from the same dataset.
     >>> conversion_options = dict(Suite2pSegmentationInterface001=conversion_option_first_plane, Suite2pSegmentationInterface002=conversion_option_second_plane)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = f"{output_folder}/file2.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, conversion_options=conversion_options)
