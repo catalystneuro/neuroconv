@@ -36,7 +36,7 @@ When multiple planes and/or channels are present, the name should be unique for 
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = f"{output_folder}/file2.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, plane_segmentation_name="PlaneSegmentationChan1Plane0")
 
 **Multi-plane example**
