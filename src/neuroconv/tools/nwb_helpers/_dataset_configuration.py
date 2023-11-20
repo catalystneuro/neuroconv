@@ -21,7 +21,7 @@ BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendC
 
 
 def _get_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
-    """NWBHDF5IO and NWBZarrIO have different ways of storing the mode they used on a path."""
+    """NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path."""
     if isinstance(io, NWBHDF5IO):
         return io.mode
     elif isinstance(io, NWBZarrIO):
@@ -65,7 +65,7 @@ def _parse_location_in_memory_nwbfile(current_location: str, neurodata_object: C
 
 def _get_dataset_metadata(
     neurodata_object: Union[TimeSeries, DynamicTable], field_name: str, backend: Literal["hdf5", "zarr"]
-) -> Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]:
+) -> Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration, None]:
     """Fill in the Dataset model with as many values as can be automatically detected or inferred."""
     DatasetConfigurationClass = BACKEND_TO_DATASET_CONFIGURATION[backend]
 
@@ -176,7 +176,7 @@ def get_default_dataset_configurations(
                     continue  # skip
 
                 # Edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
-                if isinstance(candidate_dataset, np.ndarray) and not np.any(candidate_dataset):
+                if isinstance(candidate_dataset, np.ndarray) and candidate_dataset.size == 0:
                     continue  # skip
 
                 yield _get_dataset_metadata(neurodata_object=time_series, field_name=field_name, backend=backend)
