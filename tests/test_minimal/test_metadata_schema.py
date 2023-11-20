@@ -1,17 +1,16 @@
 import unittest
+from pathlib import Path
+
 import jsonschema
 
-from pathlib import Path
-from neuroconv.utils import (
-    load_dict_from_file
-)
-
+from neuroconv.utils import load_dict_from_file
 from neuroconv.utils.json_schema import validate_metadata
 
 
 def test_metadata_schema():
-
-    metadata_schema = load_dict_from_file(Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json")
+    metadata_schema = load_dict_from_file(
+        Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
+    )
 
     metadata = dict(
         NWBFile=dict(
@@ -47,9 +46,8 @@ def test_metadata_schema():
                     dff=dict(name="RoiResponseSeriesChan1Plane0", description="Array of df/F traces."),
                 ),
             ),
-        )
+        ),
     )
-
 
     # jsonschema.validate(instance=metadata, schema=metadata_schema)
     validate_metadata(metadata=metadata, schema=metadata_schema)
