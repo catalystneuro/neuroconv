@@ -117,7 +117,7 @@ class DataInterfaceTestMixin:
                 do_set_probe = self.data_interface_cls in interfaces_for_testing_probe
                 if do_set_probe:
                     self.interface.set_probe(
-                        _create_mock_probe_for_recording(self.interface.recording_extractor), group_mode="by_shank"
+                        _create_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()), group_mode="by_shank"
                     )
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
@@ -130,23 +130,20 @@ class DataInterfaceTestMixin:
                 self.run_custom_checks()
 
 
-def _create_mock_probe_for_recording(recording):
+def _create_mock_probe(*, num_channels: int):
     import probeinterface as pi
-    import spikeinterface as si
 
-    R: si.BaseRecording = recording
-    n = R.get_num_channels()
-    positions = np.zeros((n, 2))
-    for i in range(n):
+    positions = np.zeros((num_channels, 2))
+    for i in range(num_channels):
         x = i // 4
         y = i % 4
         positions[i] = x, y
     positions *= 20
     probe = pi.Probe(ndim=2, si_units="um")
     probe.set_contacts(positions=positions, shapes="circle", shape_params={"radius": 5})
-    probe.set_device_channel_indices(np.arange(n))
+    probe.set_device_channel_indices(np.arange(num_channels))
     # set shank ids as 0, 1, 2, 0, 1, 2, ...
-    probe.set_shank_ids(np.arange(n) % 3)
+    probe.set_shank_ids(np.arange(num_channels) % 3)
     return probe
 
 
