@@ -32,9 +32,6 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
-    >>> # For multi-plane recordings the name of the `PlaneSegmentation` object should be specified in the conversion options
-    >>> conversion_options = dict(Suite2pSegmentationInterface=dict(plane_segmentation_name="PlaneSegmentationChan1Plane0"))
-    >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path,  metadata=metadata, conversion_options=conversion_options)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path,  metadata=metadata)
