@@ -117,7 +117,8 @@ class DataInterfaceTestMixin:
                 do_set_probe = self.data_interface_cls in interfaces_for_testing_probe
                 if do_set_probe:
                     self.interface.set_probe(
-                        _create_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()), group_mode="by_shank"
+                        _create_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
+                        group_mode="by_shank",
                     )
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
