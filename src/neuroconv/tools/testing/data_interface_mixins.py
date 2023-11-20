@@ -138,7 +138,8 @@ def _create_mock_probe(*, num_channels: int):
     shank_ids: List[int] = []
     positions = np.zeros((num_channels, 2))
     num_shanks = 3
-    channels_per_shank = num_channels // 3
+    # ceil division
+    channels_per_shank = (num_channels + num_shanks - 1) // num_shanks
     for i in range(num_shanks):
         # x0, y0 is the position of the first electrode in the shank
         x0 = 0
