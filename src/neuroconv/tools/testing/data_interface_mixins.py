@@ -133,17 +133,26 @@ class DataInterfaceTestMixin:
 def _create_mock_probe(*, num_channels: int):
     import probeinterface as pi
 
+    # The shank ids will be 0, 0, 0, ..., 1, 1, 1, ..., 2, 2, 2, ...
+    shank_ids: List[int] = []
     positions = np.zeros((num_channels, 2))
-    for i in range(num_channels):
-        x = i // 4
-        y = i % 4
-        positions[i] = x, y
-    positions *= 20
+    num_shanks = 3
+    channels_per_shank = num_channels // 3
+    for i in range(num_shanks):
+        # x0, y0 is the position of the first electrode in the shank
+        x0 = 0
+        y0 = i * 200
+        for j in range(channels_per_shank):
+            if len(shank_ids) == num_channels:
+                break
+            shank_ids.append(i)
+            x = x0 + j * 10
+            y = y0 + (j % 2) * 10
+            positions[len(shank_ids) - 1] = x, y
     probe = pi.Probe(ndim=2, si_units="um")
     probe.set_contacts(positions=positions, shapes="circle", shape_params={"radius": 5})
     probe.set_device_channel_indices(np.arange(num_channels))
-    # set shank ids as 0, 1, 2, 0, 1, 2, ...
-    probe.set_shank_ids(np.arange(num_channels) % 3)
+    probe.set_shank_ids(shank_ids)
     return probe
 
 
