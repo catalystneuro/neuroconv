@@ -63,7 +63,6 @@ class TestImportStructure(TestCase):
             "deploy_process",
             "LocalPathExpander",
             "get_module",
-            "hdmf",
         ]
         assert sorted(current_structure) == sorted(expected_structure)
 
