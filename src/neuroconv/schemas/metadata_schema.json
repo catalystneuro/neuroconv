@@ -168,14 +168,10 @@
             "name": {"type": "string", "default": "DfOverF"}
           },
           "patternProperties": {
-            "^[a-zA-Z0-9]+$": {
+            "^(?!name$)[a-zA-Z0-9]+$": {
               "type": "object",
               "patternProperties":{
-                "^[a-zA-Z0-9]+$": {
-                  "type": "object",
-                  "title": "ROI response series",
-                  "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
-                }
+                "^[a-zA-Z0-9]+$": { "$ref":  "#/definitions/RoiResponseSeries" }
               }
             }
           }
@@ -187,14 +183,10 @@
             "name": {"type": "string", "default": "Fluorescence"}
           },
           "patternProperties": {
-            "^[a-zA-Z0-9]+$": {
+            "^(?!name$)[a-zA-Z0-9]+$": {
               "type": "object",
               "patternProperties":{
-                "^[a-zA-Z0-9]+$": {
-                  "type": "object",
-                  "title": "ROI response series",
-                  "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
-                }
+                "^[a-zA-Z0-9]+$": { "$ref":  "#/definitions/RoiResponseSeries" }
               }
             }
           }
