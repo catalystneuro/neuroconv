@@ -17,7 +17,7 @@ For multichannel recordings, use the `channel_name` argument to specify the chan
 (to see what channels are available use the `Suite2pSegmentationInterface.get_channel_names(folder_path)` method).
 When not specified, the first plane and channel are used.
 
-The `plane_segmentation_name` argument specifies the name of the :py:class:`~pynwb.ophys.PlaneSegmentation` to be created.
+The optional `plane_segmentation_name` argument specifies the name of the :py:class:`~pynwb.ophys.PlaneSegmentation` to be created.
 When multiple planes and/or channels are present, the name should be unique for each plane and channel combination (e.g. "PlaneSegmentationChan1Plane0").
 
 .. code-block:: python
@@ -37,7 +37,7 @@ When multiple planes and/or channels are present, the name should be unique for 
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, plane_segmentation_name="PlaneSegmentationChan1Plane0")
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 **Multi-plane example**
 
@@ -61,11 +61,6 @@ This example shows how to convert multiple planes from the same dataset.
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=tz.gettz("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
-    >>> # For multi-plane recordings the name of the `PlaneSegmentation` object should be specified in the conversion options
-    >>> conversion_option_first_plane = dict(plane_segmentation_name="PlaneSegmentationChan1Plane0")
-    >>> conversion_option_second_plane = dict(plane_segmentation_name="PlaneSegmentationChan1Plane1")
-    >>> conversion_options = dict(Suite2pSegmentationInterface001=conversion_option_first_plane, Suite2pSegmentationInterface002=conversion_option_second_plane)
-    >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{output_folder}/file2.nwb"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, conversion_options=conversion_options)
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

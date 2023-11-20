@@ -93,17 +93,6 @@ class TestSuite2pSegmentationInterface(SegmentationExtractorInterfaceTestMixin, 
         cls.neuropil_traces_names = ["Neuropil" + plane_suffix for plane_suffix in plane_suffices]
         cls.deconvolved_trace_name = "Deconvolved" + plane_suffices[0]
 
-    def run_conversion(self, nwbfile_path: str):
-        metadata = self.interface.get_metadata()
-        plane_segmentation_name = metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0]["name"]
-        metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            plane_segmentation_name=plane_segmentation_name,
-        )
-
     def check_extracted_metadata(self, metadata: dict):
         """Check extracted metadata is adjusted correctly for each plane and channel combination."""
         self.assertEqual(metadata["Ophys"]["ImagingPlane"][0]["name"], self.imaging_plane_names[self.case])
@@ -131,4 +120,4 @@ class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfac
         plane_name="plane0",
     )
     save_directory = OUTPUT_PATH
-    conversion_options = dict(stub_test=True, plane_segmentation_name="PlaneSegmentationChan1Plane0")
+    conversion_options = dict(stub_test=True)
