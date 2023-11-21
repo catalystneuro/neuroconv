@@ -155,7 +155,8 @@ def test_validator_chunk_dimensions_do_not_evenly_divide_buffer(
 
 
 @pytest.mark.parametrize(
-    argnames="mock_dataset_configuration", argvalues=[mock_HDF5DatasetIOConfiguration(), mock_ZarrDatasetIOConfiguration()]
+    argnames="mock_dataset_configuration",
+    argvalues=[mock_HDF5DatasetIOConfiguration(), mock_ZarrDatasetIOConfiguration()],
 )
 def test_mutation_validation(
     mock_dataset_configuration: Union[mock_HDF5DatasetIOConfiguration, mock_ZarrDatasetIOConfiguration]

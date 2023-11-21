@@ -1,5 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Literal, Union, Generator
+from typing import Generator, Literal, Union
 
 import h5py
 import numpy as np
@@ -11,7 +11,7 @@ from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
-from ._models._base_models import DatasetIOConfiguration, DatasetInfo
+from ._models._base_models import DatasetInfo, DatasetIOConfiguration
 from ._models._hdf5_models import HDF5BackendConfiguration, HDF5DatasetIOConfiguration
 from ._models._zarr_models import ZarrBackendConfiguration, ZarrDatasetIOConfiguration
 from ..hdmf import SliceableDataChunkIterator
