@@ -58,14 +58,14 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
             return tuple(maxshape)
 
         buffer_bytes = chunk_bytes
-        axis_sizes_bytes = maxshape * self.dtype.itemsize
+        axis_sizes_bytes = maxshape * dtype.itemsize
         target_buffer_bytes = buffer_gb * 1e9
 
         if min(axis_sizes_bytes) > target_buffer_bytes:
             if num_axes > 1:
-                smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(self.chunk_shape)
-                # If the smallest full axis does not fit within the buffer size, form a square along the two smallest axes
-                sub_square_buffer_shape = np.array(self.chunk_shape)
+                smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(chunk_shape)
+                # If the smallest full axis does not fit within the buffer size, form a square along the smallest axes
+                sub_square_buffer_shape = np.array(chunk_shape)
                 if min(axis_sizes_bytes) > target_buffer_bytes:
                     k1 = math.floor((target_buffer_bytes / chunk_bytes) ** 0.5)
                     for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
@@ -78,7 +78,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                     k1 = math.floor(target_buffer_bytes / chunk_bytes)
                     return tuple(
                         [
-                            k1 * self.chunk_shape[0],
+                            k1 * chunk_shape[0],
                         ]
                     )
             else:
