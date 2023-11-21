@@ -1,5 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Iterable, Literal, Union
+from typing import Iterable, Literal, Union, Generator
 
 import h5py
 import numpy as np
@@ -20,7 +20,7 @@ BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=Zarr
 BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
 
 
-def _get_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
+def _get_io_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
     """NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path."""
     if isinstance(io, NWBHDF5IO):
         return io.mode
@@ -28,7 +28,7 @@ def _get_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
         return io._ZarrIO__mode
 
 
-def _is_value_already_written_to_file(
+def _is_dataset_written_to_file(
     candidate_dataset: Union[h5py.Dataset, zarr.Array],
     backend: Literal["hdf5", "zarr"],
     existing_file: Union[h5py.File, zarr.Group, None],
@@ -40,11 +40,11 @@ def _is_value_already_written_to_file(
     """
     return (
         isinstance(candidate_dataset, h5py.Dataset)  # If the source data is an HDF5 Dataset
-        and backend == "hdf5"  # If working in append mode
+        and backend == "hdf5"
         and candidate_dataset.file == existing_file  # If the source HDF5 Dataset is the appending NWBFile
     ) or (
         isinstance(candidate_dataset, zarr.Array)  # If the source data is an Zarr Array
-        and backend == "zarr"  # If working in append mode
+        and backend == "zarr"
         and candidate_dataset.store == existing_file  # If the source Zarr 'file' is the appending NWBFile
     )
 
@@ -54,13 +54,28 @@ def _parse_location_in_memory_nwbfile(current_location: str, neurodata_object: C
     if isinstance(parent, NWBFile):
         # Items in defined top-level places like acquisition, intervals, etc. do not act as 'containers'
         # in the .parent sense; ask if object is in their in-memory dictionaries instead
-        for outer_field_name, outer_field_value in parent.fields.items():
-            if isinstance(outer_field_value, dict) and neurodata_object.name in outer_field_value:
-                return outer_field_name + "/" + neurodata_object.name + "/" + current_location
+        for parent_field_name, parent_field_value in parent.fields.items():
+            if isinstance(parent_field_value, dict) and neurodata_object.name in parent_field_value:
+                return parent_field_name + "/" + neurodata_object.name + "/" + current_location
         return neurodata_object.name + "/" + current_location
     return _parse_location_in_memory_nwbfile(
         current_location=neurodata_object.name + "/" + current_location, neurodata_object=parent
     )
+
+
+def _infer_dtype_using_data_chunk_iterator(candidate_dataset: Union[h5py.Dataset, zarr.Array]):
+    """
+    The DataChunkIterator has one of the best generic dtype inference, though logic is hard to peel out of it.
+
+    It can fail in rare cases but not essential to our default configuration
+    """
+    try:
+        return DataChunkIterator(candidate_dataset).dtype
+    except Exception as exception:
+        if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
+            raise exception
+        else:
+            return np.dtype("object")
 
 
 def _get_dataset_metadata(
@@ -70,56 +85,50 @@ def _get_dataset_metadata(
     DatasetConfigurationClass = BACKEND_TO_DATASET_CONFIGURATION[backend]
 
     candidate_dataset = getattr(neurodata_object, field_name)
+
     # For now, skip over datasets already wrapped in DataIO
     # Could maybe eventually support modifying chunks in place
     # But setting buffer shape only possible if iterator was wrapped first
-    if not isinstance(candidate_dataset, DataIO):
-        # DataChunkIterator has best generic dtype inference, though logic is hard to peel out of it
-        # And it can fail in rare cases but not essential to our default configuration
-        try:
-            dtype = DataChunkIterator(candidate_dataset).dtype
-        except Exception as exception:
-            if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
-                raise exception
-            else:
-                dtype = np.dtype("object")
+    if isinstance(candidate_dataset, DataIO):
+        return None
 
-        full_shape = get_data_shape(data=candidate_dataset)
+    # DataChunkIterator has best generic dtype inference, though logic is hard to peel out of it
+    # And it can fail in rare cases but not essential to our default configuration
+    dtype = _infer_dtype_using_data_chunk_iterator(candidate_dataset=candidate_dataset)
+    full_shape = get_data_shape(data=candidate_dataset)
 
-        if isinstance(candidate_dataset, GenericDataChunkIterator):
-            chunk_shape = candidate_dataset.chunk_shape
-            buffer_shape = candidate_dataset.buffer_shape
-        elif dtype != "unknown":
-            # TODO: eventually replace this with staticmethods on hdmf.data_utils.GenericDataChunkIterator
-            chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
-                chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
-            )
-            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
-            )
-        else:
-            pass  # TODO: think on this; perhaps zarr's standalone estimator?
-
-        location = _parse_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
-        dataset_name = location.strip("/")[-1]
-        dataset_info = DatasetInfo(
-            object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
-            location=location,
-            dataset_name=dataset_name,
-            full_shape=full_shape,
-            dtype=dtype,
+    if isinstance(candidate_dataset, GenericDataChunkIterator):
+        chunk_shape = candidate_dataset.chunk_shape
+        buffer_shape = candidate_dataset.buffer_shape
+    elif dtype != "unknown":
+        # TODO: eventually replace this with staticmethods on hdmf.data_utils.GenericDataChunkIterator
+        chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
+            chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
         )
-        dataset_configuration = DatasetConfigurationClass(
-            dataset_info=dataset_info, chunk_shape=chunk_shape, buffer_shape=buffer_shape
+        buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
+            buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
         )
-        return dataset_configuration
+    else:
+        pass  # TODO: think on this; perhaps zarr's standalone estimator?
+
+    location = _parse_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
+    dataset_info = DatasetInfo(
+        object_id=neurodata_object.object_id,
+        object_name=neurodata_object.name,
+        location=location,
+        full_shape=full_shape,
+        dtype=dtype,
+    )
+    dataset_configuration = DatasetConfigurationClass(
+        dataset_info=dataset_info, chunk_shape=chunk_shape, buffer_shape=buffer_shape
+    )
+    return dataset_configuration
 
 
 def get_default_dataset_configurations(
     nwbfile: NWBFile,
     backend: Union[None, Literal["hdf5", "zarr"]] = None,  # None for auto-detect from append mode, otherwise required
-) -> Iterable[DatasetConfiguration]:
+) -> Generator[DatasetConfiguration, None, None]:
     """
     Method for automatically detecting all objects in the file that could be wrapped in a DataIO.
 
@@ -147,10 +156,10 @@ def get_default_dataset_configurations(
 
     detected_backend = None
     existing_file = None
-    if isinstance(nwbfile.read_io, NWBHDF5IO) and _get_mode(io=nwbfile.read_io) in ("r+", "a"):
+    if isinstance(nwbfile.read_io, NWBHDF5IO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
         detected_backend = "hdf5"
         existing_file = nwbfile.read_io._file
-    elif isinstance(nwbfile.read_io, NWBZarrIO) and _get_mode(io=nwbfile.read_io) in ("r+", "a"):
+    elif isinstance(nwbfile.read_io, NWBZarrIO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
         detected_backend = "zarr"
         existing_file = nwbfile.read_io.file.store
     backend = backend or detected_backend
@@ -170,7 +179,7 @@ def get_default_dataset_configurations(
                     continue
 
                 candidate_dataset = getattr(time_series, field_name)
-                if _is_value_already_written_to_file(
+                if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
                     continue  # skip
@@ -185,7 +194,7 @@ def get_default_dataset_configurations(
 
             for column_name in dynamic_table.colnames:
                 candidate_dataset = dynamic_table[column_name].data  # VectorData object
-                if _is_value_already_written_to_file(
+                if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
                     continue  # skip
