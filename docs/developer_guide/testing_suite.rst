@@ -20,7 +20,7 @@ Then install all required and optional dependencies in a fresh environment.
 
 .. code:: bash
 
-  pip install -e . neuroconv[test,full]
+  pip install -e .[test,full]
 
 
 Then simply run all tests with pytest
