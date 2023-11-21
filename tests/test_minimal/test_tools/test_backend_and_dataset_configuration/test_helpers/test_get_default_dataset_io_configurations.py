@@ -5,16 +5,20 @@ import numpy as np
 import pytest
 from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
+from nwbinspector.utils import is_module_installed
 from pynwb.base import DynamicTable
-from pynwb.image import ImageSeries
 from pynwb.behavior import CompassDirection
-from pynwb.testing.mock.file import mock_NWBFile
+from pynwb.image import ImageSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
-from nwbinspector.utils import is_module_installed
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
-from neuroconv.tools.nwb_helpers import DATASET_IO_CONFIGURATIONS, get_default_dataset_io_configurations, get_module
+from neuroconv.tools.nwb_helpers import (
+    DATASET_IO_CONFIGURATIONS,
+    get_default_dataset_io_configurations,
+    get_module,
+)
 
 
 @pytest.mark.parametrize("iterator", [lambda x: x, SliceableDataChunkIterator, DataChunkIterator])
