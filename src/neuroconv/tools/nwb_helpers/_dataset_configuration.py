@@ -1,5 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Iterable, Literal, Union, Generator
+from typing import Generator, Iterable, Literal, Union
 
 import h5py
 import numpy as np
