@@ -1,5 +1,5 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
-from typing import Iterable, Literal, Union, Generator
+from typing import Literal, Union, Generator
 
 import h5py
 import numpy as np
@@ -11,12 +11,12 @@ from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile, TimeSeries
 from pynwb.base import DynamicTable
 
-from ._models._base_models import DatasetConfiguration, DatasetInfo
-from ._models._hdf5_models import HDF5BackendConfiguration, HDF5DatasetConfiguration
-from ._models._zarr_models import ZarrBackendConfiguration, ZarrDatasetConfiguration
+from ._models._base_models import DatasetIOConfiguration, DatasetInfo
+from ._models._hdf5_models import HDF5BackendConfiguration, HDF5DatasetIOConfiguration
+from ._models._zarr_models import ZarrBackendConfiguration, ZarrDatasetIOConfiguration
 from ..hdmf import SliceableDataChunkIterator
 
-BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetConfiguration, zarr=ZarrDatasetConfiguration)
+BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatasetIOConfiguration)
 BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
 
 
@@ -80,9 +80,9 @@ def _infer_dtype_using_data_chunk_iterator(candidate_dataset: Union[h5py.Dataset
 
 def _get_dataset_metadata(
     neurodata_object: Union[TimeSeries, DynamicTable], field_name: str, backend: Literal["hdf5", "zarr"]
-) -> Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration, None]:
+) -> Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration, None]:
     """Fill in the Dataset model with as many values as can be automatically detected or inferred."""
-    DatasetConfigurationClass = BACKEND_TO_DATASET_CONFIGURATION[backend]
+    DatasetIOConfigurationClass = BACKEND_TO_DATASET_CONFIGURATION[backend]
 
     candidate_dataset = getattr(neurodata_object, field_name)
 
@@ -119,16 +119,16 @@ def _get_dataset_metadata(
         full_shape=full_shape,
         dtype=dtype,
     )
-    dataset_configuration = DatasetConfigurationClass(
+    dataset_configuration = DatasetIOConfigurationClass(
         dataset_info=dataset_info, chunk_shape=chunk_shape, buffer_shape=buffer_shape
     )
     return dataset_configuration
 
 
-def get_default_dataset_configurations(
+def get_default_dataset_io_configurations(
     nwbfile: NWBFile,
     backend: Union[None, Literal["hdf5", "zarr"]] = None,  # None for auto-detect from append mode, otherwise required
-) -> Generator[DatasetConfiguration, None, None]:
+) -> Generator[DatasetIOConfiguration, None, None]:
     """
     Method for automatically detecting all objects in the file that could be wrapped in a DataIO.
 
@@ -141,7 +141,7 @@ def get_default_dataset_configurations(
 
     Yields
     ------
-    DatasetConfiguration
+    DatasetIOConfiguration
         A summary of each detected object that can be wrapped in a DataIO.
     """
     if backend is None and nwbfile.read_io is None:

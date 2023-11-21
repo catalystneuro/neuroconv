@@ -1,4 +1,4 @@
-"""Unit tests for `get_default_dataset_configurations`."""
+"""Unit tests for `get_default_dataset_io_configurations`."""
 from typing import Literal
 
 import numpy as np
@@ -12,8 +12,8 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
-    DATASET_CONFIGURATIONS,
-    get_default_dataset_configurations,
+    DATASET_IO_CONFIGURATIONS,
+    get_default_dataset_io_configurations,
 )
 
 
@@ -27,12 +27,12 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
     time_series = mock_TimeSeries(name="TestTimeSeries", data=data)
     nwbfile.add_acquisition(time_series)
 
-    dataset_configurations = list(get_default_dataset_configurations(nwbfile=nwbfile, backend=backend))
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
     assert len(dataset_configurations) == 1
 
     dataset_configuration = dataset_configurations[0]
-    assert isinstance(dataset_configuration, DATASET_CONFIGURATIONS[backend])
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
     assert dataset_configuration.dataset_info.object_id == time_series.object_id
     assert dataset_configuration.dataset_info.location == "acquisition/TestTimeSeries/data"
     assert dataset_configuration.dataset_info.full_shape == array.shape
@@ -53,7 +53,7 @@ def test_configuration_on_external_image_series(backend: Literal["hdf5", "zarr"]
     image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0)
     nwbfile.add_acquisition(image_series)
 
-    dataset_configurations = list(get_default_dataset_configurations(nwbfile=nwbfile, backend=backend))
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
     assert len(dataset_configurations) == 0
 
@@ -69,12 +69,12 @@ def test_configuration_on_dynamic_table(iterator: callable, backend: Literal["hd
     dynamic_table = DynamicTable(name="TestDynamicTable", description="", columns=[column], id=list(range(len(array))))
     nwbfile.add_acquisition(dynamic_table)
 
-    dataset_configurations = list(get_default_dataset_configurations(nwbfile=nwbfile, backend=backend))
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
     assert len(dataset_configurations) == 1
 
     dataset_configuration = dataset_configurations[0]
-    assert isinstance(dataset_configuration, DATASET_CONFIGURATIONS[backend])
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
     assert dataset_configuration.dataset_info.object_id == column.object_id
     assert dataset_configuration.dataset_info.location == "acquisition/TestDynamicTable/TestColumn/data"
     assert dataset_configuration.dataset_info.full_shape == array.shape
