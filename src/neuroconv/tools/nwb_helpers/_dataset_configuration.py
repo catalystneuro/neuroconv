@@ -49,7 +49,12 @@ def _is_dataset_written_to_file(
     )
 
 
-def _parse_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
+def _find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
+    """
+    Method for determining the location of a neurodata object within an in-memory NWBFile object.
+
+    Distinct from methods from other packages, such as the NWB Inspector, which rely on such files being read from disk.
+    """
     parent = neurodata_object.parent
     if isinstance(parent, NWBFile):
         # Items in defined top-level places like acquisition, intervals, etc. do not act as 'containers'
@@ -58,7 +63,7 @@ def _parse_location_in_memory_nwbfile(current_location: str, neurodata_object: C
             if isinstance(parent_field_value, dict) and neurodata_object.name in parent_field_value:
                 return parent_field_name + "/" + neurodata_object.name + "/" + current_location
         return neurodata_object.name + "/" + current_location
-    return _parse_location_in_memory_nwbfile(
+    return _find_location_in_memory_nwbfile(
         current_location=neurodata_object.name + "/" + current_location, neurodata_object=parent
     )
 
@@ -92,8 +97,6 @@ def _get_dataset_metadata(
     if isinstance(candidate_dataset, DataIO):
         return None
 
-    # DataChunkIterator has best generic dtype inference, though logic is hard to peel out of it
-    # And it can fail in rare cases but not essential to our default configuration
     dtype = _infer_dtype_using_data_chunk_iterator(candidate_dataset=candidate_dataset)
     full_shape = get_data_shape(data=candidate_dataset)
 
@@ -111,7 +114,7 @@ def _get_dataset_metadata(
     else:
         pass  # TODO: think on this; perhaps zarr's standalone estimator?
 
-    location = _parse_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
+    location = _find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
     dataset_info = DatasetInfo(
         object_id=neurodata_object.object_id,
         object_name=neurodata_object.name,
