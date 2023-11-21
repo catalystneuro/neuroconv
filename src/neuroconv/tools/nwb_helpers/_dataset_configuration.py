@@ -53,7 +53,7 @@ def _parse_location_in_memory_nwbfile(current_location: str, neurodata_object: C
     parent = neurodata_object.parent
     if isinstance(parent, NWBFile):
         # Items in defined top-level places like acquisition, intervals, etc. do not act as 'containers'
-        # in the .parent sense; ask if object is in their in-memory dictionaries instead
+        # in that they do not set the `.parent` attribute; ask if object is in their in-memory dictionaries instead
         for parent_field_name, parent_field_value in parent.fields.items():
             if isinstance(parent_field_value, dict) and neurodata_object.name in parent_field_value:
                 return parent_field_name + "/" + neurodata_object.name + "/" + current_location
