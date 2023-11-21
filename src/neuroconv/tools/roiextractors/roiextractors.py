@@ -904,7 +904,7 @@ def add_fluorescence_traces(
 
     # Filter empty data
     traces_to_add = {
-        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size
+        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
     }
     # Filter all zero data
     # traces_to_add = {
