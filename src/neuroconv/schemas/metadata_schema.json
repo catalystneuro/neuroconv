@@ -276,7 +276,7 @@
             "description": {"type": "string"}
           },
           "patternProperties": {
-            "^[a-zA-Z0-9]+$": {
+            "^(?!name$)[a-zA-Z0-9]+$": {
               "type": "object",
               "patternProperties": {
                 "^[a-zA-Z0-9]+$": {
