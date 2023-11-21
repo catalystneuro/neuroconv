@@ -50,7 +50,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema}
         )
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(
-            patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
+            patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
         )
 
         metadata_schema["properties"]["Ophys"]["properties"]["ImageSegmentation"]["additionalProperties"] = True
@@ -71,10 +71,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             properties=dict(
                 name=dict(type="string", default="SegmentationImages"),
                 description=dict(type="string"),
-                patternProperties={
-                    "^[a-zA-Z0-9]+$": summary_images_per_plane_schema,
-                },
             ),
+            patternProperties={
+                "^(?!(name|description)$)[a-zA-Z0-9]+$": summary_images_per_plane_schema,
+            },
         )
 
         fill_defaults(metadata_schema, self.get_metadata())
