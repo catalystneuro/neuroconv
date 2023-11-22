@@ -31,7 +31,7 @@ Then simply run all tests with pytest
 
 .. note::
 
-  You will likely observe many failed tests at this point, if you have not configured the other aspects of the testing suite shown below.
+  You will likely observe many failed tests if the test data is not available. See the section 'Testing on Example Data' for instructions on how to download the test data.
 
 
 Minimal
