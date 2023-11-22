@@ -177,16 +177,15 @@ def get_default_dataset_io_configurations(
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # for readability
 
-            for column_name in dynamic_table.colnames:
-                candidate_dataset = dynamic_table[column_name].data  # VectorData object
+            for column in dynamic_table.columns:
+                column_name = column.name
+                candidate_dataset = column.data  # VectorData object
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
                 ):
                     continue  # skip
 
-                yield _get_dataset_metadata(
-                    neurodata_object=dynamic_table[column_name], field_name="data", backend=backend
-                )
+                yield _get_dataset_metadata(neurodata_object=column, field_name="data", backend=backend)
         else:
             # Primarily for TimeSeries, but also any extended class that has 'data' or 'timestamps'
             # The most common example of this is ndx-events Events/LabeledEvents types

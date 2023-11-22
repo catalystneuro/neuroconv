@@ -9,6 +9,7 @@ from nwbinspector.utils import is_module_installed
 from pynwb.base import DynamicTable
 from pynwb.behavior import CompassDirection
 from pynwb.image import ImageSeries
+from pynwb.misc import Units
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
 from pynwb.testing.mock.file import mock_NWBFile
@@ -85,6 +86,111 @@ def test_configuration_on_dynamic_table(iterator: callable, backend: Literal["hd
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
+    assert dataset_configuration.compression_method == "gzip"
+    assert dataset_configuration.compression_options is None
+
+    if backend == "zarr":
+        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filter_options is None
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
+    nwbfile = mock_NWBFile()
+    units = Units(name="units", description="")
+
+    spike_times = np.array([0.0, 1.0, 2.0])
+    waveforms = np.array([[[1, 2, 3], [1, 2, 3], [1, 2, 3]], [[1, 2, 3], [1, 2, 3], [1, 2, 3]]])
+    units.add_unit(spike_times=spike_times, waveforms=waveforms)
+
+    spike_times = np.array([3.0, 4.0])
+    waveforms = np.array([[[4, 5], [4, 5], [4, 5]], [[4, 5], [4, 5], [4, 5]]])
+    units.add_unit(spike_times=spike_times, waveforms=waveforms)
+
+    nwbfile.units = units
+
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+
+    assert len(dataset_configurations) == 5
+
+    dataset_configuration = next(
+        dataset_configuration
+        for dataset_configuration in dataset_configurations
+        if dataset_configuration.dataset_info.location == "units/spike_times/data"
+    )
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+    assert dataset_configuration.dataset_info.full_shape == (5,)
+    assert dataset_configuration.dataset_info.dtype == np.dtype("float64")
+    assert dataset_configuration.chunk_shape == (5,)
+    assert dataset_configuration.buffer_shape == (5,)
+    assert dataset_configuration.compression_method == "gzip"
+    assert dataset_configuration.compression_options is None
+
+    if backend == "zarr":
+        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filter_options is None
+
+    dataset_configuration = next(
+        dataset_configuration
+        for dataset_configuration in dataset_configurations
+        if dataset_configuration.dataset_info.location == "units/spike_times_index/data"
+    )
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+    assert dataset_configuration.dataset_info.full_shape == (2,)
+    assert dataset_configuration.dataset_info.dtype == np.dtype("uint8")
+    assert dataset_configuration.chunk_shape == (2,)
+    assert dataset_configuration.buffer_shape == (2,)
+    assert dataset_configuration.compression_method == "gzip"
+    assert dataset_configuration.compression_options is None
+
+    if backend == "zarr":
+        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filter_options is None
+
+    dataset_configuration = next(
+        dataset_configuration
+        for dataset_configuration in dataset_configurations
+        if dataset_configuration.dataset_info.location == "units/waveforms/data"
+    )
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+    assert dataset_configuration.dataset_info.full_shape == (12, 3)
+    assert dataset_configuration.dataset_info.dtype == np.dtype("int32")
+    assert dataset_configuration.chunk_shape == (12, 3)
+    assert dataset_configuration.buffer_shape == (12, 3)
+    assert dataset_configuration.compression_method == "gzip"
+    assert dataset_configuration.compression_options is None
+
+    if backend == "zarr":
+        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filter_options is None
+
+    dataset_configuration = next(
+        dataset_configuration
+        for dataset_configuration in dataset_configurations
+        if dataset_configuration.dataset_info.location == "units/waveforms_index/data"
+    )
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+    assert dataset_configuration.dataset_info.full_shape == (4,)
+    assert dataset_configuration.dataset_info.dtype == np.dtype("uint8")
+    assert dataset_configuration.chunk_shape == (4,)
+    assert dataset_configuration.buffer_shape == (4,)
+    assert dataset_configuration.compression_method == "gzip"
+    assert dataset_configuration.compression_options is None
+
+    if backend == "zarr":
+        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filter_options is None
+
+    dataset_configuration = next(
+        dataset_configuration
+        for dataset_configuration in dataset_configurations
+        if dataset_configuration.dataset_info.location == "units/waveforms_index_index/data"
+    )
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+    assert dataset_configuration.dataset_info.full_shape == (2,)
+    assert dataset_configuration.dataset_info.dtype == np.dtype("uint8")
+    assert dataset_configuration.chunk_shape == (2,)
+    assert dataset_configuration.buffer_shape == (2,)
     assert dataset_configuration.compression_method == "gzip"
     assert dataset_configuration.compression_options is None
 
