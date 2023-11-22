@@ -29,6 +29,10 @@ Then simply run all tests with pytest
 
   pytest
 
+.. note::
+
+  You will likely observe many failed tests at this point, if you have not configured the other aspects of the testing suite shown below.
+
 
 Minimal
 -------
