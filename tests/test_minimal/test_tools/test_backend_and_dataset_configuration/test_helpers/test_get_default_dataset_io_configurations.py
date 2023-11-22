@@ -100,11 +100,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     units = Units(name="units", description="")
 
     spike_times = np.array([0.0, 1.0, 2.0])
-    waveforms = np.array([[[1, 2, 3], [1, 2, 3], [1, 2, 3]], [[1, 2, 3], [1, 2, 3], [1, 2, 3]]])
+    waveforms = np.array([[[1, 2, 3], [1, 2, 3], [1, 2, 3]], [[1, 2, 3], [1, 2, 3], [1, 2, 3]]], dtype="int32")
     units.add_unit(spike_times=spike_times, waveforms=waveforms)
 
     spike_times = np.array([3.0, 4.0])
-    waveforms = np.array([[[4, 5], [4, 5], [4, 5]], [[4, 5], [4, 5], [4, 5]]])
+    waveforms = np.array([[[4, 5], [4, 5], [4, 5]], [[4, 5], [4, 5], [4, 5]]], dtype="int32")
     units.add_unit(spike_times=spike_times, waveforms=waveforms)
 
     nwbfile.units = units
