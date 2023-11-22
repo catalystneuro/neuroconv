@@ -46,8 +46,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         roi_response_series_schema.pop("maxItems")
         roi_response_series_schema["items"].update(required=list())
+
         roi_response_series_per_plane_schema = dict(
-            type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema}
+            type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema['items']}
         )
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(
             patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
