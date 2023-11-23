@@ -29,6 +29,10 @@ Then simply run all tests with pytest
 
   pytest
 
+.. note::
+
+  You will likely observe many failed tests if the test data is not available. See the section 'Testing on Example Data' for instructions on how to download the test data.
+
 
 Minimal
 -------
