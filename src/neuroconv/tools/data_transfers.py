@@ -321,8 +321,8 @@ def automatic_dandi_upload(
     )
     dandiset_path = dandiset_folder_path / dandiset_id
     # Odd big of logic upstream: https://github.com/dandi/dandi-cli/blob/master/dandi/cli/cmd_upload.py#L92-L96
-    if number_of_threads is not None and number_of_threads > 1 and jobs is None:
-        jobs = -1
+    if number_of_threads is not None and number_of_threads > 1 and number_of_jobs is None:
+        number_of_jobs = -1
 
     url_base = "https://gui-staging.dandiarchive.org" if staging else "https://dandiarchive.org"
     dandiset_url = f"{url_base}/dandiset/{dandiset_id}/{version}"

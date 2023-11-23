@@ -4,7 +4,6 @@ This module is meant for the tests to be run as stand-alone so as to emulate a f
 Run them by using:
 pytest tests/import_structure.py::TestImportStructure::test_name
 """
-
 from unittest import TestCase
 
 
@@ -44,7 +43,7 @@ class TestImportStructure(TestCase):
             "BaseExtractorInterface",
             "run_conversion_from_yaml",
         ]
-        self.assertCountEqual(first=current_structure, second=expected_structure)
+        assert sorted(current_structure) == sorted(expected_structure)
 
     def test_tools(self):
         """Python dir() calls (and __dict__ as well) update dynamically based on global imports."""
@@ -65,7 +64,7 @@ class TestImportStructure(TestCase):
             "LocalPathExpander",
             "get_module",
         ]
-        self.assertCountEqual(first=current_structure, second=expected_structure)
+        assert sorted(current_structure) == sorted(expected_structure)
 
     def test_datainterfaces(self):
         from neuroconv import datainterfaces
@@ -87,4 +86,4 @@ class TestImportStructure(TestCase):
             "interfaces_by_category",
         ] + interface_name_list
 
-        self.assertCountEqual(first=current_structure, second=expected_structure)
+        assert sorted(current_structure) == sorted(expected_structure)
