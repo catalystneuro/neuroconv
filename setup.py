@@ -19,6 +19,7 @@ with open(root / "requirements-testing.txt") as f:
 
 extras_require = defaultdict(list)
 extras_require["dandi"] = "dandi>=0.58.0"
+extras_require["full"].extend(extras_require["dandi"])
 
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
