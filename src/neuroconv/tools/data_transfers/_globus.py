@@ -9,7 +9,7 @@ from nwbinspector.utils import is_module_installed
 from pydantic import DirectoryPath
 from tqdm import tqdm
 
-from .processes import deploy_process
+from ..processes import deploy_process
 
 HAVE_GLOBUS = is_module_installed(module_name="globus_cli")
 

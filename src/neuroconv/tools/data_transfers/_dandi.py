@@ -8,7 +8,7 @@ from warnings import warn
 
 from pynwb import NWBHDF5IO
 
-from ..utils import FolderPathType, OptionalFolderPathType
+from ...utils import FolderPathType, OptionalFolderPathType
 
 
 def automatic_dandi_upload(
