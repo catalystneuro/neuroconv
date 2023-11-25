@@ -56,14 +56,14 @@
           "description": "Script file used to create this NWB file."
         },
         "notes": {"type": "string", "description": "Notes about the experiment."},
-        "virus": {"type": "string", "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."},
+        "virus": {"type": "string", "description": "Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc."},
         "data_collection": {
           "type": "string",
           "description": "Notes about data collection and analysis."
         },
         "stimulus_notes": {
           "type": "string",
-          "description": "Notes about data collection and analysis."
+          "description": "Notes about stimuli, such as how and where presented."
         }
       }
     },
@@ -166,10 +166,17 @@
           "required": ["name"],
           "properties": {
             "name": {"type": "string", "default": "DfOverF"},
-            "roi_response_series": {
-              "type": "array",
-              "title": "ROI response series",
-              "items": {"$ref":  "#/definitions/RoiResponseSeries"}
+            "patternProperties": {
+              "^[a-zA-Z0-9]+$": {
+                "type": "object",
+                "patternProperties":{
+                  "^[a-zA-Z0-9]+$": {
+                    "type": "object",
+                    "title": "ROI response series",
+                    "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
+                  }
+                }
+              }
             }
           }
         },
@@ -178,10 +185,17 @@
           "required": ["name"],
           "properties": {
             "name": {"type": "string", "default": "Fluorescence"},
-            "roi_response_series": {
-              "type": "array",
-              "title": "ROI response series",
-              "items": {"$ref":  "#/definitions/RoiResponseSeries"}
+            "patternProperties": {
+              "^[a-zA-Z0-9]+$": {
+                "type": "object",
+                "patternProperties":{
+                  "^[a-zA-Z0-9]+$": {
+                    "type": "object",
+                    "title": "ROI response series",
+                    "properties": {"$ref":  "#/definitions/RoiResponseSeries"}
+                  }
+                }
+              }
             }
           }
         },
@@ -259,6 +273,28 @@
               "name": {"type": "string", "default": "OnePhotonSeries"},
               "description": {"type": "string"},
               "imaging_plane": {"type": "string"}
+            }
+          }
+        },
+        "SegmentationImages": {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "name": {"type": "string", "default": "SegmentationImages"},
+            "description": {"type": "string"},
+            "patternProperties": {
+              "^[a-zA-Z0-9]+$": {
+                "type": "object",
+                "patternProperties": {
+                  "^[a-zA-Z0-9]+$": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string"},
+                      "description": {"type": "string"}
+                    }
+                  }
+                }
+              }
             }
           }
         }

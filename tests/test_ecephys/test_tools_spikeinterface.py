@@ -1137,9 +1137,6 @@ class TestAddUnitsTable(TestCase):
         assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
 
 
-@unittest.skipIf(
-    version.parse(python_version()) < version.parse("3.8"), "SpikeInterface.extract_waveforms() requires Python>=3.8"
-)
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1149,10 +1146,12 @@ class TestWriteWaveforms(TestCase):
 
         cls.num_units = 4
         cls.num_channels = 4
-        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3])
-        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3])
-        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3, 4])
-        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        duration_1 = 6
+        duration_2 = 7
+        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1])
+        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1])
+        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1, duration_2])
+        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1, duration_2])
         single_segment_rec.annotate(is_filtered=True)
         multi_segment_rec.annotate(is_filtered=True)
         single_segment_rec = single_segment_rec.save()
