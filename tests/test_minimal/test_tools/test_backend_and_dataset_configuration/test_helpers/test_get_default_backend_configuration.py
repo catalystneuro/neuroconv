@@ -63,7 +63,7 @@ def test_complex_hdf5(hdf5_nwbfile_path):
     with NWBHDF5IO(path=hdf5_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
 
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]])
+        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
         raw_time_series = mock_TimeSeries(name="NewRawTimeSeries", data=raw_array)
         nwbfile.add_acquisition(raw_time_series)
 
@@ -130,7 +130,7 @@ epochs/stop_time/data
 
 acquisition/NewRawTimeSeries/data
 ---------------------------------
-  dtype : int64
+  dtype : int32
   full shape of source array : (2, 3)
   full size of source array : 0.00 GB
 
@@ -165,7 +165,7 @@ def test_complex_zarr(zarr_nwbfile_path):
     with NWBZarrIO(path=zarr_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
 
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]])
+        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
         raw_time_series = mock_TimeSeries(name="NewRawTimeSeries", data=raw_array)
         nwbfile.add_acquisition(raw_time_series)
 
@@ -232,7 +232,7 @@ epochs/stop_time/data
 
 acquisition/NewRawTimeSeries/data
 ---------------------------------
-  dtype : int64
+  dtype : int32
   full shape of source array : (2, 3)
   full size of source array : 0.00 GB
 
