@@ -206,19 +206,6 @@ def get_default_dataset_io_configurations(
                     continue  # skip
 
                 yield _get_dataset_metadata(neurodata_object=time_series, field_name=field_name, backend=backend)
-        elif isinstance(neurodata_object, DynamicTable):
-            dynamic_table = neurodata_object  # for readability
-
-            for column_name in dynamic_table.colnames:
-                candidate_dataset = dynamic_table[column_name].data  # VectorData object
-                if _is_value_already_written_to_file(
-                    candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
-                ):
-                    continue  # skip
-
-                yield _get_dataset_metadata(
-                    neurodata_object=dynamic_table[column_name], field_name="data", backend=backend
-                )
 
 
 def get_default_backend_configuration(
