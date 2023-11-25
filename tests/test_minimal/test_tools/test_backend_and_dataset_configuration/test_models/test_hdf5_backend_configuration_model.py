@@ -6,7 +6,7 @@ from neuroconv.tools.testing import mock_HDF5BackendConfiguration
 
 
 def test_hdf5_backend_configuration_print():
-    """Test the printout display of a HDF5DatasetConfiguration model looks nice."""
+    """Test the printout display of a HDF5BackendConfiguration model looks nice."""
     hdf5_backend_configuration = mock_HDF5BackendConfiguration()
 
     with patch("sys.stdout", new=StringIO()) as out:
