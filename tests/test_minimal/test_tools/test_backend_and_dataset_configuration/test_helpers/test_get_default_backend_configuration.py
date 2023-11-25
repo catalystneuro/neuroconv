@@ -130,7 +130,7 @@ epochs/stop_time/data
 
 acquisition/NewRawTimeSeries/data
 ---------------------------------
-  dtype : int32
+  dtype : int64
   full shape of source array : (2, 3)
   full size of source array : 0.00 GB
 
@@ -232,7 +232,7 @@ epochs/stop_time/data
 
 acquisition/NewRawTimeSeries/data
 ---------------------------------
-  dtype : int32
+  dtype : int64
   full shape of source array : (2, 3)
   full size of source array : 0.00 GB
 
