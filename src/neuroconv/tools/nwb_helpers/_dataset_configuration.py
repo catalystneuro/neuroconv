@@ -48,32 +48,15 @@ def _is_dataset_written_to_file(
     )
 
 
-def _get_dataset_metadata(
-    neurodata_object: Union[TimeSeries, DynamicTable], field_name: str, backend: Literal["hdf5", "zarr"]
-) -> Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration, None]:
-    """Fill in the Dataset model with as many values as can be automatically detected or inferred."""
-    DatasetIOConfigurationClass = BACKEND_TO_DATASET_CONFIGURATION[backend]
-
-    candidate_dataset = getattr(neurodata_object, field_name)
-
-    # For now, skip over datasets already wrapped in DataIO
-    # Could maybe eventually support modifying chunks in place
-    # But setting buffer shape only possible if iterator was wrapped first
-    if isinstance(candidate_dataset, DataIO):
-        return None
-
-    dataset_configuration = DatasetIOConfigurationClass.from_neurodata_object(
-        neurodata_object=neurodata_object, field_name=field_name
-    )
-    return dataset_configuration
-
-
 def get_default_dataset_io_configurations(
     nwbfile: NWBFile,
     backend: Union[None, Literal["hdf5", "zarr"]] = None,  # None for auto-detect from append mode, otherwise required
 ) -> Generator[DatasetIOConfiguration, None, None]:
     """
-    Method for automatically detecting all objects in the nfile that could be wrapped in a DataIO.
+    Generate DatasetIOConfiguration objects for wrapping NWB file objects with a specific backend.
+
+    This method automatically detects all objects in an NWB file that can be wrapped in a DataIO. It supports auto-detection
+    of the backend if the NWB file is in append mode, otherwise it requires a backend specification.
 
     Parameters
     ----------
@@ -87,6 +70,8 @@ def get_default_dataset_io_configurations(
     DatasetIOConfiguration
         A summary of each detected object that can be wrapped in a DataIO.
     """
+    DatasetIOConfigurationClass = BACKEND_TO_DATASET_CONFIGURATION[backend]
+
     if backend is None and nwbfile.read_io is None:
         raise ValueError(
             "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was not "
@@ -125,7 +110,15 @@ def get_default_dataset_io_configurations(
                 ):
                     continue  # skip
 
-                yield _get_dataset_metadata(neurodata_object=column, field_name="data", backend=backend)
+                # Skip over columns that are already wrapped in DataIO
+                if isinstance(candidate_dataset, DataIO):
+                    continue
+
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                    neurodata_object=column, field_name="data"
+                )
+
+                yield dataset_io_configuration
         else:
             # Primarily for TimeSeries, but also any extended class that has 'data' or 'timestamps'
             # The most common example of this is ndx-events Events/LabeledEvents types
@@ -141,8 +134,16 @@ def get_default_dataset_io_configurations(
                 ):
                     continue  # skip
 
+                # Skip over datasets that are already wrapped in DataIO
+                if isinstance(candidate_dataset, DataIO):
+                    continue
+
                 # Edge case of in-memory ImageSeries with external mode; data is in fields and is empty array
                 if isinstance(candidate_dataset, np.ndarray) and candidate_dataset.size == 0:
                     continue  # skip
 
-                yield _get_dataset_metadata(neurodata_object=time_series, field_name=field_name, backend=backend)
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                    neurodata_object=time_series, field_name=field_name
+                )
+
+                yield dataset_io_configuration
