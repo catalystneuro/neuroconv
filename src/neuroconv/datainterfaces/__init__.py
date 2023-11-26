@@ -3,6 +3,7 @@ from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
+from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
 
@@ -86,7 +87,7 @@ from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
 # Text
-from .text.csv.csvtimeintertervalsinterface import CsvTimeIntervalsInterface
+from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 interface_list = [
@@ -149,6 +150,7 @@ interface_list = [
     SLEAPInterface,
     MiniscopeBehaviorInterface,
     FicTracDataInterface,
+    NeuralynxNvtInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,

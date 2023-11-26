@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
@@ -157,7 +159,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         )
 
         if buffer_gb is not None:
-            assert ((np.prod(dci.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9) <= buffer_gb
+            assert ((math.prod(dci.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9) <= buffer_gb
 
         data_chunks = np.zeros(dci.maxshape)
         for data_chunk in dci:

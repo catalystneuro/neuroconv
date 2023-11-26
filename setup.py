@@ -18,6 +18,9 @@ with open(root / "requirements-testing.txt") as f:
     testing_suite_dependencies = f.readlines()
 
 extras_require = defaultdict(list)
+extras_require["dandi"].append("dandi>=0.58.0")
+extras_require["full"].extend(extras_require["dandi"])
+
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
@@ -58,7 +61,7 @@ if sys.platform == "darwin" and platform.processor() == "arm":
 
 setup(
     name="neuroconv",
-    version="0.4.5",
+    version="0.4.6",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -75,7 +78,7 @@ setup(
     extras_require=extras_require,
     entry_points={
         "console_scripts": [
-            "neuroconv = neuroconv.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
+            "neuroconv = neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli",
         ],
     },
     license="BSD-3-Clause",

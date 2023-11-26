@@ -1,11 +1,12 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Literal, Tuple, Union
+from typing import Any, Dict, Literal, Tuple, Type, Union
 
 import h5py
 import numcodecs
 import numpy as np
+from hdmf.container import DataIO
 from pydantic import BaseModel, Field, root_validator
 
 
@@ -61,7 +62,7 @@ class DatasetInfo(BaseModel):
         super().__init__(**values)
 
 
-class DatasetConfiguration(BaseModel, ABC):
+class DatasetIOConfiguration(BaseModel, ABC):
     """A data model for configuring options about an object that will become a HDF5 or Zarr Dataset in the file."""
 
     # TODO: When using Pydantic v2, remove
@@ -180,3 +181,29 @@ class DatasetConfiguration(BaseModel, ABC):
         Fetch the properly structured dictionary of input arguments to be passed directly into a H5DataIO or ZarrDataIO.
         """
         raise NotImplementedError
+
+
+class BackendConfiguration(BaseModel):
+    """A model for matching collections of DatasetConfigurations to a specific backend."""
+
+    backend: Literal["hdf5", "zarr"] = Field(description="The name of the backend used to configure the NWBFile.")
+    data_io_class: Type[DataIO] = Field(description="The DataIO class that is specific to this backend.")
+    dataset_configurations: Dict[str, DatasetIOConfiguration] = Field(
+        description=(
+            "A mapping from object locations (e.g. `acquisition/TestElectricalSeriesAP/data`) "
+            "to their DatasetConfiguration specification that contains all information "
+            "for writing the datasets to disk using the specific backend."
+        )
+    )
+
+    def __str__(self) -> str:
+        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
+        string = (
+            f"\nConfigurable datasets identified using the {self.backend} backend"
+            f"\n{'-' * (43 + len(self.backend) + 8)}"
+        )
+
+        for dataset_configuration in self.dataset_configurations.values():
+            string += f"\n{dataset_configuration}"
+
+        return string
