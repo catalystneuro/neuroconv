@@ -1,2 +1,2 @@
-spikeinterface>=0.98.2
+spikeinterface[qualitymetrics]>=0.99.1
 packaging<22.0
