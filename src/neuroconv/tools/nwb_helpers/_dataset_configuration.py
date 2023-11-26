@@ -4,7 +4,6 @@ from typing import Generator, Literal, Union
 import h5py
 import numpy as np
 import zarr
-from hdmf import Container
 from hdmf.data_utils import DataChunkIterator, DataIO, GenericDataChunkIterator
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
@@ -49,40 +48,6 @@ def _is_dataset_written_to_file(
     )
 
 
-def _find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
-    """
-    Method for determining the location of a neurodata object within an in-memory NWBFile object.
-
-    Distinct from methods from other packages, such as the NWB Inspector, which rely on such files being read from disk.
-    """
-    parent = neurodata_object.parent
-    if isinstance(parent, NWBFile):
-        # Items in defined top-level places like acquisition, intervals, etc. do not act as 'containers'
-        # in that they do not set the `.parent` attribute; ask if object is in their in-memory dictionaries instead
-        for parent_field_name, parent_field_value in parent.fields.items():
-            if isinstance(parent_field_value, dict) and neurodata_object.name in parent_field_value:
-                return parent_field_name + "/" + neurodata_object.name + "/" + current_location
-        return neurodata_object.name + "/" + current_location
-    return _find_location_in_memory_nwbfile(
-        current_location=neurodata_object.name + "/" + current_location, neurodata_object=parent
-    )
-
-
-def _infer_dtype_using_data_chunk_iterator(candidate_dataset: Union[h5py.Dataset, zarr.Array]):
-    """
-    The DataChunkIterator has one of the best generic dtype inference, though logic is hard to peel out of it.
-
-    It can fail in rare cases but not essential to our default configuration
-    """
-    try:
-        return DataChunkIterator(candidate_dataset).dtype
-    except Exception as exception:
-        if str(exception) != "Data type could not be determined. Please specify dtype in DataChunkIterator init.":
-            raise exception
-        else:
-            return np.dtype("object")
-
-
 def _get_dataset_metadata(
     neurodata_object: Union[TimeSeries, DynamicTable], field_name: str, backend: Literal["hdf5", "zarr"]
 ) -> Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration, None]:
@@ -97,33 +62,8 @@ def _get_dataset_metadata(
     if isinstance(candidate_dataset, DataIO):
         return None
 
-    dtype = _infer_dtype_using_data_chunk_iterator(candidate_dataset=candidate_dataset)
-    full_shape = get_data_shape(data=candidate_dataset)
-
-    if isinstance(candidate_dataset, GenericDataChunkIterator):
-        chunk_shape = candidate_dataset.chunk_shape
-        buffer_shape = candidate_dataset.buffer_shape
-    elif dtype != "unknown":
-        # TODO: eventually replace this with staticmethods on hdmf.data_utils.GenericDataChunkIterator
-        chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
-            chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
-        )
-        buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-            buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=np.dtype(dtype)
-        )
-    else:
-        pass  # TODO: think on this; perhaps zarr's standalone estimator?
-
-    location = _find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
-    dataset_info = DatasetInfo(
-        object_id=neurodata_object.object_id,
-        object_name=neurodata_object.name,
-        location=location,
-        full_shape=full_shape,
-        dtype=dtype,
-    )
-    dataset_configuration = DatasetIOConfigurationClass(
-        dataset_info=dataset_info, chunk_shape=chunk_shape, buffer_shape=buffer_shape
+    dataset_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+        neurodata_object=neurodata_object, field_name=field_name
     )
     return dataset_configuration
 
@@ -133,7 +73,7 @@ def get_default_dataset_io_configurations(
     backend: Union[None, Literal["hdf5", "zarr"]] = None,  # None for auto-detect from append mode, otherwise required
 ) -> Generator[DatasetIOConfiguration, None, None]:
     """
-    Method for automatically detecting all objects in the file that could be wrapped in a DataIO.
+    Method for automatically detecting all objects in the nfile that could be wrapped in a DataIO.
 
     Parameters
     ----------
