@@ -18,7 +18,7 @@
 
 
 
-# v0.4.5
+# v0.4.5 (November 6, 2023)
 
 ### Back-compatibility break
 * The `CEDRecordingInterface` has now been removed; use the `Spike2RecordingInterface` instead. [PR #602](https://github.com/catalystneuro/neuroconv/pull/602)
