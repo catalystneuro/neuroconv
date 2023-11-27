@@ -18,7 +18,7 @@ with open(root / "requirements-testing.txt") as f:
     testing_suite_dependencies = f.readlines()
 
 extras_require = defaultdict(list)
-extras_require["dandi"].append("dandi>=0.58.0")
+extras_require["dandi"].append("dandi<0.58.1")  # TODO: fix >= 0.58.1
 extras_require["full"].extend(extras_require["dandi"])
 
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
