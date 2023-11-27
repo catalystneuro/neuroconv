@@ -6,7 +6,7 @@ on:
 
 jobs:
   run:
-    name: Formatwise gallery tests for ${{ format.type }}:${{ format.name }} on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    name: ${{ format.type }}:${{ format.name }} on ${{ matrix.os }} with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
