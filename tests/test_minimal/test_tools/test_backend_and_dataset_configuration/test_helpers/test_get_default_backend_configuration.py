@@ -105,7 +105,7 @@ epochs/start_time/data
   full size of source array : 0.00 GB
 
   buffer shape : (5,)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (5,)
   disk space usage per chunk : 0.00 MB
@@ -120,7 +120,7 @@ epochs/stop_time/data
   full size of source array : 0.00 GB
 
   buffer shape : (5,)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (5,)
   disk space usage per chunk : 0.00 MB
@@ -135,7 +135,7 @@ acquisition/NewRawTimeSeries/data
   full size of source array : 0.00 GB
 
   buffer shape : (2, 3)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (2, 3)
   disk space usage per chunk : 0.00 MB
@@ -150,7 +150,7 @@ processing/ecephys/NewProcessedTimeSeries/data
   full size of source array : 0.00 GB
 
   buffer shape : (4, 2)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (4, 2)
   disk space usage per chunk : 0.00 MB
@@ -165,7 +165,7 @@ def test_complex_zarr(zarr_nwbfile_path):
     with NWBZarrIO(path=zarr_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
 
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
+        raw_array = np.array([[11, 21, 31], [41, 51, 61]])
         raw_time_series = mock_TimeSeries(name="NewRawTimeSeries", data=raw_array)
         nwbfile.add_acquisition(raw_time_series)
 
@@ -207,7 +207,7 @@ epochs/start_time/data
   full size of source array : 0.00 GB
 
   buffer shape : (5,)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (5,)
   disk space usage per chunk : 0.00 MB
@@ -222,7 +222,7 @@ epochs/stop_time/data
   full size of source array : 0.00 GB
 
   buffer shape : (5,)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (5,)
   disk space usage per chunk : 0.00 MB
@@ -237,7 +237,7 @@ acquisition/NewRawTimeSeries/data
   full size of source array : 0.00 GB
 
   buffer shape : (2, 3)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (2, 3)
   disk space usage per chunk : 0.00 MB
@@ -252,7 +252,7 @@ processing/ecephys/NewProcessedTimeSeries/data
   full size of source array : 0.00 GB
 
   buffer shape : (4, 2)
-  maximum RAM usage per iteration : 0.00 GB
+  expected RAM usage : 0.00 GB
 
   chunk shape : (4, 2)
   disk space usage per chunk : 0.00 MB

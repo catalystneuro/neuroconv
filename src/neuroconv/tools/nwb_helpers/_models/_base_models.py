@@ -113,7 +113,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
             # TODO: add nicer auto-selection/rendering of units and amount for source data size
             "\n"
             f"\n  buffer shape : {self.buffer_shape}"
-            f"\n  maximum RAM usage per iteration : {maximum_ram_usage_per_iteration_in_gb:0.2f} GB"
+            f"\n  expected RAM usage : {maximum_ram_usage_per_iteration_in_gb:0.2f} GB"
             "\n"
             f"\n  chunk shape : {self.chunk_shape}"
             f"\n  disk space usage per chunk : {disk_space_usage_per_chunk_in_mb:0.2f} MB"
