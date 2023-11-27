@@ -132,8 +132,6 @@ def run_conversion_from_yaml(
         dandi_metadata_list = list()
         for nwbfile_path_to_set in nwbfile_paths_to_set:
             dandi_metadata = _get_pynwb_metadata(path=nwbfile_path_to_set)
-            if dandi_metadata["subject_id"] is not None:
-                dandi_metadata["subject_id"] = dandi_metadata["subject_id"].replace(" ", "_")
             dandi_metadata.update(path=nwbfile_path_to_set)
             dandi_metadata_list.append(dandi_metadata)
         dandi_metadata_with_set_paths = create_unique_filenames_from_metadata(metadata=dandi_metadata_list)
