@@ -48,6 +48,8 @@ jobs:
 
       - name: Dev gallery - ROIExtractors
         run: pip install git+https://github.com/CatalystNeuro/roiextractors@main
+      - name: Dev gallery - DANDI
+        run: pip install git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
         run: pip install git+https://github.com/NeurodataWithoutBorders/pynwb@dev
       - name: Dev gallery - SpikeInterface
