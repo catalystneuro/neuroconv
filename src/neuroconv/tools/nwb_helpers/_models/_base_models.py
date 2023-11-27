@@ -1,7 +1,7 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Literal, Tuple, Type, Union, Self
+from typing import Any, Dict, Literal, Self, Tuple, Type, Union
 
 import h5py
 import numcodecs
