@@ -67,7 +67,7 @@ def run_conversion_from_yaml(
         If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
         If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
     """
-    from dandi.metadata import _get_pynwb_metadata
+    from dandi.pynwb_utils import _get_pynwb_metadata
     from dandi.organize import create_unique_filenames_from_metadata
 
     if data_folder_path is None:
