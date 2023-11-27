@@ -1,7 +1,7 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Literal, Tuple, Type, Union
+from typing import Any, Dict, Literal, Tuple, Type, Union, Self
 
 import h5py
 import numcodecs
@@ -104,7 +104,7 @@ class DatasetInfo(BaseModel):
         super().__init__(**values)
 
     @classmethod
-    def from_neurodata_object(cls, neurodata_object: Container, field_name: str) -> "DatasetInfo":
+    def from_neurodata_object(cls, neurodata_object: Container, field_name: str) -> Self:
         location = _find_location_in_memory_nwbfile(current_location=field_name, neurodata_object=neurodata_object)
         candidate_dataset = getattr(neurodata_object, field_name)
 
