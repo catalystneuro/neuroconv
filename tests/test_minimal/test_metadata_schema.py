@@ -1,14 +1,12 @@
+import traceback
 import unittest
 from pathlib import Path
 
 import jsonschema
+import pytest
 
 from neuroconv.utils import load_dict_from_file
 from neuroconv.utils.json_schema import validate_metadata
-
-import pytest
-
-import traceback
 
 
 def test_metadata_schema():
@@ -57,9 +55,9 @@ def test_metadata_schema():
 
 
 def test_invalid_ophys_metadata():
-        metadata_schema = load_dict_from_file(
-            Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
-        )
+    metadata_schema = load_dict_from_file(
+        Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
+    )
 
         invalid_plane_name = 'plane_segmentation_chan1_plane0'
         valid_plane_name = 'PlaneSegmentationChan1Plane0'
@@ -93,10 +91,10 @@ def test_invalid_ophys_metadata():
             ),
         )
 
-        # jsonschema.validate(instance=metadata, schema=metadata_schema)
-        validator = jsonschema.Draft7Validator(metadata_schema)
+    # jsonschema.validate(instance=metadata, schema=metadata_schema)
+    validator = jsonschema.Draft7Validator(metadata_schema)
 
-        errors = list(map(lambda e: str(e).split('\n')[0], validator.iter_errors(metadata)))
+    errors = list(map(lambda e: str(e).split("\n")[0], validator.iter_errors(metadata)))
 
         iterable = iter(errors)
         assert len(errors) == 4
