@@ -76,10 +76,10 @@ def test_invalid_ophys_metadata():
                 # ],
                 Fluorescence={
                     "name":"Fluorescence",
-                    invalid_plane_name: dict( 
+                    invalid_plane_name: dict(
                         raw=dict(), # Not Checked
                     ),
-                    valid_plane_name: dict( 
+                    valid_plane_name: dict(
                         raw=dict(), # Invalid
                     ),
                 },
