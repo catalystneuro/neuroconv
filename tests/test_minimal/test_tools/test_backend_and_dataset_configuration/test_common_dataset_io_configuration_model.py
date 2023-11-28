@@ -4,21 +4,21 @@ from typing import Union
 import pytest
 
 from neuroconv.tools.nwb_helpers import (
-    HDF5DatasetConfiguration,
-    ZarrDatasetConfiguration,
+    HDF5DatasetIOConfiguration,
+    ZarrDatasetIOConfiguration,
 )
 from neuroconv.tools.testing import (
     mock_DatasetInfo,
-    mock_HDF5DatasetConfiguration,
-    mock_ZarrDatasetConfiguration,
+    mock_HDF5DatasetIOConfiguration,
+    mock_ZarrDatasetIOConfiguration,
 )
 
 
 @pytest.mark.parametrize(
-    argnames="dataset_configuration_class", argvalues=[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 )
 def test_validator_chunk_length_consistency(
-    dataset_configuration_class: Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 ):
     with pytest.raises(ValueError) as error_info:
         dataset_configuration_class(
@@ -35,10 +35,10 @@ def test_validator_chunk_length_consistency(
 
 
 @pytest.mark.parametrize(
-    argnames="dataset_configuration_class", argvalues=[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 )
 def test_validator_chunk_and_buffer_length_consistency(
-    dataset_configuration_class: Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 ):
     with pytest.raises(ValueError) as error_info:
         dataset_configuration_class(
@@ -55,10 +55,10 @@ def test_validator_chunk_and_buffer_length_consistency(
 
 
 @pytest.mark.parametrize(
-    argnames="dataset_configuration_class", argvalues=[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 )
 def test_validator_chunk_shape_nonpositive_elements(
-    dataset_configuration_class: Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 ):
     with pytest.raises(ValueError) as error_info:
         dataset_configuration_class(
@@ -75,10 +75,10 @@ def test_validator_chunk_shape_nonpositive_elements(
 
 
 @pytest.mark.parametrize(
-    argnames="dataset_configuration_class", argvalues=[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 )
 def test_validator_buffer_shape_nonpositive_elements(
-    dataset_configuration_class: Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 ):
     with pytest.raises(ValueError) as error_info:
         dataset_configuration_class(
@@ -95,10 +95,10 @@ def test_validator_buffer_shape_nonpositive_elements(
 
 
 @pytest.mark.parametrize(
-    argnames="dataset_configuration_class", argvalues=[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 )
 def test_validator_chunk_shape_exceeds_buffer_shape(
-    dataset_configuration_class: Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 ):
     with pytest.raises(ValueError) as error_info:
         dataset_configuration_class(
@@ -115,10 +115,10 @@ def test_validator_chunk_shape_exceeds_buffer_shape(
 
 
 @pytest.mark.parametrize(
-    argnames="dataset_configuration_class", argvalues=[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 )
 def test_validator_buffer_shape_exceeds_full_shape(
-    dataset_configuration_class: Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 ):
     with pytest.raises(ValueError) as error_info:
         dataset_configuration_class(
@@ -135,10 +135,10 @@ def test_validator_buffer_shape_exceeds_full_shape(
 
 
 @pytest.mark.parametrize(
-    argnames="dataset_configuration_class", argvalues=[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 )
 def test_validator_chunk_dimensions_do_not_evenly_divide_buffer(
-    dataset_configuration_class: Union[HDF5DatasetConfiguration, ZarrDatasetConfiguration]
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
 ):
     with pytest.raises(ValueError) as error_info:
         dataset_configuration_class(
@@ -155,10 +155,11 @@ def test_validator_chunk_dimensions_do_not_evenly_divide_buffer(
 
 
 @pytest.mark.parametrize(
-    argnames="mock_dataset_configuration", argvalues=[mock_HDF5DatasetConfiguration(), mock_ZarrDatasetConfiguration()]
+    argnames="mock_dataset_configuration",
+    argvalues=[mock_HDF5DatasetIOConfiguration(), mock_ZarrDatasetIOConfiguration()],
 )
 def test_mutation_validation(
-    mock_dataset_configuration: Union[mock_HDF5DatasetConfiguration, mock_ZarrDatasetConfiguration]
+    mock_dataset_configuration: Union[mock_HDF5DatasetIOConfiguration, mock_ZarrDatasetIOConfiguration]
 ):
     """
     Only testing on one dummy case to verify the root validator is triggered.
