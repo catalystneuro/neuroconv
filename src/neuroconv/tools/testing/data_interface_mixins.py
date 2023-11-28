@@ -309,16 +309,14 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
                 check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
-                check_probe = self.data_interface_cls in interfaces_for_testing_probe
-                if check_probe:
-                    for property_name in ["rel_x", "rel_y", "rel_z", "group"]:
-                        if (
-                            property_name in recording.get_property_keys()
-                            or property_name in self.nwb_recording.get_property_keys()
-                        ):
-                            assert_array_equal(
-                                recording.get_property(property_name), self.nwb_recording.get_property(property_name)
-                            )
+                for property_name in ["rel_x", "rel_y", "rel_z", "group"]:
+                    if (
+                        property_name in recording.get_property_keys()
+                        or property_name in self.nwb_recording.get_property_keys()
+                    ):
+                        assert_array_equal(
+                            recording.get_property(property_name), self.nwb_recording.get_property(property_name)
+                        )
                 if recording.has_scaled_traces() and self.nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
 
