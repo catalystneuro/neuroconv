@@ -18,7 +18,7 @@ env:
 
 jobs:
   run:
-    name: Dev Branch Testing with Python 3.9 and ubuntu-latest
+    name: Ubuntu tests with Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
