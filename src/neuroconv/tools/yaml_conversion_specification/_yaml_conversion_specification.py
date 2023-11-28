@@ -67,8 +67,8 @@ def run_conversion_from_yaml(
         If True, replaces any existing NWBFile at the nwbfile_path location, if save_to_file is True.
         If False, appends the existing NWBFile at the nwbfile_path location, if save_to_file is True.
     """
-    from dandi.metadata import _get_pynwb_metadata
     from dandi.organize import create_unique_filenames_from_metadata
+    from dandi.pynwb_utils import _get_pynwb_metadata
 
     if data_folder_path is None:
         data_folder_path = Path(specification_file_path).parent
@@ -125,18 +125,25 @@ def run_conversion_from_yaml(
             )
     # To properly mimic a true dandi organization, the full directory must be populated with NWBFiles.
     all_nwbfile_paths = [nwbfile_path for nwbfile_path in output_folder_path.iterdir() if nwbfile_path.suffix == ".nwb"]
-    if any(["temp_nwbfile_name_" in nwbfile_path.stem for nwbfile_path in all_nwbfile_paths]):
-        dandi_metadata_list = []
-        for nwbfile_path in all_nwbfile_paths:
-            dandi_metadata = _get_pynwb_metadata(path=nwbfile_path)
-            dandi_metadata.update(path=nwbfile_path)
+    nwbfile_paths_to_set = [
+        nwbfile_path for nwbfile_path in all_nwbfile_paths if "temp_nwbfile_name_" in nwbfile_path.stem
+    ]
+    if any(nwbfile_paths_to_set):
+        dandi_metadata_list = list()
+        for nwbfile_path_to_set in nwbfile_paths_to_set:
+            dandi_metadata = _get_pynwb_metadata(path=nwbfile_path_to_set)
+            dandi_metadata.update(path=nwbfile_path_to_set)
             dandi_metadata_list.append(dandi_metadata)
-        named_dandi_metadata_list = create_unique_filenames_from_metadata(metadata=dandi_metadata_list)
+        dandi_metadata_with_set_paths = create_unique_filenames_from_metadata(metadata=dandi_metadata_list)
 
-        for named_dandi_metadata in named_dandi_metadata_list:
-            if "temp_nwbfile_name_" in named_dandi_metadata["path"].stem:
-                dandi_filename = named_dandi_metadata["dandi_filename"].replace(" ", "_")
-                assert (
-                    dandi_filename != ".nwb"
-                ), f"Not enough metadata available to assign name to {str(named_dandi_metadata['path'])}!"
-                named_dandi_metadata["path"].rename(str(output_folder_path / dandi_filename))
+        for nwbfile_path_to_set, dandi_metadata_with_set_path in zip(
+            nwbfile_paths_to_set, dandi_metadata_with_set_paths
+        ):
+            dandi_filename = dandi_metadata_with_set_path["dandi_filename"]
+
+            assert (
+                dandi_filename != ".nwb"
+            ), f"Not enough metadata available to assign name to {str(nwbfile_path_to_set)}!"
+
+            # Rename file on system
+            nwbfile_path_to_set.rename(str(output_folder_path / dandi_filename))
