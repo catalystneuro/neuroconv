@@ -20,3 +20,17 @@ from ._models._zarr_models import (
 
 BACKEND_CONFIGURATIONS = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
 DATASET_IO_CONFIGURATIONS = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatasetIOConfiguration)
+
+__all__ = [
+    "get_default_dataset_io_configurations",
+    "add_device_from_metadata",
+    "get_default_nwbfile_metadata",
+    "get_module",
+    "make_nwbfile_from_metadata",
+    "make_or_load_nwbfile",
+    "DatasetInfo",
+    "HDF5BackendConfiguration",
+    "HDF5DatasetIOConfiguration",
+    "ZarrBackendConfiguration",
+    "ZarrDatasetIOConfiguration",
+]
