@@ -49,5 +49,4 @@ def test_metadata_schema():
         ),
     )
 
-    # jsonschema.validate(instance=metadata, schema=metadata_schema)
     validate_metadata(metadata=metadata, schema=metadata_schema)
