@@ -60,7 +60,9 @@ jobs:
         run: pip install git+https://github.com/hdmf-dev/hdmf@dev
 
       - name: Display installed packages and their sources
-        run: conda list
+        run: |
+          conda list
+          pip list
 
       - name: Get ephy_testing_data current head hash
         id: ephys
