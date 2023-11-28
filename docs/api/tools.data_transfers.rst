@@ -1,3 +1,3 @@
-YAML conversion specification
------------------------------
+Data Transfers
+--------------
 .. automodule:: neuroconv.tools.data_transfers
