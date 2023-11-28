@@ -37,9 +37,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         # Temporary fixes until centralized definition of metadata schemas
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
         metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
-
+        
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(required=["name"])
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].pop("additionalProperties")
+
         roi_response_series_schema = metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"][
             "properties"
         ].pop("roi_response_series")
@@ -50,6 +51,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         roi_response_series_per_plane_schema = dict(
             type="object", patternProperties={"^[a-zA-Z0-9]+$": roi_response_series_schema["items"]}
         )
+
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(
             patternProperties={"^(?!name$)[a-zA-Z0-9]+$": roi_response_series_per_plane_schema}
         )
@@ -59,24 +61,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"]["DfOverF"] = metadata_schema["properties"]["Ophys"][
             "properties"
         ]["Fluorescence"]
-
-        images_inner_schema = dict(
-            type="object",
-            properties=dict(name=dict(type="string"), description=dict(type="string")),
-        )
-        summary_images_per_plane_schema = dict(type="object", patternProperties={"^[a-zA-Z0-9]+$": images_inner_schema})
-
-        metadata_schema["properties"]["Ophys"]["properties"]["SegmentationImages"] = dict(
-            type="object",
-            required=["name"],
-            properties=dict(
-                name=dict(type="string", default="SegmentationImages"),
-                description=dict(type="string"),
-            ),
-            patternProperties={
-                "^(?!(name|description)$)[a-zA-Z0-9]+$": summary_images_per_plane_schema,
-            },
-        )
 
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
