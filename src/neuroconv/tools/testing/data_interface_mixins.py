@@ -19,9 +19,6 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
-from neuroconv.datainterfaces.ecephys.intan.intandatainterface import (
-    IntanRecordingInterface,
-)
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -30,7 +27,7 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
-interfaces_for_testing_probe = [IntanRecordingInterface]
+from .mock_probes import generate_mock_probe
 
 
 class DataInterfaceTestMixin:
@@ -114,10 +111,11 @@ class DataInterfaceTestMixin:
                 self.case = num
                 self.test_kwargs = kwargs
                 self.interface = self.data_interface_cls(**self.test_kwargs)
-                do_set_probe = self.data_interface_cls in interfaces_for_testing_probe
+                do_set_probe = isinstance(self.interface, BaseRecordingExtractorInterface)
                 if do_set_probe:
+                    assert isinstance(self.interface, BaseRecordingExtractorInterface)
                     self.interface.set_probe(
-                        _create_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
+                        generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
                         group_mode="by_shank",
                     )
                 self.check_metadata_schema_valid()
@@ -129,33 +127,6 @@ class DataInterfaceTestMixin:
 
                 # Any extra custom checks to run
                 self.run_custom_checks()
-
-
-def _create_mock_probe(*, num_channels: int):
-    import probeinterface as pi
-
-    # The shank ids will be 0, 0, 0, ..., 1, 1, 1, ..., 2, 2, 2, ...
-    shank_ids: List[int] = []
-    positions = np.zeros((num_channels, 2))
-    num_shanks = 3
-    # ceil division
-    channels_per_shank = (num_channels + num_shanks - 1) // num_shanks
-    for i in range(num_shanks):
-        # x0, y0 is the position of the first electrode in the shank
-        x0 = 0
-        y0 = i * 200
-        for j in range(channels_per_shank):
-            if len(shank_ids) == num_channels:
-                break
-            shank_ids.append(i)
-            x = x0 + j * 10
-            y = y0 + (j % 2) * 10
-            positions[len(shank_ids) - 1] = x, y
-    probe = pi.Probe(ndim=2, si_units="um")
-    probe.set_contacts(positions=positions, shapes="circle", shape_params={"radius": 5})
-    probe.set_device_channel_indices(np.arange(num_channels))
-    probe.set_shank_ids(shank_ids)
-    return probe
 
 
 class TemporalAlignmentMixin:

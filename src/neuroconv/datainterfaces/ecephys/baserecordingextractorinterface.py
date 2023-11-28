@@ -225,7 +225,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ]
             self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
 
-    def set_probe(self, probe, *, group_mode: Literal["by_shank", "by_probe"]):
+    def set_probe(self, probe, group_mode: Literal["by_shank", "by_probe"]):
         """
         Set the probe information via a ProbeInterface object.
 
