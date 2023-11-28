@@ -77,7 +77,7 @@ jobs:
 
       - name: Install full requirements (-e needed for codecov report)
         run: |
-          pip uninstall neuroconv  # Attempting to stabilize mac runners
+          pip uninstall neuroconv --yes  # Attempting to stabilize mac runners
           pip install -e .[full,test]
 
 
