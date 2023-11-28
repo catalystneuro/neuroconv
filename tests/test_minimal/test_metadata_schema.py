@@ -62,6 +62,8 @@ def test_invalid_ophys_metadata():
         )
 
         invalid_plane_name = 'plane_segmentation_chan1_plane0'
+        valid_plane_name = 'PlaneSegmentationChan1Plane0'
+
         metadata = dict(
             NWBFile=dict(
                 session_start_time="2020-01-01T00:00:00",
@@ -76,13 +78,17 @@ def test_invalid_ophys_metadata():
                 # ],
                 Fluorescence={
                     "name":"Fluorescence",
-                    invalid_plane_name:dict( 
-                        raw=dict(),
-                    )
+                    invalid_plane_name: dict( 
+                        raw=dict(), # Not Checked
+                    ),
+                    valid_plane_name: dict( 
+                        raw=dict(), # Invalid
+                    ),
                 },
                 DfOverF={
                     "name":"DfOverF",
-                    invalid_plane_name:dict(),
+                    invalid_plane_name: dict(), # Not Checked
+                    valid_plane_name: dict() # Valid (?)
                 },
             ),
         )
@@ -92,9 +98,9 @@ def test_invalid_ophys_metadata():
 
         errors = list(map(lambda e: str(e).split('\n')[0], validator.iter_errors(metadata)))
 
-        print(errors)
-
         iterable = iter(errors)
-        assert len(errors) == 2
+        assert len(errors) == 4
         assert "'Devices' is a required property" == next(iterable, None)
+        assert "'name' is a required property" == next(iterable, None)
+        assert "'description' is a required property" == next(iterable, None)
         assert f"'{invalid_plane_name}' does not match any of the regexes" in next(iterable, '')
