@@ -165,7 +165,7 @@ def test_complex_zarr(zarr_nwbfile_path):
     with NWBZarrIO(path=zarr_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
 
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]])
+        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
         raw_time_series = mock_TimeSeries(name="NewRawTimeSeries", data=raw_array)
         nwbfile.add_acquisition(raw_time_series)
 
