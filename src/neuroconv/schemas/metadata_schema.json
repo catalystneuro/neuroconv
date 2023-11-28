@@ -172,9 +172,11 @@
               "type": "object",
               "patternProperties":{
                 "^[a-zA-Z0-9]+$": { "$ref":  "#/definitions/RoiResponseSeries" }
-              }
+              },
+              "additionalProperties": false
             }
-          }
+          },
+          "additionalProperties": false
         },
         "Fluorescence": {
           "type": "object",
@@ -187,9 +189,11 @@
               "type": "object",
               "patternProperties":{
                 "^[a-zA-Z0-9]+$": { "$ref":  "#/definitions/RoiResponseSeries" }
-              }
+              },
+              "additionalProperties": false
             }
-          }
+          },
+          "additionalProperties": false
         },
         "ImageSegmentation": {
           "type": "object",
