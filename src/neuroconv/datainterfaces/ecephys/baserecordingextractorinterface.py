@@ -248,6 +248,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # But neuroconv allows "group_name" property to override spike interface "group" value
         self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
 
+    def has_probe(self) -> bool:
+        """
+        Check if the recording extractor has probe information.
+
+        Returns
+        -------
+        has_probe : bool
+            True if the recording extractor has probe information.
+        """
+        return self.recording_extractor.has_probe()
+
     def align_by_interpolation(
         self,
         unaligned_timestamps: np.ndarray,

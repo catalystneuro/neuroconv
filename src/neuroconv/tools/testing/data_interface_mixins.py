@@ -111,13 +111,6 @@ class DataInterfaceTestMixin:
                 self.case = num
                 self.test_kwargs = kwargs
                 self.interface = self.data_interface_cls(**self.test_kwargs)
-                do_set_probe = isinstance(self.interface, BaseRecordingExtractorInterface)
-                if do_set_probe:
-                    assert isinstance(self.interface, BaseRecordingExtractorInterface)
-                    self.interface.set_probe(
-                        generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
-                        group_mode="by_shank",
-                    )
                 self.check_metadata_schema_valid()
                 self.check_conversion_options_schema_valid()
                 self.check_metadata()
@@ -475,6 +468,31 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.check_interface_original_timestamps_inmutability()
 
                 self.check_nwbfile_temporal_alignment()
+
+    def test_conversion_as_lone_interface(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+                assert isinstance(self.interface, BaseRecordingExtractorInterface)
+                if not self.interface.has_probe():
+                    self.interface.set_probe(
+                        generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
+                        group_mode="by_shank",
+                    )
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
