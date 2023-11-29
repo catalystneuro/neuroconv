@@ -103,7 +103,6 @@ def get_default_dataset_io_configurations(
             dynamic_table = neurodata_object  # for readability
 
             for column in dynamic_table.columns:
-                column_name = column.name
                 candidate_dataset = column.data  # VectorData object
                 if _is_dataset_written_to_file(
                     candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
@@ -147,3 +146,18 @@ def get_default_dataset_io_configurations(
                 )
 
                 yield dataset_io_configuration
+
+
+def get_default_backend_configuration(
+    nwbfile: NWBFile, backend: Literal["hdf5", "zarr"]
+) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+    """Fill a default backend configuration to serve as a starting point for further customization."""
+    BackendConfigurationClass = BACKEND_TO_CONFIGURATION[backend]
+    default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend)
+    dataset_configurations = {
+        default_dataset_configuration.dataset_info.location: default_dataset_configuration
+        for default_dataset_configuration in default_dataset_configurations
+    }
+
+    backend_configuration = BackendConfigurationClass(dataset_configurations=dataset_configurations)
+    return backend_configuration
