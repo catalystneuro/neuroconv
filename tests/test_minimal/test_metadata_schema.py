@@ -86,7 +86,7 @@ def test_invalid_ophys_metadata():
         Ophys=dict(
             Fluorescence={
                 "name": "Fluorescence",
-                invalid_plane_name: dict(), # Uncheked
+                invalid_plane_name: dict(),  # Uncheked
                 create_valid_plane_name(invalid_plane_name): dict(),
                 create_valid_plane_name(invalid_plane_name, 1): dict(
                     raw=dict(),
@@ -94,7 +94,7 @@ def test_invalid_ophys_metadata():
             },
             DFOverF={
                 "name": "DfOverF",
-                invalid_plane_name: dict(),   # Uncheked
+                invalid_plane_name: dict(),  # Uncheked
                 create_valid_plane_name(invalid_plane_name): dict(),
                 create_valid_plane_name(invalid_plane_name, 1): dict(
                     raw=dict(),
@@ -102,7 +102,7 @@ def test_invalid_ophys_metadata():
             },
             SegmentationImages={
                 "name": "SegmentationImages",
-                invalid_plane_name: dict(),   # Uncheked
+                invalid_plane_name: dict(),  # Uncheked
                 create_valid_plane_name(invalid_plane_name): dict(),
                 create_valid_plane_name(invalid_plane_name, 1): dict(
                     raw=dict(),
@@ -138,8 +138,8 @@ def test_invalid_ophys_metadata():
     assert name_error == next(iterable, None)
     assert plane_name_error in next(iterable, "")
 
-def test_invalid_ophys_plane_metadata():
 
+def test_invalid_ophys_plane_metadata():
     metadata_schema = load_dict_from_file(
         Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
     )
@@ -157,15 +157,9 @@ def test_invalid_ophys_plane_metadata():
             identifier="1234",
         ),
         Ophys=dict(
-            Fluorescence={
-                "name": "Fluorescence"
-            },
-            DFOverF={
-                "name": "DfOverF"
-            },
-           SegmentationImages={
-                "name": "SegmentationImages"
-           },
+            Fluorescence={"name": "Fluorescence"},
+            DFOverF={"name": "DfOverF"},
+            SegmentationImages={"name": "SegmentationImages"},
         ),
     )
 
@@ -181,19 +175,18 @@ def test_invalid_ophys_plane_metadata():
 
     # Fluorescence
     assert not_enough_properties_error in next(iterable, "")
-    
+
     # DfOverF
     assert not_enough_properties_error in next(iterable, "")
 
     # SegmentationImages
     assert not_enough_properties_error in next(iterable, "")
 
-
-    plane_update =  {
-            valid_plane_name: dict(
-                raw=dict(name=valid_plane_name, description="basic description"),
-            ),
-        }
+    plane_update = {
+        valid_plane_name: dict(
+            raw=dict(name=valid_plane_name, description="basic description"),
+        ),
+    }
 
     # Adding a single plane removes the errors
     metadata["Ophys"]["Fluorescence"].update(plane_update)
@@ -206,5 +199,3 @@ def test_invalid_ophys_plane_metadata():
     nExpectedErrors = 1
     assert len(errors) == nExpectedErrors
     assert device_error == next(iterable, None)
-
-
