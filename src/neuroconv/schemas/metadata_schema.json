@@ -177,6 +177,7 @@
               "additionalProperties": false
             }
           },
+          "minProperties": 2,
           "additionalProperties": false
         },
         "Fluorescence": {
@@ -195,7 +196,8 @@
               "additionalProperties": false
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "minProperties": 2
         },
         "ImageSegmentation": {
           "type": "object",
@@ -298,7 +300,8 @@
               "additionalProperties": false
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "minProperties": 2
         }
       }
     }
