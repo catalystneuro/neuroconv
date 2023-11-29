@@ -173,7 +173,6 @@ def test_invalid_ophys_plane_metadata():
 
     errors = list(map(lambda e: str(e).split("\n")[0], validator.iter_errors(metadata)))
 
-    print(errors)
     iterable = iter(errors)
     nExpectedErrors = 4
     assert len(errors) == nExpectedErrors
