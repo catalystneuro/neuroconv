@@ -37,7 +37,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         # Temporary fixes until centralized definition of metadata schemas
         metadata_schema["properties"]["Ophys"]["properties"]["ImagingPlane"].update(type="array")
         metadata_schema["properties"]["Ophys"]["properties"]["TwoPhotonSeries"].update(type="array")
-        
+
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].update(required=["name"])
         metadata_schema["properties"]["Ophys"]["properties"]["Fluorescence"].pop("additionalProperties")
 
