@@ -60,14 +60,6 @@ def test_metadata_schema():
 
     validate_metadata(metadata=metadata, schema=metadata_schema)
 
-
-invalid_plane_name = "plane_segmentation_chan1_plane0"
-name_error = "'name' is a required property"
-description_error = "'description' is a required property"
-plane_name_error_base = "does not match any of the regexes"
-not_enough_properties_error = "does not have enough properties"
-
-
 def test_invalid_ophys_metadata():
     metadata_schema = load_dict_from_file(
         Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
@@ -108,37 +100,88 @@ def test_invalid_ophys_metadata():
         ),
     )
 
+    expected_errors = [
+        dict(
+            message="'fluorescence_chan1_plane0' does not match any of the regexes: '^(?!name$)[a-zA-Z0-9]+$'",
+            path="$.Ophys.Fluorescence",
+        ),
+        dict(
+            message="'df_chan1_plane0' does not match any of the regexes: '^(?!name$)[a-zA-Z0-9]+$'",
+            path="$.Ophys.DFOverF",
+        ),
+        dict(
+            message="'segmentation_chan1_plane0' does not match any of the regexes: '^(?!(name|description)$)[a-zA-Z0-9]+$'",
+            path="$.Ophys.SegmentationImages",
+        ),
+        dict(
+            message="{} does not have enough properties",
+            path="$.Ophys.Fluorescence.FluorescenceChan1Plane0",
+        ),
+        dict(
+            message="{} does not have enough properties",
+            path="$.Ophys.DFOverF.DFChan1Plane0",
+        ),
+        dict(
+            message="{} does not have enough properties",
+            path="$.Ophys.SegmentationImages.SegmentationChan1Plane0",
+        ),
+        dict(
+            message="'name' is a required property",
+            path="$.Ophys.Fluorescence.FluorescenceChan1Plane1.raw",
+        ),
+        dict(
+            message="'name' is a required property",
+            path=f"$.Ophys.DFOverF.DFChan1Plane1.raw",
+        ),
+        dict(
+            message="'name' is a required property",
+            path="$.Ophys.SegmentationImages.SegmentationChan1Plane1.raw",
+        ),
+        dict(
+            message="'description' is a required property",
+            path="$.Ophys.Fluorescence.FluorescenceChan1Plane1.raw",
+        ),
+        dict(
+            message="'description' is a required property",
+            path="$.Ophys.DFOverF.DFChan1Plane1.raw",
+        ),
+    ]
+
+
     validator = jsonschema.Draft7Validator(metadata_schema)
 
     errors = [{ "message": error.message, "path": error.json_path }  for error in validator.iter_errors(metadata)]
+
+    def sorting_fn(o):
+        return o["message"]
+
+    errors.sort(key=sorting_fn)
+    expected_errors.sort(key=sorting_fn)
+
+    assert len(errors) == len(expected_errors)
     
-    def count_matching_elements(arr, condition_func):
-            filtered_elements = filter(condition_func, arr)
-            return len(list(filtered_elements))
-        
-    nExpectedErrors = 11
-    assert len(errors) == nExpectedErrors
-
-    # One for each of Fluorescence, DFOverF, and SegmentationImages
-    assert count_matching_elements(errors, lambda o: f"'fluorescence_chan1_plane0' {plane_name_error_base}" in o["message"]  and o["path"] == "$.Ophys.Fluorescence") == 1
-    assert count_matching_elements(errors, lambda o: f"'df_chan1_plane0' {plane_name_error_base}" in o["message"]  and o["path"] == "$.Ophys.DFOverF") == 1
-    assert count_matching_elements(errors, lambda o: f"'segmentation_chan1_plane0' {plane_name_error_base}" in o["message"]  and o["path"] == "$.Ophys.SegmentationImages") == 1
-
-    assert count_matching_elements(errors, lambda o: not_enough_properties_error in o["message"] and o["path"] == "$.Ophys.Fluorescence.FluorescenceChan1Plane0") == 1
-    assert count_matching_elements(errors, lambda o: not_enough_properties_error in o["message"] and o["path"] == "$.Ophys.DFOverF.DFChan1Plane0") == 1
-    assert count_matching_elements(errors, lambda o: not_enough_properties_error in o["message"] and o["path"] == "$.Ophys.SegmentationImages.SegmentationChan1Plane0") == 1
-    
-    assert count_matching_elements(errors, lambda o: name_error == o["message"] and o["path"] == "$.Ophys.Fluorescence.FluorescenceChan1Plane1.raw") == 1
-    assert count_matching_elements(errors, lambda o: name_error == o["message"] and o["path"] == "$.Ophys.DFOverF.DFChan1Plane1.raw") == 1
-    assert count_matching_elements(errors, lambda o: name_error == o["message"] and o["path"] == "$.Ophys.SegmentationImages.SegmentationChan1Plane1.raw") == 1
-
-    assert count_matching_elements(errors, lambda o: description_error == o["message"] and o["path"] == "$.Ophys.Fluorescence.FluorescenceChan1Plane1.raw") == 1
-    assert count_matching_elements(errors, lambda o: description_error == o["message"] and o["path"] == "$.Ophys.DFOverF.DFChan1Plane1.raw") == 1
+    for error in errors:
+        assert error in expected_errors
 
 def test_invalid_ophys_plane_metadata():
     metadata_schema = load_dict_from_file(
         Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
     )
+
+    expected_errors = [
+        dict(
+            message="{'name': 'Fluorescence'} does not have enough properties",
+            path=f"$.Ophys.Fluorescence",
+        ),
+        dict(
+            message="{'name': 'DfOverF'} does not have enough properties",
+            path=f"$.Ophys.DFOverF",
+        ),
+        dict(
+            message="{'name': 'SegmentationImages'} does not have enough properties",
+            path=f"$.Ophys.SegmentationImages",
+        ),
+    ]
 
 
     # Just a name is not enough
@@ -157,38 +200,55 @@ def test_invalid_ophys_plane_metadata():
     )
 
     validator = jsonschema.Draft7Validator(metadata_schema)
-
     errors = [{ "message": error.message, "path": error.json_path }  for error in validator.iter_errors(metadata)]
 
-    def count_matching_elements(arr, condition_func):
-        filtered_elements = filter(condition_func, arr)
-        return len(list(filtered_elements))
+    def sorting_fn(o):
+        return o["message"]
 
-    nExpectedErrors = 3
-    assert len(errors) == nExpectedErrors
+    errors.sort(key=sorting_fn)
+    expected_errors.sort(key=sorting_fn)
 
-    # One for each of Fluorescence, DFOverF, and SegmentationImages
-    assert count_matching_elements(errors, lambda o: not_enough_properties_error in o["message"] and o["path"] == "$.Ophys.Fluorescence") == 1 
-    assert count_matching_elements(errors, lambda o: not_enough_properties_error in o["message"] and o["path"] == "$.Ophys.DFOverF") == 1
-    assert count_matching_elements(errors, lambda o: not_enough_properties_error in o["message"] and o["path"] == "$.Ophys.SegmentationImages") == 1
+    assert len(errors) == len(expected_errors)
 
-    # Adding a single plane removes the errors
-    metadata["Ophys"]["Fluorescence"].update({
-        "FluorescenceChan1Plane1": dict(
-            raw=dict(name="FluorescenceChan1Plane0", description="basic description"),
+    for error in errors:
+        assert error in expected_errors
+    
+def test_ophys_plane_fix():
+    metadata_schema = load_dict_from_file(
+        Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
+    )
+
+
+    # Just a name is not enough
+    metadata = dict(
+        NWBFile=dict(
+            session_start_time="2020-01-01T00:00:00",
+            session_description="Auto-generated by neuroconv",
+            identifier="1234",
         ),
-    })
-    metadata["Ophys"]["DFOverF"].update({
-        "DFChan1Plane1": dict(
-            raw=dict(name="DFChan1Plane0", description="basic description"),
+        Ophys=dict(
+             Devices=[],
+            Fluorescence={
+                "name": "Fluorescence",
+                "FluorescenceChan1Plane1": dict(
+                    raw=dict(name="FluorescenceChan1Plane0", description="basic description"),
+                ),
+            },
+            DFOverF={
+                "name": "DfOverF",
+                "DFChan1Plane1": dict(
+                    raw=dict(name="DFChan1Plane0", description="basic description"),
+                ),
+            },
+            SegmentationImages={
+                "name": "SegmentationImages",
+                "SegmentationChan1Plane1": dict(
+                    raw=dict(name="SegmentationChan1Plane0", description="basic description"),
+                ),
+            },
         ),
-    })
+    )
 
-    metadata["Ophys"]["SegmentationImages"].update({
-        "SegmentationChan1Plane1": dict(
-            raw=dict(name="SegmentationChan1Plane0", description="basic description"),
-        ),
-    })
-
-    errors = list(map(lambda e: str(e).split("\n")[0], validator.iter_errors(metadata)))
+    validator = jsonschema.Draft7Validator(metadata_schema)
+    errors = [ error.message for error in validator.iter_errors(metadata) ]
     assert len(errors) == 0
