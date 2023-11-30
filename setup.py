@@ -61,7 +61,7 @@ if sys.platform == "darwin" and platform.processor() == "arm":
 
 setup(
     name="neuroconv",
-    version="0.4.6",
+    version="0.4.7",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
