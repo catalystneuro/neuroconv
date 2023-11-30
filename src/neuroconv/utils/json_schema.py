@@ -109,13 +109,11 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 print(param_name)
                 print(args)
                 print(type(args))
-                print(args.__name__)
                 if isinstance(args, str):
                     args = eval(args)
                 print(param_name)
                 print(args)
                 print(type(args))
-                print(args.__name__)
                 valid_args = [x.__name__ in annotation_json_type_map for x in args]
                 if not any(valid_args):
                     raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
