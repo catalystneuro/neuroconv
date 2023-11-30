@@ -72,10 +72,10 @@ def test_invalid_ophys_metadata():
             identifier="1234",
         ),
         Ophys=dict(
-             Devices=[],
+            Devices=[],
             Fluorescence={
                 "name": "Fluorescence",
-                "fluorescence_chan1_plane0": dict(), # Value Unchecked
+                "fluorescence_chan1_plane0": dict(),  # Value Unchecked
                 "FluorescenceChan1Plane0": dict(),
                 "FluorescenceChan1Plane1": dict(
                     raw=dict(),
@@ -83,7 +83,7 @@ def test_invalid_ophys_metadata():
             },
             DFOverF={
                 "name": "DfOverF",
-                "df_chan1_plane0": dict(), # Value Unchecked
+                "df_chan1_plane0": dict(),  # Value Unchecked
                 "DFChan1Plane0": dict(),
                 "DFChan1Plane1": dict(
                     raw=dict(),
@@ -91,7 +91,7 @@ def test_invalid_ophys_metadata():
             },
             SegmentationImages={
                 "name": "SegmentationImages",
-                "segmentation_chan1_plane0": dict(), # Value Unchecked
+                "segmentation_chan1_plane0": dict(),  # Value Unchecked
                 "SegmentationChan1Plane0": dict(),
                 "SegmentationChan1Plane1": dict(
                     raw=dict(),
@@ -192,7 +192,7 @@ def test_invalid_ophys_plane_metadata():
             identifier="1234",
         ),
         Ophys=dict(
-             Devices=[],
+            Devices=[],
             Fluorescence={"name": "Fluorescence"},
             DFOverF={"name": "DfOverF"},
             SegmentationImages={"name": "SegmentationImages"},
