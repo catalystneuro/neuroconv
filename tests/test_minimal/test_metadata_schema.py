@@ -152,12 +152,6 @@ def test_invalid_ophys_metadata():
 
     errors = [{ "message": error.message, "path": error.json_path }  for error in validator.iter_errors(metadata)]
 
-    def sorting_fn(o):
-        return o["message"]
-
-    errors.sort(key=sorting_fn)
-    expected_errors.sort(key=sorting_fn)
-
     assert len(errors) == len(expected_errors)
     
     for error in errors:
@@ -201,12 +195,6 @@ def test_invalid_ophys_plane_metadata():
 
     validator = jsonschema.Draft7Validator(metadata_schema)
     errors = [{ "message": error.message, "path": error.json_path }  for error in validator.iter_errors(metadata)]
-
-    def sorting_fn(o):
-        return o["message"]
-
-    errors.sort(key=sorting_fn)
-    expected_errors.sort(key=sorting_fn)
 
     assert len(errors) == len(expected_errors)
 
