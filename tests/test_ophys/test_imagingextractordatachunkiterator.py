@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
@@ -64,23 +66,13 @@ class TestImagingExtractorDataChunkIterator(TestCase):
             expected_error_msg="Some dimensions of chunk_shape ((2, 2, 2)) do not evenly divide the buffer shape ((5, 10, 10))!",
             case_name="buffer_shape_not_divisible_by_chunk_shape",
         ),
+        param(
+            buffer_shape=(5, 10, 10),
+            chunk_shape=(13, 2, 2),
+            case_name="chunk_shape_greater_than_buffer_shape",
+            expected_error_msg="Some dimensions of chunk_shape ((13, 2, 2)) exceed the buffer shape ((5, 10, 10))!",
+        ),
     ]
-
-    param_chunk_shape_exceeds_buffer_shape = param(
-        buffer_shape=(5, 10, 10),
-        chunk_shape=(13, 2, 2),
-        case_name="chunk_shape_greater_than_buffer_shape",
-    )
-    if get_package_version(name="hdmf").base_version >= "3.3.2":
-        param_chunk_shape_exceeds_buffer_shape.kwargs[
-            "expected_error_msg"
-        ] = "Some dimensions of chunk_shape ((13, 2, 2)) exceed the buffer shape ((5, 10, 10))!"
-    else:
-        param_chunk_shape_exceeds_buffer_shape.kwargs[
-            "expected_error_msg"
-        ] = "Some dimensions of chunk_shape ((13, 2, 2)) exceed the manual buffer shape ((5, 10, 10))!"
-
-    iterator_params.append(param_chunk_shape_exceeds_buffer_shape)
 
     @parameterized.expand(
         input=iterator_params,
@@ -167,7 +159,7 @@ class TestImagingExtractorDataChunkIterator(TestCase):
         )
 
         if buffer_gb is not None:
-            assert ((np.prod(dci.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9) <= buffer_gb
+            assert ((math.prod(dci.buffer_shape) * self.imaging_extractor.get_dtype().itemsize) / 1e9) <= buffer_gb
 
         data_chunks = np.zeros(dci.maxshape)
         for data_chunk in dci:

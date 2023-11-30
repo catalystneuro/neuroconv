@@ -1,10 +1,11 @@
-"""Helpful classes for expanding file or folder paths on a system given a f-string rule for matching patterns."""
+"""Helpful classes for expanding file or folder paths on a system given an f-string rule for matching patterns."""
 import abc
 import os
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-from fparse import parse
+from parse import parse
 from pydantic import DirectoryPath, FilePath
 
 from ..utils import DeepDict
@@ -81,6 +82,8 @@ class AbstractPathExpander(abc.ABC):
 
                     for meta_key, meta_val in metadata.items():
                         super_key = standard_metadata.get(meta_key, non_standard_super)
+                        if meta_key == "session_start_time" and isinstance(meta_val, date):
+                            meta_val = datetime(meta_val.year, meta_val.month, meta_val.day)
                         out[key]["metadata"][super_key][meta_key] = meta_val
 
         return list(dict(out).values())

@@ -14,7 +14,6 @@ from neuroconv.datainterfaces import (
     AxonaRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
-    CEDRecordingInterface,
     CellExplorerRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
@@ -27,6 +26,7 @@ from neuroconv.datainterfaces import (
     OpenEphysLegacyRecordingInterface,
     OpenEphysRecordingInterface,
     PlexonRecordingInterface,
+    Spike2RecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
     TdtRecordingInterface,
@@ -81,8 +81,8 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin, Test
     platform == "darwin" or this_python_version < version.parse("3.8") or this_python_version > version.parse("3.9"),
     reason="Interface unsupported for OSX. Only runs on Python 3.8 and 3.9",
 )
-class TestCEDRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
-    data_interface_cls = CEDRecordingInterface
+class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
+    data_interface_cls = Spike2RecordingInterface
     interface_kwargs = dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx"))
     save_directory = OUTPUT_PATH
 
@@ -211,7 +211,7 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCas
         assert len(metadata["Ecephys"]["Device"]) == 1
         assert metadata["Ecephys"]["Device"][0]["name"] == "Neuronexus-32"
         assert metadata["Ecephys"]["Device"][0]["description"] == "The ecephys device for the MEArec recording."
-        assert len(metadata["Ecephys"]["ElectrodeGroup"]) == 1
+        # assert len(metadata["Ecephys"]["ElectrodeGroup"]) == 1 # do not test this condition because in the test we are setting a mock probe
         assert metadata["Ecephys"]["ElectrodeGroup"][0]["device"] == "Neuronexus-32"
         assert metadata["Ecephys"]["ElectricalSeries"]["description"] == (
             '{"angle_tol": 15, "bursting": false, "chunk_duration": 0, "color_noise_floor": 1, '

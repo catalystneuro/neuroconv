@@ -1,5 +1,5 @@
 """
-Unit tests for `get_default_dataset_configurations` operating on already written files open in append mode.
+Unit tests for `get_default_dataset_io_configurations` operating on already written files open in append mode.
 Mostly testing that the right objects are skipped from identification as candidates for configuration.
 """
 from pathlib import Path
@@ -14,9 +14,9 @@ from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import (
-    HDF5DatasetConfiguration,
-    ZarrDatasetConfiguration,
-    get_default_dataset_configurations,
+    HDF5DatasetIOConfiguration,
+    ZarrDatasetIOConfiguration,
+    get_default_dataset_io_configurations,
 )
 
 
@@ -55,15 +55,15 @@ def test_unwrapped_time_series_hdf5(hdf5_nwbfile_path):
         nwbfile = io.read()
         new_time_series = mock_TimeSeries(name="NewTimeSeries", data=array)
         nwbfile.add_acquisition(new_time_series)
-        dataset_configurations = list(get_default_dataset_configurations(nwbfile=nwbfile, backend="hdf5"))
+        dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend="hdf5"))
 
     assert len(dataset_configurations) == 1
 
     dataset_configuration = dataset_configurations[0]
-    assert isinstance(dataset_configuration, HDF5DatasetConfiguration)
+    assert isinstance(dataset_configuration, HDF5DatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == new_time_series.object_id
     assert dataset_configuration.dataset_info.location == "acquisition/NewTimeSeries/data"
-    assert dataset_configuration.dataset_info.maxshape == array.shape
+    assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
@@ -78,15 +78,15 @@ def test_unwrapped_time_series_zarr(zarr_nwbfile_path):
         nwbfile = io.read()
         new_time_series = mock_TimeSeries(name="NewTimeSeries", data=array)
         nwbfile.add_acquisition(new_time_series)
-        dataset_configurations = list(get_default_dataset_configurations(nwbfile=nwbfile, backend="zarr"))
+        dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend="zarr"))
 
     assert len(dataset_configurations) == 1
 
     dataset_configuration = dataset_configurations[0]
-    assert isinstance(dataset_configuration, ZarrDatasetConfiguration)
+    assert isinstance(dataset_configuration, ZarrDatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == new_time_series.object_id
     assert dataset_configuration.dataset_info.location == "acquisition/NewTimeSeries/data"
-    assert dataset_configuration.dataset_info.maxshape == array.shape
+    assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
@@ -104,15 +104,15 @@ def test_unwrapped_dynamic_table_hdf5(hdf5_nwbfile_path):
         column = VectorData(name="TestColumn", description="", data=array.squeeze())
         dynamic_table = DynamicTable(name="TestDynamicTable", description="", columns=[column])
         nwbfile.add_acquisition(dynamic_table)
-        dataset_configurations = list(get_default_dataset_configurations(nwbfile=nwbfile, backend="hdf5"))
+        dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend="hdf5"))
 
     assert len(dataset_configurations) == 1
 
     dataset_configuration = dataset_configurations[0]
-    assert isinstance(dataset_configuration, HDF5DatasetConfiguration)
+    assert isinstance(dataset_configuration, HDF5DatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == column.object_id
     assert dataset_configuration.dataset_info.location == "acquisition/TestDynamicTable/TestColumn/data"
-    assert dataset_configuration.dataset_info.maxshape == array.shape
+    assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
@@ -128,15 +128,15 @@ def test_unwrapped_dynamic_table_zarr(zarr_nwbfile_path):
         column = VectorData(name="TestColumn", description="", data=array.squeeze())
         dynamic_table = DynamicTable(name="TestDynamicTable", description="", columns=[column])
         nwbfile.add_acquisition(dynamic_table)
-        dataset_configurations = list(get_default_dataset_configurations(nwbfile=nwbfile, backend="zarr"))
+        dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend="zarr"))
 
     assert len(dataset_configurations) == 1
 
     dataset_configuration = dataset_configurations[0]
-    assert isinstance(dataset_configuration, ZarrDatasetConfiguration)
+    assert isinstance(dataset_configuration, ZarrDatasetIOConfiguration)
     assert dataset_configuration.dataset_info.object_id == column.object_id
     assert dataset_configuration.dataset_info.location == "acquisition/TestDynamicTable/TestColumn/data"
-    assert dataset_configuration.dataset_info.maxshape == array.shape
+    assert dataset_configuration.dataset_info.full_shape == array.shape
     assert dataset_configuration.dataset_info.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape

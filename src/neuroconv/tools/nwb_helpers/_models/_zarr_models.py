@@ -7,39 +7,43 @@ import zarr
 from hdmf_zarr import ZarrDataIO
 from pydantic import Field, root_validator
 
-from ._base_models import BackendConfiguration, DatasetConfiguration
+from ._base_models import BackendConfiguration, DatasetIOConfiguration
 
-_available_zarr_filters = (
-    set(zarr.codec_registry.keys())
-    - set(
-        # These filters do nothing for us, or are things that ought to be implemented at lower HDMF levels
-        # or indirectly using HDMF data structures
-        (
-            "json2",  # no data savings
-            "pickle",  # no data savings
-            "vlen-utf8",  # enforced by HDMF
-            "vlen-array",  # enforced by HDMF
-            "vlen-bytes",  # enforced by HDMF
-            "msgpack2",  # think more on if we want to include this for variable length string datasets
-            "adler32",  # checksum
-            "crc32",  # checksum
-            "fixedscaleoffset",  # enforced indrectly by HDMF/PyNWB data types
-            "base64",  # unsure what this would ever be used for
-            "n5_wrapper",  # different data format
-        )
-    )
-    - set(  # Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
-        ("astype", "bitround", "quantize")  # (Users can always initialize and pass explicitly via code)
+_base_zarr_codecs = set(zarr.codec_registry.keys())
+_lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
+
+# These filters do nothing for us, or are things that ought to be implemented at lower HDMF levels
+# or indirectly using HDMF data structures
+_excluded_zarr_codecs = set(
+    (
+        "json2",  # no data savings
+        "pickle",  # no data savings
+        "vlen-utf8",  # enforced by HDMF
+        "vlen-array",  # enforced by HDMF
+        "vlen-bytes",  # enforced by HDMF
+        "msgpack2",  # think more on if we want to include this for variable length string datasets
+        "adler32",  # checksum
+        "crc32",  # checksum
+        "fixedscaleoffset",  # enforced indrectly by HDMF/PyNWB data types
+        "base64",  # unsure what this would ever be used for
+        "n5_wrapper",  # different data format
     )
 )
+
+# Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
+# (Users can always initialize and pass explicitly via code)
+_available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_zarr_codecs)
+
 # TODO: would like to eventually (as separate feature) add an 'auto' method to Zarr
 # to harness the wider range of potential methods that are ideal for certain dtypes or structures
 # E.g., 'packbits' for boolean (logical) VectorData columns
 # | set(("auto",))
-AVAILABLE_ZARR_COMPRESSION_METHODS = tuple(_available_zarr_filters)
+AVAILABLE_ZARR_COMPRESSION_METHODS = {
+    codec_name: zarr.codec_registry[codec_name] for codec_name in _available_zarr_codecs
+}
 
 
-class ZarrDatasetConfiguration(DatasetConfiguration):
+class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
@@ -47,7 +51,9 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
         arbitrary_types_allowed = True
         validate_assignment = True
 
-    compression_method: Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec, None] = Field(
+    compression_method: Union[
+        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None
+    ] = Field(
         default="gzip",  # TODO: would like this to be 'auto'
         description=(
             "The specified compression method to apply to this dataset. "
@@ -61,7 +67,9 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
     compression_options: Union[Dict[str, Any], None] = Field(
         default=None, description="The optional parameters to use for the specified compression method."
     )
-    filter_methods: Union[List[Union[Literal[AVAILABLE_ZARR_COMPRESSION_METHODS], numcodecs.abc.Codec]], None] = Field(
+    filter_methods: Union[
+        List[Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec]], None
+    ] = Field(
         default=None,
         description=(
             "The ordered collection of filtering methods to apply to this dataset prior to compression. "
@@ -77,9 +85,11 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
     def __str__(self) -> str:
         string = super().__str__()
         if self.filter_methods is not None:
-            string += f"\n  filter_methods: {self.filter_methods}"
+            string += f"\n  filter methods : {self.filter_methods}"
         if self.filter_options is not None:
-            string += f"\n  filter_options: {self.filter_options}"
+            string += f"\n  filter options : {self.filter_options}"
+        if self.filter_methods is not None or self.filter_options is not None:
+            string += "\n"
 
         return string
 
@@ -89,7 +99,9 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
         filter_options = values["filter_options"]
 
         if filter_methods is None and filter_options is not None:
-            raise ValueError(f"`filter_methods` is `None` but `filter_options` is not (received {filter_options})!")
+            raise ValueError(
+                f"`filter_methods` is `None` but `filter_options` is not `None` (received `{filter_options=}`)!"
+            )
         elif filter_options is None:
             return values
 
@@ -98,12 +110,13 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
         if len_filter_methods != len_filter_options:
             raise ValueError(
                 f"Length mismatch between `filter_methods` ({len_filter_methods} methods specified) and "
-                f"`filter_options` ({len_filter_options} options found)! These two must match one-to-one."
+                f"`filter_options` ({len_filter_options} options found)! `filter_methods` and `filter_options` should "
+                "be the same length."
             )
 
         return values
 
-    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
+    def get_data_io_kwargs(self) -> Dict[str, Any]:
         filters = None
         if self.filter_methods:
             filters = list()
@@ -115,7 +128,8 @@ class ZarrDatasetConfiguration(DatasetConfiguration):
                     filters.append(filter_method)
 
         if isinstance(self.compression_method, str):
-            compressor = zarr.codec_registry[self.compression_method](**self.compression_options)
+            compression_options = self.compression_options or dict()
+            compressor = zarr.codec_registry[self.compression_method](**compression_options)
         if isinstance(self.compression_method, numcodecs.abc.Codec):
             compressor = self.compression_method
         elif self.compression_method is None:
@@ -133,15 +147,21 @@ class ZarrBackendConfiguration(BackendConfiguration):
     data_io_class: Type[ZarrDataIO] = Field(
         default=ZarrDataIO, description="The DataIO class that is specific to Zarr."
     )
-    dataset_configurations: Dict[str, ZarrDatasetConfiguration] = Field(
+    dataset_configurations: Dict[str, ZarrDatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations to their ZarrDatasetConfiguration specification that contains all "
             "information for writing the datasets to disk using the Zarr backend."
         )
     )
     number_of_jobs: int = Field(
-        description="Number of jobs to use in parallel during write.",
+        description=(
+            "Number of jobs to use in parallel during write. Negative values, starting from -1, "
+            "will use all the available CPUs (including logical), -2 is all except one, etc. "
+            "This is equivalent to the pattern of indexing of "
+            " `list(range(total_number_of_cpu))[number_of_jobs]`; for example, `-1` uses all available CPU, `-2` "
+            "uses all except one, etc."
+        ),
         ge=-psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
         le=psutil.cpu_count(),
-        default=-2,  # -2 translates to 'all CPU except for one'
+        default=psutil.cpu_count() - 1,
     )

@@ -4,8 +4,6 @@ from typing import Tuple
 
 import numpy as np
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
-from pydantic import Field
-from typing_extensions import Annotated
 
 
 class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
@@ -16,11 +14,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
     # TODO: move this to the core iterator in HDMF so it can be easily swapped out as well as run on its own
     @staticmethod
-    def estimate_default_chunk_shape(
-        chunk_mb: Annotated[float, Field(gt=0.0)],
-        maxshape: Tuple[int, ...],
-        dtype: np.dtype,
-    ) -> Tuple[int, ...]:
+    def estimate_default_chunk_shape(chunk_mb: float, maxshape: Tuple[int, ...], dtype: np.dtype) -> Tuple[int, ...]:
         """
         Select chunk shape with size in MB less than the threshold of chunk_mb.
 
@@ -46,13 +40,11 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
     # TODO: move this to the core iterator in HDMF so it can be easily swapped out as well as run on its own
     @staticmethod
     def estimate_default_buffer_shape(
-        buffer_gb: Annotated[float, Field(gt=0.0)],
-        chunk_shape: Tuple[int, ...],
-        maxshape: Tuple[int, ...],
-        dtype: np.dtype,
+        buffer_gb: float, chunk_shape: Tuple[int, ...], maxshape: Tuple[int, ...], dtype: np.dtype
     ) -> Tuple[int]:
         num_axes = len(maxshape)
         chunk_bytes = math.prod(chunk_shape) * dtype.itemsize
+
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert (
             buffer_gb >= chunk_bytes / 1e9
@@ -67,20 +59,34 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
         buffer_bytes = chunk_bytes
         axis_sizes_bytes = maxshape * dtype.itemsize
-        smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(chunk_shape)
         target_buffer_bytes = buffer_gb * 1e9
 
-        # If the smallest full axis does not fit within the buffer size, form a square along the two smallest axes
-        sub_square_buffer_shape = np.array(chunk_shape)
         if min(axis_sizes_bytes) > target_buffer_bytes:
-            k1 = np.floor((target_buffer_bytes / chunk_bytes) ** 0.5)
-            for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
-                sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
-            return tuple(sub_square_buffer_shape)
+            if num_axes > 1:
+                smallest_chunk_axis, second_smallest_chunk_axis, *_ = np.argsort(chunk_shape)
+                # If the smallest full axis does not fit within the buffer size, form a square along the smallest axes
+                sub_square_buffer_shape = np.array(chunk_shape)
+                if min(axis_sizes_bytes) > target_buffer_bytes:
+                    k1 = math.floor((target_buffer_bytes / chunk_bytes) ** 0.5)
+                    for axis in [smallest_chunk_axis, second_smallest_chunk_axis]:
+                        sub_square_buffer_shape[axis] = k1 * sub_square_buffer_shape[axis]
+                    return tuple(sub_square_buffer_shape)
+            elif num_axes == 1:
+                smallest_chunk_axis = 0
+                # Handle the case where the single axis is too large to fit in the buffer
+                if axis_sizes_bytes[0] > target_buffer_bytes:
+                    k1 = math.floor(target_buffer_bytes / chunk_bytes)
+                    return tuple(
+                        [
+                            k1 * chunk_shape[0],
+                        ]
+                    )
+            else:
+                raise ValueError(f"num_axes ({num_axes}) is less than one!")
 
         # Original one-shot estimation has good performance for certain shapes
         chunk_to_buffer_ratio = buffer_gb * 1e9 / chunk_bytes
-        chunk_scaling_factor = np.floor(chunk_to_buffer_ratio ** (1 / num_axes))
+        chunk_scaling_factor = math.floor(chunk_to_buffer_ratio ** (1 / num_axes))
         unpadded_buffer_shape = [
             np.clip(a=int(x), a_min=chunk_shape[j], a_max=maxshape[j])
             for j, x in enumerate(chunk_scaling_factor * np.array(chunk_shape))
@@ -104,9 +110,10 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
                 buffer_bytes *= chunks_on_axis
                 padded_buffer_shape[axis] = maxshape[axis]
             else:  # Found an axis that is too large to use with the rest of the buffer; calculate how much can be used
-                k3 = np.floor(target_buffer_bytes / buffer_bytes)
+                k3 = math.floor(target_buffer_bytes / buffer_bytes)
                 padded_buffer_shape[axis] *= k3
                 break
+
         padded_buffer_bytes = math.prod(padded_buffer_shape) * dtype.itemsize
 
         if padded_buffer_bytes >= unpadded_buffer_bytes:
@@ -117,7 +124,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
 class SliceableDataChunkIterator(GenericDataChunkIterator):
     """
-    Generic data chunk iterator that works for any memory mapped array, such as a np.memmap or an h5py.Dataset
+    Generic data chunk iterator that works for any memory mapped array, such as a np.memmap or h5py.Dataset object.
     """
 
     def __init__(self, data, **kwargs):
