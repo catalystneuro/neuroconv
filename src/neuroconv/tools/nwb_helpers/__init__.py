@@ -1,8 +1,8 @@
 """Collection of Pydantic models and helper functions for configuring dataset IO parameters for different backends."""
 from ._dataset_configuration import (
+    configure_backend,
     get_default_backend_configuration,
     get_default_dataset_io_configurations,
-    configure_backend,
 )
 from ._metadata_and_file_helpers import (
     add_device_from_metadata,
