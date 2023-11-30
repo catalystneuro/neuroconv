@@ -133,7 +133,7 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 arg = param.annotation
                 # in case __future__.annotations is imported, the annotation is a string
                 if isinstance(arg, str):
-                    arg = get_annotations(arg)
+                    arg = get_annotations(arg, eval_str=True)
                 if arg.__name__ in annotation_json_type_map:
                     args_spec[param_name]["type"] = annotation_json_type_map[arg.__name__]
                 else:
