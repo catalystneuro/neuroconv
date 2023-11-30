@@ -23,7 +23,7 @@ class VideoInterface(BaseDataInterface):
     """Data interface for writing videos as ImageSeries."""
 
     def __init__(
-        self, file_paths: list[str | Path], verbose: bool = False
+        self, file_paths: list, verbose: bool = False
     ):  # TODO - debug why List[FilePathType] fails
         """
         Create the interface for writing videos as ImageSeries.
