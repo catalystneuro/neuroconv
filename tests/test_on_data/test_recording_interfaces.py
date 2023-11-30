@@ -211,7 +211,7 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCas
         assert len(metadata["Ecephys"]["Device"]) == 1
         assert metadata["Ecephys"]["Device"][0]["name"] == "Neuronexus-32"
         assert metadata["Ecephys"]["Device"][0]["description"] == "The ecephys device for the MEArec recording."
-        assert len(metadata["Ecephys"]["ElectrodeGroup"]) == 1
+        # assert len(metadata["Ecephys"]["ElectrodeGroup"]) == 1 # do not test this condition because in the test we are setting a mock probe
         assert metadata["Ecephys"]["ElectrodeGroup"][0]["device"] == "Neuronexus-32"
         assert metadata["Ecephys"]["ElectricalSeries"]["description"] == (
             '{"angle_tol": 15, "bursting": false, "chunk_duration": 0, "color_noise_floor": 1, '
