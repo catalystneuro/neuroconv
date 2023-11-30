@@ -1610,7 +1610,7 @@ class TestAddPhotonSeries(TestCase):
         data_chunk_iterator = data_in_hdfm_data_io.data
         chunk_shape = data_chunk_iterator.chunk_shape
         chunk_size_mb = (
-            np.prod(chunk_shape) * data_chunk_iterator.dtype.itemsize / np.prod(data_chunk_iterator.maxshape[1:])
+            math.prod(chunk_shape) * data_chunk_iterator.dtype.itemsize / math.prod(data_chunk_iterator.maxshape[1:])
         )
         self.assertEqual(chunk_mb, chunk_size_mb)
 
