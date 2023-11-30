@@ -83,7 +83,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         )
 
     def _get_default_chunk_shape(self, chunk_mb: float) -> tuple:
-        """Select the chunk_shape less than the threshold of chunk_mb that is also a multiple of the image size."""
+        """Select the chunk_shape less than the threshold of chunk_mb while keeping the original image size."""
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         num_frames = self._maxshape[0]
