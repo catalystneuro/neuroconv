@@ -21,7 +21,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  maximum RAM usage per iteration : 0.96 GB
+  expected RAM usage : 0.96 GB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -47,7 +47,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  maximum RAM usage per iteration : 0.96 GB
+  expected RAM usage : 0.96 GB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -74,7 +74,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  maximum RAM usage per iteration : 0.96 GB
+  expected RAM usage : 0.96 GB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
