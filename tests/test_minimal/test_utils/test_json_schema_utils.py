@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 from copy import deepcopy
@@ -65,6 +67,31 @@ def test_get_schema_from_method_signature():
     )
 
     assert schema == correct_schema
+
+
+def test_get_schema_from_method_signature_future_annotations():
+    """
+    Intended to trigger the behavior where the type of the annotation found is a string, not the class type.
+
+    I.e., `"str"` is found instead of `str`.
+    """
+    class A:
+        def __init__(self, a: str):
+            pass
+
+    schema = get_schema_from_method_signature(A.__init__)
+
+    expected_schema = dict(
+        additionalProperties=False,
+        properties=dict(
+            a=dict(type="string"),
+        ),
+        required=[
+            "a",
+        ],
+        type="object",
+    )
+    assert schema == expected_schema
 
 
 def test_dict_deep_update_1():
