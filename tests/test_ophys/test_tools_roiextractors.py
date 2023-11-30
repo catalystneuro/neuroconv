@@ -1593,6 +1593,61 @@ class TestAddPhotonSeries(TestCase):
         self.assertEqual(data_chunk_iterator.buffer_shape, buffer_shape)
         self.assertEqual(data_chunk_iterator.chunk_shape, chunk_shape)
 
+    def test_iterator_options_chunk_mb_propagation(self):
+        """Test that chunk_mb is propagated to the data chunk iterator and the chunk shape is correctly set to fit."""
+        chunk_mb = 10.0
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+            iterator_type="v2",
+            iterator_options=dict(chunk_mb=chunk_mb),
+        )
+
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        chunk_shape = data_chunk_iterator.chunk_shape
+        chunk_size_mb = (
+            math.prod(chunk_shape) * data_chunk_iterator.dtype.itemsize / math.prod(data_chunk_iterator.maxshape[1:])
+        )
+        self.assertEqual(chunk_mb, chunk_size_mb)
+
+    def test_iterator_options_chunk_shape_is_at_least_one(self):
+        """Test that when a small chunk_mb is selected the chunk shape is guaranteed to include at least one frame."""
+        chunk_mb = 1.0
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+            iterator_type="v2",
+            iterator_options=dict(chunk_mb=chunk_mb),
+        )
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        chunk_shape = data_chunk_iterator.chunk_shape
+        assert_array_equal(chunk_shape, (1, 15, 10))
+
+    def test_iterator_options_chunk_shape_does_not_exceed_maxshape(self):
+        """Test that when a large chunk_mb is selected the chunk shape is guaranteed to not exceed maxshape."""
+        chunk_mb = 1000.0
+        add_photon_series(
+            imaging=self.imaging_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.two_photon_series_metadata,
+            iterator_type="v2",
+            iterator_options=dict(chunk_mb=chunk_mb),
+        )
+        acquisition_modules = self.nwbfile.acquisition
+        assert self.two_photon_series_name in acquisition_modules
+        data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
+        data_chunk_iterator = data_in_hdfm_data_io.data
+        chunk_shape = data_chunk_iterator.chunk_shape
+        assert_array_equal(chunk_shape, data_chunk_iterator.maxshape)
+
     def test_add_two_photon_series_roundtrip(self):
         add_photon_series(
             imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
