@@ -12,6 +12,7 @@ import pynwb
 from jsonschema import validate
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
+from get_annotations import get_annotations
 
 from .dict import dict_deep_update
 from .types import FilePathType, FolderPathType
@@ -132,7 +133,7 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 arg = param.annotation
                 # in case __future__.annotations is imported, the annotation is a string
                 if isinstance(arg, str):
-                    arg = type(arg)
+                    arg = get_annotations(arg)
                 if arg.__name__ in annotation_json_type_map:
                     args_spec[param_name]["type"] = annotation_json_type_map[arg.__name__]
                 else:
