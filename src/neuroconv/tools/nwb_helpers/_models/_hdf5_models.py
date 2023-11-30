@@ -6,7 +6,7 @@ from nwbinspector.utils import is_module_installed
 from pydantic import Field
 from pynwb import H5DataIO
 
-from ._base_models import BackendConfiguration, DatasetConfiguration
+from ._base_models import BackendConfiguration, DatasetIOConfiguration
 
 _base_hdf5_filters = set(h5py.filters.decode)
 _excluded_hdf5_filters = set(
@@ -29,7 +29,7 @@ if is_module_installed(module_name="hdf5plugin"):
     )
 
 
-class HDF5DatasetConfiguration(DatasetConfiguration):
+class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
     # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
@@ -90,7 +90,7 @@ class HDF5BackendConfiguration(BackendConfiguration):
     data_io_class: Type[H5DataIO] = Field(  # TODO: in pydantic v2 use property instead of class attribute
         default=H5DataIO, description="The DataIO class that is specific to HDF5."
     )
-    dataset_configurations: Dict[str, HDF5DatasetConfiguration] = Field(
+    dataset_configurations: Dict[str, HDF5DatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations to their HDF5DatasetConfiguration specification that contains all "
             "information for writing the datasets to disk using the HDF5 backend."

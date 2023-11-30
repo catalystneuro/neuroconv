@@ -94,7 +94,7 @@
         },
         "virus": {
           "type": "string",
-          "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+          "description": "Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc."
         },
         "data_collection": {
           "type": "string",

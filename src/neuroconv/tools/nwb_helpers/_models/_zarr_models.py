@@ -7,7 +7,7 @@ import zarr
 from hdmf_zarr import ZarrDataIO
 from pydantic import Field, root_validator
 
-from ._base_models import BackendConfiguration, DatasetConfiguration
+from ._base_models import BackendConfiguration, DatasetIOConfiguration
 
 _base_zarr_codecs = set(zarr.codec_registry.keys())
 _lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
@@ -43,7 +43,7 @@ AVAILABLE_ZARR_COMPRESSION_METHODS = {
 }
 
 
-class ZarrDatasetConfiguration(DatasetConfiguration):
+class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
@@ -147,7 +147,7 @@ class ZarrBackendConfiguration(BackendConfiguration):
     data_io_class: Type[ZarrDataIO] = Field(
         default=ZarrDataIO, description="The DataIO class that is specific to Zarr."
     )
-    dataset_configurations: Dict[str, ZarrDatasetConfiguration] = Field(
+    dataset_configurations: Dict[str, ZarrDatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations to their ZarrDatasetConfiguration specification that contains all "
             "information for writing the datasets to disk using the Zarr backend."

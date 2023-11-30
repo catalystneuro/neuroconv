@@ -9,9 +9,9 @@ from ...nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
     DatasetInfo,
     HDF5BackendConfiguration,
-    HDF5DatasetConfiguration,
+    HDF5DatasetIOConfiguration,
     ZarrBackendConfiguration,
-    ZarrDatasetConfiguration,
+    ZarrDatasetIOConfiguration,
 )
 
 
@@ -30,14 +30,14 @@ def mock_DatasetInfo(
     )
 
 
-def mock_HDF5DatasetConfiguration(
+def mock_HDF5DatasetIOConfiguration(
     compression_method: Union[
         Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], h5py._hl.filters.FilterRefBase, None
     ] = "gzip",
     compression_options: Union[Dict[str, Any], None] = None,
-) -> HDF5DatasetConfiguration:
-    """Mock instance of a HDF5DatasetConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
-    return HDF5DatasetConfiguration(
+) -> HDF5DatasetIOConfiguration:
+    """Mock object of a HDF5DatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
+    return HDF5DatasetIOConfiguration(
         dataset_info=mock_DatasetInfo(),
         chunk_shape=(78_125, 64),  # ~10 MB
         buffer_shape=(1_250_000, 384),  # ~1 GB
@@ -46,7 +46,7 @@ def mock_HDF5DatasetConfiguration(
     )
 
 
-def mock_ZarrDatasetConfiguration(
+def mock_ZarrDatasetIOConfiguration(
     compression_method: Union[
         Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None
     ] = "gzip",
@@ -55,9 +55,9 @@ def mock_ZarrDatasetConfiguration(
         Union[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())], numcodecs.abc.Codec, None]
     ] = None,
     filter_options: Union[Iterable[Dict[str, Any]], None] = None,
-) -> ZarrDatasetConfiguration:
-    """Mock instance of a ZarrDatasetConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
-    return ZarrDatasetConfiguration(
+) -> ZarrDatasetIOConfiguration:
+    """Mock object of a ZarrDatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
+    return ZarrDatasetIOConfiguration(
         dataset_info=mock_DatasetInfo(),
         chunk_shape=(78_125, 64),  # ~10 MB
         buffer_shape=(1_250_000, 384),  # ~1 GB
@@ -71,12 +71,12 @@ def mock_ZarrDatasetConfiguration(
 def mock_HDF5BackendConfiguration() -> HDF5BackendConfiguration:
     """Mock instance of a HDF5BackendConfiguration with two NeuroPixel-like datasets."""
     dataset_configurations = {
-        "acquisition/TestElectricalSeriesAP/data": HDF5DatasetConfiguration(
+        "acquisition/TestElectricalSeriesAP/data": HDF5DatasetIOConfiguration(
             dataset_info=mock_DatasetInfo(location="acquisition/TestElectricalSeriesAP/data"),
             chunk_shape=(78_125, 64),  # ~10 MB
             buffer_shape=(1_250_000, 384),  # ~1 GB
         ),
-        "acquisition/TestElectricalSeriesLF/data": HDF5DatasetConfiguration(
+        "acquisition/TestElectricalSeriesLF/data": HDF5DatasetIOConfiguration(
             dataset_info=mock_DatasetInfo(
                 object_id="bc37e164-519f-4b65-a976-206440f1d325",
                 location="acquisition/TestElectricalSeriesLF/data",
@@ -93,13 +93,13 @@ def mock_HDF5BackendConfiguration() -> HDF5BackendConfiguration:
 def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
     """Mock instance of a HDF5BackendConfiguration with several NeuroPixel-like datasets."""
     dataset_configurations = {
-        "acquisition/TestElectricalSeriesAP/data": ZarrDatasetConfiguration(
+        "acquisition/TestElectricalSeriesAP/data": ZarrDatasetIOConfiguration(
             dataset_info=mock_DatasetInfo(location="acquisition/TestElectricalSeriesAP/data"),
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),  # ~1 GB
             filter_methods=["delta"],
         ),
-        "acquisition/TestElectricalSeriesLF/data": ZarrDatasetConfiguration(
+        "acquisition/TestElectricalSeriesLF/data": ZarrDatasetIOConfiguration(
             dataset_info=mock_DatasetInfo(
                 object_id="bc37e164-519f-4b65-a976-206440f1d325",
                 location="acquisition/TestElectricalSeriesLF/data",

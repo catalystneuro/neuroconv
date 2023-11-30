@@ -989,6 +989,23 @@ class TestAddFluorescenceTraces(unittest.TestCase):
 
         self.assertEqual(len(roi_response_series), 2)
 
+    def test_add_fluorescence_one_of_the_traces_is_empty(self):
+        """Test that roi response series with empty values are not added to the nwbfile."""
+
+        self.segmentation_extractor._roi_response_deconvolved = np.empty((self.num_frames, 0))
+
+        add_fluorescence_traces(
+            segmentation_extractor=self.segmentation_extractor,
+            nwbfile=self.nwbfile,
+            metadata=self.metadata,
+        )
+
+        ophys = get_module(self.nwbfile, "ophys")
+        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
+
+        assert "Deconvolved" not in roi_response_series
+        self.assertEqual(len(roi_response_series), 2)
+
     def test_add_fluorescence_one_of_the_traces_is_all_zeros(self):
         """Test that roi response series with all zero values are not added to the
         nwbfile."""
