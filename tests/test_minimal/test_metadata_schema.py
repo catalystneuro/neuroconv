@@ -86,7 +86,7 @@ def test_invalid_ophys_metadata():
         Ophys=dict(
             Fluorescence={
                 "name": "Fluorescence",
-                invalid_plane_name: dict(),  # Uncheked
+                invalid_plane_name: dict(),  # Unchecked
                 create_valid_plane_name(invalid_plane_name): dict(),
                 create_valid_plane_name(invalid_plane_name, 1): dict(
                     raw=dict(),
@@ -94,7 +94,7 @@ def test_invalid_ophys_metadata():
             },
             DFOverF={
                 "name": "DfOverF",
-                invalid_plane_name: dict(),  # Uncheked
+                invalid_plane_name: dict(),  # Unchecked
                 create_valid_plane_name(invalid_plane_name): dict(),
                 create_valid_plane_name(invalid_plane_name, 1): dict(
                     raw=dict(),
@@ -102,7 +102,7 @@ def test_invalid_ophys_metadata():
             },
             SegmentationImages={
                 "name": "SegmentationImages",
-                invalid_plane_name: dict(),  # Uncheked
+                invalid_plane_name: dict(),  # Unchecked
                 create_valid_plane_name(invalid_plane_name): dict(),
                 create_valid_plane_name(invalid_plane_name, 1): dict(
                     raw=dict(),
