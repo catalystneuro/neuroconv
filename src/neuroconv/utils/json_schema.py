@@ -130,6 +130,9 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                     input_schema["properties"].update({param_name: dict(format="directory")})
             else:
                 arg = param.annotation
+                # in case __future__.annotations is imported, the annotation is a string
+                if isinstance(arg, str):
+                    arg = type(arg)
                 if arg.__name__ in annotation_json_type_map:
                     args_spec[param_name]["type"] = annotation_json_type_map[arg.__name__]
                 else:
