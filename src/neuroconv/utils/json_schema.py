@@ -9,6 +9,7 @@ from typing import Callable, Dict, List, Literal, Optional
 import hdmf.data_utils
 import numpy as np
 import pynwb
+from get_annotations import get_annotations
 from jsonschema import validate
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
@@ -105,6 +106,14 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                     args_spec[param_name].update(additionalProperties=True)
             elif hasattr(param.annotation, "__args__"):  # Annotation has __args__ if it was made by typing.Union
                 args = param.annotation.__args__
+                print(param_name)
+                print(args)
+                print(type(args))
+                if isinstance(args, str):
+                    args = eval(args)
+                print(param_name)
+                print(args)
+                print(type(args))
                 valid_args = [x.__name__ in annotation_json_type_map for x in args]
                 if not any(valid_args):
                     raise ValueError(f"No valid arguments were found in the json type mapping for parameter {param}")
@@ -130,6 +139,13 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                     input_schema["properties"].update({param_name: dict(format="directory")})
             else:
                 arg = param.annotation
+                # in case __future__.annotations is imported, the annotation is a string
+                if isinstance(arg, str):
+                    arg = eval(arg)
+                print(param_name)
+                print(arg)
+                print(type(arg))
+                print(arg.__name__)
                 if arg.__name__ in annotation_json_type_map:
                     args_spec[param_name]["type"] = annotation_json_type_map[arg.__name__]
                 else:
