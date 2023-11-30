@@ -6,7 +6,7 @@ from neuroconv.tools.testing import mock_HDF5BackendConfiguration
 
 
 def test_hdf5_backend_configuration_print():
-    """Test the printout display of a HDF5DatasetConfiguration model looks nice."""
+    """Test the printout display of a HDF5BackendConfiguration model looks nice."""
     hdf5_backend_configuration = mock_HDF5BackendConfiguration()
 
     with patch("sys.stdout", new=StringIO()) as out:
@@ -23,7 +23,7 @@ acquisition/TestElectricalSeriesAP/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  maximum RAM usage per iteration : 0.96 GB
+  expected RAM usage : 0.96 GB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -38,7 +38,7 @@ acquisition/TestElectricalSeriesLF/data
   full size of source array : 0.06 GB
 
   buffer shape : (75000, 384)
-  maximum RAM usage per iteration : 0.06 GB
+  expected RAM usage : 0.06 GB
 
   chunk shape : (37500, 128)
   disk space usage per chunk : 9.60 MB

@@ -225,6 +225,40 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ]
             self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
 
+    def set_probe(self, probe, group_mode: Literal["by_shank", "by_probe"]):
+        """
+        Set the probe information via a ProbeInterface object.
+
+        Parameters
+        ----------
+        probe : probeinterface.Probe
+            The probe object.
+        group_mode : {'by_shank', 'by_probe'}
+            How to group the channels. If 'by_shank', channels are grouped by the shank_id column.
+            If 'by_probe', channels are grouped by the probe_id column.
+            This is a required parameter to avoid the pitfall of using the wrong mode.
+        """
+        # Set the probe to the recording extractor
+        self.recording_extractor.set_probe(
+            probe,
+            in_place=True,
+            group_mode=group_mode,
+        )
+        # Spike interface sets the "group" property
+        # But neuroconv allows "group_name" property to override spike interface "group" value
+        self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
+
+    def has_probe(self) -> bool:
+        """
+        Check if the recording extractor has probe information.
+
+        Returns
+        -------
+        has_probe : bool
+            True if the recording extractor has probe information.
+        """
+        return self.recording_extractor.has_probe()
+
     def align_by_interpolation(
         self,
         unaligned_timestamps: np.ndarray,

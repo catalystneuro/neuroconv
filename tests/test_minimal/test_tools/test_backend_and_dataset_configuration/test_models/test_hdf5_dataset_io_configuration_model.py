@@ -1,16 +1,14 @@
-"""Unit tests for the HDF5DatasetConfiguration Pydantic model."""
+"""Unit tests for the HDF5DatasetIOConfiguration Pydantic model."""
 from io import StringIO
 from unittest.mock import patch
 
-import pytest
-
 from neuroconv.tools.nwb_helpers import AVAILABLE_HDF5_COMPRESSION_METHODS
-from neuroconv.tools.testing import mock_HDF5DatasetConfiguration
+from neuroconv.tools.testing import mock_HDF5DatasetIOConfiguration
 
 
 def test_hdf5_dataset_configuration_print():
-    """Test the printout display of a HDF5DatasetConfiguration model looks nice."""
-    hdf5_dataset_configuration = mock_HDF5DatasetConfiguration()
+    """Test the printout display of a HDF5DatasetIOConfiguration model looks nice."""
+    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration()
 
     with patch("sys.stdout", new=StringIO()) as out:
         print(hdf5_dataset_configuration)
@@ -23,7 +21,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  maximum RAM usage per iteration : 0.96 GB
+  expected RAM usage : 0.96 GB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -35,8 +33,8 @@ acquisition/TestElectricalSeries/data
 
 
 def test_hdf5_dataset_configuration_print_with_compression_options():
-    """Test the printout display of a HDF5DatasetConfiguration model looks nice."""
-    hdf5_dataset_configuration = mock_HDF5DatasetConfiguration(compression_options=dict(level=5))
+    """Test the printout display of a HDF5DatasetIOConfiguration model looks nice."""
+    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compression_options=dict(level=5))
 
     with patch("sys.stdout", new=StringIO()) as out:
         print(hdf5_dataset_configuration)
@@ -49,7 +47,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  maximum RAM usage per iteration : 0.96 GB
+  expected RAM usage : 0.96 GB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -62,8 +60,8 @@ acquisition/TestElectricalSeries/data
 
 
 def test_hdf5_dataset_configuration_print_with_compression_disabled():
-    """Test the printout display of a HDF5DatasetConfiguration model looks nice."""
-    hdf5_dataset_configuration = mock_HDF5DatasetConfiguration(compression_method=None)
+    """Test the printout display of a HDF5DatasetIOConfiguration model looks nice."""
+    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compression_method=None)
 
     with patch("sys.stdout", new=StringIO()) as out:
         print(hdf5_dataset_configuration)
@@ -76,7 +74,7 @@ acquisition/TestElectricalSeries/data
   full size of source array : 1.38 GB
 
   buffer shape : (1250000, 384)
-  maximum RAM usage per iteration : 0.96 GB
+  expected RAM usage : 0.96 GB
 
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
@@ -86,12 +84,12 @@ acquisition/TestElectricalSeries/data
 
 
 def test_hdf5_dataset_configuration_repr():
-    """Test the programmatic repr of a HDF5DatasetConfiguration model is more dataclass-like."""
-    hdf5_dataset_configuration = mock_HDF5DatasetConfiguration()
+    """Test the programmatic repr of a HDF5DatasetIOConfiguration model is more dataclass-like."""
+    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration()
 
     # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
     expected_repr = (
-        "HDF5DatasetConfiguration(dataset_info=DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
+        "HDF5DatasetIOConfiguration(dataset_info=DatasetInfo(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
         "location='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
         "full_shape=(1800000, 384)), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
         "compression_options=None)"
@@ -108,7 +106,7 @@ def test_default_compression_is_always_available():
 
 
 def test_get_data_io_kwargs():
-    hdf5_dataset_configuration = mock_HDF5DatasetConfiguration()
+    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration()
 
     assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(
         chunks=(78125, 64), compression="gzip", compression_opts=None
