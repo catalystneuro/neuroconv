@@ -9,10 +9,10 @@ from typing import Callable, Dict, List, Literal, Optional
 import hdmf.data_utils
 import numpy as np
 import pynwb
+from get_annotations import get_annotations
 from jsonschema import validate
 from pynwb.device import Device
 from pynwb.icephys import IntracellularElectrode
-from get_annotations import get_annotations
 
 from .dict import dict_deep_update
 from .types import FilePathType, FolderPathType
