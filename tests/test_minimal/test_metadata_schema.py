@@ -60,6 +60,7 @@ def test_metadata_schema():
 
     validate_metadata(metadata=metadata, schema=metadata_schema)
 
+
 def test_invalid_ophys_metadata():
     metadata_schema = load_dict_from_file(
         Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
@@ -147,15 +148,15 @@ def test_invalid_ophys_metadata():
         ),
     ]
 
-
     validator = jsonschema.Draft7Validator(metadata_schema)
 
-    errors = [{ "message": error.message, "path": error.json_path }  for error in validator.iter_errors(metadata)]
+    errors = [{"message": error.message, "path": error.json_path} for error in validator.iter_errors(metadata)]
 
     assert len(errors) == len(expected_errors)
-    
+
     for error in errors:
         assert error in expected_errors
+
 
 def test_invalid_ophys_plane_metadata():
     metadata_schema = load_dict_from_file(
@@ -177,7 +178,6 @@ def test_invalid_ophys_plane_metadata():
         ),
     ]
 
-
     # Just a name is not enough
     metadata = dict(
         NWBFile=dict(
@@ -194,18 +194,18 @@ def test_invalid_ophys_plane_metadata():
     )
 
     validator = jsonschema.Draft7Validator(metadata_schema)
-    errors = [{ "message": error.message, "path": error.json_path }  for error in validator.iter_errors(metadata)]
+    errors = [{"message": error.message, "path": error.json_path} for error in validator.iter_errors(metadata)]
 
     assert len(errors) == len(expected_errors)
 
     for error in errors:
         assert error in expected_errors
-    
+
+
 def test_ophys_plane_fix():
     metadata_schema = load_dict_from_file(
         Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "metadata_schema.json"
     )
-
 
     # Just a name is not enough
     metadata = dict(
@@ -215,7 +215,7 @@ def test_ophys_plane_fix():
             identifier="1234",
         ),
         Ophys=dict(
-             Devices=[],
+            Devices=[],
             Fluorescence={
                 "name": "Fluorescence",
                 "FluorescenceChan1Plane1": dict(
@@ -238,5 +238,5 @@ def test_ophys_plane_fix():
     )
 
     validator = jsonschema.Draft7Validator(metadata_schema)
-    errors = [ error.message for error in validator.iter_errors(metadata) ]
+    errors = [error.message for error in validator.iter_errors(metadata)]
     assert len(errors) == 0
