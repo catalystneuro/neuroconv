@@ -134,6 +134,7 @@ def get_schema_from_method_signature(method: Callable, exclude: list = None) -> 
                 # in case __future__.annotations is imported, the annotation is a string
                 if isinstance(arg, str):
                     arg = eval(arg)
+                print(param_name)
                 print(arg)
                 print(type(arg))
                 print(arg.__name__)
