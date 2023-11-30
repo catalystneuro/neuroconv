@@ -75,6 +75,7 @@ def test_get_schema_from_method_signature_future_annotations():
 
     I.e., `"str"` is found instead of `str`.
     """
+
     class A:
         def __init__(self, a: str):
             pass
