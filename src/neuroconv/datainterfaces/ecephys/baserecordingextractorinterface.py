@@ -237,17 +237,20 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
 
-    def subset_recording(self, stub_test: bool = False):
+    def subset_recording(self, stub_test_size: int = None):
         """
         Subset a recording extractor according to stub and channel subset options.
 
         Parameters
         ----------
-        stub_test : bool, default: False
+        stub_test_size : int, default: None
         """
         from spikeinterface.core.segmentutils import ConcatenateSegmentRecording
 
-        max_frames = 100
+        if stub_test_size is None:
+            max_frames = 100
+        else:
+            max_frames = stub_test_size
 
         recording_extractor = self.recording_extractor
         number_of_segments = recording_extractor.get_num_segments()
@@ -266,6 +269,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
+        stub_test_size: int = 100,
         starting_time: Optional[float] = None,
         write_as: Literal["raw", "lfp", "processed"] = "raw",
         write_electrical_series: bool = True,
@@ -291,6 +295,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             Sets the starting time of the ElectricalSeries to a manually set value.
         stub_test : bool, default: False
             If True, will truncate the data to run the conversion faster and take up less memory.
+        stub_test_size : int, default: 100
+            The number of frames to keep if stub_test is True.
         write_as : {'raw', 'lfp', 'processed'}
         write_electrical_series : bool, default: True
             Electrical series are written in acquisition. If False, only device, electrode_groups,
@@ -328,7 +334,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         from ...tools.spikeinterface import add_recording
 
         if stub_test or self.subset_channels is not None:
-            recording = self.subset_recording(stub_test=stub_test)
+            recording = self.subset_recording(stub_test_size=stub_test_size)
         else:
             recording = self.recording_extractor
 
