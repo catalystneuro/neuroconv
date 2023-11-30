@@ -27,6 +27,8 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
 )
 from neuroconv.utils import NWBMetaDataEncoder
 
+from .mock_probes import generate_mock_probe
+
 
 class DataInterfaceTestMixin:
     """
@@ -300,6 +302,14 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # are specified, which occurs during check_recordings_equal when there is only one channel
             if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
                 check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=False)
+                for property_name in ["rel_x", "rel_y", "rel_z", "group"]:
+                    if (
+                        property_name in recording.get_property_keys()
+                        or property_name in self.nwb_recording.get_property_keys()
+                    ):
+                        assert_array_equal(
+                            recording.get_property(property_name), self.nwb_recording.get_property(property_name)
+                        )
                 if recording.has_scaled_traces() and self.nwb_recording.has_scaled_traces():
                     check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_scaled=True)
 
@@ -458,6 +468,31 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 self.check_interface_original_timestamps_inmutability()
 
                 self.check_nwbfile_temporal_alignment()
+
+    def test_conversion_as_lone_interface(self):
+        interface_kwargs = self.interface_kwargs
+        if isinstance(interface_kwargs, dict):
+            interface_kwargs = [interface_kwargs]
+        for num, kwargs in enumerate(interface_kwargs):
+            with self.subTest(str(num)):
+                self.case = num
+                self.test_kwargs = kwargs
+                self.interface = self.data_interface_cls(**self.test_kwargs)
+                assert isinstance(self.interface, BaseRecordingExtractorInterface)
+                if not self.interface.has_probe():
+                    self.interface.set_probe(
+                        generate_mock_probe(num_channels=self.interface.recording_extractor.get_num_channels()),
+                        group_mode="by_shank",
+                    )
+                self.check_metadata_schema_valid()
+                self.check_conversion_options_schema_valid()
+                self.check_metadata()
+                self.nwbfile_path = str(self.save_directory / f"{self.__class__.__name__}_{num}.nwb")
+                self.run_conversion(nwbfile_path=self.nwbfile_path)
+                self.check_read_nwb(nwbfile_path=self.nwbfile_path)
+
+                # Any extra custom checks to run
+                self.run_custom_checks()
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
