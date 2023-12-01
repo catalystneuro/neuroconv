@@ -18,7 +18,7 @@ _excluded_hdf5_filters = set(
 )
 _available_hdf5_filters = set(_base_hdf5_filters - _excluded_hdf5_filters)
 AVAILABLE_HDF5_COMPRESSION_METHODS = {filter_name: filter_name for filter_name in _available_hdf5_filters}
-if is_package_installed(module_name="hdf5plugin"):
+if is_package_installed(package_name="hdf5plugin"):
     import hdf5plugin
 
     AVAILABLE_HDF5_COMPRESSION_METHODS.update(
@@ -55,7 +55,7 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     )
 
     def get_data_io_kwargs(self) -> Dict[str, Any]:
-        if is_package_installed(module_name="hdf5plugin"):
+        if is_package_installed(package_name="hdf5plugin"):
             import hdf5plugin
 
             if self.compression_method in _base_hdf5_filters:

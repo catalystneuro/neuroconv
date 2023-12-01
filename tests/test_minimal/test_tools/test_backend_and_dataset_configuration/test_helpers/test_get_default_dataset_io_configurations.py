@@ -234,7 +234,7 @@ def test_configuration_on_compass_direction(iterator: callable, backend: Literal
 
 
 @pytest.mark.skipif(
-    not is_package_installed(module_name="ndx_events"),
+    not is_package_installed(package_name="ndx_events"),
     reason="The extra testing package 'ndx-events' is not installed!",
 )
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])

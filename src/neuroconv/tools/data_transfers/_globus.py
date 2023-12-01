@@ -20,7 +20,7 @@ def get_globus_dataset_content_sizes(
 
     Returns dictionary whose keys are file names and values are sizes in bytes.
     """
-    assert is_package_installed(module_name="globus_cli"), "You must install the globus CLI (pip install globus-cli)!"
+    assert is_package_installed(package_name="globus_cli"), "You must install the globus CLI (pip install globus-cli)!"
 
     recursive_flag = " --recursive" if recursive else ""
     contents = json.loads(
