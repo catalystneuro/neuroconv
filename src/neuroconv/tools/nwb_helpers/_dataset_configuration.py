@@ -4,16 +4,14 @@ from typing import Generator, Literal, Union
 import h5py
 import numpy as np
 import zarr
-from hdmf.data_utils import DataChunkIterator, DataIO, GenericDataChunkIterator
-from hdmf.utils import get_data_shape
+from hdmf.data_utils import DataIO
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBHDF5IO, NWBFile, TimeSeries
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable
 
-from ._models._base_models import DatasetInfo, DatasetIOConfiguration
+from ._models._base_models import DatasetIOConfiguration
 from ._models._hdf5_models import HDF5BackendConfiguration, HDF5DatasetIOConfiguration
 from ._models._zarr_models import ZarrBackendConfiguration, ZarrDatasetIOConfiguration
-from ..hdmf import SliceableDataChunkIterator
 
 BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatasetIOConfiguration)
 BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
@@ -55,8 +53,9 @@ def get_default_dataset_io_configurations(
     """
     Generate DatasetIOConfiguration objects for wrapping NWB file objects with a specific backend.
 
-    This method automatically detects all objects in an NWB file that can be wrapped in a DataIO. It supports auto-detection
-    of the backend if the NWB file is in append mode, otherwise it requires a backend specification.
+    This method automatically detects all objects in an NWB file that can be wrapped in a DataIO.
+    If the NWB file is in append mode, it supports auto-detection of the backend.
+    Otherwise, it requires a backend specification.
 
     Parameters
     ----------
@@ -153,11 +152,5 @@ def get_default_backend_configuration(
 ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
     """Fill a default backend configuration to serve as a starting point for further customization."""
     BackendConfigurationClass = BACKEND_TO_CONFIGURATION[backend]
-    default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend)
-    dataset_configurations = {
-        default_dataset_configuration.dataset_info.location: default_dataset_configuration
-        for default_dataset_configuration in default_dataset_configurations
-    }
 
-    backend_configuration = BackendConfigurationClass(dataset_configurations=dataset_configurations)
-    return backend_configuration
+    return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile)

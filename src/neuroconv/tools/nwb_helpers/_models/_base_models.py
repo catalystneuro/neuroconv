@@ -9,11 +9,12 @@ import numpy as np
 import zarr
 from hdmf import Container
 from hdmf.container import DataIO
-from hdmf.data_utils import DataChunkIterator, DataIO, GenericDataChunkIterator
+from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator
 from hdmf.utils import get_data_shape
 from pydantic import BaseModel, Field, root_validator
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 
+from .._dataset_configuration import get_default_dataset_io_configurations
 from ...hdmf import SliceableDataChunkIterator
 
 
@@ -290,3 +291,13 @@ class BackendConfiguration(BaseModel):
             string += f"\n{dataset_configuration}"
 
         return string
+
+    @classmethod
+    def from_nwbfile(cls, nwbfile: NWBFile) -> "BackendConfiguration":
+        default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
+        dataset_configurations = {
+            default_dataset_configuration.dataset_info.location: default_dataset_configuration
+            for default_dataset_configuration in default_dataset_configurations
+        }
+
+        return cls(dataset_configurations=dataset_configurations)
