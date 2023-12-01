@@ -5,13 +5,11 @@ from pathlib import Path
 from time import sleep, time
 from typing import Dict, List, Tuple, Union
 
-from nwbinspector.utils import is_module_installed
 from pydantic import DirectoryPath
 from tqdm import tqdm
 
 from ..processes import deploy_process
-
-HAVE_GLOBUS = is_module_installed(module_name="globus_cli")
+from ..importing import is_package_installed
 
 
 def get_globus_dataset_content_sizes(
@@ -22,7 +20,7 @@ def get_globus_dataset_content_sizes(
 
     Returns dictionary whose keys are file names and values are sizes in bytes.
     """
-    assert HAVE_GLOBUS, "You must install the globus CLI (pip install globus-cli)!"
+    assert is_package_installed(module_name="globus_cli"), "You must install the globus CLI (pip install globus-cli)!"
 
     recursive_flag = " --recursive" if recursive else ""
     contents = json.loads(

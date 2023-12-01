@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
-from nwbinspector.utils import is_module_installed
 from pynwb.base import DynamicTable
 from pynwb.behavior import CompassDirection
 from pynwb.image import ImageSeries
@@ -14,6 +13,7 @@ from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv.tools.importing import is_package_installed
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
     DATASET_IO_CONFIGURATIONS,
@@ -234,7 +234,8 @@ def test_configuration_on_compass_direction(iterator: callable, backend: Literal
 
 
 @pytest.mark.skipif(
-    not is_module_installed(module_name="ndx_events"), reason="The extra testing package 'ndx-events' is not installed!"
+    not is_package_installed(module_name="ndx_events"),
+    reason="The extra testing package 'ndx-events' is not installed!",
 )
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):

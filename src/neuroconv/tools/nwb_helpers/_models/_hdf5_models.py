@@ -2,11 +2,11 @@
 from typing import Any, Dict, Literal, Type, Union
 
 import h5py
-from nwbinspector.utils import is_module_installed
 from pydantic import Field
 from pynwb import H5DataIO
 
 from ._base_models import BackendConfiguration, DatasetIOConfiguration
+from ...importing import is_package_installed
 
 _base_hdf5_filters = set(h5py.filters.decode)
 _excluded_hdf5_filters = set(
@@ -18,7 +18,7 @@ _excluded_hdf5_filters = set(
 )
 _available_hdf5_filters = set(_base_hdf5_filters - _excluded_hdf5_filters)
 AVAILABLE_HDF5_COMPRESSION_METHODS = {filter_name: filter_name for filter_name in _available_hdf5_filters}
-if is_module_installed(module_name="hdf5plugin"):
+if is_package_installed(module_name="hdf5plugin"):
     import hdf5plugin
 
     AVAILABLE_HDF5_COMPRESSION_METHODS.update(
@@ -55,7 +55,7 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     )
 
     def get_data_io_kwargs(self) -> Dict[str, Any]:
-        if is_module_installed(module_name="hdf5plugin"):
+        if is_package_installed(module_name="hdf5plugin"):
             import hdf5plugin
 
             if self.compression_method in _base_hdf5_filters:
