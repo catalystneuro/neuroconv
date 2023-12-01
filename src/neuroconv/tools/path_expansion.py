@@ -70,15 +70,26 @@ class AbstractPathExpander(abc.ABC):
 
         out = DeepDict()
         for interface, source_data in source_data_spec.items():
+            base_directory = source_data["base_directory"]
             for path_type in ("file_path", "folder_path"):
                 if path_type not in source_data:
                     continue
 
-                for path, metadata in self.extract_metadata(source_data["base_directory"], source_data[path_type]):
+                extracted_metadata = self.extract_metadata(base_directory, source_data[path_type])
+                for path, metadata in extracted_metadata:
                     key = tuple((k, v) for k, v in sorted(metadata.items()))
-                    out[key]["source_data"][interface][path_type] = os.path.join(
-                        source_data["base_directory"], path
-                    )  # return the absolute path
+
+                    asset_path = Path(base_directory).resolve() / path
+
+                    if path_type == "file_path" and not asset_path.is_file():
+                        continue
+                    if path_type == "folder_path" and not asset_path.is_dir():
+                        continue
+
+                    path_to_return1 = f"{Path(base_directory).name}/{asset_path.relative_to(base_directory)}"
+                    path_to_return = f"{Path(base_directory)}/{asset_path.relative_to(base_directory)}"
+
+                    out[key]["source_data"][interface][path_type] = path_to_return
 
                     for meta_key, meta_val in metadata.items():
                         super_key = standard_metadata.get(meta_key, non_standard_super)
