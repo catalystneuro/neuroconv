@@ -9,15 +9,14 @@ import psutil
 import pynwb
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
-from nwbinspector.utils import get_package_version
 from packaging.version import Version
-from pynwb import NWBFile
 from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
 from ..nwb_helpers import get_module, make_or_load_nwbfile
+from ..importing import get_package_version
 from ...utils import (
     DeepDict,
     FilePathType,
