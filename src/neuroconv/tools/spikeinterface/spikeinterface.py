@@ -15,8 +15,8 @@ from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ..importing import get_package_version
+from ..nwb_helpers import get_module, make_or_load_nwbfile
 from ...utils import (
     DeepDict,
     FilePathType,

@@ -1,12 +1,11 @@
 """Tool functions related to imports."""
 import sys
+from importlib import import_module
+from importlib.metadata import version as importlib_version
+from importlib.util import find_spec
 from platform import processor, python_version
 from types import ModuleType
 from typing import Dict, List, Optional, Union
-from importlib import import_module
-from importlib.util import find_spec
-from importlib.metadata import version as importlib_version
-
 
 from packaging import version
 
