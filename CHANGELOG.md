@@ -1,5 +1,11 @@
 # Upcoming
 
+### Improvements
+
+* Added a `from_nwbfile` class method constructor to all `BackendConfiguration` models. [PR #673](https://github.com/catalystneuro/neuroconv/pull/673)
+
+
+
 # v0.4.6
 
 ### Features
