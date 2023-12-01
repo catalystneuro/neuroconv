@@ -3,7 +3,6 @@ import math
 import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
-from nwbinspector.utils import get_package_version
 from parameterized import param, parameterized
 from roiextractors.testing import generate_dummy_imaging_extractor
 
