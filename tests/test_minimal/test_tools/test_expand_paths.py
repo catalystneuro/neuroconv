@@ -387,5 +387,4 @@ def test_expand_paths_ibl(tmpdir):
             if "folder_path" in source_data.keys():
                 source_data["folder_path"] = str(base_directory / source_data["folder_path"])
 
-    tc = unittest.TestCase()
-    tc.assertCountEqual(path_expansion_results, expected)
+    assert sort(path_expansion_results) == sort(expected)
