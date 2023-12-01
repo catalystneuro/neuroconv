@@ -56,6 +56,52 @@ def test_only_folder_match(tmpdir):
     assert set(folder_paths) == expected
 
 
+def test_only_file_match(tmpdir):
+    base_directory = Path(tmpdir)
+
+    sub_directory1 = base_directory / "a_simple_pattern_1"
+    sub_directory2 = base_directory / "a_simple_pattern_2"
+
+    sub_directory1.mkdir(exist_ok=True)
+    sub_directory2.mkdir(exist_ok=True)
+
+    # Add files with the same name to both folders
+    file1 = sub_directory1 / "a_simple_pattern_1.bin"
+    file2 = sub_directory2 / "a_simple_pattern_2.bin"
+
+    # Create files
+    file1.touch()
+    file2.touch()
+
+    # Add another sub-nested folder with a folder
+    sub_directory3 = sub_directory1 / "a_simple_pattern_3"
+    sub_directory3.mkdir(exist_ok=True)
+    file3 = sub_directory3 / "a_simple_pattern_3.bin"
+    file3.touch()
+
+    # Specify source data (note this assumes the files are arranged in the same way as in the example data)
+    source_data_spec = {
+        "a_source": {
+            "base_directory": base_directory,
+            "file_path": "a_simple_pattern_{session_id}.bin",
+        }
+    }
+
+    # Instantiate LocalPathExpander
+
+    path_expander = LocalPathExpander()
+    metadata_list = path_expander.expand_paths(source_data_spec)
+    file_paths = [metadata_match["source_data"]["a_source"]["file_path"] for metadata_match in metadata_list]
+
+    expected = {
+        f"{base_directory}/a_simple_pattern_1/a_simple_pattern_1.bin",
+        f"{base_directory}/a_simple_pattern_2/a_simple_pattern_2.bin",
+        f"{base_directory}/a_simple_pattern_1/a_simple_pattern_3/a_simple_pattern_3.bin",
+    }
+
+    assert set(file_paths) == expected
+
+
 def test_expand_paths(tmpdir):
     expander = LocalPathExpander()
 
