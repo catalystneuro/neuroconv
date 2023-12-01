@@ -1,5 +1,11 @@
 # Upcoming
 
+### Improvement
+
+* `nwbinspector` has been removed as a minimal dependency. It becomes an extra (optional) dependency with `neuroconv[dandi]`. [PR #672](https://github.com/catalystneuro/neuroconv/pull/672)
+
+
+
 # v0.4.6
 
 ### Features
