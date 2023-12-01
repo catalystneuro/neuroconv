@@ -14,7 +14,6 @@ from hdmf.utils import get_data_shape
 from pydantic import BaseModel, Field, root_validator
 from pynwb import NWBFile
 
-from .._dataset_configuration import get_default_dataset_io_configurations
 from ...hdmf import SliceableDataChunkIterator
 
 
@@ -294,6 +293,8 @@ class BackendConfiguration(BaseModel):
 
     @classmethod
     def from_nwbfile(cls, nwbfile: NWBFile) -> "BackendConfiguration":
+        from .._dataset_configuration import get_default_dataset_io_configurations
+      
         default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
         dataset_configurations = {
             default_dataset_configuration.dataset_info.location: default_dataset_configuration
