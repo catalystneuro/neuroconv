@@ -89,7 +89,7 @@ class AbstractPathExpander(abc.ABC):
 
                     path_to_return = f"{Path(base_directory)}/{asset_path.relative_to(base_directory)}"
 
-                    out[key]["source_data"][interface][path_type] = path_to_return
+                    out[key]["source_data"][interface][path_type] = str(asset_path)
 
                     for meta_key, meta_val in metadata.items():
                         super_key = standard_metadata.get(meta_key, non_standard_super)

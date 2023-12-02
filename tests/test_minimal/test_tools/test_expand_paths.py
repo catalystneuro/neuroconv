@@ -47,11 +47,7 @@ def test_only_folder_match(tmpdir):
     metadata_list = path_expander.expand_paths(source_data_spec)
     folder_paths = [metadata_match["source_data"]["a_source"]["folder_path"] for metadata_match in metadata_list]
 
-    expected = {
-        f"{base_directory}/a_simple_pattern_1",
-        f"{base_directory}/a_simple_pattern_2",
-        f"{base_directory}/a_simple_pattern_1/a_simple_pattern_3",
-    }
+    expected = {str(sub_directory1), str(sub_directory2), str(sub_directory3)}
 
     assert set(folder_paths) == expected
 
@@ -93,12 +89,7 @@ def test_only_file_match(tmpdir):
     metadata_list = path_expander.expand_paths(source_data_spec)
     file_paths = [metadata_match["source_data"]["a_source"]["file_path"] for metadata_match in metadata_list]
 
-    expected = {
-        f"{base_directory}/a_simple_pattern_1/a_simple_pattern_1.bin",
-        f"{base_directory}/a_simple_pattern_2/a_simple_pattern_2.bin",
-        f"{base_directory}/a_simple_pattern_1/a_simple_pattern_3/a_simple_pattern_3.bin",
-    }
-
+    expected = {str(file1), str(file2), str(file3)}
     assert set(file_paths) == expected
 
 
@@ -387,4 +378,5 @@ def test_expand_paths_ibl(tmpdir):
             if "folder_path" in source_data.keys():
                 source_data["folder_path"] = str(base_directory / source_data["folder_path"])
 
-    assert sort(path_expansion_results) == sort(expected)
+    tc = unittest.TestCase()
+    tc.assertCountEqual(path_expansion_results, expected)
