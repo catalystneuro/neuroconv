@@ -1,2 +1,2 @@
-ndx-pose>=0.1.1
+ndx-pose==0.1.1
 neuroconv[video]
