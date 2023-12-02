@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
@@ -28,26 +29,37 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             properties=dict(
                 PoseEstimation=dict(
                     type="object",
+                    required=["name"],
                     properties=dict(
                         name=dict(type="string", default="PoseEstimation"),
                         description=dict(type="string"),
                         scorer=dict(type="string"),
                         source_software=dict(type="string", default="LightningPose"),
-                        patternProperties={
-                            "^[a-zA-Z0-9]+$": dict(
-                                title="PoseEstimationSeries",
-                                type="object",
-                                properties=dict(name=dict(type="string"), description=dict(type="string")),
-                            )
-                        },
                     ),
+                    patternProperties={
+                        "^(?!(name|description|scorer|source_software)$)[a-zA-Z0-9_]+$": dict(
+                            title="PoseEstimationSeries",
+                            type="object",
+                            properties=dict(name=dict(type="string"), description=dict(type="string")),
+                            minProperties=1,
+                            additionalProperties=False,
+                        )
+                    },
+                    minProperties=2,
+                    additionalProperties=False,
                 )
             ),
         )
 
         return metadata_schema
 
-    def __init__(self, file_path: FilePathType, original_video_file_path: FilePathType, verbose: bool = True):
+    def __init__(
+        self,
+        file_path: FilePathType,
+        original_video_file_path: FilePathType,
+        labeled_video_file_path: Optional[FilePathType] = None,
+        verbose: bool = True,
+    ):
         """
         Interface for writing pose estimation data from the Lightning Pose algorithm.
 
@@ -56,7 +68,9 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         file_path : a string or a path
             Path to the .csv file that contains the predictions from Lightning Pose.
         original_video_file_path : a string or a path
-            Path to the original video file (.mp4)
+            Path to the original video file (.mp4).
+        labeled_video_file_path : a string or a path, optional
+            Path to the labeled video file (.mp4).
         verbose : bool, default: True
             controls verbosity. ``True`` by default.
         """
@@ -68,19 +82,19 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
         self.file_path = Path(file_path)
         assert self.file_path.exists(), f"The file '{self.file_path}' does not exist."
-        parent_folder = self.file_path.parent
-
-        labeled_video_file_path = list(parent_folder.rglob(f"{self.file_path.stem}*_labeled.mp4"))
-        self.labeled_video_file_path = labeled_video_file_path[0] if labeled_video_file_path else None
-
         self.original_video_file_path = Path(original_video_file_path)
         assert (
             self.original_video_file_path.exists()
         ), f"The original video file '{self.original_video_file_path}' does not exist."
 
-        super().__init__(verbose, file_path=file_path, original_video_file_path=original_video_file_path)
+        super().__init__(
+            verbose,
+            file_path=file_path,
+            original_video_file_path=original_video_file_path,
+            labeled_video_file_path=labeled_video_file_path,
+        )
 
-        # image size of the original video is in height x width
+        # dimension is width by height
         self.dimension = self._get_original_video_shape()
 
         pose_estimation_data = self._load_source_data()
@@ -88,7 +102,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         self.pose_estimation_data = pose_estimation_data[self.scorer_name]
         self.keypoint_names = self.pose_estimation_data.columns.get_level_values(0).drop_duplicates().tolist()
 
-        self._timestamps = None
+        self._times = None
 
     def _load_source_data(self):
         import pandas as pd
@@ -100,6 +114,7 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
     def _get_original_video_shape(self) -> Tuple[int, int]:
         with self._vc(file_path=str(self.original_video_file_path)) as video:
             video_shape = video.get_frame_shape()
+        # image size of the original video is in height x width
         return video_shape[0], video_shape[1]
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
@@ -110,14 +125,14 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         max_frames = 10 if stub_test else None
-        if self._timestamps is None:
+        if self._times is None:
             return self.get_original_timestamps(stub_test=stub_test)
 
-        timestamps = self._timestamps if not stub_test else self._timestamps[:max_frames]
+        timestamps = self._times if not stub_test else self._times[:max_frames]
         return timestamps
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        self._timestamps = aligned_timestamps
+        self._times = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -139,10 +154,10 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             source_software="LightningPose",
         )
         for keypoint_name in self.keypoint_names:
-            series_name_suffix = keypoint_name.replace(" ", "")
+            keypoint_name_without_spaces = keypoint_name.replace(" ", "")
             pose_estimation_series_metadata = {
                 keypoint_name: dict(
-                    name=f"PoseEstimationSeries{series_name_suffix}",
+                    name=f"PoseEstimationSeries{keypoint_name_without_spaces}",
                     description=f"The estimated position (x, y) of {keypoint_name} over time.",
                 )
             }
@@ -174,40 +189,47 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
         """
         from ndx_pose import PoseEstimation, PoseEstimationSeries
 
-        # The parameters for the pose estimation container
-        pose_estimation_metadata = metadata["Behavior"]["PoseEstimation"]
+        metadata_copy = deepcopy(metadata)
 
-        behavior = get_module(nwbfile, "behavior", "Processed behavior data.")
+        # The parameters for the pose estimation container
+        pose_estimation_metadata = metadata_copy["Behavior"]["PoseEstimation"]
+
+        behavior = get_module(nwbfile, "behavior")
 
         pose_estimation_name = pose_estimation_metadata["name"]
         if pose_estimation_name in behavior.data_interfaces:
             raise ValueError(f"The nwbfile already contains a data interface with the name '{pose_estimation_name}'.")
+
+        if "Videos" not in metadata_copy["Behavior"]:
+            original_video_name = str(self.original_video_file_path)
+        else:
+            original_video_name = metadata_copy["Behavior"]["Videos"][0]["name"]
 
         pose_estimation_kwargs = dict(
             name=pose_estimation_metadata["name"],
             description=pose_estimation_metadata["description"],
             source_software=pose_estimation_metadata["source_software"],
             scorer=pose_estimation_metadata["scorer"],
-            original_videos=[str(self.original_video_file_path)],
+            original_videos=[original_video_name],
             dimensions=[self.dimension],
         )
 
         timestamps = self.get_timestamps(stub_test=stub_test)
         rate = calculate_regular_series_rate(series=timestamps)
-        pose_estimation_series_kwargs = dict()
         if rate:
-            pose_estimation_series_kwargs.update(rate=rate, starting_time=timestamps[0])
+            pose_estimation_series_kwargs = dict(rate=rate, starting_time=timestamps[0])
         else:
-            pose_estimation_series_kwargs.update(timestamps=timestamps)
+            pose_estimation_series_kwargs = dict(timestamps=timestamps)
 
         pose_estimation_data = self.pose_estimation_data if not stub_test else self.pose_estimation_data.head(n=10)
         pose_estimation_series = []
         for keypoint_name in self.keypoint_names:
             pose_estimation_series_data = pose_estimation_data[keypoint_name]
+            keypoint_name_without_spaces = keypoint_name.replace(" ", "")
 
             pose_estimation_series_kwargs.update(
-                name=pose_estimation_metadata[keypoint_name]["name"],
-                description=pose_estimation_metadata[keypoint_name]["description"],
+                name=pose_estimation_metadata[keypoint_name_without_spaces]["name"],
+                description=pose_estimation_metadata[keypoint_name_without_spaces]["description"],
                 data=pose_estimation_series_data[["x", "y"]].values,
                 confidence=pose_estimation_series_data["likelihood"].values,
                 reference_frame=reference_frame or "(0,0) is unknown.",
@@ -223,8 +245,13 @@ class LightningPoseDataInterface(BaseTemporalAlignmentInterface):
             pose_estimation_series=pose_estimation_series,
         )
 
-        if self.labeled_video_file_path:
-            pose_estimation_kwargs.update(labeled_videos=[str(self.labeled_video_file_path)])
+        if self.source_data["labeled_video_file_path"]:
+            if "Videos" not in metadata_copy["Behavior"]:
+                labeled_video_name = str(self.source_data["labeled_video_file_path"])
+            else:
+                labeled_video_name = metadata_copy["Behavior"]["Videos"][1]["name"]
+
+            pose_estimation_kwargs.update(labeled_videos=[labeled_video_name])
 
         # Create the container for pose estimation
         pose_estimation = PoseEstimation(**pose_estimation_kwargs)
