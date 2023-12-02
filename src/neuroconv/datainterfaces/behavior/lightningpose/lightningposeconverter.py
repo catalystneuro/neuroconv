@@ -66,7 +66,9 @@ class LightningPoseConverter(NWBConverter):
 
     def get_conversion_options_schema(self) -> dict:
         conversion_options = self.data_interface_objects["PoseEstimation"].get_conversion_options_schema()
-        conversion_options.update(self.data_interface_objects["OriginalVideo"].get_conversion_options_schema())
+        conversion_options = dict_deep_update(
+            conversion_options, self.data_interface_objects["OriginalVideo"].get_conversion_options_schema()
+        )
 
         starting_frames = conversion_options["properties"].pop("starting_frames")
         conversion_options["properties"].update(
@@ -104,7 +106,7 @@ class LightningPoseConverter(NWBConverter):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata,
+        metadata: dict,
         reference_frame: Optional[str] = None,
         confidence_definition: Optional[str] = None,
         external_mode: bool = True,
