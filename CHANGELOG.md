@@ -1,12 +1,15 @@
 # Upcoming
 
+### Bug fixes
+* LocalPathExpander matches only `folder_paths` or `file_paths` if that is indicated in the passed specification. [PR #675](https://github.com/catalystneuro/neuroconv/pull/675)
+
 ### Improvement
 
 * `nwbinspector` has been removed as a minimal dependency. It becomes an extra (optional) dependency with `neuroconv[dandi]`. [PR #672](https://github.com/catalystneuro/neuroconv/pull/672)
 
 
 
-# v0.4.6
+# v0.4.6 (November 30, 2023)
 
 ### Features
 * Added Pydantic data models of `BackendConfiguration` for both HDF5 and Zarr datasets (container/mapper of all the `DatasetConfiguration`s for a particular file). [PR #568](https://github.com/catalystneuro/neuroconv/pull/568)
