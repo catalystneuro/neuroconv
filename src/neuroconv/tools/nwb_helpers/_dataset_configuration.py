@@ -9,12 +9,7 @@ from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable
 
-from ._models._base_models import DatasetIOConfiguration
-from ._models._hdf5_models import HDF5BackendConfiguration, HDF5DatasetIOConfiguration
-from ._models._zarr_models import ZarrBackendConfiguration, ZarrDatasetIOConfiguration
-
-BACKEND_TO_DATASET_CONFIGURATION = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatasetIOConfiguration)
-BACKEND_TO_CONFIGURATION = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
+from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 
 
 def _get_io_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
@@ -145,12 +140,3 @@ def get_default_dataset_io_configurations(
                 )
 
                 yield dataset_io_configuration
-
-
-def get_default_backend_configuration(
-    nwbfile: NWBFile, backend: Literal["hdf5", "zarr"]
-) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
-    """Fill a default backend configuration to serve as a starting point for further customization."""
-    BackendConfigurationClass = BACKEND_TO_CONFIGURATION[backend]
-
-    return BackendConfigurationClass.from_nwbfile(nwbfile=nwbfile)
