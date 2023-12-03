@@ -1,7 +1,7 @@
 """Collection of Pydantic models and helper functions for configuring dataset IO parameters for different backends."""
 from ._backend_configuration import get_default_backend_configuration
-from ._configuration_models._base_dataset_io import DatasetInfo, DatasetIOConfiguration
 from ._configuration_models._base_backend import BackendConfiguration
+from ._configuration_models._base_dataset_io import DatasetInfo, DatasetIOConfiguration
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._hdf5_dataset_io import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,
