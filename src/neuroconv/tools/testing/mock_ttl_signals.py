@@ -4,10 +4,10 @@ from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
-from nwbinspector.tools import make_minimal_nwbfile
-from nwbinspector.utils import is_module_installed
 from pynwb import NWBHDF5IO, H5DataIO, TimeSeries
+from pynwb.testing.mock.file import mock_NWBFile
 
+from ..importing import is_package_installed
 from ...utils import ArrayType, FolderPathType
 
 
@@ -144,7 +144,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
     folder_path = Path(folder_path)
 
     if regenerate_reference_images:
-        assert is_module_installed("plotly") and is_module_installed("kaleido"), (
+        assert is_package_installed("plotly") and is_package_installed("kaleido"), (
             "To regenerate the reference images, " "you must install both plotly and kaleido!"
         )
         import plotly.graph_objects as go
@@ -157,7 +157,7 @@ def regenerate_test_cases(folder_path: FolderPathType, regenerate_reference_imag
     unit = "Volts"
     rate = 1000.0  # For non-default series to produce less data
 
-    nwbfile = make_minimal_nwbfile()
+    nwbfile = mock_NWBFile()
 
     # Test Case 1: Default
     default_ttl_signal = generate_mock_ttl_signal()
