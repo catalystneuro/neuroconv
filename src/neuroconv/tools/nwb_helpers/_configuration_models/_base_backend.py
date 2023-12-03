@@ -1,5 +1,5 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
-from typing import Dict, Literal, Type, ClassVar
+from typing import ClassVar, Dict, Literal, Type
 
 from hdmf.container import DataIO
 from pydantic import BaseModel, Field

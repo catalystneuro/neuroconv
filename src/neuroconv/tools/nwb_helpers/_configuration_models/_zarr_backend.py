@@ -1,5 +1,5 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
-from typing import Dict, Literal, Type, ClassVar
+from typing import ClassVar, Dict, Literal, Type
 
 import psutil
 from hdmf_zarr import ZarrDataIO
