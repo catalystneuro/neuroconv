@@ -15,7 +15,7 @@ FicTrac
 
 LightningPose
 -------------
-.. automodule:: neuroconv.datainterfaces.behavior.lightningposer.lightningposeconverter
+.. automodule:: neuroconv.datainterfaces.behavior.lightningpose.lightningposeconverter
 
 SLEAP
 -----
