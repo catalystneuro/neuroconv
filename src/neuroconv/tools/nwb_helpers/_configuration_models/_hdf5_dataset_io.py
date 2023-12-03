@@ -4,7 +4,7 @@ from typing import Any, Dict, Literal, Union
 import h5py
 from pydantic import Field
 
-from ._base_models import DatasetIOConfiguration
+from ._base_dataset_io import DatasetIOConfiguration
 from ...importing import is_package_installed
 
 _base_hdf5_filters = set(h5py.filters.decode)
