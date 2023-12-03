@@ -1,5 +1,9 @@
 # Upcoming
 
+### Bug fixes
+* LocalPathExpander matches only `folder_paths` or `file_paths` if that is indicated in the passed specification. [PR #675](https://github.com/catalystneuro/neuroconv/pull/675)
+
+
 ### Features
 * Changed the `Suite2pSegmentationInterface` to support multiple plane segmentation outputs. The interface now has a `plane_name` and `channel_name` arguments to determine which plane output and channel trace add to the NWBFile. [PR #601](https://github.com/catalystneuro/neuroconv/pull/601)
 * Added `LightningPoseConverter` to add pose estimation data and the original and the optional labeled video added as ImageSeries to NWB. [PR #633](https://github.com/catalystneuro/neuroconv/pull/633)
@@ -9,7 +13,7 @@
 
 
 
-# v0.4.6
+# v0.4.6 (November 30, 2023)
 
 ### Features
 * Added Pydantic data models of `BackendConfiguration` for both HDF5 and Zarr datasets (container/mapper of all the `DatasetConfiguration`s for a particular file). [PR #568](https://github.com/catalystneuro/neuroconv/pull/568)
