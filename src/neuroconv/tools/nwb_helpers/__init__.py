@@ -1,6 +1,7 @@
 """Collection of Pydantic models and helper functions for configuring dataset IO parameters for different backends."""
 from ._backend_configuration import get_default_backend_configuration
-from ._configuration_models._base_dataset_io import DatasetInfo
+from ._configuration_models._base_dataset_io import DatasetInfo, DatasetIOConfiguration
+from ._configuration_models._base_backend import BackendConfiguration
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._hdf5_dataset_io import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,
@@ -26,6 +27,8 @@ DATASET_IO_CONFIGURATIONS = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatas
 __all__ = [
     "AVAILABLE_HDF5_COMPRESSION_METHODS",
     "AVAILABLE_ZARR_COMPRESSION_METHODS",
+    "BackendConfiguration",
+    "DatasetIOConfiguration",
     "get_default_dataset_io_configurations",
     "get_default_backend_configuration",
     "add_device_from_metadata",

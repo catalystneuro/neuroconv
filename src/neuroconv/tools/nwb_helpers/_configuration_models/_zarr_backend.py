@@ -12,10 +12,11 @@ from ._zarr_dataset_io import ZarrDatasetIOConfiguration
 class ZarrBackendConfiguration(BackendConfiguration):
     """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
 
-    backend: ClassVar[Literal["zarr"]] = Field(
-        default="zarr", description="The name of the backend used to configure the NWBFile."
-    )
-    data_io_class: ClassVar[Type[ZarrDataIO]] = Field(
+    backend: ClassVar[Literal["zarr"]] = "zarr"
+    # Field( # TODO: in pydantic v2 use property instead of class attribute
+    #     default="zarr", description="The name of the backend used to configure the NWBFile."
+    # )
+    data_io_class: Type[ZarrDataIO] = Field(  # TODO: in pydantic v2 use property instead of class attribute
         default=ZarrDataIO, description="The DataIO class that is specific to Zarr."
     )
     dataset_configurations: Dict[str, ZarrDatasetIOConfiguration] = Field(

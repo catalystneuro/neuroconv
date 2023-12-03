@@ -64,7 +64,9 @@ def get_default_dataset_io_configurations(
     DatasetIOConfiguration
         A summary of each detected object that can be wrapped in a DataIO.
     """
-    DatasetIOConfigurationClass = BACKEND_TO_DATASET_CONFIGURATION[backend]
+    from ..nwb_helpers import DATASET_IO_CONFIGURATIONS
+
+    DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
     if backend is None and nwbfile.read_io is None:
         raise ValueError(

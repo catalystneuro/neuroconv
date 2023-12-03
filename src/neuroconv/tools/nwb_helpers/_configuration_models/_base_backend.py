@@ -15,7 +15,7 @@ class BackendConfiguration(BaseModel):
     backend: ClassVar[Literal["hdf5", "zarr"]] = Field(
         description="The name of the backend used to configure the NWBFile."
     )
-    data_io_class: ClassVar[Type[DataIO]] = Field(description="The DataIO class that is specific to this backend.")
+    data_io_class: Type[DataIO] = Field(description="The DataIO class that is specific to this backend.")
     dataset_configurations: Dict[str, DatasetIOConfiguration] = Field(
         description=(
             "A mapping from object locations (e.g. `acquisition/TestElectricalSeriesAP/data`) "
