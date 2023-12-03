@@ -173,7 +173,7 @@ def configure_backend(
     data_io_class = backend_configuration.data_io_class
     for dataset_configuration in backend_configuration.datset_configurations:
         object_id = dataset_configuration.dataset_info.object_id
-        dataset_name = dataset_configuration.dataset_info.location.strip("/")[-1]
+        dataset_name = dataset_configuration.dataset_info.dataset_name
         data_io_kwargs = dataset_configuration.get_data_io_kwargs()
 
         # TODO: update buffer shape in iterator, if present

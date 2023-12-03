@@ -8,10 +8,7 @@ from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
-from neuroconv.tools.nwb_helpers import (
-    configure_backend,
-    get_default_backend_configuration,
-)
+from neuroconv.tools.nwb_helpers import configure_backend, get_default_backend_configuration
 
 
 def test_unwrapped_time_series_hdf5(tmpdir):

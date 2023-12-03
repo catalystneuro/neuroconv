@@ -18,8 +18,12 @@ with open(root / "requirements-testing.txt") as f:
     testing_suite_dependencies = f.readlines()
 
 extras_require = defaultdict(list)
+
 extras_require["dandi"].append("dandi>=0.58.1")
 extras_require["full"].extend(extras_require["dandi"])
+
+extras_require.update(compressors=["hdf5plugin"])
+extras_require["full"].extend(["hdf5plugin"])
 
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
@@ -43,9 +47,6 @@ for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
                 extras_require["full"].extend(format_requirements)
                 extras_require[modality].extend(format_requirements)
                 extras_require[format_subpath.name].extend(format_requirements)
-
-extras_require.update(compressors=["hdf5plugin"])
-extras_require["full"].extend(["hdf5plugin"])
 
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
 gin_config_file_base = Path("./base_gin_test_config.json")
