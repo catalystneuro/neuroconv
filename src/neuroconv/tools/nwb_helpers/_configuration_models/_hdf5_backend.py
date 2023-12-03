@@ -1,5 +1,5 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
-from typing import Dict, Literal, Type, ClassVar
+from typing import ClassVar, Dict, Literal, Type
 
 from pydantic import Field
 from pynwb import H5DataIO
