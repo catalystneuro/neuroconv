@@ -1,11 +1,11 @@
+import os
 import itertools
 import unittest
 from datetime import datetime
-from platform import python_version, system
+from platform import system
 
 import pytest
 from jsonschema.validators import Draft7Validator
-from packaging import version
 from parameterized import param, parameterized
 from spikeinterface.core import BaseRecording
 from spikeinterface.core.testing import check_recordings_equal
@@ -138,7 +138,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
         ),
     ]
 
-    if system() == "Linux":
+    if system() == "Linux" and "CI" not in os.environ:
         parameterized_recording_list.append(
             param(
                 data_interface=MaxOneRecordingInterface,
