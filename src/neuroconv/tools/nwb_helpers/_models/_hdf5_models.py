@@ -76,7 +76,10 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             elif self.compression_method is None:
                 compression_bundle = dict(compression=False)
         else:
-            compression_bundle = dict(compression=self.compression_method, compression_opts=self.compression_options)
+            compression_opts = None
+            if self.compression_options is not None:
+                compression_opts = list(self.compression_options.values())[0]
+            compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
 

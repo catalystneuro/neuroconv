@@ -168,10 +168,10 @@ def configure_backend(
     nwbfile: NWBFile, backend_configuration: Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
 ) -> None:
     """Configure all datasets specified in the `backend_configuration` with their appropriate DataIO and options."""
-    nwbfile_objects = nwbfile.objects.items()
+    nwbfile_objects = nwbfile.objects
 
     data_io_class = backend_configuration.data_io_class
-    for dataset_configuration in backend_configuration.datset_configurations:
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
         object_id = dataset_configuration.dataset_info.object_id
         dataset_name = dataset_configuration.dataset_info.dataset_name
         data_io_kwargs = dataset_configuration.get_data_io_kwargs()

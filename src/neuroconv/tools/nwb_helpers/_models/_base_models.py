@@ -225,7 +225,11 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 f"location '{location}'!"
             )
 
-        if any(buffer_axis % chunk_axis != 0 for chunk_axis, buffer_axis in zip(chunk_shape, buffer_shape)):
+        if any(
+            buffer_axis % chunk_axis != 0
+            for chunk_axis, buffer_axis, full_axis in zip(chunk_shape, buffer_shape, full_shape)
+            if buffer_axis != full_axis
+        ):
             raise ValueError(
                 f"Some dimensions of the {chunk_shape=} do not evenly divide the {buffer_shape=} for dataset at "
                 f"location '{location}'!"
@@ -236,7 +240,9 @@ class DatasetIOConfiguration(BaseModel, ABC):
     @abstractmethod
     def get_data_io_kwargs(self) -> Dict[str, Any]:
         """
-        Fetch the properly structured dictionary of input arguments to be passed directly into a H5DataIO or ZarrDataIO.
+        Fetch the properly structured dictionary of input arguments.
+
+        Should be passed directly as dynamic keyword arguments (**kwargs) into a H5DataIO or ZarrDataIO.
         """
         raise NotImplementedError
 
@@ -253,7 +259,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
             chunk_shape = candidate_dataset.chunk_shape
             buffer_shape = candidate_dataset.buffer_shape
         elif dtype != "unknown":
-            # TODO: eventually replace this with staticmethods on hdmf.data_utils.GenericDataChunkIterator
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
                 chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
             )
