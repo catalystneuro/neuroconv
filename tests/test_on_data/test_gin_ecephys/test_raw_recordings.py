@@ -1,5 +1,5 @@
-import os
 import itertools
+import os
 import unittest
 from datetime import datetime
 from platform import system
