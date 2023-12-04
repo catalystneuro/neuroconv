@@ -2,9 +2,9 @@
 from pathlib import Path
 from typing import Literal
 
-import pytest
 import numcodecs
 import numpy as np
+import pytest
 from hdmf.data_utils import DataChunkIterator
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO
