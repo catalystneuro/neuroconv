@@ -51,7 +51,7 @@ def test_simple_time_series_override(
 
     higher_gzip_level = 5
     if backend == "hdf5":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)  # higher_gzip_level
+        dataset_configuration.compression_options = dict(level=higher_gzip_level)
     elif backend == "zarr":
         dataset_configuration.compression_options = dict(level=higher_gzip_level)
 
@@ -72,6 +72,6 @@ def test_simple_time_series_override(
 
         if backend == "hdf5":
             assert written_data.compression == "gzip"
-            assert print(written_data) is None
+            assert written_data.compression_opts == higher_gzip_level
         elif backend == "zarr":
             assert written_data.compressor == numcodecs.GZip(level=5)
