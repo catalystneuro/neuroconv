@@ -1,13 +1,11 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
-from typing import Any, Dict, List, Literal, Type, Union
+from typing import Any, Dict, List, Literal, Union
 
 import numcodecs
-import psutil
 import zarr
-from hdmf_zarr import ZarrDataIO
 from pydantic import Field, root_validator
 
-from ._base_models import BackendConfiguration, DatasetIOConfiguration
+from ._base_dataset_io import DatasetIOConfiguration
 
 _base_zarr_codecs = set(zarr.codec_registry.keys())
 _lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
@@ -136,32 +134,3 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             compressor = False
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
-
-
-class ZarrBackendConfiguration(BackendConfiguration):
-    """A model for matching collections of DatasetConfigurations specific to the Zarr backend."""
-
-    backend: Literal["zarr"] = Field(
-        default="zarr", description="The name of the backend used to configure the NWBFile."
-    )
-    data_io_class: Type[ZarrDataIO] = Field(
-        default=ZarrDataIO, description="The DataIO class that is specific to Zarr."
-    )
-    dataset_configurations: Dict[str, ZarrDatasetIOConfiguration] = Field(
-        description=(
-            "A mapping from object locations to their ZarrDatasetConfiguration specification that contains all "
-            "information for writing the datasets to disk using the Zarr backend."
-        )
-    )
-    number_of_jobs: int = Field(
-        description=(
-            "Number of jobs to use in parallel during write. Negative values, starting from -1, "
-            "will use all the available CPUs (including logical), -2 is all except one, etc. "
-            "This is equivalent to the pattern of indexing of "
-            " `list(range(total_number_of_cpu))[number_of_jobs]`; for example, `-1` uses all available CPU, `-2` "
-            "uses all except one, etc."
-        ),
-        ge=-psutil.cpu_count(),  # TODO: should we specify logical=False in cpu_count?
-        le=psutil.cpu_count(),
-        default=psutil.cpu_count() - 1,
-    )

@@ -1,18 +1,17 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 import math
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Literal, Tuple, Type, Union
+from typing import Any, Dict, Literal, Tuple, Union
 
 import h5py
 import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
-from hdmf.container import DataIO
-from hdmf.data_utils import DataChunkIterator, DataIO, GenericDataChunkIterator
+from hdmf.data_utils import DataChunkIterator, GenericDataChunkIterator
 from hdmf.utils import get_data_shape
 from pydantic import BaseModel, Field, root_validator
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBFile
 
 from ...hdmf import SliceableDataChunkIterator
 
@@ -264,29 +263,3 @@ class DatasetIOConfiguration(BaseModel, ABC):
             pass
 
         return cls(dataset_info=dataset_info, chunk_shape=chunk_shape, buffer_shape=buffer_shape)
-
-
-class BackendConfiguration(BaseModel):
-    """A model for matching collections of DatasetConfigurations to a specific backend."""
-
-    backend: Literal["hdf5", "zarr"] = Field(description="The name of the backend used to configure the NWBFile.")
-    data_io_class: Type[DataIO] = Field(description="The DataIO class that is specific to this backend.")
-    dataset_configurations: Dict[str, DatasetIOConfiguration] = Field(
-        description=(
-            "A mapping from object locations (e.g. `acquisition/TestElectricalSeriesAP/data`) "
-            "to their DatasetConfiguration specification that contains all information "
-            "for writing the datasets to disk using the specific backend."
-        )
-    )
-
-    def __str__(self) -> str:
-        """Not overriding __repr__ as this is intended to render only when wrapped in print()."""
-        string = (
-            f"\nConfigurable datasets identified using the {self.backend} backend"
-            f"\n{'-' * (43 + len(self.backend) + 8)}"
-        )
-
-        for dataset_configuration in self.dataset_configurations.values():
-            string += f"\n{dataset_configuration}"
-
-        return string
