@@ -14,7 +14,11 @@ from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import get_module
-from ....utils import get_base_schema, get_schema_from_hdmf_class
+from ....utils import (
+    calculate_regular_series_rate,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 class VideoInterface(BaseDataInterface):
@@ -337,7 +341,12 @@ class VideoInterface(BaseDataInterface):
                     rate = video.get_video_fps()
                 image_series_kwargs.update(starting_time=starting_time, rate=rate)
             elif timing_type == "timestamps":
-                image_series_kwargs.update(timestamps=np.concatenate(self._timestamps))
+                timestamps = np.concatenate(self._timestamps)
+                rate = calculate_regular_series_rate(series=timestamps)  # Returns None if the series is not regular
+                if rate:
+                    image_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+                else:
+                    image_series_kwargs.update(timestamps=timestamps)
             else:
                 raise ValueError(f"Unrecognized timing_type: {timing_type}")
         else:
