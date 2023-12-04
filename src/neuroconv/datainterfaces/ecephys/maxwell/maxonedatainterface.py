@@ -35,6 +35,10 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
         """
         from neo.rawio.maxwellrawio import auto_install_maxwell_hdf5_compression_plugin
 
+        if hdf5_plugin_path is None:  # Always override to home directory
+            hdf5_plugin_path = Path.home() / "hdf5_plugin_path_maxwell"
+            os.environ["HDF5_PLUGIN_PATH"] = str(hdf5_plugin_path)
+
         auto_install_maxwell_hdf5_compression_plugin(hdf5_plugin_path=hdf5_plugin_path, force_download=download_plugin)
 
     def __init__(

@@ -134,7 +134,7 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
             ),
-            case_name=f"openephyslegacy",
+            case_name="openephyslegacy",
         ),
     ]
 
