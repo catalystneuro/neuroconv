@@ -87,11 +87,22 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
         num_frames = self._maxshape[0]
-        image_shape = self._maxshape[1:]
+        width = self._maxshape[1]
+        height = self._maxshape[2]
+
+        depth = None
+        if len(self._maxshape) == 4:
+            depth = self._maxshape[3]
+
         frame_size_bytes = math.prod(image_shape) * self._dtype.itemsize
         chunk_size_bytes = chunk_mb * math.prod(image_shape)
         num_frames_per_chunk = int(chunk_size_bytes // frame_size_bytes)
-        chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), *image_shape)
+
+        if depth is None:
+            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height)
+        else:
+            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height, 1)
+
         return chunk_shape
 
     def _get_scaled_buffer_shape(self, buffer_gb: float, chunk_shape: tuple) -> tuple:
