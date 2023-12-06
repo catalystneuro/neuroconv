@@ -27,10 +27,10 @@ def processheaders(curr_file, packet_fields):
 
     # unpack the binary data from the header based on the format strings of each field.
     # This returns a list of data, but it's not always correctly formatted (eg, FileSpec
-    # is read as ints 2 and 3 but I want it as '2.3'
+    # is read as ints 2 and 3, but I want it as '2.3'
     packet_unpacked = unpack(packet_format_str, packet_binary)
 
-    # Create a iterator from the data list.  This allows a formatting function
+    # Create an iterator from the data list.  This allows a formatting function
     # to use more than one item from the list if needed, and the next formatting
     # function can pick up on the correct item in the list
     data_iter = iter(packet_unpacked)

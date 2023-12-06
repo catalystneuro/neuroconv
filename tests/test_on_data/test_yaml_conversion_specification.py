@@ -2,7 +2,6 @@ import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
-from typing import Union
 
 import pytest
 from hdmf.testing import TestCase

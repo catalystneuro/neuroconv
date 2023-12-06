@@ -60,6 +60,13 @@ class DataInterfaceTestMixin:
     conversion_options: dict = dict()
     maxDiff = None
 
+    def __init__(self):
+        self.nwbfile_path = None
+        self.test_kwargs = None
+        self.case = None
+        self.nwbfile_path = None
+        self.interface = None
+
     def test_source_schema_valid(self):
         schema = self.data_interface_cls.get_source_schema()
         Draft7Validator.check_schema(schema=schema)
@@ -132,6 +139,11 @@ class TemporalAlignmentMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     maxDiff = None
+
+    def __init__(self):
+        self.test_kwargs = None
+        self.case = None
+        self.interface = None
 
     def setUpFreshInterface(self):
         """Protocol for creating a fresh instance of the interface."""
@@ -219,7 +231,7 @@ class TemporalAlignmentMixin:
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseImagingExtractorInterface
+    data_interface_cls: Type[BaseImagingExtractorInterface]
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -276,6 +288,10 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     """
 
     data_interface_cls: Type[BaseRecordingExtractorInterface]
+
+    def __init__(self):
+        super().__init__()
+        self.nwb_recording = None
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.extractors import NwbRecordingExtractor
@@ -496,8 +512,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseSortingExtractorInterface
-    associated_recording_cls: Optional[BaseRecordingExtractorInterface] = None
+    data_interface_cls: Type[BaseSortingExtractorInterface]
+    associated_recording_cls: Optional[Type[BaseRecordingExtractorInterface]] = None
     associated_recording_kwargs: Optional[dict] = None
 
     def setUpFreshInterface(self):

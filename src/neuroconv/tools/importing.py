@@ -71,7 +71,7 @@ def get_package(
         specify this dictionary to raise a more specific error to that issue.
 
         For example, `excluded_platforms_and_python_versions = dict(darwin=["3.7"])` will raise an
-        informative error when running on MacOS with Python version 3.7.
+        informative error when running on macOS with Python version 3.7.
 
         This also applies to specific architectures of platforms, such as
         `excluded_platforms_and_python_versions = dict(darwin=dict(arm=["3.7"]))` to exclude a specific Python

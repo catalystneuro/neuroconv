@@ -33,11 +33,11 @@ def get_electrodes_metadata(neo_reader, electrodes_ids: list, block: int = 0) ->
     The typical information we look for is the information accepted by pynwb.icephys.IntracellularElectrode:
       - name – the name of this electrode
       - device – the device that was used to record from this electrode
-      - description – Recording description, description of electrode (e.g., whole-cell, sharp, etc)
+      - description – Recording description, description of electrode (e.g., whole-cell, sharp, etc.)
       - comment: Free-form text (can be from Methods)
       - slice – Information about slice used for recording.
       - seal – Information about seal used for recording.
-      - location – Area, layer, comments on estimation, stereotaxis coordinates (if in vivo, etc).
+      - location – Area, layer, comments on estimation, stereotaxis coordinates (if in vivo, etc.).
       - resistance – Electrode resistance COMMENT: unit: Ohm.
       - filtering – Electrode specific filtering.
       - initial_access_resistance – Initial access resistance.

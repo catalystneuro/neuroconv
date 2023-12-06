@@ -276,7 +276,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
 
-    # If no group_names are provide use information from groups or default values
+    # If no group_names are provided, use information from groups or default values
     if "group_name" in data_to_add:
         group_name_array = data_to_add["group_name"]["data"].astype("str", copy=False)
     else:
@@ -300,7 +300,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     data_to_add["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
 
     # 2 Divide properties to those that will be added as rows (default plus previous) and columns (new properties)
-    # This mapping contains all the defaults that might be required by by pre-defined columns on the NWB schema
+    # This mapping contains all the defaults that might be required by pre-defined columns on the NWB schema
     # https://nwb-schema.readthedocs.io/en/latest/format.html#groups-general-extracellular-ephys-electrodes
     required_schema_property_to_default_value = dict(
         id=None,
@@ -653,7 +653,7 @@ def add_electrical_series(
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
     if recording.has_time_vector(segment_index=segment_index):
-        # First we check if the recording has a a time vector to avoid creating artificial timestamps
+        # First we check if the recording has a time vector to avoid creating artificial timestamps
         timestamps = recording.get_times(segment_index=segment_index)
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
         recording_t_start = timestamps[0]
