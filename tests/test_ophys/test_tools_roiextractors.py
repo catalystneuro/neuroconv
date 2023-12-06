@@ -1608,7 +1608,7 @@ class TestAddPhotonSeries(TestCase):
         assert self.two_photon_series_name in acquisition_modules
         data_in_hdfm_data_io = acquisition_modules[self.two_photon_series_name].data
         data_chunk_iterator = data_in_hdfm_data_io.data
-        iterator_chunk_mb = math.prod(data_chunk_iterator.chunk_shape) * data_chunk_iterator.dtype.itemsize
+        iterator_chunk_mb = math.prod(data_chunk_iterator.chunk_shape) * data_chunk_iterator.dtype.itemsize / 1e6
         assert iterator_chunk_mb <= chunk_mb
 
     def test_iterator_options_chunk_shape_is_at_least_one(self):
