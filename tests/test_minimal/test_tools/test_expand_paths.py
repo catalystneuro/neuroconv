@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from neuroconv.tools import LocalPathExpander
+from neuroconv.tools.path_expansion import construct_path_template
 from neuroconv.tools.testing import generate_path_expander_demo_ibl
 from neuroconv.utils import NWBMetaDataEncoder
 
@@ -380,3 +381,75 @@ def test_expand_paths_ibl(tmpdir):
 
     tc = unittest.TestCase()
     tc.assertCountEqual(path_expansion_results, expected)
+
+
+class TestConstructPathTemplate(unittest.TestCase):
+    def setUp(self):
+        self.path = "/data/subject456/session123/file.txt"
+
+    def test_normal_operation(self):
+        result = construct_path_template(
+            self.path,
+            subject_id="subject456",
+            session_id="session123"
+        )
+        self.assertEqual(result, "/data/{subject_id}/{session_id}/file.txt")
+
+    def test_with_additional_metadata(self):
+        result = construct_path_template(
+            "/data/subject789/session456/image.txt",
+            subject_id="subject789",
+            session_id="session456",
+            file_type="image"
+        )
+        self.assertEqual(result, "/data/{subject_id}/{session_id}/{file_type}.txt")
+
+    def test_empty_subject_id(self):
+        with self.assertRaises(ValueError):
+            construct_path_template(
+                self.path,
+                subject_id="",
+                session_id="session123"
+            )
+
+    def test_empty_session_id(self):
+        with self.assertRaises(ValueError):
+            construct_path_template(
+                self.path,
+                subject_id="subject456",
+                session_id=""
+            )
+
+    def test_missing_subject_id_in_path(self):
+        with self.assertRaises(ValueError):
+            construct_path_template(
+                self.path,
+                subject_id="subject789",
+                session_id="session123"
+            )
+
+    def test_missing_session_id_in_path(self):
+        with self.assertRaises(ValueError):
+            construct_path_template(
+                self.path,
+                subject_id="subject456",
+                session_id="session789"
+            )
+
+    def test_empty_metadata_value(self):
+        with self.assertRaises(ValueError):
+            construct_path_template(
+                "/data/subject789/session456/image.txt",
+                subject_id="subject789",
+                session_id="session456",
+                file_type=""
+            )
+
+    def test_missing_metadata_value_in_path(self):
+        with self.assertRaises(ValueError):
+            construct_path_template(
+                "/data/subject789/session456/image.txt",
+                subject_id="subject789",
+                session_id="session456",
+                file_type="document"
+            )
