@@ -277,9 +277,6 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
     data_interface_cls: Type[BaseRecordingExtractorInterface]
 
-    def __init__(self):
-        super().__init__()
-        self.nwb_recording = None
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.extractors import NwbRecordingExtractor
