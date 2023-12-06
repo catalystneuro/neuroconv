@@ -13,7 +13,7 @@ from neuroconv.utils import NWBMetaDataEncoder
 def test_only_folder_match(tmpdir):
     base_directory = Path(tmpdir)
 
-    sub_directory1 = base_directory /  "subject1" / "a_simple_pattern_1"
+    sub_directory1 = base_directory / "subject1" / "a_simple_pattern_1"
     sub_directory2 = base_directory / "subject2" / "a_simple_pattern_2"
 
     sub_directory1.mkdir(exist_ok=True, parents=True)
@@ -41,13 +41,12 @@ def test_only_folder_match(tmpdir):
         }
     }
 
-    # Instantiate LocalPathExpander
-
     path_expander = LocalPathExpander()
     metadata_list = path_expander.expand_paths(source_data_spec)
     folder_paths = [metadata_match["source_data"]["a_source"]["folder_path"] for metadata_match in metadata_list]
 
-    expected = {str(sub_directory1), str(sub_directory2), str(sub_directory3)}
+    # Note that sub_directory3 is not included because it does not conform to the pattern
+    expected = {str(sub_directory1), str(sub_directory2)}
 
     assert set(folder_paths) == expected
 
@@ -55,11 +54,11 @@ def test_only_folder_match(tmpdir):
 def test_only_file_match(tmpdir):
     base_directory = Path(tmpdir)
 
-    sub_directory1 = base_directory / "a_simple_pattern_1"
-    sub_directory2 = base_directory / "a_simple_pattern_2"
+    sub_directory1 = base_directory / "subject1" / "a_simple_pattern_1"
+    sub_directory2 = base_directory / "subject2" / "a_simple_pattern_2"
 
-    sub_directory1.mkdir(exist_ok=True)
-    sub_directory2.mkdir(exist_ok=True)
+    sub_directory1.mkdir(exist_ok=True, parents=True)
+    sub_directory2.mkdir(exist_ok=True, parents=True)
 
     # Add files with the same name to both folders
     file1 = sub_directory1 / "a_simple_pattern_1.bin"
@@ -70,8 +69,8 @@ def test_only_file_match(tmpdir):
     file2.touch()
 
     # Add another sub-nested folder with a folder
-    sub_directory3 = sub_directory1 / "a_simple_pattern_3"
-    sub_directory3.mkdir(exist_ok=True)
+    sub_directory3 = sub_directory1 / "intermediate_nested" / "a_simple_pattern_3"
+    sub_directory3.mkdir(exist_ok=True, parents=True)
     file3 = sub_directory3 / "a_simple_pattern_3.bin"
     file3.touch()
 
@@ -79,17 +78,16 @@ def test_only_file_match(tmpdir):
     source_data_spec = {
         "a_source": {
             "base_directory": base_directory,
-            "file_path": "a_simple_pattern_{session_id}.bin",
+            "file_path": "{subject_id}/{a_parent_folder}/a_simple_pattern_{session_id}.bin",
         }
     }
-
-    # Instantiate LocalPathExpander
 
     path_expander = LocalPathExpander()
     metadata_list = path_expander.expand_paths(source_data_spec)
     file_paths = [metadata_match["source_data"]["a_source"]["file_path"] for metadata_match in metadata_list]
 
-    expected = {str(file1), str(file2), str(file3)}
+    # Note that file3 is not included because it does not conform to the pattern
+    expected = {str(file1), str(file2)}
     assert set(file_paths) == expected
 
 
