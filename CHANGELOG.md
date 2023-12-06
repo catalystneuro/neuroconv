@@ -1,7 +1,7 @@
 # Upcoming
 
 ### Bug fixes
-* LocalPathExpander matches only `folder_paths` or `file_paths` if that is indicated in the passed specification. [PR #675](https://github.com/catalystneuro/neuroconv/pull/675)
+* LocalPathExpander matches only `folder_paths` or `file_paths` if that is indicated in the passed specification. [PR #679](https://github.com/catalystneuro/neuroconv/pull/675) and [PR #675](https://github.com/catalystneuro/neuroconv/pull/679
 
 
 ### Features
