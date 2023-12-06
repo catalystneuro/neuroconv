@@ -185,8 +185,11 @@ def test_volumetric_default_chunking():
     width = 1024
     height = 1024
     number_of_planes = 3
-    
-    imaging_extractors = [generate_dummy_imaging_extractor(num_frames=number_of_frames, num_rows=width, num_columns=height) for _ in range(number_of_planes)]
+
+    imaging_extractors = [
+        generate_dummy_imaging_extractor(num_frames=number_of_frames, num_rows=width, num_columns=height)
+        for _ in range(number_of_planes)
+    ]
     volumetric_imaging_extractor = VolumetricImagingExtractor(imaging_extractors=imaging_extractors)
 
     iterator = ImagingExtractorDataChunkIterator(imaging_extractor=self.imaging_extractor)
