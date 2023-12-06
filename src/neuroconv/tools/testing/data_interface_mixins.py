@@ -60,12 +60,6 @@ class DataInterfaceTestMixin:
     conversion_options: dict = dict()
     maxDiff = None
 
-    def __init__(self):
-        self.nwbfile_path = None
-        self.test_kwargs = None
-        self.case = None
-        self.interface = None
-
     def test_source_schema_valid(self):
         schema = self.data_interface_cls.get_source_schema()
         Draft7Validator.check_schema(schema=schema)
@@ -138,11 +132,6 @@ class TemporalAlignmentMixin:
     data_interface_cls: Type[BaseDataInterface]
     interface_kwargs: Union[dict, List[dict]]
     maxDiff = None
-
-    def __init__(self):
-        self.test_kwargs = None
-        self.case = None
-        self.interface = None
 
     def setUpFreshInterface(self):
         """Protocol for creating a fresh instance of the interface."""
