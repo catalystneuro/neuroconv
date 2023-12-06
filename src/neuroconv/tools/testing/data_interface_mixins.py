@@ -64,7 +64,6 @@ class DataInterfaceTestMixin:
         self.nwbfile_path = None
         self.test_kwargs = None
         self.case = None
-        self.nwbfile_path = None
         self.interface = None
 
     def test_source_schema_valid(self):
