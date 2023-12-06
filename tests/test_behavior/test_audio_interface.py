@@ -208,7 +208,7 @@ On instance['Audio']['write_as']:
                         buffer_gb=1e7 / 1e9,
                     )
                 )
-            ),  # use a low buffer_gb so we can test the full GenericDataChunkIterator
+            ),  # use a low buffer_gb, so we can test the full GenericDataChunkIterator
         )
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:

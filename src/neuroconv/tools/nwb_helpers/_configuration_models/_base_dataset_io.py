@@ -78,7 +78,7 @@ class DatasetInfo(BaseModel):
         """
         Not overriding __repr__ as this is intended to render only when wrapped in print().
 
-        Reason being two-fold; a standard `repr` is intended to be slightly more machine readable / a more basic
+        Reason being two-fold; a standard `repr` is intended to be slightly more machine-readable / a more basic
         representation of the true object state. But then also because an iterable of these objects, such as a
         `List[DataSetInfo]`, would print out the nested representations, which only look good when using the basic
         `repr` (that is, this fancy string print-out does not look good when nested in another container).
@@ -152,7 +152,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         """
         Not overriding __repr__ as this is intended to render only when wrapped in print().
 
-        Reason being two-fold; a standard `repr` is intended to be slightly more machine readable / a more basic
+        Reason being two-fold; a standard `repr` is intended to be slightly more machine-readable / a more basic
         representation of the true object state. But then also because an iterable of these objects, such as a
         `List[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).

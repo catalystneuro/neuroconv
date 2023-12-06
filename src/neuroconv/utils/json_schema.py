@@ -254,7 +254,7 @@ def get_schema_from_hdmf_class(hdmf_class):
                 if docval_arg["name"] in pynwb_children_fields:
                     items = get_schema_from_hdmf_class(item)
                     schema_arg[docval_arg["name"]].update(type="array", items=items, minItems=1, maxItems=1)
-                # if it is link
+                # if it is a link
                 else:
                     target = item.__module__ + "." + item.__name__
                     schema_arg[docval_arg["name"]].update(type="string", target=target)
@@ -325,7 +325,7 @@ def get_metadata_schema_for_icephys():
 def validate_metadata(metadata: Dict[str, dict], schema: Dict[str, dict], verbose: bool = False):
     """Validate metadata against a schema."""
     encoder = NWBMetaDataEncoder()
-    # The encoder produces a serialized object so we deserialized it for comparison
+    # The encoder produces a serialized object, so we deserialized it for comparison
 
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
