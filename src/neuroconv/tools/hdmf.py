@@ -94,7 +94,7 @@ class GenericDataChunkIterator(HDMFGenericDataChunkIterator):
 
         unpadded_buffer_bytes = math.prod(unpadded_buffer_shape) * dtype.itemsize
 
-        # Method that starts by filling the smallest axis completely or calculates best partial fill
+        # Method that starts by filling the smallest axis completely or calculates the best partial fill
         padded_buffer_shape = np.array(chunk_shape)
         chunks_per_axis = np.ceil(maxshape / chunk_shape)
         small_axis_fill_size = chunk_bytes * min(chunks_per_axis)

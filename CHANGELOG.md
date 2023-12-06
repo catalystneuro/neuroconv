@@ -11,7 +11,7 @@
 ### Improvements
 * `nwbinspector` has been removed as a minimal dependency. It becomes an extra (optional) dependency with `neuroconv[dandi]`. [PR #672](https://github.com/catalystneuro/neuroconv/pull/672)
 * Added a `from_nwbfile` class method constructor to all `BackendConfiguration` models. [PR #673](https://github.com/catalystneuro/neuroconv/pull/673)
-
+* Added compression to `FicTracDataInterface` [PR #678](https://github.com/catalystneuro/neuroconv/pull/678)
 
 
 # v0.4.6 (November 30, 2023)

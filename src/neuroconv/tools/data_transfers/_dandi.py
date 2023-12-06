@@ -26,7 +26,7 @@ def automatic_dandi_upload(
 
     Requires an API token set as an envrinment variable named DANDI_API_KEY.
 
-    To set this in your bash terminal in Linux or MacOS, run
+    To set this in your bash terminal in Linux or macOS, run
         export DANDI_API_KEY=...
     or in Windows
         set DANDI_API_KEY=...
