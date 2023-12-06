@@ -19,7 +19,10 @@ class AbstractPathExpander(abc.ABC):
         for filepath in self.list_directory(base_directory=Path(base_directory)):
             result = parse(format_, filepath)
             if result:
-                yield filepath, result.named
+                named_result = result.named
+                no_field_in_metadata_contains_os_sep = all(os.sep not in str(val) for val in named_result.values())
+                if no_field_in_metadata_contains_os_sep:
+                    yield filepath, named_result
 
     @abc.abstractmethod
     def list_directory(self, base_directory: DirectoryPath) -> Iterable[FilePath]:
