@@ -33,7 +33,6 @@ testing_session_time = datetime.now().astimezone()
 
 
 class TestAddElectricalSeriesWriting(unittest.TestCase):
-
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
         self.num_channels = 3
@@ -234,7 +233,6 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
 
 class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
     def setUp(self):
-
         """Use common recording objects and values."""
         self.sampling_frequency = 1.0
         self.num_channels = 3
@@ -481,7 +479,6 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
 
 class TestWriteRecording(unittest.TestCase):
-
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
 
@@ -846,7 +843,6 @@ class TestAddElectrodes(TestCase):
 
 
 class TestAddUnitsTable(TestCase):
-
     def setUp(self):
         """Start with a fresh NWBFile, and remapped sorters each time."""
 
@@ -1109,7 +1105,6 @@ class TestAddUnitsTable(TestCase):
 
 
 class TestWriteWaveforms(TestCase):
-
     def setUp(self):
         from spikeinterface.postprocessing import compute_template_metrics
         from spikeinterface.qualitymetrics import compute_quality_metrics
@@ -1149,7 +1144,6 @@ class TestWriteWaveforms(TestCase):
         # reload without recording
         self.we_recless = WaveformExtractor.load_from_folder(self.waveform_recordingless_path, with_recording=False)
         self.we_recless_recording = single_segment_rec
-
 
         # Start with a fresh NWBFile, and remapped sorters each time.
         self.nwbfile = NWBFile(
