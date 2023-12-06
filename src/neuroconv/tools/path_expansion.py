@@ -159,7 +159,7 @@ def construct_path_template(path: str, *, subject_id: str, session_id: str, **me
     if subject_id not in path or session_id not in path:
         raise ValueError("Subject ID and Session ID must be present in the path")
 
-    path = path.replace(subject_id, '{subject_id}').replace(session_id, '{session_id}')
+    path = path.replace(subject_id, "{subject_id}").replace(session_id, "{session_id}")
 
     for key, val in metadata_kwargs.items():
         if val == "":
