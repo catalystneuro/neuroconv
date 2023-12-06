@@ -33,7 +33,6 @@ testing_session_time = datetime.now().astimezone()
 
 
 class TestAddElectricalSeriesWriting(unittest.TestCase):
-
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
         self.num_channels = 3
