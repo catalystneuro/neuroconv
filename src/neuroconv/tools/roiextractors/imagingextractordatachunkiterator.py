@@ -89,6 +89,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         num_frames = self._maxshape[0]
         width = self._maxshape[1]
         height = self._maxshape[2]
+        image_shape = self._maxshape[1:]
 
         depth = None
         if len(self._maxshape) == 4:
