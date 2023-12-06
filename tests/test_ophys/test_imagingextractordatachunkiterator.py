@@ -191,7 +191,6 @@ def test_volumetric_default_chunking():
         for _ in range(number_of_planes)
     ]
     volumetric_imaging_extractor = VolumetricImagingExtractor(imaging_extractors=imaging_extractors)
-
-    iterator = ImagingExtractorDataChunkIterator(imaging_extractor=self.imaging_extractor)
+    iterator = ImagingExtractorDataChunkIterator(imaging_extractor=volumetric_imaging_extractor)
 
     assert iterator.chunk_shape == (4, width, height, 1)
