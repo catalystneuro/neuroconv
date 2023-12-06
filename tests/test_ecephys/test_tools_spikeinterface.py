@@ -33,14 +33,18 @@ testing_session_time = datetime.now().astimezone()
 
 
 class TestAddElectricalSeriesWriting(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_channels = 3
+        cls.sampling_frequency = 1.0
+        cls.durations = [3.0]  # 3 samples in the recorder
+        cls.test_recording_extractor = generate_recording(
+            sampling_frequency=cls.sampling_frequency, num_channels=cls.num_channels, durations=cls.durations
+        )
+
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
-        self.num_channels = 3
-        self.sampling_frequency = 1.0
-        self.durations = [3.0]  # 3 samples in the recorder
-        self.test_recording_extractor = generate_recording(
-            sampling_frequency=self.sampling_frequency, num_channels=self.num_channels, durations=self.durations
-        )
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
