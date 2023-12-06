@@ -96,7 +96,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
         if len(self._maxshape) == 3:
             chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height)
-        elif len(self._maxshape) == 4::
+        elif len(self._maxshape) == 4:
             chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height, 1)
 
         return chunk_shape
