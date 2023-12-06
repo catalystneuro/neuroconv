@@ -45,7 +45,6 @@ def test_simple_time_series_override(
 
     smaller_chunk_shape = (30_000, 64)
     smaller_buffer_shape = (60_000, 192)
-    higher_gzip_level = 5
     dataset_configuration.chunk_shape = smaller_chunk_shape
     dataset_configuration.buffer_shape = smaller_buffer_shape
 
