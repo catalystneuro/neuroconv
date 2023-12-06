@@ -50,7 +50,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         )
 
     def test_default_values(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         assert "ElectricalSeriesRaw" in acquisition_module
@@ -66,7 +66,10 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_lfp(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, write_as="lfp")
+        write_as = "lfp"
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+        )
 
         processing_module = self.nwbfile.processing
         assert "ecephys" in processing_module
@@ -84,7 +87,10 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_as_processing(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, write_as="processed")
+        write_as = "processed"
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+        )
 
         processing_module = self.nwbfile.processing
         assert "ecephys" in processing_module
@@ -113,6 +119,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesRaw",
+            iterator_type=None,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
@@ -122,6 +129,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesLFP",
+            iterator_type=None,
         )
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
         self.assertIn("ElectricalSeriesLFP", self.nwbfile.acquisition)
@@ -141,6 +149,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesRaw1",
+            iterator_type=None,
         )
         self.assertEqual(len(self.nwbfile.electrodes), len(self.test_recording_extractor.channel_ids))
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
@@ -151,6 +160,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
             nwbfile=self.nwbfile,
             metadata=metadata,
             es_key="ElectricalSeriesRaw2",
+            iterator_type=None,
         )
         self.assertIn("ElectricalSeriesRaw1", self.nwbfile.acquisition)
         self.assertIn("ElectricalSeriesRaw2", self.nwbfile.acquisition)
@@ -164,7 +174,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         reg_expression = f"'write_as' should be 'raw', 'processed' or 'lfp', but instead received value {write_as}"
 
         with self.assertRaisesRegex(AssertionError, reg_expression):
-            add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, write_as=write_as)
+            add_electrical_series(
+                recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, write_as=write_as
+            )
 
     def test_write_with_higher_gzip_level(self):
         compression = "gzip"
@@ -172,6 +184,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         add_electrical_series(
             recording=self.test_recording_extractor,
             nwbfile=self.nwbfile,
+            iterator_type=None,
             compression=compression,
             compression_opts=compression_opts,
         )
@@ -184,7 +197,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
     def test_write_with_lzf_compression(self):
         compression = "lzf"
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, compression=compression)
+        add_electrical_series(
+            recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None, compression=compression
+        )
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -211,7 +226,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         )
 
     def test_uniform_timestamps(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -224,7 +239,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
         self.test_recording_extractor.set_times(times=expected_timestamps, with_warning=False)
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -270,7 +285,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         self.test_recording_extractor.set_channel_gains(gains=gains)
         self.test_recording_extractor.set_channel_offsets(offsets=offsets)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -295,7 +310,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         self.test_recording_extractor.set_channel_gains(gains=gains)
         self.test_recording_extractor.set_channel_offsets(offsets=offsets)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -320,7 +335,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         self.test_recording_extractor.set_channel_gains(gains=gains)
         self.test_recording_extractor.set_channel_offsets(offsets=offsets)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -347,7 +362,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         gains = self.gains_default
         self.test_recording_extractor.set_channel_gains(gains=gains)
 
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -378,7 +393,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         reg_expression = f"Recording extractors with heterogeneous offsets are not supported"
 
         with self.assertRaisesRegex(ValueError, reg_expression):
-            add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+            add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
 
 class TestAddElectricalSeriesChunking(unittest.TestCase):
@@ -451,7 +466,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_non_iterative_write(self):
-        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
+        add_electrical_series(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         electrical_series = acquisition_module["ElectricalSeriesRaw"]
@@ -521,7 +536,7 @@ class TestWriteRecording(unittest.TestCase):
 
     def test_default_values_single_segment(self):
         """This test that the names are written appropriately for the single segment case (numbers not added)"""
-        write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile)
+        write_recording(recording=self.single_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         assert "ElectricalSeriesRaw" in acquisition_module
@@ -537,7 +552,7 @@ class TestWriteRecording(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
     def test_write_multiple_segments(self):
-        write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile)
+        write_recording(recording=self.multiple_segment_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
         assert len(acquisition_module) == 2
