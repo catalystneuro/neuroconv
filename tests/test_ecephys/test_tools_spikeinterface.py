@@ -233,23 +233,24 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
 
 
 class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
-    def setUp(self):
-
+    @classmethod
+    def setUpClass(cls):
         """Use common recording objects and values."""
-        self.sampling_frequency = 1.0
-        self.num_channels = 3
-        self.num_frames = 5
-        self.channel_ids = ["a", "b", "c"]
-        self.traces_list = [np.ones(shape=(self.num_frames, self.num_channels))]
+        cls.sampling_frequency = 1.0
+        cls.num_channels = 3
+        cls.num_frames = 5
+        cls.channel_ids = ["a", "b", "c"]
+        cls.traces_list = [np.ones(shape=(cls.num_frames, cls.num_channels))]
 
         # Combinations of gains and default
-        self.gains_default = [1, 1, 1]
-        self.offset_defaults = [0, 0, 0]
-        self.gains_uniform = [2, 2, 2]
-        self.offsets_uniform = [3, 3, 3]
-        self.gains_variable = [1, 2, 3]
-        self.offsets_variable = [1, 2, 3]
+        cls.gains_default = [1, 1, 1]
+        cls.offset_defaults = [0, 0, 0]
+        cls.gains_uniform = [2, 2, 2]
+        cls.offsets_uniform = [3, 3, 3]
+        cls.gains_variable = [1, 2, 3]
+        cls.offsets_variable = [1, 2, 3]
 
+    def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
@@ -378,24 +379,29 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
 
 
 class TestAddElectricalSeriesChunking(unittest.TestCase):
-    def setUp(self):
-        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
-        self.sampling_frequency = 1.0
-        self.num_channels = 3
-        self.num_frames = 20
-        self.channel_ids = ["a", "b", "c"]
-        self.traces_list = [np.ones(shape=(self.num_frames, self.num_channels))]
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.sampling_frequency = 1.0
+        cls.num_channels = 3
+        cls.num_frames = 20
+        cls.channel_ids = ["a", "b", "c"]
+        cls.traces_list = [np.ones(shape=(cls.num_frames, cls.num_channels))]
         # Flat traces [1, 1, 1] per channel
-        self.test_recording_extractor = NumpyRecording(
-            self.traces_list, self.sampling_frequency, channel_ids=self.channel_ids
+        cls.test_recording_extractor = NumpyRecording(
+            cls.traces_list, cls.sampling_frequency, channel_ids=cls.channel_ids
         )
 
         # Combinations of gains and default
-        self.gains_default = [2, 2, 2]
-        self.offset_default = [1, 1, 1]
+        cls.gains_default = [2, 2, 2]
+        cls.offset_default = [1, 1, 1]
 
-        self.test_recording_extractor.set_channel_gains(gains=self.gains_default)
-        self.test_recording_extractor.set_channel_offsets(offsets=self.offset_default)
+        cls.test_recording_extractor.set_channel_gains(gains=cls.gains_default)
+        cls.test_recording_extractor.set_channel_offsets(offsets=cls.offset_default)
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
+
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
@@ -481,29 +487,30 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
 
 
 class TestWriteRecording(unittest.TestCase):
-
-    def setUp(self):
-        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
-
+    @classmethod
+    def setUpClass(cls):
         # 3 samples in each segment
-        self.num_channels = 3
-        self.sampling_frequency = 1.0
-        self.single_segment_recording_extractor = generate_recording(
-            sampling_frequency=self.sampling_frequency, num_channels=self.num_channels, durations=[3.0]
+        cls.num_channels = 3
+        cls.sampling_frequency = 1.0
+        cls.single_segment_recording_extractor = generate_recording(
+            sampling_frequency=cls.sampling_frequency, num_channels=cls.num_channels, durations=[3.0]
         )
-        self.multiple_segment_recording_extractor = generate_recording(
-            sampling_frequency=self.sampling_frequency, num_channels=self.num_channels, durations=[3.0, 3.0]
+        cls.multiple_segment_recording_extractor = generate_recording(
+            sampling_frequency=cls.sampling_frequency, num_channels=cls.num_channels, durations=[3.0, 3.0]
         )
 
         # Add gains and offsets
-        self.gains_default = [1, 1, 1]
-        self.offset_default = [0, 0, 0]
+        cls.gains_default = [1, 1, 1]
+        cls.offset_default = [0, 0, 0]
 
-        self.single_segment_recording_extractor.set_channel_gains(self.gains_default)
-        self.single_segment_recording_extractor.set_channel_offsets(self.offset_default)
+        cls.single_segment_recording_extractor.set_channel_gains(cls.gains_default)
+        cls.single_segment_recording_extractor.set_channel_offsets(cls.offset_default)
 
-        self.multiple_segment_recording_extractor.set_channel_gains(self.gains_default)
-        self.multiple_segment_recording_extractor.set_channel_offsets(self.offset_default)
+        cls.multiple_segment_recording_extractor.set_channel_gains(cls.gains_default)
+        cls.multiple_segment_recording_extractor.set_channel_offsets(cls.offset_default)
+
+    def setUp(self):
+        """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
 
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
@@ -559,13 +566,14 @@ class TestWriteRecording(unittest.TestCase):
 
 
 class TestAddElectrodes(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_channels = 4
+        cls.base_recording = generate_recording(num_channels=cls.num_channels, durations=[3])
+
     def setUp(self):
         """Start with a fresh NWBFile, ElectrodeTable, and remapped BaseRecordings each time."""
-
-        # Use common recording objects and values.
-        self.num_channels = 4
-        self.base_recording = generate_recording(num_channels=self.num_channels, durations=[3])
-
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
@@ -846,16 +854,17 @@ class TestAddElectrodes(TestCase):
 
 
 class TestAddUnitsTable(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
+        cls.num_units = 4
+        cls.single_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3])
+        cls.multiple_segment_sorting = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        cls.base_sorting = cls.single_segment_sorting
+        # Base sorting unit ids are [0, 1, 2, 3]
 
     def setUp(self):
         """Start with a fresh NWBFile, and remapped sorters each time."""
-
-        self.num_units = 4
-        self.single_segment_sorting = generate_sorting(num_units=self.num_units, durations=[3])
-        self.multiple_segment_sorting = generate_sorting(num_units=self.num_units, durations=[3, 4])
-        self.base_sorting = self.single_segment_sorting
-        # Base sorting unit ids are [0, 1, 2, 3]
-
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
@@ -1109,19 +1118,20 @@ class TestAddUnitsTable(TestCase):
 
 
 class TestWriteWaveforms(TestCase):
-
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        """Use common recording objects and values."""
         from spikeinterface.postprocessing import compute_template_metrics
         from spikeinterface.qualitymetrics import compute_quality_metrics
 
-        self.num_units = 4
-        self.num_channels = 4
+        cls.num_units = 4
+        cls.num_channels = 4
         duration_1 = 6
         duration_2 = 7
-        single_segment_rec = generate_recording(num_channels=self.num_channels, durations=[duration_1])
-        single_segment_sort = generate_sorting(num_units=self.num_units, durations=[duration_1])
-        multi_segment_rec = generate_recording(num_channels=self.num_channels, durations=[duration_1, duration_2])
-        multi_segment_sort = generate_sorting(num_units=self.num_units, durations=[duration_1, duration_2])
+        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1])
+        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1])
+        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1, duration_2])
+        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1, duration_2])
         single_segment_rec.annotate(is_filtered=True)
         multi_segment_rec.annotate(is_filtered=True)
         single_segment_rec = single_segment_rec.save()
@@ -1129,35 +1139,36 @@ class TestWriteWaveforms(TestCase):
         single_segment_sort = single_segment_sort.save()
         multi_segment_sort = multi_segment_sort.save()
 
-        self.single_segment_we = extract_waveforms(single_segment_rec, single_segment_sort, folder=None, mode="memory")
-        self.multi_segment_we = extract_waveforms(multi_segment_rec, multi_segment_sort, folder=None, mode="memory")
+        cls.single_segment_we = extract_waveforms(single_segment_rec, single_segment_sort, folder=None, mode="memory")
+        cls.multi_segment_we = extract_waveforms(multi_segment_rec, multi_segment_sort, folder=None, mode="memory")
 
         # add quality/template metrics to test property propagation
-        compute_template_metrics(self.single_segment_we)
-        compute_template_metrics(self.multi_segment_we)
-        compute_quality_metrics(self.single_segment_we)
-        compute_quality_metrics(self.multi_segment_we)
+        compute_template_metrics(cls.single_segment_we)
+        compute_template_metrics(cls.multi_segment_we)
+        compute_quality_metrics(cls.single_segment_we)
+        compute_quality_metrics(cls.multi_segment_we)
 
         # slice sorting
         slice_sorting = single_segment_sort.select_units(single_segment_sort.unit_ids[::2])
-        self.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
+        cls.we_slice = extract_waveforms(single_segment_rec, slice_sorting, folder=None, mode="memory")
 
         # recordingless
-        self.tmpdir = Path(mkdtemp())
-        self.waveform_recordingless_path = self.tmpdir / "waveforms_recordingless"
-        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=self.waveform_recordingless_path)
+        cls.tmpdir = Path(mkdtemp())
+        cls.waveform_recordingless_path = cls.tmpdir / "waveforms_recordingless"
+        we = extract_waveforms(single_segment_rec, single_segment_sort, folder=cls.waveform_recordingless_path)
         # reload without recording
-        self.we_recless = WaveformExtractor.load_from_folder(self.waveform_recordingless_path, with_recording=False)
-        self.we_recless_recording = single_segment_rec
+        cls.we_recless = WaveformExtractor.load_from_folder(cls.waveform_recordingless_path, with_recording=False)
+        cls.we_recless_recording = single_segment_rec
 
+    @classmethod
+    def tearDownClass(cls):
+        rmtree(cls.tmpdir)
 
-        # Start with a fresh NWBFile, and remapped sorters each time.
+    def setUp(self):
+        """Start with a fresh NWBFile, and remapped sorters each time."""
         self.nwbfile = NWBFile(
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
-
-    def tearDown(self):
-        rmtree(self.tmpdir)
 
     def _test_waveform_write(self, we, nwbfile, test_properties=True):
         # test unit columns
