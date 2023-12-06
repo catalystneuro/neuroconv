@@ -89,19 +89,14 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         num_frames = self._maxshape[0]
         width = self._maxshape[1]
         height = self._maxshape[2]
-        image_shape = self._maxshape[1:]
 
-        depth = None
-        if len(self._maxshape) == 4:
-            depth = self._maxshape[3]
+        frame_size_bytes = width * height * self._dtype.itemsize
+        chunk_size_bytes = chunk_mb * 1e6
+        num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
 
-        frame_size_bytes = math.prod(image_shape) * self._dtype.itemsize
-        chunk_size_bytes = chunk_mb * math.prod(image_shape)
-        num_frames_per_chunk = int(chunk_size_bytes // frame_size_bytes)
-
-        if depth is None:
+        if len(self._maxshape) == 3:
             chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height)
-        else:
+        elif len(self._maxshape) == 4::
             chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height, 1)
 
         return chunk_shape
