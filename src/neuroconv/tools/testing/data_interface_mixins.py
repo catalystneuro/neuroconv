@@ -219,7 +219,7 @@ class TemporalAlignmentMixin:
 
 
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseImagingExtractorInterface
+    data_interface_cls: Type[BaseImagingExtractorInterface]
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -496,8 +496,8 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
 
 
 class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    data_interface_cls: BaseSortingExtractorInterface
-    associated_recording_cls: Optional[BaseRecordingExtractorInterface] = None
+    data_interface_cls: Type[BaseSortingExtractorInterface]
+    associated_recording_cls: Optional[Type[BaseRecordingExtractorInterface]] = None
     associated_recording_kwargs: Optional[dict] = None
 
     def setUpFreshInterface(self):

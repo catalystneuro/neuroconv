@@ -1,5 +1,5 @@
 """
-This module is meant for the tests to be run as stand-alone so as to emulate a fresh import.
+This module is meant for the tests to be run as stand-alone to emulate a fresh import.
 
 Run them by using:
 pytest tests/import_structure.py::TestImportStructure::test_name
