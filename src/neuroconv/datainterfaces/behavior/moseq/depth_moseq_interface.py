@@ -1,24 +1,26 @@
 """Primary class for converting MoSeq Extraction data."""
 from datetime import datetime
-from pytz import timezone
 
 import h5py
 import numpy as np
 from hdmf.backends.hdf5.h5_utils import H5DataIO
-from pynwb import TimeSeries, NWBFile
-from pynwb.image import GrayscaleImage, ImageMaskSeries
-from pynwb.behavior import (
-    CompassDirection,
-    Position,
-    SpatialSeries,
+from ndx_depth_moseq import (
+    DepthImageSeries,
+    MoSeqExtractGroup,
+    MoSeqExtractParameterGroup,
 )
-from ndx_depth_moseq import DepthImageSeries, MoSeqExtractGroup, MoSeqExtractParameterGroup
+from pynwb import NWBFile, TimeSeries
+from pynwb.behavior import CompassDirection, Position, SpatialSeries
+from pynwb.image import GrayscaleImage, ImageMaskSeries
+from pytz import timezone
 
 from .....basedatainterface import BaseDataInterface
 from .....tools import nwb_helpers
 
 
-def _convert_timestamps_to_seconds(timestamps: np.ndarray[int], scaling_factor: float, maximum_timestamp: int) -> np.ndarray:
+def _convert_timestamps_to_seconds(
+    timestamps: np.ndarray[int], scaling_factor: float, maximum_timestamp: int
+) -> np.ndarray:
     """Converts integer timestamps to seconds using the metadata file.
 
     Parameters
@@ -36,12 +38,11 @@ def _convert_timestamps_to_seconds(timestamps: np.ndarray[int], scaling_factor: 
         The converted timestamps.
     """
     TIMESTAMPS_TO_SECONDS = metadata["Constants"]["TIMESTAMPS_TO_SECONDS"]
-    timestamps[timestamps < timestamps[0]] = (
-        maximum_timestamp + timestamps[timestamps < timestamps[0]]
-    )
+    timestamps[timestamps < timestamps[0]] = maximum_timestamp + timestamps[timestamps < timestamps[0]]
     timestamps -= timestamps[0]
     timestamps = timestamps * TIMESTAMPS_TO_SECONDS
     return timestamps
+
 
 class MoseqExtractInterface(BaseDataInterface):
     """Moseq interface for markowitz_gillis_nature_2023 conversion"""
