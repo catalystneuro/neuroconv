@@ -358,7 +358,7 @@ def add_photon_series(
         Specify which element of the list with this parameter.
     parent_container: {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
-        When 'processing/ophys' is chosen, the photon series is added to nwbfile.processing['ophys'].
+        When 'processing/ophys' is chosen, the photon series is added to ``nwbfile.processing['ophys']``.
 
     Returns
     -------

@@ -35,7 +35,7 @@ def _is_dataset_written_to_file(
         and backend == "hdf5"
         and candidate_dataset.file == existing_file  # If the source HDF5 Dataset is the appending NWBFile
     ) or (
-        isinstance(candidate_dataset, zarr.Array)  # If the source data is an Zarr Array
+        isinstance(candidate_dataset, zarr.Array)  # If the source data is a Zarr Array
         and backend == "zarr"
         and candidate_dataset.store == existing_file  # If the source Zarr 'file' is the appending NWBFile
     )
@@ -57,7 +57,7 @@ def get_default_dataset_io_configurations(
     nwbfile : pynwb.NWBFile
         An in-memory NWBFile object, either generated from the base class or read from an existing file of any backend.
     backend : "hdf5" or "zarr"
-        Which backend format type you would like to use in configuring each datasets compression methods and options.
+        Which backend format type you would like to use in configuring each dataset's compression methods and options.
 
     Yields
     ------

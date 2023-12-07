@@ -1517,7 +1517,7 @@ class TestAddPhotonSeries(TestCase):
         excess = 1.5  # Of what is available in memory
         num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * math.prod(image_size))
 
-        # Mock recording extractor with as much frames as necessary to overflow memory
+        # Mock recording extractor with as many frames as necessary to overflow memory
         mock_imaging = Mock()
         mock_imaging.get_dtype.return_value = dtype
         mock_imaging.get_image_size.return_value = image_size
