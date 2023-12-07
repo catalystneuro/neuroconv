@@ -31,7 +31,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             Path to the .rec file.
         gains : array_like, optional
             The early versions of SpikeGadgets do not automatically record the conversion factor ('gain') of the
-            acquisition system. Thus it must be specified either as a single value (if all channels have the same gain)
+            acquisition system. Thus, it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
         es_key : str, default: "ElectricalSeries"
         """

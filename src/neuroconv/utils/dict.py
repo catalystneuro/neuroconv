@@ -66,9 +66,9 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
         (which is a dict) say: ls[3][compare_key] == d[compare_key], then it will dict_deep_update these instead of
         appending d to list ls. Only if compare_key is not present in any of dicts in the list ls, then d is simply
         appended to ls.
-    2.  If d is of immutable types like str, int etc, the ls is either appended with d or not.
+    2.  If d is of immutable types like str, int etc., the ls is either appended with d or not.
         This depends on the value of remove_repeats. If remove_repeats is False, then ls is always appended with d.
-        If remove_repeats is True, then if value d is present then its not appended else it is.
+        If remove_repeats is True, then if value d is present then it is not appended else it is.
 
     Parameters
     ----------
@@ -126,7 +126,7 @@ def dict_deep_update(
         dictionary to update from
     append_list: bool
         if the item to update is a list, whether to append the lists or replace the list in d
-        eg. d = dict(key1=[1,2,3]), u = dict(key1=[3,4,5]).
+        e.g. d = dict(key1=[1,2,3]), u = dict(key1=[3,4,5]).
         If True then updated dictionary d=dict(key1=[1,2,3,4,5]) else d=dict(key1=[3,4,5])
     remove_repeats: bool
         for updating list in d[key] with list in u[key]: if true then remove repeats: list(set(ls))
@@ -166,7 +166,7 @@ def dict_deep_update(
             >>> output = [
                 {"name": "timeseries1", "desc": "desc2 of u", "starting_time": 0.0},
                 {"name": "timeseries2", "desc": "desc2"},
-            ]  # unit key is absent since its a replacement
+            ]  # unit key is absent since it is a replacement
     Returns
     -------
     d: dict
