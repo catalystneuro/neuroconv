@@ -42,13 +42,23 @@ def test_only_folder_match(tmpdir):
     }
 
     path_expander = LocalPathExpander()
-    metadata_list = path_expander.expand_paths(source_data_spec)
-    folder_paths = [metadata_match["source_data"]["a_source"]["folder_path"] for metadata_match in metadata_list]
+    matches_list = path_expander.expand_paths(source_data_spec)
 
+    folder_paths = [match["source_data"]["a_source"]["folder_path"] for match in matches_list]
     # Note that sub_directory3 is not included because it does not conform to the pattern
     expected = {str(sub_directory1), str(sub_directory2)}
-
     assert set(folder_paths) == expected
+
+    metadata_list = [match["metadata"].to_dict() for match in matches_list]
+    expected_metadata = [
+        {"Subject": {"subject_id": "subject1"}, "NWBFile": {"session_id": "1"}},
+        {"Subject": {"subject_id": "subject2"}, "NWBFile": {"session_id": "2"}},
+    ]
+
+    # Sort both lists by subject id to ensure order is the same
+    metadata_list = sorted(metadata_list, key=lambda x: x["Subject"]["subject_id"])
+    expected_metadata = sorted(expected_metadata, key=lambda x: x["Subject"]["subject_id"])
+    assert metadata_list == expected_metadata
 
 
 def test_only_file_match(tmpdir):
@@ -83,12 +93,31 @@ def test_only_file_match(tmpdir):
     }
 
     path_expander = LocalPathExpander()
-    metadata_list = path_expander.expand_paths(source_data_spec)
-    file_paths = [metadata_match["source_data"]["a_source"]["file_path"] for metadata_match in metadata_list]
+    matches_list = path_expander.expand_paths(source_data_spec)
+    file_paths = [match["source_data"]["a_source"]["file_path"] for match in matches_list]
 
     # Note that file3 is not included because it does not conform to the pattern
     expected = {str(file1), str(file2)}
     assert set(file_paths) == expected
+
+    metadata_list = [match["metadata"].to_dict() for match in matches_list]
+    expected_metadata = [
+        {
+            "Subject": {"subject_id": "subject1"},
+            "NWBFile": {"session_id": "1"},
+            "extras": {"a_parent_folder": "a_simple_pattern_1"},
+        },
+        {
+            "Subject": {"subject_id": "subject2"},
+            "NWBFile": {"session_id": "2"},
+            "extras": {"a_parent_folder": "a_simple_pattern_2"},
+        },
+    ]
+
+    # Sort both lists by subject id to ensure order is the same
+    metadata_list = sorted(metadata_list, key=lambda x: x["Subject"]["subject_id"])
+    expected_metadata = sorted(expected_metadata, key=lambda x: x["Subject"]["subject_id"])
+    assert metadata_list == expected_metadata
 
 
 def test_expand_paths(tmpdir):
