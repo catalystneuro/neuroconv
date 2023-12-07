@@ -75,6 +75,7 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             elif self.compression_method is None:
                 compression_bundle = dict(compression=False)
         else:
+            # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
             compression_opts = None
             if self.compression_options is not None:
                 compression_opts = list(self.compression_options.values())[0]
