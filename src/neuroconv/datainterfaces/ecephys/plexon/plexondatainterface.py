@@ -22,6 +22,8 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             Allows verbosity.
         es_key : str, default: "ElectricalSeries"
         """
+        if Path(file_path).suffix == ".pl2":
+            self.ExtractorName = "Plexon2RecordingExtractor"
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
 
 
