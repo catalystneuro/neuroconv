@@ -112,7 +112,7 @@ def test_only_file_match(tmpdir):
         str(base_directory / "subject1" / "a_simple_pattern_1" / "a_simple_pattern_1.bin"),
         str(base_directory / "subject2" / "a_simple_pattern_2" / "a_simple_pattern_2.bin"),
     }
-    assert set(file_paths) == expected
+    assert file_paths == expected
 
     metadata_list = [match["metadata"].to_dict() for match in matches_list]
     expected_metadata = [
