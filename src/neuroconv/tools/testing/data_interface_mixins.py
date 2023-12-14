@@ -525,8 +525,11 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
                 sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
 
             else:
-                renamed_unit_ids = sorting.get_unit_ids().astype("str")
-                # sorting_renamed = sorting.rename_units(new_unit_ids=sorting.unit_ids.astype("str")) #TODO after 0.100 release use this
+                renamed_unit_ids = sorting.get_unit_ids()
+                nwb_has_ids_as_strings = all(isinstance(id, str) for id in nwb_sorting.unit_ids)
+                if nwb_has_ids_as_strings:
+                    renamed_unit_ids = [str(id) for id in renamed_unit_ids]
+                # sorting_renamed = sorting.rename_units(new_unit_ids=sorting.unit_ids) #TODO after 0.100 release use this
                 sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
