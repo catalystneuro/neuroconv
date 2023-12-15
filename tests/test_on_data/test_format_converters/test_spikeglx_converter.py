@@ -6,6 +6,7 @@ from shutil import rmtree
 from tempfile import mkdtemp
 from unittest import TestCase
 
+import numpy as np
 from pydantic import FilePath
 from pynwb import NWBHDF5IO
 
@@ -79,3 +80,49 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
+
+    def test_electrode_table_writing(self):
+        converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+        metadata = converter.get_metadata()
+
+        from pynwb.testing.mock.file import mock_NWBFile
+
+        nwbfile = mock_NWBFile()
+
+        converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Check that the electrodes table of each of the Acquisition obejects points by channel name
+        electrodes_table = nwbfile.electrodes
+
+        # Test NIDQ
+        electrical_series = nwbfile.acquisition["ElectricalSeriesNIDQ"]
+        nidq_electrodes_table_region = electrical_series.electrodes
+        electrode_indices = nidq_electrodes_table_region.data
+        recording_extractor = converter.data_interface_objects["nidq"].recording_extractor
+
+        saved_channel_names = electrodes_table[electrode_indices]["channel_name"]
+        expected_channel_names = recording_extractor.get_property("channel_name")
+        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+
+        # Test AP
+        electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
+        ap_electrodes_table_region = electrical_series.electrodes
+        electrode_indices = ap_electrodes_table_region.data
+        recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
+
+        # TODO: THIS TWO ARE NOTE EQUIVALENT!
+        # saved_channel_names = ap_electrodes_table_region["channel_name"].data
+        # saved_channel_names = ap_electrodes_table_region.to_dataframe()["channel_name"].values
+        saved_channel_names = electrodes_table[electrode_indices]["channel_name"]
+        expected_channel_names = recording_extractor.get_property("channel_name")
+        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+
+        # Test LF
+        electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
+        lf_electrodes_table_region = electrical_series.electrodes
+        electrode_indices = lf_electrodes_table_region.data
+        recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
+
+        saved_channel_names = electrodes_table[electrode_indices]["channel_name"]
+        expected_channel_names = recording_extractor.get_property("channel_name")
+        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
