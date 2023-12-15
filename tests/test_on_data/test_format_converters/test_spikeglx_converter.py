@@ -129,11 +129,9 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         # Test round trip with spikeinterface
         from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
 
-        use_pynwb = True
         recording_extractor_ap = NwbRecordingExtractor(
             file_path=nwbfile_path,
             electrical_series_name="ElectricalSeriesAP",
-            use_pynwb=use_pynwb,
         )
 
         channel_ids = recording_extractor_ap.get_channel_ids()
@@ -142,7 +140,6 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         recording_extractor_lf = NwbRecordingExtractor(
             file_path=nwbfile_path,
             electrical_series_name="ElectricalSeriesLF",
-            use_pynwb=use_pynwb,
         )
 
         channel_ids = recording_extractor_lf.get_channel_ids()
@@ -151,7 +148,6 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         recording_extractor_nidq = NwbRecordingExtractor(
             file_path=nwbfile_path,
             electrical_series_name="ElectricalSeriesNIDQ",
-            use_pynwb=use_pynwb,
         )
 
         channel_ids = recording_extractor_nidq.get_channel_ids()
