@@ -98,8 +98,8 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         recording_extractor = converter.data_interface_objects["nidq"].recording_extractor
 
         saved_channel_names = electrodes_table[region_indices]["channel_name"]
-        expected_channel_names = recording_extractor.get_property("channel_name")
-        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+        expected_channel_names_nidq = recording_extractor.get_property("channel_name")
+        np.testing.assert_array_equal(saved_channel_names, expected_channel_names_nidq)
 
         # Test AP
         electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
@@ -108,8 +108,8 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
 
         saved_channel_names = electrodes_table[region_indices]["channel_name"]
-        expected_channel_names = recording_extractor.get_property("channel_name")
-        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+        expected_channel_names_ap = recording_extractor.get_property("channel_name")
+        np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
 
         # Test LF
         electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
@@ -118,5 +118,41 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
 
         saved_channel_names = electrodes_table[region_indices]["channel_name"]
-        expected_channel_names = recording_extractor.get_property("channel_name")
-        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+        expected_channel_names_lf = recording_extractor.get_property("channel_name")
+        np.testing.assert_array_equal(saved_channel_names, expected_channel_names_lf)
+
+        # Write to file and read back in
+        nwbfile_path = self.tmpdir / "test_spikeglx_converter_electrode_table.nwb"
+        with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
+            io.write(nwbfile)
+
+        # Test round trip with spikeinterface
+        from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
+
+        use_pynwb = True
+        recording_extractor_ap = NwbRecordingExtractor(
+            file_path=nwbfile_path,
+            electrical_series_name="ElectricalSeriesAP",
+            use_pynwb=use_pynwb,
+        )
+
+        channel_ids = recording_extractor_ap.get_channel_ids()
+        np.testing.assert_array_equal(channel_ids, expected_channel_names_ap)
+
+        recording_extractor_lf = NwbRecordingExtractor(
+            file_path=nwbfile_path,
+            electrical_series_name="ElectricalSeriesLF",
+            use_pynwb=use_pynwb,
+        )
+
+        channel_ids = recording_extractor_lf.get_channel_ids()
+        np.testing.assert_array_equal(channel_ids, expected_channel_names_lf)
+
+        recording_extractor_nidq = NwbRecordingExtractor(
+            file_path=nwbfile_path,
+            electrical_series_name="ElectricalSeriesNIDQ",
+            use_pynwb=use_pynwb,
+        )
+
+        channel_ids = recording_extractor_nidq.get_channel_ids()
+        np.testing.assert_array_equal(channel_ids, expected_channel_names_nidq)
