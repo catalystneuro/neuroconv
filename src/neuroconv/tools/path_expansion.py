@@ -159,13 +159,13 @@ def construct_path_template(path: str, *, subject_id: str, session_id: str, **me
     if subject_id not in path or session_id not in path:
         raise ValueError("Subject ID and Session ID must be present in the path")
 
-    path = path.replace(subject_id, "{subject_id}").replace(session_id, "{session_id}")
+    format_string = path.replace(subject_id, "{subject_id}").replace(session_id, "{session_id}")
 
     for key, val in metadata_kwargs.items():
         if val == "":
             raise ValueError(f"Value for '{key}' cannot be an empty string")
-        if val not in path:
+        if val not in format_string:
             raise ValueError(f"Value for '{key}' not found in the path")
-        path = path.replace(val, f"{{{key}}}")
+        format_string = format_string.replace(val, f"{{{key}}}")
 
-    return path
+    return format_string
