@@ -1,5 +1,4 @@
-from typing import Iterable, Optional, Tuple, Union
-from warnings import warn
+from typing import Iterable, Optional, Tuple
 
 from hdmf.data_utils import GenericDataChunkIterator
 from spikeinterface import BaseRecording
@@ -71,6 +70,20 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
             display_progress=display_progress,
             progress_bar_options=progress_bar_options,
         )
+
+    def _get_default_chunk_shape(self, chunk_mb: float = 10.0) -> Tuple[int, int]:
+        assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
+
+        chunk_channels = min(
+            self.recording.get_num_channels(),
+            64,  # from https://github.com/flatironinstitute/neurosift/issues/52#issuecomment-1671405249
+        )
+        chunk_frames = min(
+            self.recording.get_num_frames(segment_index=self.segment_index),
+            int(chunk_mb * 1e6 / (self.recording.get_dtype().itemsize * chunk_channels)),
+        )
+
+        return (chunk_frames, chunk_channels)
 
     def _get_data(self, selection: Tuple[slice]) -> Iterable:
         return self.recording.get_traces(

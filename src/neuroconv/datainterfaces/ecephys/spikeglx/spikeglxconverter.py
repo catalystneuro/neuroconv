@@ -1,4 +1,3 @@
-"""The simplest, easiest to use class for converting all SpikeGLX data in a folder."""
 from pathlib import Path
 from typing import List, Optional
 
@@ -11,7 +10,11 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class SpikeGLXConverterPipe(ConverterPipe):
-    """Primary conversion class for handling multiple SpikeGLX data streams."""
+    """
+    The simplest, easiest to use class for converting all SpikeGLX data in a folder.
+
+    Primary conversion class for handling multiple SpikeGLX data streams.
+    """
 
     @classmethod
     def get_source_schema(cls):
@@ -72,7 +75,7 @@ class SpikeGLXConverterPipe(ConverterPipe):
                 file_path = folder_path / f"{folder_path.stem}_t0.nidq.bin"
                 interface = SpikeGLXNIDQInterface(file_path=file_path)
                 num_channels = interface.recording_extractor.get_num_channels()
-                # To avoid warning/error turing write
+                # To avoid warning/error during write
                 # TODO: When PyNWB supports other more proper AUX electrode types, remove
                 interface.recording_extractor.set_property(key="shank_electrode_number", values=[np.nan] * num_channels)
                 interface.recording_extractor.set_property(key="contact_shapes", values=[np.nan] * num_channels)

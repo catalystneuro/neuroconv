@@ -12,6 +12,19 @@ customization features beyond what is demonstrated in the conversion gallery.
     Many of these projects have pinned a specific minor version of NeuroConv, or its predecessor, nwb-conversion-tools
     (NCT). We have organized each pipeline according to the version used in descending order (newest version first).
 
+NeuroConv v0.3
+--------------
+
+`froemke-lab-to-nwb <https://github.com/catalystneuro/froemke-lab-to-nwb>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+`Dr. Robert Froemke's Lab <https://med.nyu.edu/research/froemke-lab/>`_ at NYU converted electrophysiology,
+photometry, and behavior to create dandisets:
+
+* `000114 <https://dandiarchive.org/dandiset/000114>`_ associated with the Carcea et al. Nature 2021 paper,
+  `"Oxytocin neurons enable social transmission of maternal behaviour" <https://www.nature.com/articles/s41586-021-03814-7>`_
+* `000249 <https://dandiarchive.org/dandiset/000249>`_ associated with the Schiavo et al. Nature 2020 paper,
+  `"Innate and plastic mechanisms for maternal behaviour in auditory cortex" <https://www.nature.com/articles/s41586-020-2807-6>`_.
+
 NeuroConv v0.2
 --------------
 
@@ -86,7 +99,7 @@ NCT v0.7.0
 `tank-lab-to-nwb <https://github.com/catalystneuro/tank-lab-to-nwb>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In this project, we worked with `Dr. David Tank's lab at Princeton <https://pni.princeton.edu/faculty/david-tank>`_ to
+In this project, we worked with `Dr. David Tank's lab at Princeton <https://pni.princeton.edu/people/david-tank>`_ to
 package data from Neuropixel (SpikeGLX) recordings of subjects navigating a virtual reality. Behavior contains a
 variety of NWB data types including positional and view angle over time, collision detection, and more. This data
 utilizes a custom `extension <https://github.com/catalystneuro/ndx-tank-metadata>`_ for parsing experiment metadata.

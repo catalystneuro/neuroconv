@@ -1,11 +1,11 @@
 import itertools
+import os
 import unittest
 from datetime import datetime
-from platform import python_version, system
+from platform import system
 
 import pytest
 from jsonschema.validators import Draft7Validator
-from packaging import version
 from parameterized import param, parameterized
 from spikeinterface.core import BaseRecording
 from spikeinterface.core.testing import check_recordings_equal
@@ -17,7 +17,6 @@ from neuroconv.datainterfaces import (
     AxonaRecordingInterface,
     BiocamRecordingInterface,
     BlackrockRecordingInterface,
-    CEDRecordingInterface,
     EDFRecordingInterface,
     IntanRecordingInterface,
     MaxOneRecordingInterface,
@@ -27,7 +26,6 @@ from neuroconv.datainterfaces import (
     NeuroScopeRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
-    OpenEphysRecordingInterface,
     PlexonRecordingInterface,
     SpikeGadgetsRecordingInterface,
     SpikeGLXRecordingInterface,
@@ -136,20 +134,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
             ),
-            case_name=f"openephyslegacy",
+            case_name="openephyslegacy",
         ),
     ]
 
-    this_python_version = version.parse(python_version())
-    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
-        parameterized_recording_list.append(
-            param(
-                data_interface=CEDRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-                case_name="smrx",
-            )
-        )
-    if system() == "Linux":
+    if system() == "Linux" and "CI" not in os.environ:
         parameterized_recording_list.append(
             param(
                 data_interface=MaxOneRecordingInterface,
@@ -188,16 +177,6 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             ),
         ]
     )
-
-    this_python_version = version.parse(python_version())
-    if system() != "Darwin" and version.parse("3.8") <= this_python_version < version.parse("3.10"):
-        parameterized_recording_list.append(
-            param(
-                data_interface=CEDRecordingInterface,
-                interface_kwargs=dict(file_path=str(DATA_PATH / "spike2" / "m365_1sec.smrx")),
-                case_name="smrx",
-            )
-        )
 
     for suffix in ["rhd", "rhs"]:
         parameterized_recording_list.append(

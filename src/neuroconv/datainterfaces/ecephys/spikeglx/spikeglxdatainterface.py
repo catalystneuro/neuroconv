@@ -3,6 +3,8 @@ import warnings
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from .spikeglx_utils import (
     fetch_stream_id_for_spikelgx_file,
     get_device_metadata,
@@ -139,6 +141,18 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         ]
 
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        new_recording = self.get_extractor()(
+            folder_path=self.source_data["folder_path"], stream_id=self.source_data["stream_id"]
+        )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
 
 
 # include for backwards compatibility

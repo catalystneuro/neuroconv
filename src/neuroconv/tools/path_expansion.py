@@ -1,10 +1,11 @@
-"""Helpful classes for expanding file or folder paths on a system given a f-string rule for matching patterns."""
+"""Helpful classes for expanding file or folder paths on a system given an f-string rule for matching patterns."""
 import abc
 import os
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-from fparse import parse
+from parse import parse
 from pydantic import DirectoryPath, FilePath
 
 from ..utils import DeepDict
@@ -64,23 +65,36 @@ class AbstractPathExpander(abc.ABC):
         ... )
         """
 
-        session_keys = {"session_start_time", "session_id", "subject_id"}
+        non_standard_super = "extras"
+        standard_metadata = {"session_id": "NWBFile", "session_start_time": "NWBFile", "subject_id": "Subject"}
 
         out = DeepDict()
         for interface, source_data in source_data_spec.items():
+            base_directory = Path(source_data["base_directory"]).resolve()
             for path_type in ("file_path", "folder_path"):
-                if path_type in source_data:
-                    for path, metadata in self.extract_metadata(source_data["base_directory"], source_data[path_type]):
-                        key = tuple((k, v) for k, v in sorted(metadata.items()) if k in session_keys)
-                        out[key]["source_data"][interface][path_type] = os.path.join(
-                            source_data["base_directory"], path
-                        )  # return the absolute path
-                        if "session_id" in metadata:
-                            out[key]["metadata"]["NWBFile"]["session_id"] = metadata["session_id"]
-                        if "session_start_time" in metadata:
-                            out[key]["metadata"]["NWBFile"]["session_start_time"] = metadata["session_start_time"]
-                        if "subject_id" in metadata:
-                            out[key]["metadata"]["Subject"]["subject_id"] = metadata["subject_id"]
+                if path_type not in source_data:
+                    continue
+
+                _format = source_data[path_type]
+                extracted_metadata = self.extract_metadata(base_directory, _format)
+                for path, metadata in extracted_metadata:
+                    key = tuple((k, v) for k, v in sorted(metadata.items()))
+
+                    asset_path = base_directory / path
+
+                    if path_type == "file_path" and not asset_path.is_file():
+                        continue
+                    if path_type == "folder_path" and not asset_path.is_dir():
+                        continue
+
+                    out[key]["source_data"][interface][path_type] = str(asset_path)
+
+                    for meta_key, meta_val in metadata.items():
+                        super_key = standard_metadata.get(meta_key, non_standard_super)
+                        if meta_key == "session_start_time" and isinstance(meta_val, date):
+                            meta_val = datetime(meta_val.year, meta_val.month, meta_val.day)
+                        out[key]["metadata"][super_key][meta_key] = meta_val
+
         return list(dict(out).values())
 
 

@@ -1,12 +1,11 @@
-import os
 from abc import abstractmethod
+from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
 from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
-from ...tools.nwb_helpers import make_or_load_nwbfile
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import load_dict_from_file
 from ...utils.types import FilePathType
@@ -48,7 +47,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        fpath = os.path.join(os.path.split(__file__)[0], "timeintervals.schema.json")
+        fpath = Path(__file__).parent.parent.parent / "schemas" / "timeintervals_schema.json"
         return load_dict_from_file(fpath)
 
     def get_original_timestamps(self, column: str) -> np.ndarray:
@@ -63,13 +62,15 @@ class TimeIntervalsInterface(BaseDataInterface):
 
         return self.dataframe[column].values
 
-    def align_starting_time(self, starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         timing_columns = [column for column in self.dataframe.columns if column.endswith("_time")]
 
         for column in timing_columns:
-            self.dataframe[column] += starting_time
+            self.dataframe[column] += aligned_starting_time
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False):
+    def set_aligned_timestamps(
+        self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False
+    ):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
@@ -101,7 +102,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         ), "All current timestamps except for the last must be strictly within the unaligned mapping."
         # Assume timing column is ascending otherwise
 
-        self.align_timestamps(
+        self.set_aligned_timestamps(
             aligned_timestamps=np.interp(
                 x=current_timestamps,
                 xp=unaligned_timestamps,
@@ -112,12 +113,10 @@ class TimeIntervalsInterface(BaseDataInterface):
             column=column,
         )
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
         tag: str = "trials",
         column_name_mapping: Dict[str, str] = None,
         column_descriptions: Dict[str, str] = None,
@@ -127,16 +126,10 @@ class TimeIntervalsInterface(BaseDataInterface):
 
         Parameters
         ----------
-        nwbfile_path : FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, the context will always write to this location.
         nwbfile : NWBFile, optional
             An in-memory NWBFile object to write to the location.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
-        overwrite : bool, default: False
-            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
-            The default is False (append mode).
         tag : str, default: "trials"
         column_name_mapping: dict, optional
             If passed, rename subset of columns from key to value.
@@ -144,24 +137,17 @@ class TimeIntervalsInterface(BaseDataInterface):
             Keys are the names of the columns (after renaming) and values are the descriptions. If not passed,
             the names of the columns are used as descriptions.
 
-        Returns
-        -------
-        NWBFile
-
         """
         metadata = metadata or self.get_metadata()
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            self.time_intervals = convert_df_to_time_intervals(
-                self.dataframe,
-                column_name_mapping=column_name_mapping,
-                column_descriptions=column_descriptions,
-                **metadata["TimeIntervals"][tag],
-            )
-            nwbfile_out.add_time_intervals(self.time_intervals)
+        self.time_intervals = convert_df_to_time_intervals(
+            self.dataframe,
+            column_name_mapping=column_name_mapping,
+            column_descriptions=column_descriptions,
+            **metadata["TimeIntervals"][tag],
+        )
+        nwbfile.add_time_intervals(self.time_intervals)
 
-        return nwbfile_out
+        return nwbfile
 
     @abstractmethod
     def _read_file(self, file_path: FilePathType, **read_kwargs):

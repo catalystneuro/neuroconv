@@ -7,8 +7,7 @@ from pynwb.file import NWBFile
 from .sleap_utils import extract_timestamps
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_package
-from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FilePathType, dict_deep_update
+from ....utils import FilePathType
 
 
 class SLEAPInterface(BaseTemporalAlignmentInterface):
@@ -55,33 +54,24 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
         return timestamps
 
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self._timestamps = aligned_timestamps
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        overwrite: bool = False,
     ):
         """
         Conversion from DLC output files to nwb. Derived from sleap-io library.
 
         Parameters
         ----------
-        nwbfile_path: FilePathType
-            Path for where to write or load (if overwrite=False) the NWBFile.
-            If specified, this context will always write to this location.
         nwbfile: NWBFile
             nwb file to which the recording information is to be added
         metadata: dict
             metadata info for constructing the nwb file (optional).
-        overwrite: bool, optional
-            Whether to overwrite the NWBFile if one exists at the nwbfile_path.
         """
-        base_metadata = self.get_metadata()
-        metadata = dict_deep_update(base_metadata, metadata)
 
         pose_estimation_metadata = dict()
         if self.video_file_path or self._timestamps:
@@ -91,10 +81,7 @@ class SLEAPInterface(BaseTemporalAlignmentInterface):
         if self.video_sample_rate:
             pose_estimation_metadata.update(video_sample_rate=self.video_sample_rate)
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            labels = self.sleap_io.load_slp(self.file_path)
-            nwbfile_out = self.sleap_io.io.nwb.append_nwb_data(
-                labels=labels, nwbfile=nwbfile_out, pose_estimation_metadata=pose_estimation_metadata
-            )
+        labels = self.sleap_io.load_slp(self.file_path)
+        self.sleap_io.io.nwb.append_nwb_data(
+            labels=labels, nwbfile=nwbfile, pose_estimation_metadata=pose_estimation_metadata
+        )

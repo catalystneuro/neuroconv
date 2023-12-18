@@ -40,7 +40,7 @@ class BaseTemporalAlignmentInterface(BaseDataInterface):
         )
 
     @abstractmethod
-    def align_timestamps(self, aligned_timestamps: np.ndarray):
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
@@ -55,7 +55,7 @@ class BaseTemporalAlignmentInterface(BaseDataInterface):
             "The protocol for synchronizing the timestamps of this interface has not been specified!"
         )
 
-    def align_starting_time(self, starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
         """
         Align the starting time for this interface relative to the common session start time.
 
@@ -63,12 +63,12 @@ class BaseTemporalAlignmentInterface(BaseDataInterface):
 
         Parameters
         ----------
-        starting_time : float
+        aligned_starting_time : float
             The starting time for all temporal data in this interface.
         """
-        self.align_timestamps(aligned_timestamps=self.get_timestamps() + starting_time)
+        self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
 
-    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
         """
         Interpolate the timestamps of this interface using a mapping from some unaligned time basis to its aligned one.
 
@@ -89,6 +89,6 @@ class BaseTemporalAlignmentInterface(BaseDataInterface):
         aligned_timestamps : numpy.ndarray
             The timestamps aligned to the primary time basis.
         """
-        self.align_timestamps(
+        self.set_aligned_timestamps(
             aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
         )

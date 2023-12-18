@@ -1,10 +1,12 @@
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
 from .neuroscope_utils import (
     get_channel_groups,
+    get_neural_channels,
     get_session_start_time,
-    get_shank_channels,
     get_xml_file_path,
 )
 from ..baselfpextractorinterface import BaseLFPExtractorInterface
@@ -14,46 +16,81 @@ from ....tools import get_package
 from ....utils import FilePathType, FolderPathType
 
 
-def subset_shank_channels(recording_extractor, xml_file_path: str):
-    """Attempt to create a SubRecordingExtractor containing only channels related to neural data."""
-    shank_channels = get_shank_channels(xml_file_path=xml_file_path)
+def filter_non_neural_channels(recording_extractor, xml_file_path: str):
+    """
+    Subsets the recording extractor to only use channels corresponding to neural data.
 
-    if shank_channels is not None:
-        channel_ids = [channel_id for group in shank_channels for channel_id in group]
-        new_ids = recording_extractor.get_channel_ids()[channel_ids]
-        sub_recording = recording_extractor.channel_slice(new_ids)
+    Parameters
+    ----------
+    recording_extractor : BaseExtractor from spikeinterface
+        The original recording extractor object.
+    xml_file_path : str
+        Path to the XML file containing the Neuroscope metadata.
+
+    Returns
+    -------
+    BaseExtractor from spikeinterface
+        The subset recording extractor object.
+
+    Notes
+    -----
+    This function subsets the given recording extractor to include only channels that
+    correspond to neural data, filtering out auxiliary channels.
+
+    To identify the neural channels, it relies on the `get_neural_channels` function
+    in the `neuroscope_utils.py` module. Please refer to that function for more details and warnings.
+
+    If no neural channels are found o during the process, the original
+    recording extractor is returned unchanged. If all the channels in the original recording extractor are
+    neural channels, then the original recording extractor is returned unchanged as well.
+    """
+
+    neural_channels_as_groups = get_neural_channels(xml_file_path=xml_file_path)
+
+    if neural_channels_as_groups is None:
+        return recording_extractor
     else:
-        sub_recording = recording_extractor
+        # Flat neural channels as groups which is a list of lists and converter to str which is the representation
+        # In spikeinterface of the channel ids
+        neural_channel_ids = [str(channel_id) for group in neural_channels_as_groups for channel_id in group]
+        channel_ids_in_recorder = recording_extractor.get_channel_ids()
 
-    return sub_recording
+        # Get only the channel_ids_in_recorder that are in the neural_channel_ids
+        neural_channel_ids = [channel_id for channel_id in channel_ids_in_recorder if channel_id in neural_channel_ids]
+
+        # If all the channel_ids_in_recorder are in the neural_channel_ids, return the original recording_extractor
+        if len(neural_channel_ids) == len(channel_ids_in_recorder):
+            return recording_extractor
+
+        sub_recording = recording_extractor.channel_slice(channel_ids=neural_channel_ids)
+        return sub_recording
 
 
-def add_recording_extractor_properties(recording_extractor, xml_file_path: str, gain: Optional[float] = None):
+def add_recording_extractor_properties(recording_extractor, gain: Optional[float] = None):
     """Automatically add properties to RecordingExtractor object."""
 
     if gain:
         recording_extractor.set_channel_gains(gain)
 
-    channel_groups = get_channel_groups(xml_file_path=xml_file_path)
+    channel_ids = recording_extractor.get_channel_ids()
+    channel_names = recording_extractor.get_property(key="channel_name")
+    channel_groups = [int(name.split("grp")[1]) for name in channel_names]
 
-    channel_map = {
-        channel_id: idx
-        for idx, channel_id in enumerate([channel_id for group in channel_groups for channel_id in group])
-    }
-    group_electrode_numbers = [x for channels in channel_groups for x, _ in enumerate(channels)]
-    group_nums = [n + 1 for n, channels in enumerate(channel_groups) for _ in channels]
-    group_names = [f"Group{n}" for n in group_nums]
+    channel_group_names = [f"Group{group_index + 1}" for group_index in channel_groups]
+    recording_extractor.set_property(key="group", ids=channel_ids, values=channel_groups)
+    recording_extractor.set_property(key="group_name", ids=channel_ids, values=channel_group_names)
 
-    channel_groups_mapped = [group_nums[channel_map[channel_id]] for channel_id in channel_map.keys()]
-    group_names_mapped = [group_names[channel_map[channel_id]] for channel_id in channel_map.keys()]
-    shank_electrode_number = [group_electrode_numbers[channel_map[channel_id]] for channel_id in channel_map.keys()]
+    unique_groups = set(channel_groups)
+    channel_id_to_shank_electrode_number = dict()
 
-    channel_ids_mapped = recording_extractor.get_channel_ids()
-    recording_extractor.set_property(key="group", ids=channel_ids_mapped, values=channel_groups_mapped)
-    recording_extractor.set_property(key="group_name", ids=channel_ids_mapped, values=group_names_mapped)
-    recording_extractor.set_property(
-        key="shank_electrode_number", ids=channel_ids_mapped, values=shank_electrode_number
-    )
+    # For each group, get the corresponding channels and enumerate them to have the shank electrode number
+    for group_index in unique_groups:
+        group_channels = [channel_id for channel_id, group in zip(channel_ids, channel_groups) if group == group_index]
+        group_mapping = {channel_id: electrode_number for electrode_number, channel_id in enumerate(group_channels)}
+        channel_id_to_shank_electrode_number.update(group_mapping)
+
+    group_electrode_numbers = [channel_id_to_shank_electrode_number[channel_id] for channel_id in channel_ids]
+    recording_extractor.set_property(key="shank_electrode_number", ids=channel_ids, values=group_electrode_numbers)
 
 
 class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
@@ -109,11 +146,10 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
         self.source_data["xml_file_path"] = xml_file_path
 
-        self.recording_extractor = subset_shank_channels(
+        add_recording_extractor_properties(recording_extractor=self.recording_extractor, gain=gain)
+
+        self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
-        )
-        add_recording_extractor_properties(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
         )
 
     def get_metadata(self) -> dict:
@@ -126,6 +162,17 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        new_recording = self.get_extractor()(file_path=self.source_data["file_path"])
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
 
 
 class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
@@ -146,7 +193,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         ----------
         file_path : FilePathType
             Path to .dat file.
-        gain : Optional[float], optiona
+        gain : float, optional
             Conversion factors from int16 to Volts are not contained in xml_file_path; set them explicitly here.
             Most common value is 0.195 for an intan recording system.
             The default is None.
@@ -163,10 +210,9 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         super().__init__(file_path=file_path)
         self.source_data["xml_file_path"] = xml_file_path
 
-        add_recording_extractor_properties(
-            recording_extractor=self.recording_extractor, xml_file_path=xml_file_path, gain=gain
-        )
-        self.recording_extractor = subset_shank_channels(
+        add_recording_extractor_properties(recording_extractor=self.recording_extractor, gain=gain)
+
+        self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
 

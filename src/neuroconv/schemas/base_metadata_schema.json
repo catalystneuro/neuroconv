@@ -94,7 +94,7 @@
         },
         "virus": {
           "type": "string",
-          "description": "Narrative description about surgery/surgeries, including date(s) and who performed surgery."
+          "description": "Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc."
         },
         "data_collection": {
           "type": "string",
@@ -102,7 +102,7 @@
         },
         "stimulus_notes": {
           "type": "string",
-          "description": "Notes about data collection and analysis."
+          "description": "Notes about stimuli, such as how and where presented."
         }
       }
     },
@@ -128,7 +128,6 @@
         },
         "description": {
           "type": "string",
-          "default": "no description",
           "description": "Description of subject and where subject came from (e.g., breeder, if animal)."
         },
         "genotype": {
@@ -142,8 +141,7 @@
             "F",
             "U",
             "O"
-          ],
-          "default": "U"
+          ]
         },
         "species": {
           "type": "string",

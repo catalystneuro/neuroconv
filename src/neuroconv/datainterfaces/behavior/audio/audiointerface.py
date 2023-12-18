@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 from typing import List, Literal, Optional
-from warnings import warn
 
 import numpy as np
 import scipy
@@ -10,7 +9,12 @@ from pynwb import NWBFile, TimeSeries
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools.audio import add_acoustic_waveform_series
 from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import FilePathType, get_base_schema, get_schema_from_hdmf_class
+from ....utils import (
+    DeepDict,
+    FilePathType,
+    get_base_schema,
+    get_schema_from_hdmf_class,
+)
 
 
 def _check_audio_names_are_unique(metadata: dict):
@@ -95,10 +99,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     def get_timestamps(self) -> Optional[np.ndarray]:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def align_timestamps(self, aligned_timestamps: List[np.ndarray]):
+    def set_aligned_timestamps(self, aligned_timestamps: List[np.ndarray]):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def align_starting_time(self, starting_time: float):
+    def set_aligned_starting_time(self, aligned_starting_time: float):
         """
         Align all starting times for all audio files in this interface relative to the common session start time.
 
@@ -106,23 +110,23 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        starting_time : float
+        aligned_starting_time : float
             The common starting time for all temporal data in this interface.
             Applies to all segments if there are multiple file paths used by the interface.
         """
         if self._segment_starting_times is None and self._number_of_audio_files == 1:
-            self._segment_starting_times = [starting_time]
+            self._segment_starting_times = [aligned_starting_time]
         elif self._segment_starting_times is not None and self._number_of_audio_files > 1:
             self._segment_starting_times = [
-                segment_starting_time + starting_time for segment_starting_time in self._segment_starting_times
+                segment_starting_time + aligned_starting_time for segment_starting_time in self._segment_starting_times
             ]
         else:
             raise ValueError(
                 "There are no segment starting times to shift by a common value! "
-                "Please set them using 'align_segment_starting_times'."
+                "Please set them using 'set_aligned_segment_starting_times'."
             )
 
-    def align_segment_starting_times(self, segment_starting_times: List[float]):
+    def set_aligned_segment_starting_times(self, aligned_segment_starting_times: List[float]):
         """
         Align the individual starting time for each audio file in this interface relative to the common session start time.
 
@@ -130,27 +134,26 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        segment_starting_times : list of floats
+        aligned_segment_starting_times : list of floats
             The relative starting times of each audio file (segment).
         """
-        segment_starting_times_length = len(segment_starting_times)
-        assert isinstance(segment_starting_times, list) and all(
-            [isinstance(x, float) for x in segment_starting_times]
-        ), "Argument 'segment_starting_times' must be a list of floats."
-        assert segment_starting_times_length == self._number_of_audio_files, (
-            f"The number of entries in 'segment_starting_times' ({segment_starting_times_length}) must be equal to the number of "
-            f"audio file paths ({self._number_of_audio_files})."
+        aligned_segment_starting_times_length = len(aligned_segment_starting_times)
+        assert isinstance(aligned_segment_starting_times, list) and all(
+            [isinstance(x, float) for x in aligned_segment_starting_times]
+        ), "Argument 'aligned_segment_starting_times' must be a list of floats."
+        assert aligned_segment_starting_times_length == self._number_of_audio_files, (
+            f"The number of entries in 'aligned_segment_starting_times' ({aligned_segment_starting_times_length}) "
+            f"must be equal to the number of audio file paths ({self._number_of_audio_files})."
         )
 
-        self._segment_starting_times = segment_starting_times
+        self._segment_starting_times = aligned_segment_starting_times
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
-    def run_conversion(
+    def add_to_nwbfile(
         self,
-        nwbfile_path: Optional[FilePathType] = None,
-        nwbfile: Optional[NWBFile] = None,
+        nwbfile: NWBFile,
         metadata: Optional[dict] = None,
         stub_test: bool = False,
         stub_frames: int = 1000,
@@ -163,9 +166,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         """
         Parameters
         ----------
-        nwbfile_path : FilePathType, optional
-            If a file exists at this path, append to it. If not, write the file here.
-        nwbfile : NWBFile, optional
+        nwbfile : NWBFile
             Append to this NWBFile object
         metadata : dict, optional
         stub_test : bool, default: False
@@ -200,30 +201,25 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         if self._number_of_audio_files > 1 and self._segment_starting_times is None:
             raise ValueError(
                 "If you have multiple audio files, then you must specify each starting time by calling "
-                "'.align_segment_starting_times(segment_starting_times=...)'!"
+                "'.set_aligned_segment_starting_times(...)'!"
             )
         starting_times = self._segment_starting_times or [0.0]
 
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path, nwbfile=nwbfile, metadata=metadata, overwrite=overwrite, verbose=self.verbose
-        ) as nwbfile_out:
-            for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(
-                zip(audio_metadata, file_paths)
-            ):
-                sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
+        for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
+            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=True)
 
-                if stub_test:
-                    acoustic_series = acoustic_series[:stub_frames]
+            if stub_test:
+                acoustic_series = acoustic_series[:stub_frames]
 
-                add_acoustic_waveform_series(
-                    acoustic_series=acoustic_series,
-                    nwbfile=nwbfile_out,
-                    rate=sampling_rate,
-                    metadata=acoustic_waveform_series_metadata,
-                    write_as=write_as,
-                    starting_time=starting_times[file_index],
-                    iterator_options=iterator_options,
-                    compression_options=compression_options,
-                )
+            add_acoustic_waveform_series(
+                acoustic_series=acoustic_series,
+                nwbfile=nwbfile,
+                rate=sampling_rate,
+                metadata=acoustic_waveform_series_metadata,
+                write_as=write_as,
+                starting_time=starting_times[file_index],
+                iterator_options=iterator_options,
+                compression_options=compression_options,
+            )
 
-        return nwbfile_out
+        return nwbfile

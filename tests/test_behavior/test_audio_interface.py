@@ -42,10 +42,10 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
     @classmethod
     def setUpClass(cls):
         cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
-        cls.num_frames = 10000
+        cls.num_frames = int(1e7)
         cls.num_audio_files = 3
         cls.sampling_rate = 500
-        cls.segment_starting_times = [0.0, 20.0, 40.0]
+        cls.aligned_segment_starting_times = [0.0, 20.0, 40.0]
 
         cls.test_dir = Path(mkdtemp())
         cls.file_paths = create_audio_files(
@@ -77,7 +77,9 @@ class TestAudioInterface(AudioInterfaceTestMixin, TestCase):
         source_data = dict(Audio=dict(file_paths=self.file_paths))
         self.nwb_converter = AudioTestNWBConverter(source_data)
         self.interface = self.nwb_converter.data_interface_objects["Audio"]
-        self.interface.align_segment_starting_times(segment_starting_times=self.segment_starting_times)
+        self.interface.set_aligned_segment_starting_times(
+            aligned_segment_starting_times=self.aligned_segment_starting_times
+        )
 
     def test_unsupported_format(self):
         exc_msg = "The currently supported file format for audio is WAV file. Some of the provided files does not match this format: ['.test']."
@@ -158,35 +160,37 @@ On instance['Audio']['write_as']:
 
     def test_segment_starting_times_are_floats(self):
         with self.assertRaisesWith(
-            exc_type=AssertionError, exc_msg="Argument 'segment_starting_times' must be a list of floats."
+            exc_type=AssertionError, exc_msg="Argument 'aligned_segment_starting_times' must be a list of floats."
         ):
-            self.interface.align_segment_starting_times(segment_starting_times=[0, 1, 2])
+            self.interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[0, 1, 2])
 
     def test_segment_starting_times_length_mismatch(self):
         with self.assertRaisesWith(
             exc_type=AssertionError,
-            exc_msg="The number of entries in 'segment_starting_times' (4) must be equal to the number of audio file paths (3).",
+            exc_msg="The number of entries in 'aligned_segment_starting_times' (4) must be equal to the number of audio file paths (3).",
         ):
-            self.interface.align_segment_starting_times(segment_starting_times=[0.0, 1.0, 2.0, 4.0])
+            self.interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[0.0, 1.0, 2.0, 4.0])
 
-    def test_align_segment_starting_times(self):
+    def test_set_aligned_segment_starting_times(self):
         fresh_interface = AudioInterface(file_paths=self.file_paths[:2])
 
-        segment_starting_times = [0.0, 1.0]
-        fresh_interface.align_segment_starting_times(segment_starting_times=segment_starting_times)
+        aligned_segment_starting_times = [0.0, 1.0]
+        fresh_interface.set_aligned_segment_starting_times(
+            aligned_segment_starting_times=aligned_segment_starting_times
+        )
 
-        assert_array_equal(x=self.interface._segment_starting_times, y=self.segment_starting_times)
+        assert_array_equal(x=self.interface._segment_starting_times, y=self.aligned_segment_starting_times)
 
-    def test_align_starting_time(self):
+    def test_set_aligned_starting_time(self):
         fresh_interface = AudioInterface(file_paths=self.file_paths[:2])
 
-        starting_time = 1.23
+        aligned_starting_time = 1.23
         relative_starting_times = [0.0, 1.0]
-        fresh_interface.align_segment_starting_times(segment_starting_times=relative_starting_times)
-        fresh_interface.align_starting_time(starting_time=starting_time)
+        fresh_interface.set_aligned_segment_starting_times(aligned_segment_starting_times=relative_starting_times)
+        fresh_interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
 
         expecting_starting_times = [
-            relative_starting_time + starting_time for relative_starting_time in relative_starting_times
+            relative_starting_time + aligned_starting_time for relative_starting_time in relative_starting_times
         ]
         assert_array_equal(x=fresh_interface._segment_starting_times, y=expecting_starting_times)
 
@@ -195,7 +199,17 @@ On instance['Audio']['write_as']:
         audio_test_data = [read(filename=file_path, mmap=True)[1] for file_path in file_paths]
 
         nwbfile_path = str(self.test_dir / "audio_test_data.nwb")
-        self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=self.metadata)
+        self.nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            metadata=self.metadata,
+            conversion_options=dict(
+                Audio=dict(
+                    iterator_options=dict(
+                        buffer_gb=1e7 / 1e9,
+                    )
+                )
+            ),  # use a low buffer_gb, so we can test the full GenericDataChunkIterator
+        )
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
@@ -205,6 +219,8 @@ On instance['Audio']['write_as']:
             for audio_ind, audio_metadata in enumerate(metadata["Behavior"]["Audio"]):
                 audio_interface_name = audio_metadata["name"]
                 assert audio_interface_name in container
-                self.assertEqual(self.segment_starting_times[audio_ind], container[audio_interface_name].starting_time)
+                self.assertEqual(
+                    self.aligned_segment_starting_times[audio_ind], container[audio_interface_name].starting_time
+                )
                 self.assertEqual(self.sampling_rate, container[audio_interface_name].rate)
                 assert_array_equal(audio_test_data[audio_ind], container[audio_interface_name].data)

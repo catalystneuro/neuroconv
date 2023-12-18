@@ -27,21 +27,21 @@ def test_converter():
         test_dir = Path(mkdtemp())
         nwbfile_path = str(test_dir / "extension_test.nwb")
 
-        class NdxEventsInterface(BaseDataInterface):
+        class NdxEventsInterface(BaseTemporalAlignmentInterface):
             def __init__(self):
-                self.timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
-                self.original_timestamps = np.array(self.timestamps)
+                self._timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
+                self._original_timestamps = np.array(self._timestamps)
 
             def get_original_timestamps(self) -> np.ndarray:
-                return self.original_timestamps
+                return self._original_timestamps
 
             def get_timestamps(self) -> np.ndarray:
-                return self.timestamps
+                return self._timestamps
 
-            def align_timestamps(self, aligned_timestamps: np.ndarray):
-                self.timestamps = aligned_timestamps
+            def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+                self._timestamps = aligned_timestamps
 
-            def run_conversion(self, nwbfile: NWBFile, metadata: dict):
+            def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict):
                 events = LabeledEvents(
                     name="LabeledEvents",
                     description="events from my experiment",
@@ -76,10 +76,10 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
             def get_timestamps(self):
                 pass
 
-            def align_timestamps(self):
+            def set_aligned_timestamps(self):
                 pass
 
-            def run_conversion(self):
+            def add_to_nwbfile(self):
                 pass
 
         cls.InterfaceA = InterfaceA
@@ -88,7 +88,7 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
             def __init__(self, **source_data):
                 super().__init__(**source_data)
 
-            def run_conversion(self):
+            def add_to_nwbfile(self):
                 pass
 
         cls.InterfaceB = InterfaceB
