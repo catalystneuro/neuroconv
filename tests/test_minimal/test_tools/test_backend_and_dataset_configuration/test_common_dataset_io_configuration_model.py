@@ -144,14 +144,28 @@ def test_validator_chunk_dimensions_do_not_evenly_divide_buffer(
         dataset_configuration_class(
             dataset_info=mock_DatasetInfo(),
             chunk_shape=(78_125, 7),
-            buffer_shape=(1_250_000, 384),
+            buffer_shape=(1_250_000, 383),  # Different trigger condition when not the full shape for an axis
         )
 
     expected_error = (
-        "Some dimensions of the chunk_shape=(78125, 7) do not evenly divide the buffer_shape=(1250000, 384) for "
+        "Some dimensions of the chunk_shape=(78125, 7) do not evenly divide the buffer_shape=(1250000, 383) for "
         "dataset at location 'acquisition/TestElectricalSeries/data'! (type=value_error)"
     )
     assert expected_error in str(error_info.value)
+
+
+@pytest.mark.parametrize(
+    argnames="dataset_configuration_class", argvalues=[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
+)
+def test_validator_chunk_dimensions_do_not_evenly_divide_buffer_skip_full_shape(
+    dataset_configuration_class: Union[HDF5DatasetIOConfiguration, ZarrDatasetIOConfiguration]
+):
+    """Any divisibility is allowed when the buffer shape is capped at the full length of an axis."""
+    dataset_configuration_class(
+        dataset_info=mock_DatasetInfo(),
+        chunk_shape=(78_125, 7),
+        buffer_shape=(1_250_000, 384),
+    )
 
 
 @pytest.mark.parametrize(

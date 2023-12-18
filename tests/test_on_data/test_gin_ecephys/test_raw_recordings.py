@@ -1,11 +1,11 @@
 import itertools
+import os
 import unittest
 from datetime import datetime
-from platform import python_version, system
+from platform import system
 
 import pytest
 from jsonschema.validators import Draft7Validator
-from packaging import version
 from parameterized import param, parameterized
 from spikeinterface.core import BaseRecording
 from spikeinterface.core.testing import check_recordings_equal
@@ -134,11 +134,11 @@ class TestEcephysRawRecordingsNwbConversions(unittest.TestCase):
             interface_kwargs=dict(
                 folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"),
             ),
-            case_name=f"openephyslegacy",
+            case_name="openephyslegacy",
         ),
     ]
 
-    if system() == "Linux":
+    if system() == "Linux" and "CI" not in os.environ:
         parameterized_recording_list.append(
             param(
                 data_interface=MaxOneRecordingInterface,

@@ -276,7 +276,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
         data_to_add["location"].update(description="location")
         data_to_add.pop("brain_area")
 
-    # If no group_names are provide use information from groups or default values
+    # If no group_names are provided, use information from groups or default values
     if "group_name" in data_to_add:
         group_name_array = data_to_add["group_name"]["data"].astype("str", copy=False)
     else:
@@ -300,7 +300,7 @@ def add_electrodes(recording: BaseRecording, nwbfile: pynwb.NWBFile, metadata: d
     data_to_add["group"].update(description="the ElectrodeGroup object", data=group_list, index=False)
 
     # 2 Divide properties to those that will be added as rows (default plus previous) and columns (new properties)
-    # This mapping contains all the defaults that might be required by by pre-defined columns on the NWB schema
+    # This mapping contains all the defaults that might be required by pre-defined columns on the NWB schema
     # https://nwb-schema.readthedocs.io/en/latest/format.html#groups-general-extracellular-ephys-electrodes
     required_schema_property_to_default_value = dict(
         id=None,
@@ -516,7 +516,7 @@ def add_electrical_series(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ):
     """
@@ -601,19 +601,20 @@ def add_electrical_series(
         width = int(np.ceil(np.log10((recording.get_num_segments()))))
         eseries_kwargs["name"] += f"{segment_index:0{width}}"
 
-    # Indexes by channel ids if they are integer or by indices otherwise.
-    channel_name_array = recording.get_channel_ids()
-    if np.issubdtype(channel_name_array.dtype, np.integer):
-        channel_indices = channel_name_array
-    else:
-        channel_indices = recording.ids_to_indices(channel_name_array)
-
+    # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    # That uses either the `channel_name` property or the channel ids as string otherwise.
+    channel_names = recording.get_property("channel_name")
+    if channel_names is None:
+        channel_names = recording.get_channel_ids().astype("str")
 
-    table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_indices]
+    # We use those channels to select the electrodes to be added to the ElectricalSeries
+    channel_name_column = nwbfile.electrodes["channel_name"][:]
+    mask = np.isin(channel_name_column, channel_names)
+    table_ids = np.nonzero(mask)[0]
 
     electrode_table_region = nwbfile.create_electrode_table_region(
-        region=table_ids, description="electrode_table_region"
+        region=table_ids.tolist(), description="electrode_table_region"
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
@@ -653,7 +654,7 @@ def add_electrical_series(
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
     if recording.has_time_vector(segment_index=segment_index):
-        # First we check if the recording has a a time vector to avoid creating artificial timestamps
+        # First we check if the recording has a time vector to avoid creating artificial timestamps
         timestamps = recording.get_times(segment_index=segment_index)
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
         recording_t_start = timestamps[0]
@@ -734,10 +735,6 @@ def add_recording(
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
-    assert get_package_version("pynwb") >= Version(
-        "1.3.3"
-    ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
-
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
@@ -779,7 +776,7 @@ def write_recording(
     write_scaled: bool = False,
     compression: Optional[str] = "gzip",
     compression_opts: Optional[int] = None,
-    iterator_type: str = "v2",
+    iterator_type: Optional[str] = "v2",
     iterator_opts: Optional[dict] = None,
 ) -> pynwb.NWBFile:
     """
