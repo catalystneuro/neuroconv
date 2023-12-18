@@ -383,37 +383,33 @@ def test_expand_paths_ibl(tmpdir):
     tc = unittest.TestCase()
     tc.assertCountEqual(path_expansion_results, expected)
 
+
 # contruct_path_template tests
 
 
 test_cases = [
     dict(
         test_input=dict(
-            path = "/data/subject456/session123/file.txt",
-            metadata = dict(subject_id="subject456", session_id="session123")
+            path="/data/subject456/session123/file.txt", metadata=dict(subject_id="subject456", session_id="session123")
         ),
-        expected = "/data/{subject_id}/{session_id}/file.txt"
+        expected="/data/{subject_id}/{session_id}/file.txt",
     ),
     dict(
         test_input=dict(
             path="/data/subject789/session456/image.txt",
-            metadata=dict(subject_id="subject789", session_id="session456", file_type="image")
+            metadata=dict(subject_id="subject789", session_id="session456", file_type="image"),
         ),
-        expected="/data/{subject_id}/{session_id}/{file_type}.txt"
+        expected="/data/{subject_id}/{session_id}/{file_type}.txt",
     ),
     dict(
         test_input=dict(
-            path="/SenzaiY/YMV01/YMV01_170818/YMV01_170818.eeg",
-            metadata=dict(session_id="170818", subject_id="YMV01")
+            path="/SenzaiY/YMV01/YMV01_170818/YMV01_170818.eeg", metadata=dict(session_id="170818", subject_id="YMV01")
         ),
-        expected="/SenzaiY/{subject_id}/{subject_id}_{session_id}/{subject_id}_{session_id}.eeg"
+        expected="/SenzaiY/{subject_id}/{subject_id}_{session_id}/{subject_id}_{session_id}.eeg",
     ),
     dict(
-        test_input=dict(
-            path="/SenzaiY/YMV01/YMV01_170818/",
-            metadata=dict(session_id="170818", subject_id="YMV01")
-        ),
-        expected="/SenzaiY/{subject_id}/{subject_id}_{session_id}/"
+        test_input=dict(path="/SenzaiY/YMV01/YMV01_170818/", metadata=dict(session_id="170818", subject_id="YMV01")),
+        expected="/SenzaiY/{subject_id}/{subject_id}_{session_id}/",
     ),
     dict(
         test_input=dict(
@@ -422,11 +418,11 @@ test_cases = [
                 session_id="001",
                 subject_id="NR_0017",
                 camera_id="leftCamera.raw.6252a2f0-c10f-4e49-b085-75749ba29c35",
-                session_date="2022-03-22"
+                session_date="2022-03-22",
             ),
         ),
-        expected="/steinmetzlab/Subjects/{subject_id}/{session_date}/{session_id}/raw_video_data/_iblrig_{camera_id}.mp4"
-    )
+        expected="/steinmetzlab/Subjects/{subject_id}/{session_date}/{session_id}/raw_video_data/_iblrig_{camera_id}.mp4",
+    ),
 ]
 
 
@@ -467,10 +463,7 @@ def test_missing_session_id_in_path():
 def test_empty_metadata_value():
     with pytest.raises(ValueError):
         construct_path_template(
-            "/data/subject789/session456/image.txt",
-            subject_id="subject789",
-            session_id="session456",
-            file_type=""
+            "/data/subject789/session456/image.txt", subject_id="subject789", session_id="session456", file_type=""
         )
 
 
@@ -480,5 +473,5 @@ def test_missing_metadata_value_in_path():
             "/data/subject789/session456/image.txt",
             subject_id="subject789",
             session_id="session456",
-            file_type="document"
+            file_type="document",
         )
