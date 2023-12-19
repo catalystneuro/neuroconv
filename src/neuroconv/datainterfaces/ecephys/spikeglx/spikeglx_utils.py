@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ....utils import FilePathType
 
+
 def add_recording_extractor_properties(recording_extractor) -> None:
     """Automatically add shank group_name and shank_electrode_number for spikeglx."""
     probe = recording_extractor.get_probe()

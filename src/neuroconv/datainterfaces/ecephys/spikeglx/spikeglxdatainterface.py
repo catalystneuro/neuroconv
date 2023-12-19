@@ -85,7 +85,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 device=device["name"],
             )
             for group_name in set(self.recording_extractor.get_property("group_name"))
-        ]    
+        ]
         metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
 
         # Electrodes columns descriptions
