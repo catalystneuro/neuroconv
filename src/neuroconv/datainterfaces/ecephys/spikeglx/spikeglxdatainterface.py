@@ -80,13 +80,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
         self.source_data["file_path"] = str(file_path)
-        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
-        # Mount the probe
-        # TODO - this can be removed in the next release of SpikeInterface (probe mounts automatically)
-        meta_filename = str(file_path).replace(".bin", ".meta").replace(".lf", ".ap")
-        probe = read_spikeglx(meta_filename)
-        self.recording_extractor.set_probe(probe, in_place=True)
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
 
@@ -109,7 +103,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
                 device=device["name"],
             )
             for group_name in set(self.recording_extractor.get_property("group_name"))
-        ]
+        ]    
         metadata["Ecephys"]["ElectrodeGroup"] = electrode_groups
 
         # Electrodes columns descriptions
