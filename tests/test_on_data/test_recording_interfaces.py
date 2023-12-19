@@ -417,6 +417,7 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
     RecordingExtractorInterfaceTestMixin, TestCase
 ):
     """From Issue #695, exposed `block_index` argument and added tests on data that include multiple blocks."""
+
     data_interface_cls = OpenEphysBinaryRecordingInterface
     interface_kwargs = dict(
         folder_path=str(DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"),
