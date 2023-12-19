@@ -519,9 +519,21 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
             nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
             # In the NWBSortingExtractor, since unit_names could be not unique,
             # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
-            sorting_renamed = sorting.select_units(
-                unit_ids=sorting.unit_ids, renamed_unit_ids=np.arange(len(sorting.unit_ids))
-            )
+            if "unit_name" in sorting.get_property_keys():
+                renamed_unit_ids = sorting.get_property("unit_name")
+                # sorting_renamed = sorting.rename_units(new_unit_ids=renamed_unit_ids)  #TODO after 0.100 release use this
+                sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
+
+            else:
+                nwb_has_ids_as_strings = all(isinstance(id, str) for id in nwb_sorting.unit_ids)
+                if nwb_has_ids_as_strings:
+                    renamed_unit_ids = sorting.get_unit_ids()
+                    renamed_unit_ids = [str(id) for id in renamed_unit_ids]
+                else:
+                    renamed_unit_ids = np.arange(len(sorting.unit_ids))
+
+                # sorting_renamed = sorting.rename_units(new_unit_ids=sorting.unit_ids) #TODO after 0.100 release use this
+                sorting_renamed = sorting.select_units(unit_ids=sorting.unit_ids, renamed_unit_ids=renamed_unit_ids)
             check_sortings_equal(SX1=sorting_renamed, SX2=nwb_sorting)
 
     def check_interface_set_aligned_segment_timestamps(self):

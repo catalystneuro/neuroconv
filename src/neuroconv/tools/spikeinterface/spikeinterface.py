@@ -601,19 +601,20 @@ def add_electrical_series(
         width = int(np.ceil(np.log10((recording.get_num_segments()))))
         eseries_kwargs["name"] += f"{segment_index:0{width}}"
 
-    # Indexes by channel ids if they are integer or by indices otherwise.
-    channel_name_array = recording.get_channel_ids()
-    if np.issubdtype(channel_name_array.dtype, np.integer):
-        channel_indices = channel_name_array
-    else:
-        channel_indices = recording.ids_to_indices(channel_name_array)
-
+    # The add_electrodes adds a column with channel name to the electrode table.
     add_electrodes(recording=recording, nwbfile=nwbfile, metadata=metadata)
+    # That uses either the `channel_name` property or the channel ids as string otherwise.
+    channel_names = recording.get_property("channel_name")
+    if channel_names is None:
+        channel_names = recording.get_channel_ids().astype("str")
 
-    table_ids = [list(nwbfile.electrodes.id[:]).index(id) for id in channel_indices]
+    # We use those channels to select the electrodes to be added to the ElectricalSeries
+    channel_name_column = nwbfile.electrodes["channel_name"][:]
+    mask = np.isin(channel_name_column, channel_names)
+    table_ids = np.nonzero(mask)[0]
 
     electrode_table_region = nwbfile.create_electrode_table_region(
-        region=table_ids, description="electrode_table_region"
+        region=table_ids.tolist(), description="electrode_table_region"
     )
     eseries_kwargs.update(electrodes=electrode_table_region)
 
@@ -734,10 +735,6 @@ def add_recording(
     iterator_type: str = "v2",
     iterator_opts: Optional[dict] = None,
 ):
-    assert get_package_version("pynwb") >= Version(
-        "1.3.3"
-    ), "'write_recording' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
-
     if hasattr(recording, "nwb_metadata"):
         metadata = dict_deep_update(recording.nwb_metadata, metadata)
     elif metadata is None:
