@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
+from hdmf.backends.hdf5.h5_utils import H5DataIO
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
@@ -198,6 +199,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
+        compression: Optional[str] = "gzip",
+        compression_opts: Optional[int] = None,
     ):
         """
         Parameters
@@ -241,6 +244,8 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
             column_in_dat_file = data_dict["column_in_dat_file"]
             data = fictrac_data_df[column_in_dat_file].to_numpy()
+            if compression:
+                data = H5DataIO(data, compression=compression, compression_opts=compression_opts)
             if self.radius is not None:
                 spatial_series_kwargs["conversion"] = self.radius
                 units = "meters"
@@ -348,7 +353,7 @@ def extract_session_start_time(
     If neither of these methods works, the function returns None.
 
     The session start time, has two different meanings depending on the source of the FicTrac data:
-    - For video file sources (.avi, .mp4, etc), the session start time corresponds to the time when the
+    - For video file sources (.avi, .mp4, etc.), the session start time corresponds to the time when the
     FicTrac analysis commenced. That is, the session start time reflects the analysis time rather than
     the actual start of the experiment.
     - For camera sources (such as PGR or Basler), the session start time is either the time reported by the camera
