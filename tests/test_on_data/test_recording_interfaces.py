@@ -211,7 +211,8 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCas
         assert len(metadata["Ecephys"]["Device"]) == 1
         assert metadata["Ecephys"]["Device"][0]["name"] == "Neuronexus-32"
         assert metadata["Ecephys"]["Device"][0]["description"] == "The ecephys device for the MEArec recording."
-        # assert len(metadata["Ecephys"]["ElectrodeGroup"]) == 1 # do not test this condition because in the test we are setting a mock probe
+        # assert len(metadata["Ecephys"]["ElectrodeGroup"]) == 1
+        # do not test this condition because in the test we are setting a mock probe
         assert metadata["Ecephys"]["ElectrodeGroup"][0]["device"] == "Neuronexus-32"
         assert metadata["Ecephys"]["ElectricalSeries"]["description"] == (
             '{"angle_tol": 15, "bursting": false, "chunk_duration": 0, "color_noise_floor": 1, '
@@ -341,7 +342,8 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions(RecordingEx
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg=(
-                "Unable to identify the OpenEphys folder structure! Please check that your `folder_path` contains sub-folders of the "
+                "Unable to identify the OpenEphys folder structure! "
+                "Please check that your `folder_path` contains sub-folders of the "
                 "following form: 'experiment<index>' -> 'recording<index>' -> 'continuous'."
             ),
         ):
@@ -354,8 +356,10 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions(RecordingEx
         with self.assertRaisesWith(
             exc_type=ValueError,
             exc_msg=(
-                "More than one stream is detected! Please specify which stream you wish to load with the `stream_name` argument. "
-                "To see what streams are available, call `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
+                "More than one stream is detected! "
+                "Please specify which stream you wish to load with the `stream_name` argument. "
+                "To see what streams are available, call "
+                " `OpenEphysRecordingInterface.get_stream_names(folder_path=...)`."
             ),
         ):
             OpenEphysBinaryRecordingInterface(
@@ -409,6 +413,21 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream2(RecordingExtract
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 11, 24, 15, 46, 56)
 
 
+class TestOpenEphysBinaryRecordingInterface_version_0_5_3_block_1_stream_1(
+    RecordingExtractorInterfaceTestMixin, TestCase
+):
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"),
+        stream_name="Record Node 101#NI-DAQmx-103.PXIe-6341",
+        block_index=1,
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
+
+
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = OpenEphysLegacyRecordingInterface
     interface_kwargs = dict(folder_path=str(DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
@@ -438,12 +457,12 @@ class TestOpenEphysRecordingInterfaceRouter(RecordingExtractorInterfaceTestMixin
 class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin, TestCase):
     data_interface_cls = SpikeGadgetsRecordingInterface
     interface_kwargs = [
-        dict(file_path=str(DATA_PATH / "spikegadgets" / f"20210225_em8_minirec2_ac.rec")),
-        dict(file_path=str(DATA_PATH / "spikegadgets" / f"20210225_em8_minirec2_ac.rec"), gains=[0.195]),
-        dict(file_path=str(DATA_PATH / "spikegadgets" / f"20210225_em8_minirec2_ac.rec"), gains=[0.385] * 512),
-        dict(file_path=str(DATA_PATH / "spikegadgets" / f"W122_06_09_2019_1_fromSD.rec")),
-        dict(file_path=str(DATA_PATH / "spikegadgets" / f"W122_06_09_2019_1_fromSD.rec"), gains=[0.195]),
-        dict(file_path=str(DATA_PATH / "spikegadgets" / f"W122_06_09_2019_1_fromSD.rec"), gains=[0.385] * 128),
+        dict(file_path=str(DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec")),
+        dict(file_path=str(DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec"), gains=[0.195]),
+        dict(file_path=str(DATA_PATH / "spikegadgets" / "20210225_em8_minirec2_ac.rec"), gains=[0.385] * 512),
+        dict(file_path=str(DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec")),
+        dict(file_path=str(DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"), gains=[0.195]),
+        dict(file_path=str(DATA_PATH / "spikegadgets" / "W122_06_09_2019_1_fromSD.rec"), gains=[0.385] * 128),
     ]
     save_directory = OUTPUT_PATH
 
