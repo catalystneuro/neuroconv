@@ -153,5 +153,3 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
         channel_ids = recording_extractor_nidq.get_channel_ids()
         np.testing.assert_array_equal(channel_ids, expected_channel_names_nidq)
-
-        del recording_extractor_ap, recording_extractor_lf, recording_extractor_nidq
