@@ -1,3 +1,4 @@
+import inspect
 import json
 import tempfile
 from abc import abstractmethod
@@ -512,11 +513,16 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         sorting = self.interface.sorting_extractor
         sf = sorting.get_sampling_frequency()
         if sf is None:  # need to set dummy sampling frequency since no associated acquisition in file
-            sorting.set_sampling_frequency(30_000)
+            sorting.set_sampling_frequency(30_000.0)
 
         # NWBSortingExtractor on spikeinterface does not yet support loading data written from multiple segment.
         if sorting.get_num_segments() == 1:
-            nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf, t_start=0.0)
+            # TODO after 0.100 release remove this if
+            signature = inspect.signature(NwbSortingExtractor)
+            if "t_start" in signature.parameters:
+                nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf, t_start=0.0)
+            else:
+                nwb_sorting = NwbSortingExtractor(file_path=nwbfile_path, sampling_frequency=sf)
             # In the NWBSortingExtractor, since unit_names could be not unique,
             # table "ids" are loaded as unit_ids. Here we rename the original sorting accordingly
             if "unit_name" in sorting.get_property_keys():
