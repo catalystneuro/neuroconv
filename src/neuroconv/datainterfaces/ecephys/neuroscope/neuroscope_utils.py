@@ -71,7 +71,7 @@ def get_neural_channels(xml_file_path: str) -> list:
     Warning:
     This function assumes that all the channels that correspond to neural data are involved in spike detection.
     More concretely, it assumes that the channels appear on the `spikeDetection` field of the XML file.
-    If this is not the case, the function will return an incorrect list of neural channels channels.
+    If this is not the case, the function will return an incorrect list of neural channels.
     Please report this as an issue if this is the case.
     """
     root = get_xml(xml_file_path)
@@ -85,7 +85,7 @@ def get_channel_groups(xml_file_path: str) -> list:
     """
     Auxiliary function for retrieving a list of groups, each containing a list of channels.
 
-    These are all of the channels that are connected to the probe.
+    These are all the channels that are connected to the probe.
 
     Returns
     -------

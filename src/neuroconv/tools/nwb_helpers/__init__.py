@@ -12,6 +12,7 @@ from ._configuration_models._zarr_dataset_io import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
     ZarrDatasetIOConfiguration,
 )
+from ._configure_backend import configure_backend
 from ._dataset_configuration import get_default_dataset_io_configurations
 from ._metadata_and_file_helpers import (
     add_device_from_metadata,
@@ -25,6 +26,9 @@ BACKEND_CONFIGURATIONS = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendCon
 DATASET_IO_CONFIGURATIONS = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatasetIOConfiguration)
 
 __all__ = [
+    "get_default_backend_configuration",
+    "get_default_dataset_io_configurations",
+    "configure_backend",
     "AVAILABLE_HDF5_COMPRESSION_METHODS",
     "AVAILABLE_ZARR_COMPRESSION_METHODS",
     "BackendConfiguration",

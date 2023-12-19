@@ -7,7 +7,7 @@ from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....utils.types import FilePathType, FolderPathType
 
 
-class MaxOneRecordingInterface(BaseRecordingExtractorInterface):
+class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no cover
     """
     Primary data interface class for converting MaxOne data.
 
