@@ -62,6 +62,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
         )
         self.source_data["file_path"] = str(file_path)
+        self.meta = self.recording_extractor.neo_reader.signals_info_dict[(0, self.stream_id)]["meta"]
 
         # Set electrodes properties
         add_recording_extractor_properties(self.recording_extractor)
