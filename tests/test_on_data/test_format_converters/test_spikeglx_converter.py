@@ -23,11 +23,11 @@ SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 class TestSingleProbeSpikeGLXConverter(TestCase):
     maxDiff = None
 
-    def setUpClass(self):
-        self.tmpdir = Path(mkdtemp())
+    def setUpClass(cls):
+        cls.tmpdir = Path(mkdtemp())
 
-    def tearDownClass(self):
-        rmtree(self.tmpdir)
+    def tearDownClass(cls):
+        rmtree(cls.tmpdir)
 
     def assertNWBFileStructure(self, nwbfile_path: FilePath):
         with NWBHDF5IO(path=nwbfile_path) as io:
