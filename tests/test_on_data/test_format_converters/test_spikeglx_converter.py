@@ -23,10 +23,10 @@ SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 class TestSingleProbeSpikeGLXConverter(TestCase):
     maxDiff = None
 
-    def setUp(self):
+    def setUpClass(self):
         self.tmpdir = Path(mkdtemp())
 
-    def tearDown(self):
+    def tearDownClass(self):
         rmtree(self.tmpdir)
 
     def assertNWBFileStructure(self, nwbfile_path: FilePath):
@@ -125,6 +125,7 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
         nwbfile_path = self.tmpdir / "test_spikeglx_converter_electrode_table.nwb"
         with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
             io.write(nwbfile)
+            del nwbfile
 
         # Test round trip with spikeinterface
         from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
