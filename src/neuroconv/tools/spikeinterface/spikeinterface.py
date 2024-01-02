@@ -615,7 +615,6 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
     else:
         shifted_timestamps = starting_time + timestamps
-
         # TODO: remove on or after March 1, 2024
         if compression is not None:  # Interfaces should be setting this to None
             wrapped_timestamps = H5DataIO(
