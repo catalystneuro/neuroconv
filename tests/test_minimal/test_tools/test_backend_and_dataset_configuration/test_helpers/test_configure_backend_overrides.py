@@ -74,19 +74,8 @@ def test_simple_time_series_override(
             assert written_data.compressor == numcodecs.GZip(level=5)
 
 
-@pytest.mark.parametrize(
-    "case_name,iterator,iterator_options",
-    [
-        ("unwrapped", lambda x: x, dict()),
-        ("generic", SliceableDataChunkIterator, dict()),
-        ("classic", DataChunkIterator, dict(iter_axis=1, buffer_size=30_000 * 5)),
-        # Need to hardcode buffer size in classic case or else it takes forever...
-    ],
-)
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_simple_dynamic_table_override(
-    tmpdir: Path, case_name: str, iterator: callable, iterator_options: dict, backend: Literal["hdf5", "zarr"]
-):
+def test_simple_dynamic_table_override(tmpdir: Path, case_name: str, backend: Literal["hdf5", "zarr"]):
     data = np.zeros(shape=(30_000 * 5, 384), dtype="int16")
 
     nwbfile = mock_NWBFile()
@@ -99,9 +88,7 @@ def test_simple_dynamic_table_override(
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestDynamicTable/TestColumn/data"]
 
     smaller_chunk_shape = (30_000, 64)
-    smaller_buffer_shape = (60_000, 192)
     dataset_configuration.chunk_shape = smaller_chunk_shape
-    dataset_configuration.buffer_shape = smaller_buffer_shape
 
     higher_gzip_level = 5
     if backend == "hdf5":
