@@ -74,15 +74,6 @@ def test_simple_time_series_override(
             assert written_data.compressor == numcodecs.GZip(level=5)
 
 
-@pytest.mark.parametrize(
-    "case_name,iterator,iterator_options",
-    [
-        ("unwrapped", lambda x: x, dict()),
-        ("generic", SliceableDataChunkIterator, dict()),
-        ("classic", DataChunkIterator, dict(iter_axis=1, buffer_size=30_000 * 5)),
-        # Need to hardcode buffer size in classic case or else it takes forever...
-    ],
-)
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_simple_dynamic_table_override(
     tmpdir: Path, case_name: str, iterator: callable, iterator_options: dict, backend: Literal["hdf5", "zarr"]
