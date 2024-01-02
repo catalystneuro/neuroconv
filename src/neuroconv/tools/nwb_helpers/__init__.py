@@ -17,7 +17,7 @@ from ._configuration_models._zarr_dataset_io import (
     ZarrDatasetIOConfiguration,
 )
 from ._configure_backend import configure_backend
-from ._dataset_configuration import get_default_dataset_io_configurations
+from ._dataset_io_configuration import get_default_dataset_io_configurations
 from ._metadata_and_file_helpers import (
     add_device_from_metadata,
     get_default_nwbfile_metadata,

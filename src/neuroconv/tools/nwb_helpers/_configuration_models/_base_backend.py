@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from pynwb import NWBFile
 
 from ._base_dataset_io import DatasetIOConfiguration
-from .._dataset_configuration import get_default_dataset_io_configurations
+from .._dataset_io_configuration import get_default_dataset_io_configurations
 
 
 class BackendConfiguration(BaseModel):
