@@ -1,4 +1,8 @@
 """Collection of Pydantic models and helper functions for configuring dataset IO parameters for different backends."""
+# Mark these imports as private to avoid polluting the namespace; only used in global BACKEND_NWB_IO mapping
+from hdmf_zarr import NWBZarrIO as _NWBZarrIO
+from pynwb import NWBHDF5IO as _NWBHDF5IO
+
 from ._backend_configuration import get_default_backend_configuration
 from ._configuration_models._base_backend import BackendConfiguration
 from ._configuration_models._base_dataset_io import DatasetInfo, DatasetIOConfiguration
@@ -24,13 +28,17 @@ from ._metadata_and_file_helpers import (
 
 BACKEND_CONFIGURATIONS = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
 DATASET_IO_CONFIGURATIONS = dict(hdf5=HDF5DatasetIOConfiguration, zarr=ZarrDatasetIOConfiguration)
+BACKEND_NWB_IO = dict(hdf5=_NWBHDF5IO, zarr=_NWBZarrIO)
 
 __all__ = [
+    "AVAILABLE_HDF5_COMPRESSION_METHODS",
+    "AVAILABLE_ZARR_COMPRESSION_METHODS",
+    "BACKEND_CONFIGURATIONS",
+    "DATASET_IO_CONFIGURATIONS",
+    "BACKEND_NWB_IO",
     "get_default_backend_configuration",
     "get_default_dataset_io_configurations",
     "configure_backend",
-    "AVAILABLE_HDF5_COMPRESSION_METHODS",
-    "AVAILABLE_ZARR_COMPRESSION_METHODS",
     "BackendConfiguration",
     "DatasetIOConfiguration",
     "get_default_dataset_io_configurations",

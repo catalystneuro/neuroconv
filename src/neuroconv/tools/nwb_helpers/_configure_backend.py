@@ -1,7 +1,8 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 from typing import Union
 
-from pynwb import NWBFile
+from hdmf.common import Data
+from pynwb import NWBFile, TimeSeries
 
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
@@ -21,4 +22,14 @@ def configure_backend(
 
         # TODO: update buffer shape in iterator, if present
 
-        nwbfile_objects[object_id].set_data_io(dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs)
+        if isinstance(nwbfile_objects[object_id], Data):
+            nwbfile_objects[object_id].set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
+        elif isinstance(nwbfile_objects[object_id], TimeSeries):
+            nwbfile_objects[object_id].set_data_io(
+                dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs
+            )
+        else:  # Strictly speaking, it would be odd if a backend_configuration led to this, but might as well be safe
+            raise NotImplementedError(
+                f"Unsupported object type {type(nwbfile_objects[object_id])} for backend "
+                f"configuration of {nwbfile_objects[object_id].name}!"
+            )
