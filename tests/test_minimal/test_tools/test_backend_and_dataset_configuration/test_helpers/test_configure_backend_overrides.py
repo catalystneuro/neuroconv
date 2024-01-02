@@ -88,9 +88,7 @@ def test_simple_dynamic_table_override(tmpdir: Path, case_name: str, backend: Li
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestDynamicTable/TestColumn/data"]
 
     smaller_chunk_shape = (30_000, 64)
-    smaller_buffer_shape = (60_000, 192)
     dataset_configuration.chunk_shape = smaller_chunk_shape
-    dataset_configuration.buffer_shape = smaller_buffer_shape
 
     higher_gzip_level = 5
     if backend == "hdf5":
