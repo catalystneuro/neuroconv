@@ -16,7 +16,7 @@ from spikeinterface import BaseRecording, BaseSorting, WaveformExtractor
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
-
+from ..importing import get_package_version
 from ..nwb_helpers import (
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
@@ -25,7 +25,6 @@ from ..nwb_helpers import (
     get_module,
     make_or_load_nwbfile,
 )
-from ..importing import get_package_version
 from ...utils import (
     DeepDict,
     FilePathType,
