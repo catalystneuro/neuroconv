@@ -76,7 +76,7 @@ def test_simple_time_series_override(
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_simple_dynamic_table_override(
-    tmpdir: Path, case_name: str, iterator: callable, iterator_options: dict, backend: Literal["hdf5", "zarr"]
+    tmpdir: Path, case_name: str, backend: Literal["hdf5", "zarr"]
 ):
     data = np.zeros(shape=(30_000 * 5, 384), dtype="int16")
 
