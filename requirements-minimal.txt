@@ -3,7 +3,7 @@ jsonschema>=3.2.0
 PyYAML>=5.4
 scipy>=1.4.1
 h5py>=3.9.0
-hdmf>=3.11.0
+hdmf @ git+github.com/hdmf-dev/hdmf.git@dev
 hdmf_zarr>=0.4.0
 pynwb>=2.3.2;python_version>='3.8'
 pydantic>=1.10.13,<2.0.0

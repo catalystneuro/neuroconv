@@ -1,12 +1,13 @@
 import uuid
+import numpy as np
 import warnings
 from collections import defaultdict
 from numbers import Real
 from typing import List, Literal, Optional, Union
 
-import numpy as np
 import psutil
 import pynwb
+from pathlib import Path
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
 from packaging.version import Version
