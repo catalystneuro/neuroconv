@@ -550,8 +550,9 @@ def add_electrical_series(
     write_scaled : bool, default: False
         If True, writes the traces in uV with the right conversion.
         If False , the data is stored as it is and the right conversions factors are added to the nwbfile.
-    compression : {'gzip', 'lzf'}, optional
+    compression: {None, 'gzip', 'lzf'}, default: 'gzip'
         Type of compression to use. Set to None to disable all compression.
+        To use the `configure_backend` function, you should set this to None.
     compression_opts: int, default: 4
         Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}, default: 'v2'
@@ -649,9 +650,13 @@ def add_electrical_series(
         iterator_type=iterator_type,
         iterator_opts=iterator_opts,
     )
-    eseries_kwargs.update(
-        data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
-    )
+    if compression is not None:
+        # in this case we assume HDF5 backend and compression
+        eseries_kwargs.update(
+            data=H5DataIO(data=ephys_data_iterator, compression=compression, compression_opts=compression_opts)
+        )
+    else:
+        eseries_kwargs.update(data=ephys_data_iterator)
 
     # Now we decide whether to store the timestamps as a regular series or as an irregular series.
     if recording.has_time_vector(segment_index=segment_index):
@@ -671,10 +676,15 @@ def add_electrical_series(
         eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
     else:
         shifted_timestamps = starting_time + timestamps
-        wrapped_timestamps = H5DataIO(
-            data=shifted_timestamps, compression=compression, compression_opts=compression_opts
-        )
-        eseries_kwargs.update(timestamps=wrapped_timestamps)
+        if compression is not None:
+            # in this case we assume HDF5 backend and compression
+            timestamps_iterator = H5DataIO(
+                data=shifted_timestamps, compression=compression, compression_opts=compression_opts
+            )
+        else:
+            timestamps_iterator = shifted_timestamps
+
+        eseries_kwargs.update(timestamps=timestamps_iterator)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -847,9 +857,9 @@ def write_recording(
         and electrodes are written to NWB.
     write_scaled: bool, default: True
         If True, writes the scaled traces (return_scaled=True)
-    compression: {None, 'gzip', 'lzp'}
-        Type of compression to use.
-        Set to None to disable all compression.
+    compression: {None, 'gzip', 'lzp'}, default: 'gzip'
+        Type of compression to use. Set to None to disable all compression.
+        To use the `configure_backend` function, you should set this to None.
     compression_opts: int, optional, default: 4
         Only applies to compression="gzip". Controls the level of the GZIP.
     iterator_type: {"v2", "v1",  None}
