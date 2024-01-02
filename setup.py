@@ -18,6 +18,13 @@ with open(root / "requirements-testing.txt") as f:
     testing_suite_dependencies = f.readlines()
 
 extras_require = defaultdict(list)
+
+extras_require["dandi"].append("dandi>=0.58.1")
+extras_require["full"].extend(extras_require["dandi"])
+
+extras_require.update(compressors=["hdf5plugin"])
+extras_require["full"].extend(["hdf5plugin"])
+
 extras_require.update(test=testing_suite_dependencies, docs=documentation_dependencies)
 for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
     modality_path = root / "src" / "neuroconv" / "datainterfaces" / modality
@@ -41,9 +48,6 @@ for modality in ["ophys", "ecephys", "icephys", "behavior", "text"]:
                 extras_require[modality].extend(format_requirements)
                 extras_require[format_subpath.name].extend(format_requirements)
 
-extras_require.update(compressors=["hdf5plugin"])
-extras_require["full"].extend(["hdf5plugin"])
-
 # Create a local copy for the gin test configuration file based on the master file `base_gin_test_config.json`
 gin_config_file_base = Path("./base_gin_test_config.json")
 gin_config_file_local = Path("./tests/test_on_data/gin_test_config.json")
@@ -61,7 +65,7 @@ if sys.platform == "darwin" and platform.processor() == "arm":
 
 setup(
     name="neuroconv",
-    version="0.4.4",
+    version="0.4.7",
     description="Convert data from proprietary formats to NWB format.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -78,7 +82,7 @@ setup(
     extras_require=extras_require,
     entry_points={
         "console_scripts": [
-            "neuroconv = neuroconv.tools.yaml_conversion_specification.yaml_conversion_specification:run_conversion_from_yaml_cli",
+            "neuroconv = neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli",
         ],
     },
     license="BSD-3-Clause",

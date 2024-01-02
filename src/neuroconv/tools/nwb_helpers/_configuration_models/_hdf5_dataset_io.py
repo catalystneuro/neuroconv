@@ -1,31 +1,34 @@
 """Base Pydantic models for the HDF5DatasetConfiguration."""
-from typing import Any, Dict, Literal, Type, Union
+from typing import Any, Dict, Literal, Union
 
 import h5py
-from nwbinspector.utils import is_module_installed
 from pydantic import Field
-from pynwb import H5DataIO
 
-from ._base_models import BackendConfiguration, DatasetConfiguration
+from ._base_dataset_io import DatasetIOConfiguration
+from ...importing import is_package_installed
 
-_base_hdf5_filters = set(h5py.filters.decode) - set(
+_base_hdf5_filters = set(h5py.filters.decode)
+_excluded_hdf5_filters = set(
     (
         "shuffle",  # controlled via H5DataIO
         "fletcher32",  # controlled via H5DataIO
         "scaleoffset",  # enforced indrectly by HDMF/PyNWB data types
     )
 )
-_available_hdf5_filters = set(_base_hdf5_filters)
-if is_module_installed(module_name="hdf5plugin"):
+_available_hdf5_filters = set(_base_hdf5_filters - _excluded_hdf5_filters)
+AVAILABLE_HDF5_COMPRESSION_METHODS = {filter_name: filter_name for filter_name in _available_hdf5_filters}
+if is_package_installed(package_name="hdf5plugin"):
     import hdf5plugin
 
-    _available_hdf5_filters = _available_hdf5_filters | set(
-        (str(hdf5plugin_filter).rstrip("'>").split(".")[-1] for hdf5plugin_filter in hdf5plugin.get_filters())
-    )  # Manual string parsing because of slight mismatches between .filter_name and actual import class
-AVAILABLE_HDF5_COMPRESSION_METHODS = tuple(_available_hdf5_filters)
+    AVAILABLE_HDF5_COMPRESSION_METHODS.update(
+        {
+            str(hdf5plugin_filter).rstrip("'>").split(".")[-1]: hdf5plugin_filter
+            for hdf5plugin_filter in hdf5plugin.get_filters()
+        }
+    )
 
 
-class HDF5DatasetConfiguration(DatasetConfiguration):
+class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
     # TODO: When using Pydantic v2, replace with `model_config = ConfigDict(...)`
@@ -34,7 +37,7 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
         validate_assignment = True
 
     compression_method: Union[
-        Literal[AVAILABLE_HDF5_COMPRESSION_METHODS], h5py._hl.filters.FilterRefBase, None
+        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())], h5py._hl.filters.FilterRefBase, None
     ] = Field(
         default="gzip",
         description=(
@@ -50,8 +53,8 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
-    def get_data_io_keyword_arguments(self) -> Dict[str, Any]:
-        if is_module_installed(module_name="hdf5plugin"):
+    def get_data_io_kwargs(self) -> Dict[str, Any]:
+        if is_package_installed(package_name="hdf5plugin"):
             import hdf5plugin
 
             if self.compression_method in _base_hdf5_filters:
@@ -72,21 +75,10 @@ class HDF5DatasetConfiguration(DatasetConfiguration):
             elif self.compression_method is None:
                 compression_bundle = dict(compression=False)
         else:
-            compression_bundle = dict(compression=self.compression_method, compression_opts=self.compression_options)
+            # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
+            compression_opts = None
+            if self.compression_options is not None:
+                compression_opts = list(self.compression_options.values())[0]
+            compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
-
-
-class HDF5BackendConfiguration(BackendConfiguration):
-    """A model for matching collections of DatasetConfigurations specific to the HDF5 backend."""
-
-    backend: Literal["hdf5"] = Field(
-        default="hdf5", description="The name of the backend used to configure the NWBFile."
-    )
-    data_io_class: Type[H5DataIO] = Field(default=H5DataIO, description="The DataIO class that is specific to HDF5.")
-    dataset_configurations: Dict[str, HDF5DatasetConfiguration] = Field(
-        description=(
-            "A mapping from object locations to their HDF5DatasetConfiguration specification that contains all "
-            "information for writing the datasets to disk using the HDF5 backend."
-        )
-    )

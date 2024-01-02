@@ -2,7 +2,11 @@
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
+from .behavior.lightningpose.lightningposedatainterface import (
+    LightningPoseDataInterface,
+)
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
+from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.video.videodatainterface import VideoInterface
 
@@ -52,10 +56,7 @@ from .ecephys.plexon.plexondatainterface import (
     PlexonRecordingInterface,
     PlexonSortingInterface,
 )
-from .ecephys.spike2.spike2datainterface import (
-    CEDRecordingInterface,
-    Spike2RecordingInterface,
-)
+from .ecephys.spike2.spike2datainterface import Spike2RecordingInterface
 from .ecephys.spikegadgets.spikegadgetsdatainterface import (
     SpikeGadgetsRecordingInterface,
 )
@@ -89,7 +90,7 @@ from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 
 # Text
-from .text.csv.csvtimeintertervalsinterface import CsvTimeIntervalsInterface
+from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 interface_list = [
@@ -105,7 +106,6 @@ interface_list = [
     SpikeGLXNIDQInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
-    CEDRecordingInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
     CellExplorerLFPInterface,
@@ -153,6 +153,8 @@ interface_list = [
     SLEAPInterface,
     MiniscopeBehaviorInterface,
     FicTracDataInterface,
+    NeuralynxNvtInterface,
+    LightningPoseDataInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -185,6 +187,7 @@ interfaces_by_category = dict(
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
+        LightningPose=LightningPoseDataInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

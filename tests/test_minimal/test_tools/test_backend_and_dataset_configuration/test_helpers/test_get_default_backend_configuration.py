@@ -63,7 +63,7 @@ def test_complex_hdf5(hdf5_nwbfile_path):
     with NWBHDF5IO(path=hdf5_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
 
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]])
+        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
         raw_time_series = mock_TimeSeries(name="NewRawTimeSeries", data=raw_array)
         nwbfile.add_acquisition(raw_time_series)
 
@@ -94,36 +94,69 @@ def test_complex_hdf5(hdf5_nwbfile_path):
     with patch("sys.stdout", new=StringIO()) as stdout:
         print(backend_configuration)
 
-    expected_print = """Configurable datasets identified using the hdf5 backend
+    expected_print = """
+Configurable datasets identified using the hdf5 backend
 -------------------------------------------------------
+
 epochs/start_time/data
-    maxshape : (5,)
-    dtype : float64
-    chunk shape : (5,)
-    buffer shape : (5,)
-    compression method : gzip
-    compression options : None
+----------------------
+  dtype : float64
+  full shape of source array : (5,)
+  full size of source array : 0.00 GB
+
+  buffer shape : (5,)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (5,)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
+
 epochs/stop_time/data
-    maxshape : (5,)
-    dtype : float64
-    chunk shape : (5,)
-    buffer shape : (5,)
-    compression method : gzip
-    compression options : None
+---------------------
+  dtype : float64
+  full shape of source array : (5,)
+  full size of source array : 0.00 GB
+
+  buffer shape : (5,)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (5,)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
+
 acquisition/NewRawTimeSeries/data
-    maxshape : (2, 3)
-    dtype : int32
-    chunk shape : (2, 3)
-    buffer shape : (2, 3)
-    compression method : gzip
-    compression options : None
+---------------------------------
+  dtype : int32
+  full shape of source array : (2, 3)
+  full size of source array : 0.00 GB
+
+  buffer shape : (2, 3)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (2, 3)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
+
 processing/ecephys/NewProcessedTimeSeries/data
-    maxshape : (4, 2)
-    dtype : float64
-    chunk shape : (4, 2)
-    buffer shape : (4, 2)
-    compression method : gzip
-    compression options : None
+----------------------------------------------
+  dtype : float64
+  full shape of source array : (4, 2)
+  full size of source array : 0.00 GB
+
+  buffer shape : (4, 2)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (4, 2)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
 """
     assert stdout.getvalue() == expected_print
 
@@ -132,7 +165,7 @@ def test_complex_zarr(zarr_nwbfile_path):
     with NWBZarrIO(path=zarr_nwbfile_path, mode="a") as io:
         nwbfile = io.read()
 
-        raw_array = np.array([[11, 21, 31], [41, 51, 61]])
+        raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
         raw_time_series = mock_TimeSeries(name="NewRawTimeSeries", data=raw_array)
         nwbfile.add_acquisition(raw_time_series)
 
@@ -163,43 +196,68 @@ def test_complex_zarr(zarr_nwbfile_path):
     with patch("sys.stdout", new=StringIO()) as stdout:
         print(backend_configuration)
 
-    expected_print = """Configurable datasets identified using the zarr backend
+    expected_print = """
+Configurable datasets identified using the zarr backend
 -------------------------------------------------------
+
 epochs/start_time/data
-    maxshape : (5,)
-    dtype : float64
-    chunk shape : (5,)
-    buffer shape : (5,)
-    compression method : gzip
-    compression options : None
-    filter methods : None
-    filter options : None
+----------------------
+  dtype : float64
+  full shape of source array : (5,)
+  full size of source array : 0.00 GB
+
+  buffer shape : (5,)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (5,)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
+
 epochs/stop_time/data
-    maxshape : (5,)
-    dtype : float64
-    chunk shape : (5,)
-    buffer shape : (5,)
-    compression method : gzip
-    compression options : None
-    filter methods : None
-    filter options : None
+---------------------
+  dtype : float64
+  full shape of source array : (5,)
+  full size of source array : 0.00 GB
+
+  buffer shape : (5,)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (5,)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
+
 acquisition/NewRawTimeSeries/data
-    maxshape : (2, 3)
-    dtype : int32
-    chunk shape : (2, 3)
-    buffer shape : (2, 3)
-    compression method : gzip
-    compression options : None
-    filter methods : None
-    filter options : None
+---------------------------------
+  dtype : int32
+  full shape of source array : (2, 3)
+  full size of source array : 0.00 GB
+
+  buffer shape : (2, 3)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (2, 3)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
+
 processing/ecephys/NewProcessedTimeSeries/data
-    maxshape : (4, 2)
-    dtype : float64
-    chunk shape : (4, 2)
-    buffer shape : (4, 2)
-    compression method : gzip
-    compression options : None
-    filter methods : None
-    filter options : None
+----------------------------------------------
+  dtype : float64
+  full shape of source array : (4, 2)
+  full size of source array : 0.00 GB
+
+  buffer shape : (4, 2)
+  expected RAM usage : 0.00 GB
+
+  chunk shape : (4, 2)
+  disk space usage per chunk : 0.00 MB
+
+  compression method : gzip
+
 """
     assert stdout.getvalue() == expected_print

@@ -1,4 +1,3 @@
-"""The simplest, easiest to use class for converting all SpikeGLX data in a folder."""
 from pathlib import Path
 from typing import List, Optional
 
@@ -11,7 +10,11 @@ from ....utils import FolderPathType, get_schema_from_method_signature
 
 
 class SpikeGLXConverterPipe(ConverterPipe):
-    """Primary conversion class for handling multiple SpikeGLX data streams."""
+    """
+    The simplest, easiest to use class for converting all SpikeGLX data in a folder.
+
+    Primary conversion class for handling multiple SpikeGLX data streams.
+    """
 
     @classmethod
     def get_source_schema(cls):

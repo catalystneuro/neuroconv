@@ -1,7 +1,6 @@
 import unittest
 from datetime import datetime
 from pathlib import Path
-from platform import python_version
 from shutil import rmtree
 from tempfile import mkdtemp
 from unittest.mock import Mock
@@ -12,7 +11,6 @@ import pynwb.ecephys
 from hdmf.backends.hdf5.h5_utils import H5DataIO
 from hdmf.data_utils import DataChunkIterator
 from hdmf.testing import TestCase
-from packaging import version
 from pynwb import NWBFile
 from spikeinterface import WaveformExtractor, extract_waveforms
 from spikeinterface.core.generate import generate_recording, generate_sorting
@@ -485,7 +483,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         excess = 1.5  # Of what is available in memory
         num_frames_to_overflow = (available_memory_in_bytes * excess) / (element_size_in_bytes * num_channels)
 
-        # Mock recording extractor with as much frames as necessary to overflow memory
+        # Mock recording extractor with as many frames as necessary to overflow memory
         mock_recorder = Mock()
         mock_recorder.get_dtype.return_value = dtype
         mock_recorder.get_num_channels.return_value = num_channels
@@ -1137,9 +1135,6 @@ class TestAddUnitsTable(TestCase):
         assert all(tb in ["False", "True"] for tb in self.nwbfile.units["test_bool"][:])
 
 
-@unittest.skipIf(
-    version.parse(python_version()) < version.parse("3.8"), "SpikeInterface.extract_waveforms() requires Python>=3.8"
-)
 class TestWriteWaveforms(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -1149,10 +1144,12 @@ class TestWriteWaveforms(TestCase):
 
         cls.num_units = 4
         cls.num_channels = 4
-        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3])
-        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3])
-        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[3, 4])
-        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[3, 4])
+        duration_1 = 6
+        duration_2 = 7
+        single_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1])
+        single_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1])
+        multi_segment_rec = generate_recording(num_channels=cls.num_channels, durations=[duration_1, duration_2])
+        multi_segment_sort = generate_sorting(num_units=cls.num_units, durations=[duration_1, duration_2])
         single_segment_rec.annotate(is_filtered=True)
         multi_segment_rec.annotate(is_filtered=True)
         single_segment_rec = single_segment_rec.save()

@@ -194,7 +194,7 @@ class VideoInterface(BaseDataInterface):
 
         Parameters
         ----------
-        starting_times : list of floats
+        aligned_segment_starting_times : list of floats
             The relative starting times of each video.
         stub_test : bool, default: False
             If timestamps have not been set to this interface, it will attempt to retrieve them

@@ -92,6 +92,7 @@ Behavior
     Audio <behavior/audio>
     DeepLabCut <behavior/deeplabcut>
     FicTrac <behavior/fictrac>
+    LightningPose <behavior/lightningpose>
     SLEAP <behavior/sleap>
     Videos <behavior/video>
 

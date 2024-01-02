@@ -1,5 +1,5 @@
-import os
 from abc import abstractmethod
+from pathlib import Path
 from typing import Dict, Optional
 
 import numpy as np
@@ -47,7 +47,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         return metadata
 
     def get_metadata_schema(self) -> dict:
-        fpath = os.path.join(os.path.split(__file__)[0], "timeintervals.schema.json")
+        fpath = Path(__file__).parent.parent.parent / "schemas" / "timeintervals_schema.json"
         return load_dict_from_file(fpath)
 
     def get_original_timestamps(self, column: str) -> np.ndarray:
