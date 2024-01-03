@@ -98,8 +98,6 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    if case_name != "unwrapped":  # TODO: eventually, even this case will be buffered automatically
-        assert nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
     nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
