@@ -59,7 +59,7 @@ def test_simple_time_series(
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_simple_dynamic_table(tmpdir: Path, case_name: str, backend: Literal["hdf5", "zarr"]):
+def test_simple_dynamic_table(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
     data = np.zeros(shape=(30_000 * 5, 384), dtype="int16")
 
     nwbfile = mock_NWBFile()
@@ -72,7 +72,7 @@ def test_simple_dynamic_table(tmpdir: Path, case_name: str, backend: Literal["hd
     dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestDynamicTable/TestColumn/data"]
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_dynamic_table.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 

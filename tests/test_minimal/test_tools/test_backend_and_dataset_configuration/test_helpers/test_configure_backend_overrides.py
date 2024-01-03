@@ -75,7 +75,7 @@ def test_simple_time_series_override(
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_simple_dynamic_table_override(tmpdir: Path, case_name: str, backend: Literal["hdf5", "zarr"]):
+def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
     data = np.zeros(shape=(30_000 * 5, 384), dtype="int16")
 
     nwbfile = mock_NWBFile()
@@ -101,7 +101,7 @@ def test_simple_dynamic_table_override(tmpdir: Path, case_name: str, backend: Li
     if case_name != "unwrapped":  # TODO: eventually, even this case will be buffered automatically
         assert nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
-    nwbfile_path = str(tmpdir / f"test_configure_defaults_{case_name}_dynamic_table.nwb.{backend}")
+    nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
