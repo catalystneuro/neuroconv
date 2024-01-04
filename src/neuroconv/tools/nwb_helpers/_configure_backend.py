@@ -26,9 +26,7 @@ def configure_backend(
         if isinstance(nwbfile_object, Data):
             nwbfile_object.set_data_io(data_io_class=data_io_class, data_io_kwargs=data_io_kwargs)
         elif isinstance(nwbfile_object, TimeSeries):
-            nwbfile_object.set_data_io(
-                dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs
-            )
+            nwbfile_object.set_data_io(dataset_name=dataset_name, data_io_class=data_io_class, **data_io_kwargs)
         else:  # Strictly speaking, it would be odd if a backend_configuration led to this, but might as well be safe
             raise NotImplementedError(
                 f"Unsupported object type {type(nwbfile_object)} for backend "
