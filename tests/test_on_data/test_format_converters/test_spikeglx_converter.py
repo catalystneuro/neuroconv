@@ -82,41 +82,76 @@ class TestSingleProbeSpikeGLXConverter(TestCase):
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path)
 
-    def test_electrode_table_writing(self):
-        converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-        metadata = converter.get_metadata()
 
-        nwbfile = mock_NWBFile()
-        converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+def test_electrode_table_writing(tmp_path):
+    converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+    metadata = converter.get_metadata()
 
-        electrodes_table = nwbfile.electrodes
+    nwbfile = mock_NWBFile()
+    converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        # Test NIDQ
-        electrical_series = nwbfile.acquisition["ElectricalSeriesNIDQ"]
-        nidq_electrodes_table_region = electrical_series.electrodes
-        region_indices = nidq_electrodes_table_region.data
-        recording_extractor = converter.data_interface_objects["nidq"].recording_extractor
+    electrodes_table = nwbfile.electrodes
 
-        saved_channel_names = electrodes_table[region_indices]["channel_name"]
-        expected_channel_names = recording_extractor.get_property("channel_name")
-        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+    # Test NIDQ
+    electrical_series = nwbfile.acquisition["ElectricalSeriesNIDQ"]
+    nidq_electrodes_table_region = electrical_series.electrodes
+    region_indices = nidq_electrodes_table_region.data
+    recording_extractor = converter.data_interface_objects["nidq"].recording_extractor
 
-        # Test AP
-        electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
-        ap_electrodes_table_region = electrical_series.electrodes
-        region_indices = ap_electrodes_table_region.data
-        recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
+    saved_channel_names = electrodes_table[region_indices]["channel_name"]
+    expected_channel_names_nidq = recording_extractor.get_property("channel_name")
+    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_nidq)
 
-        saved_channel_names = electrodes_table[region_indices]["channel_name"]
-        expected_channel_names = recording_extractor.get_property("channel_name")
-        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+    # Test AP
+    electrical_series = nwbfile.acquisition["ElectricalSeriesAP"]
+    ap_electrodes_table_region = electrical_series.electrodes
+    region_indices = ap_electrodes_table_region.data
+    recording_extractor = converter.data_interface_objects["imec0.ap"].recording_extractor
 
-        # Test LF
-        electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
-        lf_electrodes_table_region = electrical_series.electrodes
-        region_indices = lf_electrodes_table_region.data
-        recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
+    saved_channel_names = electrodes_table[region_indices]["channel_name"]
+    expected_channel_names_ap = recording_extractor.get_property("channel_name")
+    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
 
-        saved_channel_names = electrodes_table[region_indices]["channel_name"]
-        expected_channel_names = recording_extractor.get_property("channel_name")
-        np.testing.assert_array_equal(saved_channel_names, expected_channel_names)
+    # Test LF
+    electrical_series = nwbfile.acquisition["ElectricalSeriesLF"]
+    lf_electrodes_table_region = electrical_series.electrodes
+    region_indices = lf_electrodes_table_region.data
+    recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
+
+    saved_channel_names = electrodes_table[region_indices]["channel_name"]
+    expected_channel_names_lf = recording_extractor.get_property("channel_name")
+    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_lf)
+
+    # Write to file and read back in
+    temporary_folder = tmp_path / "test_folder"
+    temporary_folder.mkdir()
+    nwbfile_path = temporary_folder / "test_spikeglx_converter_electrode_table.nwb"
+    with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    # Test round trip with spikeinterface
+    from spikeinterface.extractors.nwbextractors import NwbRecordingExtractor
+
+    recording_extractor_ap = NwbRecordingExtractor(
+        file_path=nwbfile_path,
+        electrical_series_name="ElectricalSeriesAP",
+    )
+
+    channel_ids = recording_extractor_ap.get_channel_ids()
+    np.testing.assert_array_equal(channel_ids, expected_channel_names_ap)
+
+    recording_extractor_lf = NwbRecordingExtractor(
+        file_path=nwbfile_path,
+        electrical_series_name="ElectricalSeriesLF",
+    )
+
+    channel_ids = recording_extractor_lf.get_channel_ids()
+    np.testing.assert_array_equal(channel_ids, expected_channel_names_lf)
+
+    recording_extractor_nidq = NwbRecordingExtractor(
+        file_path=nwbfile_path,
+        electrical_series_name="ElectricalSeriesNIDQ",
+    )
+
+    channel_ids = recording_extractor_nidq.get_channel_ids()
+    np.testing.assert_array_equal(channel_ids, expected_channel_names_nidq)
