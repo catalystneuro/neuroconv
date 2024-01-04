@@ -2,6 +2,7 @@ import uuid
 import warnings
 from collections import defaultdict
 from numbers import Real
+from pathlib import Path
 from typing import List, Literal, Optional, Union
 
 import numpy as np
