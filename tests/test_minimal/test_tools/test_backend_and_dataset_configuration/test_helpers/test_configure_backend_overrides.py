@@ -99,10 +99,11 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
     nwbfile_path = str(tmpdir / f"test_configure_defaults_dynamic_table.nwb.{backend}")
-    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
+    NWB_IO = BACKEND_NWB_IO[backend]
+    with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
+    with NWB_IO(path=nwbfile_path, mode="r") as io:
         written_nwbfile = io.read()
         written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
